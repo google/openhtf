@@ -1,0 +1,67 @@
+// Assembly object, used to store device BOM in Glass Inspector.
+
+syntax = "proto2";
+
+package openxtf;
+
+// An assembly is a collection of components that make up a partial or complete
+// device under test. Each assembly has at most one top level component, which
+// roots the tree of devices. Components are linked in a directed, acyclic graph
+// with the top-level assembly at the root.
+message Assembly {
+  message Edge {
+    // Edges store a directed graph between different components, and the
+    // parent/child numbers represent a 0-based index into the component field
+    // of the Edge. Parent is the higher-level assembly. top_level_assembly also
+    // refers to the same component array index scheme.
+    required int32 parent = 1;
+    required int32 child = 2;
+  }
+
+  repeated Component component = 1;
+  repeated Edge edge = 2;
+  optional int32 top_level_assembly = 3;
+}
+
+// A component is a single addressable sub-assembly in a device under test; for
+// example, it may be an integrated circuit, a piece of plastic, or an assembled
+// circuit board. Components are identified by either a serial number, or a lot
+// number with an optional offset within the lot, known as a lot index.
+//
+// Components such as resistors or films are usually identified in lots, as the
+// individual parts' qualities depend on the process parameters of the lot,
+// rather than being specialised on a per-part basis.
+//
+// Larger assemblies and smaller runs are usually identified by individual
+// serial, such that part-to-part variation can be analysed.
+message Component {
+  message Attribute {
+    required string key = 1;
+    oneof value {
+      int64 as_int = 2;
+      string as_string = 3;
+      bytes as_bytes = 4;
+    }
+  }
+
+  message ByLot {
+    required string lot_number = 1;
+    optional string lot_index = 2;
+  }
+
+  // Components must only contain a part number and:
+  // - One serial number,
+  // - One lot number, or
+  // - One lot number and a lot index.
+  required string part_number = 1;
+  oneof id {
+    string serial_number = 2;
+    ByLot lot = 3;
+  }
+
+  optional string sku = 4;
+  repeated string deviation = 5;
+  optional string description = 6;
+  repeated Attribute attribute = 7;
+}
+

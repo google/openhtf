@@ -1,0 +1,101 @@
+syntax = "proto2";
+
+package openxtf;
+
+import "googlex/glass/xtf/openxtf/openxtf/assembly.proto";
+import "googlex/warhol/proto/test_runs.proto";
+
+
+// For better documentation:
+// https://sites.google.com/a/google.com/factoryfactory/data-formats/test-runs
+// A record of a test run including any parameters that were tested and if the
+// test passed, failed, or ended in an error.
+// NOTE: If you're interested in a 'unique-key' using dut_serial,
+// start_time_millis has been the unofficial strategy
+message TestRun {
+  /*
+   * The serial number of the device under test.  This is typically the omap
+   * serial number but in some tests is something else (elton serial or even
+   * the assembled device serial).
+   */
+  required string dut_serial = 1;
+
+  // The name of the tester where this run was started
+  required string tester_name = 2;
+  required TestInfo test_info = 3;
+  required googlex.warhol.proto.Status test_status = 4 [default = CREATED];
+
+  // The xtf cell number where this test took place
+  optional int32 cell_number = 15;
+
+  optional int64 start_time_millis = 8;
+  optional int64 end_time_millis = 9;
+  // An optional name that can be given to a specific test run
+  optional string run_name = 10;
+
+  repeated googlex.warhol.proto.TestParameter test_parameters = 5;
+  repeated InformationParameter info_parameters = 6;
+  // A list of log lines logged by a test
+  repeated googlex.warhol.proto.TestRunLogMessage test_logs = 11;
+
+  // FailureCode's gather information about tester failure/errors.
+  repeated googlex.warhol.proto.FailureCode failure_codes = 19;
+
+  // A field which (optionally) contains the name of the person conducting
+  // the test or otherwise responsible for the data.
+  optional string operator_name = 22;
+
+  // For non-serialized items, we can track them via lot_number and a part_id
+  // within the lot (such as "This try of items is lot #FOT123 and this is the
+  // part in slot 6 of the tray.  In this case, a unique dut should be
+  // synthesized and stored in the required field dut_serial, and the
+  // synthetic_dut flag should be set.
+  optional string lot_number = 23;
+  optional string part_id = 24;
+  optional bool synthetic_dut = 25;
+
+  optional Assembly assembly = 26;
+  repeated googlex.warhol.proto.Timing timings = 27;
+  repeated googlex.warhol.proto.Phase phases = 28;
+
+  // The version of the test framework that created this test run
+  optional string framework_build = 17;
+  // Next tag = 29;
+}
+
+message TestInfo {
+  // The name of this test station (provided by Jabil)
+  required string name = 1;
+  optional string description = 2;
+  optional string version_string = 5;
+
+  // Next tag = 6;
+}
+
+// A parameter which is extra information from a test run.  These values are not
+// used to pass or fail a test but may be useful when inspecting data.
+message InformationParameter {
+  required string name = 1;
+
+  // Please do not use value, as it is thoroughly deprecated. Files do not
+  // consist of Unicode codepoints, they consist of bytes. We had issues in some
+  // systems assuming UTF-8 input, failing to validate, stashing the input in
+  // .value, and then attempting to decode (with validation) in other systems.
+  //
+  // For clarity's sake, we only store bytes, now. The .type field specifies the
+  // character encoding where appropriate (TEXT_UTF8).
+  optional string value = 2 [deprecated=true];  // TODO(alusco): Remove field
+  optional bytes value_binary = 7;
+
+  optional string description = 3;
+  optional int64 set_time_millis = 8;
+
+  // Practically required. This parameter can be used to tag similar parameters
+  // simplifying selecting them via dremel and giving a frontend some sort of
+  // semantic when displaying them
+  optional string parameter_tag = 5;
+
+  optional googlex.warhol.proto.InformationTag type = 4 [default = TEXT_UTF8];
+
+  // next tag = 9
+}
