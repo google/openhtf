@@ -1,0 +1,7 @@
+# virtualenv
+env/
+venv/
+
+
+# built protos
+*pb2.py
