@@ -46,8 +46,6 @@ class TestRunAdapter(object):
     self._component_graph = genealogy.ComponentGraph(xtf_test_run.assembly)
     self._xtf_test_run = xtf_test_run
 
-    self._persister = log_persister.LogPersister.FromConfig(config)
-
   @property
   def cell(self):
     return self._xtf_test_run.cell_number
@@ -147,7 +145,7 @@ class TestRunAdapter(object):
     Returns:
       Success of the persisting.
     """
-    result = self._persister.PersistTestRun(self._xtf_test_run)
+    result = log_persister.PersistTestRun(self._xtf_test_run)
     if result:
       self._logger.info('Log persisted to disk.')
     else:
