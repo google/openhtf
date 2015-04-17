@@ -13,7 +13,7 @@ gflags.DEFINE_multistring('output_dir', ['./'],
                           'Directories to which to output test results.')
 
 
-def PersistTestRun(self, test_run):
+def PersistTestRun(test_run):
   """Persists a testrun proto to disk.
 
   Args:
@@ -46,7 +46,7 @@ def PersistTestRun(self, test_run):
       path += "_"
     try:
       with open(path, 'w') as output_file:
-        output_file.write(data)
+        output_file.write(serialized_proto)
     except IOError:
       logging.exception('Failed to write output file: %s', path)
       success = False

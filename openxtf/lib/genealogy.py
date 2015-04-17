@@ -6,7 +6,7 @@ For a C++ implementation, please see:
 
 import collections
 
-from proto import assembly_pb2
+from openxtf.proto import assembly_pb2
 
 
 class ComponentGraph(collections.namedtuple('ComponentGraph', ['assembly'])):

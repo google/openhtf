@@ -4,8 +4,8 @@ import logging
 import executor
 import http_handler
 import xtftest
-from lib import configuration
-from lib import xtflogger
+from openxtf.lib import configuration
+from openxtf.lib import xtflogger
 
 
 class InvalidTestError(Exception):

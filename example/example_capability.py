@@ -1,13 +1,15 @@
 import logging
+import time
 
-from openxtf.lib import capabilities
+import openxtf.capabilities as capabilities
 
 
 class Example(capabilities.BaseCapability):
-	"""Example of a simple capablility."""
+  """Example of a simple capablility."""
 
   def TearDown(self):
-  	logging.info('Tearing down %s', self)
+    logging.info('Tearing down %s', self)
 
-	def DoStuff(self):
-		return 'Did stuff!'
+  def DoStuff(self):
+    time.sleep(1)
+    return 'Did stuff!'

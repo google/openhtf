@@ -12,13 +12,13 @@ import contextlib
 import logging
 import pprint
 
-from lib import configuration
-from lib import genealogy
-from lib import log_persister
-from lib import parameters
-from lib import utils
-from lib import xtflogger
-from lib.proto import xtf_pb2
+from openxtf.lib import configuration
+from openxtf.lib import genealogy
+from openxtf.lib import log_persister
+from openxtf.lib import parameters
+from openxtf.lib import utils
+from openxtf.lib import xtflogger
+from openxtf.proto import xtf_pb2
 
 _LOG = logging.getLogger('xtf.testrunadapter')
 

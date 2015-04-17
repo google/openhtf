@@ -2,7 +2,7 @@ import example_capability
 import openxtf
 
 from openxtf import xtftest
-from openxtf.lib import capabilities
+import openxtf.capabilities as capabilities
 
 TEST = xtftest.TestMetadata(name='openxtf_example')
 TEST.SetVersion(1)

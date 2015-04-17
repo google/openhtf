@@ -11,8 +11,8 @@ This module handles these various functions.
 import collections
 import threading
 
-from lib import configuration
-from lib import timeouts
+from openxtf.lib import configuration
+from openxtf.lib import timeouts
 
 configuration.Declare('test_start', 'Mechanism to use for starting a test.',
                       default_value='android')

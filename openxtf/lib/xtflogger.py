@@ -11,7 +11,7 @@ import os
 import re
 import traceback
 
-from proto import xtf_pb2
+from openxtf.proto import xtf_pb2
 
 # Logging setup
 XTF_LOGGER_PREFIX = 'xtf'

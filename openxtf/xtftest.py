@@ -10,9 +10,9 @@ import collections
 import inspect
 import itertools
 
-import capabilities
-from lib import parameters
-from lib.proto import xtf_pb2
+import openxtf.capabilities as capabilities
+from openxtf.lib import parameters
+from openxtf.proto import xtf_pb2
 
 
 class InvalidTestPhaseError(Exception):

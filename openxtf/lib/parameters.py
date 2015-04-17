@@ -52,7 +52,7 @@ import textwrap
 import configuration
 import data
 import utils
-from proto import xtf_pb2
+from openxtf.proto import xtf_pb2
 
 
 VALIDATOR_MAP = {

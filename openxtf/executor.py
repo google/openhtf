@@ -11,8 +11,8 @@ import contextlib2 as contextlib
 import capabilities
 import dutmanager
 import testmanager
-from lib import configuration
-from lib import threads
+from openxtf.lib import configuration
+from openxtf.lib import threads
 
 configuration.Declare('cell_info', """
 All the information for each cell. This should be a mapping from cell number to

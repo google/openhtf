@@ -24,10 +24,10 @@ import contextlib2
 import gflags
 
 import xtftest
-from lib import configuration
-from lib import threads
-from lib import xtflogger
-from lib.proto import xtf_pb2
+from openxtf.lib import configuration
+from openxtf.lib import threads
+from openxtf.lib import xtflogger
+from openxtf.proto import xtf_pb2
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,

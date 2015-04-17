@@ -7,7 +7,7 @@ setup(name='OpenXTF',
       author_email='madsci@google.com',
       maintainer='Joe Ethier',
       maintainer_email='jethier@google.com',
-      packages=['openxtf'],
+      packages=['openxtf', 'openxtf.capabilities', 'openxtf.lib', 'openxtf.proto'],
       )
 
 setup(name='OpenXTF Example',

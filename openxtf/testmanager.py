@@ -7,7 +7,7 @@ import logging
 import phasemanager
 import testrunadapter
 import xtftest
-from lib.proto import xtf_pb2
+from openxtf.proto import xtf_pb2
 
 _LOG = logging.getLogger('xtf.testmanager')
 
