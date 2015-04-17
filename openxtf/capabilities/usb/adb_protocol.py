@@ -72,8 +72,8 @@ from enum import Enum
 
 import adb_message
 import usb_exceptions
-from ...lib import exceptions
-from ...lib import timeouts
+from openxtf.lib import exceptions
+from openxtf.lib import timeouts
 
 FLAGS = gflags.FLAGS
 _LOG = logging.getLogger('adb_protocol')

@@ -60,7 +60,7 @@ import time
 import adb_protocol
 import usb_exceptions
 
-from ...lib import timeouts
+from openxtf.lib import timeouts
 
 
 class AsyncCommandHandle(object):

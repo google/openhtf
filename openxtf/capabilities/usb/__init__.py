@@ -16,8 +16,8 @@ import adb_device
 import fastboot_device
 import local_usb
 
-from ... import capabilities
-from ...lib import configuration
+import openxtf.capabilities as capabilities
+from openxtf.lib import configuration
 
 configuration.Declare('usb_server', 'USB Server IP/Hostname')
 configuration.Declare('usb_server_port', 'USB Server Port',

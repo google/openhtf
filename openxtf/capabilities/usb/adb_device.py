@@ -25,7 +25,7 @@ import filesync_service
 import shell_service
 import usb_exceptions
 
-from ...lib import timeouts
+from openxtf.lib import timeouts
 
 # USB interface class, subclass, and protocol for matching against.
 CLASS = 0xFF

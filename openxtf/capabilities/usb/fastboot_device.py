@@ -4,7 +4,7 @@ import logging
 import time
 
 import usb_exceptions
-from ...lib import timeouts
+from openxtf.lib import timeouts
 
 # From fastboot.c
 VENDORS = {0x18D1, 0x0451, 0x0502, 0x0FCE, 0x05C6, 0x22B8, 0x0955,

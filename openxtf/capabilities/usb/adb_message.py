@@ -32,7 +32,7 @@ import struct
 import threading
 
 import usb_exceptions
-from ...lib import timeouts
+from openxtf.lib import timeouts
 
 gflags.DEFINE_boolean('adb_message_log', False,
                       'Set to True to save all incoming and outgoing '
