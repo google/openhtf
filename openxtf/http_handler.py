@@ -1,5 +1,6 @@
 import flask
 import flask.views
+import gflags
 import logging
 import rocket
 import sys
@@ -8,6 +9,9 @@ import dutmanager
 
 from openxtf.proto import frontend_pb2
 from openxtf.proto import xtf_pb2
+
+gflags.DEFINE_integer('http_port', 8888, 'Port on which to serve HTTP interface.')
+FLAGS = gflags.FLAGS
 
 
 class XtfView(flask.views.MethodView):
@@ -60,9 +64,10 @@ class HttpHandler(object):
 
   def Start(self):
     """Start the HTTP server."""
-    self.server = rocket.Rocket(interfaces=('0.0.0.0', 5000), method='wsgi',
-                                app_info={'wsgi_app': self.app})
-    self.server.start(background=True)
+    if FLAGS.http_port:
+      self.server = rocket.Rocket(interfaces=('0.0.0.0', 5000), method='wsgi',
+                                  app_info={'wsgi_app': self.app})
+      self.server.start(background=True)
 
   def Stop(self):
     if self.server:
