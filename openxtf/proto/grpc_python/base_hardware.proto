@@ -71,9 +71,9 @@ message CliResponse {
 service CliService {
   rpc Execute(CliRequest)
       returns (CliResponse) {
-    option stream_type = "googlex.glass.minnow.CliStreamResponse";
-    option deadline = 10.0;
-    option security_level = NONE;
+    // option stream_type = "googlex.glass.minnow.CliStreamResponse";
+    // option deadline = 10.0;
+    // option security_level = NONE;
   }
 }
 
@@ -97,14 +97,14 @@ message GpioStatus {
 service GpioService {
   rpc SetGpio(GpioStatus)
       returns (GpioStatus) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc GetGpio(GpioStatus)
       returns (GpioStatus) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 }
 
@@ -166,44 +166,44 @@ service SmbusService {
   //   https://www.kernel.org/doc/Documentation/i2c/smbus-protocol
   rpc WriteQuick(SmbusWriteRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc ReadByte(SmbusReadRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc WriteByte(SmbusWriteRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc ReadByteData(SmbusReadRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc WriteByteData(SmbusWriteRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc ReadWordData(SmbusReadRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc WriteWordData(SmbusWriteRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   // These RPCs simply call read() or write() on the file descriptor, resulting
@@ -212,14 +212,14 @@ service SmbusService {
   // read must be passed in SmbusRequest.command, up to a max of 4 kiB.
   rpc ReadRawData(SmbusReadRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc WriteRawData(SmbusWriteRequest)
       returns (SmbusResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 }
 
@@ -260,16 +260,16 @@ service UartService {
 
     // This RPC will stream UartReadResponse messages until the client closes
     // the connection (or it times out).
-    option stream_type = "googlex.glass.minnow.UartReadResponse";
-    option protocol = TCP;
-    option deadline = 60.0;
-    option security_level = NONE;
+    // option stream_type = "googlex.glass.minnow.UartReadResponse";
+    // option protocol = TCP;
+    // option deadline = 60.0;
+    // option security_level = NONE;
   }
 
   rpc Write(UartWriteRequest)
       returns (UartWriteResponse) {
-    option deadline = 5.0;
-    option security_level = NONE;
+    // option deadline = 5.0;
+    // option security_level = NONE;
   }
 }
 
@@ -344,31 +344,31 @@ message UsbCloseResponse {
 service UsbService {
   rpc Open(UsbOpenRequest)
       returns (UsbOpenResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc Read(UsbReadRequest)
       returns (UsbReadResponse) {
-    option deadline = 5.0;
-    option security_level = NONE;
+    // option deadline = 5.0;
+    // option security_level = NONE;
   }
 
   rpc Write(UsbWriteRequest)
       returns (UsbWriteResponse) {
-    option deadline = 5.0;
-    option security_level = NONE;
+    // option deadline = 5.0;
+    // option security_level = NONE;
   }
 
   rpc FlushBuffers(UsbFlushBuffersRequest)
       returns (UsbFlushBuffersResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 
   rpc Close(UsbCloseRequest)
       returns (UsbCloseResponse) {
-    option deadline = 1.0;
-    option security_level = NONE;
+    // option deadline = 1.0;
+    // option security_level = NONE;
   }
 }

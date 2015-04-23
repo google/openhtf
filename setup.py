@@ -9,7 +9,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-class build_proto(Command):
+class BuildProtoCommand(Command):
   description = "Builds the proto files into python files."""
   user_options = [('grpc-python-plugin=', None, 'Path to the grpc py plugin.'),
                   ('protoc=', None, 'Path to the protoc compiler.'),
@@ -17,8 +17,8 @@ class build_proto(Command):
                   ('outdir=', 'o', 'Where to output .py files.')]
 
   def initialize_options(self):
-    self.grpc_python_plugin = './openxtf/proto/bin/grpc_python_plugin'
-    self.protoc = './openxtf/proto/bin/protoc'
+    self.grpc_python_plugin = './bin/grpc_python_plugin'
+    self.protoc = './bin/protoc'
     self.protodir = './openxtf/proto'
     self.outdir = './openxtf/proto'
 
@@ -29,53 +29,79 @@ class build_proto(Command):
     # Build regular proto files.
     protos = glob.glob(os.path.join(self.protodir, '*.proto'))
     if protos:
+      print "Attempting to build regular protos:\n%s" % '\n'.join(protos)
       subprocess.check_call([
           self.protoc,
           '-I', self.protodir,
           '--python_out', self.outdir,
           ] + protos)
+    else:
+      print "Found no regular protos to build."
 
     # Build gRPC python proto files.
-    # grpc_python_protos = glob.glob(os.path.join(self.protodir,
-    #                                             'grpc_python',
-    #                                             '*.proto'))
-    # if grpc_python_protos:
-    #   subprocess.check_call([
-    #       self.protoc,
-    #       '-I', self.protodir,
-    #       '--python_out', os.path.join(self.outdir, 'grpc_python'),
-    #       '--grpc_out', os.path.join(self.outdir, 'grpc_python'),
-    #       '--plugin=protoc-gen-grpc=%s' % self.grpc_python_plugin,
-    #       ] + grpc_python_protos)
+    grpc_python_protos = glob.glob(os.path.join(self.protodir,
+                                                'grpc_python',
+                                                '*.proto'))
+    if grpc_python_protos:
+      print "Attempting to build grpc_python protos:\n%s" % '\n'.join(
+          grpc_python_protos)
+      subprocess.check_call([
+          self.protoc,
+          '-I', os.path.join(self.protodir, 'grpc_python'),
+          '--python_out', self.outdir,
+          '--grpc_out', self.outdir,
+          '--plugin=protoc-gen-grpc=%s' % self.grpc_python_plugin,
+          ] + grpc_python_protos)
+    else:
+      print "Found no grpc_python protos to build."
 
 
-# Make our step part of building
+# Make building protos part of building overall.
 build.sub_commands.insert(0, ('build_proto', None))
 
-class clean_proto(clean):
+
+class CleanCommand(clean):
 
   def run(self):
     clean.run(self)
-    files = glob.glob('./openxtf/proto/*_pb2.py*')
-    for fname in files:
-      os.remove(fname)
+    targets = [
+      './dist',
+      './*.egg-info',
+      './openxtf/proto/*_pb2.py',
+      '**/*.pyc',
+      '**/*.tgz',
+    ]
+    os.system('rm -vrf %s' % ' '.join(targets))
 
 
-setup(name='OpenXTF',
-      version='0.9',
-      description='Open eXtraneous Testing Framework',
-      author='John Hawley',
-      author_email='madsci@google.com',
-      maintainer='Joe Ethier',
-      maintainer_email='jethier@google.com',
-      packages=find_packages(exclude='example'),
-      cmdclass={'build_proto': build_proto, 'clean': clean_proto}
-      )
+requires = [
+  'contextlib2==0.4.0',
+  'enum==0.4.4',
+  'Flask==0.10.1',
+  'itsdangerous==0.24',
+  'Jinja2==2.7.3',
+  'libusb1==1.3.0',
+  'MarkupSafe==0.23',
+  'protobuf==2.6.1',
+  'pyaml==15.3.1',
+  'python-gflags==2.0',
+  'PyYAML==3.11',
+  'Rocket==1.2.4',
+  'singledispatch==3.4.0.3',
+  'six==1.9.0',
+  'Werkzeug==0.10.4',
+]
 
-# setup(name='OpenXTF Example',
-#       version='0.9',
-#       description='Example test and capability for OpenXTF.',
-#       author='John Hawley',
-#       author_email='madsci@google.com',
-#       packages=['example'],
-#       )
+
+setup(
+  name='OpenXTF',
+  version='0.9',
+  description='Open eXtraneous Testing Framework',
+  author='John Hawley',
+  author_email='madsci@google.com',
+  maintainer='Joe Ethier',
+  maintainer_email='jethier@google.com',
+  packages=find_packages(exclude='example'),
+  cmdclass={'build_proto': BuildProtoCommand, 'clean': CleanCommand},
+  install_requires=requires,
+)

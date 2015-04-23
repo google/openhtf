@@ -1,4 +1,4 @@
-"""A library to parse and create xtf run data.
+"""Parse and create xtf run data.
 
 Format:
   The xtf run data is in the JSON format and specifies the basic information
@@ -23,13 +23,9 @@ Convention:
 """
 
 import collections
-import gflags
 import os
 import json
 
-gflags.DEFINE_string('rundata_dir', '/var/run/openxtf',
-                     'Directory for OpenXTF rundata.')
-FLAGS = gflags.FLAGS
 
 class RunData(collections.namedtuple('RunData',
                                      ['station_name', 'cell_count', 'test_type',
@@ -44,7 +40,7 @@ class RunData(collections.namedtuple('RunData',
     d = json.loads(data)
     return cls(**d)
 
-  def SaveToFile(self, directory=FLAGS.rundata_dir):
+  def SaveToFile(self, directory):
     """Saves this run data to a file, typically in /var/run/openxtf.
 
     Args:
@@ -73,7 +69,7 @@ class RunData(collections.namedtuple('RunData',
       return True
 
 
-def EnumerateRunDirectory(directory=FLAGS.rundata_dir):
+def EnumerateRunDirectory(directory):
   """Enumerates a local run directory to find stations.
 
   Args:
