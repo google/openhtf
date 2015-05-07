@@ -6,6 +6,7 @@ import gflags
 import http_handler
 import os
 import rundata
+import signal
 import socket
 import xtftest
 from openxtf.lib import configuration
@@ -58,11 +59,18 @@ def ExecuteTest(metadata, phases):
                   socket.gethostname(),
                   FLAGS.http_port,
                   os.getpid()).SaveToFile(FLAGS.rundir)
-  
+
   test = xtftest.XTFTest(metadata, phases)
   logging.info('Executing test: %s', test.name)
   starter = executor.CellExecutorStarter(test)
   handler = http_handler.HttpHandler(test.metadata, starter.cells)
+
+  def sigint_handler(signal, frame):
+    print "Received SIGINT. Stopping everything."
+    starter.Stop()
+    handler.Stop()
+  signal.signal(signal.SIGINT, sigint_handler)
+
   handler.Start()
   starter.Start()
 

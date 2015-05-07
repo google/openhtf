@@ -56,7 +56,7 @@ class CellExecutorStarter(object):
   def Wait(self):
     """Waits until death."""
     for cell in self.cells.values():
-      cell.join()
+      cell.join(365*24*60*60) # Timeout needed for SIGINT handling, so 1 year.
 
   def Stop(self):
     _LOG.info('Stopping cells: %s - %s', self, self.cells)
