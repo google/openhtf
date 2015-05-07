@@ -2,10 +2,18 @@
 import logging
 
 import executor
+import gflags
 import http_handler
+import os
+import rundata
+import socket
 import xtftest
 from openxtf.lib import configuration
 from openxtf.lib import xtflogger
+
+
+FLAGS = gflags.FLAGS
+gflags.DEFINE_string('rundir', '/var/run/openxtf', 'Directory for runfiles.')
 
 
 class InvalidTestError(Exception):
@@ -42,6 +50,15 @@ def ExecuteTest(metadata, phases):
 
   configuration.Load()
 
+  config = configuration.XTFConfig()
+  rundata.RunData(metadata.proto.name,
+                  len(config.cell_info),
+                  'test',
+                  metadata.proto.version_string,
+                  socket.gethostname(),
+                  FLAGS.http_port,
+                  os.getpid()).SaveToFile(FLAGS.rundir)
+  
   test = xtftest.XTFTest(metadata, phases)
   logging.info('Executing test: %s', test.name)
   starter = executor.CellExecutorStarter(test)

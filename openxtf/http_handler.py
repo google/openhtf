@@ -10,6 +10,7 @@ import dutmanager
 from openxtf.proto import frontend_pb2
 from openxtf.proto import xtf_pb2
 
+
 gflags.DEFINE_integer('http_port', 8888, 'Port on which to serve HTTP interface.')
 FLAGS = gflags.FLAGS
 
@@ -65,7 +66,7 @@ class HttpHandler(object):
   def Start(self):
     """Start the HTTP server."""
     if FLAGS.http_port:
-      self.server = rocket.Rocket(interfaces=('0.0.0.0', 5000), method='wsgi',
+      self.server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.http_port), method='wsgi',
                                   app_info={'wsgi_app': self.app})
       self.server.start(background=True)
 
