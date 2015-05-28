@@ -11,6 +11,10 @@ This module handles these various functions.
 import collections
 import threading
 
+from openxtf.capabilities.usb import adb_device
+from openxtf.capabilities.usb import fastboot_device
+from openxtf.capabilities.usb import local_usb
+from openxtf.capabilities.usb import usb_exceptions
 from openxtf.lib import configuration
 from openxtf.lib import timeouts
 
@@ -38,19 +42,49 @@ class StubHandler(object):
     pass
 
 
-# TODO(madsci): Implement these once USB/Frontend are known.
 class AndroidHandler(object):
   """Class encapsulating ADB/Fastboot access to a DUT."""
 
-  @staticmethod
-  def TestStart():
-    """Returns serial when the test is ready to start."""
-    pass
+  def __init__(self, cell_number, config):
+    self.serial_number = None
 
-  @staticmethod
-  def TestStop():
+  def _TryOpen(self):
+    """Try to open a USB handle."""
+    handle = None
+    for cls, subcls, protocol in [(adb_device.CLASS,
+                                   adb_device.SUBCLASS,
+                                   adb_device.PROTOCOL),
+                                  (fastboot_device.CLASS,
+                                   fastboot_device.SUBCLASS,
+                                   fastboot_device.PROTOCOL)]:
+      try:
+        handle = local_usb.LibUsbHandle.Open(
+            serial_number=self.serial_number,
+            interface_class=cls,
+            interface_subclass=subcls,
+            interface_protocol=protocol)
+        self.serial_number = handle.serial_number
+        return True
+      except usb_exceptions.DeviceNotFoundError:
+        pass
+      except usb_exceptions.MultipleInterfacesFoundError:
+        logging.warning('Multiple Android devices found, ignoring!')
+      finally:
+        if handle:
+          handle.Close()
+    return False
+
+  def TestStart(self):
+    """Returns serial when the test is ready to start."""
+    while not self._TryOpen():
+      time.sleep(1)
+    return self.serial_number
+
+  def TestStop(self):
     """Returns True when the test is completed and can restart."""
-    pass
+    while self._TryOpen():
+      time.sleep(1)
+    self.serial_number = None
 
 
 class FrontendHandler(object):
