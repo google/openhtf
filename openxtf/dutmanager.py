@@ -10,6 +10,7 @@ This module handles these various functions.
 
 import collections
 import threading
+import time
 
 from openxtf.capabilities.usb import adb_device
 from openxtf.capabilities.usb import fastboot_device

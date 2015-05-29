@@ -188,24 +188,28 @@ class LibUsbHandle(usb_handle.UsbHandle):
           interface_protocol, serial_number, port_path)
 
     for device in devices:
-      if (serial_number is not None and
-          device.getSerialNumber() != serial_number):
-        continue
-
-      if (port_path is not None and
-          cls._DeviceToSysfsPath(device) != port_path):
-        continue
-
-      for setting in device.iterSettings():
-        if (interface_class is not None and
-            setting.getClass() != interface_class):
-          continue
-        if (interface_subclass is not None and
-            setting.getSubClass() != interface_subclass):
-          continue
-        if (interface_protocol is not None and
-            setting.getProtocol() != interface_protocol):
+      try:
+        if (serial_number is not None and
+            device.getSerialNumber() != serial_number):
           continue
 
-        yield cls(device, setting, name=name,
-                  default_timeout_ms=default_timeout_ms)
+        if (port_path is not None and
+            cls._DeviceToSysfsPath(device) != port_path):
+          continue
+
+        for setting in device.iterSettings():
+          if (interface_class is not None and
+              setting.getClass() != interface_class):
+            continue
+          if (interface_subclass is not None and
+              setting.getSubClass() != interface_subclass):
+            continue
+          if (interface_protocol is not None and
+              setting.getProtocol() != interface_protocol):
+            continue
+
+          yield cls(device, setting, name=name,
+                    default_timeout_ms=default_timeout_ms)
+      except libusb1.USBError as e:
+        if e.value != libusb1.libusb_error.forward_dict['LIBUSB_ERROR_ACCESS']:
+          raise
