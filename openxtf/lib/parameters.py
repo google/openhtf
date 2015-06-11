@@ -1,48 +1,56 @@
-"""Test Parameters for XTF.
+"""Test Parameters for OpenXTF.
 
 TestParameterList is the class responsible for predeclaring test and info
-parameters that a test plans to log.  This allows tests to focus only on logging
+parameters that a test plans to log. This allows tests to focus only on logging
 values and keeps the validation code decoupled from test code.
 
-At the module level tests should declare a variable to track parameter lists:
+Parameters can be declared at the test level, or at the level of an individual
+phase.
 
-  PARAMETERS = xtflogger.TestParameterList()
+Parameters declared at the test level are added directly to the test metadata:
 
-Once this variable is declared it is used to declare test parameter and extended
-parameters.  For the more information about parameter
-types see TestParameterList.
+  TEST.AddParameter('number_widgets').Integer().InRange(5, 10).Doc(
+      '''This parameter tracks the number of widgets.
 
-To declare parameters you use the PARAMETERS object declared at the top of the
-test module file:
-
-  PARAMETERS.Add('number_widgets').Integer().InRange(5, 10).Doc(
-      '''This parameter tracks the number of whidgets.
-
-      The number of whidgets are determined via turning on a screen and taking a
+      The number of widgets are determined via turning on a screen and taking a
       picture.
       ''')
 
-  PARAMETERS.Add('model').String().MatchesRegex(r'^GlassModel$').Doc(
+  TEST.AddParameter('model').String().MatchesRegex(r'^GlassModel$').Doc(
     '''This ensures that the build as reported by dumpsys is valid.
 
     We check dumpsys to ensure the model parameter is the right thing.
     ''')
 
-Notice the .Doc method called after each declaration.  We plan to use the
-description of each parameter at a later date to auto-generate as much
-documentation as possible.  We will be enforcing the use of this 'Doc'
-convention in code review, you should provide as much detail as possible.
+  TEST.AddExtendedParameter('picture_of_widget').JPG().Doc(
+    "Picture of the widget taken by the camera")
 
-Test parameters may also be tagged, this is useful for parameters such as SFR
-where a number of values are related and should be shown as such when possible
-(it also makes it easy to dremel for a certain tag).  The best way to define a
-tag is via the TagAll method on the parameter list:
+Alternatively, parameters (but not extended parameters) can declared at the
+phase level through the use of a phase decorator:
+
+  @parameters.AddParameters('simple_metric')
+  @parameters.AddParameters(
+      parameters.TestParameterDescriptor(
+        'number_widgets').Integer.InRange(5, 10).Doc(
+        '''This phase parameter tracks the number of widgets.'''))
+  @parameters.AddParameters(
+      [parameters.TestParameterDescriptor(
+          'level_%s' % i) for i in ['none', 'some', 'all']])
+  def WidgetTestPhase(test):
+    ...
+
+
+Test parameters may also be tagged; this is useful for parameters where a number
+of values are related and should be shown as such when possible. The best way to
+define a tag is via the TagAll method on the parameter list:
 
   with PARAMETERS.TagAll('sfr'):
     PARAMETERS.Add('middle_sfr').Number().InRange(5, 10).Doc('doc here')
     ...
 
 """
+from utils import TimeMillis
+
 import contextlib
 import itertools
 import logging
@@ -51,7 +59,6 @@ import textwrap
 
 import configuration
 import data
-import utils
 from openxtf.proto import xtf_pb2
 
 
@@ -157,7 +164,7 @@ class TestParameterDescriptor(data.Descriptor):
             self._parameter, self.descriptor)
       self._parameter.status = (
           xtf_pb2.PASS if result else xtf_pb2.FAIL)
-      self._parameter.set_time_millis = utils.TimeMillis()
+      self._parameter.set_time_millis = TimeMillis()
 
     def GetValue(self):
       """Returns the current value of the parameter if available."""
@@ -273,7 +280,7 @@ class ExtendedParameterDescriptor(TestParameterDescriptor):
 
     def SetValue(self, value):
       self._descriptor.SetValue(self._parameter, value)
-      self._parameter.set_time_millis = utils.TimeMillis()
+      self._parameter.set_time_millis = TimeMillis()
 
     def GetValue(self):
       return (self._parameter.value
@@ -463,7 +470,7 @@ class TestParameterList(object):
     # If we're passed in a list of starting parameters then load them.
     if parameters is not None:
       for parameter in parameters:
-        self._TrackParameter(parameter)
+        self.TrackParameter(parameter)
 
   @contextlib.contextmanager
   def TagAll(self, tag_name):
@@ -506,7 +513,7 @@ class TestParameterList(object):
   def parameters(self):
     return self._parameters.values()
 
-  def _TrackParameter(self, parameter):
+  def TrackParameter(self, parameter):
     """Adds this parameter definition to the list.
 
     Args:
@@ -545,7 +552,7 @@ class TestParameterList(object):
     """
     parameter = TestParameterDescriptor(
         name, self._parameter_tag, optional=optional, important=important)
-    self._TrackParameter(parameter)
+    self.TrackParameter(parameter)
     return parameter
 
   def AddExtended(self, name):
@@ -567,7 +574,7 @@ class TestParameterList(object):
       An ExtendedParameterDescriptor ready to go.
     """
     parameter = ExtendedParameterDescriptor(name, self._parameter_tag)
-    self._TrackParameter(parameter)
+    self.TrackParameter(parameter)
     return parameter
 
   def ForTestRun(self, test_run):
@@ -669,7 +676,7 @@ def GetUomFromUnitCode(unit_code):
   return None
 
 
-def AddParameterToPhase(parameter, phase):
+def AddParameterToPhase(name, phase):
   """Add the given parameter to the given phase.
 
   Helper function to add the given parameter to the given phase.  We have to
@@ -677,7 +684,7 @@ def AddParameterToPhase(parameter, phase):
   than do that everywhere, we have this function.
 
   Args:
-    parameter: String name of the parameter to add.
+    name: String name of the parameter to add.
     phase: The phase to which to add the parameter.
 
   Returns:
@@ -686,4 +693,26 @@ def AddParameterToPhase(parameter, phase):
   """
   if not hasattr(phase, 'parameters'):
     phase.parameters = TestParameterList()
-  return phase.parameters.Add(parameter)
+  return phase.parameters.Add(name)
+
+
+def AddParameters(params):
+  """Decorator to attaches the parameter(s) to the decorated phase.
+
+  Args:
+    params: List of TestParameterDescriptor objects to attach, or a single
+    TestParameterDescriptor object to attach, or a string parameter name.
+  Returns:
+    A decorator that attaches the given parameter(s) to the decorated phase.
+  """
+  if isinstance(params, TestParameterDescriptor):
+    params = [params]
+  else if isinstance(params, str):
+    params = [TestParameterDescriptor(params)]
+  def Decorate(phase):
+    if not hasattr(phase, 'parameters'):
+      phase.parameters = TestParameterList()
+    for param in params:
+      phase.parameters.TrackParameter(param)
+    return phase
+  return Decorate
