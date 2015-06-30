@@ -1,24 +1,26 @@
-"""The frontend binary for executing OXC.
+"""The frontend binary for OpenHTF's web interface.
 
-This frontend serves HTML content and serves as the entry point into the
-application.
+This frontend serves HTML content regarding running OpenHTF instances.
 """
 
 from __future__ import print_function
 import gflags
 import logging
 import os
-import oxc
 import rocket
 import sys
-from openxtf import rundata
+
+from openhtf import rundata
+from openhtf.frontend import oxc
 
 FLAGS = gflags.FLAGS
 
 gflags.DEFINE_boolean('dev_mode', True, 'True to run in developer mode locally')
-gflags.DEFINE_string('xtf_run_dir', '/var/run/openxtf',
-                     """The directory to look at for running XTF instances.""")
-gflags.DEFINE_integer('port', 12000, 'The port on which to run the frontend')
+gflags.DEFINE_string(
+    'run_dir',
+    '/var/run/openhtf',
+    """The directory to look at for running OpenHTF instances.""")
+gflags.DEFINE_integer('port', 12000, 'The port on which to serve the frontend')
 
 
 def main(argv):
@@ -41,7 +43,8 @@ def main(argv):
   }
   stations.update({
       'stub.station': (rundata.RunData('stub.station', 1, 'test',
-                                          'test_version', 'localhost', 5123, 52932), 0, None)
+                                          'test_version', 'localhost',
+                                          5123, 52932), 0, None)
   })
   manager.stations = stations
   app = oxc.InitializeApp(manager)

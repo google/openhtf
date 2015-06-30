@@ -1,8 +1,9 @@
-"""A simple script to dump all stations in a run directory."""
+"""A simple script to dump all OpenHTF stations in a run directory."""
 
 from __future__ import print_function
-import xtfrundata
 import sys
+
+from openhtf import rundata
 
 
 def main(argv):
