@@ -11,7 +11,7 @@ import rocket
 import sys
 
 from openhtf import rundata
-from openhtf.frontend import oxc
+from openhtf.frontend import server
 
 FLAGS = gflags.FLAGS
 
@@ -35,7 +35,7 @@ def main(argv):
         file=sys.stderr)
     sys.exit(1)
 
-  manager = oxc.StationManager()
+  manager = server.StationManager()
   # Patch this right now with a hardcoded list
   stations = {
       data.station_name: (data, 0, None)
@@ -47,14 +47,14 @@ def main(argv):
                                           5123, 52932), 0, None)
   })
   manager.stations = stations
-  app = oxc.InitializeApp(manager)
+  app = server.InitializeApp(manager)
 
   logging.getLogger('Rocket').setLevel(logging.INFO)  # Make Rocket less chatty
-  server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
+  rocket_server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
                          method='wsgi',
                          app_info={'wsgi_app': app})
   print('Starting server at http://localhost:%d' % FLAGS.port)
-  server.start()
+  rocket_server.start()
 
 
 if __name__ == '__main__':

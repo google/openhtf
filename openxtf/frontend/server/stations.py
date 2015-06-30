@@ -1,12 +1,12 @@
 """This library is responsible for fetching and interacting with stations.
 
-In a future world it is also the source of truth for what stations we're aware
-of via openxtf.rundata.
+It is also the source of truth for what stations we're aware
+of via openhtf.rundata.
 """
 
-from openxtf.proto import frontend_pb2
+from openhtf.proto import frontend_pb2
 # TODO(alusco): Remove me, this is a workaround
-from openxtf.proto import xtf_pb2
+from openhtf.proto import htf_pb2
 import collections
 import logging
 import requests
@@ -18,13 +18,13 @@ class Responses:
   ERROR = object()
 
 MIN_POLL_S = 2
-LOGGER = logging.getLogger('oxc.stations')
+LOGGER = logging.getLogger('frontend.stations')
 
 
 class StationManager(object):
 
   def __init__(self):
-    # Holds (station_name, rundata, last_time, XTFStationResponse)
+    # Holds (station_name, rundata, last_time, HTFStationResponse)
     self.stations = {}
 
 
@@ -55,7 +55,7 @@ class StationManager(object):
       LOGGER.error('Failed to get station response for %s (code: %s)\n%s', station_name, response.status_code, response.content)
       return Responses.ERROR
 
-    msg = frontend_pb2.XTFStationResponse()
+    msg = frontend_pb2.HTFStationResponse()
     msg.ParseFromString(response.content)
     self.stations[station_name] = (rundata, time.time(), msg)
     return msg

@@ -1,4 +1,5 @@
-"""The main OXC frontend application."""
+"""Default frontend application that comes with OpenHTF."""
+
 from flask import json
 from flask import views
 import flask
@@ -6,8 +7,8 @@ import os
 import random
 import stations
 import time
-from openxtf.proto import xtf_pb2
-from openxtf.proto import frontend_pb2
+from openhtf.proto import htf_pb2
+from openhtf.proto import frontend_pb2
 
 app = flask.Flask(__name__)
 
@@ -23,7 +24,7 @@ class FileHandler(views.MethodView):
 
 @app.route('/')
 def RedirectToApp():
-  return flask.redirect('/oxc')
+  return flask.redirect('/openhtf')
 
 
 class StationApiHandler(views.MethodView):
@@ -61,11 +62,11 @@ class StationDataHandler(views.MethodView):
     This basically means removing any binary parameters.
 
     Args:
-      response: XTFStationResponse
+      response: HTFStationResponse
     Returns:
-      Sanitized and serialized XTFStationResponse.
+      Sanitized and serialized HTFStationResponse.
     """
-    sanitized = frontend_pb2.XTFStationResponse()
+    sanitized = frontend_pb2.HTFStationResponse()
     sanitized.CopyFrom(response)
     for cell in sanitized.cells:
       for parameter in cell.test_run.info_parameters:
@@ -73,7 +74,7 @@ class StationDataHandler(views.MethodView):
     return response.SerializeToString()
 
   def GetStubData_(self, station):
-    response = frontend_pb2.XTFStationResponse()
+    response = frontend_pb2.HTFStationResponse()
     response.framework_version = '0.0.1'
     response.station_name = station
     response.test_info.name = 'test_test'
@@ -88,29 +89,29 @@ class StationDataHandler(views.MethodView):
     cell.test_run.start_time_millis = int((time.time() - 10000) * 1000)
     cell.test_run.end_time_millis = int(time.time() * 1000)
     cell.test_run.test_info.CopyFrom(response.test_info)
-    cell.test_run.test_status = xtf_pb2.RUNNING
+    cell.test_run.test_status = htf_pb2.RUNNING
     param = cell.test_run.test_parameters.add()
     param.name = 'test'
     param.numeric_value = 5
     param.numeric_minimum = param.numeric_maximum = 3
-    param.status = xtf_pb2.PASS
+    param.status = htf_pb2.PASS
 
     param = cell.test_run.test_parameters.add()
     param.name = 'test2'
     param.text_value = 'hi'
     param.expected_text = 'hello'
-    param.status = xtf_pb2.FAIL
+    param.status = htf_pb2.FAIL
 
     param = cell.test_run.test_parameters.add()
     param.name = 'test3'
     param.numeric_maximum = 11
-    param.status = xtf_pb2.ERROR
+    param.status = htf_pb2.ERROR
 
     for i in range(20):
       log_message = cell.test_run.test_logs.add()
       log_message.level = random.choice(
-          (xtf_pb2.TestRunLogMessage.DEBUG, xtf_pb2.TestRunLogMessage.INFO,
-           xtf_pb2.TestRunLogMessage.WARNING, xtf_pb2.TestRunLogMessage.ERROR))
+          (htf_pb2.TestRunLogMessage.DEBUG, htf_pb2.TestRunLogMessage.INFO,
+           htf_pb2.TestRunLogMessage.WARNING, htf_pb2.TestRunLogMessage.ERROR))
       log_message.timestamp_millis = int((time.time() + i) * 1000)
       log_message.logger_name = 'test'
       log_message.levelno = 20
@@ -124,14 +125,14 @@ class StationDataHandler(views.MethodView):
 
 
 def InitializeApp(manager, **kwargs):
-  """Initializes the wsgi app for oxc.
+  """Initializes the wsgi app for OpenHTF.
 
   Args:
     manager: The station manager.
   """
   view = FileHandler.as_view('AppHandler', 'static/app.html')
-  app.add_url_rule('/oxc/', view_func=view)
-  app.add_url_rule('/oxc/<path:path>', view_func=view)
+  app.add_url_rule('/openhtf/', view_func=view)
+  app.add_url_rule('/openhtf/<path:path>', view_func=view)
   app.add_url_rule(
       '/api/stations',
       view_func=StationApiHandler.as_view('StationApiHandler', manager))

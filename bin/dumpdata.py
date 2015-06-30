@@ -11,8 +11,8 @@ def main(argv):
     print('Usage: dumpdata.py <run_directory>', file=sys.stderr)
     sys.exit(1)
 
-  rundata = xtfrundata.EnumerateRunDirectory(argv[1])
-  for data in rundata:
+  actual_rundata = rundata.EnumerateRunDirectory(argv[1])
+  for data in actual_rundata:
     print('Found Station', data.station_name)
     print(data)
 
