@@ -9,6 +9,28 @@ from setuptools import find_packages
 from setuptools import setup
 
 
+class BuildClientCommand(Command):
+  """Build OpenHTF frontend client."""
+  description = "Builds the client javascript."""
+  user_options = build.user_options + [
+                     ('clientdir=', 'c', 'Location of client directory.'),
+                     ('regenproto', 'r', 'True to regenerate the js proto files.'),
+                     ('npmpath=', 'n', 'Path to npm')]
+
+  def initialize_options(self):
+    self.clientdir = './client'
+    self.regenproto = False  # change to true when pbjs is fixed
+    self.npmpath = '/usr/local/bin/npm'
+    build.initialize_options(self)
+
+  def run(self):
+    if self.regenproto:
+      subprocess.check_call([self.npmpath, 'run', 'build:proto'],
+          cwd=self.clientdir)
+    subprocess.check_call([self.npmpath, 'run', 'build'], cwd=self.clientdir)
+    build.run(self)
+
+
 class BuildProtoCommand(Command):
   description = "Builds the proto files into python files."""
   user_options = [('grpc-python-plugin=', None, 'Path to the grpc py plugin.'),
@@ -67,7 +89,7 @@ class CleanCommand(clean):
     targets = [
       './dist',
       './*.egg-info',
-      './openxtf/proto/*_pb2.py',
+      './openhtf/proto/*_pb2.py',
       '**/*.pyc',
       '**/*.tgz',
     ]
@@ -94,14 +116,19 @@ requires = [
 
 
 setup(
-  name='OpenXTF',
+  name='OpenHTF',
   version='0.9',
-  description='Open eXtraneous Testing Framework',
+  description='Open Hardware Testing Framework',
   author='John Hawley',
   author_email='madsci@google.com',
   maintainer='Joe Ethier',
   maintainer_email='jethier@google.com',
   packages=find_packages(exclude='example'),
-  cmdclass={'build_proto': BuildProtoCommand, 'clean': CleanCommand},
+  scripts=['bin/frontend.py', 'bin/dumpdata.py'],
+  cmdclass={
+      'build_client': BuildClientCommand,
+      'build_proto': BuildProtoCommand,
+      'clean': CleanCommand,
+  },
   install_requires=requires,
 )
