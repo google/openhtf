@@ -103,6 +103,7 @@ requires = [
   'itsdangerous==0.24',
   'Jinja2==2.7.3',
   'libusb1==1.3.0',
+  'M2Crypto==0.22.3',
   'MarkupSafe==0.23',
   'protobuf==2.6.1',
   'pyaml==15.3.1',

@@ -707,7 +707,7 @@ def AddParameters(params):
   """
   if isinstance(params, TestParameterDescriptor):
     params = [params]
-  else if isinstance(params, str):
+  elif isinstance(params, str):
     params = [TestParameterDescriptor(params)]
   def Decorate(phase):
     if not hasattr(phase, 'parameters'):
