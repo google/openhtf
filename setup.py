@@ -41,8 +41,8 @@ class BuildProtoCommand(Command):
   def initialize_options(self):
     self.grpc_python_plugin = './bin/grpc_python_plugin'
     self.protoc = './bin/protoc'
-    self.protodir = './openxtf/proto'
-    self.outdir = './openxtf/proto'
+    self.protodir = './openhtf/proto'
+    self.outdir = './openhtf/proto'
 
   def finalize_options(self):
     pass

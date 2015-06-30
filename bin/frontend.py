@@ -30,8 +30,8 @@ def main(argv):
     print('%s\\nUsage: %s ARGS\\n%s' % (e, sys.argv[0], FLAGS), file=sys.stderr)
     sys.exit(1)
 
-  if not os.path.isdir(FLAGS.xtf_run_dir):
-    print('ERROR: XTF Run directory does not exist', FLAGS.xtf_run_dir,
+  if not os.path.isdir(FLAGS.htf_run_dir):
+    print('ERROR: OpenHTF Run directory does not exist', FLAGS.htf_run_dir,
         file=sys.stderr)
     sys.exit(1)
 
@@ -39,7 +39,7 @@ def main(argv):
   # Patch this right now with a hardcoded list
   stations = {
       data.station_name: (data, 0, None)
-      for data in rundata.EnumerateRunDirectory(FLAGS.xtf_run_dir)
+      for data in rundata.EnumerateRunDirectory(FLAGS.htf_run_dir)
   }
   stations.update({
       'stub.station': (rundata.RunData('stub.station', 1, 'test',

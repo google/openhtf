@@ -1,0 +1,374 @@
+// This file contains services provided by the Minnowboard that provide access
+// to base hardware interfaces, such as I2C, SPI, GPIO, USB, and UART.  This
+// service should not provide any higher level services, only low-level raw
+// hardware transfers.
+
+syntax = "proto2";
+
+package openhtf;
+
+// CLI Service
+//   This service provides access to run arbitrary commands.  In practice,
+// servers should whitelist commands so that only certain commands can be run.
+
+enum CliError {
+  INVALID_REQUEST = 0;
+  UNSUPPORTED_COMMAND = 1;
+  COMMAND_NOT_FOUND = 2;
+}
+
+message CliRequest {
+  enum Output {
+    STREAMED = 0;
+    BATCHED = 1;
+  }
+
+  message Argument {
+    // Arguments will be appended to command such that if only name is provided:
+    //   command --name_one= --name_two=
+    // Or if only string_value is provided:
+    //   command string_value_one string_value_two
+    // So that if you want command --foo, you would not set a name and provide
+    // '--foo' as string_value. If a name and string_value are provided:
+    //   command --name_out="value_one"
+    // Or if file_contents are provided:
+    //   command --name_out=<filename>
+    // Where <filename> will be the name of a file containing the data in
+    // file_contents.  If name contains only a single character, then a single
+    // hyphen will be used, ie:
+    //   command -S
+    // Or, if a value or file_contents are given:
+    //   command -S "value" -F <filename>
+    // And lastly, if *only* file_contents are given:
+    //   command <filename>
+    optional string name = 1;
+    oneof value {
+      string string_value = 2;
+      bytes file_contents = 3;
+    }
+  }
+
+  required string command = 1;
+  repeated Argument args = 2;
+  optional float timeout_s = 3;
+
+  // Select whether to stream output or send it all at the end.
+  optional Output output = 4 [default = BATCHED];
+}
+
+message CliStreamResponse {
+  optional bytes stdout = 1;
+  optional bytes stderr = 2;
+}
+
+message CliResponse {
+  // stdout and stderr only sent if final_output was true in the request.
+  optional bytes stdout = 1;
+  optional bytes stderr = 2;
+  required int32 exit_code = 3;
+}
+
+service CliService {
+  rpc Execute(CliRequest)
+      returns (CliResponse) {
+    // option stream_type = "googlex.glass.minnow.CliStreamResponse";
+    // option deadline = 10.0;
+    // option security_level = NONE;
+  }
+}
+
+// GPIO Service
+//   This service provides access to raw GPIO's, supporting input and output.
+// It's up to the client to know which GPIO number to use.
+
+message GpioStatus {
+  enum GpioDirection {
+    GPIO_OUT = 0;
+    GPIO_IN = 1;
+  }
+  enum GpioState {
+    GPIO_LOW = 0;
+    GPIO_HIGH = 1;
+  }
+  required uint32 gpio_number = 1;
+  optional GpioDirection direction = 2;
+  optional GpioState state = 3;
+}
+service GpioService {
+  rpc SetGpio(GpioStatus)
+      returns (GpioStatus) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc GetGpio(GpioStatus)
+      returns (GpioStatus) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+}
+
+// SMBus Service
+//   This service provides access to an I2C bus via i2c_smbus_* functions
+// defined by the i2c-dev userspace library.  It's up to the client to know
+// which I2C bus to use, and what slave address the desired peripheral is on.
+
+enum SmbusError {
+  SMBUS_MISSING_ARGS = 0;
+  SMBUS_UNSUPPORTED_FUNCTIONALITY = 1;
+  SMBUS_ERRNO = 2;  // smbus_* call failed, error string contains errno string.
+}
+
+message SmbusWriteRequest {
+  // Common proto used by all SmbusWrite* calls.  The semantics of what is done
+  // with the values is determined by which RPC you call.  They correspond to
+  // the i2c_smbus_write_* calls described here:
+  //   https://www.kernel.org/doc/Documentation/i2c/dev-interface
+  // Note that not all fields are relevant to all calls, see the documentation
+  // at that link to see which fields are used for which calls.   There's no
+  // 'length' field here as it's represented by the length of the 'values'
+  // field, and values will be static_cast'ed to the relevant size.
+  required uint32 slave_address = 1;
+  optional uint32 command = 2;
+  oneof data {
+    uint32 value = 3;
+    bytes values = 4;
+  }
+}
+
+message SmbusReadRequest {
+  // Common proto used by all SmbusRead* calls.  The semantics of what is done
+  // with the values is determined by which RPC you call.  They correspond to
+  // the i2c_smbus_read* calls described here:
+  //   https://www.kernel.org/doc/Documentation/i2c/dev-interface
+  // Note that not all fields are relevant to all calls, see the documentation
+  // at that link to see which fields are used for which calls.   There's no
+  // 'length' field here as it's represented by the length of the 'values'
+  // field, and values will be static_cast'ed to the relevant size.
+  required uint32 slave_address = 1;
+  optional uint32 command = 2;
+}
+
+message SmbusResponse {
+  // Return value from all Smbus* calls.  Writes will return an empty proto on
+  // success.  On failure, the RPC application error string will contain the
+  // result of strerror(errno) after the i2c_smbus_* call and these fields will
+  // be unset.
+  oneof data {
+    uint32 value = 1;
+    bytes values = 2;
+  }
+}
+
+service SmbusService {
+  // For detailed documentation of each of these, see the following links:
+  //   https://www.kernel.org/doc/Documentation/i2c/dev-interface
+  //   https://www.kernel.org/doc/Documentation/i2c/smbus-protocol
+  rpc WriteQuick(SmbusWriteRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc ReadByte(SmbusReadRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc WriteByte(SmbusWriteRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc ReadByteData(SmbusReadRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc WriteByteData(SmbusWriteRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc ReadWordData(SmbusReadRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc WriteWordData(SmbusWriteRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  // These RPCs simply call read() or write() on the file descriptor, resulting
+  // in raw I2C read/writes.  Read always returns the result in the 'data'
+  // field, even if only a single byte is read.  A maximum number of bytes to
+  // read must be passed in SmbusRequest.command, up to a max of 4 kiB.
+  rpc ReadRawData(SmbusReadRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc WriteRawData(SmbusWriteRequest)
+      returns (SmbusResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+}
+
+// UART Service
+//   This service provides access to a system UART via a linux TTY device node.
+// For now, there's no mechanism for configuring the TTY (speed, parity,
+// etc.), but that can be added if needed.  Write calls are atomic - no other
+// writes can interrupt a write, but there's no guarantee of atomicity between
+// successive Write calls.  Multiple readers can be reading simultaneously, the
+// service will essentially multicast data read to all subscribed readers.
+
+message UartWriteRequest {
+  // Request a UART transaction, optionally providing a string to send.
+  // 'device' is the part of the device node after /dev/tty.  For example, to
+  // open /dev/ttyPCH1, you would send 'PCH1' for device.  To open /dev/ttyUSB0,
+  // you would send 'USB0'.  Note that USB serial ports are enumerated in
+  // whatever order they were plugged in, so it's generally not safe to assume a
+  // USB serial port is always the same /dev node unless there is only one
+  // connected.
+  required string device = 1;
+  optional bytes send = 2;
+}
+
+message UartWriteResponse {
+}
+
+message UartReadRequest {
+  required string device = 1;
+}
+
+message UartReadResponse {
+  optional bytes received = 1;
+}
+
+service UartService {
+  rpc Read(UartReadRequest)
+      returns (UartReadResponse) {
+
+    // This RPC will stream UartReadResponse messages until the client closes
+    // the connection (or it times out).
+    // option stream_type = "googlex.glass.minnow.UartReadResponse";
+    // option protocol = TCP;
+    // option deadline = 60.0;
+    // option security_level = NONE;
+  }
+
+  rpc Write(UartWriteRequest)
+      returns (UartWriteResponse) {
+    // option deadline = 5.0;
+    // option security_level = NONE;
+  }
+}
+
+// USB Service
+//   This service provides access to USB devices via libusb.  Open() must be
+//   called before any other methods, and the handle returned must be included
+//   in any further requests.
+
+enum UsbError {
+  // Application error codes used by Usb* methods.  Additional negative error
+  // codes may be set by libusb.
+  USB_SUCCESS = 0;
+  USB_INVALID_HANDLE = 1;
+  USB_DEVICE_NOT_FOUND = 2;
+  USB_MULTIPLE_DEVICES_FOUND = 3;
+  USB_TIMEOUT = 4;
+}
+
+message UsbOpenRequest {
+  // Various criteria by which you can filter which device to open.  The first
+  // enumerated device that matches will be opened.
+  required uint32 interface_class = 1;
+  required uint32 interface_subclass = 2;
+  required uint32 interface_protocol = 3;
+  optional string usb_port = 4;
+  optional string serial_number = 5;
+}
+
+message UsbOpenResponse {
+  // Handle to be used in future read/write/close calls.
+  optional string usb_handle = 1;
+  // Serial number of the device found, if one was found.
+  optional string serial_number = 2;
+}
+
+message UsbReadRequest {
+  required string usb_handle = 1;
+  optional uint32 length = 2;
+  optional uint32 timeout_ms = 3 [default = 100];
+}
+
+message UsbReadResponse {
+  optional bytes data = 1;
+}
+
+message UsbWriteRequest {
+  required string usb_handle = 1;
+  optional bytes data = 2;
+  optional uint32 timeout_ms = 3 [default = 100];
+  // SHA-256 hash of data, in lowercase hexadecimal format.
+  optional string checksum = 4;
+}
+
+message UsbWriteResponse {
+  optional bool cache_hit = 1;
+}
+
+message UsbFlushBuffersRequest {
+  required string usb_handle = 1;
+}
+
+message UsbFlushBuffersResponse {
+}
+
+message UsbCloseRequest {
+  repeated string usb_handle = 1;
+}
+
+message UsbCloseResponse {
+}
+
+service UsbService {
+  rpc Open(UsbOpenRequest)
+      returns (UsbOpenResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc Read(UsbReadRequest)
+      returns (UsbReadResponse) {
+    // option deadline = 5.0;
+    // option security_level = NONE;
+  }
+
+  rpc Write(UsbWriteRequest)
+      returns (UsbWriteResponse) {
+    // option deadline = 5.0;
+    // option security_level = NONE;
+  }
+
+  rpc FlushBuffers(UsbFlushBuffersRequest)
+      returns (UsbFlushBuffersResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+
+  rpc Close(UsbCloseRequest)
+      returns (UsbCloseResponse) {
+    // option deadline = 1.0;
+    // option security_level = NONE;
+  }
+}

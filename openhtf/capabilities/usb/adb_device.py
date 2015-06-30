@@ -1,0 +1,227 @@
+"""User-facing interface to an ADB device.
+
+This module provides the user-facing interface to controlling ADB devices with
+this library.  See adb_protocol.py for a breakdown of the various layers.
+Essentially, this module provides the AdbDevice class, which takes a UsbHandle
+and uses the layers in between to provide a high level interface that is
+designed to be similar to the 'adb' commandline interface.
+
+Some additional useful mechanisms are provided for more common programmatic
+needs, see shell_service.py for a description of how to use asynchronous shell
+commands.
+
+Note we don't provide a device listing facility, as this is not actually an ADB
+function, but rather a USB function - listing devices with a specific interface
+class, subclass, and protocol.
+"""
+
+import cStringIO
+import os.path
+
+from M2Crypto import RSA
+
+import adb_protocol
+import filesync_service
+import shell_service
+import usb_exceptions
+
+from openhtf.util import timeouts
+
+# USB interface class, subclass, and protocol for matching against.
+CLASS = 0xFF
+SUBCLASS = 0x42
+PROTOCOL = 0x01
+
+
+class M2CryptoSigner(adb_protocol.AuthSigner):
+  """AuthSigner using M2Crypto."""
+
+  def __init__(self, rsa_key_path):
+    with open(rsa_key_path + '.pub') as rsa_pub_file:
+      self.public_key = rsa_pub_file.read()
+
+    self.rsa_key = RSA.load_key(rsa_key_path)
+
+  def Sign(self, data):
+    return self.rsa_key.sign(data, 'sha1')
+
+  def GetPublicKey(self):
+    return self.public_key
+
+
+class AdbDevice(object):
+  """Exposes adb-like methods for use.
+
+  Some methods are more-pythonic and/or have more options.
+
+  Attributes:
+    filesync_service: Direct access to this device's FilesyncService.
+    shell_service: Direct access to this device's ShellService.
+  """
+
+  def __init__(self, adb_connection):
+    self._adb_connection = adb_connection
+    self.filesync_service = filesync_service.FilesyncService.UsingConnection(
+        adb_connection)
+    self.shell_service = shell_service.ShellService.UsingConnection(
+        adb_connection)
+
+  def __str__(self):
+    return '<%s %s(%s) @%s>' % (type(self).__name__,
+                                self._adb_connection.serial,
+                                self._adb_connection.systemtype,
+                                self._adb_connection.transport)
+  __repr__ = __str__
+
+  def GetSystemType(self):
+    return self._adb_connection.systemtype
+
+  def GetSerial(self):
+    return self._adb_connection.serial
+
+  def Close(self):
+    self._adb_connection.Close()
+
+  def Install(self, apk_path, destination_dir=None, timeout_ms=None):
+    """Install apk to device.
+
+    Doesn't support verifier file, instead allows destination directory to be
+    overridden.
+
+    Arguments:
+      apk_path: Local path to apk to install.
+      destination_dir: Optional destination directory. Use /system/app/ for
+        persistent applications.
+      timeout_ms: Expected timeout for pushing and installing.
+
+    Returns:
+      The pm install output.
+    """
+    # TODO(madsci): Support file-like objects for apk_path.
+    if not destination_dir:
+      destination_dir = '/data/local/tmp/'
+    basename = os.path.basename(apk_path)
+    destination_path = destination_dir + basename
+    self.Push(apk_path, destination_path, timeout_ms=timeout_ms)
+    return self.Shell('pm install -r "%s"' % destination_path,
+                      timeout_ms=timeout_ms)
+
+  def Push(self, source_file, device_filename, timeout_ms=None):
+    """Push source_file to file on device.
+
+    Arguments:
+      source_file: Either a filename or file-like object to push to the device.
+        If a filename, will set the remote mtime to match the local mtime,
+        otherwise will use the current time.
+      device_filename: The filename on the device to write to.
+      timeout_ms: Expected timeout for any part of the push.
+    """
+    mtime = 0
+    if isinstance(source_file, basestring):
+      mtime = os.path.getmtime(source_file)
+      source_file = open(source_file)
+
+    self.filesync_service.Send(
+        source_file, device_filename, mtime=mtime,
+        timeout=timeouts.PolledTimeout.FromMillis(timeout_ms))
+
+  def Pull(self, device_filename, dest_file=None, timeout_ms=None):
+    """Pull file from device.
+
+    Arguments:
+      device_filename: The filename on the device to pull.
+      dest_file: If set, a filename or writable file-like object.
+      timeout_ms: Expected timeout for the pull.
+
+    Returns:
+      The file data if dest_file is not set, None otherwise.
+    """
+    if isinstance(dest_file, basestring):
+      dest_file = open(dest_file, 'w')
+    elif not dest_file:
+      dest_file = cStringIO.StringIO()
+    self.filesync_service.Recv(device_filename, dest_file,
+                               timeouts.PolledTimeout.FromMillis(timeout_ms))
+    # An empty call to cStringIO.StringIO returns an instance of
+    # cStringIO.OutputType.
+    if isinstance(dest_file, cStringIO.OutputType):
+      return dest_file.getvalue()
+
+  def List(self, device_path, timeout_ms=None):
+    """Yield filesync_service.DeviceFileStat objects for directory contents."""
+    return self.filesync_service.List(
+        device_path, timeouts.PolledTimeout.FromMillis(timeout_ms))
+
+  def Command(self, command, raw=False, timeout_ms=None):
+    """Run command on the device, returning the output."""
+    return self.shell_service.Command(command, raw=raw, timeout_ms=timeout_ms)
+  Shell = Command  # pylint: disable=invalid-name
+
+  def AsyncCommand(self, command, raw=False, timeout_ms=None):
+    """See shell_service.ShellService.AsyncCommand()."""
+    return self.shell_service.AsyncCommand(command, raw=raw,
+                                           timeout_ms=timeout_ms)
+
+  def _CheckRemoteCommand(self, destination, timeout_ms, success_msgs=None):
+    """Open a stream to destination, check for remote errors.
+
+    Used for reboot, remount, and root services.  If this method returns, the
+    command was successful, otherwise an appropriate error will have been
+    raised.
+
+    Args:
+      destination: Stream destination to open.
+      timeout_ms: Timeout in milliseconds for the operation.
+      success_msgs: If provided, a list of messages that, if returned from the
+        device, indicate success, so don't treat them as errors.
+
+    Raises:
+      AdbRemoteError: If the remote command fails, will contain any message we
+        got back from the device.
+      AdbStreamUnavailableError: The service requested isn't supported.
+    """
+    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    stream = self._adb_connection.OpenStream(destination, timeout)
+    if not stream:
+      raise usb_exceptions.AdbStreamUnavailableError(
+          'Service %s not supported', destination)
+    try:
+      message = stream.Read(timeout_ms=timeout)
+      # Some commands report success messages, ignore them.
+      if any([m in message for m in success_msgs]):
+        return
+    except usb_exceptions.CommonUsbError:
+      if destination.startswith('reboot:'):
+        # We expect this if the device is rebooting.
+        return
+      raise
+    raise usb_exceptions.AdbRemoteError('Device message: %s', message)
+
+  def Reboot(self, destination='', timeout_ms=None):
+    """Reboot device, specify 'bootloader' for fastboot."""
+    self._CheckRemoteCommand('reboot:%s' % destination, timeout_ms)
+
+  def Remount(self, timeout_ms=None):
+    """Remount / as read-write."""
+    self._CheckRemoteCommand('remount:', timeout_ms, ['remount succeeded'])
+
+  def Root(self, timeout_ms=None):
+    """Restart adbd as root on device."""
+    self._CheckRemoteCommand('root:', timeout_ms,
+                             ['already running as root',
+                              'restarting adbd as root'])
+
+  @classmethod
+  def Connect(cls, usb_handle, **kwargs):
+    """Connect to the device.
+
+    Args:
+      usb_handle: UsbHandle instance to use.
+      **kwargs: See AdbConnection.Connect for kwargs. Includes rsa_keys, and
+        auth_timeout_ms.
+
+    Returns:
+      An instance of this class if the device connected successfully.
+    """
+    adb_connection = adb_protocol.AdbConnection.Connect(usb_handle, **kwargs)
+    return cls(adb_connection)

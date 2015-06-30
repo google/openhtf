@@ -1,7 +1,7 @@
 import logging
 import time
 
-import openxtf.capabilities as capabilities
+import openhtf.capabilities as capabilities
 
 
 class Example(capabilities.BaseCapability):

@@ -1,10 +1,10 @@
 import example_capability
-import openxtf
+import openhtf
 
-from openxtf import xtftest
-import openxtf.capabilities as capabilities
+from openhtf import htftest
+import openhtf.capabilities as capabilities
 
-TEST = xtftest.TestMetadata(name='openxtf_example')
+TEST = htftest.TestMetadata(name='openhtf_example')
 TEST.SetVersion(1)
 TEST.Doc('Example tester')
 
@@ -23,4 +23,4 @@ def SetParam(test):
 
 
 if __name__ == '__main__':
-  openxtf.ExecuteTest(TEST, [HelloWorld, SetParam])
+  openhtf.ExecuteTest(TEST, [HelloWorld, SetParam])

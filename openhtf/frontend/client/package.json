@@ -1,0 +1,59 @@
+{
+  "name": "client",
+  "version": "0.0.1",
+  "description": "The OpenHTF Client",
+  "main": "index.js",
+  "scripts": {
+    "env": "env",
+    "start": "python ../bin/frontend.py",
+    "build:js": "browserify app/main.js -o dist/main.js",
+    "prebuild:js": "npm run lint",
+    "watch:js": "watchify app/main.js -d -o dist/main.js",
+    "build:css": "stylus -I layout -c --inline --out dist layout/layout.styl app/app.styl",
+    "watch:css": "npm run build:css -- -w --sourcemap-inline",
+    "build:html": "cp app.html dist/app.html",
+    "watch:html": "watch-run -i -p 'app.html' npm run build:html",
+    "prebuild:proto": "mkdir -p genfiles",
+    "build:proto": "pbjs ../../openhtf/openhtf/proto/frontend.proto -target=commonjs > genfiles/openhtf.proto.js",
+    "watch:proto": "watch-run -i -p '../../openhtf/openhtf/proto/*.proto' 'npm run build:proto && npm run build:js'",
+    "build": "npm run build:js && npm run build:html && npm run build:css",
+    "watch": "./watchdev.sh",
+    "lint": "jshint app/",
+    "test": "./node_modules/karma/bin/karma start || true",
+    "test:debug": "./node_modules/karma/bin/karma start --auto-watch --no-single-run --browsers",
+    "test:watch": "./node_modules/karma/bin/karma start --auto-watch --no-single-run",
+    "clean": "rm -rf dist/ genfiles/"
+  },
+  "browser": {
+    "openhtf-proto": "./genfiles/openhtf.proto.js"
+  },
+  "browserify": {
+    "transform": [
+      "browserify-ng-html2js"
+    ]
+  },
+  "author": "Alex Lusco (alusco@google.com)",
+  "license": "Commerical",
+  "dependencies": {
+    "angular": "^1.3.15",
+    "angular-mocks": "^1.3.15",
+    "angular-moment": "^0.9.2",
+    "angular-ui-router": "^0.2.13",
+    "backo": "^1.1.0",
+    "moment": "^2.9.0",
+    "protobufjs": "^4.0.0-b2"
+  },
+  "devDependencies": {
+    "browserify": "^9.0.3",
+    "browserify-ng-html2js": "^1.0.0",
+    "jasmine-core": "^2.2.0",
+    "jshint": "~2.6.3",
+    "karma": "^0.12.31",
+    "karma-browserify": "^4.0.0",
+    "karma-jasmine": "^0.3.5",
+    "karma-phantomjs-launcher": "^0.1.4",
+    "stylus": "^0.50.0",
+    "watch-run": "^1.2.2",
+    "watchify": "^2.6.0"
+  }
+}

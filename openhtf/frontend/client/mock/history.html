@@ -1,0 +1,140 @@
+<html>
+  <head>
+    <title>OpenHTF Frontend</title>
+  </head>
+  <style>
+    body { margin: 0; padding: 0; font-family: Arial; background-color: #eee; box-sizing: content-box}
+    a { color: inherit; text-decoration: none; }
+    a.highlight:hover { text-decoration: underline; }
+    .stationtable > * {
+      max-width: 800px;
+      width: 100%;
+    }
+    .stationrow {
+      background-color: white;
+      border: 1px solid #d3d3d3;
+      padding: 16px;
+      border-top-color: #E3E3E3;
+      border-bottom: none;
+      display: flex;
+      cursor: pointer;
+    }
+    .stationrow:hover {
+      background-color: #F1FAF6
+    }
+    .stationrow:first-of-type {
+      border-top-color: #d3d3d3;
+    }
+    .stationrow:last-of-type {
+      border-bottom: 1px solid #C4C4C4;
+    }
+    .stationheader {
+      display: flex;
+    }
+    .stationrow > div:nth-child(3), .stationrow > div:last-child {
+      font-size: 14px;
+    }
+    .stationrow > div:last-child  { color: #777; }
+    .stationrow > div:first-child, .stationheader > div:first-child {
+      width: 40px;
+    }
+    .stationrow > div:nth-child(2), .stationheader > div:nth-child(2) {
+      flex-grow: 1;
+    }
+    .stationrow > div:nth-child(3), .stationheader > div:nth-child(3) {
+      width: 80px;
+    }
+    .stationrow > div:last-child, .stationheader > div:last-child {
+      width: 150px;
+    }
+
+    div.failed {
+      color: rgb(221,75,57);
+      font-weight: bold;
+    }
+    div.passed {
+      color: rgb(61, 148, 0);
+      font-weight: bold;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: #888;
+      padding: 5px 20px;
+      border-top: 1px solid #666;
+    }
+    footer > header {
+      color: #CCC;
+      font-size: 12px;
+    }
+    .starrows > div {
+      font-size: 13px;
+      color: #F1F1F1;
+    }
+    .starrows > div > span:first-child {
+      padding-right: 5px;
+    }
+  </style>
+  <body>
+    <header style="background-color:#003366; color: white; border-bottom: 1px solid #CCC; padding: 0 20px; font-size: 22px; height:50px; line-height: 50px; display: flex; justify-content: space-between">
+      <div >OpenHTF</div>
+      <div style="flex-grow: 1; text-align: center;">stark.1.preoptics.rockslide.thea</div>
+      <div style="120px; font-size:14px;">
+        Version 1.0.0, board_tester 1.0.0
+      </div>
+    </header>
+    <header style="border-bottom: 1px solid #AAA; padding-left: 20px; height:20px; line-height: 20px; font-size: 14px; color: #444; background-color: #ccc">
+      <span>All Stations &gt; stark.1.preoptics.rockslide.thea &gt; History</span>
+    </header>
+
+    <div style="display: flex; flex-direction: column; align-items: center; padding: 20px;" class="stationtable">
+      <header style="color: #888; font-weight: bold; font-size: 14px; padding: 10px" class="stationheader">
+         <div>Cell</div>
+         <div>Device</div>
+         <div>Status</div>
+         <div>Start Time</div>
+      </header>
+      <a href="station.html" class="stationrow">
+        <div>1</div>
+	<div>#1234567890</div>
+	<div class="passed">PASS</div>
+	<div>8 minutes ago</div>
+      </a>
+      <a href="station.html" class="stationrow">
+        <div>1</div>
+	<div>#1234567890</div>
+	<div class="failed">FAIL</div>
+	<div>15 minutes ago</div>
+      </a>
+    </div>
+    <div style="height: 100px">&nbsp;</div>
+    <footer>
+       <header>4 Starred Stations (<a href="#" class="highlight">hide</a>)</header>
+       <div class="starrows">
+         <div>
+           <span>stark.1.preoptics.rockslide.thea</span>
+           <span>Running</span>
+         </div>
+         <div>
+           <span>stark.2.preoptics.rockslide.thea</span>
+           <span>Running,</span>
+           <span>Waiting</span>
+         </div>
+         <div>
+           <span>stark.3.preoptics.rockslide.thea</span>
+           <span>Passed,</span>
+           <span>Failed,</span>
+           <span>Attention Required</span>
+         </div>
+         <div>
+           <span>stark.4.preoptics.rockslide.thea</span>
+           <span>Running,</span>
+           <span>Waiting</span>
+         </div>
+       </div>
+    </footer>
+  </body>
+</html>
