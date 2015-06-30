@@ -1,0 +1,51 @@
+table.browse-stationlist {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 800px;
+  table-layout: fixed;
+
+  & th:first-child, & td:first-child {
+    width: 40px;
+  }
+  & th:last-child, & td:last-child {
+    width: 150px;
+  }
+}
+
+table.browse-stationlist th {
+  text-align: left;
+  font-weight: bold;
+  font-size: 14px;
+  color: #888;
+  padding: 10px 0;
+}
+
+.browse-stationlist .stationrow {
+  background-color: white;
+  border: 1px solid #d3d3d3;
+
+  & > td {
+    line-height: 45px;
+  }
+  & > td:last-child {
+    padding-right: 16px;
+  }
+  &:hover {
+    background-color: #F1FAF6
+  }
+}
+
+a.browse-stationlist-statelink {
+  color: #777;
+}
+
+a.browse-stationlist-notstarred {
+  background-image: url('./star.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px 20px;
+}
+
+a.browse-stationlist-starred {
+  background-image: url('./star-lit.png');
+}

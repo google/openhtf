@@ -1,0 +1,8 @@
+<div class="starred-footer" data-ng-show="Controller.hasStarredStations()">
+  <header>{{Controller.stations.length}} Starred Stations (hide)</header>
+  <div class="starred-footer-stations">
+    <div data-ng-repeat="station in Controller.stations">
+      <a data-ui-sref="oxc.station({'station': station.stationName})">{{::station.stationName}}</a>
+    </div>
+  </div>
+</div>

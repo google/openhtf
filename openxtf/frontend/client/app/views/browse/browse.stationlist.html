@@ -1,0 +1,23 @@
+<table class="browse-stationlist">
+  <thead>
+    <tr>
+      <th>&nbsp;</th>
+      <th>Stations</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr data-ng-repeat="station in Controller.getStations() track by station.stationName"
+      class="stationrow">
+      <td>
+        <a href="javascript:void(0);" 
+         data-ng-click="Controller.toggleStarred(station.stationName)" class="block browse-stationlist-notstarred"
+         data-ng-class="{'browse-stationlist-starred': Controller.isStarred(station.stationName)}">&nbsp;</a>
+      </td>
+      <td><a data-ui-sref='oxc.station.cell({station: station.stationName, cell:1})' class="block">{{::station.stationName}}</a></td>
+      <td>
+        <a data-ui-sref='oxc.station.cell({station: station.stationName, cell: 1})' class="block browse-stationlist-statelink">{{station.state}}</a>
+      </td>
+    </tr>
+  </tbody>
+</table>

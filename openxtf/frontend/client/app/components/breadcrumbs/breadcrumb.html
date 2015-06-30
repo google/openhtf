@@ -1,0 +1,5 @@
+<span class="breadcrumb-text" data-ng-repeat="breadcrumb in BC.getBreadcrumbs()">
+  <a href="{{::breadcrumb.link}}" data-ng-if="breadcrumb.link">{{::breadcrumb.text}}</a>
+  <span data-ng-if="!breadcrumb.link">{{::breadcrumb.text}}</span>
+  <span data-ng-if="!$last">&gt;</span>
+</span>

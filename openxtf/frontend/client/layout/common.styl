@@ -1,0 +1,30 @@
+/** Used to make text our common gray */
+.deemphasize {
+  color: #666;
+  font-weight: normal;
+}
+.deemphasizeMore {
+  color: #888;
+  font-weight: normal;
+}
+
+/** Element Styles */
+.block {
+  display: block;
+}
+.hidden {
+  visibility: hidden;
+}
+
+/** Used to indicate a link on hover */
+a.indicate:hover {
+  cursor: pointer;
+  text-decoration: underline;
+}
+a.highlight {
+  color: #1155CC;
+}
+
+/* Angular style to hide things but the style isn't added until angular is
+ * loaded this prevents it from flashing on the screen. */
+[data-ng-cloak], [ng-cloak] { display: none; }
