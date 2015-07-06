@@ -18,10 +18,12 @@ class BuildClientCommand(Command):
                      ('npmpath=', 'n', 'Path to npm')]
 
   def initialize_options(self):
-    self.clientdir = './client'
+    self.clientdir = './openhtf/frontend/client'
     self.regenproto = False  # change to true when pbjs is fixed
     self.npmpath = '/usr/local/bin/npm'
-    build.initialize_options(self)
+
+  def finalize_options(self):
+    pass
 
   def run(self):
     if self.regenproto:

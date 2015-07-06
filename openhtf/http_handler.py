@@ -11,8 +11,9 @@ from openhtf.proto import frontend_pb2
 from openhtf.proto import htf_pb2
 
 
-gflags.DEFINE_integer('http_port', 8888, 'Port on which to serve HTTP interface.')
 FLAGS = gflags.FLAGS
+gflags.DEFINE_integer('http_port', 8888, 'Port on which to serve HTTP interface.')
+
 
 
 class HtfView(flask.views.MethodView):

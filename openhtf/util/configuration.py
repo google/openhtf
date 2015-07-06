@@ -1,8 +1,8 @@
-"""Interface to HTF configuration files.
+"""Interface to OpenHTF configuration files.
 
-HTF configuration files contain values which are specific to a single tester.
-Any values which apply to all testers of a given type should be handled by FLAGS
-or another mechanism.
+OpenHTF configuration files contain values which are specific to a single
+tester. Any values which apply to all testers of a given type should be handled
+by FLAGS or another mechanism.
 
 Examples of configuration values are things like target_name, test, phidget
 configuration, etc...
@@ -23,7 +23,7 @@ import threads
 FLAGS = gflags.FLAGS
 
 gflags.DEFINE_string('openhtf_config',
-                    '/usr/local/htf_client/config/client.yaml',
+                    '/usr/local/htf_client/config/clientfoo.yaml',
                     'The HTF configuration file for this tester')
 
 gflags.DEFINE_multistring(

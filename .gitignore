@@ -27,3 +27,6 @@ venv/
 
 # built protos
 *pb2.py
+
+# node stuff
+node_modules/
