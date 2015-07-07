@@ -13,7 +13,7 @@ var PollMode = require('../../components/api/poller-factory.js').PollMode;
 
 var stationlist = require('./stationlist-directive.js');
 
-var m = module.exports = angular.module('oxc.views.browse', [
+var m = module.exports = angular.module('openhtf.views.browse', [
   contentTemplate.name,
   routerModuleName,
   api.name,
@@ -24,7 +24,7 @@ var m = module.exports = angular.module('oxc.views.browse', [
 
 /** Configures the browse stations view. */
 m.config(function($stateProvider) {
-  $stateProvider.state('oxc.browse', {
+  $stateProvider.state('openhtf.browse', {
     url: '/browse',
     views: {'content@': {templateUrl: 'browse.content.html'}},
     onEnter: function(oxBreadcrumbService, stationsServicePoller) {

@@ -16,10 +16,6 @@ from openhtf.frontend import server
 FLAGS = gflags.FLAGS
 
 gflags.DEFINE_boolean('dev_mode', True, 'True to run in developer mode locally')
-gflags.DEFINE_string(
-    'run_dir',
-    '/var/run/openhtf',
-    """The directory to look at for running OpenHTF instances.""")
 gflags.DEFINE_integer('port', 12000, 'The port on which to serve the frontend')
 
 
@@ -30,8 +26,8 @@ def main(argv):
     print('%s\\nUsage: %s ARGS\\n%s' % (e, sys.argv[0], FLAGS), file=sys.stderr)
     sys.exit(1)
 
-  if not os.path.isdir(FLAGS.htf_run_dir):
-    print('ERROR: OpenHTF Run directory does not exist', FLAGS.htf_run_dir,
+  if not os.path.isdir(FLAGS.rundir):
+    print('ERROR: OpenHTF Run directory does not exist', FLAGS.rundir,
         file=sys.stderr)
     sys.exit(1)
 
@@ -39,8 +35,9 @@ def main(argv):
   # Patch this right now with a hardcoded list
   stations = {
       data.station_name: (data, 0, None)
-      for data in rundata.EnumerateRunDirectory(FLAGS.htf_run_dir)
+      for data in rundata.EnumerateRunDirectory(FLAGS.rundir)
   }
+  print(stations)
   stations.update({
       'stub.station': (rundata.RunData('stub.station', 1, 'test',
                                           'test_version', 'localhost',

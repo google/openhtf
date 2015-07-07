@@ -15,8 +15,9 @@ from openhtf.util import htflogger
 
 
 FLAGS = gflags.FLAGS
-FLAGS(sys.argv)
 gflags.DEFINE_string('rundir', '/var/run/openhtf', 'Directory for runfiles.')
+
+FLAGS(sys.argv)
 
 
 class InvalidTestError(Exception):

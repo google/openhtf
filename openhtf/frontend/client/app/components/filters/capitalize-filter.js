@@ -17,5 +17,5 @@ function Capitalize(input) {
 }
 
 var m = module.exports = angular.module(
-    'oxc.components.filters.capitalize', []);
+    'openhtf.components.filters.capitalize', []);
 m.filter('capitalize', function() { return Capitalize; });

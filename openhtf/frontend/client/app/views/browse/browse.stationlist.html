@@ -14,9 +14,9 @@
          data-ng-click="Controller.toggleStarred(station.stationName)" class="block browse-stationlist-notstarred"
          data-ng-class="{'browse-stationlist-starred': Controller.isStarred(station.stationName)}">&nbsp;</a>
       </td>
-      <td><a data-ui-sref='oxc.station.cell({station: station.stationName, cell:1})' class="block">{{::station.stationName}}</a></td>
+      <td><a data-ui-sref='openhtf.station.cell({station: station.stationName, cell:1})' class="block">{{::station.stationName}}</a></td>
       <td>
-        <a data-ui-sref='oxc.station.cell({station: station.stationName, cell: 1})' class="block browse-stationlist-statelink">{{station.state}}</a>
+        <a data-ui-sref='openhtf.station.cell({station: station.stationName, cell: 1})' class="block browse-stationlist-statelink">{{station.state}}</a>
       </td>
     </tr>
   </tbody>

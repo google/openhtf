@@ -7,7 +7,7 @@ var stations = require('./stations-service.js');
 var poller = require('./poller-factory.js');
 var StationDataService = require('./stationdata-service.js');
 
-var m = module.exports = angular.module('oxc.components.api', []);
+var m = module.exports = angular.module('openhtf.components.api', []);
 m.service('stationsService', stations.StationService);
 m.service('pollerFactory', poller.PollFactory);
 m.service('stationDataService', StationDataService);

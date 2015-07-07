@@ -9,12 +9,12 @@ var routerModuleName = require('angular-ui-router');
 var breadcrumbs = require(
     '../../../components/breadcrumbs/breadcrumb-module.js');
 
-var m = module.exports = angular.module('oxc.views.station.history', [
+var m = module.exports = angular.module('openhtf.views.station.history', [
     template.name, routerModuleName, breadcrumbs.name]);
 
 /** Configures the browse stations view. */
 m.config(function($stateProvider) {
-  $stateProvider.state('oxc.station.history', {
+  $stateProvider.state('openhtf.station.history', {
     url: '/history',
     views: {
       'content@': {

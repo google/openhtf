@@ -41,6 +41,6 @@ function MillisDuration($interpolate, input) {
 }
 
 var m = module.exports =
-    angular.module('oxc.components.filters.timestamp', []);
+    angular.module('openhtf.components.filters.timestamp', []);
 m.filter('millisToSeconds', function() { return MillisToSeconds; });
 m.filter('millisDuration', function($interpolate) { return MillisDuration.bind(null, $interpolate); });

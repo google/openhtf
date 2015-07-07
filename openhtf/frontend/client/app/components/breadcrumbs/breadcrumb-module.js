@@ -8,6 +8,6 @@ var BreadcrumbDirective = require('./breadcrumb-directive.js');
 var template = require('./breadcrumb.html');
 
 var m = module.exports =
-    angular.module('oxc.components.breadcrumbs', [template.name]);
+    angular.module('openhtf.components.breadcrumbs', [template.name]);
 m.service('oxBreadcrumbService', BreadcrumbService);
 m.directive('oxBreadcrumbs', BreadcrumbDirective);

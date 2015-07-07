@@ -20,7 +20,7 @@ var ParamStatusDirective = require('./param-status-directive.js');
 var ParamValueDirective = require('./param-value-directive.js');
 var ParamLimitDirective = require('./param-limit-directive.js');
 
-var m = module.exports = angular.module('oxc.views.station', [
+var m = module.exports = angular.module('openhtf.views.station', [
   api.name,
   history.name,
   template.name,
@@ -35,7 +35,7 @@ var m = module.exports = angular.module('oxc.views.station', [
 m.config(function($stateProvider, $urlRouterProvider) {
   $urlRouterProvider.when('/station/{station}', '/station/{station}/1');
 
-  $stateProvider.state('oxc.station', {
+  $stateProvider.state('openhtf.station', {
     url: '/station/{station}',
     resolve: {
       stationName: function($stateParams) {
@@ -67,7 +67,7 @@ m.config(function($stateProvider, $urlRouterProvider) {
     abstract: true,
   });
 
-  $stateProvider.state('oxc.station.cell', {
+  $stateProvider.state('openhtf.station.cell', {
     url: '/{cell:int}',
     resolve: {
       cellNumber: function($stateParams) {

@@ -5,7 +5,7 @@
 var angular = require('angular');
 var template = require('./browse.stationlist.html');
 
-var m = module.exports = angular.module('oxc.views.browse.stationlist', [
+var m = module.exports = angular.module('openhtf.views.browse.stationlist', [
     template.name]);
 
 m.directive('oxStationList', function() {

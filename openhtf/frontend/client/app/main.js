@@ -15,7 +15,7 @@ var starred = require('./components/starred/starred-module.js');
 var STARLIST_CHANGED_EVENT = require(
     './components/starred/starredstations-directive.js').STARLIST_CHANGED_EVENT;
 
-var m = module.exports = angular.module('oxc', [
+var m = module.exports = angular.module('openhtf', [
   routerModuleName,
   api.name,
   starred.name,
@@ -31,7 +31,7 @@ m.config(function($locationProvider, $urlRouterProvider, $stateProvider) {
   $locationProvider.html5Mode(true);
   $urlRouterProvider.when('/', '/browse');
 
-  $stateProvider.state('oxc', {
+  $stateProvider.state('openhtf', {
     abstract: true,
     onEnter: function(oxBreadcrumbService) {
       oxBreadcrumbService.clear();

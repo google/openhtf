@@ -24,7 +24,7 @@ class FileHandler(views.MethodView):
 
 @app.route('/')
 def RedirectToApp():
-  return flask.redirect('/openhtf')
+  return flask.redirect('/openhtf/')
 
 
 class StationApiHandler(views.MethodView):
