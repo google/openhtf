@@ -56,7 +56,7 @@ StarredController.prototype.hasStarredStations = function() {
 
 StarredController.prototype.getStarredStations_ = function() {
   var starred = this.starService.getStarred();
-  // TODO(alusco): Move to station specific service instead of
+  // TODO: Move to station specific service instead of
   // the listing service.
   return this.stationsService.getStations().filter(function(station) {
     return starred.indexOf(station.stationName) != -1;

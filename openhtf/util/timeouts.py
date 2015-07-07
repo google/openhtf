@@ -378,7 +378,7 @@ def TakeAtMostNSeconds(time_s, func, *args, **kwargs):
   Returns:
     True if the function finished in less than time_s seconds.
   """
-  # TODO(alusco): Switch this out with a new version of
+  # TODO: Switch this out with a new version of
   # utils.ExceptionSafeThread so it's not shitty.
   thread = threading.Thread(target=func, args=args, kwargs=kwargs)
   thread.start()

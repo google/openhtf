@@ -387,7 +387,7 @@ class AdbStreamTransport(object):
         # There is some other thread reading a message.  Since we are already
         # holding the message_received lock, we can immediately do the wait.
         try:
-          # TODO(madsci): Once we (finally) switch to Python 3, just use the
+          # TODO: Once we (finally) switch to Python 3, just use the
           # return value of wait() to know if we timed out.
           self._message_received.wait(timeout.remaining)
           if timeout.HasExpired():
