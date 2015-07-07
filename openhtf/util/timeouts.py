@@ -1,3 +1,18 @@
+# Copyright 2014 Google Inc. All Rights Reserved.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """A simple utility to do timeout checking."""
 
 import contextlib
@@ -94,7 +109,7 @@ class PolledTimeout(object):
     return self.remaining * 1000
 
 
-# TODO(alusco): There's now no way to tell if a timeout occured generically
+# TODO: There's now no way to tell if a timeout occured generically
 # which sort of sucks (for generic validation fn)
 def LoopUntilTimeoutOrValid(timeout_s, function, validation_fn, sleep_s=1):
   """Loops until the specified function returns valid or a timeout is reached.

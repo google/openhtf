@@ -1,22 +1,36 @@
-"""The main openhtf entrypoint."""
-import logging
+# Copyright 2014 Google Inc. All Rights Reserved.
 
-import executor
-import gflags
-import http_handler
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+"""The main OpenHTF entry point."""
+
+import logging
 import os
-import rundata
 import signal
 import socket
 import sys
+
+import gflags
+
+import executor
+import http_handler
+import rundata
 import htftest
 from openhtf.util import configuration
-from openhtf.util import htflogger
 
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_string('rundir', '/var/run/openhtf', 'Directory for runfiles.')
-
 FLAGS(sys.argv)
 
 
@@ -25,7 +39,7 @@ class InvalidTestError(Exception):
 
 
 def ExecuteTest(metadata, phases):
-  """Start the openhtf framework running with the given test.
+  """Start the OpenHTF framework running with the given test.
 
   Args:
     metadata: A TestMetadata instance.
@@ -38,10 +52,10 @@ def ExecuteTest(metadata, phases):
     METADATA = htftest.TestMetadata(name='test')
     etc...
 
-    def PhaseOne(phase):
+    def PhaseOne(test):
       # Integrate more whidgets
 
-    def PhaseTwo(phase):
+    def PhaseTwo(test):
       # Analyze whidget integration status
 
     htftest.ExecuteTest(METADATA, (PhaseOne, PhaseTwo))

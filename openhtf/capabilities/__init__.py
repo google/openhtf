@@ -1,3 +1,18 @@
+# Copyright 2014 Google Inc. All Rights Reserved.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """The capabilities module provides boilerplate for accessing hardware.
 
 Most tests require interaction with external hardware.  This module provides
@@ -5,10 +20,10 @@ framework support for such interfaces, allowing for automatic setup and
 teardown of the objects.
 
 Test phases can be decorated as using capability objects, which then get passed
-into the test via a 'capabilities' parameter.  Capabilities are all instantiated
-at the beginning of a test, and all capabilities' TearDown() methods are called
-at the end of a test.  It's up to the Capability implementation to do any sort
-of is-ready check.
+into the test via parameters.  Capabilities are all instantiated at the
+beginning of a test, and all capabilities' TearDown() methods are called at the
+end of a test.  It's up to the Capability implementation to do any sort of
+is-ready check.
 
 Example implementation of a capability:
 
@@ -28,11 +43,10 @@ Example implementation of a capability:
       # of the test.
       print 'Tearing down %s!' % type(self).__name__
 
-Example usage of the above capability (it doesn't actually exist, but if it were
-implemented, it would go in the capabilities/ directory):
+Example usage of the above capability:
 
   from openhtf import capabilites
-  from openhtf.capabilities import example
+  from my_custom_capabilities_package import example
 
   @capabilities.RequiresCapability(example=example.ExampleCapability)
   def TestPhase(test, example):
@@ -65,7 +79,7 @@ of doing this is with the configuration.InjectPositionalArgs decorator:
 Note that Capability constructors shouldn't take any other arguments; the
 framework won't pass any, so you'll get a TypeError.  Any values that are only
 known at run time must be either passed into other methods or set via explicit
-setter methods.  See lib/configuration.py for details, but with the above
+setter methods.  See util/configuration.py for details, but with the above
 example, you would also need a configuration .yaml file with something like:
 
   my_config_key: my_config_value

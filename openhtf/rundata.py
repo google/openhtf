@@ -1,8 +1,23 @@
+# Copyright 2014 Google Inc. All Rights Reserved.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """Parse and create htf run data.
 
 Format:
   The htf run data is in the JSON format and specifies the basic information
-  about a running HTF instance.
+  about a running OpenHTF instance.
 
   {
     station_name: string,
@@ -16,7 +31,7 @@ Format:
 
 Convention:
   These files should be put into the /var/run/openhtf directory and named
-  the station name of the running openhtf instance.  If an instance cannot
+  the station name of the running OpenHTF instance.  If an instance cannot
   be contacted by a reader of these files they're not allowed to remove them;
   instead, the recomendation is to check back periodically to see if
   they've been updated or to just recheck the instance later.
@@ -25,6 +40,12 @@ Convention:
 import collections
 import os
 import json
+
+import gflags
+
+
+FLAGS = gflags.FLAGS
+gflags.DEFINE_string('rundir', '/var/run/openhtf', 'Directory for runfiles.')
 
 
 class RunData(collections.namedtuple('RunData',

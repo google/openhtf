@@ -1,3 +1,18 @@
+# Copyright 2014 Google Inc. All Rights Reserved.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """ADB protocol implementation.
 
 Implements the ADB protocol as seen in Android's adb/adbd binaries, but only the
@@ -618,7 +633,7 @@ class AdbConnection(object):
   def OpenStream(self, destination, timeout_ms=None):
     """Opens a new stream to a destination service on the device.
 
-    Not the same as the posix 'open' or any other google3 Open methods, this
+    Not the same as the posix 'open' or any other Open methods, this
     corresponds to the OPEN message described in the ADB protocol
     documentation mentioned above.  It creates a stream (uniquely identified
     by remote/local ids) that connects to a particular service endpoint.

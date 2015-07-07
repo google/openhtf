@@ -1,3 +1,18 @@
+# Copyright 2014 Google Inc. All Rights Reserved.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import flask
 import flask.views
 import gflags
@@ -12,7 +27,9 @@ from openhtf.proto import htf_pb2
 
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('http_port', 8888, 'Port on which to serve HTTP interface.')
+gflags.DEFINE_integer('http_port',
+                      8888,
+                      'Port on which to serve HTTP interface.')
 
 
 
@@ -28,7 +45,7 @@ class HtfView(flask.views.MethodView):
     response.framework_version = self.metadata.version_string
     response.test_info.CopyFrom(self.metadata)
     for cell_id, cell_exec in self.cells.iteritems():
-      # TODO(madsci): Locking while we grab a copy of this proto
+      # TODO: Locking while we grab a copy of this proto
       test_manager = cell_exec.test_manager
       if test_manager:
         cell = response.cells.add()
@@ -57,7 +74,8 @@ class HttpHandler(object):
   def __init__(self, metadata, cells):
     self.app = flask.Flask('OpenHTF')
     self.app.debug = True
-    self.app.add_url_rule('/get', view_func=HtfView.as_view('get', metadata, cells))
+    self.app.add_url_rule('/get',
+                          view_func=HtfView.as_view('get', metadata, cells))
 
     self.server = None
     self.log = logging.getLogger('Rocket')
@@ -67,7 +85,8 @@ class HttpHandler(object):
   def Start(self):
     """Start the HTTP server."""
     if FLAGS.http_port:
-      self.server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.http_port), method='wsgi',
+      self.server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.http_port),
+                                  method='wsgi',
                                   app_info={'wsgi_app': self.app})
       self.server.start(background=True)
 
