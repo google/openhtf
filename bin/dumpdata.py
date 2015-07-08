@@ -22,6 +22,7 @@ from openhtf import rundata
 
 
 def main(argv):
+  """Print info about all the stations we found."""
   if len(argv) != 2:
     print('Usage: dumpdata.py <run_directory>', file=sys.stderr)
     sys.exit(1)

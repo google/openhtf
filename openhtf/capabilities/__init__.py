@@ -48,7 +48,7 @@ Example usage of the above capability:
   from openhtf import capabilites
   from my_custom_capabilities_package import example
 
-  @capabilities.RequiresCapability(example=example.ExampleCapability)
+  @capabilities.requires(example=example.ExampleCapability)
   def TestPhase(test, example):
     print 'Test phase started!'
     example.DoSomething()
@@ -111,7 +111,7 @@ class BaseCapability(object):
     pass
 
 
-def RequiresCapability(**capabilities):
+def requires(**capabilities):
   """Creates a decorator that passes in capabilities when invoked.
 
   This function returns a decorator for a function that will replace positional

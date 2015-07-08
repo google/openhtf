@@ -23,9 +23,9 @@ import time
 
 import contextlib2 as contextlib
 
-import capabilities
-import dutmanager
-import testmanager
+from openhtf import capabilities
+from openhtf import dutmanager
+from openhtf import testmanager
 from openhtf.util import configuration
 from openhtf.util import threads
 
@@ -62,6 +62,7 @@ class CellExecutorStarter(object):
     return cells
 
   def Start(self):
+    """Start all the cells."""
     for cell in self.cells.values():
       cell.start()
     _LOG.info(
@@ -74,6 +75,7 @@ class CellExecutorStarter(object):
       cell.join(365*24*60*60) # Timeout needed for SIGINT handling, so 1 year.
 
   def Stop(self):
+    """Stop all the cells."""
     _LOG.info('Stopping cells: %s - %s', self, self.cells)
     for cell in self.cells.itervalues():
       cell.Stop()
@@ -82,7 +84,8 @@ class CellExecutorStarter(object):
     _LOG.info('All cells have been stopped.')
 
 
-class LogSleepSuppress(object):
+class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
+  """Abstraction for supressing stuff we don't care about."""
 
   def __init__(self):
     self.failure_reason = ''
@@ -149,7 +152,8 @@ class CellExecutor(threads.KillableThread):
           capability_manager.capability_map)
       self.test_manager.test_run_adapter.SetDutSerial(dut_serial)
 
-      def OptionallyStop(exc_type, unused_exc_value, unused_exc_tb):
+      def optionally_stop(exc_type, *dummy):
+        """Called on stopping."""
         # If Stop was called, we don't care about the test stopping completely
         # anymore, nor if ctrl-C was hit.
         if exc_type not in (TestStopError, KeyboardInterrupt):
@@ -159,12 +163,13 @@ class CellExecutor(threads.KillableThread):
       # This won't do anything normally, unless self.Stop is called.
       exit_stack.callback(self.test_manager.Stop)
       # Call WaitForTestStop() to match WaitForTestStart().
-      exit_stack.push(OptionallyStop)
+      exit_stack.push(optionally_stop)
 
       suppressor.failure_reason = 'Failed to execute test.'
       self.test_manager.ExecuteOneTest()
 
   def Stop(self):
+    """Stop this cell."""
     _LOG.info('Stopping test executor.')
     if self._current_exit_stack:
       # Tell the stack to exit.

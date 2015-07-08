@@ -13,6 +13,9 @@
 # limitations under the License.
 
 
+"""Example capability for OpenHTF."""
+
+
 import logging
 import time
 

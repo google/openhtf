@@ -523,6 +523,9 @@ class AdbConnection(object):
     serial: The 'serial number', as reported by ADB in the remote banner.
     banner: The 'human readable' component of the remote banner.
   """
+
+  # pylint: disable=too-many-instance-attributes
+
   # AUTH constants for arg0.
   AUTH_TOKEN = 1
   AUTH_SIGNATURE = 2
@@ -628,6 +631,7 @@ class AdbConnection(object):
         _LOG.warning('Received message for unknown local-id: %s', message)
 
   def Close(self):
+    """Close the connection."""
     self.transport.Close()
 
   def OpenStream(self, destination, timeout_ms=None):
@@ -887,11 +891,11 @@ class AdbConnection(object):
     try:
       msg = adb_transport.ReadUntil(
           ('CNXN',), timeouts.PolledTimeout.FromMillis(auth_timeout_ms))
-    except usb_exceptions.UsbReadFailedError as e:
-      if e.IsTimeout():
+    except usb_exceptions.UsbReadFailedError as exception:
+      if exception.IsTimeout():
         exceptions.Reraise(usb_exceptions.DeviceAuthError,
                            'Accept auth key on device, then retry.')
       raise
 
     # The read didn't time-out, so we got a CNXN response.
-    return cls(adb_transport, msg.arg1, msg.banner)
+    return cls(adb_transport, msg.arg1, msg.data)

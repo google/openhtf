@@ -23,10 +23,10 @@ import sys
 
 import gflags
 
-import executor
-import http_handler
-import rundata
-import htftest
+from openhtf import executor
+from openhtf import http_handler
+from openhtf import rundata
+from openhtf import htftest
 from openhtf.util import configuration
 
 
@@ -38,7 +38,7 @@ class InvalidTestError(Exception):
   """Raised when a test is registered incomplete or otherwise invalid."""
 
 
-def ExecuteTest(metadata, phases):
+def execute_test(metadata, phases):
   """Start the OpenHTF framework running with the given test.
 
   Args:
@@ -82,7 +82,8 @@ def ExecuteTest(metadata, phases):
   starter = executor.CellExecutorStarter(test)
   handler = http_handler.HttpHandler(test.metadata, starter.cells)
 
-  def sigint_handler(signal, frame):
+  def sigint_handler(*dummy):
+    """Handle SIGINT by stopping running cells."""
     print "Received SIGINT. Stopping everything."
     starter.Stop()
     handler.Stop()

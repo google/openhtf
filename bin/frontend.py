@@ -35,10 +35,13 @@ gflags.DEFINE_integer('port', 12000, 'The port on which to serve the frontend')
 
 
 def main(argv):
+  """Start the frontend."""
   try:
     argv = FLAGS(argv)  # parse flags
-  except gflags.FlagsError, e:
-    print('%s\\nUsage: %s ARGS\\n%s' % (e, sys.argv[0], FLAGS), file=sys.stderr)
+  except gflags.FlagsError, exception:
+    print('%s\\nUsage: %s ARGS\\n%s' % (exception,
+                                        sys.argv[0],
+                                        FLAGS), file=sys.stderr)
     sys.exit(1)
 
   if not os.path.isdir(FLAGS.rundir):

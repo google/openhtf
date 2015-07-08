@@ -47,7 +47,7 @@ import string
 import struct
 import threading
 
-import usb_exceptions
+from openhtf.capabilities.usb import usb_exceptions
 from openhtf.util import timeouts
 
 gflags.DEFINE_boolean('adb_message_log', False,
@@ -57,7 +57,8 @@ FLAGS = gflags.FLAGS
 _LOG = logging.getLogger('adb_protocol')
 
 
-def MakeWireCommands(*ids):
+def make_wire_commands(*ids):
+  """Assemble the commands."""
   cmd_to_wire = {
       cmd: sum(ord(c) << (i * 8) for i, c in enumerate(cmd)) for cmd in ids
   }
@@ -72,6 +73,7 @@ class RawAdbMessage(collections.namedtuple('RawAdbMessage',
   """Helper class for handling the struct -> AdbMessage mapping."""
 
   def ToAdbMessage(self, data):
+    """Turn the data into an ADB message."""
     message = AdbMessage(AdbMessage.WIRE_TO_CMD.get(self.cmd),
                          self.arg0, self.arg1, data)
     if (len(data) != self.data_length or
@@ -105,6 +107,7 @@ class AdbTransportAdapter(object):
     return str(self._transport)
 
   def Close(self):
+    """Close the connection."""
     self._transport.Close()
 
   def WriteMessage(self, message, timeout):
@@ -155,10 +158,10 @@ class AdbTransportAdapter(object):
       try:
         raw_message = RawAdbMessage(*struct.unpack(
             AdbMessage.HEADER_STRUCT_FORMAT, raw_header))
-      except struct.error as e:
+      except struct.error as exception:
         raise usb_exceptions.AdbProtocolError(
             'Unable to unpack ADB command (%s): %s (%s)',
-            AdbMessage.HEADER_STRUCT_FORMAT, raw_header, e)
+            AdbMessage.HEADER_STRUCT_FORMAT, raw_header, exception)
 
       if raw_message.data_length > 0:
         if timeout.HasExpired():
@@ -213,8 +216,8 @@ class DebugAdbTransportAdapter(AdbTransportAdapter):
 
   def Close(self):
     _LOG.debug('%s logged messages:', self)
-    for m in self.messages:
-      _LOG.debug(m)
+    for message in self.messages:
+      _LOG.debug(message)
     super(DebugAdbTransportAdapter, self).Close()
 
   def ReadMessage(self, timeout):
@@ -258,8 +261,8 @@ class AdbMessage(object):
   """
 
   PRINTABLE_DATA = set(string.printable) - set(string.whitespace)
-  CMD_TO_WIRE, WIRE_TO_CMD = MakeWireCommands('SYNC', 'CNXN', 'AUTH', 'OPEN',
-                                              'OKAY', 'CLSE', 'WRTE')
+  CMD_TO_WIRE, WIRE_TO_CMD = make_wire_commands('SYNC', 'CNXN', 'AUTH', 'OPEN',
+                                                'OKAY', 'CLSE', 'WRTE')
   # An ADB message is 6 words in little-endian.
   HEADER_STRUCT_FORMAT = '<6I'
 
@@ -275,12 +278,14 @@ class AdbMessage(object):
 
   @property
   def header(self):
+    """The message header."""
     return struct.pack(
         self.HEADER_STRUCT_FORMAT, self._command, self.arg0, self.arg1,
         len(self.data), self.data_crc32, self.magic)
 
   @property
   def command(self):
+    """The ADB command."""
     return self.WIRE_TO_CMD[self._command]
 
   def __str__(self):
@@ -296,6 +301,9 @@ class AdbMessage(object):
 
   @property
   def data_crc32(self):
-    # The "crc32" used by ADB is actually just a sum of all the bytes, but we
-    # name this data_crc32 to be consistent with ADB.
-    return sum(map(ord, self.data)) & 0xFFFFFFFF
+    """Return the sum of all the data bytes.
+
+    The "crc32" used by ADB is actually just a sum of all the bytes, but we
+    name this data_crc32 to be consistent with ADB.
+    """
+    return sum([ord(x) for x in self.data]) & 0xFFFFFFFF

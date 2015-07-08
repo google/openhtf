@@ -13,6 +13,9 @@
 # limitations under the License.
 
 
+"""Example OpenHTF test logic."""
+
+
 import example_capability
 import openhtf
 
@@ -28,14 +31,16 @@ METADATA.AddParameter('number').Number().InRange(0, 10).Doc(
 
 
 @capabilities.RequiresCapability(example=example_capability.Example)
-def HelloWorld(test, example):
+def hello_world(test, example):
+  """A hello world test phase."""
   test.logger.info('Hello World!')
   test.logger.info('Example says: %s', example.DoStuff())
 
 
-def SetParam(test):
+def set_param(test):
+  """Test phase that sets a parameter."""
   test.parameters.number = 1
 
 
 if __name__ == '__main__':
-  openhtf.ExecuteTest(METADATA, [HelloWorld, SetParam])
+  openhtf.execute_test(METADATA, [hello_world, set_param])

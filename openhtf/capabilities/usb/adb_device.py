@@ -35,10 +35,10 @@ import os.path
 
 from M2Crypto import RSA
 
-import adb_protocol
-import filesync_service
-import shell_service
-import usb_exceptions
+from openhtf.capabilities.usb import adb_protocol
+from openhtf.capabilities.usb import filesync_service
+from openhtf.capabilities.usb import shell_service
+from openhtf.capabilities.usb import usb_exceptions
 
 from openhtf.util import timeouts
 
@@ -89,12 +89,15 @@ class AdbDevice(object):
   __repr__ = __str__
 
   def GetSystemType(self):
+    """Return the system type."""
     return self._adb_connection.systemtype
 
   def GetSerial(self):
+    """Return the device serial."""
     return self._adb_connection.serial
 
   def Close(self):
+    """Close the ADB connection."""
     self._adb_connection.Close()
 
   def Install(self, apk_path, destination_dir=None, timeout_ms=None):
@@ -170,7 +173,7 @@ class AdbDevice(object):
   def Command(self, command, raw=False, timeout_ms=None):
     """Run command on the device, returning the output."""
     return self.shell_service.Command(command, raw=raw, timeout_ms=timeout_ms)
-  Shell = Command  # pylint: disable=invalid-name
+  Shell = Command  #pylint: disable=invalid-name
 
   def AsyncCommand(self, command, raw=False, timeout_ms=None):
     """See shell_service.ShellService.AsyncCommand()."""
