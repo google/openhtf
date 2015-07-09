@@ -18,7 +18,7 @@
 import logging
 import time
 
-import usb_exceptions
+from openhtf.capabilities.usb import usb_exceptions
 from openhtf.util import timeouts
 
 # From fastboot.c
@@ -32,13 +32,14 @@ PROTOCOL = 0x03
 class FastbootDevice(object):
   """Libusb fastboot wrapper with retries."""
 
-  def __init__(self, fastboot_protocol, num_retries=3):
+  def __init__(self, _, num_retries=3):
     self._num_retries = num_retries
     self._protocol = None
-    self._log = logger or logging.getLogger('libusb.fastboot')
+    self._log = logging.getLogger('libusb.fastboot')
 
   @property
   def usb_handle(self):
+    """Return our USB handle."""
     return self._protocol.usb_handle
 
   def SetBootconfig(self, name, value):

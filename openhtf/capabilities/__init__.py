@@ -104,10 +104,11 @@ class InvalidCapabilityError(Exception):
   """Raised when a capability does not subclass BaseCapability."""
 
 
-class BaseCapability(object):
+class BaseCapability(object): # pylint: disable=too-few-public-methods
   """All capability types must subclass this type."""
 
   def TearDown(self):
+    """This is the only method the framework itself will explicitly call."""
     pass
 
 
@@ -139,7 +140,7 @@ def requires(**capabilities):
           'Capability %s is not a subclass of capabilities.BaseCapability' %
           capability)
 
-  def Decorator(func):
+  def result(func):
     """Wrap the given function and return the wrapper.
 
     Args:
@@ -155,7 +156,8 @@ def requires(**capabilities):
     """
 
     @functools.wraps(func)
-    def Wrapper(phase_data, *args, **kwargs):
+    def wrapper(phase_data, *args, **kwargs):
+      """The wrapper for the decorator to return."""
       overridden = frozenset(kwargs) & frozenset(capabilities)
       if overridden:
         raise CapabilityOverrideError(
@@ -166,15 +168,15 @@ def requires(**capabilities):
                      capability in capabilities})
       return func(phase_data, *args, **kwargs)
 
-    Wrapper.capabilities = getattr(func, 'capabilities', {})
-    duplicates = frozenset(Wrapper.capabilities) & frozenset(capabilities)
+    wrapper.capabilities = getattr(func, 'capabilities', {})
+    duplicates = frozenset(wrapper.capabilities) & frozenset(capabilities)
     if duplicates:
       raise DuplicateCapabilityError(
           'Capabilities %s required multiple times on phase %s' % (
               duplicates, func))
-    Wrapper.capabilities.update(capabilities)
-    return Wrapper
-  return Decorator
+    wrapper.capabilities.update(capabilities)
+    return wrapper
+  return result
 
 
 class CapabilityManager(object):

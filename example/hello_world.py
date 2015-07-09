@@ -30,7 +30,7 @@ METADATA.AddParameter('number').Number().InRange(0, 10).Doc(
     "Example numeric parameter.")
 
 
-@capabilities.RequiresCapability(example=example_capability.Example)
+@capabilities.requires(example=example_capability.Example)
 def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')

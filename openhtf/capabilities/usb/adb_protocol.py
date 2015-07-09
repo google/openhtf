@@ -85,8 +85,8 @@ import threading
 
 from enum import Enum
 
-import adb_message
-import usb_exceptions
+from openhtf.capabilities.usb import adb_message
+from openhtf.capabilities.usb import usb_exceptions
 from openhtf.util import exceptions
 from openhtf.util import timeouts
 
@@ -106,7 +106,7 @@ ADB_BANNER = 'googlex_adb'
 STREAM_ID_LIMIT = (2**16)
 
 
-class AuthSigner(object):
+class AuthSigner(object): #pylint: disable=R0921
   """Signer for use with authenticated ADB, introduced in 4.4.x/KitKat."""
 
   def Sign(self, data):
@@ -145,6 +145,7 @@ class AdbStream(object):
     self._transport = transport
 
   def IsClosed(self):
+    """Return True iff the stream is closed."""
     return self._transport.IsClosed()
 
   def __str__(self):
@@ -219,10 +220,11 @@ class AdbStream(object):
         break
 
   def Close(self, timeout_ms=100):
+    """Close the stream."""
     self._transport.Close(timeout_ms)
 
 
-class AdbStreamTransport(object):
+class AdbStreamTransport(object): # pylint: disable=R0902
   """This class encapsulates the transport aspect of an ADB stream.
 
   This class handles the interface between AdbStreams and an AdbConnection,
@@ -265,6 +267,7 @@ class AdbStreamTransport(object):
   __repr__ = __str__
 
   def _SetOrCheckRemoteId(self, remote_id):
+    """Set or check the remote id."""
     if not self.remote_id:
       assert self.closed_state == self.ClosedState.PENDING, 'Bad ClosedState!'
       self.remote_id = remote_id
@@ -387,8 +390,6 @@ class AdbStreamTransport(object):
         # There is some other thread reading a message.  Since we are already
         # holding the message_received lock, we can immediately do the wait.
         try:
-          # TODO: Once we (finally) switch to Python 3, just use the
-          # return value of wait() to know if we timed out.
           self._message_received.wait(timeout.remaining)
           if timeout.HasExpired():
             raise usb_exceptions.AdbTimeoutError(
@@ -420,9 +421,11 @@ class AdbStreamTransport(object):
     return self.IsOpen()
 
   def IsOpen(self):
+    """Return True iff the transport layer is open."""
     return self.closed_state == self.ClosedState.OPEN
 
   def IsClosed(self):
+    """Return true ifff the transport layer is closed."""
     return self.closed_state == self.ClosedState.CLOSED
 
   def EnqueueMessage(self, message, timeout):
