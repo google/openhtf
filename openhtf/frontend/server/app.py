@@ -15,13 +15,14 @@
 
 """Default frontend application that comes with OpenHTF."""
 
+import random
+import time
+
+import flask
 from flask import json
 from flask import views
-import flask
-import os
-import random
-import stations
-import time
+
+from openhtf.frontend.server import stations
 from openhtf.proto import htf_pb2
 from openhtf.proto import frontend_pb2
 

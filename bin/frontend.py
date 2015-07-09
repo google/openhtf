@@ -50,12 +50,11 @@ def main(argv):
     sys.exit(1)
 
   manager = server.StationManager()
-  # Patch this right now with a hardcoded list
   stations = {
       data.station_name: (data, 0, None)
       for data in rundata.EnumerateRunDirectory(FLAGS.rundir)
   }
-  print(stations)
+  # TODO: Remove this?
   stations.update({
       'stub.station': (rundata.RunData('stub.station', 1, 'test',
                                           'test_version', 'localhost',
