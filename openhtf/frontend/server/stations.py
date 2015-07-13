@@ -19,16 +19,21 @@ It is also the source of truth for what stations we're aware
 of via openhtf.rundata.
 """
 
-from openhtf.proto import frontend_pb2
-# TODO: Remove me, this is a workaround
-from openhtf.proto import htf_pb2
-import collections
 import logging
 import requests
 import time
-import threading
 
-class Responses:
+import gflags
+
+import openhtf
+from openhtf.proto import frontend_pb2
+from openhtf.util import file_watcher
+
+
+FLAGS = gflags.FLAGS
+
+
+class Responses(object):
   NOT_FOUND = object()
   ERROR = object()
 
@@ -37,11 +42,14 @@ LOGGER = logging.getLogger('frontend.stations')
 
 
 class StationManager(object):
+  """Encapsulates station data updates and management."""
 
   def __init__(self):
     # Holds (station_name, rundata, last_time, HTFStationResponse)
     self.stations = {}
-
+    self.UpdateStationMap(None)
+    watcher = file_watcher.FileWatcher(FLAGS.rundir, self.UpdateStationMap)
+    watcher.start()
 
   def GetCachedStationData(self, station_name):
     """Returns (fetch_time_s, response) from cache."""
@@ -49,7 +57,6 @@ class StationManager(object):
     if not data:
       return Responses.NOT_FOUND
     return (data[1], data[2])
-
 
   def FetchStationData(self, station_name):
     """Fetches station data by requesting things.
@@ -65,9 +72,14 @@ class StationManager(object):
       LOGGER.info('Polling fast for %s, returning recent fetch', station_name)
       return response
 
-    response = requests.get('http://%s:%s/get' % (rundata.http_host, rundata.http_port))
+    response = requests.get(
+        'http://%s:%s/get' % (rundata.http_host, rundata.http_port))
     if response.status_code != 200:
-      LOGGER.error('Failed to get station response for %s (code: %s)\n%s', station_name, response.status_code, response.content)
+      LOGGER.error(
+          'Failed to get station response for %s (code: %s)\n%s',
+          station_name,
+          response.status_code,
+          response.content)
       return Responses.ERROR
 
     msg = frontend_pb2.HTFStationResponse()
@@ -84,5 +96,9 @@ class StationManager(object):
     return {data[0].station_name: status[data[0].IsAlive()]
             for data in self.stations.itervalues()}
 
-
-
+  def UpdateStationMap(self, _):
+    """Update our station map using the framework's rundata."""
+    self.stations = {
+        data.station_name: (data, 0, None)
+        for data in openhtf.rundata.EnumerateRunDirectory(FLAGS.rundir)
+    }

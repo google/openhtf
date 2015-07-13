@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-"""Default frontend application that comes with OpenHTF."""
+"""Default minimal web frontend packaged with OpenHTF."""
 
 import random
 import time
@@ -88,56 +88,6 @@ class StationDataHandler(views.MethodView):
       for parameter in cell.test_run.info_parameters:
         parameter.ClearField('value_binary')
     return response.SerializeToString()
-
-  def GetStubData_(self, station):
-    response = frontend_pb2.HTFStationResponse()
-    response.framework_version = '0.0.1'
-    response.station_name = station
-    response.test_info.name = 'test_test'
-    response.test_info.description = 'A stubbed out test'
-    response.test_info.version_string = '1.0.0'
-
-    cell = response.cells.add()
-    cell.cell_number = 1
-    cell.test_run.dut_serial = 'alex'
-    cell.test_run.cell_number = 1
-    cell.test_run.tester_name = station
-    cell.test_run.start_time_millis = int((time.time() - 10000) * 1000)
-    cell.test_run.end_time_millis = int(time.time() * 1000)
-    cell.test_run.test_info.CopyFrom(response.test_info)
-    cell.test_run.test_status = htf_pb2.RUNNING
-    param = cell.test_run.test_parameters.add()
-    param.name = 'test'
-    param.numeric_value = 5
-    param.numeric_minimum = param.numeric_maximum = 3
-    param.status = htf_pb2.PASS
-
-    param = cell.test_run.test_parameters.add()
-    param.name = 'test2'
-    param.text_value = 'hi'
-    param.expected_text = 'hello'
-    param.status = htf_pb2.FAIL
-
-    param = cell.test_run.test_parameters.add()
-    param.name = 'test3'
-    param.numeric_maximum = 11
-    param.status = htf_pb2.ERROR
-
-    for i in range(20):
-      log_message = cell.test_run.test_logs.add()
-      log_message.level = random.choice(
-          (htf_pb2.TestRunLogMessage.DEBUG, htf_pb2.TestRunLogMessage.INFO,
-           htf_pb2.TestRunLogMessage.WARNING, htf_pb2.TestRunLogMessage.ERROR))
-      log_message.timestamp_millis = int((time.time() + i) * 1000)
-      log_message.logger_name = 'test'
-      log_message.levelno = 20
-      log_message.log_source = 'app.py'
-      log_message.lineno = 117
-      log_message.log_message = 'hello world log line :o'
-
-    cell = response.cells.add()
-    cell.cell_number = 2
-    return response
 
 
 def InitializeApp(manager, **kwargs):

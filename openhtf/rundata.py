@@ -40,12 +40,14 @@ Convention:
 import collections
 import os
 import json
+import threading
 
 import gflags
 
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_string('rundir', '/var/run/openhtf', 'Directory for runfiles.')
+
 
 
 class RunData(collections.namedtuple('RunData',
@@ -99,5 +101,6 @@ def EnumerateRunDirectory(directory):
   """
   filenames = os.listdir(directory)
   filepaths = [os.path.join(directory, filename) for filename in filenames]
-  return [RunData.FromFile(filepath) for filepath in filepaths
-          if os.path.isfile(filepath)]
+  result = [RunData.FromFile(filepath) for filepath in filepaths
+      if os.path.isfile(filepath)]
+  return result

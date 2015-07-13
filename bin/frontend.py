@@ -26,7 +26,8 @@ import rocket
 import sys
 
 from openhtf import rundata
-from openhtf.frontend import server
+from openhtf.frontend.server import stations
+from openhtf.frontend.server import app
 
 FLAGS = gflags.FLAGS
 
@@ -49,24 +50,24 @@ def main(argv):
         file=sys.stderr)
     sys.exit(1)
 
-  manager = server.StationManager()
-  stations = {
-      data.station_name: (data, 0, None)
-      for data in rundata.EnumerateRunDirectory(FLAGS.rundir)
-  }
+  manager = stations.StationManager()
+  # manager.stations = {
+  #     data.station_name: (data, 0, None)
+  #     for data in rundata.EnumerateRunDirectory(FLAGS.rundir)
+  # }
   # TODO: Remove this?
-  stations.update({
-      'stub.station': (rundata.RunData('stub.station', 1, 'test',
-                                          'test_version', 'localhost',
-                                          5123, 52932), 0, None)
-  })
-  manager.stations = stations
-  app = server.InitializeApp(manager)
+  # stations.update({
+  #     'stub.station': (rundata.RunData('stub.station', 1, 'test',
+  #                                         'test_version', 'localhost',
+  #                                         5123, 52932), 0, None)
+  # })
+  # manager.stations = stations
+  openhtf_app = app.InitializeApp(manager)
 
   logging.getLogger('Rocket').setLevel(logging.INFO)  # Make Rocket less chatty
   rocket_server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
                          method='wsgi',
-                         app_info={'wsgi_app': app})
+                         app_info={'wsgi_app': openhtf_app})
   print('Starting server at http://localhost:%d' % FLAGS.port)
   rocket_server.start()
 
