@@ -13,17 +13,18 @@
 # limitations under the License.
 
 
+
+
+import logging
+import sys
+
 import flask
 import flask.views
 import gflags
-import logging
 import rocket
-import sys
 
-import dutmanager
-
+from openhtf import dutmanager
 from openhtf.proto import frontend_pb2
-from openhtf.proto import htf_pb2
 
 
 FLAGS = gflags.FLAGS
