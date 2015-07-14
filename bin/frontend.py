@@ -25,7 +25,6 @@ import os
 import rocket
 import sys
 
-from openhtf import rundata
 from openhtf.frontend.server import stations
 from openhtf.frontend.server import app
 
@@ -51,17 +50,6 @@ def main(argv):
     sys.exit(1)
 
   manager = stations.StationManager()
-  # manager.stations = {
-  #     data.station_name: (data, 0, None)
-  #     for data in rundata.EnumerateRunDirectory(FLAGS.rundir)
-  # }
-  # TODO: Remove this?
-  # stations.update({
-  #     'stub.station': (rundata.RunData('stub.station', 1, 'test',
-  #                                         'test_version', 'localhost',
-  #                                         5123, 52932), 0, None)
-  # })
-  # manager.stations = stations
   openhtf_app = app.InitializeApp(manager)
 
   logging.getLogger('Rocket').setLevel(logging.INFO)  # Make Rocket less chatty

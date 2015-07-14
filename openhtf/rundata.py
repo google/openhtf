@@ -97,7 +97,7 @@ def EnumerateRunDirectory(directory):
 
   Args:
     directory: The directory to enumerate, we only list
-      files in this directory no child directories.
+               files in this directory no child directories.
   """
   filenames = os.listdir(directory)
   filepaths = [os.path.join(directory, filename) for filename in filenames]

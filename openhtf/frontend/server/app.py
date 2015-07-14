@@ -63,8 +63,6 @@ class StationDataHandler(views.MethodView):
     self.manager = manager
 
   def get(self, station):
-    if station == 'stub.station':
-      return self.SanitizeAndSerialize_(self.GetStubData_(station))
     response = self.manager.FetchStationData(station)
     if response is stations.Responses.NOT_FOUND:
       flask.abort(404)
