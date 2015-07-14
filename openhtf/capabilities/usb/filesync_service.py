@@ -321,7 +321,7 @@ class AbstractFilesyncTransport(object):
     VALID_RESPONSES: A tuple of valid command responses we can expect to
       receive over this transport.
   """
-  CMD_TO_WIRE, WIRE_TO_CMD = adb_message.MakeWireCommands(
+  CMD_TO_WIRE, WIRE_TO_CMD = adb_message.make_wire_commands(
       'STAT', 'LIST', 'SEND', 'RECV', 'DENT', 'DONE', 'DATA', 'OKAY', 'FAIL',
   )
 
