@@ -58,6 +58,7 @@ class TestRunAdapter(object):
     self._logger = htflogger.HTFLogger(htf_test_run, cell_number)
     self._parameters = test.parameters.ForTestRun(htf_test_run)
     self._htf_test_run = htf_test_run
+    self._component_graph = genealogy.ComponentGraph(htf_test_run.assembly)
 
   @property
   def cell(self):
