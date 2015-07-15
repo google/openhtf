@@ -13,7 +13,11 @@
 # limitations under the License.
 
 
-"""Example OpenHTF test logic."""
+"""Example OpenHTF test logic.
+
+Run with (your virtualenv must be activated first):
+python ./hello_world.py --openhtf_config ./hello_world.yaml
+"""
 
 
 import example_capability
