@@ -122,7 +122,10 @@ message InformationParameter {
     // Data is text, encoded in UTF-8
     TEXT_UTF8 = 7;
 
-    // next tag = 8
+    TIFF = 8;
+    MP4 = 9;
+
+    // next tag = 10
   }
 
 

@@ -35,6 +35,15 @@ result.
 A testrun is a single start-to-finish execution of a single test.
 
 
+### Station
+A station is a notion that a given test ran at some point and may run again. It
+loosely reflects the idea of physical test stations that process multiple DUTs
+over time. OpenHTF writes a breadcrumb to the filesystem (in a directory that
+can be set using the --rundir flag) each time a test runs, and all tests that
+have the same name are considered to be the same station. This way the web
+frontend can display a consolidated list of known tests as a list of stations.
+
+
 ### Cell
 Cells are multiple concurrent copies of the same test being run and executed by
 the same instance of OpenHTF. In practice, most tests only have a single cell.

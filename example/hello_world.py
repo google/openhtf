@@ -37,7 +37,9 @@ METADATA.AddParameter('number').Number().InRange(0, 10).Doc(
 @capabilities.requires(example=example_capability.Example)
 def hello_world(test, example):
   """A hello world test phase."""
+  new = openhtf.prompter.DisplayPrompt('What\'s new?')
   test.logger.info('Hello World!')
+  print 'Here\'s what\'s new: %s' % new
   test.logger.info('Example says: %s', example.DoStuff())
 
 

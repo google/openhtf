@@ -41,10 +41,9 @@ load-plugins=
 #disable=
 
 # Supress all import errors until SublimeLinter-pylint gets virtualenv support.
-disable=import-error
-
 # Supress errors about locally defined disables.
-disable=I0011
+disable=import-error,I0011
+
 
 [REPORTS]
 

@@ -27,12 +27,16 @@ from openhtf import executor
 from openhtf import http_handler
 from openhtf import rundata
 from openhtf import htftest
+from openhtf import user_input
 from openhtf.util import configuration
 
 
 FLAGS = gflags.FLAGS
 FLAGS(sys.argv)
 
+
+# Pseudomodule for shared user input prompt state.
+prompter = user_input.getPrompter()
 
 class InvalidTestError(Exception):
   """Raised when a test is registered incomplete or otherwise invalid."""
