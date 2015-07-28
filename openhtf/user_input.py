@@ -33,7 +33,7 @@ import gflags
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('prompt_timeout_s',
-                      120,
+                      300,
                       'User prompt timeout in seconds.')
 
 
@@ -44,8 +44,8 @@ class PromptInputError(Exception):
 class MultiplePromptsError(Exception):
   """Raised if a prompt is invoked while there is an existing prompt."""
 
-class PromptSynchronizationError(Exception):
-  """Raised when prompt synchronization issues result in mismatched state."""
+class PromptUnansweredError(Exception):
+  """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
 Prompt = collections.namedtuple('Prompt', 'id message text_input')
@@ -89,10 +89,10 @@ class PromptManager(object):
 
     with self._lock:
       console_prompt.Stop()
-      if self._response is None:
-        raise PromptSynchronizationError
       self._prompt = None
       self._trigger.clear()
+      if self._response is None:
+        raise PromptUnansweredError
       return self._response
 
   def Respond(self, prompt_id, response):
@@ -102,6 +102,7 @@ class PromptManager(object):
     match the active prompt, do nothing.
     """
     if self._prompt is not None and prompt_id == self._prompt.id:
+      print 'Response received: %s' % response
       with self._lock:
         self._response = response
         self._trigger.set()
@@ -124,13 +125,12 @@ class ConsolePrompt(threading.Thread):
     self._stopped = False
 
   def Stop(self):
-    """Mark this ConsolePrompt as stopped so it stops waiting for input.
+    """Mark this ConsolePrompt as stopped.
 
     If this prompt was already stopped, do nothing.
     """
     if not self._stopped:
       self._stopped = True
-      print "Prompt was answered from elsewhere."
 
   def run(self):
     """Main logic for this thread to execute."""
