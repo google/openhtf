@@ -35,9 +35,8 @@ FLAGS = gflags.FLAGS
 FLAGS(sys.argv)
 
 
-# Create the prompt_manager pseudo-module.
-prompt_manager = user_input.PromptManager()
-
+# Pseudomodule for shared user input prompt state.
+prompter = user_input.getPrompter()
 
 class InvalidTestError(Exception):
   """Raised when a test is registered incomplete or otherwise invalid."""

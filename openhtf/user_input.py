@@ -17,85 +17,141 @@
 
 Allows tests to prompt for user input using the framework, so prompts can be
 presented via the CLI interface, the included web frontend, and custom
-frontends alike. Any part of the framework that needs to access shared prompt
-state should import and use the openhtf.user_input.prompt_manager psuedo-module.
+frontends alike. Any other part of the framework that needs to access shared
+prompt state should use the openhtf.prompter pseudomodule.
 """
 
 
+import collections
 import select
 import sys
+import termios
 import threading
+import uuid
 
+import gflags
 
-PROMPT_TIMEOUT_S = 120
+FLAGS = gflags.FLAGS
+gflags.DEFINE_integer('prompt_timeout_s',
+                      120,
+                      'User prompt timeout in seconds.')
 
 
 class PromptInputError(Exception):
   """Raised in the event that a prompt returns without setting the response."""
 
 
+class MultiplePromptsError(Exception):
+  """Raised if a prompt is invoked while there is an existing prompt."""
+
+class PromptSynchronizationError(Exception):
+  """Raised when prompt synchronization issues result in mismatched state."""
+
+
+Prompt = collections.namedtuple('Prompt', 'id message text_input')
+
+
 class PromptManager(object):
   """Top level abstraction for OpenHTF user prompt functionality.
+
+  Only one active prompt is allowed at a time, and an ID is stored in order to
+  ignore late responses to previous prompts.
   """
   def __init__(self):
-    self.prompt = None
-    self.response = None
-    self.lock = threading.Lock()
-    self.trigger = threading.Event()
+    self._prompt = None
+    self._lock = threading.Lock()
+    self._trigger = threading.Event()
 
-  def Prompt(self, message, need_input=False):
+  def DisplayPrompt(self, message, text_input=False):
     """Prompt for a user response with by showing the message.
 
     Args:
       message: The message to display to the user.
       need_input: True iff the user needs to provide a string back.
     """
-    self.trigger.clear()
-    self.prompt = message
-    self.response = None
-    prompter = ConsolePrompt(self, message, need_input)
+    if self._prompt is not None:
+      # TODO: We may need to do something more flexible here if prompt updating
+      #       is needed for shared test equipment.
+      raise MultiplePromptsError
+
+    with self._lock:
+      self._trigger.clear()
+      self._prompt = Prompt(id=uuid.uuid4(),
+                            message=message,
+                            text_input=text_input)
+      self._response = None
+
+    console_prompt = ConsolePrompt(self._prompt.id)
+    print self._prompt.message
+    console_prompt.start()
     # TODO: Check the prompt state from the http service and alert the frontend.
-    self.trigger.wait(PROMPT_TIMEOUT_S)
-    prompter.Stop()
-    if self.response is None:
-      # TODO: Raise some error.
-      pass
-    self.prompt = None
-    return self.response
+    self._trigger.wait(FLAGS.prompt_timeout_s)
+
+    with self._lock:
+      console_prompt.Stop()
+      if self._response is None:
+        raise PromptSynchronizationError
+      self._prompt = None
+      self._trigger.clear()
+      return self._response
+
+  def Respond(self, prompt_id, response):
+    """Respond to the prompt that has the given ID.
+    
+    If there is no active prompt or the prompt id being responded to doesn't
+    match the active prompt, do nothing.
+    """
+    if self._prompt is not None and prompt_id == self._prompt.id:
+      with self._lock:
+        self._response = response
+        self._trigger.set()
+
+
+# Module-level instance to achieve shared prompt state.
+_prompter = PromptManager()
 
 
 class ConsolePrompt(threading.Thread):
   """Thread that displays a prompt to the console and waits for a response.
 
   Args:
-    prompt_mgr: The prompt manager to report back to.
-    message: The message to display to the user.
-    need_input: True iff the user needs to provide a string back.
+    prompt_id: The prompt manager's id associated with this prompt.
   """
-
-  def __init__(self, prompt_mgr, message, need_input=False):
+  def __init__(self, prompt_id):
     super(ConsolePrompt, self).__init__()
     self.daemon = True
+    self._prompt_id = prompt_id
     self._stopped = False
-    self.prompt_mgr = prompt_mgr
-    self.message = message
-    self.need_input = need_input
 
   def Stop(self):
-    """Mark this ConsolePrompt as stopped so it stops waiting for input."""
-    self._stopped = True
+    """Mark this ConsolePrompt as stopped so it stops waiting for input.
+
+    If this prompt was already stopped, do nothing.
+    """
+    if not self._stopped:
+      self._stopped = True
+      print "Prompt was answered from elsewhere."
 
   def run(self):
     """Main logic for this thread to execute."""
-    print self.message
-    if not self.need_input:
-      print "(press ENTER to continue)"
+
+    # First clear any lingering buffered terminal input.
+    termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+
     while not self._stopped:
       inputs, outputs, executes = select.select([sys.stdin], [], [], 0.001)
       for stream in inputs:
         if stream == sys.stdin:
           response = sys.stdin.readline()
-          self.prompt_mgr.lock.acquire()
-          self.prompt_mgr.response = response
-          self.prompt_mgr.trigger.set()
-          self.prompt_mgr.lock.release()
+          _prompter.Respond(self._prompt_id, response)
+          self._stopped = True
+          return
+
+
+def getPrompter():
+  """Return the shared prompt manager.
+
+  The prompter returned is a module-level instance. Thus we take advantage of
+  the fact that modules are essentially singletons, rather than implement our
+  own Singleton or Borg or DeleBorg or whatever."""
+  return _prompter
