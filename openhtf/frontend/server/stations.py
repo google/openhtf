@@ -65,7 +65,7 @@ class StationManager(object):
       station_name: The station name to fetch, we should have the
     """
     data = self.stations.get(station_name)
-    if not data:
+    if not data or self.GetStationMap()[station_name] == 'OFFLINE':
       return Responses.NOT_FOUND
     rundata, last_time_s, response = data
     if time.time() - last_time_s <= MIN_POLL_S:
