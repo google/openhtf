@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+"""HTTP interface to OpenHTF framework."""
 
 
 import logging

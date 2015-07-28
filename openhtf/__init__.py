@@ -27,11 +27,16 @@ from openhtf import executor
 from openhtf import http_handler
 from openhtf import rundata
 from openhtf import htftest
+from openhtf import user_input
 from openhtf.util import configuration
 
 
 FLAGS = gflags.FLAGS
 FLAGS(sys.argv)
+
+
+# Create the prompt_manager pseudo-module.
+prompt_manager = user_input.PromptManager()
 
 
 class InvalidTestError(Exception):

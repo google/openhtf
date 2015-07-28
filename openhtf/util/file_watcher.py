@@ -15,7 +15,8 @@
 
 """File watcher that uses inotify to watch for file changes.
 
-Change in this context is defined as any IN_CLOSE_WRITE event. A word of
+Change in this context is defined as any of the events listed in CHANGE_EVENTS.
+More on inotify events here (http://linux.die.net/man/7/inotify). A word of
 caution -- because of the way inotify queues events, it is possible (even easy)
 to create an infinite loop of events and callbacks if the callback function
 passed in contains logic that modifies the path being watched. While such a loop
@@ -39,6 +40,8 @@ class FileWatcher(threading.Thread):
               watched (reading is okay).
   """
 
+  CHANGE_EVENTS = ['IN_CLOSE_WRITE', 'IN_CREATE', 'IN_DELETE']
+
   def __init__(self, path, callback):
     super(FileWatcher, self).__init__()
     self.path = path
@@ -55,7 +58,7 @@ class FileWatcher(threading.Thread):
         if event is not None:
           # event is (header, type_names, watch_path, filename).
           type_names = event[1]
-          if 'IN_CLOSE_WRITE' in type_names:  # We only care about real changes.
+          if len(set(type_names).intersection(set(self.CHANGE_EVENTS))) > 0:
             self.callback(event)
 
     finally:
