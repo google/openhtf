@@ -110,3 +110,25 @@ So common commands to be aware of:
   tests to be debugged in chrome and rerun after each change. There's also
   `test:watch` which runs karma in auto-watch mode non-interactively.
   * `npm run start` or `npm start` will run the frontend as a convenience.
+
+## TL;DR
+To get set up to work on the _framework_ itself, run these steps:
+1. sudo apt-get install python-pip npm swig libssl-dev python-dev
+2. sudo pip install --upgrade pip
+3. sudo pip install virtualenv
+4. (cd to openhtf directory)
+5. virtualenv venv
+6. . venv/bin/activate
+7. pip install -r requirements.txt
+8. python setup.py build_proto
+9. sudo mkdir /var/run/openhtf
+10. sudo chmod 777 /var/run/openhtf/
+
+To get set up to work on the included web _frontend_, run these steps:
+1. sudo apt-get install npm
+2. npm install -g npm
+3. sudo ln -s /usr/bin/nodejs /usr/bin/node
+4. (cd to frontend directory openhtf/openhtf/frontend/client)
+5. mkdir dist
+6. npm install
+7. npm run build
