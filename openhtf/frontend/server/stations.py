@@ -65,7 +65,10 @@ class StationManager(object):
       station_name: The station name to fetch, we should have the
     """
     data = self.stations.get(station_name)
-    if not data or self.GetStationMap()[station_name] == 'OFFLINE':
+    # If the station is offline, just return an empty response.
+    if self.GetStationMap()[station_name] == 'OFFLINE':
+      return frontend_pb2.HTFStationResponse()
+    if not data:
       return Responses.NOT_FOUND
     rundata, last_time_s, response = data
     if time.time() - last_time_s <= MIN_POLL_S:
