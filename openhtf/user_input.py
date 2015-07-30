@@ -99,9 +99,9 @@ class PromptManager(object):
     If there is no active prompt or the prompt id being responded to doesn't
     match the active prompt, do nothing.
     """
-    if self._prompt is not None and prompt_id == self._prompt.id:
-      print 'Response received: %s' % response
     with self._cond:
+      if self._prompt is not None and prompt_id == self._prompt.id:
+        print 'Response received: %s' % response
       self._response = response
       self._cond.notifyAll()
 
