@@ -38,8 +38,8 @@ import threads
 FLAGS = gflags.FLAGS
 
 gflags.DEFINE_string('openhtf_config',
-                    '/usr/local/htf_client/config/clientfoo.yaml',
-                    'The HTF configuration file for this tester')
+                     '/usr/local/openhtf_client/config/clientfoo.yaml',
+                     'The OpenHTF configuration file for this tester')
 
 gflags.DEFINE_multistring(
     'openhtf_config_value', [], 'Allows specifying a configuration key=value '

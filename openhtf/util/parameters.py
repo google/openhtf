@@ -43,14 +43,13 @@ Parameters declared at the test level are added directly to the test metadata:
 Alternatively, parameters (but not extended parameters) can declared at the
 phase level through the use of a phase decorator:
 
-  @parameters.AddParameters('simple_metric')
-  @parameters.AddParameters(
+@parameters.AddParameters(
       parameters.TestParameterDescriptor(
         'number_widgets').Integer.InRange(5, 10).Doc(
         '''This phase parameter tracks the number of widgets.'''))
-  @parameters.AddParameters(
-      [parameters.TestParameterDescriptor(
-          'level_%s' % i) for i in ['none', 'some', 'all']])
+@parameters.AddParameters(
+    [parameters.TestParameterDescriptor(
+        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
   def WidgetTestPhase(test):
     ...
 
@@ -716,7 +715,7 @@ def AddParameters(params):
 
   Args:
     params: List of TestParameterDescriptor objects to attach, or a single
-    TestParameterDescriptor object to attach, or a string parameter name.
+    TestParameterDescriptor object to attach.
   Returns:
     A decorator that attaches the given parameter(s) to the decorated phase.
   """

@@ -29,5 +29,5 @@ class Example(capabilities.BaseCapability):
     logging.info('Tearing down %s', self)
 
   def DoStuff(self):
-    time.sleep(10)
+    time.sleep(3)
     return 'Did stuff!'

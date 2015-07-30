@@ -20,33 +20,55 @@ python ./hello_world.py --openhtf_config ./hello_world.yaml
 """
 
 
+import time
+
 import example_capability
 import openhtf
 
 from openhtf import htftest
 import openhtf.capabilities as capabilities
+from openhtf.util import parameters
+
 
 METADATA = htftest.TestMetadata(name='openhtf_example')
 METADATA.SetVersion(1)
 METADATA.Doc('Example tester')
 
-METADATA.AddParameter('number').Number().InRange(0, 10).Doc(
+METADATA.AddParameter('favorite_number').Number().InRange(0, 10).Doc(
     "Example numeric parameter.")
+METADATA.AddParameter('favorite_word').String().MatchesRegex(r'elaborate').Doc(
+    '''Example string parameter.''')
 
 
+@parameters.AddParameters(
+    parameters.TestParameterDescriptor(
+        'widget_type').String().MatchesRegex(r'.*Widget$').Doc(
+            '''This phase parameter tracks the type of widgets.'''))
+@parameters.AddParameters(
+    [parameters.TestParameterDescriptor(
+        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 @capabilities.requires(example=example_capability.Example)
 def hello_world(test, example):
-  """A hello world test phase."""
-  new = openhtf.prompter.DisplayPrompt('What\'s new?')
-  test.logger.info('Hello World!')
-  print 'Here\'s what\'s new: %s' % new
-  test.logger.info('Example says: %s', example.DoStuff())
+    """A hello world test phase."""
+    test.logger.info('Hello World!')
+    test.parameters.widget_type = openhtf.prompter.DisplayPrompt(
+        'What\'s the widget type?')
+    test.logger.info('Example says: %s', example.DoStuff())
 
 
-def set_param(test):
-  """Test phase that sets a parameter."""
-  test.parameters.number = 1
+def set_params(test):
+    """Test phase that sets a parameter."""
+    test.parameters.favorite_number = 9
+    time.sleep(2)
+    test.parameters.favorite_word = 'Elaborate'
+    time.sleep(2)
+    test.parameters.level_none = 0
+    time.sleep(2)
+    test.parameters.level_some = 8
+    time.sleep(2)
+    test.parameters.level_all = 9
+    time.sleep(2)
 
 
 if __name__ == '__main__':
-  openhtf.execute_test(METADATA, [hello_world, set_param])
+    openhtf.execute_test(METADATA, [hello_world, set_params])
