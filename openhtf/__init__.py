@@ -36,7 +36,7 @@ FLAGS(sys.argv)
 
 
 # Pseudomodule for shared user input prompt state.
-prompter = user_input.getPrompter()
+prompter = user_input.get_prompter()  # pylint: disable=C0103
 
 class InvalidTestError(Exception):
   """Raised when a test is registered incomplete or otherwise invalid."""
@@ -75,7 +75,7 @@ def execute_test(metadata, phases):
   config = configuration.HTFConfig()
   rundata.RunData(metadata.proto.name,
                   len(config.cell_info),
-                  'test',
+                  config.test_type,
                   metadata.proto.version_string,
                   socket.gethostname(),
                   FLAGS.http_port,

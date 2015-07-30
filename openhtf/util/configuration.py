@@ -630,3 +630,4 @@ Reset = HTFConfig().model.Reset
 
 # Everywhere that uses configuration uses this, so we just declare it here.
 Declare('target_name', 'The name of this tester', required=True)
+Declare('test_type', 'The type of this tester', required=True)

@@ -59,8 +59,8 @@ class PromptManager(object):
   """
   def __init__(self):
     self._prompt = None
-    self._lock = threading.Lock()
-    self._trigger = threading.Event()
+    self._response = None
+    self._cond = threading.Condition()
 
   def DisplayPrompt(self, message, text_input=False):
     """Prompt for a user response with by showing the message.
@@ -68,29 +68,27 @@ class PromptManager(object):
     Args:
       message: The message to display to the user.
       need_input: True iff the user needs to provide a string back.
+    Returns:
+      The string input by the user.
     """
-    if self._prompt is not None:
+    with self._cond:
+      if self._prompt is not None:
       # TODO: We may need to do something more flexible here if prompt updating
       #       is needed for shared test equipment.
-      raise MultiplePromptsError
-
-    with self._lock:
-      self._trigger.clear()
+        raise MultiplePromptsError
       self._prompt = Prompt(id=uuid.uuid4(),
                             message=message,
                             text_input=text_input)
       self._response = None
 
-    console_prompt = ConsolePrompt(self._prompt.id)
-    print self._prompt.message
-    console_prompt.start()
-    # TODO: Check the prompt state from the http service and alert the frontend.
-    self._trigger.wait(FLAGS.prompt_timeout_s)
-
-    with self._lock:
+      console_prompt = ConsolePrompt(self._prompt.id, self.Respond)
+      print self._prompt.message
+      console_prompt.start()
+      # TODO: Check the prompt state from the http service and do the right
+      #       thing in the frontend.
+      self._cond.wait(FLAGS.prompt_timeout_s)
       console_prompt.Stop()
       self._prompt = None
-      self._trigger.clear()
       if self._response is None:
         raise PromptUnansweredError
       return self._response
@@ -103,13 +101,13 @@ class PromptManager(object):
     """
     if self._prompt is not None and prompt_id == self._prompt.id:
       print 'Response received: %s' % response
-      with self._lock:
-        self._response = response
-        self._trigger.set()
+    with self._cond:
+      self._response = response
+      self._cond.notifyAll()
 
 
 # Module-level instance to achieve shared prompt state.
-_prompter = PromptManager()
+PROMPTER = PromptManager()
 
 
 class ConsolePrompt(threading.Thread):
@@ -118,9 +116,10 @@ class ConsolePrompt(threading.Thread):
   Args:
     prompt_id: The prompt manager's id associated with this prompt.
   """
-  def __init__(self, prompt_id):
+  def __init__(self, prompt_id, callback):
     super(ConsolePrompt, self).__init__()
     self.daemon = True
+    self._callback = callback
     self._prompt_id = prompt_id
     self._stopped = False
 
@@ -139,19 +138,20 @@ class ConsolePrompt(threading.Thread):
     termios.tcflush(sys.stdin, termios.TCIOFLUSH)
 
     while not self._stopped:
-      inputs, outputs, executes = select.select([sys.stdin], [], [], 0.001)
+      inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
       for stream in inputs:
         if stream == sys.stdin:
           response = sys.stdin.readline()
-          _prompter.Respond(self._prompt_id, response)
+          self._callback(self._prompt_id, response)
           self._stopped = True
           return
 
 
-def getPrompter():
+def get_prompter():
   """Return the shared prompt manager.
 
-  The prompter returned is a module-level instance. Thus we take advantage of
-  the fact that modules are essentially singletons, rather than implement our
-  own Singleton or Borg or DeleBorg or whatever."""
-  return _prompter
+  The prompter returned is a module-level instance. Thus rather than implement
+  our own Singleton or Borg or DeleBorg, we take advantage of the fact that
+  modules are already effectively singletons.
+  """
+  return PROMPTER
