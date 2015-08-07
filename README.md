@@ -32,36 +32,36 @@ additional fluff. Those duties are (with example tasks):
     * Shared "capabilities" wrap hardware interfaces like USB, UART, GPIO, etc.
     * Can mix freely with higher levels of abstraction like ADB.
 
->  .------------------------.
->  |     TEST FRAMEWORK     |
->  |------------------------|
->  | openhtf python package |
->  '------------------------'
->    |
->    |    .-------------------------.
->    |    |      CONFIGURATION      |
->    |--->|-------------------------|
->    |    | configuration submodule |
->    |    '-------------------------'
->    |
->    |    .------------------------.
->    |    |      TESTRUN I/O       |
->    |--->|------------------------|
->    |    | http_handler submodule |
->    |    | rundata submodule      |
->    |    '------------------------'
->    |
->    |    .--------------------.
->    |    |   TEST EXECUTION   |
->    '--->|--------------------|
->         | executor submodule |
->         '--------------------'
->            |
->            |     .------------------------.
->            |     |   HARDWARE INTERFACE   |
->            '---->|------------------------|
->                  | capabilities submodule |
->                  '------------------------'
+    .------------------------.
+    |     TEST FRAMEWORK     |
+    |------------------------|
+    | openhtf python package |
+    '------------------------'
+      |
+      |    .-------------------------.
+      |    |      CONFIGURATION      |
+      |--->|-------------------------|
+      |    | configuration submodule |
+      |    '-------------------------'
+      |
+      |    .------------------------.
+      |    |      TESTRUN I/O       |
+      |--->|------------------------|
+      |    | http_handler submodule |
+      |    | rundata submodule      |
+      |    '------------------------'
+      |
+      |    .--------------------.
+      |    |   TEST EXECUTION   |
+      '--->|--------------------|
+           | executor submodule |
+           '--------------------'
+              |
+              |     .------------------------.
+              |     |   HARDWARE INTERFACE   |
+              '---->|------------------------|
+                    | capabilities submodule |
+                    '------------------------'
 
 
 ## Nomenclature
