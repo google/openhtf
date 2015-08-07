@@ -32,6 +32,8 @@ additional fluff. Those duties are (with example tasks):
     * Shared "capabilities" wrap hardware interfaces like USB, UART, GPIO, etc.
     * Can mix freely with higher levels of abstraction like ADB.
 
+
+```
     .------------------------.
     |     TEST FRAMEWORK     |
     |------------------------|
@@ -62,6 +64,7 @@ additional fluff. Those duties are (with example tasks):
               '---->|------------------------|
                     | capabilities submodule |
                     '------------------------'
+```
 
 
 ## Nomenclature
