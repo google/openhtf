@@ -2,9 +2,66 @@ DISCLAIMER: This is not an official Google product.
 
 
 # OpenHTF
-OpenHTF is an open-source hardware testing framework targeting manufacturing
-use cases, but hopefully general enough to be useful in a variety of hardware
-testing scenarios.
+The open-source hardware testing framework.
+
+
+## Design Philosophy
+OpenHTF is designed to abstract away nearly all the boiler plate of test setup 
+and execution, so test engineers can focus entirely on writing actual tests. It
+aspires to do so in the most lightweight and minimalistic way possible. It is
+general enough to be useful in a variety of hardware testing scenarios, from the
+lab bench to the manufacturing floor.
+
+
+## Duties of a Hardware Testing Framework
+OpenHTF attempts to distill the core duties _any_ hardware testing framework 
+must perform, handle each one in a clean, sensible fashion, and avoid any 
+additional fluff. Those duties are (with example tasks):
+
+  * Manage configuration for each test.
+  * Predicatable testrun I/O.
+    * Same output format across all test stations can make it easier to write
+      systems to ingest and analyze test results.
+    * Uniform frontend across test stations makes for intuitive operator
+      interactions.
+    * Possible to monitor all stations from a central frontend.
+  * Manage test start and exectution.
+    * Plug in a DUT and have a test start automatically.
+    * Provide a uniform model of seqential test logic (phases).
+  * Provide hardware interface tools.
+    * Shared "capabilities" wrap hardware interfaces like USB, UART, GPIO, etc.
+    * Can mix freely with higher levels of abstraction like ADB.
+
+.------------------------.
+|     TEST FRAMEWORK     |
+|------------------------|
+| openhtf python package |
+'------------------------'
+  |
+  |    .-------------------------.
+  |    |      CONFIGURATION      |
+  |--->|-------------------------|
+  |    | configuration submodule |
+  |    '-------------------------'
+  |
+  |    .------------------------.
+  |    |      TESTRUN I/O       |
+  |--->|------------------------|
+  |    | http_handler submodule |
+  |    | rundata submodule      |
+  |    '------------------------'
+  |
+  |    .--------------------.
+  |    |   TEST EXECUTION   |
+  '--->|--------------------|
+       | executor submodule |
+       '--------------------'
+          |
+          |     .------------------------.
+          |     |   HARDWARE INTERFACE   |
+          '---->|------------------------|
+                | capabilities submodule |
+                '------------------------'
 
 
 ## Nomenclature
