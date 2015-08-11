@@ -136,8 +136,8 @@ class UsbHandle(object):
     while True:
       try:
         self.Read(FLUSH_READ_SIZE, timeout_ms=10)
-      except usb_exceptions.LibusbWrappingError as e:
-        if e.IsTimeout():
+      except usb_exceptions.LibusbWrappingError as exception:
+        if exception.IsTimeout():
           break
         raise
 

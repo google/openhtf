@@ -582,7 +582,6 @@ class AdbConnection(object):
       # pylint: disable=undefined-loop-variable
       stream_transport = AdbStreamTransport(self, local_id, msg_queue)
       self._stream_transport_map[local_id] = stream_transport
-      # pylint: enable=undefined-loop-variable
     return stream_transport
 
   def _HandleMessageForStream(self, stream_transport, message, timeout):

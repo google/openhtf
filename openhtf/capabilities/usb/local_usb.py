@@ -227,6 +227,6 @@ class LibUsbHandle(usb_handle.UsbHandle):
           yield cls(device, setting, name=name,
                     default_timeout_ms=default_timeout_ms)
       except libusb1.USBError as exception:
-        if exception.value !=
-           libusb1.libusb_error.forward_dict['LIBUSB_ERROR_ACCESS']:
+        if (exception.value !=
+            libusb1.libusb_error.forward_dict['LIBUSB_ERROR_ACCESS']):
           raise

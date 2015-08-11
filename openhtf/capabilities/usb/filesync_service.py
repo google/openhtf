@@ -201,7 +201,7 @@ class FilesyncService(object):
     for data_msg in transport.ReadUntilDone('DATA', timeout):
       dest_file.write(data_msg.data)
 
-  def _CheckForFailMessage(self, transport, exc_info, timeout):
+  def _CheckForFailMessage(self, transport, exc_info, timeout):  # pylint: disable=no-self-use
     """Check for a 'FAIL' message from transport.
 
     This method always raises, if 'FAIL' was read, it will raise an
@@ -225,6 +225,7 @@ class FilesyncService(object):
     # Otherwise reraise the original exception.
     raise exc_info[0], exc_info[1], exc_info[2]
 
+  # pylint: disable=too-many-arguments
   def Send(self, src_file, filename, st_mode=DEFAULT_PUSH_MODE, mtime=None,
            timeout=None):
     """Push a file-like object to the device.
@@ -261,6 +262,8 @@ class FilesyncService(object):
 
     data_msg = transport.ReadMessage(timeout)
     data_msg.AssertCommandIs('OKAY')
+
+  # pylint: enable=too-many-arguments
 
   @classmethod
   def UsingConnection(cls, connection, timeout=None):
@@ -380,6 +383,7 @@ class AbstractFilesyncTransport(object):
                                   *msg._replace(**replace_dict)), timeout)
     if msg.has_data:
       self.stream.Write(data, timeout)
+  
   # pylint: enable=protected-access
 
   def ReadUntilDone(self, command, timeout=None):

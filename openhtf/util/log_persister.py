@@ -15,13 +15,13 @@
 
 """Module to handle log persistence."""
 
+
 import logging
 import os
 import time
 
 import gflags
 
-from openhtf import configuration
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_multistring('output_dir', ['./'],

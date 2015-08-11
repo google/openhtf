@@ -23,7 +23,7 @@ import logging
 import os
 import struct
 
-from openhtf.capabilities.usb import usb_exceptions
+from . import usb_exceptions
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('fastboot_download_chunk_size_kb', 1024,
@@ -77,6 +77,7 @@ class FastbootProtocol(object):
     """
     return self._AcceptResponses('OKAY', info_cb, timeout_ms=timeout_ms)
 
+  # pylint: disable=too-many-arguments
   def HandleDataSending(self, source_file, source_len,
                         info_cb=DEFAULT_MESSAGE_CALLBACK,
                         progress_callback=None, timeout_ms=None):
@@ -110,6 +111,8 @@ class FastbootProtocol(object):
           source_len, accepted_size)
     self._Write(source_file, accepted_size, progress_callback)
     return self._AcceptResponses('OKAY', info_cb, timeout_ms=timeout_ms)
+
+  # pylint: enable=too-many-arguments
 
   def _AcceptResponses(self, expected_header, info_cb, timeout_ms=None):
     """Accepts responses until the expected header or a FAIL.
@@ -148,7 +151,7 @@ class FastbootProtocol(object):
         raise usb_exceptions.FastbootInvalidResponse(
             'Got unknown header %s and response %s', header, remaining)
 
-  def _HandleProgress(self, total, progress_callback):
+  def _HandleProgress(self, total, progress_callback):  # pylint: disable=no-self-use
     """Calls the callback with the current progress and total ."""
     current = 0
     while True:
@@ -200,10 +203,11 @@ class FastbootCommands(object):
     """Send a simple command."""
     self._protocol.SendCommand(command, arg)
     return self._protocol.HandleSimpleResponses(**kwargs)
-
+    
+  # pylint: disable=too-many-arguments
   def FlashFromFile(self, partition, source_file, source_len=0,
                     info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None,
-                    timeout_ms=None):  # pylint: disable=too-many-arguments
+                    timeout_ms=None):
     """Flashes a partition from the file on disk.
 
     Args:
@@ -226,6 +230,8 @@ class FastbootCommands(object):
     flash_response = self.Flash(partition, info_cb=info_cb,
                                 timeout_ms=timeout_ms)
     return download_response + flash_response
+
+  # pylint: enable=too-many-arguments
 
   def Download(self, source_file, source_len=0,
                info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None):

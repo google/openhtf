@@ -70,7 +70,7 @@ class FastbootCapability(capabilities.BaseCapability):
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
             interface_protocol=fastboot_device.PROTOCOL))
-    device.TearDown = device.Close  #pylint: disable=invalid-name
+    device.TearDown = device.Close  # pylint: disable=invalid-name
     return device
 
 
@@ -89,5 +89,5 @@ class AdbCapability(capabilities.BaseCapability):
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),
         **kwargs)
-    device.TearDown = device.Close  #pylint: disable=invalid-name
+    device.TearDown = device.Close  # pylint: disable=invalid-name
     return device

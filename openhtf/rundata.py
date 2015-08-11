@@ -102,5 +102,5 @@ def EnumerateRunDirectory(directory):  # pylint: disable=invalid-name
   filenames = os.listdir(directory)
   filepaths = [os.path.join(directory, filename) for filename in filenames]
   result = [RunData.FromFile(filepath) for filepath in filepaths if (
-      os.path.isfile(filepath)]
+      os.path.isfile(filepath))]
   return result
