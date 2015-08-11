@@ -26,8 +26,8 @@ import libusb1
 import logging
 import usb1
 
-import usb_exceptions
-import usb_handle
+from openhtf.capabilities.usb import usb_exceptions
+from openhtf.capabilities.usb import usb_handle
 
 _LOG = logging.getLogger('usb_handles')
 
@@ -103,6 +103,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
 
   @staticmethod
   def _DeviceToSysfsPath(device):
+    """Convert device to corresponding sysfs path."""
     return '%s-%s' % (device.getBusNumber(),
                       '.'.join(map(str, device.GetPortNumberList())))
 
@@ -225,6 +226,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
 
           yield cls(device, setting, name=name,
                     default_timeout_ms=default_timeout_ms)
-      except libusb1.USBError as e:
-        if e.value != libusb1.libusb_error.forward_dict['LIBUSB_ERROR_ACCESS']:
+      except libusb1.USBError as exception:
+        if exception.value !=
+           libusb1.libusb_error.forward_dict['LIBUSB_ERROR_ACCESS']:
           raise

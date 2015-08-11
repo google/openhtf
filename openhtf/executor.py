@@ -90,10 +90,10 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
   def __init__(self):
     self.failure_reason = ''
 
-  def __enter__(self):
+  def __enter__(self):  # pylint: disable=invalid-name
     return self
 
-  def __exit__(self, exc_type, exc_value, exc_tb):
+  def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
     if exc_type is not None:
       # Only log if there is a failure.
       _LOG.exception(self.failure_reason)

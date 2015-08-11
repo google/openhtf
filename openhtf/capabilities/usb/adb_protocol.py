@@ -106,7 +106,7 @@ ADB_BANNER = 'googlex_adb'
 STREAM_ID_LIMIT = (2**16)
 
 
-class AuthSigner(object): #pylint: disable=R0921
+class AuthSigner(object):
   """Signer for use with authenticated ADB, introduced in 4.4.x/KitKat."""
 
   def Sign(self, data):
@@ -224,7 +224,7 @@ class AdbStream(object):
     self._transport.Close(timeout_ms)
 
 
-class AdbStreamTransport(object): # pylint: disable=R0902
+class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
   """This class encapsulates the transport aspect of an ADB stream.
 
   This class handles the interface between AdbStreams and an AdbConnection,

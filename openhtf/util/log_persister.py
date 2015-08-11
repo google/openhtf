@@ -21,14 +21,14 @@ import time
 
 import gflags
 
-import configuration
+from openhtf import configuration
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_multistring('output_dir', ['./'],
                           'Directories to which to output test results.')
 
 
-def PersistTestRun(test_run):
+def PersistTestRun(test_run):  # pylint: disable=invalid-name
   """Persists a testrun proto to disk.
 
   Args:

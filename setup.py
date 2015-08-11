@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Setup script for OpenHTF."""
+
 
 import glob
 import os
@@ -28,9 +30,9 @@ class BuildClientCommand(Command):
   """Build OpenHTF frontend client."""
   description = "Builds the client javascript."""
   user_options = build.user_options + [
-                     ('clientdir=', 'c', 'Location of client directory.'),
-                     ('regenproto', 'r', 'True to regenerate the js proto files.'),
-                     ('npmpath=', 'n', 'Path to npm')]
+      ('clientdir=', 'c', 'Location of client directory.'),
+      ('regenproto', 'r', 'True to regenerate the js proto files.'),
+      ('npmpath=', 'n', 'Path to npm')]
 
   def initialize_options(self):
     self.clientdir = './openhtf/frontend/client'
@@ -43,12 +45,13 @@ class BuildClientCommand(Command):
   def run(self):
     if self.regenproto:
       subprocess.check_call([self.npmpath, 'run', 'build:proto'],
-          cwd=self.clientdir)
+                            cwd=self.clientdir)
     subprocess.check_call([self.npmpath, 'run', 'build'], cwd=self.clientdir)
     build.run(self)
 
 
 class BuildProtoCommand(Command):
+  """Custom setup command to build protocol buffers."""
   description = "Builds the proto files into python files."""
   user_options = [('grpc-python-plugin=', None, 'Path to the grpc py plugin.'),
                   ('protoc=', None, 'Path to the protoc compiler.'),
@@ -100,53 +103,54 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 
 class CleanCommand(clean):
+  """Custom logic for the clean command."""
 
   def run(self):
     clean.run(self)
     targets = [
-      './dist',
-      './*.egg-info',
-      './openhtf/proto/*_pb2.py',
-      '**/*.pyc',
-      '**/*.tgz',
+        './dist',
+        './*.egg-info',
+        './openhtf/proto/*_pb2.py',
+        '**/*.pyc',
+        '**/*.tgz',
     ]
     os.system('rm -vrf %s' % ' '.join(targets))
 
 
-requires = [
-  'contextlib2==0.4.0',
-  'enum==0.4.4',
-  'Flask==0.10.1',
-  'itsdangerous==0.24',
-  'Jinja2==2.7.3',
-  'libusb1==1.3.0',
-  'M2Crypto==0.22.3',
-  'MarkupSafe==0.23',
-  'protobuf==2.6.1',
-  'pyaml==15.3.1',
-  'python-gflags==2.0',
-  'PyYAML==3.11',
-  'Rocket==1.2.4',
-  'singledispatch==3.4.0.3',
-  'six==1.9.0',
-  'Werkzeug==0.10.4',
+requires = [    # pylint: disable=invalid-name
+    'contextlib2==0.4.0',
+    'enum==0.4.4',
+    'Flask==0.10.1',
+    'itsdangerous==0.24',
+    'Jinja2==2.7.3',
+    'libusb1==1.3.0',
+    'M2Crypto==0.22.3',
+    'MarkupSafe==0.23',
+    'protobuf==2.6.1',
+    'pyaml==15.3.1',
+    'python-gflags==2.0',
+    'PyYAML==3.11',
+    'Rocket==1.2.4',
+    'singledispatch==3.4.0.3',
+    'six==1.9.0',
+    'Werkzeug==0.10.4',
 ]
 
 
 setup(
-  name='OpenHTF',
-  version='0.9',
-  description='Open Hardware Testing Framework',
-  author='John Hawley',
-  author_email='madsci@google.com',
-  maintainer='Joe Ethier',
-  maintainer_email='jethier@google.com',
-  packages=find_packages(exclude='example'),
-  scripts=['bin/frontend.py', 'bin/dumpdata.py'],
-  cmdclass={
-      'build_client': BuildClientCommand,
-      'build_proto': BuildProtoCommand,
-      'clean': CleanCommand,
-  },
-  install_requires=requires,
+    name='OpenHTF',
+    version='0.9',
+    description='Open Hardware Testing Framework',
+    author='John Hawley',
+    author_email='madsci@google.com',
+    maintainer='Joe Ethier',
+    maintainer_email='jethier@google.com',
+    packages=find_packages(exclude='example'),
+    scripts=['bin/frontend.py', 'bin/dumpdata.py'],
+    cmdclass={
+        'build_client': BuildClientCommand,
+        'build_proto': BuildProtoCommand,
+        'clean': CleanCommand,
+    },
+    install_requires=requires,
 )

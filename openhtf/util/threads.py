@@ -25,15 +25,16 @@ class ThreadTerminationError(BaseException):
   """Sibling of SystemExit, but specific to thread termination."""
 
 
-def Loop(fn):
+def Loop(fn):   # pylint: disable=invalid-name
   """Causes a function to loop indefinitely."""
   @functools.wraps(fn)
-  def _Proc(*args, **kwargs):
+  def _proc(*args, **kwargs):
+    """Wrapper to return."""
     while True:
       fn(*args, **kwargs)
-  _Proc.once = fn  # way for tests to invoke the function once
+  _proc.once = fn  # way for tests to invoke the function once
                    # you may need to pass in "self" since this may be unbound.
-  return _Proc
+  return _proc
 
 
 class ExceptionSafeThread(threading.Thread):
@@ -77,6 +78,7 @@ class KillableThread(ExceptionSafeThread):
       self.AsyncRaise(ThreadTerminationError)
 
   def AsyncRaise(self, exc_type):
+    """Raise the exception."""
     assert self.is_alive(), 'Only running threads have a thread identity'
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
         ctypes.c_long(self.ident), ctypes.py_object(exc_type))
@@ -88,7 +90,7 @@ class KillableThread(ExceptionSafeThread):
       raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
 
 
-class NoneByDefaultThreadLocal(threading.local):
+class NoneByDefaultThreadLocal(threading.local):  # pylint: disable=too-few-public-methods
   """Makes thread local a bit easier to use by returning None by default.
 
   In general thread local sucks since you set a property on one thread and it
@@ -97,14 +99,15 @@ class NoneByDefaultThreadLocal(threading.local):
   check.
   """
 
-  def __getattr__(self, _):
+  def __getattr__(self, _):  # pylint: disable=invalid-name
     return None
 
 
-def Synchronized(func):
+def Synchronized(func):  # pylint: disable=invalid-name
   """Hold self.lock while executing func."""
   @functools.wraps(func)
-  def SynchronizedMethod(self, *args, **kwargs):
+  def synchronized_method(self, *args, **kwargs):
+    """Wrapper to return."""
     with self.lock:
       return func(self, *args, **kwargs)
-  return SynchronizedMethod
+  return synchronized_method

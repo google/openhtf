@@ -18,7 +18,7 @@
 import binascii
 import string
 
-import usb_handle
+from openhtf.capabilities.usb import usb_handle
 
 
 class StubUsbHandle(usb_handle.UsbHandle):
@@ -34,9 +34,11 @@ class StubUsbHandle(usb_handle.UsbHandle):
 
   @classmethod
   def _Dotify(cls, data):
+    """Add dots."""
     return ''.join(char if char in cls.PRINTABLE_DATA else '.' for char in data)
 
-  def Write(self, data, unused_timeout_ms=None):
+  def Write(self, data, dummy=None):
+    """Stub Write method."""
     assert not self.closed
     if self.expected_write_data is None:
       return
@@ -47,7 +49,8 @@ class StubUsbHandle(usb_handle.UsbHandle):
           self._Dotify(expected_data), binascii.hexlify(data),
           self._Dotify(data)))
 
-  def Read(self, length, unused_timeout_ms=None):
+  def Read(self, length, dummy=None):
+    """Stub Read method."""
     assert not self.closed
     data = self.expected_read_data.pop(0)
     if length < len(data):
@@ -57,14 +60,18 @@ class StubUsbHandle(usb_handle.UsbHandle):
     return data
 
   def Close(self):
+    """Stub Close method."""
     self.closed = True
 
   def IsClosed(self):
+    """Stub IsClosed method."""
     return self.closed
 
   def ExpectWrite(self, data):
+    """Stub ExpectWrite method."""
     assert self.expected_write_data is not None, 'ExpectWrite would be ignored!'
     self.expected_write_data.append(data)
 
   def ExpectRead(self, data):
+    """Stub ExpectRead method."""
     self.expected_read_data.append(data)

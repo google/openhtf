@@ -36,7 +36,7 @@ FLAGS(sys.argv)
 
 
 # Pseudomodule for shared user input prompt state.
-prompter = user_input.get_prompter()  # pylint: disable=C0103
+prompter = user_input.get_prompter()  # pylint: disable=invalid-name
 
 class InvalidTestError(Exception):
   """Raised when a test is registered incomplete or otherwise invalid."""

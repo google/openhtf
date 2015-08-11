@@ -18,6 +18,7 @@
 import logging
 import time
 
+from openhtf.capabilities.usb import fastboot_protocol
 from openhtf.capabilities.usb import usb_exceptions
 from openhtf.util import timeouts
 
@@ -43,17 +44,19 @@ class FastbootDevice(object):
     return self._protocol.usb_handle
 
   def SetBootconfig(self, name, value):
+    """Set the boot configuration."""
     self.Oem('bootconfig %s %s' % (name, value))
 
   def GetBootconfig(self, name, info_cb=None):
     """Get bootconfig, either as full dict or specific value for key."""
     result = {}
-    def DefaultInfoCb(msg):
+    def default_info_cb(msg):
+      """Default Info CB."""
       if not msg.message:
         return
       key, value = msg.message.split(':', 1)
       result[key.strip()] = value.strip()
-    info_cb = info_cb or DefaultInfoCb
+    info_cb = info_cb or default_info_cb
     final_result = self.Oem('bootconfig %s' % name, info_cb=info_cb)
     # Return INFO messages before the final OKAY message.
     if name in result:
@@ -61,14 +64,16 @@ class FastbootDevice(object):
     return final_result
 
   def Lock(self):
+    """Lock the device."""
     self.Oem('lock', timeout_ms=1000)
 
   def Close(self):
+    """Close the device."""
     if self._protocol:
       self.__getattr__('Close')()
       self._protocol = None
 
-  def __getattr__(self, attr):
+  def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Fallthrough to underlying FastbootProtocol handler.
 
     Args:
@@ -82,25 +87,14 @@ class FastbootDevice(object):
 
     val = getattr(self._protocol, attr)
     if callable(val):
-      def _RetryWrapper(*args, **kwargs):
-        result = self._RetryUsbFunction(self._num_retries, val, *args, **kwargs)
+      def _retry_wrapper(*args, **kwargs):
+        """Wrap the retry function."""
+        result = _retry_usb_function(self._num_retries, val, *args, **kwargs)
         self._log.debug('LIBUSB FASTBOOT: %s(*%s, **%s) -> %s',
                         attr, args, kwargs, result)
         return result
-      return _RetryWrapper
+      return _retry_wrapper
     return val
-
-  def _RetryUsbFunction(self, count, func, *args, **kwargs):
-    helper = timeouts.RetryHelper(count)
-    while True:
-      try:
-        return func(*args, **kwargs)
-      except usb_exceptions.CommonUsbError:
-        if not helper.RetryIfPossible():
-          raise
-        time.sleep(0.1)
-      else:
-        break
 
   @classmethod
   def Connect(cls, usb_handle, **kwargs):
@@ -115,3 +109,17 @@ class FastbootDevice(object):
       An instance of this class if the device connected successfully.
     """
     return cls(fastboot_protocol.FastbootCommands(usb_handle), **kwargs)
+
+def _retry_usb_function(count, func, *args, **kwargs):
+  """Helper function to retry USB."""
+  helper = timeouts.RetryHelper(count)
+  while True:
+    try:
+      return func(*args, **kwargs)
+    except usb_exceptions.CommonUsbError:
+      if not helper.RetryIfPossible():
+        raise
+      time.sleep(0.1)
+    else:
+      break
+

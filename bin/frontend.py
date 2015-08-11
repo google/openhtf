@@ -46,7 +46,7 @@ def main(argv):
 
   if not os.path.isdir(FLAGS.rundir):
     print('ERROR: OpenHTF Run directory does not exist', FLAGS.rundir,
-        file=sys.stderr)
+          file=sys.stderr)
     sys.exit(1)
 
   manager = stations.StationManager()
@@ -54,8 +54,8 @@ def main(argv):
 
   logging.getLogger('Rocket').setLevel(logging.INFO)  # Make Rocket less chatty
   rocket_server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
-                         method='wsgi',
-                         app_info={'wsgi_app': openhtf_app})
+                                method='wsgi',
+                                app_info={'wsgi_app': openhtf_app})
   print('Starting server at http://localhost:%d' % FLAGS.port)
   rocket_server.start()
 

@@ -55,12 +55,13 @@ class ComponentGraph(collections.namedtuple('ComponentGraph', ['assembly'])):
   """
 
   def AddComponent(self, part_number):
+    """Add the part to the component graph."""
     idx = len(self.assembly.component)
     component = self.assembly.component.add(part_number=part_number)
     return Component(self, idx, component)
 
   @property
-  def components(self):
+  def components(self):  # pylint: disable=missing-docstring
     for i, component in enumerate(self.assembly.component):
       yield Component(self, i, component)
 
@@ -70,12 +71,13 @@ class Component(collections.namedtuple(
   """Assembly Component wrapper."""
 
   @property
-  def edges(self):
+  def edges(self):  # pylint: disable=missing-docstring
     for edge in self.graph.assembly.edge:
       if edge.parent == self.idx or edge.child == self.idx:
         yield edge
 
   def AddChild(self, child):
+    """Make child a child of this Component."""
     new_edge = assembly_pb2.Assembly.Edge(parent=self.idx, child=child.idx)
     for edge in self.edges:
       if new_edge == edge:
@@ -83,33 +85,38 @@ class Component(collections.namedtuple(
     self.graph.assembly.edge.add().CopyFrom(new_edge)
 
   def SetSerialNumber(self, serial_number):
+    """Set this Component's serial to the specified value."""
     self.component.serial_number = serial_number
     return self
 
   def SetLot(self, lot_number, lot_index=None):
+    """Set this Component's lot number."""
     self.component.lot.lot_number = lot_number
     if lot_index is not None:
       self.component.lot.lot_index = lot_index
     return self
 
   def SetSku(self, sku):
+    """Set this Component's SKU."""
     self.component.sku = sku
     return self
 
   @property
-  def deviations(self):
+  def deviations(self):  # pylint: disable=missing-docstring
     return iter(self.component.deviation)
 
   def AddDeviation(self, deviation):
+    """Add a deviation for this Component."""
     self.component.deviation.append(deviation)
     return self
 
   def SetDescription(self, description):
+    """Set this Component's description."""
     self.component.description = description
     return self
 
   @property
-  def attributes(self):
+  def attributes(self):  # pylint: disable=missing-docstring
     return iter(self.component.attribute)
 
   def AddAttribute(self, key, value):
@@ -126,6 +133,7 @@ class Component(collections.namedtuple(
     return self
 
   def SetTopLevelAssembly(self):
+    """Set this Component's top-level assembly."""
     if any(edge.child == self.idx for edge in self.edges):
       raise ValueError('Cannot make a child component the top-level assembly.')
     self.graph.assembly.top_level_assembly = self.idx

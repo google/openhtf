@@ -50,9 +50,9 @@ gflags.DEFINE_string('rundir', '/var/run/openhtf', 'Directory for runfiles.')
 
 
 
-class RunData(collections.namedtuple('RunData',
-                                     ['station_name', 'cell_count', 'test_type',
-                                      'test_version', 'http_host', 'http_port', 'pid'])):
+class RunData(collections.namedtuple(
+    'RunData', ['station_name', 'cell_count', 'test_type', 'test_version',
+                'http_host', 'http_port', 'pid'])):
   """Encapsulates the run data stored in an openhtf file."""
 
   @classmethod
@@ -92,7 +92,7 @@ class RunData(collections.namedtuple('RunData',
       return True
 
 
-def EnumerateRunDirectory(directory):
+def EnumerateRunDirectory(directory):  # pylint: disable=invalid-name
   """Enumerates a local run directory to find stations.
 
   Args:
@@ -101,6 +101,6 @@ def EnumerateRunDirectory(directory):
   """
   filenames = os.listdir(directory)
   filepaths = [os.path.join(directory, filename) for filename in filenames]
-  result = [RunData.FromFile(filepath) for filepath in filepaths
-      if os.path.isfile(filepath)]
+  result = [RunData.FromFile(filepath) for filepath in filepaths if (
+      os.path.isfile(filepath)]
   return result

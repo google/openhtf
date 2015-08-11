@@ -24,6 +24,7 @@ This module handles these various functions.
 """
 
 import collections
+import logging
 import threading
 import time
 
@@ -47,21 +48,23 @@ class InvalidTestStartError(Exception):
 class StubHandler(object):
   """Noop handler for testing."""
 
-  def __init__(self, cell_number, config):
+  def __init__(self, dummy_cell_number, config):
     self.config = config
 
   def TestStart(self):
+    """Return the dummy serial."""
     return self.config.stub_dut_serial
 
   @staticmethod
   def TestStop():
+    """Noop Stop method."""
     pass
 
 
 class AndroidHandler(object):
   """Class encapsulating ADB/Fastboot access to a DUT."""
 
-  def __init__(self, cell_number, config):
+  def __init__(self, dummy_cell_number, dummy_config):
     self.serial_number = None
 
   def _TryOpen(self):
@@ -123,6 +126,7 @@ class FrontendHandler(object):
 
   @classmethod
   def Enqueue(cls, cell_number, serial=''):
+    """Trigger actual test start."""
     with cls.DEQUE_COND:
       cls.DEQUE_MAP[cell_number].append(serial)
       cls.DEQUE_COND.notifyAll()
@@ -135,6 +139,7 @@ class FrontendHandler(object):
       return self.DEQUE_MAP[self.cell_number].popleft()
 
   def TestStart(self):
+    """Get a serial from the frontend and return it."""
     if self.serial is not None:
       self.serial = None
       return self.serial
@@ -176,13 +181,16 @@ class DutManager(object):
     self.handler = handler
 
   def WaitForTestStart(self):
+    """Delegate test start to the configured handler."""
     return self.handler.TestStart()
 
   def WaitForTestStop(self):
+    """Delegate test stop to the configured handler."""
     self.handler.TestStop()
 
   @classmethod
   def FromConfig(cls, cell_number, config):
+    """Create a handler from config."""
     if config.test_start not in cls.HANDLERS:
       raise InvalidTestStartError(
           '%s not a recognized test_start, expected: %s',

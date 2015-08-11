@@ -116,7 +116,6 @@ class AdbDevice(object):
     Returns:
       The pm install output.
     """
-    # TODO: Support file-like objects for apk_path.
     if not destination_dir:
       destination_dir = '/data/local/tmp/'
     basename = os.path.basename(apk_path)

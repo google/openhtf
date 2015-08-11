@@ -19,7 +19,7 @@ import logging
 import time
 
 
-def LogEveryNToLogger(n, logger, level, message, *args):
+def LogEveryNToLogger(n, logger, level, message, *args):  # pylint: disable=invalid-name
   """Logs the given message every n calls to a logger.
 
   Args:
@@ -32,21 +32,21 @@ def LogEveryNToLogger(n, logger, level, message, *args):
     A method that logs and returns True every n calls.
   """
   logger = logger or logging.getLogger()
-  def _Gen():
+  def _gen():  # pylint: disable=missing-docstring
     while True:
       for _ in xrange(n):
         yield False
       logger.log(level, message, *args)
       yield True
-  g = _Gen()
+  g = _gen()
   return lambda: next(g)
 
 
-def LogEveryN(n, level, message, *args):
+def LogEveryN(n, level, message, *args):  # pylint: disable=invalid-name
   """Logs a message every n calls. See LogEveryNToLogger."""
   return LogEveryNToLogger(n, None, level, message, *args)
 
 
-def TimeMillis():
+def TimeMillis():  # pylint: disable=invalid-name
   """The time in milliseconds."""
   return int(time.time() * 1000)

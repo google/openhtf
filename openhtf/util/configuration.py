@@ -33,7 +33,7 @@ import yaml
 
 import gflags
 
-import threads
+from openhtf.util import threads
 
 FLAGS = gflags.FLAGS
 
@@ -177,13 +177,13 @@ class _DeclaredParameters(object):
       return declaration.default_value
     return value
 
-  def __contains__(self, name):
+  def __contains__(self, name):  # pylint: disable=invalid-name
     return name in self._declared
 
-  def __getitem__(self, name):
+  def __getitem__(self, name):  # pylint: disable=invalid-name
     return self._declared[name]
 
-  def __copy__(self):
+  def __copy__(self):  # pylint: disable=invalid-name
     self_copy = type(self)()
     for name, declaration in self._declared.iteritems():
       self_copy.Declare(name, declaration)
@@ -212,6 +212,7 @@ class ConfigModel(object):
     self._loaded = state is not None
     self.lock = threading.Lock()
 
+  # pylint: disable=missing-docstring
   @property
   @threads.Synchronized
   def loaded(self):
@@ -239,6 +240,8 @@ class ConfigModel(object):
   @threads.Synchronized
   def ContainsKey(self, name):
     return name in self._state
+
+  # pylint: enable=missing-docstring
 
   @threads.Synchronized
   def Load(self, config_file=None, force_reload=False,
@@ -394,6 +397,7 @@ class HTFConfig(object):
     """
     self.model = model or HTFConfig.model
 
+  # pylint: disable=missing-docstring
   @property
   def dictionary(self):
     if not self.loaded:
@@ -404,7 +408,9 @@ class HTFConfig(object):
   def loaded(self):
     return self.model.loaded
 
-  def __getattr__(self, name):
+  # pylint: enable=missing-docstring
+
+  def __getattr__(self, name):  # pylint: disable=invalid-name
     """Searches for the value in our config, returning if its found.
 
     Args:
@@ -423,11 +429,11 @@ class HTFConfig(object):
       raise ConfigurationNotLoadedError(name)
     return self.model.GetValue(name)
 
-  def __contains__(self, name):
+  def __contains__(self, name):  # pylint: disable=invalid-name
     """Provides the ability to quickly check if a config key is declared."""
     return self.model.ContainsKey(name)
 
-  def __getitem__(self, key):
+  def __getitem__(self, key):  # pylint: disable=invalid-name
     """Allows access to config items via an indexer."""
     return self.__getattr__(key)
 
@@ -449,7 +455,7 @@ class HTFConfig(object):
     return StackedHTFConfig([self.model, model])
 
 
-class StackedHTFConfig(HTFConfig):  # pylint: disable=incomplete-protocol
+class StackedHTFConfig(HTFConfig):
   """Stacked version of HTFConfig.
 
   This is a layered (or stacked) HTFConfig that allows users to make one set of
@@ -505,7 +511,7 @@ class StackedHTFConfig(HTFConfig):  # pylint: disable=incomplete-protocol
   __repr__ = __str__
 
 
-class ConfigValue(object):
+class ConfigValue(object):  # pylint: disable=too-few-public-methods
   """A thin wrapper which may be used to pass around a config value.
 
   This is useful when things require a value at import time yet config values
@@ -533,7 +539,7 @@ class ConfigValue(object):
     else:
       return self.value_fn(self.config[self.config_key])
 
-  def __call__(self):
+  def __call__(self):  # pylint: disable=invalid-name
     """Returns the config value."""
     return self.value
 
@@ -542,7 +548,7 @@ class ConfigValue(object):
   __repr__ = __str__
 
 
-def Extern(unused_name):
+def Extern(dummy_name):  # pylint: disable=invalid-name
   """Declares that a module uses a parameter declared elsewhere.
 
   This function does nothing but serve as a marker at the top of your file that
@@ -556,7 +562,7 @@ def Extern(unused_name):
   """
 
 
-def InjectPositionalArgs(method):
+def InjectPositionalArgs(method):  # pylint: disable=invalid-name
   """Decorator for injecting positional arguments from the configuration.
 
   This decorator wraps the given method, so that any positional arguments are
@@ -590,7 +596,7 @@ def InjectPositionalArgs(method):
   # with values from the configuration.  Any positional args that are missing
   # from the configuration *must* be explicitly specified as kwargs.
   @functools.wraps(method)
-  def MethodWrapper(**kwargs):
+  def method_wrapper(**kwargs):
     """Wrapper that pulls values from the HTFConfig() for parameters."""
     config = HTFConfig()
 
@@ -616,12 +622,12 @@ def InjectPositionalArgs(method):
     @functools.wraps(method)
     def SelfWrapper(self, **kwargs):
       kwargs['self'] = self
-      return MethodWrapper(**kwargs)
+      return method_wrapper(**kwargs)
     return SelfWrapper
-  return MethodWrapper
+  return method_wrapper
 
 
-# pylint: disable=g-bad-name
+# pylint: disable=invalid-name
 Declare = HTFConfig().model.Declare
 Load = HTFConfig().model.Load
 LoadMissingFromDict = HTFConfig().model.LoadMissingFromDict

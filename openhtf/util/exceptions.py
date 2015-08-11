@@ -19,7 +19,7 @@ import inspect
 import sys
 
 
-def Reraise(exc_type, message=None, *args, **kwargs):
+def Reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid-name
   """Reraises an exception for exception translation.
 
   This is primarily used for when you immediately reraise an exception that is

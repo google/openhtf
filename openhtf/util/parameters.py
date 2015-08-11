@@ -63,7 +63,7 @@ define a tag is via the TagAll method on the parameter list:
     ...
 
 """
-from utils import TimeMillis
+
 
 import contextlib
 import itertools
@@ -71,9 +71,10 @@ import logging
 import textwrap
 
 
-import configuration
-import data
 from openhtf.proto import htf_pb2
+from openhtf.util import configuration
+from openhtf.util import data
+from openhtf.util.utils import TimeMillis
 
 
 VALIDATOR_MAP = {
@@ -146,10 +147,11 @@ class TestParameterDescriptor(data.Descriptor):
       self.descriptor.InitializeParameter(self._parameter)
 
     @property
-    def parameter(self):
+    def parameter(self):  # pylint: disable=missing-docstring
       return self._parameter
 
     def _EnsureAddedToTestRun(self):
+      """Ensure this parameter is added to the testrun."""
       if self.requires_add:
         new_parameter = self.test_run.test_parameters.add()
         new_parameter.CopyFrom(self._parameter)
@@ -198,6 +200,7 @@ class TestParameterDescriptor(data.Descriptor):
     self.Doc('No description provided.')
 
   def _GetOverride(self):
+    """Return the overriden parameters if any."""
     if not self._config.loaded:
       return None  # Some people use this library without configs.
     overridden = self._config.overridden_parameters
@@ -225,6 +228,7 @@ class TestParameterDescriptor(data.Descriptor):
     # Return the newly constructed validator only.
     return [validator_cls(**override['kwargs'])]
 
+  # pylint: disable=missing-docstring
   @property
   def name(self):
     return self._name
@@ -244,6 +248,8 @@ class TestParameterDescriptor(data.Descriptor):
   def WithUnitCode(self, unit_code):
     self._unit_code = unit_code
     return self
+
+  # pylint: enable=missing-docstring
 
   def AddToTestRun(self, test_run):
     """Adds this parameter to the testrun.
@@ -288,6 +294,7 @@ class ExtendedParameterDescriptor(TestParameterDescriptor):
       if descriptor.parameter_tag is not None:
         self._parameter.parameter_tag = descriptor.parameter_tag
 
+    # pylint: disable=missing-docstring
     @property
     def parameter(self):
       return self._parameter
@@ -303,6 +310,8 @@ class ExtendedParameterDescriptor(TestParameterDescriptor):
 
   def AddToTestRun(self, test_run):
     return self.ParameterInstance(test_run, self)
+
+  # pylint: disable=missing-docstring
 
 
 @ExtendedParameterDescriptor.AddDataDescriptor
@@ -359,7 +368,8 @@ class ExtendedSetValueCapability(object):
     parameter.value_binary = desc.Transform(value)
 
 
-def _FindValidator(desc, *allowed_validators):
+def _FindValidator(desc, *allowed_validators):  # pylint: disable=invalid-name
+  """Find and return the first validator."""
   found = [validator for validator in desc.validators
            if isinstance(validator, allowed_validators)]
   if len(found) > 1:
@@ -597,7 +607,7 @@ class TestParameterList(object):
         name: p.AddToTestRun(test_run)
         for name, p in self._parameters.iteritems()})
 
-  def __contains__(self, parameter_name):
+  def __contains__(self, parameter_name):  # pylint: disable=invalid-name
     """Returns true if the parameter is defined."""
     return parameter_name in self._parameters
 
@@ -654,28 +664,28 @@ class ParameterCollection(object):
     if name not in self._parameters:
       raise NotAParameterError('Not a parameter', name)
 
-  def __setitem__(self, name, value):
+  def __setitem__(self, name, value):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     self._parameters[name].SetValue(value)
 
-  def __getitem__(self, name):
+  def __getitem__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     return self._parameters[name].GetValue()
 
   def __setattr__(self, name, value):
     self[name] = value
 
-  def __getattr__(self, name):
+  def __getattr__(self, name):  # pylint: disable=invalid-name
     return self[name]
 
-  def __delitem__(self, name):
+  def __delitem__(self, name):  # pylint: disable=invalid-name
     raise NotImplementedError("Deleting parameters doesn't make sense")
 
-  def __len__(self):
+  def __len__(self):  # pylint: disable=invalid-name
     return len(self._parameters)
 
 
-def GetUomFromUnitCode(unit_code):
+def GetUomFromUnitCode(unit_code):  # pylint: disable=invalid-name
   """Helper to fetch an ANSI UOM value from a unit_code.
 
   Args:
@@ -690,7 +700,7 @@ def GetUomFromUnitCode(unit_code):
   return None
 
 
-def AddParameterToPhase(name, phase):
+def AddParameterToPhase(name, phase):  # pylint: disable=invalid-name
   """Add the given parameter to the given phase.
 
   Helper function to add the given parameter to the given phase.  We have to
@@ -710,7 +720,7 @@ def AddParameterToPhase(name, phase):
   return phase.parameters.Add(name)
 
 
-def AddParameters(params):
+def AddParameters(params):  # pylint: disable=invalid-name
   """Decorator to attaches the parameter(s) to the decorated phase.
 
   Args:
@@ -723,10 +733,10 @@ def AddParameters(params):
     params = [params]
   elif isinstance(params, str):
     params = [TestParameterDescriptor(params)]
-  def Decorate(phase):
+  def decorate(phase):
     if not hasattr(phase, 'parameters'):
       phase.parameters = TestParameterList()
     for param in params:
       phase.parameters.TrackParameter(param)
     return phase
-  return Decorate
+  return decorate

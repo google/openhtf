@@ -26,35 +26,41 @@ from openhtf.frontend.server import stations
 from openhtf.proto import htf_pb2
 from openhtf.proto import frontend_pb2
 
-app = flask.Flask(__name__)
+app = flask.Flask(__name__)  # pylint: disable=invalid-name
 
 
-class FileHandler(views.MethodView):
+class FileHandler(views.MethodView):  # pylint: disable=too-few-public-methods
+  """View that just serves the requested file."""
 
-  def __init__(self, path):
+  def __init__(self, path):  # pylint: disable=invalid-name
     self.filepath = path
 
-  def get(self, path=None):
+  def get(self, dummy_path=None):  # pylint: disable=invalid-name
+    """HTTP GET handler."""
     return flask.send_file(self.filepath)
 
 
 @app.route('/')
-def RedirectToApp():
+def RedirectToApp():  # pylint: disable=invalid-name
+  """Redirect all queries to the actual app."""
   return flask.redirect('/openhtf/')
 
 
-class StationApiHandler(views.MethodView):
+class StationApiHandler(views.MethodView):  # pylint: disable=too-few-public-methods
+  """HTTP handler for the Station API."""
 
-  def __init__(self, manager):
+  def __init__(self, manager):  # pylint: disable=invalid-name
     self.manager = manager
 
-  def get(self):
+  def get(self):  # pylint: disable=invalid-name
+    """HTTP GET handler."""
     return json.jsonify(self.manager.GetStationMap())
 
 
 class StationDataHandler(views.MethodView):
+  """HTTP handler for station data."""
 
-  def __init__(self, manager):
+  def __init__(self, manager):  # pylint: disable=invalid-name
     """The station data response handler.
 
     Args:
@@ -62,7 +68,8 @@ class StationDataHandler(views.MethodView):
     """
     self.manager = manager
 
-  def get(self, station):
+  def get(self, station):  # pylint: disable=invalid-name
+    """HTTP GET handler."""
     response = self.manager.FetchStationData(station)
     if response is stations.Responses.NOT_FOUND:
       flask.abort(404)
@@ -70,7 +77,7 @@ class StationDataHandler(views.MethodView):
       flask.abort(500)
     return self.SanitizeAndSerialize_(response)
 
-  def SanitizeAndSerialize_(self, response):
+  def SanitizeAndSerialize_(self, response):  # pylint: disable=invalid-name
     """Sanitizes and serializes the response.
 
     This basically means removing any binary parameters.
@@ -88,7 +95,7 @@ class StationDataHandler(views.MethodView):
     return response.SerializeToString()
 
 
-def InitializeApp(manager, **kwargs):
+def InitializeApp(manager, **dummy_kwargs):  # pylint: disable=invalid-name
   """Initializes the wsgi app for OpenHTF.
 
   Args:

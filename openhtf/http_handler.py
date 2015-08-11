@@ -36,18 +36,19 @@ gflags.DEFINE_integer('http_port',
 
 
 class HtfView(flask.views.MethodView):
+  """Method-based view for OpenHTF."""
 
-  def __init__(self, metadata, cells):
+  def __init__(self, metadata, cells):  # pylint: disable=invalid-name
     self.metadata = metadata
     self.cells = cells
 
-  def get(self):
+  def get(self):  # pylint: disable=invalid-name
+    """HTTP GET handler."""
     response = frontend_pb2.HTFStationResponse()
     response.station_name = self.metadata.name
     response.framework_version = self.metadata.version_string
     response.test_info.CopyFrom(self.metadata)
     for cell_id, cell_exec in self.cells.iteritems():
-      # TODO: Locking while we grab a copy of this proto
       test_manager = cell_exec.test_manager
       if test_manager:
         cell = response.cells.add()
@@ -63,7 +64,8 @@ class HtfView(flask.views.MethodView):
     response.mimetype = 'application/octet-stream'
     return response
 
-  def post(self):
+  def post(self):  # pylint: disable=invalid-name
+    """HTTP POST handler."""
     event = frontend_pb2.HTFFrontendEvent.FromString(
         flask.request.form['event'])
     if event.HasField('serial_number'):
@@ -72,6 +74,7 @@ class HtfView(flask.views.MethodView):
 
 
 class HttpHandler(object):
+  """Class that encapsulates a handler from setup to teardown."""
 
   def __init__(self, metadata, cells):
     self.app = flask.Flask('OpenHTF')
@@ -93,5 +96,6 @@ class HttpHandler(object):
       self.server.start(background=True)
 
   def Stop(self):
+    """Stop the HTTP server."""
     if self.server:
       self.server.stop()

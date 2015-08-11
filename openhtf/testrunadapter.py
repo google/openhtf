@@ -61,6 +61,8 @@ class TestRunAdapter(object):
     self._htf_test_run = htf_test_run
     self._component_graph = genealogy.ComponentGraph(htf_test_run.assembly)
 
+  
+  # pylint: disable=missing-docstring
   @property
   def cell(self):
     return self._htf_test_run.cell_number
@@ -89,6 +91,8 @@ class TestRunAdapter(object):
   def parameters(self):
     return self._parameters
 
+  # pylint: enable=missing-docstring
+
   def SetDutSerial(self, serial):
     """Sets the DUT serial in the test run proto."""
     self._htf_test_run.dut_serial = serial
@@ -105,6 +109,7 @@ class TestRunAdapter(object):
 
   @contextlib.contextmanager
   def RecordPhaseTiming(self, phase_name):
+    """Keep track of the cycle time for phases."""
     timing = self._htf_test_run.timings.add()
     timing.name = phase_name
     timing.time_info.start_time_millis = utils.TimeMillis()
@@ -146,6 +151,7 @@ class TestRunAdapter(object):
           'No htfconfig parameter found in test. Parameter not set.')
 
   def AddFailureCode(self, code, details=None):
+    """Add a failure code if necessary."""
     failure_code = self._htf_test_run.failure_codes.add(code=code)
     if details is not None:
       failure_code.details = details

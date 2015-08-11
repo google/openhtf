@@ -112,8 +112,8 @@ import struct
 import sys
 import time
 
-import adb_message
-import usb_exceptions
+from openhtf.capabilities.usb import adb_message
+from openhtf.capabilities.usb import usb_exceptions
 
 # Default mode for pushed files, ADB will copy user permissions to group and
 # other permissions, so we just default to full perms.
@@ -126,10 +126,10 @@ DeviceFileStat = collections.namedtuple('DeviceFileStat', [
     'filename', 'mode', 'size', 'mtime'])
 
 
-def _MakeMessageType(name, attributes, has_data=True):
+def _make_message_type(name, attributes, has_data=True):
   """Make a message type for the AdbTransport subclasses."""
 
-  def AssertCommandIs(self, command):
+  def AssertCommandIs(self, command):  # pylint: disable=invalid-name
     """Assert that a message's command matches the given command."""
     if self.command != command:
       raise usb_exceptions.AdbProtocolError(
@@ -162,13 +162,15 @@ class FilesyncService(object):
   def __init__(self, stream):
     self.stream = stream
 
-  def __del__(self):
+  def __del__(self):  # pylint: disable=invalid-name
     self.Close()
 
   def Close(self):
+    """Close the stream."""
     self.stream.Close()
 
   def Stat(self, filename, timeout=None):
+    """Return device file stat."""
     transport = StatFilesyncTransport(self.stream)
     transport.WriteData('STAT', filename, timeout)
     stat_msg = transport.ReadMessage(timeout)
@@ -453,7 +455,7 @@ class AbstractFilesyncTransport(object):
     return self.RECV_MSG_TYPE(*raw_message)
 
 
-class FilesyncMessageTypes(object):
+class FilesyncMessageTypes(object):  # pylint: disable=too-few-public-methods
   """Container for the various message types used by the Filesync protocol.
 
   These message types correspond roughly to the struct types contained within
@@ -466,11 +468,13 @@ class FilesyncMessageTypes(object):
   we do that.
   """
   # pylint: disable=invalid-name
-  DoneMessage = _MakeMessageType('DoneMessage', 'command mtime', has_data=False)
-  StatMessage = _MakeMessageType('StatMessage', 'command mode size time',
-                                 has_data=False)
-  DentMessage = _MakeMessageType('DentMessage', 'command mode size time name')
-  DataMessage = _MakeMessageType('DataMessage', 'command data')
+  DoneMessage = _make_message_type('DoneMessage',
+                                   'command mtime',
+                                   has_data=False)
+  StatMessage = _make_message_type('StatMessage', 'command mode size time',
+                                   has_data=False)
+  DentMessage = _make_message_type('DentMessage', 'command mode size time name')
+  DataMessage = _make_message_type('DataMessage', 'command data')
   # pylint: enable=invalid-name
 
 

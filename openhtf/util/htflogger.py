@@ -32,7 +32,7 @@ from openhtf.proto import htf_pb2
 HTF_LOGGER_PREFIX = 'htf'
 
 
-class MacAddressLogFilter(logging.Filter):
+class MacAddressLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
   """A filter which redacts mac addresses if it sees one."""
 
   MAC_REPLACE_RE = re.compile(r"""
@@ -117,7 +117,7 @@ class HTFLoggerHandler(logging.Handler):
     self.setLevel(logging.DEBUG)
     self._test_run = test_run
 
-  def emit(self, record):  # pylint: disable=g-bad-name
+  def emit(self, record):
     """Save a logging.LogRecord to our test run proto.
 
     LogRecords carry a significant amount of information with them including the

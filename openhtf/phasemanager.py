@@ -38,7 +38,7 @@ import logging
 import contextlib2
 import gflags
 
-import htftest
+from openhtf import htftest
 from openhtf.util import configuration
 from openhtf.util import threads
 from openhtf.util import htflogger
@@ -46,7 +46,7 @@ from openhtf.proto import htf_pb2
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
-                     'Test phase timeout in ms', lower_bound=0)
+                      'Test phase timeout in ms', lower_bound=0)
 
 _LOG = logging.getLogger('htf.phasemanager')
 
@@ -114,6 +114,7 @@ class PhaseExecutorThread(threads.KillableThread):
     return self._MakePhaseResult(self._phase_result)
 
   def _MakePhaseResult(self, result):
+    """Figure out the result of the phase and do the right thing with it."""
     raised_exception = isinstance(result, BaseException)
     self._phase_result = TestPhaseResult(
         self.name, result, raised_exception=raised_exception)

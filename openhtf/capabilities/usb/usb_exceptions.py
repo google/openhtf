@@ -37,7 +37,7 @@ class CommonUsbError(Exception):
           # This is a fairly obscure failure, so we intercept it and emit a
           # more useful error message.
           logging.error('USB Exceptions expect a format-string, do not include '
-                        'percent (%) symbols to disable this functionality: %s',
+                        'percent symbols to disable this functionality: %s',
                         message)
           raise
       super(CommonUsbError, self).__init__(message, *args)

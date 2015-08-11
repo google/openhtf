@@ -22,12 +22,14 @@ import time
 import openhtf.capabilities as capabilities
 
 
-class Example(capabilities.BaseCapability):
+class Example(capabilities.BaseCapability):   # pylint: disable=no-init
   """Example of a simple capablility."""
 
   def TearDown(self):
+    """Tear down the capability instance."""
     logging.info('Tearing down %s', self)
 
   def DoStuff(self):
+    """Capability-specific functionality."""
     time.sleep(3)
     return 'Did stuff!'

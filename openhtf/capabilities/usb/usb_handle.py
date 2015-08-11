@@ -25,7 +25,7 @@ import abc
 import functools
 import logging
 
-import usb_exceptions
+from openhtf.capabilities.usb import usb_exceptions
 
 _LOG = logging.getLogger('usb_handles')
 
@@ -33,7 +33,7 @@ DEFAULT_TIMEOUT_MS = 5000
 FLUSH_READ_SIZE = 1024 * 64
 
 
-def RequiresOpenHandle(method):
+def RequiresOpenHandle(method):  # pylint: disable=invalid-name
   """Decorator to ensure a handle is open for certain methods.
 
   Subclasses should decorate their Read() and Write() with this rather than
@@ -51,11 +51,12 @@ def RequiresOpenHandle(method):
   to the wrapped method.
   """
   @functools.wraps(method)
-  def WrapperRequiringOpenHandle(self, *args, **kwargs):
+  def wrapper_requiring_open_handle(self, *args, **kwargs):
+    """The wrapper to be returned."""
     if self.IsClosed():
       raise usb_exceptions.HandleClosedError()
     return method(self, *args, **kwargs)
-  return WrapperRequiringOpenHandle
+  return wrapper_requiring_open_handle
 
 
 class UsbHandle(object):
@@ -117,7 +118,7 @@ class UsbHandle(object):
     self.name = name or ''
     self._default_timeout_ms = default_timeout_ms or DEFAULT_TIMEOUT_MS
 
-  def __del__(self):
+  def __del__(self):  # pylint: disable=invalid-name
     if not self.IsClosed():
       _LOG.error('!!!!!USB!!!!! %s not closed!', type(self).__name__)
 
@@ -126,6 +127,7 @@ class UsbHandle(object):
   __repr__ = __str__
 
   def _TimeoutOrDefault(self, timeout_ms):
+    """Specify a timeout or take the default."""
     return int(timeout_ms if timeout_ms is not None
                else self._default_timeout_ms)
 

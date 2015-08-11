@@ -23,7 +23,7 @@ import logging
 import os
 import struct
 
-import usb_exceptions
+from openhtf.capabilities.usb import usb_exceptions
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('fastboot_download_chunk_size_kb', 1024,
@@ -50,6 +50,7 @@ class FastbootProtocol(object):
 
   @property
   def usb_handle(self):
+    """This instance's USB handle."""
     return self.usb
 
   def SendCommand(self, command, arg=None):
@@ -104,7 +105,7 @@ class FastbootProtocol(object):
     accepted_size = binascii.unhexlify(accepted_size[:8])
     accepted_size, = struct.unpack('>I', accepted_size)
     if accepted_size != source_len:
-      raise FastbootTransferError(
+      raise usb_exceptions.FastbootTransferError(
           'Device refused to download %s bytes of data (accepts %s bytes)',
           source_len, accepted_size)
     self._Write(source_file, accepted_size, progress_callback)
@@ -135,16 +136,16 @@ class FastbootProtocol(object):
         info_cb(FastbootMessage(remaining, header))
       elif header in self.FINAL_HEADERS:
         if header != expected_header:
-          raise FastbootStateMismatch(
+          raise usb_exceptions.FastbootStateMismatch(
               'Expected %s, got %s', expected_header, header)
         if header == 'OKAY':
           info_cb(FastbootMessage(remaining, header))
         return remaining
       elif header == 'FAIL':
         info_cb(FastbootMessage(remaining, header))
-        raise FastbootRemoteFailure('FAIL: %s', remaining)
+        raise usb_exceptions.FastbootRemoteFailure('FAIL: %s', remaining)
       else:
-        raise FastbootInvalidResponse(
+        raise usb_exceptions.FastbootInvalidResponse(
             'Got unknown header %s and response %s', header, remaining)
 
   def _HandleProgress(self, total, progress_callback):
@@ -188,18 +189,21 @@ class FastbootCommands(object):
 
   @property
   def handle(self):
+    """This instance's USB handle."""
     return self._usb
 
   def Close(self):
+    """Close the USB handle."""
     self._usb.Close()
 
   def _SimpleCommand(self, command, arg=None, **kwargs):
+    """Send a simple command."""
     self._protocol.SendCommand(command, arg)
     return self._protocol.HandleSimpleResponses(**kwargs)
 
   def FlashFromFile(self, partition, source_file, source_len=0,
                     info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None,
-                    timeout_ms=None):
+                    timeout_ms=None):  # pylint: disable=too-many-arguments
     """Flashes a partition from the file on disk.
 
     Args:

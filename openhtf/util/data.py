@@ -47,14 +47,15 @@ import sys
 import singledispatch
 
 
-def CallableProperty(fget):
+def CallableProperty(fget):  # pylint: disable=invalid-name
   """Creates a property that is automatically called if it's a function."""
-  def WrappedFget(self):
+  def wrapped_fget(self):
+    """Wrapped function to return."""
     value = fget(self)
     if value is None or not callable(value):
       return value
     return value()
-  return property(WrappedFget)
+  return property(wrapped_fget)
 
 
 class BaseDataDescriptor(object):
@@ -62,10 +63,11 @@ class BaseDataDescriptor(object):
 
   name = None
 
-  def Validate(self, unused_value):
+  def Validate(self, dummy_value):  # pylint: disable=no-self-use
+    """Base descriptor is always valid!"""
     return True
 
-  def Transform(self, value):
+  def Transform(self, value):  # pylint: disable=no-self-use
     """Transform value into the expected type for this descriptor.
 
     Args:
@@ -87,6 +89,7 @@ class Validator(object):
   """Base class for validators."""
 
   def Validate(self, value):
+    """Validate the given value."""
     raise NotImplementedError()
 
   def SafeValidate(self, value):
@@ -122,9 +125,11 @@ class Descriptor(object):
     self._optional = False
 
   def Doc(self, doc):
+    """Docstring for the descriptor."""
     self._description = doc
     return self
 
+  # pylint: disable=missing-docstring
   @property
   def description(self):
     return self._description
@@ -143,6 +148,8 @@ class Descriptor(object):
   @property
   def validators(self):
     return iter(self._validators)
+
+  # pylint: enable=missing-docstring
 
   def Validate(self, value):
     """Validates value against type and any other validators specified."""
@@ -218,10 +225,11 @@ class Descriptor(object):
       desc.SomeCapability() == 'doc'
     """
     dispatcher = singledispatch.singledispatch(capab_dispatcher)
-    def Wrapper(self, *args, **kwargs):
+    def wrapper(self, *args, **kwargs):
+      """Wrapper to return."""
       cls = self.type.__class__ if self.HasType() else object
       return dispatcher.dispatch(cls)(self, *args, **kwargs)
-    setattr(cls, capab_dispatcher.func_name, Wrapper)
+    setattr(cls, capab_dispatcher.func_name, wrapper)
     return dispatcher
 
   @classmethod
@@ -259,34 +267,33 @@ class Descriptor(object):
       desc = DescriptorSubclass().Boolean().FileExists('/etc/')
       desc.Validate(True) == False
     """
-    def _AddValidator(self, *args, **kwargs):
-      # Aw, c'mon pylint.
-      # pylint: disable=protected-access
-      self._validators.append(validator_cls(*args, **kwargs))
+    def _add_validator(self, *args, **kwargs):
+      """Internal helper function to add a validator."""
+      self._validators.append(validator_cls(*args, **kwargs)) # pylint: disable=protected-access
       return self
     assert callable(validator_cls.Validate)
-    setattr(cls, validator_cls.__name__, _AddValidator)
+    setattr(cls, validator_cls.__name__, _add_validator)
     return validator_cls
 
   def __str__(self):
     return '%s for %s' % (type(self).__name__, self.type)
 
-  def __getattr__(self, attr):
+  def __getattr__(self, attr):  # pylint: disable=invalid-name
     raise AttributeError((
         'Descriptor has no attribute %s, did you forget to define your '
         'descriptor class before using it?') % attr)
 
   @classmethod
   def _AddTypeSpecific(cls, type_cls):
-    def TypeSpecific(self, *args, **kwargs):
+    """Add type-specific function."""
+    def type_specific(self, *args, **kwargs):
+      """Function to add."""
       assert not self.HasType(), (
           'Can only make a descriptor into one type. Try a nested descriptor.')
-      # Aw, c'mon pylint.
-      # pylint: disable=protected-access
-      self._type = type_cls(*args, **kwargs)
+      self._type = type_cls(*args, **kwargs)  # pylint: disable=protected-access
       return self
     assert type_cls.name is not None, 'Attribute name is required.'
-    setattr(cls, type_cls.name, TypeSpecific)
+    setattr(cls, type_cls.name, type_specific)
 
   @classmethod
   def AddDataDescriptor(cls, type_cls):
@@ -392,7 +399,8 @@ class FilePathDescriptor(BaseDataDescriptor):
 # Built-in nested types:
 
 
-def _AssertTypedDescriptors(*descriptors):
+def _AssertTypedDescriptors(*descriptors):  # pylint: disable=invalid-name
+  """Make sure each of the given descriptors is a Descriptor."""
   assert all(isinstance(desc, Descriptor) for desc in descriptors), (
       'Pass in Descriptor instances.')
   assert all(desc.HasType() for desc in descriptors), (
@@ -480,6 +488,7 @@ class OneOfDescriptor(BaseDataDescriptor):
     self._descriptors = other_descriptors
 
   def _ChooseDescriptor(self, value):
+    """Select a descriptor for the value."""
     for descriptor in self._descriptors:
       if descriptor.SafeValidate(value):
         return descriptor
@@ -507,13 +516,17 @@ class InRange(Validator):
     self._minimum = minimum
     self._maximum = maximum
 
+  
+  # pylint: disable=invalid-name,missing-docstring
   @CallableProperty
-  def minimum(self):  # pylint: disable=invalid-name
+  def minimum(self):
     return self._minimum
 
   @CallableProperty
-  def maximum(self):  # pylint: disable=invalid-name
+  def maximum(self):
     return self._maximum
+
+  # pylint: enable=invalid-name,missing-docstring
 
   def Validate(self, value):
     minimum = self.minimum
@@ -537,7 +550,7 @@ class Matches(Validator):
     self._expected = expected
 
   @CallableProperty
-  def expected(self):  # pylint: disable=invalid-name
+  def expected(self):  # pylint: disable=invalid-name,missing-docstring
     return self._expected
 
   @singledispatch.singledispatch
@@ -564,7 +577,7 @@ class MatchesRegex(Validator):
     self._regex_pattern = regex_pattern
 
   @CallableProperty
-  def regex_pattern(self):  # pylint: disable=invalid-name
+  def regex_pattern(self):  # pylint: disable=invalid-name,missing-docstring
     return self._regex_pattern
 
   def Validate(self, value):
@@ -584,7 +597,7 @@ class Enum(Validator):
     self._valid_values = valid_values
 
   @CallableProperty
-  def valid_values(self):  # pylint: disable=invalid-name
+  def valid_values(self):  # pylint: disable=invalid-name,missing-docstring
     return self._valid_values
 
   def Validate(self, value):

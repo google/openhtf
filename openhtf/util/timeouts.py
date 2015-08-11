@@ -92,6 +92,7 @@ class PolledTimeout(object):
   # Bad API. alusco is sometimes bad at naming.
   Poll = HasExpired  # pylint: disable=invalid-name
 
+  # pylint: disable=missing-docstring
   @property
   def seconds(self):
     return time.time() - self.start
@@ -108,10 +109,12 @@ class PolledTimeout(object):
       return None
     return self.remaining * 1000
 
+  # pylint: disable=missing-docstring
 
-# TODO: There's now no way to tell if a timeout occured generically
+
+# There's now no way to tell if a timeout occured generically
 # which sort of sucks (for generic validation fn)
-def LoopUntilTimeoutOrValid(timeout_s, function, validation_fn, sleep_s=1):
+def LoopUntilTimeoutOrValid(timeout_s, function, validation_fn, sleep_s=1):  # pylint: disable=invalid-name
   """Loops until the specified function returns valid or a timeout is reached.
 
   Note: The function may return anything which, when passed to validation_fn,
@@ -143,7 +146,7 @@ def LoopUntilTimeoutOrValid(timeout_s, function, validation_fn, sleep_s=1):
     time.sleep(sleep_s)
 
 
-def LoopUntilTimeoutOrTrue(timeout_s, function, sleep_s=1):
+def LoopUntilTimeoutOrTrue(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
   """Loops until the specified function returns True or a timeout is reached.
 
   Note: The function may return anything which evaluates to implicit True.  This
@@ -164,7 +167,7 @@ def LoopUntilTimeoutOrTrue(timeout_s, function, sleep_s=1):
   return LoopUntilTimeoutOrValid(timeout_s, function, lambda x: x, sleep_s)
 
 
-def LoopUntilTimeoutOrNotNone(timeout_s, function, sleep_s=1):
+def LoopUntilTimeoutOrNotNone(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
   """Loops until the specified function returns non-None or until a timeout.
 
   Args:
@@ -216,7 +219,7 @@ class Interval(object):
 
     self.stopped.clear()
 
-    def _Execute():
+    def _execute():
       # Always execute immediately once
       if not self.method() and self.stop_if_false:
         return
@@ -224,7 +227,7 @@ class Interval(object):
         if not self.method() and self.stop_if_false:
           return
 
-    self.thread = threading.Thread(target=_Execute)
+    self.thread = threading.Thread(target=_execute)
     self.thread.daemon = True
     self.thread.start()
     return True
@@ -262,7 +265,7 @@ class Interval(object):
     return self.running
 
 
-def ExecuteForever(method, interval_s):
+def ExecuteForever(method, interval_s):  # pylint: disable=invalid-name
   """Executes a method forever at the specified interval.
 
   Args:
@@ -277,7 +280,7 @@ def ExecuteForever(method, interval_s):
   return interval
 
 
-def ExecuteUntilFalse(method, interval_s):
+def ExecuteUntilFalse(method, interval_s):  # pylint: disable=invalid-name
   """Executes a method forever until the method returns a false value.
 
   Args:
@@ -292,6 +295,7 @@ def ExecuteUntilFalse(method, interval_s):
   return interval
 
 
+# pylint: disable=invalid-name
 def RetryUntilTrueOrLimitReached(method, limit, sleep_s=1,
                                  catch_exceptions=()):
   """Executes a method until the retry limit is hit or True is returned."""
@@ -327,7 +331,7 @@ def RetryUntilValidOrLimitReached(method, limit, validation_fn, sleep_s=1,
   """
   assert limit > 0, 'Limit must be greater than 0'
 
-  def _ExecuteMethod(helper):
+  def _execute_method(helper):
     try:
       return method()
     except catch_exceptions:
@@ -336,11 +340,13 @@ def RetryUntilValidOrLimitReached(method, limit, validation_fn, sleep_s=1,
       return None
 
   helper = RetryHelper(limit - 1)
-  result = _ExecuteMethod(helper)
+  result = _execute_method(helper)
   while not validation_fn(result) and helper.RetryIfPossible():
     time.sleep(sleep_s)
-    result = _ExecuteMethod(helper)
+    result = _execute_method(helper)
   return result
+
+# pylint: disable=invalid-name
 
 
 @contextlib.contextmanager
@@ -378,8 +384,6 @@ def TakeAtMostNSeconds(time_s, func, *args, **kwargs):
   Returns:
     True if the function finished in less than time_s seconds.
   """
-  # TODO: Switch this out with a new version of
-  # utils.ExceptionSafeThread so it's not shitty.
   thread = threading.Thread(target=func, args=args, kwargs=kwargs)
   thread.start()
   thread.join(time_s)
@@ -416,7 +420,7 @@ def ExecuteAfterDelay(time_s, func, *args, **kwargs):
     thread.start()
 
 
-class RetryHelper(object):
+class RetryHelper(object):  # pylint: disable=too-few-public-methods
   """A helper with to simplify retrying.
 
   Attributes:

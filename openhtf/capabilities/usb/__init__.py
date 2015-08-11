@@ -27,11 +27,10 @@ To use these capabilities:
     adb.Shell('ls')
 """
 
-import adb_device
-import fastboot_device
-import local_usb
-
 import openhtf.capabilities as capabilities
+from openhtf.capabilities.usb import adb_device
+from openhtf.capabilities.usb import fastboot_device
+from openhtf.capabilities.usb import local_usb
 from openhtf.util import configuration
 
 configuration.Declare('usb_server', 'USB Server IP/Hostname')
@@ -39,10 +38,10 @@ configuration.Declare('usb_server_port', 'USB Server Port',
                       default_value=10000)
 
 configuration.Declare('libusb_rsa_key',
-    doc='A private key file for use by libusb auth.')
+                      doc='A private key file for use by libusb auth.')
 
 
-def _OpenUsbHandle(**kwargs):
+def _open_usb_handle(**kwargs):
   """Open a UsbHandle subclass, based on configuration.
 
   If configuration 'usb_server' is set, use it to connect to remote usb,
@@ -55,19 +54,19 @@ def _OpenUsbHandle(**kwargs):
     Instance of UsbHandle.
   """
   if configuration.HTFConfig().usb_server:
-    # TODO: Add remote usb support.
     return None
   else:
     print 'Opening LibUsbHandle with: %s' % kwargs
     return local_usb.LibUsbHandle.Open(**kwargs)
 
 
+# pylint: disable=too-few-public-methods
 class FastbootCapability(capabilities.BaseCapability):
   """Capability that provides fastboot."""
 
   def __new__(cls):
     device = fastboot_device.FastbootDevice.Connect(
-        _OpenUsbHandle(
+        _open_usb_handle(
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
             interface_protocol=fastboot_device.PROTOCOL))
@@ -85,7 +84,7 @@ class AdbCapability(capabilities.BaseCapability):
           configuration.HTFConfig().libusb_rsa_key)]
 
     device = adb_device.AdbDevice.Connect(
-        _OpenUsbHandle(
+        _open_usb_handle(
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),

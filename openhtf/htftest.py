@@ -56,7 +56,7 @@ class PhaseData(collections.namedtuple(
   """
 
 
-class PhaseResults(object):
+class PhaseResults(object):  # pylint: disable=too-few-public-methods
   """Constants used to indicate the result of a test phase function.
 
   These values are returned when a phase is called:
@@ -76,7 +76,7 @@ class PhaseResults(object):
   ]
 
 
-def TestPhase(timeout_s=None, run_if=None):
+def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
   """Decorator to wrap a test phase function with the given options.
 
   Args:
@@ -89,7 +89,7 @@ def TestPhase(timeout_s=None, run_if=None):
         TestPhaseInfo for it with the given options set.
   """
 
-  def Wrap(phase_func):
+  def Wrap(phase_func):  # pylint: disable=invalid-name
     """Attach the given options to the phase_func."""
 
     # Test Phases must take at least one argument (the phase data tuple).
@@ -113,23 +113,29 @@ class TestMetadata(object):
     self._parameter_list = parameters.TestParameterList()
 
   def SetVersion(self, version):
+    """Set the version number."""
     self._test_info.version_string = str(version)
 
   def Doc(self, docstring):
+    """Set the docstring."""
     self._test_info.description = docstring
 
   def AddParameter(self, *args, **kwargs):
+    """Add a test-level parameter."""
     return self._parameter_list.Add(*args, **kwargs)
 
   def AddExtendedParameter(self, *args, **kwargs):
+    """Add a test-level extended parameter."""
     return self._parameter_list.AddExtended(*args, **kwargs)
 
   @property
   def parameters(self):
+    """This test's parameters."""
     return self._parameter_list
 
   @property
   def proto(self):
+    """This test's test_info protocol buffer."""
     return self._test_info
 
 
@@ -162,10 +168,12 @@ class HTFTest(object):
 
   @property
   def name(self):
+    """Name of this test."""
     return self.metadata.name
 
   @property
   def parameters(self):
+    """This test's parameters."""
     return self._parameters
 
   @property

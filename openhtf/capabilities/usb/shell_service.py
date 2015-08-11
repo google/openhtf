@@ -72,8 +72,8 @@ import cStringIO
 import threading
 import time
 
-import adb_protocol
-import usb_exceptions
+from openhtf.capabilities.usb import adb_protocol
+from openhtf.capabilities.usb import usb_exceptions
 
 from openhtf.util import timeouts
 
@@ -94,7 +94,7 @@ class AsyncCommandHandle(object):
   be False, otherwise it will be True.
   """
 
-  def __init__(self, stream, stdin, stdout, timeout, is_raw):
+  def __init__(self, stream, stdin, stdout, timeout, is_raw):  #pylint: disable=too-many-arguments
     """Create a handle to use for interfacing with an AsyncCommand.
 
     Args:
@@ -129,6 +129,7 @@ class AsyncCommandHandle(object):
     timeouts.ExecuteAfterDelay(timeout, self.Close)
 
   def _WriterThread(self, is_raw):
+    """Write as long as the stream is not closed."""
     # If we're not in raw mode, do line-buffered reads to play nicer with
     # potential interactive uses, max of MAX_ADB_DATA, since anything we write
     # to the stream will get packetized to that size anyway.
@@ -141,14 +142,15 @@ class AsyncCommandHandle(object):
       self.stream.Write(reader(adb_protocol.MAX_ADB_DATA))
 
   def _ReaderThread(self):
+    """Read until the stream is closed."""
     for data in self.stream.ReadUntilClose():
       if self.stdout is not None:
         self.stdout.write(data)
 
-  def __enter__(self):
+  def __enter__(self):  # pylint: disable=invalid-name
     return self
 
-  def __exit__(self, exc_type, exc_value, exc_tb):
+  def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
     if exc_type:
       return False
     self.Wait()
@@ -198,6 +200,7 @@ class ShellService(object):
 
   @staticmethod
   def _ToRawCommand(command):
+    """Convert the command to a raw signal."""
     # Android doesn't have stty, so we manually do the ioctl (yuck).  This ioctl
     # is a TCSETA (0x5403) with the following flags set:
     #   Control bits:

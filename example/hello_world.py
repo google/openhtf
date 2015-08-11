@@ -49,26 +49,26 @@ METADATA.AddParameter('favorite_word').String().MatchesRegex(r'elaborate').Doc(
         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 @capabilities.requires(example=example_capability.Example)
 def hello_world(test, example):
-    """A hello world test phase."""
-    test.logger.info('Hello World!')
-    test.parameters.widget_type = openhtf.prompter.DisplayPrompt(
-        'What\'s the widget type?')
-    test.logger.info('Example says: %s', example.DoStuff())
+  """A hello world test phase."""
+  test.logger.info('Hello World!')
+  test.parameters.widget_type = openhtf.prompter.DisplayPrompt(
+      'What\'s the widget type?')
+  test.logger.info('Example says: %s', example.DoStuff())
 
 
 def set_params(test):
-    """Test phase that sets a parameter."""
-    test.parameters.favorite_number = 9
-    time.sleep(2)
-    test.parameters.favorite_word = 'Elaborate'
-    time.sleep(2)
-    test.parameters.level_none = 0
-    time.sleep(2)
-    test.parameters.level_some = 8
-    time.sleep(2)
-    test.parameters.level_all = 9
-    time.sleep(2)
+  """Test phase that sets a parameter."""
+  test.parameters.favorite_number = 9
+  time.sleep(2)
+  test.parameters.favorite_word = 'Elaborate'
+  time.sleep(2)
+  test.parameters.level_none = 0
+  time.sleep(2)
+  test.parameters.level_some = 8
+  time.sleep(2)
+  test.parameters.level_all = 9
+  time.sleep(2)
 
 
 if __name__ == '__main__':
-    openhtf.execute_test(METADATA, [hello_world, set_params])
+  openhtf.execute_test(METADATA, [hello_world, set_params])

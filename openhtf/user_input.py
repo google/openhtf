@@ -73,8 +73,6 @@ class PromptManager(object):
     """
     with self._cond:
       if self._prompt is not None:
-      # TODO: We may need to do something more flexible here if prompt updating
-      #       is needed for shared test equipment.
         raise MultiplePromptsError
       self._prompt = Prompt(id=uuid.uuid4(),
                             message=message,
@@ -84,8 +82,6 @@ class PromptManager(object):
       console_prompt = ConsolePrompt(self._prompt.id, self.Respond)
       print self._prompt.message
       console_prompt.start()
-      # TODO: Check the prompt state from the http service and do the right
-      #       thing in the frontend.
       self._cond.wait(FLAGS.prompt_timeout_s)
       console_prompt.Stop()
       self._prompt = None

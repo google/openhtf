@@ -19,9 +19,9 @@ Test timing, failures, and the UI are handled by this module.
 """
 import logging
 
-import phasemanager
-import testrunadapter
-import htftest
+from openhtf import phasemanager
+from openhtf import testrunadapter
+from openhtf import htftest
 from openhtf.proto import htf_pb2
 
 _LOG = logging.getLogger('htf.testmanager')
@@ -74,6 +74,7 @@ class TestManager(object):
 
   @property
   def test_run_adapter(self):
+    """Accessor for _test_run_adapter."""
     return self._test_run_adapter
 
   def ExecuteOneTest(self):
@@ -97,7 +98,7 @@ class TestManager(object):
 
       if state in self._FINISHED_STATES:
         self._logger.info('Test finished prematurely with state %s',
-                       htf_pb2.Status.Name(state))
+                          htf_pb2.Status.Name(state))
         break
     else:
       state = self._test_run_adapter.combined_parameter_status
@@ -106,6 +107,7 @@ class TestManager(object):
     self._logger.info('Test is over.')
 
   def Stop(self):
+    """Stop the test."""
     if self._phase_manager:
       self._phase_manager.Stop()
     else:

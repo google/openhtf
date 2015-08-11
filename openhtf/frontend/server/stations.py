@@ -33,7 +33,8 @@ from openhtf.util import file_watcher
 FLAGS = gflags.FLAGS
 
 
-class Responses(object):
+class Responses(object):  # pylint: disable=too-few-public-methods
+  """ Various available responses."""
   NOT_FOUND = object()
   ERROR = object()
 
