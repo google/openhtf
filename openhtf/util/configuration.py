@@ -281,17 +281,17 @@ class ConfigModel(object):
 
       # Load string values from flags
       for keyval in FLAGS.openhtf_config_value:
-        k, v = keyval.split('=')
-        self._state[k] = v
+        key, val = keyval.split('=')
+        self._state[key] = val
 
       self._loaded = True
       logging.debug('Configuration loaded: %s', self._state)
-    except yaml.YAMLError as e:
+    except yaml.YAMLError as exception:
       logging.exception('Failed to load yaml file: %s', filename)
-      raise ConfigurationInvalidError(filename, e)
-    except IOError as e:
+      raise ConfigurationInvalidError(filename, exception)
+    except IOError as exception:
       logging.exception('Configuration failed loaded: %s', filename)
-      raise ConfigurationMissingError(filename, e)
+      raise ConfigurationMissingError(filename, exception)
 
     return True
 
@@ -620,7 +620,7 @@ def InjectPositionalArgs(method):  # pylint: disable=invalid-name
   # pass it as a keyword arg, it passes it as the first positional arg.
   if 'self' == argspec.args[0]:
     @functools.wraps(method)
-    def SelfWrapper(self, **kwargs):
+    def SelfWrapper(self, **kwargs):  # pylint: disable=invalid-name,missing-docstring
       kwargs['self'] = self
       return method_wrapper(**kwargs)
     return SelfWrapper

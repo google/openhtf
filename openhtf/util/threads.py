@@ -48,9 +48,9 @@ class ExceptionSafeThread(threading.Thread):
   def run(self):
     try:
       self._ThreadProc()
-    except Exception as e:
+    except Exception as exception:
       logging.exception('Thread raised an exception: %s', self.name)
-      self._ThreadException(e)
+      self._ThreadException(exception)
       raise
     finally:
       self._ThreadFinished()
@@ -62,7 +62,7 @@ class ExceptionSafeThread(threading.Thread):
   def _ThreadFinished(self):
     """The method called once _ThreadProc has finished."""
 
-  def _ThreadException(self, e):
+  def _ThreadException(self, exception):
     """The method called if _ThreadProc raises an exception."""
 
 

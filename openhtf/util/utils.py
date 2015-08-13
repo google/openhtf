@@ -38,8 +38,8 @@ def LogEveryNToLogger(n, logger, level, message, *args):  # pylint: disable=inva
         yield False
       logger.log(level, message, *args)
       yield True
-  g = _gen()
-  return lambda: next(g)
+  gen = _gen()
+  return lambda: next(gen)
 
 
 def LogEveryN(n, level, message, *args):  # pylint: disable=invalid-name

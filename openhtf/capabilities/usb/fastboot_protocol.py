@@ -203,7 +203,7 @@ class FastbootCommands(object):
     """Send a simple command."""
     self._protocol.SendCommand(command, arg)
     return self._protocol.HandleSimpleResponses(**kwargs)
-    
+
   # pylint: disable=too-many-arguments
   def FlashFromFile(self, partition, source_file, source_len=0,
                     info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None,

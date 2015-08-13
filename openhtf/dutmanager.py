@@ -33,7 +33,6 @@ from openhtf.capabilities.usb import fastboot_device
 from openhtf.capabilities.usb import local_usb
 from openhtf.capabilities.usb import usb_exceptions
 from openhtf.util import configuration
-from openhtf.util import timeouts
 
 configuration.Declare('test_start', 'Mechanism to use for starting a test.',
                       default_value='android')
@@ -120,7 +119,7 @@ class FrontendHandler(object):
   DEQUE_MAP = collections.defaultdict(collections.deque)
   DEQUE_COND = threading.Condition()
 
-  def __init__(self, cell_number, config):
+  def __init__(self, cell_number, dummy_config):
     self.cell_number = cell_number
     self.serial = None
 

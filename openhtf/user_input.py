@@ -91,7 +91,7 @@ class PromptManager(object):
 
   def Respond(self, prompt_id, response):
     """Respond to the prompt that has the given ID.
-    
+
     If there is no active prompt or the prompt id being responded to doesn't
     match the active prompt, do nothing.
     """

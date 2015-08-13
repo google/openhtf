@@ -229,6 +229,7 @@ class ShellService(object):
       command = self._ToRawCommand(command)
     return self.adb_connection.StreamingCommand('shell', command, timeout_ms)
 
+  # pylint: disable=too-many-arguments
   def AsyncCommand(self, command, stdin=None, stdout=None, raw=False,
                    timeout_ms=None):
     """Run the given command on the device asynchronously.
@@ -269,6 +270,7 @@ class ShellService(object):
       # any writes to the stream, if we don't do this bad things happen...
       time.sleep(.1)
     return AsyncCommandHandle(stream, stdin, stdout, timeout, raw)
+  # pylint: enable=too-many-arguments
 
   @classmethod
   def UsingConnection(cls, adb_connection):

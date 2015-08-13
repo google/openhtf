@@ -350,6 +350,7 @@ class AbstractFilesyncTransport(object):
     assert hasattr(self, 'RECV_MSG_TYPE'), 'No RECV_MSG_TYPE set!'
     assert hasattr(self, 'VALID_RESPONSES'), 'No VALID_RESPONSES set!'
     self.stream = stream
+    # pylint: disable=no-member
 
   def __str__(self):
     return '<%s(%s) id(%x), Receives: %s>' % (type(self).__name__, self.stream,
@@ -383,7 +384,7 @@ class AbstractFilesyncTransport(object):
                                   *msg._replace(**replace_dict)), timeout)
     if msg.has_data:
       self.stream.Write(data, timeout)
-  
+
   # pylint: enable=protected-access
 
   def ReadUntilDone(self, command, timeout=None):

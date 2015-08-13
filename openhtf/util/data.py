@@ -182,12 +182,12 @@ class Descriptor(object):
     """Transforms the value into the correct type."""
     try:
       return self.type.Transform(value)
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as exception:  # pylint: disable=broad-except
       # Use the original traceback, but wrapped in ValueError for easy catching.
-      tb = sys.exc_info()[2]
+      traceback = sys.exc_info()[2]
       exc_message = ('%s does not transform into %s: %s %s'
-                     % (value, self.type.name, type(e), str(e)))
-      raise ValueError, exc_message, tb
+                     % (value, self.type.name, type(exception), str(exception)))
+      raise ValueError, exc_message, traceback
 
   @classmethod
   def AddCapability(cls, capab_dispatcher):
@@ -516,7 +516,7 @@ class InRange(Validator):
     self._minimum = minimum
     self._maximum = maximum
 
-  
+
   # pylint: disable=invalid-name,missing-docstring
   @CallableProperty
   def minimum(self):
@@ -560,7 +560,7 @@ class Matches(Validator):
     return True
 
   @Validate.register(BooleanDescriptor)
-  def _(self, value):
+  def _(self, value):  # pylint: disable=missing-docstring
     if bool(value) != bool(self._expected):
       raise ValueError('%s != %s', bool(value), bool(self._expected))
     return True

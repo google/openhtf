@@ -15,16 +15,13 @@
 
 """Default minimal web frontend packaged with OpenHTF."""
 
-import random
-import time
 
 import flask
 from flask import json
 from flask import views
 
 from openhtf.frontend.server import stations
-from openhtf.proto import htf_pb2
-from openhtf.proto import frontend_pb2
+from openhtf.proto import frontend_pb2  # pylint: disable=no-name-in-module
 
 app = flask.Flask(__name__)  # pylint: disable=invalid-name
 
@@ -77,7 +74,7 @@ class StationDataHandler(views.MethodView):
       flask.abort(500)
     return self.SanitizeAndSerialize_(response)
 
-  def SanitizeAndSerialize_(self, response):  # pylint: disable=invalid-name
+  def SanitizeAndSerialize_(self, response):  # pylint: disable=invalid-name,no-self-use
     """Sanitizes and serializes the response.
 
     This basically means removing any binary parameters.
@@ -101,6 +98,7 @@ def InitializeApp(manager, **dummy_kwargs):  # pylint: disable=invalid-name
   Args:
     manager: The station manager.
   """
+  # pylint: disable=no-member
   view = FileHandler.as_view('AppHandler', 'static/app.html')
   app.add_url_rule('/openhtf/', view_func=view)
   app.add_url_rule('/openhtf/<path:path>', view_func=view)

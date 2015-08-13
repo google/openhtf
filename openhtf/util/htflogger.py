@@ -26,7 +26,7 @@ import os
 import re
 import traceback
 
-from openhtf.proto import htf_pb2
+from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 # Logging setup
 HTF_LOGGER_PREFIX = 'htf'
@@ -79,7 +79,7 @@ class HTFLogger(logging.LoggerAdapter):
     self.logger.addFilter(MAC_FILTER)
     self.logger.addHandler(self._handler)
 
-  def __del__(self):
+  def __del__(self):  # pylint: disable=invalid-name
     self.logger.removeHandler(self._handler)
 
   def __str__(self):
@@ -104,9 +104,9 @@ class HTFLogger(logging.LoggerAdapter):
     if not code:
       raise ValueError('Invalid Failure Code', code)
 
-    fc = self._test_run.failure_codes.add()
-    fc.code = code
-    fc.details = details
+    failure_code = self._test_run.failure_codes.add()
+    failure_code.code = code
+    failure_code.details = details
 
 
 class HTFLoggerHandler(logging.Handler):

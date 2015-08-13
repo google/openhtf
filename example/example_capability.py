@@ -29,7 +29,7 @@ class Example(capabilities.BaseCapability):   # pylint: disable=no-init
     """Tear down the capability instance."""
     logging.info('Tearing down %s', self)
 
-  def DoStuff(self):
+  def DoStuff(self):  # pylint: disable=no-self-use
     """Capability-specific functionality."""
     time.sleep(3)
     return 'Did stuff!'

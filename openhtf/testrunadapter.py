@@ -33,7 +33,7 @@ from openhtf.util import log_persister
 from openhtf.util import parameters
 from openhtf.util import utils
 from openhtf.util import htflogger
-from openhtf.proto import htf_pb2
+from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 _LOG = logging.getLogger('htf.testrunadapter')
 
@@ -61,7 +61,7 @@ class TestRunAdapter(object):
     self._htf_test_run = htf_test_run
     self._component_graph = genealogy.ComponentGraph(htf_test_run.assembly)
 
-  
+
   # pylint: disable=missing-docstring
   @property
   def cell(self):

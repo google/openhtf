@@ -40,7 +40,6 @@ Convention:
 import collections
 import os
 import json
-import threading
 
 import gflags
 
@@ -58,10 +57,10 @@ class RunData(collections.namedtuple(
   @classmethod
   def FromFile(cls, filename):
     """Creates RunData from a run file."""
-    with open(filename) as f:
-      data = f.read()
-    d = json.loads(data)
-    return cls(**d)
+    with open(filename) as runfile:
+      data = runfile.read()
+    decoded = json.loads(data)
+    return cls(**decoded)
 
   def SaveToFile(self, directory):
     """Saves this run data to a file, typically in /var/run/openhtf.
@@ -72,15 +71,15 @@ class RunData(collections.namedtuple(
       The filename of this rundata.
     """
     filename = os.path.join(directory, self.station_name)
-    with open(filename, 'w') as f:
-      f.write(self.AsJson())
+    with open(filename, 'w') as runfile:
+      runfile.write(self.AsJson())
     return filename
 
   def AsJson(self):
     """Converts thie run data instance to JSON."""
-    d = self._asdict()
-    d['http_host'] = self.http_host
-    return json.dumps(d, sort_keys=True, indent=4, separators=(',', ': '))
+    data = self._asdict()
+    data['http_host'] = self.http_host
+    return json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))
 
   def IsAlive(self):
     """Returns True if this pid is alive."""

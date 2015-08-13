@@ -27,7 +27,7 @@ import itertools
 
 import openhtf.capabilities as capabilities
 from openhtf.util import parameters
-from openhtf.proto import htf_pb2
+from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 
 class InvalidTestPhaseError(Exception):

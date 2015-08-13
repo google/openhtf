@@ -25,7 +25,7 @@ import gflags
 import rocket
 
 from openhtf import dutmanager
-from openhtf.proto import frontend_pb2
+from openhtf.proto import frontend_pb2  # pylint: disable=no-name-in-module
 
 
 FLAGS = gflags.FLAGS
@@ -64,7 +64,7 @@ class HtfView(flask.views.MethodView):
     response.mimetype = 'application/octet-stream'
     return response
 
-  def post(self):  # pylint: disable=invalid-name
+  def post(self):  # pylint: disable=invalid-name,no-self-use
     """HTTP POST handler."""
     event = frontend_pb2.HTFFrontendEvent.FromString(
         flask.request.form['event'])
@@ -80,7 +80,7 @@ class HttpHandler(object):
     self.app = flask.Flask('OpenHTF')
     self.app.debug = True
     self.app.add_url_rule('/get',
-                          view_func=HtfView.as_view('get', metadata, cells))
+                          view_func=HtfView.as_view('get', metadata, cells))  # pylint: disable=no-member
 
     self.server = None
     self.log = logging.getLogger('Rocket')

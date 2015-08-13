@@ -41,8 +41,7 @@ import gflags
 from openhtf import htftest
 from openhtf.util import configuration
 from openhtf.util import threads
-from openhtf.util import htflogger
-from openhtf.proto import htf_pb2
+from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,

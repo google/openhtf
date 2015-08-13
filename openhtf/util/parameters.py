@@ -71,7 +71,7 @@ import logging
 import textwrap
 
 
-from openhtf.proto import htf_pb2
+from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util.utils import TimeMillis
@@ -356,6 +356,9 @@ class TimeseriesParameterDescriptor(data.BaseDataDescriptor):
   Transform = staticmethod(str)  # pylint: disable=invalid-name
 
 
+# pylint: disable=no-member
+
+
 class ExtendedSetValueCapability(object):
   # pylint: disable=no-self-argument
 
@@ -425,11 +428,11 @@ class _GetValueCapability(object):
 
   @GetValue.register(data.NumberDescriptor)
   @GetValue.register(data.BooleanDescriptor)
-  def GetValueNumber(unused_desc, parameter):
+  def GetValueNumber(unused_desc, parameter):  # pylint: disable=no-self-use
     return parameter.numeric_value
 
   @GetValue.register(data.StringDescriptor)
-  def GetValueString(unused_desc, parameter):
+  def GetValueString(unused_desc, parameter):  # pylint: disable=no-self-use
     return parameter.text_value
 
 
@@ -648,9 +651,9 @@ class ParameterCollection(object):
     Returns:
       The parameter's status
     """
-    p = self._parameters[name].parameter
-    if p.HasField('status'):
-      return p.status
+    param = self._parameters[name].parameter
+    if param.HasField('status'):
+      return param.status
     raise TestParameterError(
         'Test parameter has no status, probably extended?', name)
 

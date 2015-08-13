@@ -22,7 +22,7 @@ import logging
 from openhtf import phasemanager
 from openhtf import testrunadapter
 from openhtf import htftest
-from openhtf.proto import htf_pb2
+from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 _LOG = logging.getLogger('htf.testmanager')
 
