@@ -19,9 +19,10 @@ Test timing, failures, and the UI are handled by this module.
 """
 import logging
 
-from openhtf import phasemanager
-from openhtf import testrunadapter
 from openhtf import htftest
+from openhtf import phasemanager
+from openhtf import test_record
+from openhtf import testrunadapter
 from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 _LOG = logging.getLogger('htf.testmanager')
@@ -64,18 +65,20 @@ class TestManager(object):
     """
     self._test = test
     self._cell_config = cell_config
-    self._test_run_adapter = testrunadapter.TestRunAdapter(
-        cell_number, test)
-    self._phase_manager = phasemanager.PhaseManager(
-        self._cell_config, self._test, self._test_run_adapter, capability_map)
+    self._test_record = test_record.TestRecord()
+  # TODO(jethier): Remove the following.
+    # self._test_run_adapter = testrunadapter.TestRunAdapter(
+    #     cell_number, test)
+  #   self._phase_manager = phasemanager.PhaseManager(
+  #       self._cell_config, self._test, self._test_run_adapter, capability_map)
 
-    self._logger = self._test_run_adapter.logger
-    self._test_created = False
+  #   self._logger = self._test_run_adapter.logger
+  #   self._test_created = False
 
-  @property
-  def test_run_adapter(self):
-    """Accessor for _test_run_adapter."""
-    return self._test_run_adapter
+  # @property
+  # def test_run_adapter(self):
+  #   """Accessor for _test_run_adapter."""
+  #   return self._test_run_adapter
 
   def ExecuteOneTest(self):
     """Executes one test's phases from start to finish.
@@ -94,14 +97,15 @@ class TestManager(object):
         break
 
       state = self._PhaseResultToState(phase_result.phase_result)
-      self._test_run_adapter.SetTestRunStatus(state)
+    # TODO(jethier): Replace internal state tracking.
+    #   self._test_run_adapter.SetTestRunStatus(state)
 
-      if state in self._FINISHED_STATES:
-        self._logger.info('Test finished prematurely with state %s',
-                          htf_pb2.Status.Name(state))
-        break
-    else:
-      state = self._test_run_adapter.combined_parameter_status
+    #   if state in self._FINISHED_STATES:
+    #     self._logger.info('Test finished prematurely with state %s',
+    #                       htf_pb2.Status.Name(state))
+    #     break
+    # else:
+    #   state = self._test_run_adapter.combined_parameter_status
 
     self._RecordTestFinish(state)
     self._logger.info('Test is over.')
@@ -135,7 +139,9 @@ class TestManager(object):
 
   def _RecordTestStart(self):
     """Marks the begining of a test."""
-    self._test_run_adapter.RecordTestBegin()
+    self._test_record.RecordStart()
+    # TODO(jethier): Remove the following.
+    # self._test_run_adapter.RecordTestBegin()
     self._logger.info('Starting test execution.')
     self._test_created = True
 
@@ -151,10 +157,12 @@ class TestManager(object):
       state: State of the test before finishing.
     """
 
-    if state != htf_pb2.PASS:
+    if state != 'PASS':
       self._SetFailureCodesBasedOnState(state)
 
-    self._test_run_adapter.RecordTestFinish()
+    self._test_record.RecordEnd()
+    # TODO(jethier): Remove the following.
+    # self._test_run_adapter.RecordTestFinish()
     self._logger.info('Finishing test execution with state %s.',
                       htf_pb2.Status.Name(state))
 
