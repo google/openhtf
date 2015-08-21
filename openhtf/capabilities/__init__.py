@@ -175,6 +175,9 @@ def requires(**capabilities):
           'Capabilities %s required multiple times on phase %s' % (
               duplicates, func))
     wrapper.capabilities.update(capabilities)
+    # functools.wraps doesn't explicitly save this anywhere, and we need it to
+    # pull out the source lines later.
+    wrapper.wraps = func
     return wrapper
   return result
 

@@ -41,7 +41,8 @@ class TestRecord(TestRecordBase):
 
   @contextlib.contextmanager
   def RecordPhaseTiming(self, phase):
-    #TODO(madsci): Figure out how to get code from inside the capability wrapper.
+    while hasattr(phase, 'wraps'):
+      phase = phase.wraps
     phase_record = PhaseRecord(phase.__name__, phase.__doc__,
                                inspect.getsource(phase), utils.TimeMillis())
     try:
