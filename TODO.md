@@ -6,10 +6,9 @@ we identify in the README.md file. For example:
     * configuration
     * execution
       * test_start
-      * executor
+      * test_executor
       * htftest
-      * phase_manager
-      * test_manager
+      * phase_executor
     * hardware
       * usb
     * io
@@ -17,7 +16,7 @@ we identify in the README.md file. For example:
       * http_handler
       * proto
       * rundata
-      * test_record
+      * records
       * testrun_adapter
       * user_input
     * util

@@ -26,25 +26,25 @@ from openhtf.util import utils
 class InvalidMeasurementValueError(Exception):
   """Raised when a measurement is taken with the wrong number of dimensions."""
 
-TestRecordBase = collections.namedtuple(
-    'TestRecord', 'dut_id station_id start_time_millis end_time_millis'
-    'outcome metadata openhtf_version code phases')
 
-
-class TestRecord(TestRecordBase):
-  """Encapsulates the record of a single test."""
-  def __init__(self, test_filename, test_docstring, test_code):
-    super(TestRecord, self).__init__(None, None, None, None, None, {}, None,
-                                     test_code, [])
+class TestRecord(collections.namedtuple(
+    'TestRecord', 'dut_id station_id start_time_millis end_time_millis '
+    'outcome metadata openhtf_version code phases log_lines')):
+  """Encapsulate the record of a single test."""
+  def __new__(cls, test_filename, test_docstring, test_code):
+    self = super(TestRecord, cls).__new__(cls, None, None, None, None, None, {},
+                                          None, test_code, [], [])
     self.metadata['filename'] = test_filename
     self.metadata['docstring'] = test_docstring
+    return self
 
   @contextlib.contextmanager
   def RecordPhaseTiming(self, phase):
     while hasattr(phase, 'wraps'):
       phase = phase.wraps
     phase_record = PhaseRecord(phase.__name__, phase.__doc__,
-                               inspect.getsource(phase), utils.TimeMillis())
+                               inspect.getsource(phase), utils.TimeMillis(),
+                               phase.measurements, phase.attachments)
     try:
       yield phase_record
     finally:
@@ -76,12 +76,21 @@ class TestRecord(TestRecordBase):
 
 
 class PhaseRecord(collections.namedtuple(
-    'PhaseRecord', 'name docstring code start_time_millis end_time_millis'
+    'PhaseRecord', 'name docstring code start_time_millis end_time_millis '
     'measurements attachments')):
+  """Encapsulate the record of a single phase."""
+  # TODO(jethier): Populate measurements and attachments (maybe pass them in at
+  # instantiation. measurements won't actually be a dict but an object with
+  # __getattr__ overridden. See ParameterList in parameters.py.
+  def __new__(cls, name, docstring, code, start_time_millis, measurements,
+              attachments):
+    return super(PhaseRecord, cls).__new__(cls, name, docstring, code,
+        start_time_millis, None, measurements, attachments)
 
-  def __init__(self, name, docstring, code, start_time_millis):
-    super(PhaseRecord, self).__init__(name, docstring, code, start_time_millis,
-                                      None, {}, {})
+
+LogRecord = collections.namedtuple('LogRecord', 'level logger_name '
+    'timestamp_millis message'))
+
 
 class Measurement(collections.namedtuple('Measurement', 'name units values')):
   
