@@ -55,7 +55,7 @@ class TestRunAdapter(object):
     htf_test_run.cell_number = cell_number
     htf_test_run.tester_name = config.target_name
     htf_test_run.framework_build = 'openhtf'
-    htf_test_run.test_info.CopyFrom(test.metadata)
+    # htf_test_run.test_info.CopyFrom(test.metadata)
     self._logger = htflogger.HTFLogger(htf_test_run, cell_number)
     self._parameters = test.parameters.ForTestRun(htf_test_run)
     self._htf_test_run = htf_test_run

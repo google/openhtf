@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-"""CellExecutor executes tests in a cell.
+"""TestExecutor executes tests in a cell.
 
-CellExecuter executes the test for the given cell consecutively, concisely, and
+TestExecuter executes the test for the given cell consecutively, concisely, and
 consistently.
 """
 import logging
@@ -25,6 +25,7 @@ import contextlib2 as contextlib
 
 from openhtf import capabilities
 from openhtf import dutmanager
+from openhtf import phasemanager
 from openhtf import testmanager
 from openhtf.util import configuration
 from openhtf.util import threads
@@ -42,7 +43,7 @@ class TestStopError(Exception):
   """Test is being stopped."""
 
 
-class CellExecutorStarter(object):
+class TestExecutorStarter(object):
   """Starts all the cell executor threads."""
 
   def __init__(self, test):
@@ -58,7 +59,7 @@ class CellExecutorStarter(object):
     cells = {}
     for cell_idx, cell_data in cell_info.iteritems():
       cell_config = self._config.CreateStackedConfig(cell_data)
-      cells[cell_idx] = CellExecutor(cell_idx, cell_config, self.test)
+      cells[cell_idx] = TestExecutor(cell_idx, cell_config, self.test)
     return cells
 
   def Start(self):
@@ -105,21 +106,24 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
     return False
 
 
-class CellExecutor(threads.KillableThread):
+class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test cell."""
 
   daemon = True
 
   def __init__(self, cell_number, cell_config, test):
-    super(CellExecutor, self).__init__()
+    super(TestExecutor, self).__init__()
 
     self.test = test
-    self.test_manager = None
     self._cell_config = cell_config
     self._cell_number = cell_number
     self._current_exit_stack = None
+    self._current_test_state = None
     self._dut_manager = dutmanager.DutManager.FromConfig(
         cell_number, cell_config)
+
+  def GetState(self):
+    return self._current_test_state
 
   @threads.Loop
   def _ThreadProc(self):
@@ -128,12 +132,11 @@ class CellExecutor(threads.KillableThread):
     When this finishes, the parent loops back around and calls us again.
     """
     with contextlib.ExitStack() as exit_stack, LogSleepSuppress() as suppressor:
-      _LOG.info('Starting test %s', self.test)
+      _LOG.info('Starting test %s', self.test.filename)
 
       self._current_exit_stack = exit_stack
       exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
 
-      _LOG.info('Starting test.')
       suppressor.failure_reason = 'TEST_START failed to complete.'
       dut_serial = self._dut_manager.WaitForTestStart()
 
@@ -144,29 +147,46 @@ class CellExecutor(threads.KillableThread):
               self.test.capability_type_map))
       exit_stack.callback(capability_manager.TearDownCapabilities)
 
-      _LOG.debug('Making test manager.')
+      _LOG.debug('Making test state and phase executor.')
       # Store the reason the next function can fail, then call the function.
       suppressor.failure_reason = 'Test is invalid.'
-      self.test_manager = testmanager.TestManager(
-          self._cell_number, self._cell_config, self.test,
+      self._current_test_state = testmanager.TestState(
+          self._cell_number, self._cell_config, self.test)
+      # TODO(madsci): Augh.  Do we pass this into the TestState c'tor?  Or
+      # do we add a 'SetDutId' to test_state that does a _replace on its
+      # test_record?
+      self._current_test_state.test_run_adapter.SetDutSerial(dut_serial)
+
+      phase_executor = phasemanager.PhaseExecutor(
+          self._cell_config, self.test,
+          self._current_test_state.test_record,
+          self._current_test_state.test_run_adapter,
           capability_manager.capability_map)
-      self.test_manager.test_run_adapter.SetDutSerial(dut_serial)
 
       def optionally_stop(exc_type, *dummy):
-        """Called on stopping."""
+        """Always called when we stop a test.
+
+        If an exception happened, we'll check it to see if it was a test
+        error.  If it was not (ie the user intentionally stopped the test),
+        then we'll just return immediately, otherwise we'll wait for the
+        Test Stop mechanism in dutmanager.
+        """
+        # Always stop the phase_executor, if the test ended normally then it
+        # will already be stopped, but this won't hurt anything.  If the test
+        # exited abnormally, we don't want to leave this hanging around in some
+        # weird state.
+        phase_executor.Stop()
+
         # If Stop was called, we don't care about the test stopping completely
         # anymore, nor if ctrl-C was hit.
         if exc_type not in (TestStopError, KeyboardInterrupt):
           self._dut_manager.WaitForTestStop()
-        self.test_manager = None
 
-      # This won't do anything normally, unless self.Stop is called.
-      exit_stack.callback(self.test_manager.Stop)
       # Call WaitForTestStop() to match WaitForTestStart().
       exit_stack.push(optionally_stop)
 
       suppressor.failure_reason = 'Failed to execute test.'
-      self.test_manager.ExecuteOneTest()
+      self._ExecuteTest(phase_executor)
 
   def Stop(self):
     """Stop this cell."""
@@ -178,3 +198,28 @@ class CellExecutor(threads.KillableThread):
         stack.push(lambda *exc_details: True)
         raise TestStopError('Stopping.')
     self.Kill()
+
+  def _ExecuteTest(self, phase_executor):
+    """Executes one test's phases from start to finish.
+
+    Raises:
+      InvalidPhaseResultError: Raised when a phase doesn't return
+          htftest.TestPhaseInfo.TEST_PHASE_RESULT_*
+    """
+    _LOG.info('Initializing capabilities.')
+
+    for phase_result in phase_executor.ExecutePhases():
+      if phase_result.raised_exception:
+        self._current_test_state._SetErrorCode(phase_result.phase_result)
+        state = htf_pb2.ERROR
+        break
+
+      state, finished = self._current_test_state.SetStateFromPhaseResult(
+          phase_result.phase_result)
+      if finished:
+        break
+    else:
+      state = self._current_test_state.test_run_adapter.combined_parameter_status
+
+    self._current_test_state._RecordTestFinish(state)
+    _LOG.info('Test is over.')

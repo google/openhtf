@@ -25,28 +25,14 @@ import time
 import example_capability
 import openhtf
 
-from openhtf import htftest
 import openhtf.capabilities as capabilities
 from openhtf.util import parameters
-
-
-METADATA = htftest.TestMetadata(name='openhtf_example')
-METADATA.SetVersion(1)
-METADATA.Doc('Example tester')
-
-METADATA.AddParameter('favorite_number').Number().InRange(0, 10).Doc(
-    "Example numeric parameter.")
-METADATA.AddParameter('favorite_word').String().MatchesRegex(r'elaborate').Doc(
-    '''Example string parameter.''')
 
 
 @parameters.AddParameters(
     parameters.TestParameterDescriptor(
         'widget_type').String().MatchesRegex(r'.*Widget$').Doc(
             '''This phase parameter tracks the type of widgets.'''))
-@parameters.AddParameters(
-    [parameters.TestParameterDescriptor(
-        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 @capabilities.requires(example=example_capability.Example)
 def hello_world(test, example):
   """A hello world test phase."""
@@ -56,12 +42,13 @@ def hello_world(test, example):
   test.logger.info('Example says: %s', example.DoStuff())
 
 
+# Timeout if this phase takes longer than 10 seconds.
+@openhtf.TestPhase(timeout_s=10)
+@parameters.AddParameters(
+    [parameters.TestParameterDescriptor(
+        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 def set_params(test):
   """Test phase that sets a parameter."""
-  test.parameters.favorite_number = 9
-  time.sleep(2)
-  test.parameters.favorite_word = 'Elaborate'
-  time.sleep(2)
   test.parameters.level_none = 0
   time.sleep(2)
   test.parameters.level_some = 8
@@ -71,4 +58,4 @@ def set_params(test):
 
 
 if __name__ == '__main__':
-  openhtf.execute_test(METADATA, [hello_world, set_params])
+  openhtf.HTFTest(hello_world, set_params).Execute()

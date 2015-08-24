@@ -38,26 +38,34 @@ gflags.DEFINE_integer('http_port',
 class HtfView(flask.views.MethodView):
   """Method-based view for OpenHTF."""
 
-  def __init__(self, metadata, cells):  # pylint: disable=invalid-name
-    self.metadata = metadata
+  def __init__(self, test, cells):  # pylint: disable=invalid-name
+    self.test = test
     self.cells = cells
 
   def get(self):  # pylint: disable=invalid-name
     """HTTP GET handler."""
     response = frontend_pb2.HTFStationResponse()
-    response.station_name = self.metadata.name
-    response.framework_version = self.metadata.version_string
-    response.test_info.CopyFrom(self.metadata)
+    # TODO(jethier): Determine what info we need here and pull it out of the
+    # HTFTest object at self.test, because metadata went away.
+
+    # response.station_name = self.metadata.name
+    # response.framework_version = self.metadata.version_string
+    # response.test_info.CopyFrom(self.metadata)
     for cell_id, cell_exec in self.cells.iteritems():
-      test_manager = cell_exec.test_manager
+      test_state = cell_exec.GetState()
       if test_manager:
         cell = response.cells.add()
         cell.cell_number = cell_id
-        cell.test_run.CopyFrom(test_manager.test_run_adapter.htf_test_run)
+
+        # TODO(jethier): Serialize state to JSON.
+        # cell.test_run.CopyFrom(test_manager.test_run_adapter.htf_test_run)
 
     output = flask.request.args.get('output')
     if output and output == 'debug':
       return str(response)
+
+    # TODO(jethier): SerializeToString() is going away, and you probably
+    # don't want applicatoin/octet-stream if you're using JSON objects.
 
     # We have to set the MIME type explicitly, Flask defaults to text/html.
     response = flask.make_response(response.SerializeToString())
@@ -76,11 +84,11 @@ class HtfView(flask.views.MethodView):
 class HttpHandler(object):
   """Class that encapsulates a handler from setup to teardown."""
 
-  def __init__(self, metadata, cells):
+  def __init__(self, test, cells):
     self.app = flask.Flask('OpenHTF')
     self.app.debug = True
     self.app.add_url_rule('/get',
-                          view_func=HtfView.as_view('get', metadata, cells))  # pylint: disable=no-member
+                          view_func=HtfView.as_view('get', test, cells))  # pylint: disable=no-member
 
     self.server = None
     self.log = logging.getLogger('Rocket')

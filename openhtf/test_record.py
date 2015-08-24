@@ -44,7 +44,8 @@ class TestRecord(collections.namedtuple(
       phase = phase.wraps
     phase_record = PhaseRecord(phase.__name__, phase.__doc__,
                                inspect.getsource(phase), utils.TimeMillis(),
-                               phase.measurements, phase.attachments)
+                               getattr(phase, 'measurements', None),
+                               getattr(phase, 'attachments', None))
     try:
       yield phase_record
     finally:
@@ -89,7 +90,7 @@ class PhaseRecord(collections.namedtuple(
 
 
 LogRecord = collections.namedtuple('LogRecord', 'level logger_name '
-    'timestamp_millis message'))
+    'timestamp_millis message')
 
 
 class Measurement(collections.namedtuple('Measurement', 'name units values')):

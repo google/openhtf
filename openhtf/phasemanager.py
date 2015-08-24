@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-"""PhaseManager module for handling the phases of a test.
+"""PhaseExecutor module for handling the phases of a test.
 
 Each phase is an instance of htftest.TestPhaseInfo and therefore has relevant
 options. Each option is taken into account when executing a phase, such as
@@ -58,8 +58,8 @@ configuration.Declare(
 
 
 class TestPhaseResult(collections.namedtuple(
-    'TestPhaseResult', ['phase_name', 'phase_result', 'raised_exception'])):
-  """Wrap's a phases name, result and whether it raised an exception or not."""
+    'TestPhaseResult', ['phase_result', 'raised_exception'])):
+  """Result of a phase, and whether it raised an exception or not."""
 
 
 class PhaseExecutorThread(threads.KillableThread):
@@ -116,7 +116,7 @@ class PhaseExecutorThread(threads.KillableThread):
     """Figure out the result of the phase and do the right thing with it."""
     raised_exception = isinstance(result, BaseException)
     self._phase_result = TestPhaseResult(
-        self.name, result, raised_exception=raised_exception)
+        result, raised_exception=raised_exception)
     return self._phase_result
 
   @property
@@ -124,23 +124,24 @@ class PhaseExecutorThread(threads.KillableThread):
     return self._phase.__name__
 
   def __str__(self):
-    return self.name
+    return '<%s: %s>' % (type(self).__name__, self.name)
   __repr__ = __str__
 
 
-class PhaseManager(object):
+class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
-  def __init__(self, cell_config, test, test_run_adapter, capabilities):
+  def __init__(self, cell_config, test, test_record, test_run_adapter,
+               capabilities):
     self._config = cell_config
     self._phases = list(test.phases)
+    self._test_record = test_record
     self._test_run_adapter = test_run_adapter
     self._logger = test_run_adapter.logger
     self._phase_data = htftest.PhaseData(
         test_run_adapter.logger, {}, self._config, capabilities,
-        test_run_adapter.parameters, test_run_adapter.component_graph,
-        contextlib2.ExitStack())
-
+        test_run_adapter.parameters, None, None,
+        test_run_adapter.component_graph, contextlib2.ExitStack())
     self._current_phase = None
 
   def ExecutePhases(self):
@@ -179,8 +180,12 @@ class PhaseManager(object):
 
     self._test_run_adapter.SetTestRunStatus(htf_pb2.RUNNING)
 
-    phase_thread = PhaseExecutorThread(phase, self._phase_data)
-    with self._test_run_adapter.RecordPhaseTiming(phase.__name__):
+    with self._test_record.RecordPhaseTiming(phase) as phase_record:
+      # Fill in measurements and attachments with the ones for this phase.
+      phase_data = self._phase_data._replace(
+          measurements=phase_record.measurements,
+          attachments=phase_record.attachments)
+      phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
       self._current_phase = phase_thread
       result = phase_thread.JoinOrDie()
