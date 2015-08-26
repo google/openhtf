@@ -222,4 +222,5 @@ class TestExecutor(threads.KillableThread):
       state = self._current_test_state.test_run_adapter.combined_parameter_status
 
     self._current_test_state._RecordTestFinish(state)
+    self.test.OutputTestRecord(self._current_test_state.test_record)
     _LOG.info('Test is over.')

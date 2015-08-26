@@ -42,6 +42,27 @@ FLAGS(sys.argv)
 prompter = user_input.get_prompter()  # pylint: disable=invalid-name
 
 
+def OutputToJson(filename_pattern):
+  """Return an output callback that writes JSON Test Records.
+
+  An example filename_pattern might be:
+    '/data/test_records/%(dut_id)s.%(start_time_millis)s'
+
+  To use this output mechanism:
+    test = openhtf.HTFTest(PhaseOne, PhaseTwo)
+    test.AddOutputCallback(openhtf.OutputToJson(
+        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
+
+  Args:
+    filename_pattern: A format string specifying the filename to write to,
+      will be formatted with the Test Record as a dictionary.
+  """
+  def _Output(test_record):
+    with open(filename_pattern % test_record._asdict(), 'w') as f:
+      f.write('TODO: Write JSON encoder for Test Records.\n')
+  return _Output
+
+
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
   """Decorator to wrap a test phase function with the given options.
 
@@ -84,6 +105,7 @@ class HTFTest(object):
       *phases: The ordered list of phases to execute for this test.
     """
     self.phases = phases
+    self.output_callbacks = []
 
     # Pull some metadata from the frame in which this HTFTest was created.
     frame_record = inspect.stack()[1]
@@ -111,6 +133,13 @@ class HTFTest(object):
             'Duplicate capability with different type: %s' % capability)
       capability_type_map[capability] = capability_type
     return capability_type_map
+
+  def AddOutputCallback(self, callback):
+    self.output_callbacks.append(callback)
+
+  def OutputTestRecord(self, test_record):
+    for output_cb in self.output_callbacks:
+      output_cb(test_record)
 
   # TODO(madsci): Execute loops indefinitely right now, we should probably
   # provide an 'ExecuteOnce' method you can call instead if you don't want
@@ -161,5 +190,4 @@ class HTFTest(object):
   
     starter.Wait()
     handler.Stop()
-    return
 

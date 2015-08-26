@@ -31,9 +31,10 @@ class TestRecord(collections.namedtuple(
     'TestRecord', 'dut_id station_id start_time_millis end_time_millis '
     'outcome metadata openhtf_version code phases log_lines')):
   """Encapsulate the record of a single test."""
-  def __new__(cls, test_filename, test_docstring, test_code):
-    self = super(TestRecord, cls).__new__(cls, None, None, None, None, None, {},
-                                          None, test_code, [], [])
+  def __new__(cls, test_filename, test_docstring, test_code, start_time_millis):
+    self = super(TestRecord, cls).__new__(cls, None, None, start_time_millis,
+                                          None, None, {}, None, test_code,
+                                          [], [])
     self.metadata['filename'] = test_filename
     self.metadata['docstring'] = test_docstring
     return self

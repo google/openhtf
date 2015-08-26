@@ -58,4 +58,6 @@ def set_params(test):
 
 
 if __name__ == '__main__':
-  openhtf.HTFTest(hello_world, set_params).Execute()
+  test = openhtf.HTFTest(hello_world, set_params)
+  test.AddOutputCallback(openhtf.OutputToJson('./%(dut_id)s.%(start_time_millis)s'))
+  test.Execute()

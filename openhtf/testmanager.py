@@ -67,7 +67,7 @@ class TestState(object):
     """
     self._cell_config = cell_config
     self.test_record = test_record.TestRecord(
-        test.filename, test.docstring, test.code)
+        test.filename, test.docstring, test.code, utils.TimeMillis())
     # TODO(jethier): Remove the following.
     self.test_run_adapter = testrunadapter.TestRunAdapter(
         cell_number, test)
