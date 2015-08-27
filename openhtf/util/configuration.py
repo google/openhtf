@@ -21,6 +21,8 @@ by FLAGS or another mechanism.
 
 Examples of configuration values are things like target_name, test,
 configuration, etc...
+
+TODO(jethier): add an example of how to declare and use configuration.
 """
 
 import collections
@@ -635,5 +637,6 @@ LoadFromDict = HTFConfig().model.LoadFromDict
 Reset = HTFConfig().model.Reset
 
 # Everywhere that uses configuration uses this, so we just declare it here.
+# TODO(jethier): Are these deprecated now?
 Declare('target_name', 'The name of this tester', required=True)
 Declare('test_type', 'The type of this tester', required=True)

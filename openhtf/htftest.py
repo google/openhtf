@@ -40,8 +40,7 @@ class DuplicateCapabilityError(Exception):
 # The tuple which contains data passed to TestPhases
 class PhaseData(collections.namedtuple(
     'PhaseData', ['logger', 'state', 'config', 'capabilities',
-                  'parameters', 'measurements', 'attachments',
-                  'components', 'context'])):
+                  'parameters', 'measurements', 'components', 'context'])):
   """The phase data.
 
   Fields:
@@ -49,7 +48,9 @@ class PhaseData(collections.namedtuple(
         debug, info, warn, error, and exception.
     state: A dictionary for passing state data along to future phases.
     config: An HTFConfig object with attributes matching declared config keys.
+    capabilities: Dict mapping capability names to instances to use in phases.
     parameters: An object with attributes matching declared parameter names.
+    measurements: A MeasurementCollection for setting measurement values.
     components: A ComponentGraph object for manipulating the Assembly.
     context: A contextlib.ExitStack, which simplifies context managers in a
         phase.  This stack is pop'd after each phase.

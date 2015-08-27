@@ -78,7 +78,7 @@ from openhtf.util.utils import TimeMillis
 
 
 VALIDATOR_MAP = {
-    'range': data.InRange, 'matches': data.Matches,
+    'range': data.InRange, 'equels': data.Equals,
     'regex': data.MatchesRegex, 'enum': data.Enum,
     'none': None}
 
@@ -393,12 +393,12 @@ class _InitializeParameterCapability(object):
   @InitializeParameter.register(data.BooleanDescriptor)
   def InitializeParameterNumber(desc, parameter):
     """Initialize numeric parameters."""
-    # We allow InRange or Matches only.
-    validator = _FindValidator(desc, data.InRange, data.Matches)
+    # We allow InRange or Equals only.
+    validator = _FindValidator(desc, data.InRange, data.Equals)
     if not validator:
       return
 
-    if isinstance(validator, data.Matches):
+    if isinstance(validator, data.Equals):
       minimum = maximum = validator.expected
     elif isinstance(validator, data.InRange):
       minimum, maximum = validator.minimum, validator.maximum
@@ -565,7 +565,7 @@ class TestParameterList(object):
 
       PARAMS.Add('second_param').Number().InRange(1)
 
-      PARAMS.Add('third').Boolean().Matches(False)
+      PARAMS.Add('third').Boolean().Equals(False)
 
     Args:
       name: Name of this parameter.

@@ -40,6 +40,7 @@ import gflags
 
 from openhtf import htftest
 from openhtf.util import configuration
+from openhtf.util import measurements
 from openhtf.util import threads
 from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
@@ -140,7 +141,7 @@ class PhaseExecutor(object):
     self._logger = test_run_adapter.logger
     self._phase_data = htftest.PhaseData(
         test_run_adapter.logger, {}, self._config, capabilities,
-        test_run_adapter.parameters, None, None,
+        test_run_adapter.parameters, None,
         test_run_adapter.component_graph, contextlib2.ExitStack())
     self._current_phase = None
 
@@ -183,8 +184,7 @@ class PhaseExecutor(object):
     with self._test_record.RecordPhaseTiming(phase) as phase_record:
       # Fill in measurements and attachments with the ones for this phase.
       phase_data = self._phase_data._replace(
-          measurements=phase_record.measurements,
-          attachments=phase_record.attachments)
+          measurements=measurements.MeasurementCollection(phase.measurements))
       phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
       self._current_phase = phase_thread

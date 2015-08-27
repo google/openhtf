@@ -27,6 +27,7 @@ from openhtf import capabilities
 from openhtf import dutmanager
 from openhtf import phasemanager
 from openhtf import testmanager
+from openhtf.proto import htf_pb2
 from openhtf.util import configuration
 from openhtf.util import threads
 
@@ -118,12 +119,12 @@ class TestExecutor(threads.KillableThread):
     self._cell_config = cell_config
     self._cell_number = cell_number
     self._current_exit_stack = None
-    self._current_test_state = None
+    self._test_state = None
     self._dut_manager = dutmanager.DutManager.FromConfig(
         cell_number, cell_config)
 
   def GetState(self):
-    return self._current_test_state
+    return self._test_state
 
   @threads.Loop
   def _ThreadProc(self):
@@ -150,17 +151,17 @@ class TestExecutor(threads.KillableThread):
       _LOG.debug('Making test state and phase executor.')
       # Store the reason the next function can fail, then call the function.
       suppressor.failure_reason = 'Test is invalid.'
-      self._current_test_state = testmanager.TestState(
+      self._test_state = testmanager.TestState(
           self._cell_number, self._cell_config, self.test)
       # TODO(madsci): Augh.  Do we pass this into the TestState c'tor?  Or
       # do we add a 'SetDutId' to test_state that does a _replace on its
-      # test_record?
-      self._current_test_state.test_run_adapter.SetDutSerial(dut_serial)
+      # record?
+      self._test_state.test_run_adapter.SetDutSerial(dut_serial)
 
       phase_executor = phasemanager.PhaseExecutor(
           self._cell_config, self.test,
-          self._current_test_state.test_record,
-          self._current_test_state.test_run_adapter,
+          self._test_state.record,
+          self._test_state.test_run_adapter,
           capability_manager.capability_map)
 
       def optionally_stop(exc_type, *dummy):
@@ -210,17 +211,17 @@ class TestExecutor(threads.KillableThread):
 
     for phase_result in phase_executor.ExecutePhases():
       if phase_result.raised_exception:
-        self._current_test_state._SetErrorCode(phase_result.phase_result)
+        self._test_state._SetErrorCode(phase_result.phase_result)
         state = htf_pb2.ERROR
         break
 
-      state, finished = self._current_test_state.SetStateFromPhaseResult(
+      state, finished = self._test_state.SetStateFromPhaseResult(
           phase_result.phase_result)
       if finished:
         break
     else:
-      state = self._current_test_state.test_run_adapter.combined_parameter_status
+      state = self._test_state.test_run_adapter.combined_parameter_status
 
-    self._current_test_state._RecordTestFinish(state)
-    self.test.OutputTestRecord(self._current_test_state.test_record)
+    self._test_state._RecordTestFinish(state)
+    self.test.OutputTestRecord(self._test_state.record)
     _LOG.info('Test is over.')

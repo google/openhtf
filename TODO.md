@@ -3,14 +3,26 @@ It would be really good to restructure the code to mirror the core abstractions
 we identify in the README.md file. For example:
   
   * openhtf
-    * configuration
-    * execution
+    
+    * Test()
+    * Measurement()
+    * @measures()
+    * @run_if()
+    * @timeout()
+    * attach()
+
+    * config
+    
+    * exec
       * test_start
       * test_executor
       * htftest
       * phase_executor
-    * hardware
-      * usb
+    
+    * hw
+      * plugs
+        * usb
+    
     * io
       * frontend
       * http_handler
@@ -19,6 +31,7 @@ we identify in the README.md file. For example:
       * records
       * testrun_adapter
       * user_input
+    
     * util
       * data
       * exceptions (move to top level?)

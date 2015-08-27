@@ -45,6 +45,11 @@ class TestState(object):
   Given the cell number, the test, and the capability map for the cell, this
   handles starting the test, executing the phases, and ending the test at the
   right time. Everything related to a test in a cell is run through this.
+
+  Args:
+    cell_number: Which cell this test is running in.
+    cell_config: The config specific to this cell.
+    test: htftest.HTFTest instance describing the test to run.
   """
 
   _PHASE_RESULT_TO_CELL_STATE = {
@@ -58,15 +63,8 @@ class TestState(object):
   _FINISHED_STATES = {htf_pb2.PASS, htf_pb2.FAIL} | _ERROR_STATES
 
   def __init__(self, cell_number, cell_config, test):
-    """Construct a TestState.
-
-    Args:
-      cell_number: Which cell this test is running in.
-      cell_config: The config specific to this cell.
-      test: htftest.HTFTest instance describing the test to run.
-    """
     self._cell_config = cell_config
-    self.test_record = test_record.TestRecord(
+    self.record = test_record.TestRecord(
         test.filename, test.docstring, test.code, utils.TimeMillis())
     # TODO(jethier): Remove the following.
     self.test_run_adapter = testrunadapter.TestRunAdapter(
@@ -115,12 +113,11 @@ class TestState(object):
     if state != 'PASS':
       self._SetFailureCodesBasedOnState(state)
 
-    # TODO(madsci): Do we update self.test_record, or just output a local
+    # TODO(madsci): Do we update self.record, or just output a local
     # tuple that we make here?  Need to look at how we interface with the
     # output module, for now just update in-place.
-    self.test_record = self.test_record._replace(
-        end_time_millis=utils.TimeMillis(),
-        outcome=state)
+    self.record = self.record._replace(end_time_millis=utils.TimeMillis(),
+                                       outcome=state)
 
     # TODO(jethier): Remove the following.
     self.test_run_adapter.RecordTestFinish()
@@ -139,22 +136,19 @@ class TestState(object):
                          self.test_run_adapter.cell)
       self.test_run_adapter.SetTestRunStatus(htf_pb2.ERROR)
 
-  # TODO(jethier): Consider adding failure codes to new output interface.
-  # It's been a critical feature to mfg in the past, most of this code would
-  # be pretty easy to port over, similar to logging, just copy the structure.
   def _SetErrorCode(self, exception):
     """If a test errored, find out why and store it in the test run proto.
 
     Arguments:
       exception: Exception raised somewhere in the test execution or cleanup.
     """
-    self.test_run_adapter.SetTestRunStatus(htf_pb2.ERROR)
+    self.record = self.record._replace(outcome='ERROR')
     code = str(exception.__class__.__name__)
     details = str(exception).decode('utf8', 'replace')
-    self.test_run_adapter.AddFailureCode(code=code, details=details)
+    self.record.AddOutcomeCode('Error', code, details)
 
   def _SetFailureCodesBasedOnState(self, state):
-    """If a test failed, find out why and store it in the test run proto.
+    """If a test failed, determine and record the reason.
 
     If the test error'd, had no parameters set, or one or more parameters
     failed, then store the error codes in the test run for easier consumption
@@ -165,12 +159,21 @@ class TestState(object):
     """
     if state == htf_pb2.TIMEOUT:
       code = htf_pb2.Status.Name(state)
-      self.test_run_adapter.AddFailureCode(code=code)
+      self.record.AddOutcomeCode('Failure', code)
+    
+    # TODO(jethier): I would like to drop this because it seems kind of
+    #                arbitrary. Who cares if no measurements were set? Unless
+    #                there were non-optional ones unset, in which case the phase
+    #                exec should probably set a failure code itself. Maybe?
     elif all(param.status == htf_pb2.ERROR
              for param in self.test_run_adapter.htf_test_run.test_parameters):
       self.test_run_adapter.AddFailureCode(
           code='FAIL',
           details='No test parameters were logged, so the test failed.')
+    
+    # TODO(jethier): I think individual phases are going to need to do this now
+    #                since measurements are only attached to phases and we don't
+    #                keep a central union of measurements.
     else:
       for parameter in self.test_run_adapter.htf_test_run.test_parameters:
         if parameter.status != htf_pb2.FAIL:

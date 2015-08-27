@@ -23,20 +23,23 @@ import inspect
 from openhtf.util import utils
 
 
-class InvalidMeasurementValueError(Exception):
+class InvalidMeasurementDimensions(Exception):
   """Raised when a measurement is taken with the wrong number of dimensions."""
 
 
 class TestRecord(collections.namedtuple(
-    'TestRecord', 'dut_id station_id start_time_millis end_time_millis '
-    'outcome metadata openhtf_version code phases log_lines')):
-  """Encapsulate the record of a single test."""
-  def __new__(cls, test_filename, test_docstring, test_code, start_time_millis):
-    self = super(TestRecord, cls).__new__(cls, None, None, start_time_millis,
-                                          None, None, {}, None, test_code,
-                                          [], [])
+    'TestRecord', 'dut_id station_id '
+                  'start_time_millis end_time_millis '
+                  'outcome outcome_details '
+                  'metadata openhtf_version code phases log_lines')):
+  """The record of a single run of a test."""
+  def __new__(cls, test_filename, docstring, test_code, start_time_millis):
+    self = super(TestRecord, cls).__new__(cls, None, None,
+                                          start_time_millis, None,
+                                          None, [],
+                                          {}, None, test_code, [], [])
     self.metadata['filename'] = test_filename
-    self.metadata['docstring'] = test_docstring
+    self.metadata['docstring'] = docstring
     return self
 
   @contextlib.contextmanager
@@ -53,15 +56,6 @@ class TestRecord(collections.namedtuple(
       self.phases.append(phase_record._replace(
           end_time_millis=utils.TimeMillis()))
 
-  # TODO(jethier): Rethink this interface.
-  def RecordStart(self):
-    """Start timing the test."""
-    self.start_time_millis = utils.TimeMillis()
-  
-  def RecordEnd(self):
-    """Finish timing a test."""
-    self.end_time_millis = utils.TimeMillis()
-
   @classmethod
   def FromFrame(cls, frame):
     """Create a TestRecord, initialized from the given stack frame.
@@ -76,11 +70,22 @@ class TestRecord(collections.namedtuple(
     return cls(frame[1], inspect.getdoc(inspect.getmodule(frame[0])),
                inspect.getsource(inspect.getmodule(frame[0])))
 
+  def AddOutcomeCode(self, type, code, details=None):
+    """Adds a code with optional details to this record's outcome_details.
+
+    Args:
+      type: A string specifying the type of code (usually 'Error' or 'Failure').
+      code: An integer code.
+      details: A string providing details about the outcome code.
+    """
+    self.outcome_details.append('%s Code %s: %s' % (type, code,
+                                                    details if details else ''))
+
 
 class PhaseRecord(collections.namedtuple(
     'PhaseRecord', 'name docstring code start_time_millis end_time_millis '
     'measurements attachments')):
-  """Encapsulate the record of a single phase."""
+  """The record of a single run of a phase."""
   # TODO(jethier): Populate measurements and attachments (maybe pass them in at
   # instantiation. measurements won't actually be a dict but an object with
   # __getattr__ overridden. See ParameterList in parameters.py.
@@ -94,7 +99,7 @@ LogRecord = collections.namedtuple('LogRecord', 'level logger_name '
     'timestamp_millis message')
 
 
-class Measurement(collections.namedtuple('Measurement', 'name units values')):
+class MeasurementRecord(collections.namedtuple('Measurement', 'name units values')):
   
   def __init__(self, name, units, dimensions=None):
     """Initialize a Measurement for measuring the given units.
@@ -113,21 +118,20 @@ class Measurement(collections.namedtuple('Measurement', 'name units values')):
       # Values here will be a dict mapping coordinates to measured value.  When
       # output, we will output a list of tuples containing coordinates, where
       # dimensions appear first, and the measured value is the last coordinate.
-      super(Measurement, self).__init__(name, dimensions + units, {})
+      super(MeasurementRecord, self).__init__(name, dimensions + units, {})
     else:
       # We make values a list so we can modify it later, since tuples are
       # immutable; it should only ever contain at most one element.
-      super(Measurement, self).__init__(name, units, [])
+      super(MeasurementRecord, self).__init__(name, units, [])
           
 
   def __setitem__(self, coordinates, value):
     coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
     if coordinates_len != len(self.units):
-      raise InvalidMeasurementValueError(
+      raise InvalidMeasurementDimensions(
           'Expected %s-dimensional coordinates, got %s' % (len(self.units),
                                                            coordinates_len))
     if coordinates in self.values:
-      #TODO(jethier): Log a warning that a value is being overridden.
       logging.warning(
           'Overriding previous measurement %s[%s] value of %s with %s',
           self.name, coordinates, self.values[coordinates], value)

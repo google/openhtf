@@ -73,6 +73,7 @@ class PromptManager(object):
     """
     with self._cond:
       if self._prompt is not None:
+        self._prompt = None
         raise MultiplePromptsError
       self._prompt = Prompt(id=uuid.uuid4(),
                             message=message,
