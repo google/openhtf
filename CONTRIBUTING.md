@@ -114,6 +114,7 @@ So common commands to be aware of:
 ## TL;DR
 
 To get set up to work on the _framework_ itself, run these steps:
+
 1. sudo apt-get install python-pip npm swig libssl-dev python-dev
 2. sudo pip install --upgrade pip
 3. sudo pip install virtualenv
