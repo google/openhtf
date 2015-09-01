@@ -19,13 +19,13 @@ must perform, handle each one in a clean, sensible fashion, and avoid any
 additional fluff. Those duties are (with example tasks):
 
   * Manage configuration for each test.
-  * Predicatable testrun I/O.
+  * Predictable testrun I/O.
     * Same output format across all test stations can make it easier to write
       systems to ingest and analyze test results.
     * Uniform frontend across test stations makes for intuitive operator
       interactions.
     * Possible to monitor all stations from a central frontend.
-  * Manage test start and exectution.
+  * Manage test start and execution.
     * Plug in a DUT and have a test start automatically.
     * Provide a uniform model of seqential test logic (phases).
   * Provide hardware interface tools.
@@ -87,12 +87,12 @@ flexibility to do anything in a test that you could normally do in python.
 Superficially, what distinguishes an OpenHTF test from any other python program
 is that the OpenHTF test imports the openhtf package, and calls its top-level
 execute_test function. From there, OpenHTF manages the setup, execution, and
-teardown of the test, keeps track of the any gathered, and provides a pass/fail
+teardown of the test, keeps track of anything gathered, and provides a pass/fail
 result.
 
 
 ### Testrun
-A testrun is a single start-to-finish execution of a single test.
+A testrun is a single start-to-finish execution of a specific test.
 
 
 ### Station
@@ -109,7 +109,7 @@ Cells are multiple concurrent copies of the same test being run and executed by
 the same instance of OpenHTF. In practice, most tests only have a single cell.
 Sometimes, however, a test fixture is set up such that having multiple cells
 makes sense. Since all multi-cell use cases can in theory be reduced to single-
-cell tests, deprecation of multi-cell support is being stronly considered.
+cell tests, deprecation of multi-cell support is being strongly considered.
 
 
 ### Test Phase
@@ -119,10 +119,10 @@ metadata.
 
 
 ### Parameter
-In OpenHTF parlance, a parameter is any value that is being measured during the
-course of a testrun. Usaually, parameters are declared along with a spec that
-desribes what consitites a "passing" score for that value. If OpenHTF finishes
-the testrun and one or more paramters were out of spec, the result of the whole
+A parameter is any value that is being measured during the course of a testrun.
+Usually, parameters are declared along with a specification that
+desribes what constitutes a "passing" score for that value. If OpenHTF finishes
+the testrun and one or more paramters were out of that spec, the result of the whole
 testrun will be considered a "fail".
 
 
