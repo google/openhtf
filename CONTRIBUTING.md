@@ -112,6 +112,7 @@ So common commands to be aware of:
   * `npm run start` or `npm start` will run the frontend as a convenience.
 
 ## TL;DR
+
 To get set up to work on the _framework_ itself, run these steps:
 1. sudo apt-get install python-pip npm swig libssl-dev python-dev
 2. sudo pip install --upgrade pip
@@ -125,6 +126,7 @@ To get set up to work on the _framework_ itself, run these steps:
 10. sudo chmod 777 /var/run/openhtf/
 
 To get set up to work on the included web _frontend_, run these steps:
+
 1. sudo apt-get install npm
 2. npm install -g npm
 3. sudo ln -s /usr/bin/nodejs /usr/bin/node
