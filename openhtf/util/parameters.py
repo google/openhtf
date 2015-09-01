@@ -78,7 +78,7 @@ from openhtf.util.utils import TimeMillis
 
 
 VALIDATOR_MAP = {
-    'range': data.InRange, 'equels': data.Equals,
+    'range': data.InRange, 'equals': data.Equals,
     'regex': data.MatchesRegex, 'enum': data.Enum,
     'none': None}
 
