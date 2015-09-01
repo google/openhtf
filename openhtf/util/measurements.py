@@ -243,7 +243,6 @@ def measures(measurements):
     """Phase decorator to be returned."""
     if not hasattr(phase, 'measurements'):
       phase.measurements = []
-    for meas in measurements:
-      phase.measurements.append(meas)
+    phase.measurements.extend(measurements)
     return phase
   return decorate
