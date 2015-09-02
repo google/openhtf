@@ -87,6 +87,7 @@ class PromptManager(object):
       console_prompt.Stop()
       self._prompt = None
       if self._response is None:
+        self._prompt = None
         raise PromptUnansweredError
       return self._response
 
