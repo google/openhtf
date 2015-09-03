@@ -72,8 +72,8 @@ import cStringIO
 import threading
 import time
 
-from openhtf.capabilities.usb import adb_protocol
-from openhtf.capabilities.usb import usb_exceptions
+from openhtf.plugs.usb import adb_protocol
+from openhtf.plugs.usb import usb_exceptions
 
 from openhtf.util import timeouts
 

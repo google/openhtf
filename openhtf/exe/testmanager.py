@@ -21,12 +21,12 @@ Test timing, failures, and the UI are handled by this module.
 """
 import logging
 
-from openhtf import htftest
-from openhtf import phasemanager
-from openhtf import test_record
-from openhtf import testrunadapter
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
-from openhtf.util import utils
+from openhtf.exe import htftest
+from openhtf.exe import phasemanager
+from openhtf.io import test_record
+from openhtf.io import testrunadapter
+from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
+from openhtf.util import misc
 
 _LOG = logging.getLogger('htf.testmanager')
 
@@ -42,7 +42,7 @@ class InvalidPhaseResultError(Exception):
 class TestState(object):
   """Encompasses the lifetime of a test in a cell.
 
-  Given the cell number, the test, and the capability map for the cell, this
+  Given the cell number, the test, and the plug map for the cell, this
   handles starting the test, executing the phases, and ending the test at the
   right time. Everything related to a test in a cell is run through this.
 
@@ -65,7 +65,7 @@ class TestState(object):
   def __init__(self, cell_number, cell_config, test):
     self._cell_config = cell_config
     self.record = test_record.TestRecord(
-        test.filename, test.docstring, test.code, utils.TimeMillis())
+        test.filename, test.docstring, test.code, misc.TimeMillis())
     # TODO(jethier): Remove the following.
     self.test_run_adapter = testrunadapter.TestRunAdapter(
         cell_number, test)
@@ -116,7 +116,7 @@ class TestState(object):
     # TODO(madsci): Do we update self.record, or just output a local
     # tuple that we make here?  Need to look at how we interface with the
     # output module, for now just update in-place.
-    self.record = self.record._replace(end_time_millis=utils.TimeMillis(),
+    self.record = self.record._replace(end_time_millis=misc.TimeMillis(),
                                        outcome=state)
 
     # TODO(jethier): Remove the following.

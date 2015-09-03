@@ -23,17 +23,17 @@ import time
 
 import contextlib2 as contextlib
 
-from openhtf import capabilities
-from openhtf import dutmanager
-from openhtf import phasemanager
-from openhtf import testmanager
-from openhtf.proto import htf_pb2
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf import plugs
+from openhtf.exe import dutmanager
+from openhtf.exe import phasemanager
+from openhtf.exe import testmanager
+from openhtf.io.proto import htf_pb2
 from openhtf.util import threads
 
-configuration.Declare('cell_info', """
+conf.Declare('cell_info', """
 All the information for each cell. This should be a mapping from cell number to
-cell data. What is in the cell data is dictated by the capabilities used.
+cell data. What is in the cell data is dictated by the plugs used.
 """, default_value={1: {}})
 
 
@@ -49,7 +49,7 @@ class TestExecutorStarter(object):
 
   def __init__(self, test):
     self.test = test
-    self._config = configuration.HTFConfig()
+    self._config = conf.HTFConfig()
     self.cells = self._MakeCells()
 
   def _MakeCells(self):
@@ -141,12 +141,12 @@ class TestExecutor(threads.KillableThread):
       suppressor.failure_reason = 'TEST_START failed to complete.'
       dut_serial = self._dut_manager.WaitForTestStart()
 
-      suppressor.failure_reason = 'Unable to initialize capabilities.'
-      _LOG.info('Initializing capabilities.')
-      capability_manager = (
-          capabilities.CapabilityManager.InitializeFromTypes(
-              self.test.capability_type_map))
-      exit_stack.callback(capability_manager.TearDownCapabilities)
+      suppressor.failure_reason = 'Unable to initialize plugs.'
+      _LOG.info('Initializing plugs.')
+      plug_manager = (
+          plugs.PlugManager.InitializeFromTypes(
+              self.test.plug_type_map))
+      exit_stack.callback(plug_manager.TearDownPlugs)
 
       _LOG.debug('Making test state and phase executor.')
       # Store the reason the next function can fail, then call the function.
@@ -162,7 +162,7 @@ class TestExecutor(threads.KillableThread):
           self._cell_config, self.test,
           self._test_state.record,
           self._test_state.test_run_adapter,
-          capability_manager.capability_map)
+          plug_manager.plug_map)
 
       def optionally_stop(exc_type, *dummy):
         """Always called when we stop a test.
@@ -207,7 +207,7 @@ class TestExecutor(threads.KillableThread):
       InvalidPhaseResultError: Raised when a phase doesn't return
           htftest.TestPhaseInfo.TEST_PHASE_RESULT_*
     """
-    _LOG.info('Initializing capabilities.')
+    _LOG.info('Initializing plugs.')
 
     for phase_result in phase_executor.ExecutePhases():
       if phase_result.raised_exception:

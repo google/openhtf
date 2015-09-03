@@ -71,10 +71,10 @@ import logging
 import textwrap
 
 
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import data
-from openhtf.util.utils import TimeMillis
+from openhtf.util.misc import TimeMillis
 
 
 VALIDATOR_MAP = {
@@ -82,7 +82,7 @@ VALIDATOR_MAP = {
     'regex': data.MatchesRegex, 'enum': data.Enum,
     'none': None}
 
-configuration.Declare('overridden_parameters',
+conf.Declare('overridden_parameters',
                       '''
 Overridden parameter validators and optionality.
 
@@ -191,7 +191,7 @@ class TestParameterDescriptor(data.Descriptor):
 
   def __init__(self, name, parameter_tag=None, optional=False, important=False):
     super(TestParameterDescriptor, self).__init__()
-    self._config = configuration.HTFConfig()
+    self._config = conf.HTFConfig()
     self._name = name
     self._parameter_tag = parameter_tag
     self._optional = optional

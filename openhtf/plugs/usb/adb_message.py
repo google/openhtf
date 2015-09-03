@@ -47,7 +47,7 @@ import string
 import struct
 import threading
 
-from openhtf.capabilities.usb import usb_exceptions
+from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
 
 gflags.DEFINE_boolean('adb_message_log', False,

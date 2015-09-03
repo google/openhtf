@@ -18,8 +18,8 @@
 import logging
 import time
 
-from openhtf.capabilities.usb import fastboot_protocol
-from openhtf.capabilities.usb import usb_exceptions
+from openhtf.plugs.usb import fastboot_protocol
+from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
 
 # From fastboot.c

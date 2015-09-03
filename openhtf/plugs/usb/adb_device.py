@@ -35,10 +35,10 @@ import os.path
 
 from M2Crypto import RSA
 
-from openhtf.capabilities.usb import adb_protocol
-from openhtf.capabilities.usb import filesync_service
-from openhtf.capabilities.usb import shell_service
-from openhtf.capabilities.usb import usb_exceptions
+from openhtf.plugs.usb import adb_protocol
+from openhtf.plugs.usb import filesync_service
+from openhtf.plugs.usb import shell_service
+from openhtf.plugs.usb import usb_exceptions
 
 from openhtf.util import timeouts
 

@@ -25,7 +25,7 @@ import abc
 import functools
 import logging
 
-from openhtf.capabilities.usb import usb_exceptions
+from openhtf.plugs.usb import usb_exceptions
 
 _LOG = logging.getLogger('usb_handles')
 

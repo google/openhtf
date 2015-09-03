@@ -24,8 +24,8 @@ import flask.views
 import gflags
 import rocket
 
-from openhtf import dutmanager
-from openhtf.proto import frontend_pb2  # pylint: disable=no-name-in-module
+from openhtf.exe import dutmanager
+from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
 
 
 FLAGS = gflags.FLAGS

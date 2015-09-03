@@ -20,8 +20,8 @@ import flask
 from flask import json
 from flask import views
 
-from openhtf.frontend.server import stations
-from openhtf.proto import frontend_pb2  # pylint: disable=no-name-in-module
+from openhtf.io.frontend.server import stations
+from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
 
 app = flask.Flask(__name__)  # pylint: disable=invalid-name
 

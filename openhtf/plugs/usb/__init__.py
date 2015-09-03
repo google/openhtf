@@ -13,32 +13,32 @@
 # limitations under the License.
 
 
-"""Capabilities that provide access to USB devices via ADB/Fastboot.
+"""Plugs that provide access to USB devices via ADB/Fastboot.
 
 For details of what these interfaces look like, see adb_device.py and
 fastboot_device.py.
 
-To use these capabilities:
-  from openhtf import capabilities
-  from openhtf.capabilities import usb
+To use these plugs:
+  from openhtf import plugs
+  from openhtf.plugs import usb
 
-  @capabilities.RequiresCapability(adb=usb.AdbCapability)
+  @plugs.RequiresPlug(adb=usb.AdbPlug)
   def MyPhase(test, adb):
     adb.Shell('ls')
 """
 
-import openhtf.capabilities as capabilities
-from openhtf.capabilities.usb import adb_device
-from openhtf.capabilities.usb import fastboot_device
-from openhtf.capabilities.usb import local_usb
-from openhtf.util import configuration
+import openhtf.plugs as plugs
+from openhtf import conf
+from openhtf.plugs.usb import adb_device
+from openhtf.plugs.usb import fastboot_device
+from openhtf.plugs.usb import local_usb
 
-configuration.Declare('usb_server', 'USB Server IP/Hostname')
-configuration.Declare('usb_server_port', 'USB Server Port',
-                      default_value=10000)
+conf.Declare('usb_server', 'USB Server IP/Hostname')
+conf.Declare('usb_server_port', 'USB Server Port',
+             default_value=10000)
 
-configuration.Declare('libusb_rsa_key',
-                      doc='A private key file for use by libusb auth.')
+conf.Declare('libusb_rsa_key',
+             doc='A private key file for use by libusb auth.')
 
 
 def _open_usb_handle(**kwargs):
@@ -53,7 +53,7 @@ def _open_usb_handle(**kwargs):
   Returns:
     Instance of UsbHandle.
   """
-  if configuration.HTFConfig().usb_server:
+  if conf.HTFConfig().usb_server:
     return None
   else:
     print 'Opening LibUsbHandle with: %s' % kwargs
@@ -61,8 +61,8 @@ def _open_usb_handle(**kwargs):
 
 
 # pylint: disable=too-few-public-methods
-class FastbootCapability(capabilities.BaseCapability):
-  """Capability that provides fastboot."""
+class FastbootPlug(plugs.BasePlug):
+  """Plug that provides fastboot."""
 
   def __new__(cls):
     device = fastboot_device.FastbootDevice.Connect(
@@ -74,14 +74,14 @@ class FastbootCapability(capabilities.BaseCapability):
     return device
 
 
-class AdbCapability(capabilities.BaseCapability):
-  """Capability that provides ADB."""
+class AdbPlug(plugs.BasePlug):
+  """Plug that provides ADB."""
 
   def __new__(cls):
     kwargs = {}
-    if configuration.HTFConfig().libusb_rsa_key:
+    if conf.HTFConfig().libusb_rsa_key:
       kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(
-          configuration.HTFConfig().libusb_rsa_key)]
+          conf.HTFConfig().libusb_rsa_key)]
 
     device = adb_device.AdbDevice.Connect(
         _open_usb_handle(

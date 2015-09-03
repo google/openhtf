@@ -16,14 +16,14 @@
 """Stubs for the OpenHTF framework."""
 
 
-from openhtf import testrunadapter
-from openhtf import htftest
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf.exe import testrunadapter
+from openhtf.exe import htftest
 from openhtf.util import parameters
 
 
 TARGET_NAME = 'tester'
-configuration.LoadFromDict({'target_name': TARGET_NAME})
+conf.LoadFromDict({'target_name': TARGET_NAME})
 
 
 class StubParameters(object):  # pylint: disable=too-few-public-methods

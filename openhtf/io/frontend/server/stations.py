@@ -26,7 +26,7 @@ import time
 import gflags
 
 import openhtf
-from openhtf.proto import frontend_pb2  # pylint: disable=no-name-in-module
+from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import file_watcher
 
 

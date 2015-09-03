@@ -38,11 +38,11 @@ import logging
 import contextlib2
 import gflags
 
-from openhtf import htftest
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf.exe import htftest
+from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import measurements
 from openhtf.util import threads
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
@@ -54,7 +54,7 @@ _LOG = logging.getLogger('htf.phasemanager')
 # this the same as an object(), but useful when printed.
 DIDNT_FINISH = 'DIDNT_FINISH'
 
-configuration.Declare(
+conf.Declare(
     'blacklist_phases', 'Phase names to skip', default_value=[])
 
 
@@ -133,14 +133,14 @@ class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
   def __init__(self, cell_config, test, test_record, test_run_adapter,
-               capabilities):
+               plugs):
     self._config = cell_config
     self._phases = list(test.phases)
     self._test_record = test_record
     self._test_run_adapter = test_run_adapter
     self._logger = test_run_adapter.logger
     self._phase_data = htftest.PhaseData(
-        test_run_adapter.logger, {}, self._config, capabilities,
+        test_run_adapter.logger, {}, self._config, plugs,
         test_run_adapter.parameters, None,
         test_run_adapter.component_graph, contextlib2.ExitStack())
     self._current_phase = None
@@ -176,8 +176,8 @@ class PhaseExecutor(object):
       self._phases.pop(0)
       return
 
-    self._logger.info('Executing phase %s with capabilities %s',
-                      phase.__name__, self._phase_data.capabilities)
+    self._logger.info('Executing phase %s with plugs %s',
+                      phase.__name__, self._phase_data.plugs)
 
     self._test_run_adapter.SetTestRunStatus(htf_pb2.RUNNING)
 

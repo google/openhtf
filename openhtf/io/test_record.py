@@ -20,7 +20,7 @@ import collections
 import contextlib
 import inspect
 
-from openhtf.util import utils
+from openhtf.util import misc
 
 
 class InvalidMeasurementDimensions(Exception):
@@ -47,14 +47,14 @@ class TestRecord(collections.namedtuple(
     while hasattr(phase, 'wraps'):
       phase = phase.wraps
     phase_record = PhaseRecord(phase.__name__, phase.__doc__,
-                               inspect.getsource(phase), utils.TimeMillis(),
+                               inspect.getsource(phase), misc.TimeMillis(),
                                getattr(phase, 'measurements', None),
                                getattr(phase, 'attachments', None))
     try:
       yield phase_record
     finally:
       self.phases.append(phase_record._replace(
-          end_time_millis=utils.TimeMillis()))
+          end_time_millis=misc.TimeMillis()))
 
   @classmethod
   def FromFrame(cls, frame):

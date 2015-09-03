@@ -16,7 +16,7 @@
 """TestRunAdapter module for wrapping HTF TestRun Protos.
 
 A TestRun protocol buffer includes all the data about a generic test run,
-including which test, capabilities and phases were used and how long each took
+including which test, plugs and phases were used and how long each took
 to complete its actions. Test parameters, failures, and logging is also handled
 here.
 
@@ -27,13 +27,13 @@ import contextlib
 import logging
 import pprint
 
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import genealogy
 from openhtf.util import log_persister
 from openhtf.util import parameters
-from openhtf.util import utils
+from openhtf.util import misc
 from openhtf.util import htflogger
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 _LOG = logging.getLogger('htf.testrunadapter')
 
@@ -48,7 +48,7 @@ class TestRunAdapter(object):
       cell_number: The cell number we are tracking.
       test: Instance of htftest.HTFTest() that we're running.
     """
-    config = configuration.HTFConfig()
+    config = conf.HTFConfig()
     htf_test_run = htf_pb2.TestRun()
 
     htf_test_run.test_status = htf_pb2.CREATED
@@ -99,12 +99,12 @@ class TestRunAdapter(object):
 
   def RecordTestBegin(self):
     """Start timing a test from the call to this method."""
-    start_time_millis = utils.TimeMillis()
+    start_time_millis = misc.TimeMillis()
     self._htf_test_run.start_time_millis = start_time_millis
 
   def RecordTestFinish(self):
     """End timing a test up to the call to this method."""
-    end_time_millis = utils.TimeMillis()
+    end_time_millis = misc.TimeMillis()
     self._htf_test_run.end_time_millis = end_time_millis
 
   @contextlib.contextmanager
@@ -112,11 +112,11 @@ class TestRunAdapter(object):
     """Keep track of the cycle time for phases."""
     timing = self._htf_test_run.timings.add()
     timing.name = phase_name
-    timing.time_info.start_time_millis = utils.TimeMillis()
+    timing.time_info.start_time_millis = misc.TimeMillis()
     try:
       yield
     finally:
-      timing.time_info.end_time_millis = utils.TimeMillis()
+      timing.time_info.end_time_millis = misc.TimeMillis()
 
   def SetTestRunStatus(self, status):
     """Sets the test run status in the proto and UI.
@@ -143,7 +143,7 @@ class TestRunAdapter(object):
     Args:
       config: If specified use this config, otherwise the global one.
     """
-    config = config or configuration.HTFConfig()
+    config = config or conf.HTFConfig()
     try:
       self.parameters.htfconfig = pprint.pformat(config.dictionary)
     except parameters.NotAParameterError:

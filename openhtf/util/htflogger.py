@@ -26,7 +26,7 @@ import os
 import re
 import traceback
 
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
+from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 # Logging setup
 HTF_LOGGER_PREFIX = 'htf'

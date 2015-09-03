@@ -28,16 +28,16 @@ import logging
 import threading
 import time
 
-from openhtf.capabilities.usb import adb_device
-from openhtf.capabilities.usb import fastboot_device
-from openhtf.capabilities.usb import local_usb
-from openhtf.capabilities.usb import usb_exceptions
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf.plugs.usb import adb_device
+from openhtf.plugs.usb import fastboot_device
+from openhtf.plugs.usb import local_usb
+from openhtf.plugs.usb import usb_exceptions
 
-configuration.Declare('test_start', 'Mechanism to use for starting a test.',
-                      default_value='android')
-configuration.Declare('stub_dut_serial', 'Serial to use when test_start is '
-                      '"stub".', default_value='DUT_SERIAL', required=False)
+conf.Declare('test_start', 'Mechanism to use for starting a test.',
+             default_value='android')
+conf.Declare('stub_dut_serial', 'Serial to use when test_start is '
+             '"stub".', default_value='DUT_SERIAL', required=False)
 
 
 class InvalidTestStartError(Exception):

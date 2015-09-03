@@ -22,11 +22,12 @@ logging values and keeps the validation code decoupled from test code.
 Measurements (but not extended parameters) are declared through the use of a
 phase decorator. Thus a measurement is always associated with a particular
 phase:
-@measurements.sets(
+
+@measurements.measures(
     measurements.Measurement(
         'number_widgets').Integer.InRange(5, 10).Doc(
         '''This phase parameter tracks the number of widgets.'''))
-@measurements.sets(
+@measurements.measrues(
     [measurements.Measurement(
         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 def WidgetTestPhase(test):
@@ -39,7 +40,7 @@ import collections
 import inspect
 
 # from openhtf.io import records
-from openhtf import test_record
+from openhtf.io import test_record
 from openhtf.util import data
 
 
@@ -105,15 +106,23 @@ class Measurement(data.Descriptor):
     self.name = name
     self.unit_code = None
     self.dimensions = None  # Tuple of unit codes of additional dimensions.
-    self.value = None
+    self.values = None
 
   def WithUnitCode(self, unit_code):
-    """Declare the unit for this Measurement."""
+    """Declare the unit for this Measurement.
+
+    Args:
+      unit_code: An ANSI unit code in string form.
+    """
     self.unit_code = unit_code
     return self
 
   def WithDimensions(self, dimensions):
-    """Declare dimensions for this Mmeasurement."""
+    """Declare dimensions for this Measurement.
+
+    Args:
+      dimensions: Tuple with a unit code for each dimension of this measurement.
+    """
     self.dimensions = dimensions
     return self
 
@@ -215,7 +224,7 @@ class MeasurementCollection(object):  # pylint: disable=too-few-public-methods
 def measures(measurements):
   """Decorator-maker used to declare measurements for phases.
 
-  See the measurements module docstring for numerous examples of usage.
+  See the measurements module docstring for examples of usage.
 
   Args:
     measurements: List of Measurement objects to declare, or a single

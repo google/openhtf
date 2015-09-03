@@ -25,12 +25,14 @@ import sys
 
 import gflags
 
-from openhtf import executor
-from openhtf import http_handler
-from openhtf import rundata
-from openhtf import htftest
-from openhtf import user_input
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf import exe
+from openhtf import plugs
+from openhtf.exe import htftest
+from openhtf.io import http_handler
+from openhtf.io import rundata
+from openhtf.io import user_input
+from openhtf.util import measurements
 from openhtf.util import parameters
 
 
@@ -40,27 +42,6 @@ FLAGS(sys.argv)
 
 # Pseudomodule for shared user input prompt state.
 prompter = user_input.get_prompter()  # pylint: disable=invalid-name
-
-
-def OutputToJson(filename_pattern):
-  """Return an output callback that writes JSON Test Records.
-
-  An example filename_pattern might be:
-    '/data/test_records/%(dut_id)s.%(start_time_millis)s'
-
-  To use this output mechanism:
-    test = openhtf.HTFTest(PhaseOne, PhaseTwo)
-    test.AddOutputCallback(openhtf.OutputToJson(
-        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
-
-  Args:
-    filename_pattern: A format string specifying the filename to write to,
-      will be formatted with the Test Record as a dictionary.
-  """
-  def _Output(test_record):
-    with open(filename_pattern % test_record._asdict(), 'w') as f:
-      f.write('TODO: Write JSON encoder for Test Records.\n')
-  return _Output
 
 
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
@@ -91,23 +72,20 @@ def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
   return Wrap
 
 
-class HTFTest(object):
-  """An object that represents an HTF test.
+class Test(object):
+  """An object that represents an OpenHTF test.
 
   This object encapsulates the static test state including an ordered tuple of
   phases to execute.
+
+  Args:
+    *phases: The ordered list of phases to execute for this test.
   """
 
   def __init__(self, *phases):
-    """Creates a new HTFTest to be executed.
-
-    Args:
-      *phases: The ordered list of phases to execute for this test.
-    """
     self.phases = phases
-    self.output_callbacks = []
 
-    # Pull some metadata from the frame in which this HTFTest was created.
+    # Pull some metadata from the frame in which this Test was created.
     frame_record = inspect.stack()[1]
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
@@ -121,25 +99,18 @@ class HTFTest(object):
           if hasattr(phase, 'parameters')))
 
   @property
-  def capability_type_map(self):
-    """Returns dict mapping name to capability type for all phases."""
-    capability_type_map = {}
-    for capability, capability_type in itertools.chain.from_iterable(
-        phase.capabilities.iteritems() for phase in self.phases
-        if hasattr(phase, 'capabilities')):
-      if (capability in capability_type_map and
-          capability_type is not capability_type_map[capability]):
-        raise capabilities.DuplicateCapabilityError(
-            'Duplicate capability with different type: %s' % capability)
-      capability_type_map[capability] = capability_type
-    return capability_type_map
-
-  def AddOutputCallback(self, callback):
-    self.output_callbacks.append(callback)
-
-  def OutputTestRecord(self, test_record):
-    for output_cb in self.output_callbacks:
-      output_cb(test_record)
+  def plug_type_map(self):
+    """Returns dict mapping name to plug type for all phases."""
+    plug_type_map = {}
+    for plug, plug_type in itertools.chain.from_iterable(
+        phase.plugs.iteritems() for phase in self.phases
+        if hasattr(phase, 'plugs')):
+      if (plug in plug_type_map and
+          plug_type is not plug_type_map[plug]):
+        raise plugs.DuplicatePlugError(
+            'Duplicate plug with different type: %s' % plug)
+      plug_type_map[plug] = plug_type
+    return plug_type_map
 
   # TODO(madsci): Execute loops indefinitely right now, we should probably
   # provide an 'ExecuteOnce' method you can call instead if you don't want
@@ -162,9 +133,9 @@ class HTFTest(object):
     Returns:
       None when the test framework has exited.
     """
-    configuration.Load()
+    conf.Load()
   
-    config = configuration.HTFConfig()
+    config = conf.HTFConfig()
     rundata.RunData(self.filename,
                     len(config.cell_info),
                     config.test_type,
@@ -175,7 +146,7 @@ class HTFTest(object):
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)
-    starter = executor.TestExecutorStarter(self)
+    starter = exe.TestExecutorStarter(self)
     handler = http_handler.HttpHandler(self, starter.cells)
   
     def sigint_handler(*dummy):
@@ -190,4 +161,12 @@ class HTFTest(object):
   
     starter.Wait()
     handler.Stop()
+    return
 
+
+# Aliases for phase function decorators.
+# pylint: disable=invalid-name
+attaches = attachments.attaches  # TODO(jethier): Implement.
+measures = measurements.measures
+monitors = monitoring.monitors  # TODO(madsci): Implement.
+plug = plugs.requires

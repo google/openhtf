@@ -18,7 +18,7 @@
 import binascii
 import string
 
-from openhtf.capabilities.usb import usb_handle
+from openhtf.plugs.usb import usb_handle
 
 
 class StubUsbHandle(usb_handle.UsbHandle):

@@ -85,8 +85,8 @@ import threading
 
 from enum import Enum
 
-from openhtf.capabilities.usb import adb_message
-from openhtf.capabilities.usb import usb_exceptions
+from openhtf.plugs.usb import adb_message
+from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import exceptions
 from openhtf.util import timeouts
 

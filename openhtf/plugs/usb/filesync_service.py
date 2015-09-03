@@ -112,8 +112,8 @@ import struct
 import sys
 import time
 
-from openhtf.capabilities.usb import adb_message
-from openhtf.capabilities.usb import usb_exceptions
+from openhtf.plugs.usb import adb_message
+from openhtf.plugs.usb import usb_exceptions
 
 # Default mode for pushed files, ADB will copy user permissions to group and
 # other permissions, so we just default to full perms.

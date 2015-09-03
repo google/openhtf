@@ -26,8 +26,8 @@ import libusb1
 import logging
 import usb1
 
-from openhtf.capabilities.usb import usb_exceptions
-from openhtf.capabilities.usb import usb_handle
+from openhtf.plugs.usb import usb_exceptions
+from openhtf.plugs.usb import usb_handle
 
 _LOG = logging.getLogger('usb_handles')
 
