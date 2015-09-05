@@ -25,10 +25,6 @@ decorators.
 import collections
 
 
-class InvalidTestPhaseError(Exception):
-  """Raised when an invalid method is decorated."""
-
-
 class DuplicatePlugError(Exception):
   """Raised when a test phase requires two plugs with the same name."""
 

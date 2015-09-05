@@ -32,7 +32,9 @@ from openhtf.exe import htftest
 from openhtf.io import http_handler
 from openhtf.io import rundata
 from openhtf.io import user_input
+from openhtf.util import attachments
 from openhtf.util import measurements
+from openhtf.util import monitoring
 from openhtf.util import parameters
 
 
@@ -40,8 +42,8 @@ FLAGS = gflags.FLAGS
 FLAGS(sys.argv)
 
 
-# Pseudomodule for shared user input prompt state.
-prompter = user_input.get_prompter()  # pylint: disable=invalid-name
+class InvalidTestPhaseError(Exception):
+  """Raised when an invalid method is decorated."""
 
 
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
@@ -164,9 +166,13 @@ class Test(object):
     return
 
 
-# Aliases for phase function decorators.
 # pylint: disable=invalid-name
+
+# Aliases for phase function decorators.
 attaches = attachments.attaches  # TODO(jethier): Implement.
 measures = measurements.measures
 monitors = monitoring.monitors  # TODO(madsci): Implement.
 plug = plugs.requires
+
+# Pseudomodule for shared user input prompt state.
+prompter = user_input.get_prompter()
