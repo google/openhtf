@@ -80,8 +80,7 @@ class PromptManager(object):
                             text_input=text_input)
       self._response = None
 
-      console_prompt = ConsolePrompt(self._prompt.id, self.Respond)
-      print self._prompt.message
+      console_prompt = ConsolePrompt(self._prompt.id, message, self.Respond)
       console_prompt.start()
       self._cond.wait(FLAGS.prompt_timeout_s)
       console_prompt.Stop()
@@ -113,9 +112,10 @@ class ConsolePrompt(threading.Thread):
   Args:
     prompt_id: The prompt manager's id associated with this prompt.
   """
-  def __init__(self, prompt_id, callback):
+  def __init__(self, prompt_id, message, callback):
     super(ConsolePrompt, self).__init__()
     self.daemon = True
+    self._message = message
     self._callback = callback
     self._prompt_id = prompt_id
     self._stopped = False
@@ -130,8 +130,10 @@ class ConsolePrompt(threading.Thread):
 
   def run(self):
     """Main logic for this thread to execute."""
+    # First, display the prompt to the console.
+    print self._message
 
-    # First clear any lingering buffered terminal input.
+    # Before reading, clear any lingering buffered terminal input.
     termios.tcflush(sys.stdin, termios.TCIOFLUSH)
 
     while not self._stopped:
