@@ -23,6 +23,7 @@ prompt state should use the openhtf.prompter pseudomodule.
 
 
 import collections
+import functools
 import select
 import sys
 import termios
@@ -80,7 +81,8 @@ class PromptManager(object):
                             text_input=text_input)
       self._response = None
 
-      console_prompt = ConsolePrompt(self._prompt.id, message, self.Respond)
+      console_prompt = ConsolePrompt(
+          message, functools.partial(self.Respond, self._prompt.id))
       console_prompt.start()
       self._cond.wait(FLAGS.prompt_timeout_s)
       console_prompt.Stop()
@@ -112,12 +114,11 @@ class ConsolePrompt(threading.Thread):
   Args:
     prompt_id: The prompt manager's id associated with this prompt.
   """
-  def __init__(self, prompt_id, message, callback):
+  def __init__(self, message, callback):
     super(ConsolePrompt, self).__init__()
     self.daemon = True
     self._message = message
     self._callback = callback
-    self._prompt_id = prompt_id
     self._stopped = False
 
   def Stop(self):
@@ -141,7 +142,7 @@ class ConsolePrompt(threading.Thread):
       for stream in inputs:
         if stream == sys.stdin:
           response = sys.stdin.readline()
-          self._callback(self._prompt_id, response)
+          self._callback(response)
           self._stopped = True
           return
 
