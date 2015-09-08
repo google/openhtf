@@ -1,2 +1,3 @@
-test_metadata_SetVersion 
-test_execute_test
+test_HTFTest_capability_map
+test_TestExecutorStarter
+test_DutManager

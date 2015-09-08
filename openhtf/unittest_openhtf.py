@@ -16,21 +16,37 @@ import unittest
 import os.path
 import datetime
 import time
-import openhtf
 import pdb
+import openhtf
+import mock
 
-from openhtf import htftest
-#from openhtf.executor import CellExecutorStarter
 from openhtf import executor
+from openhtf import capabilities
+from openhtf import dutmanager
 from openhtf.util import configuration
-from mock import Mock
 
-def phase_hello(test):
-    print "phase_hello completed"
+class UnittestCapability(capabilities.BaseCapability):   # pylint: disable=no-init
+    def SetupCap(self):
+      print "Set up the capability instance."
 
-def phase_sleep(test):
-    time.sleep(3)
-    print "phase_sleep for 3 snd"
+    def TearDownCap(self):
+      print "Tear down the capability instance."
+
+    def DoStuff(self):  # pylint: disable=no-self-use
+      print "Capability-specific functionality."
+
+def phase_one(test, testCap):
+    time.sleep(1)
+    print "phase_one completed"
+
+@capabilities.requires(testCap=UnittestCapability)
+def phase_two(test, testCap):
+    time.sleep(2)
+    print "phase_two completed"
+
+#function mock WaitTestStop
+def dut_side_effect():
+    return "test stopped"
 
 class TestOpenhtf(unittest.TestCase):
   def __init__(self, unittest_name):
@@ -38,45 +54,44 @@ class TestOpenhtf(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    TestOpenhtf.metadata = htftest.TestMetadata(name='unittest_openhtf')
     TestOpenhtf.testlog_dir = '/var/run/openhtf/unittest_log'
     if not os.path.exists(TestOpenhtf.testlog_dir):
       os.makedirs(TestOpenhtf.testlog_dir)
+    TestOpenhtf.testCap = UnittestCapability()
+    configuration.LoadFromDict({
+        'target_name': 'unittest_openhtf',
+        'test_start': 'frontend_serial',
+    }, True)
 
   @classmethod
   def tearDownClass(cls):
-    print "tearDown done"
+    print "unittest tearDown done"
 
-  def test_metadata_SetVersion(self):
-    ver_before = "2.1"
-    TestOpenhtf.metadata.SetVersion(ver_before)
-    ver_after = TestOpenhtf.metadata.version;
-    self.assertEqual(ver_before, ver_after)
-
+  def test_HTFTest_capability_map(self):
+    test = openhtf.HTFTest(phase_one, phase_two)
+    typeMap = test.capability_type_map
+    self.assertTrue(type(TestOpenhtf.testCap).__name__ in str(typeMap))
+  
   #mock test execution. 
-  def test_execute_test(self):  
-    mock_spec = ['Start', 'Stop']
-
-    #mock class
-    #mock_CellExecutorStarter = Mock(executor.CellExecutorStarter)
-    
-    METADATA = htftest.TestMetadata(name='unittest_openhtf')
-    METADATA.SetVersion(1)
-    PHASES = [phase_hello, phase_sleep]
-
-    configuration.Load()
-    test = htftest.HTFTest(METADATA, PHASES)
-    starter = executor.CellExecutorStarter(test)
-    
-    #mock instance. this has the same effect as mock class
-    mock_CellExecutorStarter = Mock(return_value = starter)  
-
-    mock_CellExecutorStarter.Start()
-    mock_CellExecutorStarter.Stop()
-    
-    #comment the following out to see the diff of mock_class vs real class instance. 
-    #starter.Start()
-    #starter.Stop()
+  def test_TestExecutorStarter(self):  
+    mock_starter = mock.Mock(spec=executor.TestExecutorStarter)
+    mock_starter.Start()
+    mock_starter.Start.assert_called_with()
+    mock_starter.Wait()
+    mock_starter.Wait.assert_called_with()
+    mock_starter.Stop()
+    mock_starter.Stop.assert_called_with()
+  
+  @mock.patch.object(dutmanager.FrontendHandler, "_WaitForFrontend")
+  @mock.patch.object(dutmanager.DutManager, "WaitForTestStop", side_effect=dut_side_effect)
+  def test_DutManager(self, mock_wait, mock_dutmanager_wait):
+    mock_wait.return_value = True
+    mock_dutmanager_wait.return_value = True
+    manager = dutmanager.DutManager.FromConfig(123456, configuration.HTFConfig())
+    manager.WaitForTestStart()
+    dutmanager.FrontendHandler._WaitForFrontend.assert_called_with()
+    ret = manager.WaitForTestStop()
+    self.assertEqual(ret, "test stopped")
 
 if __name__ == '__main__':
   testcase_file =  os.path.dirname(os.path.abspath(__file__))+'/unittest_cases.txt'

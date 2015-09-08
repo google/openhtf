@@ -17,9 +17,12 @@ import os.path
 import datetime
 import time
 import openhtf
+import mock
 import pdb
 
+
 from openhtf.util import timeouts
+from openhtf.util import configuration
 
 class TestUtil(unittest.TestCase):
   def __init__(self, unittest_name):
@@ -28,7 +31,7 @@ class TestUtil(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     TestUtil.time_out = 60
-    TestUtil.time_sleep = 5
+    TestUtil.time_sleep = 3
     TestUtil.polledtimeout = timeouts.PolledTimeout(TestUtil.time_out)
     TestUtil.testlog_dir = '/var/run/openhtf/unittest_log'
     if not os.path.exists(TestUtil.testlog_dir):
@@ -37,6 +40,12 @@ class TestUtil(unittest.TestCase):
   @classmethod
   def tearDownClass(cls):
     print "tearDown done"
+
+  """
+  @mock.patch('configuration.ConfigModel.loaded')
+  def mock_loaded(self, mock_property):
+    mock_property.return_value = true
+  """
 
   def test_timeExpired_false(self):
     time.sleep(TestUtil.time_sleep)
