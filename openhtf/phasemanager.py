@@ -35,7 +35,6 @@ framework.
 import collections
 import logging
 
-import contextlib2
 import gflags
 
 from openhtf import htftest
@@ -140,9 +139,7 @@ class PhaseExecutor(object):
     self._test_run_adapter = test_run_adapter
     self._logger = test_run_adapter.logger
     self._phase_data = htftest.PhaseData(
-        test_run_adapter.logger, {}, self._config, capabilities,
-        test_run_adapter.parameters, None,
-        test_run_adapter.component_graph, contextlib2.ExitStack())
+        self._logger, self._config, capabilities, self._test_record)
     self._current_phase = None
 
   def ExecutePhases(self):
@@ -181,20 +178,17 @@ class PhaseExecutor(object):
 
     self._test_run_adapter.SetTestRunStatus(htf_pb2.RUNNING)
 
-    with self._test_record.RecordPhaseTiming(phase) as phase_record:
-      # Fill in measurements and attachments with the ones for this phase.
-      phase_data = self._phase_data._replace(
-          measurements=measurements.MeasurementCollection(phase.measurements))
-      phase_thread = PhaseExecutorThread(phase, phase_data)
+    with self._phase_data.RecordPhaseTiming(phase) as result_wrapper:
+      phase_thread = PhaseExecutorThread(phase, self._phase_data)
       phase_thread.start()
       self._current_phase = phase_thread
-      result = phase_thread.JoinOrDie()
-
-    if result.phase_result == htftest.PhaseResults.CONTINUE:
+      result_wrapper.SetResult(phase_thread.JoinOrDie())
+    
+    if result_wrapper.result.phase_result == htftest.PhaseResults.CONTINUE:
       self._phases.pop(0)
 
-    self._logger.debug('Phase finished with state %s', result)
-    return result
+    self._logger.debug('Phase finished with state %s', result_wrapper.result)
+    return result_wrapper.result
 
   def Stop(self):
     """Stops the current phase."""

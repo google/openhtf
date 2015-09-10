@@ -22,10 +22,14 @@ decorators.
 """
 
 import collections
+import contextlib2
 import inspect
 import itertools
 
 import openhtf.capabilities as capabilities
+from openhtf import test_record
+from openhtf.util import measurements
+from openhtf.util import utils
 from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 
@@ -38,10 +42,8 @@ class DuplicateCapabilityError(Exception):
 
 
 # The tuple which contains data passed to TestPhases
-class PhaseData(collections.namedtuple(
-    'PhaseData', ['logger', 'state', 'config', 'capabilities',
-                  'parameters', 'measurements', 'components', 'context'])):
-  """The phase data.
+class PhaseData(object):
+  """The phase data object passed to test phases as the first argument.
 
   Fields:
     logger: A python logger that goes to the testrun proto, with functions like
@@ -49,12 +51,61 @@ class PhaseData(collections.namedtuple(
     state: A dictionary for passing state data along to future phases.
     config: An HTFConfig object with attributes matching declared config keys.
     capabilities: Dict mapping capability names to instances to use in phases.
-    parameters: An object with attributes matching declared parameter names.
-    measurements: A MeasurementCollection for setting measurement values.
-    components: A ComponentGraph object for manipulating the Assembly.
+    measurements: A measurements.Collection for setting measurement values.
     context: A contextlib.ExitStack, which simplifies context managers in a
         phase.  This stack is pop'd after each phase.
+    test_record: The test_record.TestRecord for the currently running test.
   """
+  def __init__(self, logger, config, capabilities, test_record):
+    self.logger = logger
+    self.config = config
+    self.capabilities = capabilities
+    self.test_record = test_record
+    self.state = {}
+    self.measurements = None  # Will be populated per-phase.
+    self.context = contextlib2.ExitStack()
+
+  @contextlib2.contextmanager
+  def RecordPhaseTiming(self, phase):
+    while hasattr(phase, 'wraps'):
+      phase = phase.wraps
+
+    # Check for measurement descriptors and track them in the PhaseRecord.
+    measurement_descriptors = {
+        desc.name: desc
+        for desc in getattr(phase, 'measurement_descriptors', [])
+    }
+    self.measurements = measurements.Collection(measurement_descriptors)
+    start_time = utils.TimeMillis()
+
+    # Wrapper class so we can pull the result back from something we yield.
+    class ResultWrapper(object):
+      def __init__(self):
+        self.result = None
+
+      def SetResult(self, result):
+        self.result = result
+    result_wrapper = ResultWrapper()
+
+    try:
+      yield result_wrapper
+    finally:
+      # Serialize measurement values and descriptors.
+      measurement_values = dict(self.measurements)
+      measurement_declarations = {
+          name: measurements.Declaration.FromDescriptor(
+              desc, measurement_values.get(name, None))
+          for name, desc in measurement_descriptors.iteritems()
+      }
+      # Clear this just to be sure.
+      self.measurements = None
+      # Append the phase to our test_record.
+      self.test_record.phases.append(
+          test_record.PhaseRecord(
+              phase.__name__, phase.__doc__, inspect.getsource(phase),
+              start_time, utils.TimeMillis(),
+              measurement_declarations, measurement_values, {},
+              result_wrapper.result))
 
 
 class PhaseResults(object):  # pylint: disable=too-few-public-methods

@@ -27,10 +27,11 @@ import openhtf
 
 import openhtf.capabilities as capabilities
 from openhtf.util import measurements
+from openhtf.util.units import UOM
 
 
 @measurements.measures(
-    measurements.Measurement(
+    measurements.Descriptor(
         'widget_type').String().MatchesRegex(r'.*Widget$').Doc(
             '''This measurement tracks the type of widgets.'''))
 @capabilities.requires(example=example_capability.Example)
@@ -45,10 +46,10 @@ def hello_world(test, example):
 # Timeout if this phase takes longer than 10 seconds.
 @openhtf.TestPhase(timeout_s=10)
 @measurements.measures(
-    [measurements.Measurement(
+    [measurements.Descriptor(
         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 def set_measurements(test):
-  """Test phase that sets a parameter."""
+  """Test phase that sets a measurement."""
   test.measurements.level_none = 0
   time.sleep(2)
   test.measurements.level_some = 8
@@ -57,50 +58,18 @@ def set_measurements(test):
   time.sleep(2)
 
 
+@measurements.measures([
+    measurements.Descriptor('dimensions').WithDimensions(UOM['HERTZ']),
+    measurements.Descriptor('lots_of_dims').WithDimensions(
+        UOM['HERTZ'], UOM['BYTE'], UOM['RADIAN'])])
+def dimensions(test):
+  for dim in range(5):
+    test.measurements.dimensions[dim] = 1 << dim
+  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):
+    test.measurements.lots_of_dims[x, y, z] = x + y + z
+
+
 if __name__ == '__main__':
-  test = openhtf.HTFTest(hello_world, set_measurements)
+  test = openhtf.HTFTest(hello_world, set_measurements, dimensions)
   test.AddOutputCallback(openhtf.OutputToJson('./%(dut_id)s.%(start_time_millis)s'))
   test.Execute()
-
-
-# import time
-
-# import example_capability
-# import openhtf
-
-# import openhtf.capabilities as capabilities
-# from openhtf.util import parameters
-
-
-# @parameters.AddParameters(
-#     parameters.TestParameterDescriptor(
-#         'widget_type').String().MatchesRegex(r'.*Widget$').Doc(
-#             '''This phase parameter tracks the type of widgets.'''))
-# @capabilities.requires(example=example_capability.Example)
-# def hello_world(test, example):
-#   """A hello world test phase."""
-#   test.logger.info('Hello World!')
-#   test.parameters.widget_type = openhtf.prompter.DisplayPrompt(
-#       'What\'s the widget type?')
-#   test.logger.info('Example says: %s', example.DoStuff())
-
-
-# # Timeout if this phase takes longer than 10 seconds.
-# @openhtf.TestPhase(timeout_s=10)
-# @parameters.AddParameters(
-#     [parameters.TestParameterDescriptor(
-#         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
-# def set_params(test):
-#   """Test phase that sets a parameter."""
-#   test.parameters.level_none = 0
-#   time.sleep(2)
-#   test.parameters.level_some = 8
-#   time.sleep(2)
-#   test.parameters.level_all = 9
-#   time.sleep(2)
-
-
-# if __name__ == '__main__':
-#   test = openhtf.HTFTest(hello_world, set_params)
-#   test.AddOutputCallback(openhtf.OutputToJson('./%(dut_id)s.%(start_time_millis)s'))
-#   test.Execute()

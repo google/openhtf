@@ -42,20 +42,6 @@ class TestRecord(collections.namedtuple(
     self.metadata['docstring'] = docstring
     return self
 
-  @contextlib.contextmanager
-  def RecordPhaseTiming(self, phase):
-    while hasattr(phase, 'wraps'):
-      phase = phase.wraps
-    phase_record = PhaseRecord(phase.__name__, phase.__doc__,
-                               inspect.getsource(phase), utils.TimeMillis(),
-                               getattr(phase, 'measurements', None),
-                               getattr(phase, 'attachments', None))
-    try:
-      yield phase_record
-    finally:
-      self.phases.append(phase_record._replace(
-          end_time_millis=utils.TimeMillis()))
-
   @classmethod
   def FromFrame(cls, frame):
     """Create a TestRecord, initialized from the given stack frame.
@@ -84,71 +70,23 @@ class TestRecord(collections.namedtuple(
 
 class PhaseRecord(collections.namedtuple(
     'PhaseRecord', 'name docstring code start_time_millis end_time_millis '
-    'measurements attachments')):
-  """The record of a single run of a phase."""
-  # TODO(jethier): Populate measurements and attachments (maybe pass them in at
-  # instantiation. measurements won't actually be a dict but an object with
-  # __getattr__ overridden. See ParameterList in parameters.py.
-  def __new__(cls, name, docstring, code, start_time_millis, measurements,
-              attachments):
-    return super(PhaseRecord, cls).__new__(cls, name, docstring, code,
-        start_time_millis, None, measurements, attachments)
+    'measurement_declarations measurement_values attachments result')):
+  """The record of a single run of a phase.
 
+  Measurement metadata (declarations) and values are stored in separate
+  dictionaries, each of which map measurement name to the respective object.  In
+  the case of measurement_declarations, those objects are
+  measurements.Declaration instances.  In the case of measurement_values, the
+  objects stored are either single values (in the case of dimensionless
+  measurements) or lists of value tuples (in the case of dimensioned
+  measurements).  See measurements.Record.GetValues().
+  """
 
 LogRecord = collections.namedtuple('LogRecord', 'level logger_name '
     'timestamp_millis message')
 
 
-class MeasurementRecord(collections.namedtuple('Measurement', 'name units values')):
-  
-  def __init__(self, name, units, dimensions=None):
-    """Initialize a Measurement for measuring the given units.
-
-    TODO(jethier): Update docstring with real UOM codes.
-    Args:
-      name: Unique name for this measurement.
-      units: UOM units of measurements taken.
-      dimensions: Tuple of UOM units of respective dimensions.  For example,
-          if dimensions is (UOM.degC, UOM.Hz), then this Measurement's values
-          will be set with measurement[degc, hz] = value.  If dimensions is
-          None, then this is assumed to be a dimensionless measurement, and
-          is set with measurement = value.
-    """
-    if dimensions:
-      # Values here will be a dict mapping coordinates to measured value.  When
-      # output, we will output a list of tuples containing coordinates, where
-      # dimensions appear first, and the measured value is the last coordinate.
-      super(MeasurementRecord, self).__init__(name, dimensions + units, {})
-    else:
-      # We make values a list so we can modify it later, since tuples are
-      # immutable; it should only ever contain at most one element.
-      super(MeasurementRecord, self).__init__(name, units, [])
-          
-
-  def __setitem__(self, coordinates, value):
-    coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
-    if coordinates_len != len(self.units):
-      raise InvalidMeasurementDimensions(
-          'Expected %s-dimensional coordinates, got %s' % (len(self.units),
-                                                           coordinates_len))
-    if coordinates in self.values:
-      logging.warning(
-          'Overriding previous measurement %s[%s] value of %s with %s',
-          self.name, coordinates, self.values[coordinates], value)
-    self.values[coordinates] = value
-
-  def __getitem__(self, coordinates):
-    return self.values[coordinates]
-
-  def Output(self):
-    if isinstance(self.values, list):
-      # We have no dimensions, just output a copy of our values.
-      return list(self.values)
-    else:
-      # We have dimensions, create the tuples to output
-      return [dimensions + (value,) for dimensions, value in
-              self.values.iteritems()]
-    
+   
 
 # @property
 # def combined_parameter_status(self):
