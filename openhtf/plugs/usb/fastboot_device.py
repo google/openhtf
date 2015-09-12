@@ -29,14 +29,13 @@ CLASS = 0xFF
 SUBCLASS = 0x42
 PROTOCOL = 0x03
 
-
+_LOG = logging.getLogger('HTFTest')
 class FastbootDevice(object):
   """Libusb fastboot wrapper with retries."""
 
   def __init__(self, _, num_retries=3):
     self._num_retries = num_retries
     self._protocol = None
-    self._log = logging.getLogger('libusb.fastboot')
 
   @property
   def usb_handle(self):
@@ -90,7 +89,7 @@ class FastbootDevice(object):
       def _retry_wrapper(*args, **kwargs):
         """Wrap the retry function."""
         result = _retry_usb_function(self._num_retries, val, *args, **kwargs)
-        self._log.debug('LIBUSB FASTBOOT: %s(*%s, **%s) -> %s',
+        _LOG.debug('LIBUSB FASTBOOT: %s(*%s, **%s) -> %s',
                         attr, args, kwargs, result)
         return result
       return _retry_wrapper

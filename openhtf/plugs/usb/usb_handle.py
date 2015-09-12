@@ -27,7 +27,7 @@ import logging
 
 from openhtf.plugs.usb import usb_exceptions
 
-_LOG = logging.getLogger('usb_handles')
+_LOG = logging.getLogger('HTFTest')
 
 DEFAULT_TIMEOUT_MS = 5000
 FLUSH_READ_SIZE = 1024 * 64

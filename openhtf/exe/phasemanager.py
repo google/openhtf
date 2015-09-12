@@ -45,7 +45,7 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
                       'Test phase timeout in ms', lower_bound=0)
 
-_LOG = logging.getLogger('htf.phasemanager')
+_LOG = logging.getLogger('HTFTest')
 
 # Only use 'is' checks, as that does pointer comparison for strings. That makes
 # this the same as an object(), but useful when printed.
@@ -161,7 +161,7 @@ class PhaseExecutor(object):
 
     # Check this as early as possible.
     if hasattr(phase, 'run_if') and not phase.run_if(self._phase_data):
-      self._logger.info(
+      _LOG.info(
           'Phase %s skipped due to run_if returning falsey.', phase.__name__)
       self._phases.pop(0)
       return

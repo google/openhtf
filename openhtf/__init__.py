@@ -36,15 +36,39 @@ from openhtf.exe import triggers
 from openhtf.io import http_api
 from openhtf.io import rundata
 from openhtf.util import measurements
-
+from datetime import datetime
 
 FLAGS = gflags.FLAGS
 FLAGS(sys.argv)
+gflags.DEFINE_string('log_dir', '/tmp', 'dir for log files')
+gflags.DEFINE_enum('log_output', 'console', ['console','file','both'], 'output option')
+gflags.DEFINE_enum('level', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'log level')
 
+def Setup_logger():
+    htflogger = logging.getLogger('HTFTest')
+    htflogger.setLevel(FLAGS.level.upper())
+    htflogger.propagate = False
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    cur_time = datetime.utcnow().strftime('%Y-%m-%d-%H:%M:%S.%f')[:-3]
+    fh = logging.FileHandler(FLAGS.log_dir + '/test_' + cur_time +'.log', delay=True)
+    fh.setFormatter(formatter)
+    htflogger.addHandler(fh)
+
+    sh = logging.StreamHandler()
+    sh.setFormatter(formatter)
+    htflogger.addHandler(sh)
+
+    if FLAGS.log_output.lower() == 'file': 
+      htflogger.removeHandler(sh)
+    elif FLAGS.log_output.lower() == 'console':
+      htflogger.removeHandler(fh)
 
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
+Setup_logger()
+_LOG = logging.getLogger('HTFTest')
 
 class OutputToJSON(JSONEncoder):
   """Return an output callback that writes JSON Test Records.
