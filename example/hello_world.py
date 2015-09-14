@@ -71,5 +71,6 @@ def dimensions(test):
 
 if __name__ == '__main__':
   test = openhtf.HTFTest(hello_world, set_measurements, dimensions)
-  test.AddOutputCallback(openhtf.OutputToJson('./%(dut_id)s.%(start_time_millis)s'))
+  test.AddOutputCallback(openhtf.OutputToJson(
+    './%(dut_id)s.%(start_time_millis)s', indent=4))
   test.Execute()

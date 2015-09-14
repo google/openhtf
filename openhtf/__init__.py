@@ -17,6 +17,7 @@
 
 import inspect
 import itertools
+from json import JSONEncoder
 import logging
 import os
 import signal
@@ -42,7 +43,7 @@ FLAGS(sys.argv)
 prompter = user_input.get_prompter()  # pylint: disable=invalid-name
 
 
-def OutputToJson(filename_pattern):
+class OutputToJson(JSONEncoder):
   """Return an output callback that writes JSON Test Records.
 
   An example filename_pattern might be:
@@ -57,10 +58,31 @@ def OutputToJson(filename_pattern):
     filename_pattern: A format string specifying the filename to write to,
       will be formatted with the Test Record as a dictionary.
   """
-  def _Output(test_record):
-    with open(filename_pattern % test_record._asdict(), 'w') as f:
-      f.write('TODO: Write JSON encoder for Test Records.\n')
-  return _Output
+
+  def __init__(self, filename_pattern, **kwargs):
+    super(OutputToJson, self).__init__(**kwargs)
+    self.filename_pattern = filename_pattern
+
+  @classmethod
+  def _ConvertToDict(cls, obj):
+    """Recursively convert namedtuples to dicts."""
+    if hasattr(obj, '_asdict'):
+      obj = obj._asdict()
+
+    # Recursively convert values in dicts, lists, and tuples.
+    if isinstance(obj, dict):
+      for key, value in obj.iteritems():
+        obj[key] = cls._ConvertToDict(value)
+    elif isinstance(obj, list):
+      obj = [cls._ConvertToDict(value) for value in obj]
+    elif isinstance(obj, tuple):
+      obj = tuple(cls._ConvertToDict(value) for value in obj)
+
+    return obj
+
+  def __call__(self, test_record):
+    with open(self.filename_pattern % test_record._asdict(), 'w') as f:
+      f.write(self.encode(self._ConvertToDict(test_record)))
 
 
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
