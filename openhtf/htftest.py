@@ -30,7 +30,6 @@ import openhtf.capabilities as capabilities
 from openhtf import test_record
 from openhtf.util import measurements
 from openhtf.util import utils
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 
 class InvalidTestPhaseError(Exception):

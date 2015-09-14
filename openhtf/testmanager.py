@@ -19,13 +19,15 @@
 
 Test timing, failures, and the UI are handled by this module.
 """
+from enum import Enum
 import logging
 
 from openhtf import htftest
 from openhtf import phasemanager
 from openhtf import test_record
 from openhtf import testrunadapter
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
+from openhtf.util import configuration
+from openhtf.util import htflogger
 from openhtf.util import utils
 
 _LOG = logging.getLogger('htf.testmanager')
@@ -39,6 +41,7 @@ class InvalidPhaseResultError(Exception):
   """A TestPhase returned an invalid result."""
 
 
+# TODO(madsci): Add ability to update dut_id after test start.
 class TestState(object):
   """Encompasses the lifetime of a test in a cell.
 
@@ -51,146 +54,85 @@ class TestState(object):
     cell_config: The config specific to this cell.
     test: htftest.HTFTest instance describing the test to run.
   """
+  State = Enum(
+      'RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED', 'WAITING', 'FAIL', 'PASS',
+      'CREATED'
+  )
 
   _PHASE_RESULT_TO_CELL_STATE = {
-      htftest.PhaseResults.CONTINUE: htf_pb2.WAITING,
-      htftest.PhaseResults.REPEAT: htf_pb2.WAITING,
-      htftest.PhaseResults.FAIL: htf_pb2.FAIL,
-      htftest.PhaseResults.TIMEOUT: htf_pb2.TIMEOUT,
+      htftest.PhaseResults.CONTINUE: State.WAITING,
+      htftest.PhaseResults.REPEAT: State.WAITING,
+      htftest.PhaseResults.FAIL: State.FAIL,
+      htftest.PhaseResults.TIMEOUT: State.TIMEOUT,
   }
 
-  _ERROR_STATES = {htf_pb2.TIMEOUT, htf_pb2.ERROR}
-  _FINISHED_STATES = {htf_pb2.PASS, htf_pb2.FAIL} | _ERROR_STATES
+  _ERROR_STATES = {State.TIMEOUT, State.ERROR}
+  _FINISHED_STATES = {State.PASS, State.FAIL} | _ERROR_STATES
 
-  def __init__(self, cell_number, cell_config, test):
+  def __init__(self, cell_number, cell_config, test, dut_id):
+    station_id = configuration.HTFConfig().station_id
+    self._state = self.State.CREATED
     self._cell_config = cell_config
     self.record = test_record.TestRecord(
-        test.filename, test.docstring, test.code, utils.TimeMillis())
-    # TODO(jethier): Remove the following.
-    self.test_run_adapter = testrunadapter.TestRunAdapter(
-        cell_number, test)
-    self._logger = self.test_run_adapter.logger
+        test.filename, test.docstring, test.code, dut_id, station_id)
+    self.logger = htflogger.HTFLogger(self.record, cell_number)
 
-  # TODO(madsci): This return interface is a little weird.  I think it's best
-  # to leave it for now, but once we fully remove the test_run_adapter and
-  # implement better state tracking internally, this interface should be
-  # reconsidered.
   def SetStateFromPhaseResult(self, phase_result):
     """Set our internal state based on the given phase result.
 
     Args:
-      phase_result: One of htftest.TestPhaseInfo.TEST_PHASE_RESULT_*
+      phase_result: An instance of phasemanager.TestPhaseResult
 
-    Returns: The state that was set, and whether the test has finished or not,
-      as a tuple.
+    Returns: True if the test has finished.
     """
-    state = self._PHASE_RESULT_TO_CELL_STATE.get(phase_result)
-
-    if state is None:
-      raise InvalidPhaseResultError('Phase result is invalid.', phase_result)
-
-    # TODO(jethier): Replace internal state tracking.
-    self.test_run_adapter.SetTestRunStatus(state)
-
-    if state in self._FINISHED_STATES:
-      self._logger.info('Test finished prematurely with state %s',
-                        htf_pb2.Status.Name(state))
-      return state, True
-    return state, False
-
-  def _RecordTestFinish(self, state):
-    """Marks the end of a test.
-
-    The given state is what the test execution determines as the state, which
-    may be any of the possible finishing states (PASS, FAIL, ERROR, etc). This
-    then attempts to finish the test by cleaning up after the phases and
-    persisting to disk; if either fails, the state changes to ERROR.
-
-    Arguments:
-      state: State of the test before finishing.
-    """
-
-    if state != 'PASS':
-      self._SetFailureCodesBasedOnState(state)
-
-    # TODO(madsci): Do we update self.record, or just output a local
-    # tuple that we make here?  Need to look at how we interface with the
-    # output module, for now just update in-place.
-    self.record = self.record._replace(end_time_millis=utils.TimeMillis(),
-                                       outcome=state)
-
-    # TODO(jethier): Remove the following.
-    self.test_run_adapter.RecordTestFinish()
-    self._logger.info('Finishing test execution with state %s.',
-                      htf_pb2.Status.Name(state))
-
-    self.test_run_adapter.SetTestRunStatus(state)
-    self.test_run_adapter.AddConfigToTestRun()
-
-    if not self.test_run_adapter.serial:
-      raise BlankDUTSerialError(
-          'Blank or missing DUT serial, HTF requires a non-blank serial.')
-
-    if not self.test_run_adapter.PersistTestRun():
-      self._logger.error('Unable to persist testrun for cell %s',
-                         self.test_run_adapter.cell)
-      self.test_run_adapter.SetTestRunStatus(htf_pb2.ERROR)
-
-  def _SetErrorCode(self, exception):
-    """If a test errored, find out why and store it in the test run proto.
-
-    Arguments:
-      exception: Exception raised somewhere in the test execution or cleanup.
-    """
-    self.record = self.record._replace(outcome='ERROR')
-    code = str(exception.__class__.__name__)
-    details = str(exception).decode('utf8', 'replace')
-    self.record.AddOutcomeCode('Error', code, details)
-
-  def _SetFailureCodesBasedOnState(self, state):
-    """If a test failed, determine and record the reason.
-
-    If the test error'd, had no parameters set, or one or more parameters
-    failed, then store the error codes in the test run for easier consumption
-    later on.
-
-    Arguments:
-      state: State of the test after phases are executed.
-    """
-    if state == htf_pb2.TIMEOUT:
-      code = htf_pb2.Status.Name(state)
-      self.record.AddOutcomeCode('Failure', code)
-    
-    # TODO(jethier): I would like to drop this because it seems kind of
-    #                arbitrary. Who cares if no measurements were set? Unless
-    #                there were non-optional ones unset, in which case the phase
-    #                exec should probably set a failure code itself. Maybe?
-    elif all(param.status == htf_pb2.ERROR
-             for param in self.test_run_adapter.htf_test_run.test_parameters):
-      self.test_run_adapter.AddFailureCode(
-          code='FAIL',
-          details='No test parameters were logged, so the test failed.')
-    
-    # TODO(jethier): I think individual phases are going to need to do this now
-    #                since measurements are only attached to phases and we don't
-    #                keep a central union of measurements.
+    if phase_result.raised_exception:
+      self._state = self.State.ERROR
+      code = str(type(phase_result.phase_result).__name__)
+      details = str(phase_result.phase_result).decode('utf8', 'replace')
+      self.record.AddOutcomeDetails(self._state, code, details)
     else:
-      for parameter in self.test_run_adapter.htf_test_run.test_parameters:
-        if parameter.status != htf_pb2.FAIL:
-          continue
-        if parameter.HasField('numeric_value'):
-          details = str(parameter.numeric_value)
-        elif parameter.HasField('text_value'):
-          details = parameter.text_value
-        else:
-          details = 'Unset'
-        self.test_run_adapter.AddFailureCode(
-            code=parameter.name, details=details)
+      if phase_result.phase_result not in self._PHASE_RESULT_TO_CELL_STATE:
+        raise InvalidPhaseResultError(
+          'Phase result is invalid.', phase_result.phase_result)
+      self._state = self._PHASE_RESULT_TO_CELL_STATE[phase_result.phase_result]
+
+    return self._state in self._FINISHED_STATES
+
+  def SetStateRunning(self):
+    """Mark the test as actually running (rather than waiting)."""
+    self._state = self.State.RUNNING
+
+  def SetStateFinished(self):
+    """Mark the state as finished, only called if the test ended normally."""
+    # TODO(madsci): Check for measurement failures and mark the test outcome
+    # accordingly.  For now, we just pass in this case.
+    self._state = self.State.PASS
+
+  def GetFinishedRecord(self):
+    """Get a test_record.TestRecord for the finished test.
+
+    Arguments:
+      phase_result: The last phasemanager.TestPhaseResult in the test.
+
+    Returns:  An updated test_record.TestRecord that is ready for output.
+    """
+    self.logger.debug('Finishing test execution with state %s.', self._state)
+
+    if 'config' in self.record.metadata:
+      self.logger.warning('config already set in metadata, not saving config')
+    else:
+      self.record.metadata['config'] = configuration.HTFConfig()
+
+    if not self.record.dut_id:
+      raise BlankDUTSerialError(
+          'Blank or missing DUT ID, HTF requires a non-blank ID.')
+
+    return self.record._replace(
+        end_time_millis=utils.TimeMillis(), outcome=self._state)
 
   def __str__(self):
-    return '<%s: %s>' % (
-        type(self).__name__, self.test_run_adapter.htf_test_run.test_info.name,
+    return '<%s: %s, %s>' % (
+        type(self).__name__, self.record.station_id, self.record.dut_id
     )
   __repr__ = __str__
-
 

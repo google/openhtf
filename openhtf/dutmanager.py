@@ -35,7 +35,7 @@ from openhtf.capabilities.usb import usb_exceptions
 from openhtf.util import configuration
 
 configuration.Declare('test_start', 'Mechanism to use for starting a test.',
-                      default_value='android')
+                      default_value='stub')
 configuration.Declare('stub_dut_serial', 'Serial to use when test_start is '
                       '"stub".', default_value='DUT_SERIAL', required=False)
 

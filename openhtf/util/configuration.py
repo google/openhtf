@@ -19,9 +19,6 @@ OpenHTF configuration files contain values which are specific to a single
 tester. Any values which apply to all testers of a given type should be handled
 by FLAGS or another mechanism.
 
-Examples of configuration values are things like target_name, test,
-configuration, etc...
-
 TODO(jethier): add an example of how to declare and use configuration.
 """
 
@@ -637,6 +634,4 @@ LoadFromDict = HTFConfig().model.LoadFromDict
 Reset = HTFConfig().model.Reset
 
 # Everywhere that uses configuration uses this, so we just declare it here.
-# TODO(jethier): Are these deprecated now?
-Declare('target_name', 'The name of this tester', required=True)
-Declare('test_type', 'The type of this tester', required=True)
+Declare('station_id', 'The name of this tester')

@@ -27,12 +27,12 @@ import sys
 import gflags
 
 from openhtf import executor
+from openhtf import htftest
 from openhtf import http_handler
 from openhtf import rundata
-from openhtf import htftest
+from openhtf import testmanager
 from openhtf import user_input
 from openhtf.util import configuration
-from openhtf.util import parameters
 
 
 FLAGS = gflags.FLAGS
@@ -62,6 +62,17 @@ class OutputToJson(JSONEncoder):
   def __init__(self, filename_pattern, **kwargs):
     super(OutputToJson, self).__init__(**kwargs)
     self.filename_pattern = filename_pattern
+
+  def default(self, obj):
+    # Handle a few custom objects that end up in our output.
+    if isinstance(obj, BaseException):
+      # Just repr exceptions.
+      return repr(obj)
+    if isinstance(obj, configuration.HTFConfig):
+      return obj.dictionary
+    if obj in testmanager.TestState.State:
+      return str(obj)
+    return super(OutputToJson, self).default(obj)
 
   @classmethod
   def _ConvertToDict(cls, obj):
@@ -133,15 +144,9 @@ class HTFTest(object):
     frame_record = inspect.stack()[1]
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
+    # TODO(madsci): This doesn't seem to grab all of the source for some reason
     self.code = inspect.getsource(frame_record[0])
     
-    # TODO(jethier): Do something similar to this with measurements and
-    # attachments.
-    # Parameters can be directly attached to phases so we union the lists.
-    self.parameters = parameters.TestParameterList.Union(
-        *(phase.parameters for phase in self.phases
-          if hasattr(phase, 'parameters')))
-
   @property
   def capability_type_map(self):
     """Returns dict mapping name to capability type for all phases."""
@@ -189,8 +194,8 @@ class HTFTest(object):
     config = configuration.HTFConfig()
     rundata.RunData(self.filename,
                     len(config.cell_info),
-                    config.test_type,
-# TODO(madsci/jethier): Update rundata interface, this is a dummy version string
+# TODO(madsci/jethier): Update rundata interface, these are dummy values.
+                    config.station_id,
                     '0.1',
                     socket.gethostname(),
                     FLAGS.http_port,

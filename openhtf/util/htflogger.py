@@ -18,7 +18,7 @@
 This file defines a logging.LoggerAdapter and logging.Handler, see below.
 
 Any module can call logging.getLogger('htf.something') and it will by default
-show up in the HTF proto.
+show up in the HTF output.
 """
 
 import logging
@@ -26,7 +26,7 @@ import os
 import re
 import traceback
 
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
+from openhtf import test_record
 
 # Logging setup
 HTF_LOGGER_PREFIX = 'htf'
@@ -59,6 +59,9 @@ class MacAddressLogFilter(logging.Filter):  # pylint: disable=too-few-public-met
 MAC_FILTER = MacAddressLogFilter()
 
 
+# TODO(amyxchen): Once we remove cells, we really don't need this to be
+# a LoggerAdapter anymore, we should be able to do everything we need with
+# just a custom Handler.
 class HTFLogger(logging.LoggerAdapter):
   """A standard interface for providing additional logging methods.
 
@@ -69,12 +72,12 @@ class HTFLogger(logging.LoggerAdapter):
   failure codes.
   """
 
-  def __init__(self, test_run, cell_number, prefix=HTF_LOGGER_PREFIX):
+  def __init__(self, test_record, cell_number, prefix=HTF_LOGGER_PREFIX):
     super(HTFLogger, self).__init__(
         logging.getLogger(prefix).getChild('cells.%s' % cell_number),
         {'cell_number': cell_number})
-    self._test_run = test_run
-    self._handler = HTFLoggerHandler(test_run)
+    self._test_record = test_record
+    self._handler = HTFLoggerHandler(test_record)
     self.logger.setLevel(logging.DEBUG)
     self.logger.addFilter(MAC_FILTER)
     self.logger.addHandler(self._handler)
@@ -84,11 +87,11 @@ class HTFLogger(logging.LoggerAdapter):
 
   def __str__(self):
     return '<HTFLogger for cell %s: %s>' % (self.extra['cell_number'],
-                                            self._test_run.dut_serial)
+                                            self._test_record.dut_id)
   __repr__ = __str__
 
   def AddFailureCode(self, code, details):
-    """Adds a failure code to the proto.
+    """Adds a failure code to the TestRecord's metadata 'failure_codes' key.
 
     This is useful if a test is going to return from a phase either via ABORT or
     FAIL so that we can make some sense as to why they bailed.
@@ -104,21 +107,20 @@ class HTFLogger(logging.LoggerAdapter):
     if not code:
       raise ValueError('Invalid Failure Code', code)
 
-    failure_code = self._test_run.failure_codes.add()
-    failure_code.code = code
-    failure_code.details = details
+    failure_codes = self._test_record.metadata.setdefault('failure_codes', [])
+    failure_codes.append((code, details)) 
 
 
 class HTFLoggerHandler(logging.Handler):
-  """A handler to save logs to an HTF TestRun proto."""
+  """A handler to save logs to an HTF TestRecord."""
 
-  def __init__(self, test_run):
+  def __init__(self, test_record):
     super(HTFLoggerHandler, self).__init__()
     self.setLevel(logging.DEBUG)
-    self._test_run = test_run
+    self._test_record = test_record
 
   def emit(self, record):
-    """Save a logging.LogRecord to our test run proto.
+    """Save a logging.LogRecord to our test record.
 
     LogRecords carry a significant amount of information with them including the
     logger name and level information.  This allows us to be a little clever
@@ -127,18 +129,17 @@ class HTFLoggerHandler(logging.Handler):
     Args:
       record: A logging.LogRecord to log.
     """
-    proto = self._test_run.test_logs.add()
-    proto.timestamp_millis = int(record.created * 1000)
-    proto.levelno = record.levelno
-    proto.logger_name = record.name
     message = record.getMessage()
     if record.exc_info:
       message += '\n' + ''.join(traceback.format_exception(
           *record.exc_info))
-    proto.log_message = message.decode('utf8', 'replace')
-    proto.log_source = os.path.basename(record.pathname)
-    proto.lineno = record.lineno
-    proto.level = htf_pb2.TestRunLogMessage.Level.Value(record.levelname)
+    message = message.decode('utf8', 'replace')
+    
+    log_record = test_record.LogRecord(
+        record.levelno, record.name, os.path.basename(record.pathname),
+        record.lineno, int(record.created * 1000), message
+    )
+    self._test_record.log_records.append(log_record)
 
 
 # Add our filter to the root loggers we know about, and initialize them.

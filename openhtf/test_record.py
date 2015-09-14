@@ -31,13 +31,17 @@ class TestRecord(collections.namedtuple(
     'TestRecord', 'dut_id station_id '
                   'start_time_millis end_time_millis '
                   'outcome outcome_details '
-                  'metadata openhtf_version code phases log_lines')):
+                  'metadata openhtf_version code phases log_records')):
   """The record of a single run of a test."""
-  def __new__(cls, test_filename, docstring, test_code, start_time_millis):
-    self = super(TestRecord, cls).__new__(cls, None, None,
-                                          start_time_millis, None,
-                                          None, [],
-                                          {}, None, test_code, [], [])
+  def __new__(cls, test_filename, docstring, test_code, dut_id, station_id):
+    # TODO(jethier): Fill in openhtf_version
+    self = super(TestRecord, cls).__new__(
+        cls,
+        dut_id, station_id,        # dut_id, station_id
+        utils.TimeMillis(), None,  # start/end
+        None, [],                  # outcome and details
+        {}, None, test_code,       # metadata, version, code
+        [], [])                    # phases and log_records
     self.metadata['filename'] = test_filename
     self.metadata['docstring'] = docstring
     return self
@@ -56,15 +60,15 @@ class TestRecord(collections.namedtuple(
     return cls(frame[1], inspect.getdoc(inspect.getmodule(frame[0])),
                inspect.getsource(inspect.getmodule(frame[0])))
 
-  def AddOutcomeCode(self, type, code, details=None):
+  def AddOutcomeDetails(self, code_type, code, details=None):
     """Adds a code with optional details to this record's outcome_details.
 
     Args:
-      type: A string specifying the type of code (usually 'Error' or 'Failure').
-      code: An integer code.
+      code_type: A string specifying the type of code (usually 'Error' or 'Failure').
+      code: A code name or number.
       details: A string providing details about the outcome code.
     """
-    self.outcome_details.append('%s Code %s: %s' % (type, code,
+    self.outcome_details.append('%s Code %s: %s' % (code_type, code,
                                                     details if details else ''))
 
 
@@ -82,37 +86,6 @@ class PhaseRecord(collections.namedtuple(
   measurements).  See measurements.Record.GetValues().
   """
 
-LogRecord = collections.namedtuple('LogRecord', 'level logger_name '
-    'timestamp_millis message')
+LogRecord = collections.namedtuple('LogRecord', 'level logger_name source '
+    'lineno timestamp_millis message')
 
-
-   
-
-# @property
-# def combined_parameter_status(self):
-#   """Calculate pass/fail based on parameters."""
-#   if any(parameter.status != htf_pb2.PASS
-#          for parameter in self._htf_test_run.test_parameters):
-#     return htf_pb2.FAIL
-#   return htf_pb2.PASS
-
-
-# def AddConfigToTestRun(self, config=None):
-#   """Sets the htfconfig parameter in the testrun as an extended parameter.
-
-#   Args:
-#     config: If specified use this config, otherwise the global one.
-#   """
-#   config = config or configuration.HTFConfig()
-#   try:
-#     self.parameters.htfconfig = pprint.pformat(config.dictionary)
-#   except parameters.NotAParameterError:
-#     self.logger.warning(
-#         'No htfconfig parameter found in test. Parameter not set.')
-
-# def AddFailureCode(self, code, details=None):
-#   """Add a failure code if necessary."""
-#   failure_code = self._htf_test_run.failure_codes.add(code=code)
-#   if details is not None:
-#     failure_code.details = details
-#   _LOG.debug('Failure Code added: %s (details=%s)', code, details)

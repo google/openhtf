@@ -41,7 +41,6 @@ from openhtf import htftest
 from openhtf.util import configuration
 from openhtf.util import measurements
 from openhtf.util import threads
-from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
@@ -57,6 +56,11 @@ configuration.Declare(
     'blacklist_phases', 'Phase names to skip', default_value=[])
 
 
+# TODO(jethier): Do we really need this to be a tuple?  All we do is check if
+# phase_result is an instance of BaseException and set raised_exception based
+# on that.  Why not just save whatever we would store in phase_result and then
+# do the subclass check when we care?  It's annoying to see
+# phase_result.phase_result everywhere.
 class TestPhaseResult(collections.namedtuple(
     'TestPhaseResult', ['phase_result', 'raised_exception'])):
   """Result of a phase, and whether it raised an exception or not."""
@@ -131,15 +135,13 @@ class PhaseExecutorThread(threads.KillableThread):
 class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
-  def __init__(self, cell_config, test, test_record, test_run_adapter,
-               capabilities):
+  def __init__(self, cell_config, test, test_state, capabilities):
     self._config = cell_config
     self._phases = list(test.phases)
-    self._test_record = test_record
-    self._test_run_adapter = test_run_adapter
-    self._logger = test_run_adapter.logger
+    self._test_state = test_state
+    self._logger = test_state.logger
     self._phase_data = htftest.PhaseData(
-        self._logger, self._config, capabilities, self._test_record)
+        self._logger, self._config, capabilities, self._test_state.record)
     self._current_phase = None
 
   def ExecutePhases(self):
@@ -176,7 +178,7 @@ class PhaseExecutor(object):
     self._logger.info('Executing phase %s with capabilities %s',
                       phase.__name__, self._phase_data.capabilities)
 
-    self._test_run_adapter.SetTestRunStatus(htf_pb2.RUNNING)
+    self._test_state.SetStateRunning()
 
     with self._phase_data.RecordPhaseTiming(phase) as result_wrapper:
       phase_thread = PhaseExecutorThread(phase, self._phase_data)
