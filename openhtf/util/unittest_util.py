@@ -41,12 +41,6 @@ class TestUtil(unittest.TestCase):
   def tearDownClass(cls):
     print "tearDown done"
 
-  """
-  @mock.patch('configuration.ConfigModel.loaded')
-  def mock_loaded(self, mock_property):
-    mock_property.return_value = true
-  """
-
   def test_timeExpired_false(self):
     time.sleep(TestUtil.time_sleep)
     TestUtil.polledtimeout.Restart()

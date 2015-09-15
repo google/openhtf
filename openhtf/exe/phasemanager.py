@@ -51,7 +51,6 @@ _LOG = logging.getLogger('HTFTest')
 # this the same as an object(), but useful when printed.
 DIDNT_FINISH = 'DIDNT_FINISH'
 
-
 # TODO(jethier): Do we really need this to be a tuple?  All we do is check if
 # phase_result is an instance of BaseException and set raised_exception based
 # on that.  Why not just save whatever we would store in phase_result and then
