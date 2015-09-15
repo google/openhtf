@@ -35,13 +35,10 @@ framework.
 import collections
 import logging
 
-import contextlib2
 import gflags
 
 from openhtf import conf
 from openhtf.exe import htftest
-from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
-from openhtf.util import measurements
 from openhtf.util import threads
 
 FLAGS = gflags.FLAGS
@@ -54,10 +51,12 @@ _LOG = logging.getLogger('htf.phasemanager')
 # this the same as an object(), but useful when printed.
 DIDNT_FINISH = 'DIDNT_FINISH'
 
-conf.Declare(
-    'blacklist_phases', 'Phase names to skip', default_value=[])
 
-
+# TODO(jethier): Do we really need this to be a tuple?  All we do is check if
+# phase_result is an instance of BaseException and set raised_exception based
+# on that.  Why not just save whatever we would store in phase_result and then
+# do the subclass check when we care?  It's annoying to see
+# phase_result.phase_result everywhere.
 class TestPhaseResult(collections.namedtuple(
     'TestPhaseResult', ['phase_result', 'raised_exception'])):
   """Result of a phase, and whether it raised an exception or not."""
@@ -132,17 +131,13 @@ class PhaseExecutorThread(threads.KillableThread):
 class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
-  def __init__(self, cell_config, test, test_record, test_run_adapter,
-               plugs):
+  def __init__(self, cell_config, test, test_state, plugs):
     self._config = cell_config
     self._phases = list(test.phases)
-    self._test_record = test_record
-    self._test_run_adapter = test_run_adapter
-    self._logger = test_run_adapter.logger
+    self._test_state = test_state
+    self._logger = test_state.logger
     self._phase_data = htftest.PhaseData(
-        test_run_adapter.logger, {}, self._config, plugs,
-        test_run_adapter.parameters, None,
-        test_run_adapter.component_graph, contextlib2.ExitStack())
+        self._logger, self._config, plugs, self._test_state.record)
     self._current_phase = None
 
   def ExecutePhases(self):
@@ -163,11 +158,6 @@ class PhaseExecutor(object):
 
   def _ExecuteOnePhase(self, phase):
     """Executes the given phase."""
-    # Check against the blacklist first.
-    if phase.__name__ in self._config.blacklist_phases:
-      self._logger.info('Phase %s skipped due to blacklist', phase.__name__)
-      self._phases.pop(0)
-      return
 
     # Check this as early as possible.
     if hasattr(phase, 'run_if') and not phase.run_if(self._phase_data):
@@ -179,22 +169,19 @@ class PhaseExecutor(object):
     self._logger.info('Executing phase %s with plugs %s',
                       phase.__name__, self._phase_data.plugs)
 
-    self._test_run_adapter.SetTestRunStatus(htf_pb2.RUNNING)
+    self._test_state.SetStateRunning()
 
-    with self._test_record.RecordPhaseTiming(phase) as phase_record:
-      # Fill in measurements and attachments with the ones for this phase.
-      phase_data = self._phase_data._replace(
-          measurements=measurements.MeasurementCollection(phase.measurements))
-      phase_thread = PhaseExecutorThread(phase, phase_data)
+    with self._phase_data.RecordPhaseTiming(phase) as result_wrapper:
+      phase_thread = PhaseExecutorThread(phase, self._phase_data)
       phase_thread.start()
       self._current_phase = phase_thread
-      result = phase_thread.JoinOrDie()
-
-    if result.phase_result == htftest.PhaseResults.CONTINUE:
+      result_wrapper.SetResult(phase_thread.JoinOrDie())
+    
+    if result_wrapper.result.phase_result == htftest.PhaseResults.CONTINUE:
       self._phases.pop(0)
 
-    self._logger.debug('Phase finished with state %s', result)
-    return result
+    self._logger.debug('Phase finished with state %s', result_wrapper.result)
+    return result_wrapper.result
 
   def Stop(self):
     """Stops the current phase."""

@@ -19,9 +19,6 @@ OpenHTF configuration files contain values which are specific to a single
 tester. Any values which apply to all testers of a given type should be handled
 by FLAGS or another mechanism.
 
-Examples of configuration values are things like target_name, test,
-configuration, etc...
-
 TODO(jethier): add an example of how to declare and use configuration.
 """
 
@@ -39,12 +36,12 @@ from openhtf.util import threads
 
 FLAGS = gflags.FLAGS
 
-gflags.DEFINE_string('openhtf_config',
+gflags.DEFINE_string('config',
                      '/usr/local/openhtf_client/config/clientfoo.yaml',
                      'The OpenHTF configuration file for this tester')
 
 gflags.DEFINE_multistring(
-    'openhtf_config_value', [], 'Allows specifying a configuration key=value '
+    'config_value', [], 'Allows specifying a configuration key=value '
     'on the command line.  The format should be --config_value key=value. '
     'This value will override any existing config value at config load time '
     'and will be a string')
@@ -122,7 +119,7 @@ class ConfigurationDeclaration(
 class _DeclaredParameters(object):
   """An object which manages config parameter declarations.
 
-  This object is basically a helper for HTFConfig.  It provides locked access to
+  This object is basically a helper for Config.  It provides locked access to
   a map of declarations and processes configuration values against the
   declaration.  It must be guarded since declarations are updated at import time
   and if something is lazily imported we could race between updating the
@@ -252,7 +249,7 @@ class ConfigModel(object):
 
     Args:
       config_file: The file name to load configuration parameters from.
-          Defaults to FLAGS.openhtf_config.
+          Defaults to FLAGS.config.
       force_reload: If true this method will ignore the loaded state and reload
           the config from disk.
       config_loader: A callable which returns a file object when given a
@@ -268,7 +265,7 @@ class ConfigModel(object):
       return False
 
     try:
-      filename = config_file or FLAGS.openhtf_config
+      filename = config_file or FLAGS.config
       logging.info('Loading from config: %s', filename)
 
       with config_loader(filename) as config_file:
@@ -277,12 +274,12 @@ class ConfigModel(object):
           raise ConfigurationInvalidError('No data', config_file)
         # Make sure we update the existing instance of all_parameters instead
         # of assigning a new value to it so we don't break any existing users
-        # of this HTFConfig.
+        # of this Config.
         self._state.clear()
         self._state.update(data)
 
       # Load string values from flags
-      for keyval in FLAGS.openhtf_config_value:
+      for keyval in FLAGS.config_value:
         key, val = keyval.split('=')
         self._state[key] = val
 
@@ -373,8 +370,8 @@ class ConfigModel(object):
     self._declarations.Declare(name, declaration)
 
 
-class HTFConfig(object):
-  """The configuration read from the HTF config file, or populated directly.
+class Config(object):
+  """The configuration read from a config file, or populated directly.
 
   This classes uses the borg design pattern so all instances share the same
   state.  This is fine since the load only occurs on the main thread and from
@@ -384,7 +381,7 @@ class HTFConfig(object):
     configuration.Load()  # called once early
 
     # Can be done anyone and in multiple places without worrying about loading
-    config = HTFConfig()
+    config = Config()
     if config.url:
       print config.url
   """
@@ -397,7 +394,7 @@ class HTFConfig(object):
       model: The data model to use, defaults to the one shared amonst all config
           objects.
     """
-    self.model = model or HTFConfig.model
+    self.model = model or Config.model
 
   # pylint: disable=missing-docstring
   @property
@@ -440,7 +437,7 @@ class HTFConfig(object):
     return self.__getattr__(key)
 
   def __repr__(self):
-    return '<HTFConfig (loaded: %s): 0x%x>' % (self.model.loaded, id(self))
+    return '<Config (loaded: %s): 0x%x>' % (self.model.loaded, id(self))
 
   def CreateStackedConfig(self, model):
     """Stacks a new model onto the current model, creating a new config.
@@ -450,23 +447,23 @@ class HTFConfig(object):
           into a ConfigModel instance. If a dict, the declarations of this
           object will be used.
     Returns:
-      A new StackedHTFConfig instance with model superseding the current model.
+      A new StackedConfig instance with model superseding the current model.
     """
     if not isinstance(model, ConfigModel):
       model = ConfigModel(state=model, declarations=self.model.declarations)
-    return StackedHTFConfig([self.model, model])
+    return StackedConfig([self.model, model])
 
 
-class StackedHTFConfig(HTFConfig):
-  """Stacked version of HTFConfig.
+class StackedConfig(Config):
+  """Stacked version of Config.
 
-  This is a layered (or stacked) HTFConfig that allows users to make one set of
+  This is a layered (or stacked) Config that allows users to make one set of
   config values supersede another set. This is useful for creating cell-specific
   config types that have cell-specific overrides (or cell-specific data).
   """
 
   # pylint: disable=super-init-not-called
-  def __init__(self, models=(HTFConfig.model,)):
+  def __init__(self, models=(Config.model,)):
     self._models = list(models)
 
   def CreateStackedConfig(self, model):
@@ -477,12 +474,12 @@ class StackedHTFConfig(HTFConfig):
           into a ConfigModel instance. If a dict, the declarations of the top of
           the stack will be used.
     Returns:
-      A new StackedHTFConfig instance with model superseding the current models.
+      A new StackedConfig instance with model superseding the current models.
     """
     if not isinstance(model, ConfigModel):
       model = ConfigModel(
           state=model, declarations=self._models[0].declarations)
-    return StackedHTFConfig(self._models + [model])
+    return StackedConfig(self._models + [model])
 
   @property
   def dictionary(self):
@@ -509,7 +506,7 @@ class StackedHTFConfig(HTFConfig):
     return any(model.ContainsKey(name) for model in self._models)
 
   def __str__(self):
-    return '<StackedHTFConfig (loaded: %s): 0x%x>' % (self.loaded, id(self))
+    return '<StackedConfig (loaded: %s): 0x%x>' % (self.loaded, id(self))
   __repr__ = __str__
 
 
@@ -529,7 +526,7 @@ class ConfigValue(object):  # pylint: disable=too-few-public-methods
   """
 
   def __init__(self, config_key, config=None, value_fn=None):
-    self.config = config or HTFConfig()
+    self.config = config or Config()
     self.config_key = config_key
     self.value_fn = value_fn
 
@@ -599,8 +596,8 @@ def InjectPositionalArgs(method):  # pylint: disable=invalid-name
   # from the configuration *must* be explicitly specified as kwargs.
   @functools.wraps(method)
   def method_wrapper(**kwargs):
-    """Wrapper that pulls values from the HTFConfig() for parameters."""
-    config = HTFConfig()
+    """Wrapper that pulls values from the Config() for parameters."""
+    config = Config()
 
     # Check for keyword args with names that are in the config so we can warn.
     for bad_name in set(kwarg_names) & set(config.dictionary.keys()):
@@ -630,13 +627,11 @@ def InjectPositionalArgs(method):  # pylint: disable=invalid-name
 
 
 # pylint: disable=invalid-name
-Declare = HTFConfig().model.Declare
-Load = HTFConfig().model.Load
-LoadMissingFromDict = HTFConfig().model.LoadMissingFromDict
-LoadFromDict = HTFConfig().model.LoadFromDict
-Reset = HTFConfig().model.Reset
+Declare = Config().model.Declare
+Load = Config().model.Load
+LoadMissingFromDict = Config().model.LoadMissingFromDict
+LoadFromDict = Config().model.LoadFromDict
+Reset = Config().model.Reset
 
 # Everywhere that uses configuration uses this, so we just declare it here.
-# TODO(jethier): Are these deprecated now?
-Declare('target_name', 'The name of this tester', required=True)
-Declare('test_type', 'The type of this tester', required=True)
+Declare('station_id', 'The name of this tester')

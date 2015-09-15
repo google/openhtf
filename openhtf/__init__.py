@@ -22,6 +22,7 @@ import os
 import signal
 import socket
 import sys
+from json import JSONEncoder
 
 import gflags
 
@@ -29,12 +30,11 @@ from openhtf import conf
 from openhtf import exe
 from openhtf import plugs
 from openhtf.exe import htftest
+from openhtf.exe import testmanager
 from openhtf.io import http_handler
 from openhtf.io import rundata
 from openhtf.io import user_input
-from openhtf.util import attachments
 from openhtf.util import measurements
-from openhtf.util import monitoring
 from openhtf.util import parameters
 
 
@@ -44,6 +44,63 @@ FLAGS(sys.argv)
 
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
+
+
+# Pseudomodule for shared user input prompt state.
+prompter = user_input.get_prompter()  # pylint: disable=invalid-name
+
+
+class OutputToJson(JSONEncoder):
+  """Return an output callback that writes JSON Test Records.
+
+  An example filename_pattern might be:
+    '/data/test_records/%(dut_id)s.%(start_time_millis)s'
+
+  To use this output mechanism:
+    test = openhtf.HTFTest(PhaseOne, PhaseTwo)
+    test.AddOutputCallback(openhtf.OutputToJson(
+        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
+
+  Args:
+    filename_pattern: A format string specifying the filename to write to,
+      will be formatted with the Test Record as a dictionary.
+  """
+
+  def __init__(self, filename_pattern, **kwargs):
+    super(OutputToJson, self).__init__(**kwargs)
+    self.filename_pattern = filename_pattern
+
+  def default(self, obj):
+    # Handle a few custom objects that end up in our output.
+    if isinstance(obj, BaseException):
+      # Just repr exceptions.
+      return repr(obj)
+    if isinstance(obj, conf.Config):
+      return obj.dictionary
+    if obj in testmanager.TestState.State:
+      return str(obj)
+    return super(OutputToJson, self).default(obj)
+
+  @classmethod
+  def _ConvertToDict(cls, obj):
+    """Recursively convert namedtuples to dicts."""
+    if hasattr(obj, '_asdict'):
+      obj = obj._asdict()
+
+    # Recursively convert values in dicts, lists, and tuples.
+    if isinstance(obj, dict):
+      for key, value in obj.iteritems():
+        obj[key] = cls._ConvertToDict(value)
+    elif isinstance(obj, list):
+      obj = [cls._ConvertToDict(value) for value in obj]
+    elif isinstance(obj, tuple):
+      obj = tuple(cls._ConvertToDict(value) for value in obj)
+
+    return obj
+
+  def __call__(self, test_record):  # pylint: disable=invalid-name
+    with open(self.filename_pattern % test_record._asdict(), 'w') as f:
+      f.write(self.encode(self._ConvertToDict(test_record)))
 
 
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
@@ -85,9 +142,14 @@ class Test(object):
   """
 
   def __init__(self, *phases):
+    """Creates a new HTFTest to be executed.
+    Args:
+      *phases: The ordered list of phases to execute for this test.
+    """
     self.phases = phases
+    self.output_callbacks = []
 
-    # Pull some metadata from the frame in which this Test was created.
+    # Pull some metadata from the frame in which this HTFTest was created.
     frame_record = inspect.stack()[1]
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
@@ -99,7 +161,7 @@ class Test(object):
     self.parameters = parameters.TestParameterList.Union(
         *(phase.parameters for phase in self.phases
           if hasattr(phase, 'parameters')))
-
+    
   @property
   def plug_type_map(self):
     """Returns dict mapping name to plug type for all phases."""
@@ -113,6 +175,13 @@ class Test(object):
             'Duplicate plug with different type: %s' % plug)
       plug_type_map[plug] = plug_type
     return plug_type_map
+
+  def AddOutputCallback(self, callback):
+    self.output_callbacks.append(callback)
+
+  def OutputTestRecord(self, test_record):
+    for output_cb in self.output_callbacks:
+      output_cb(test_record)
 
   # TODO(madsci): Execute loops indefinitely right now, we should probably
   # provide an 'ExecuteOnce' method you can call instead if you don't want
@@ -137,11 +206,11 @@ class Test(object):
     """
     conf.Load()
   
-    config = conf.HTFConfig()
+    config = conf.Config()
     rundata.RunData(self.filename,
                     len(config.cell_info),
-                    config.test_type,
-# TODO(madsci/jethier): Update rundata interface, this is a dummy version string
+# TODO(madsci/jethier): Update rundata interface, these are dummy values.
+                    config.station_id,
                     '0.1',
                     socket.gethostname(),
                     FLAGS.http_port,
@@ -169,9 +238,7 @@ class Test(object):
 # pylint: disable=invalid-name
 
 # Aliases for phase function decorators.
-attaches = attachments.attaches  # TODO(jethier): Implement.
 measures = measurements.measures
-monitors = monitoring.monitors  # TODO(madsci): Implement.
 plug = plugs.requires
 
 # Pseudomodule for shared user input prompt state.

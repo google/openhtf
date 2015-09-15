@@ -13,23 +13,23 @@
 # limitations under the License.
 
 
-"""Example capability for OpenHTF."""
+"""Example plug for OpenHTF."""
 
 
 import logging
 import time
 
-import openhtf.capabilities as capabilities
+import openhtf.plugs as plugs
 
 
-class Example(capabilities.BaseCapability):   # pylint: disable=no-init
-  """Example of a simple capablility."""
+class Example(plugs.BasePlug):   # pylint: disable=no-init
+  """Example of a simple plug."""
 
   def TearDown(self):
-    """Tear down the capability instance."""
+    """Tear down the plug instance."""
     logging.info('Tearing down %s', self)
 
   def DoStuff(self):  # pylint: disable=no-self-use
-    """Capability-specific functionality."""
+    """Plug-specific functionality."""
     time.sleep(3)
     return 'Did stuff!'

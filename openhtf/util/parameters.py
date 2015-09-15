@@ -72,9 +72,9 @@ import textwrap
 
 
 from openhtf import conf
+from openhtf import util
 from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import data
-from openhtf.util.misc import TimeMillis
 
 
 VALIDATOR_MAP = {
@@ -180,7 +180,7 @@ class TestParameterDescriptor(data.Descriptor):
             self._parameter, self.descriptor)
       self._parameter.status = (
           htf_pb2.PASS if result else htf_pb2.FAIL)
-      self._parameter.set_time_millis = TimeMillis()
+      self._parameter.set_time_millis = util.TimeMillis()
 
     def GetValue(self):
       """Returns the current value of the parameter if available."""
@@ -191,7 +191,7 @@ class TestParameterDescriptor(data.Descriptor):
 
   def __init__(self, name, parameter_tag=None, optional=False, important=False):
     super(TestParameterDescriptor, self).__init__()
-    self._config = conf.HTFConfig()
+    self._config = conf.Config()
     self._name = name
     self._parameter_tag = parameter_tag
     self._optional = optional
@@ -301,7 +301,7 @@ class ExtendedParameterDescriptor(TestParameterDescriptor):
 
     def SetValue(self, value):
       self._descriptor.SetValue(self._parameter, value)
-      self._parameter.set_time_millis = TimeMillis()
+      self._parameter.set_time_millis = util.TimeMillis()
 
     def GetValue(self):
       return (self._parameter.value

@@ -53,7 +53,7 @@ def _open_usb_handle(**kwargs):
   Returns:
     Instance of UsbHandle.
   """
-  if conf.HTFConfig().usb_server:
+  if conf.Config().usb_server:
     return None
   else:
     print 'Opening LibUsbHandle with: %s' % kwargs
@@ -79,9 +79,9 @@ class AdbPlug(plugs.BasePlug):
 
   def __new__(cls):
     kwargs = {}
-    if conf.HTFConfig().libusb_rsa_key:
+    if conf.Config().libusb_rsa_key:
       kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(
-          conf.HTFConfig().libusb_rsa_key)]
+          conf.Config().libusb_rsa_key)]
 
     device = adb_device.AdbDevice.Connect(
         _open_usb_handle(

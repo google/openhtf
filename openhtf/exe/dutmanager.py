@@ -35,9 +35,9 @@ from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 
 conf.Declare('test_start', 'Mechanism to use for starting a test.',
-             default_value='android')
-conf.Declare('stub_dut_serial', 'Serial to use when test_start is '
-             '"stub".', default_value='DUT_SERIAL', required=False)
+             default_value='auto')
+conf.Declare('unknown_dut_id', 'Value to be used for DUT ID when test_start is '
+             '"auto".', default_value='UNKNOWN_DUT_ID', required=False)
 
 
 class InvalidTestStartError(Exception):
@@ -52,7 +52,7 @@ class StubHandler(object):
 
   def TestStart(self):
     """Return the dummy serial."""
-    return self.config.stub_dut_serial
+    return self.config.unknown_dut_id
 
   @staticmethod
   def TestStop():
@@ -173,7 +173,7 @@ class DutManager(object):
       'android': AndroidHandler,
       'frontend': FrontendAndroidHandler,
       'frontend_serial': FrontendHandler,
-      'stub': StubHandler,
+      'auto': StubHandler,
   }
 
   def __init__(self, handler):

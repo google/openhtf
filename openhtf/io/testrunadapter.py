@@ -28,11 +28,11 @@ import logging
 import pprint
 
 from openhtf import conf
+from openhtf import util
 from openhtf.io.proto import htf_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import genealogy
 from openhtf.util import log_persister
 from openhtf.util import parameters
-from openhtf.util import misc
 from openhtf.util import htflogger
 
 _LOG = logging.getLogger('htf.testrunadapter')
@@ -48,7 +48,7 @@ class TestRunAdapter(object):
       cell_number: The cell number we are tracking.
       test: Instance of htftest.HTFTest() that we're running.
     """
-    config = conf.HTFConfig()
+    config = conf.Config()
     htf_test_run = htf_pb2.TestRun()
 
     htf_test_run.test_status = htf_pb2.CREATED
@@ -99,12 +99,12 @@ class TestRunAdapter(object):
 
   def RecordTestBegin(self):
     """Start timing a test from the call to this method."""
-    start_time_millis = misc.TimeMillis()
+    start_time_millis = util.TimeMillis()
     self._htf_test_run.start_time_millis = start_time_millis
 
   def RecordTestFinish(self):
     """End timing a test up to the call to this method."""
-    end_time_millis = misc.TimeMillis()
+    end_time_millis = util.TimeMillis()
     self._htf_test_run.end_time_millis = end_time_millis
 
   @contextlib.contextmanager
@@ -112,11 +112,11 @@ class TestRunAdapter(object):
     """Keep track of the cycle time for phases."""
     timing = self._htf_test_run.timings.add()
     timing.name = phase_name
-    timing.time_info.start_time_millis = misc.TimeMillis()
+    timing.time_info.start_time_millis = util.TimeMillis()
     try:
       yield
     finally:
-      timing.time_info.end_time_millis = misc.TimeMillis()
+      timing.time_info.end_time_millis = util.TimeMillis()
 
   def SetTestRunStatus(self, status):
     """Sets the test run status in the proto and UI.
@@ -138,17 +138,17 @@ class TestRunAdapter(object):
     return htf_pb2.PASS
 
   def AddConfigToTestRun(self, config=None):
-    """Sets the htfconfig parameter in the testrun as an extended parameter.
+    """Sets the config parameter in the testrun as an extended parameter.
 
     Args:
       config: If specified use this config, otherwise the global one.
     """
-    config = config or conf.HTFConfig()
+    config = config or conf.Config()
     try:
-      self.parameters.htfconfig = pprint.pformat(config.dictionary)
+      self.parameters.config = pprint.pformat(config.dictionary)
     except parameters.NotAParameterError:
       self.logger.warning(
-          'No htfconfig parameter found in test. Parameter not set.')
+          'No config parameter found in test. Parameter not set.')
 
   def AddFailureCode(self, code, details=None):
     """Add a failure code if necessary."""
