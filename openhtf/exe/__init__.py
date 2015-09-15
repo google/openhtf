@@ -124,6 +124,7 @@ class TestExecutor(threads.KillableThread):
         cell_number, cell_config)
 
   def GetState(self):
+    """Return the current TestState object."""
     return self._test_state
 
   @threads.Loop
@@ -152,17 +153,11 @@ class TestExecutor(threads.KillableThread):
       # Store the reason the next function can fail, then call the function.
       suppressor.failure_reason = 'Test is invalid.'
       self._test_state = testmanager.TestState(
-          self._cell_number, self._cell_config, self.test)
-      # TODO(madsci): Augh.  Do we pass this into the TestState c'tor?  Or
-      # do we add a 'SetDutId' to test_state that does a _replace on its
-      # record?
-      self._test_state.test_run_adapter.SetDutSerial(dut_serial)
+          self._cell_number, self._cell_config, self.test, dut_serial)
 
       phase_executor = phasemanager.PhaseExecutor(
           self._cell_config, self.test,
-          self._test_state.record,
-          self._test_state.test_run_adapter,
-          plug_manager.plug_map)
+          self._test_state, plug_manager.plug_map)
 
       def optionally_stop(exc_type, *dummy):
         """Always called when we stop a test.
@@ -207,21 +202,10 @@ class TestExecutor(threads.KillableThread):
       InvalidPhaseResultError: Raised when a phase doesn't return
           htftest.TestPhaseInfo.TEST_PHASE_RESULT_*
     """
-    _LOG.info('Initializing plugs.')
-
     for phase_result in phase_executor.ExecutePhases():
-      if phase_result.raised_exception:
-        self._test_state._SetErrorCode(phase_result.phase_result)
-        state = htf_pb2.ERROR
-        break
-
-      state, finished = self._test_state.SetStateFromPhaseResult(
-          phase_result.phase_result)
-      if finished:
+      if self._test_state.SetStateFromPhaseResult(phase_result):
         break
     else:
-      state = self._test_state.test_run_adapter.combined_parameter_status
+      self._test_state.SetStateFinished()
 
-    self._test_state._RecordTestFinish(state)
-    self.test.OutputTestRecord(self._test_state.record)
-    _LOG.info('Test is over.')
+    self.test.OutputTestRecord(self._test_state.GetFinishedRecord())

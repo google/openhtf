@@ -16,37 +16,18 @@
 """Stubs for the OpenHTF framework."""
 
 
-from openhtf import conf
 from openhtf.exe import testrunadapter
 from openhtf.exe import htftest
-from openhtf.util import parameters
 
 
-TARGET_NAME = 'tester'
-conf.LoadFromDict({'target_name': TARGET_NAME})
-
-
-class StubParameters(object):  # pylint: disable=too-few-public-methods
-  """A parameters stub for testing."""
-
-  @property
-  def parameters(self):  # pylint: disable=no-self-use,missing-docstring
-    return []
-
-
-def CreateStubTest(phases=None, params=None):  # pylint: disable=invalid-name
+def CreateStubTest(phases=None):  # pylint: disable=invalid-name
   """Create and return a stub test."""
   test_metadata = htftest.TestMetadata('foo')
-  # pylint: disable=protected-access
-  if params is not None:
-    test_metadata._parameter_list = (
-        parameters.TestParameterList(params.parameters))
   return htftest.HTFTest(test_metadata, phases or [])
 
 
 class StubTestRunAdapter(testrunadapter.TestRunAdapter):  # pylint: disable=too-few-public-methods
   """Testrun adapter for stub test."""
-  def __init__(self, phases=None, params=None):
-    self.test = CreateStubTest(
-        phases=phases, params=params)
+  def __init__(self, phases=None):
+    self.test = CreateStubTest(phases=phases)
     super(StubTestRunAdapter, self).__init__(2, self.test)

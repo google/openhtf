@@ -35,9 +35,9 @@ from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 
 conf.Declare('test_start', 'Mechanism to use for starting a test.',
-             default_value='android')
+             default_value='stub')
 conf.Declare('stub_dut_serial', 'Serial to use when test_start is '
-             '"stub".', default_value='DUT_SERIAL', required=False)
+             '"stub".', default_value='DUMMY_DUT_ID', required=False)
 
 
 class InvalidTestStartError(Exception):
