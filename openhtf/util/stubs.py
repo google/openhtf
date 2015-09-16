@@ -17,13 +17,13 @@
 
 
 from openhtf.exe import testrunadapter
-from openhtf.exe import htftest
+from openhtf.exe import phase_data
 
 
 def CreateStubTest(phases=None):  # pylint: disable=invalid-name
   """Create and return a stub test."""
-  test_metadata = htftest.TestMetadata('foo')
-  return htftest.HTFTest(test_metadata, phases or [])
+  test_metadata = phase_data.TestMetadata('foo')
+  return phase_data.phase_data(test_metadata, phases or [])
 
 
 class StubTestRunAdapter(testrunadapter.TestRunAdapter):  # pylint: disable=too-few-public-methods

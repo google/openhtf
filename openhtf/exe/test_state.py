@@ -23,12 +23,12 @@ from enum import Enum
 import logging
 
 from openhtf import conf
-from openhtf.exe import htftest
+from openhtf.exe import phase_data
 from openhtf.io import test_record
 from openhtf import util
 from openhtf.util import htflogger
 
-_LOG = logging.getLogger('htf.testmanager')
+_LOG = logging.getLogger('openhtf.test_state')
 
 
 class BlankDutIdError(Exception):
@@ -50,7 +50,7 @@ class TestState(object):
   Args:
     cell_number: Which cell this test is running in.
     cell_config: The config specific to this cell.
-    test: htftest.HTFTest instance describing the test to run.
+    test: phase_data.phase_data instance describing the test to run.
   """
   State = Enum(
       'RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED', 'WAITING', 'FAIL', 'PASS',
@@ -58,10 +58,10 @@ class TestState(object):
   )
 
   _PHASE_RESULT_TO_CELL_STATE = {
-      htftest.PhaseResults.CONTINUE: State.WAITING,
-      htftest.PhaseResults.REPEAT: State.WAITING,
-      htftest.PhaseResults.FAIL: State.FAIL,
-      htftest.PhaseResults.TIMEOUT: State.TIMEOUT,
+      phase_data.PhaseResults.CONTINUE: State.WAITING,
+      phase_data.PhaseResults.REPEAT: State.WAITING,
+      phase_data.PhaseResults.FAIL: State.FAIL,
+      phase_data.PhaseResults.TIMEOUT: State.TIMEOUT,
   }
 
   _ERROR_STATES = {State.TIMEOUT, State.ERROR}

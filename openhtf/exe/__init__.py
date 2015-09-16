@@ -27,7 +27,7 @@ from openhtf import conf
 from openhtf import plugs
 from openhtf.exe import dutmanager
 from openhtf.exe import phasemanager
-from openhtf.exe import testmanager
+from openhtf.exe import test_state
 from openhtf.io.proto import htf_pb2
 from openhtf.util import threads
 
@@ -100,7 +100,7 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
       # Only log if there is a failure.
       _LOG.exception(self.failure_reason)
       time.sleep(1.0)
-    if exc_type is testmanager.BlankDutIdError:
+    if exc_type is test_state.BlankDutIdError:
       # Suppress BlankDutIdError, it's likely transient.
       return True
     # Raise all other exceptions, we probably care about them.
@@ -152,7 +152,7 @@ class TestExecutor(threads.KillableThread):
       _LOG.debug('Making test state and phase executor.')
       # Store the reason the next function can fail, then call the function.
       suppressor.failure_reason = 'Test is invalid.'
-      self._test_state = testmanager.TestState(
+      self._test_state = test_state.TestState(
           self._cell_number, self._cell_config, self.test, dut_id)
 
       phase_executor = phasemanager.PhaseExecutor(
@@ -200,7 +200,7 @@ class TestExecutor(threads.KillableThread):
 
     Raises:
       InvalidPhaseResultError: Raised when a phase doesn't return
-          htftest.TestPhaseInfo.TEST_PHASE_RESULT_*
+          phase_data.TestPhaseInfo.TEST_PHASE_RESULT_*
     """
     for phase_result in phase_executor.ExecutePhases():
       if self._test_state.SetStateFromPhaseResult(phase_result):

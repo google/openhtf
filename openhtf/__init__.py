@@ -29,8 +29,7 @@ import gflags
 from openhtf import conf
 from openhtf import exe
 from openhtf import plugs
-from openhtf.exe import htftest
-from openhtf.exe import testmanager
+from openhtf.exe import test_state
 from openhtf.io import http_handler
 from openhtf.io import rundata
 from openhtf.io import user_input
@@ -57,7 +56,7 @@ class OutputToJson(JSONEncoder):
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
 
   To use this output mechanism:
-    test = openhtf.HTFTest(PhaseOne, PhaseTwo)
+    test = openhtf.Test(PhaseOne, PhaseTwo)
     test.AddOutputCallback(openhtf.OutputToJson(
         '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
 
@@ -77,7 +76,7 @@ class OutputToJson(JSONEncoder):
       return repr(obj)
     if isinstance(obj, conf.Config):
       return obj.dictionary
-    if obj in testmanager.TestState.State:
+    if obj in test_state.TestState.State:
       return str(obj)
     return super(OutputToJson, self).default(obj)
 
@@ -142,14 +141,14 @@ class Test(object):
   """
 
   def __init__(self, *phases):
-    """Creates a new HTFTest to be executed.
+    """Creates a new Test to be executed.
     Args:
       *phases: The ordered list of phases to execute for this test.
     """
     self.phases = phases
     self.output_callbacks = []
 
-    # Pull some metadata from the frame in which this HTFTest was created.
+    # Pull some metadata from the frame in which this Test was created.
     frame_record = inspect.stack()[1]
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
@@ -199,7 +198,7 @@ class Test(object):
       def PhaseTwo(test):
         # Analyze whidget integration status
   
-      htftest.HTFTest(PhaseOne, PhaseTwo).Execute()
+      Test(PhaseOne, PhaseTwo).Execute()
   
     Returns:
       None when the test framework has exited.

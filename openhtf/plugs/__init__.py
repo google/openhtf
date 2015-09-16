@@ -119,7 +119,7 @@ def requires(**plugs):
   arguments to that function with the plugs specified.  See the module
   docstring for details and examples.  Note that the decorator returned can
   only be used on test phases because it expects the first positional argument
-  to the underyling function to be an htftest.PhaseData object.
+  to the underyling function to be a phase_data.PhaseData object.
 
   Note this decorator does not work with class or bound methods, but does work
   with @staticmethod.

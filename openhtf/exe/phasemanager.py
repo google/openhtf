@@ -15,13 +15,13 @@
 
 """PhaseExecutor module for handling the phases of a test.
 
-Each phase is an instance of htftest.TestPhaseInfo and therefore has relevant
+Each phase is an instance of phase_data.TestPhaseInfo and therefore has relevant
 options. Each option is taken into account when executing a phase, such as
 checking options.run_if as soon as possible and timing out at the appropriate
 time.
 
 Executing a phase should result in either a None, which is replaced by the
-specified default result, or one of htftest.PhaseResults.VALID_RESULTS.
+specified default result, or one of phase_data.PhaseResults.VALID_RESULTS.
 These results are then acted upon accordingly and a new test run status is
 returned.
 
@@ -38,7 +38,7 @@ import logging
 import gflags
 
 from openhtf import conf
-from openhtf.exe import htftest
+from openhtf.exe import phase_data
 from openhtf.util import threads
 
 FLAGS = gflags.FLAGS
@@ -69,9 +69,9 @@ class PhaseExecutorThread(threads.KillableThread):
   DIDNT_FINISH until then. It will be an instance of TestPhaseResult.
   """
 
-  def __init__(self, phase, phase_data):
+  def __init__(self, phase, data):
     self._phase = phase
-    self._phase_data = phase_data
+    self._phase_data = data
     self._phase_result = DIDNT_FINISH
     super(PhaseExecutorThread, self).__init__(
         name='PhaseThread: %s' % self.name)
@@ -100,11 +100,11 @@ class PhaseExecutorThread(threads.KillableThread):
     if self.is_alive():
       # Timeout
       self.Kill()
-      return self._MakePhaseResult(htftest.PhaseResults.TIMEOUT)
+      return self._MakePhaseResult(phase_data.PhaseResults.TIMEOUT)
 
     if self._phase_result is None:
       # Finished with no return value, assume continue.
-      return self._MakePhaseResult(htftest.PhaseResults.CONTINUE)
+      return self._MakePhaseResult(phase_data.PhaseResults.CONTINUE)
 
     if self._phase_result is DIDNT_FINISH:
       # Phase was killed
@@ -136,7 +136,7 @@ class PhaseExecutor(object):
     self._phases = list(test.phases)
     self._test_state = test_state
     self._logger = test_state.logger
-    self._phase_data = htftest.PhaseData(
+    self._phase_data = phase_data.PhaseData(
         self._logger, self._config, plugs, self._test_state.record)
     self._current_phase = None
 
@@ -177,7 +177,7 @@ class PhaseExecutor(object):
       self._current_phase = phase_thread
       result_wrapper.SetResult(phase_thread.JoinOrDie())
     
-    if result_wrapper.result.phase_result == htftest.PhaseResults.CONTINUE:
+    if result_wrapper.result.phase_result == phase_data.PhaseResults.CONTINUE:
       self._phases.pop(0)
 
     self._logger.debug('Phase finished with state %s', result_wrapper.result)

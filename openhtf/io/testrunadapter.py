@@ -46,7 +46,7 @@ class TestRunAdapter(object):
 
     Args:
       cell_number: The cell number we are tracking.
-      test: Instance of htftest.HTFTest() that we're running.
+      test: Instance of phase_data.phase_data() that we're running.
     """
     config = conf.Config()
     htf_test_run = htf_pb2.TestRun()

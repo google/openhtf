@@ -13,12 +13,12 @@
 # limitations under the License.
 
 
-"""Module encapsulating test phase control.
+"""Module encapsulating test phase data.
 
 HTF tests are comprised of a series of test phases.  These test phases are
-wrapped in htftest.TestPhaseInfo objects to keep track of some necessary state.
-This wrapping happens by decorating a method with any of various supported
-decorators.
+wrapped in phase_data.TestPhaseInfo objects to keep track of some necessary
+state. This wrapping happens by decorating a method with any of various
+supported decorators.
 """
 
 import contextlib2
@@ -27,7 +27,6 @@ import inspect
 from openhtf import util
 from openhtf.io import test_record
 from openhtf.util import measurements
-
 
 
 class DuplicatePlugError(Exception):
