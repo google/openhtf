@@ -19,7 +19,7 @@
 
 Used to retrieve ANSI UOM codes/suffixes as follows:
 
-from openhtf.units import UOM
+from openhtf.utils.units import UOM
 
 UOM['BYTE'].uom_code        # 'AD'
 UOM['MILLIAMP'].uom_suffix  # 'mA'

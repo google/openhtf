@@ -16,25 +16,23 @@
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
-python ./hello_world.py --openhtf_config ./hello_world.yaml
+python ./hello_world.py --config ./hello_world.yaml
 """
 
 
 import time
 
-import example_capability
+import example_plug
 import openhtf
 
-import openhtf.capabilities as capabilities
-from openhtf.util import measurements
-from openhtf.util.units import UOM
+from openhtf.names import *
 
 
-@measurements.measures(
-    measurements.Descriptor(
+@measures(
+    Measurement(
         'widget_type').String().MatchesRegex(r'.*Widget$').Doc(
             '''This measurement tracks the type of widgets.'''))
-@capabilities.requires(example=example_capability.Example)
+@plug(example=example_plug.Example)
 def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')
@@ -44,9 +42,9 @@ def hello_world(test, example):
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@openhtf.TestPhase(timeout_s=10)
-@measurements.measures(
-    [measurements.Descriptor(
+@TestPhase(timeout_s=10)
+@measures(
+    [Measurement(
         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 def set_measurements(test):
   """Test phase that sets a measurement."""
@@ -58,9 +56,9 @@ def set_measurements(test):
   time.sleep(2)
 
 
-@measurements.measures([
-    measurements.Descriptor('dimensions').WithDimensions(UOM['HERTZ']),
-    measurements.Descriptor('lots_of_dims').WithDimensions(
+@measures([
+    Measurement('dimensions').WithDimensions(UOM['HERTZ']),
+    Measurement('lots_of_dims').WithDimensions(
         UOM['HERTZ'], UOM['BYTE'], UOM['RADIAN'])])
 def dimensions(test):
   for dim in range(5):
@@ -70,7 +68,7 @@ def dimensions(test):
 
 
 if __name__ == '__main__':
-  test = openhtf.HTFTest(hello_world, set_measurements, dimensions)
+  test = openhtf.Test(hello_world, set_measurements, dimensions)
   test.AddOutputCallback(openhtf.OutputToJson(
     './%(dut_id)s.%(start_time_millis)s', indent=4))
   test.Execute()

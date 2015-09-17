@@ -17,26 +17,32 @@
 
 import inspect
 import itertools
-from json import JSONEncoder
 import logging
 import os
 import signal
 import socket
 import sys
+from json import JSONEncoder
 
 import gflags
 
-from openhtf import executor
-from openhtf import htftest
-from openhtf import http_handler
-from openhtf import rundata
-from openhtf import testmanager
-from openhtf import user_input
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf import exe
+from openhtf import plugs
+from openhtf.exe import test_state
+from openhtf.io import http_handler
+from openhtf.io import rundata
+from openhtf.io import user_input
+from openhtf.util import measurements
+from openhtf.util import parameters
 
 
 FLAGS = gflags.FLAGS
 FLAGS(sys.argv)
+
+
+class InvalidTestPhaseError(Exception):
+  """Raised when an invalid method is decorated."""
 
 
 # Pseudomodule for shared user input prompt state.
@@ -50,7 +56,7 @@ class OutputToJson(JSONEncoder):
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
 
   To use this output mechanism:
-    test = openhtf.HTFTest(PhaseOne, PhaseTwo)
+    test = openhtf.Test(PhaseOne, PhaseTwo)
     test.AddOutputCallback(openhtf.OutputToJson(
         '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
 
@@ -68,9 +74,9 @@ class OutputToJson(JSONEncoder):
     if isinstance(obj, BaseException):
       # Just repr exceptions.
       return repr(obj)
-    if isinstance(obj, configuration.HTFConfig):
+    if isinstance(obj, conf.Config):
       return obj.dictionary
-    if obj in testmanager.TestState.State:
+    if obj in test_state.TestState.State:
       return str(obj)
     return super(OutputToJson, self).default(obj)
 
@@ -91,7 +97,7 @@ class OutputToJson(JSONEncoder):
 
     return obj
 
-  def __call__(self, test_record):
+  def __call__(self, test_record):  # pylint: disable=invalid-name
     with open(self.filename_pattern % test_record._asdict(), 'w') as f:
       f.write(self.encode(self._ConvertToDict(test_record)))
 
@@ -124,42 +130,50 @@ def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
   return Wrap
 
 
-class HTFTest(object):
-  """An object that represents an HTF test.
+class Test(object):
+  """An object that represents an OpenHTF test.
 
   This object encapsulates the static test state including an ordered tuple of
   phases to execute.
+
+  Args:
+    *phases: The ordered list of phases to execute for this test.
   """
 
   def __init__(self, *phases):
-    """Creates a new HTFTest to be executed.
-
+    """Creates a new Test to be executed.
     Args:
       *phases: The ordered list of phases to execute for this test.
     """
     self.phases = phases
     self.output_callbacks = []
 
-    # Pull some metadata from the frame in which this HTFTest was created.
+    # Pull some metadata from the frame in which this Test was created.
     frame_record = inspect.stack()[1]
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
-    # TODO(madsci): This doesn't seem to grab all of the source for some reason
     self.code = inspect.getsource(frame_record[0])
     
+    # TODO(jethier): Do something similar to this with measurements and
+    # attachments.
+    # Parameters can be directly attached to phases so we union the lists.
+    self.parameters = parameters.TestParameterList.Union(
+        *(phase.parameters for phase in self.phases
+          if hasattr(phase, 'parameters')))
+    
   @property
-  def capability_type_map(self):
-    """Returns dict mapping name to capability type for all phases."""
-    capability_type_map = {}
-    for capability, capability_type in itertools.chain.from_iterable(
-        phase.capabilities.iteritems() for phase in self.phases
-        if hasattr(phase, 'capabilities')):
-      if (capability in capability_type_map and
-          capability_type is not capability_type_map[capability]):
-        raise capabilities.DuplicateCapabilityError(
-            'Duplicate capability with different type: %s' % capability)
-      capability_type_map[capability] = capability_type
-    return capability_type_map
+  def plug_type_map(self):
+    """Returns dict mapping name to plug type for all phases."""
+    plug_type_map = {}
+    for plug, plug_type in itertools.chain.from_iterable(
+        phase.plugs.iteritems() for phase in self.phases
+        if hasattr(phase, 'plugs')):
+      if (plug in plug_type_map and
+          plug_type is not plug_type_map[plug]):
+        raise plugs.DuplicatePlugError(
+            'Duplicate plug with different type: %s' % plug)
+      plug_type_map[plug] = plug_type
+    return plug_type_map
 
   def AddOutputCallback(self, callback):
     self.output_callbacks.append(callback)
@@ -184,14 +198,14 @@ class HTFTest(object):
       def PhaseTwo(test):
         # Analyze whidget integration status
   
-      htftest.HTFTest(PhaseOne, PhaseTwo).Execute()
+      Test(PhaseOne, PhaseTwo).Execute()
   
     Returns:
       None when the test framework has exited.
     """
-    configuration.Load()
+    conf.Load()
   
-    config = configuration.HTFConfig()
+    config = conf.Config()
     rundata.RunData(self.filename,
                     len(config.cell_info),
 # TODO(madsci/jethier): Update rundata interface, these are dummy values.
@@ -202,7 +216,7 @@ class HTFTest(object):
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)
-    starter = executor.TestExecutorStarter(self)
+    starter = exe.TestExecutorStarter(self)
     handler = http_handler.HttpHandler(self, starter.cells)
   
     def sigint_handler(*dummy):
@@ -217,4 +231,8 @@ class HTFTest(object):
   
     starter.Wait()
     handler.Stop()
+    return
 
+
+# Pseudomodule for shared user input prompt state.
+prompter = user_input.get_prompter()  # pylint: disable=invalid-name
