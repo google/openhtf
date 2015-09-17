@@ -234,11 +234,5 @@ class Test(object):
     return
 
 
-# pylint: disable=invalid-name
-
-# Aliases for phase function decorators.
-measures = measurements.measures
-plug = plugs.requires
-
 # Pseudomodule for shared user input prompt state.
-prompter = user_input.get_prompter()
+prompter = user_input.get_prompter()  # pylint: disable=invalid-name
