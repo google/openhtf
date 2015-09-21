@@ -1,3 +1,0 @@
-test_HTFTest_capability_map
-test_TestExecutorStarter
-test_DutManager
