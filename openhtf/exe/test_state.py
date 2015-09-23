@@ -70,7 +70,9 @@ class TestState(object):
     self._state = self.State.CREATED
     self._cell_config = cell_config
     self.record = test_record.TestRecord(
-        test.filename, test.docstring, test.code, dut_id, station_id)
+        dut_id=dut_id, station_id=station_id,
+        metadata=test_record.TestMetadata(
+            code=test.code, filename=test.filename, docstring=test.docstring))
     self.logger = htflogger.HTFLogger(self.record, cell_number)
 
   def SetStateFromPhaseResult(self, phase_result):
@@ -114,17 +116,13 @@ class TestState(object):
     """
     self.logger.debug('Finishing test execution with state %s.', self._state)
 
-    if 'config' in self.record.metadata:
-      self.logger.warning('config already set in metadata, not saving config')
-    else:
-      self.record.metadata['config'] = conf.Config()
-
     if not self.record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
-    return self.record._replace(
-        end_time_millis=util.TimeMillis(), outcome=self._state)
+    self.record.end_time_millis = util.TimeMillis()
+    self.record.outcome = self._state
+    return self.record
 
   def __str__(self):
     return '<%s: %s, %s>' % (

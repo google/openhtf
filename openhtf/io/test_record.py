@@ -19,6 +19,9 @@
 import collections
 import inspect
 
+import mutablerecords
+
+from openhtf import conf
 from openhtf import util
 
 
@@ -26,38 +29,19 @@ class InvalidMeasurementDimensions(Exception):
   """Raised when a measurement is taken with the wrong number of dimensions."""
 
 
-class TestRecord(collections.namedtuple(
-    'TestRecord', 'dut_id station_id '
-                  'start_time_millis end_time_millis '
-                  'outcome outcome_details '
-                  'metadata openhtf_version code phases log_records')):
+TestMetadata = mutablerecords.Record(
+    'TestMetadata', ['filename', 'code', 'docstring'],
+    {'version': None, 'config': conf.Config, 'failure_codes': list})
+
+
+class TestRecord(
+    mutablerecords.Record(
+        'TestRecord', ['dut_id', 'station_id'],
+        {'start_time_millis': util.TimeMillis, 'end_time_millis': None,
+        'outcome': None, 'outcome_details': list,
+        'metadata': TestMetadata,
+        'phases': list, 'log_records': list})):
   """The record of a single run of a test."""
-  def __new__(cls, test_filename, docstring, test_code, dut_id, station_id):
-    # TODO(jethier): Fill in openhtf_version
-    self = super(TestRecord, cls).__new__(
-        cls,
-        dut_id, station_id,        # dut_id, station_id
-        util.TimeMillis(), None,  # start/end
-        None, [],                  # outcome and details
-        {}, None, test_code,       # metadata, version, code
-        [], [])                    # phases and log_records
-    self.metadata['filename'] = test_filename
-    self.metadata['docstring'] = docstring
-    return self
-
-  @classmethod
-  def FromFrame(cls, frame):
-    """Create a TestRecord, initialized from the given stack frame.
-
-    Args:
-      frame: A frame record (as returned by inspect.stack()) from which to
-        extract name/docstring info.
-
-    Returns:
-      An instance of TestRecord with the test metadata initialized.
-    """
-    return cls(frame[1], inspect.getdoc(inspect.getmodule(frame[0])),
-               inspect.getsource(inspect.getmodule(frame[0])), None, None)
 
   def AddOutcomeDetails(self, code_type, code, details=None):
     """Adds a code with optional details to this record's outcome_details.

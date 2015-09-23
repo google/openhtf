@@ -31,6 +31,7 @@ import threading
 import yaml
 
 import gflags
+import mutablerecords
 
 from openhtf.util import threads
 
@@ -45,6 +46,12 @@ gflags.DEFINE_multistring(
     'on the command line.  The format should be --config_value key=value. '
     'This value will override any existing config value at config load time '
     'and will be a string')
+
+ConfigurationDeclaration = (
+    mutablerecords.Record(
+        'ConfigurationDeclaration',
+        ['name'],
+        {'description': None, 'default_value': None, 'optional': True}))
 
 
 class ConfigurationDeclarationError(Exception):
@@ -93,28 +100,6 @@ class ConfigurationParameterValidationError(Exception):
   def __str__(self):
     return ('Configuration error on parameter: %s (type: %s, value: %s)' %
             (self.name, self.declaration.type.name, self.value))
-
-
-class ConfigurationDeclaration(
-    collections.namedtuple('ConfigurationDeclaration',
-                           ['name', 'description',
-                            'default_value', 'optional'])):
-  """Configuration declaration descriptor."""
-
-  @classmethod
-  def FromKwargs(cls, name, **kwargs):
-    """Construct a declaration with the given name, other fields from kwargs."""
-    if not kwargs.setdefault('optional', True) and 'default_value' in kwargs:
-      raise ConfigurationDeclarationError(
-          'Cannot have a default_value for a required parameter')
-
-    for default_none_field in ('description', 'default_value'):
-      kwargs.setdefault(default_none_field)
-
-    return super(cls, ConfigurationDeclaration).__new__(
-        cls, name, kwargs['description'], kwargs['default_value'],
-        kwargs['optional'])
-
 
 class _DeclaredParameters(object):
   """An object which manages config parameter declarations.
@@ -363,9 +348,9 @@ class ConfigModel(object):
     Args:
       name: The name of the parameter.
       description: Docstring for the parameter, if any.
-      **kwargs: See ConfigurationDeclaration.__init__()
+      **kwargs: See ConfigurationDeclaration's fields.
     """
-    declaration = ConfigurationDeclaration.FromKwargs(
+    declaration = ConfigurationDeclaration(
         name, description=description, **kwargs)
     self._declarations.Declare(name, declaration)
 

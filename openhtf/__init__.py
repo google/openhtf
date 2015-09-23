@@ -25,6 +25,7 @@ import sys
 from json import JSONEncoder
 
 import gflags
+import mutablerecords
 
 from openhtf import conf
 from openhtf import exe
@@ -85,6 +86,9 @@ class OutputToJson(JSONEncoder):
     """Recursively convert namedtuples to dicts."""
     if hasattr(obj, '_asdict'):
       obj = obj._asdict()
+    elif isinstance(obj, mutablerecords.records.RecordClass):
+      obj = {attr: getattr(obj, attr)
+             for attr in type(obj).all_attribute_names}
 
     # Recursively convert values in dicts, lists, and tuples.
     if isinstance(obj, dict):
@@ -98,8 +102,9 @@ class OutputToJson(JSONEncoder):
     return obj
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
-    with open(self.filename_pattern % test_record._asdict(), 'w') as f:
-      f.write(self.encode(self._ConvertToDict(test_record)))
+    as_dict = self._ConvertToDict(test_record)
+    with open(self.filename_pattern % as_dict, 'w') as f:
+      f.write(self.encode(as_dict))
 
 
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
