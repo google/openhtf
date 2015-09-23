@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-# TODO(jethier): Rename this file, probably to test_state.py
-
 """TestState module for handling the lifetime of a test.
 
 Test timing, failures, and the UI are handled by this module.

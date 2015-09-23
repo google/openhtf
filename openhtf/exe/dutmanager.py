@@ -37,7 +37,7 @@ from openhtf.plugs.usb import usb_exceptions
 conf.Declare('test_start', 'Mechanism to use for starting a test.',
              default_value='auto')
 conf.Declare('unknown_dut_id', 'Value to be used for DUT ID when test_start is '
-             '"auto".', default_value='UNKNOWN_DUT_ID', required=False)
+             '"auto".', default_value='UNKNOWN_DUT_ID', optional=True)
 
 
 class InvalidTestStartError(Exception):

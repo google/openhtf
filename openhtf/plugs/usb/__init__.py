@@ -37,8 +37,7 @@ conf.Declare('usb_server', 'USB Server IP/Hostname')
 conf.Declare('usb_server_port', 'USB Server Port',
              default_value=10000)
 
-conf.Declare('libusb_rsa_key',
-             doc='A private key file for use by libusb auth.')
+conf.Declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
 
 
 def _open_usb_handle(**kwargs):
