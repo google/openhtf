@@ -1,6 +1,6 @@
 **DISCLAIMER:** This is not an official Google product.
 
-https://travis-ci.org/amyxchen/openhtf.png?branch=refactor
+[![Build Status](https://travis-ci.org/amyxchen/openhtf.svg)](https://travis-ci.org/amyxchen/openhtf)
 
 # OpenHTF
 The open-source hardware testing framework.
