@@ -31,10 +31,15 @@ Unit codes for lookup:
 """
 
 import openhtf
+import openhtf.io.user_input
+import openhtf.plugs
 import openhtf.util.measurements
 import openhtf.util.monitors
-import openhtf.plugs
 import openhtf.util.units
+
+
+# Pseudomodule for shared user input prompt state.
+prompts = openhtf.io.user_input.get_prompt_manager()  # pylint: disable=invalid-name
 
 
 # Functions used in writing test scripts.
@@ -44,7 +49,7 @@ plug = openhtf.plugs.requires
 
 
 # Classes used in writing test scripts.
-TestPhase = openhtf.TestPhase
 Measurement = openhtf.util.measurements.Measurement
-# TODO(jethier): Attachment = openhtf.util.attachments.Attachment
+OutputToJSON = openhtf.OutputToJSON
+TestPhase = openhtf.TestPhase
 UOM = openhtf.util.units.UOM
