@@ -39,10 +39,11 @@ from openhtf.util import measurements
 from datetime import datetime
 
 FLAGS = gflags.FLAGS
-FLAGS(sys.argv)
 gflags.DEFINE_string('log_dir', '/tmp', 'dir for log files')
 gflags.DEFINE_enum('log_output', 'console', ['console','file','both'], 'output option')
 gflags.DEFINE_enum('level', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'log level')
+
+FLAGS(sys.argv)
 
 def Setup_logger():
     htflogger = logging.getLogger('HTFTest')
