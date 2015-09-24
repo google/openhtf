@@ -1,8 +1,10 @@
 language: python
 python:
   - "2.7"
+before_install:
+    - sudo apt-get install swig
 script: python test/test_executor.py
 branches:
-   only:
-     -master 
-     -refactor 
+  only:
+    - master
+    - refactor
