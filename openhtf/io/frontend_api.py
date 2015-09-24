@@ -13,28 +13,84 @@
 # limitations under the License.
 
 
-"""HTTP interface to OpenHTF framework."""
+"""Web API to OpenHTF framework.
+
+Frontends will interact with these handlers to get state and respond to prompts
+for an individual instance of OpenHTF. Multiple instances of OpenHTF on the same
+host should serve this API on different TCP ports via the --port flag."""
 
 
+import BaseHTTPServer
 import logging
 import sys
+from json import JSONEncoder
 
 import flask
 import flask.views
 import gflags
 import rocket
 
+from openhtf import util
 from openhtf.exe import dutmanager
 from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
+from openhtf.io import user_input
+from openhtf.util import threads
 
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('http_port',
+gflags.DEFINE_integer('port',
                       8888,
-                      'Port on which to serve HTTP interface.')
+                      'Port on which to serve OpenHTF\'s web API.')
 
 
+class Server(threads.KillableThread):
+  """Bare-bones web API server for OpenHTF."""
+  def __init__(self, test, cells):
+    super(Server, self).__init__()
+    self.HTTPHandler.test = test
+    self.HTTPHandler.cells = cells
 
+  class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    """Request handler class for OpenHTF's frontend API."""
+
+    test = None
+    cells = None
+
+    def do_GET(self):  # pylint: disable=invalid-name
+      """Serialize test state and prompt to JSON and send."""
+      test_record = self.cells[1].GetState().record
+      response = {'test_state': util.convert_to_dict(test_record)}
+      prompt = user_input.get_prompt_manager().prompt
+      if prompt is not None:
+        response['prompt'] = util.convert_to_dict(prompt)
+      self.wfile.write(JSONEncoder().encode(response))
+
+    def do_POST(self):  # pylint: disable=invalid-name
+      """Parse a prompt response and send it to the PromptManager."""
+      # TODO(jethier): Parse the data needed for the prompt response.
+      prompt_id = None
+      prompt_response = None
+      user_input.get_prompt_manager().Respond(prompt_id, prompt_response)
+
+  def Start(self):
+    """Give the server a style-conformant start API."""
+    self.start()
+
+  def Stop(self):
+    """Stop the server without propagating the resultant exception upward."""
+    try:
+      self.Kill()
+    except threads.ThreadTerminationError:
+      pass
+
+  def _ThreadProc(self):
+    """Start up a raw HTTPServer based on our HttpHandler definition."""
+    server = BaseHTTPServer.HTTPServer(('', FLAGS.port), self.HTTPHandler)
+    server.serve_forever()
+
+
+# TODO(jethier): Remove this line and everything below.
+########  Legacy code. ########
 class HtfView(flask.views.MethodView):
   """Method-based view for OpenHTF."""
 

@@ -88,4 +88,3 @@ class PhaseRecord(collections.namedtuple(
 Attachment = collections.namedtuple('Attachment', 'data mimetype')
 LogRecord = collections.namedtuple('LogRecord', 'level logger_name source '
                                    'lineno timestamp_millis message')
-

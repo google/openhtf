@@ -41,8 +41,8 @@ def example_monitor(example):
 def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')
-  test.measurements.widget_type = openhtf.prompter.DisplayPrompt(
-      'What\'s the widget type?')
+  test.measurements.widget_type = prompts.DisplayPrompt(
+      'What\'s the widget type?', text_input=True)
   test.logger.info('Example says: %s', example.DoStuff())
 
 
@@ -82,6 +82,6 @@ def attachments(test):
 
 if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments)
-  test.AddOutputCallback(openhtf.OutputToJson(
-    './%(dut_id)s.%(start_time_millis)s', indent=4))
+  test.AddOutputCallback(OutputToJSON(
+  		'./%(dut_id)s.%(start_time_millis)s', indent=4))
   test.Execute()

@@ -50,3 +50,22 @@ def LogEveryN(n, level, message, *args):  # pylint: disable=invalid-name
 def TimeMillis():  # pylint: disable=invalid-name
   """The time in milliseconds."""
   return int(time.time() * 1000)
+
+
+def convert_to_dict(obj):
+  """Recursively convert namedtuples to dicts."""
+  if hasattr(obj, '_asdict'):
+    obj = obj._asdict()
+
+  # Recursively convert values in dicts, lists, and tuples.
+  if isinstance(obj, dict):
+    for key, value in obj.iteritems():
+      obj[key] = convert_to_dict(value)
+  elif isinstance(obj, list):
+    obj = [convert_to_dict(value) for value in obj]
+  elif isinstance(obj, tuple):
+    obj = tuple(convert_to_dict(value) for value in obj)
+  else:
+    obj = str(obj)
+
+  return obj

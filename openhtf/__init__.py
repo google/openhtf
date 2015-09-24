@@ -29,10 +29,10 @@ import gflags
 from openhtf import conf
 from openhtf import exe
 from openhtf import plugs
+from openhtf import util
 from openhtf.exe import test_state
-from openhtf.io import http_handler
+from openhtf.io import frontend_api
 from openhtf.io import rundata
-from openhtf.io import user_input
 from openhtf.util import measurements
 
 
@@ -44,11 +44,7 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 
-# Pseudomodule for shared user input prompt state.
-prompter = user_input.get_prompter()  # pylint: disable=invalid-name
-
-
-class OutputToJson(JSONEncoder):
+class OutputToJSON(JSONEncoder):
   """Return an output callback that writes JSON Test Records.
 
   An example filename_pattern might be:
@@ -65,7 +61,7 @@ class OutputToJson(JSONEncoder):
   """
 
   def __init__(self, filename_pattern, **kwargs):
-    super(OutputToJson, self).__init__(**kwargs)
+    super(OutputToJSON, self).__init__(**kwargs)
     self.filename_pattern = filename_pattern
 
   def default(self, obj):
@@ -77,28 +73,11 @@ class OutputToJson(JSONEncoder):
       return obj.dictionary
     if obj in test_state.TestState.State:
       return str(obj)
-    return super(OutputToJson, self).default(obj)
-
-  @classmethod
-  def _ConvertToDict(cls, obj):
-    """Recursively convert namedtuples to dicts."""
-    if hasattr(obj, '_asdict'):
-      obj = obj._asdict()
-
-    # Recursively convert values in dicts, lists, and tuples.
-    if isinstance(obj, dict):
-      for key, value in obj.iteritems():
-        obj[key] = cls._ConvertToDict(value)
-    elif isinstance(obj, list):
-      obj = [cls._ConvertToDict(value) for value in obj]
-    elif isinstance(obj, tuple):
-      obj = tuple(cls._ConvertToDict(value) for value in obj)
-
-    return obj
+    return super(OutputToJSON, self).default(obj)
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
     with open(self.filename_pattern % test_record._asdict(), 'w') as f:
-      f.write(self.encode(self._ConvertToDict(test_record)))
+      f.write(self.encode(util.convert_to_dict(test_record)))
 
 
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
@@ -208,29 +187,25 @@ class Test(object):
                     config.station_id,
                     '0.1',
                     socket.gethostname(),
-                    FLAGS.http_port,
+                    FLAGS.port,
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)
     executor = exe.TestExecutor(config, self)
     # TODO(jethier): Put this back once HttpHandler is updated to take
     # an instance of TestExecutor instead of a cells dict.
-    #handler = http_handler.HttpHandler(self, executor)
+    #server = http_api.Server(self, executor)
   
     def sigint_handler(*dummy):
       """Handle SIGINT by stopping running executor and handler."""
       print "Received SIGINT. Stopping everything."
       executor.Stop()
-      #handler.Stop()
+      #server.Stop()
     signal.signal(signal.SIGINT, sigint_handler)
   
-    #handler.Start()
+    #server.Start()
     executor.Start()
   
     executor.Wait()
-    #handler.Stop()
+    #server.Stop()
     return
-
-
-# Pseudomodule for shared user input prompt state.
-prompter = user_input.get_prompter()  # pylint: disable=invalid-name
