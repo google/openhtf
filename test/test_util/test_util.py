@@ -22,7 +22,6 @@ import sys
 
 
 from openhtf.util import timeouts
-from openhtf.util import configuration
 
 class TestUtil(unittest.TestCase):
   def __init__(self, unittest_name):
