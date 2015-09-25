@@ -4,8 +4,10 @@ python:
 install:
     - sudo apt-get install swig
     - sudo pip install --upgrade pip
-    - sudo apt-get install libusb-1.0-0-dev
     - pip install -r requirements.txt
+before_script:
+    - sudo apt-get install libusb-1.0-0-dev
+    - python setup.py build_proto
 script: python test/test_executor.py --github=t
 branches:
   only:
