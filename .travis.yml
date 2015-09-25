@@ -7,7 +7,8 @@ install:
     - pip install -r requirements.txt
 before_script:
     - sudo apt-get install libusb-1.0-0-dev
-    - python setup.py build_proto
+    #- python setup.py build_proto
+    - ./bin/protoc -I ./openhtf/io/proto --python_out ./openhtf/io/proto ./openhtf/io/proto/units.proto ./openhtf/io/proto/htf.proto ./openhtf/io/proto/frontend.proto ./openhtf/io/proto/assembly.proto
 script: python test/test_executor.py --github=t
 branches:
   only:
