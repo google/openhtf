@@ -21,7 +21,7 @@ from flask import json
 from flask import views
 
 from openhtf.io.frontend.server import stations
-from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
+#from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
 
 app = flask.Flask(__name__)  # pylint: disable=invalid-name
 
@@ -84,14 +84,15 @@ class StationDataHandler(views.MethodView):
     Returns:
       Sanitized and serialized HTFStationResponse.
     """
+    """  hack for removeing frontend_pb2
     sanitized = frontend_pb2.HTFStationResponse()
     sanitized.CopyFrom(response)
     for cell in sanitized.cells:
       for parameter in cell.test_run.info_parameters:
         parameter.ClearField('value_binary')
     return response.SerializeToString()
-
-
+    """"
+    return "temp hack retrun string"
 def InitializeApp(manager, **dummy_kwargs):  # pylint: disable=invalid-name
   """Initializes the wsgi app for OpenHTF.
 

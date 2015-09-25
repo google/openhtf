@@ -42,7 +42,9 @@ class HtfView(flask.views.MethodView):
 
   def get(self):  # pylint: disable=invalid-name
     """HTTP GET handler."""
-    response = frontend_pb2.HTFStationResponse()
+    #response = frontend_pb2.HTFStationResponse() 
+    response = "Temp hack for test"   
+
     # TODO(jethier): Determine what info we need here and pull it out of the
     # HTFTest object at self.test, because metadata went away.
 
@@ -72,8 +74,9 @@ class HtfView(flask.views.MethodView):
 
   def post(self):  # pylint: disable=invalid-name,no-self-use
     """HTTP POST handler."""
-    event = frontend_pb2.HTFFrontendEvent.FromString(
-        flask.request.form['event'])
+    #event = frontend_pb2.HTFFrontendEvent.FromString(
+        #flask.request.form['event'])
+    event = "Temp hack for test"
     if event.HasField('serial_number'):
       dutmanager.FrontendHandler.Enqueue(event.cell_number,
                                          event.serial_number)

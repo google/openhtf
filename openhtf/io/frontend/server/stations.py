@@ -26,7 +26,7 @@ import time
 import gflags
 
 import openhtf
-from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
+#from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import file_watcher
 
 
@@ -68,7 +68,8 @@ class StationManager(object):
     data = self.stations.get(station_name)
     # If the station is offline, just return an empty response.
     if self.GetStationMap()[station_name] == 'OFFLINE':
-      return frontend_pb2.HTFStationResponse()
+      return "Tamp hack response"
+      #return frontend_pb2.HTFStationResponse()
     if not data:
       return Responses.NOT_FOUND
     rundata, last_time_s, response = data
