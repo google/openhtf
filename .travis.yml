@@ -12,5 +12,5 @@ before_script:
 script: python test/test_executor.py --github=t
 branches:
   only:
-    #- master
+    - master
     - refactor

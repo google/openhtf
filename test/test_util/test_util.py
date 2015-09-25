@@ -31,11 +31,7 @@ class TestUtil(unittest.TestCase):
   def setUpClass(cls):
     TestUtil.time_out = 60
     TestUtil.time_sleep = 3
-    TestUtil.polledtimeout = timeouts.PolledTimeout(TestUtil.time_out)
-    TestUtil.testlog_dir = '/var/run/openhtf/unittest_log'
-    if not os.path.exists(TestUtil.testlog_dir):
-      os.makedirs(TestUtil.testlog_dir)
-
+  
   @classmethod
   def tearDownClass(cls):
     pass
