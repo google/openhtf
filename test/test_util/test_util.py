@@ -31,7 +31,8 @@ class TestUtil(unittest.TestCase):
   def setUpClass(cls):
     TestUtil.time_out = 60
     TestUtil.time_sleep = 3
-  
+    TestUtil.polledtimeout = timeouts.PolledTimeout(TestUtil.time_out)
+
   @classmethod
   def tearDownClass(cls):
     pass
