@@ -3,8 +3,13 @@ python:
   - "2.7"
 before_install:
     - sudo apt-get install swig
+    - sudo pip install --upgrade pip
+    - sudo pip install virtualenv
+    - virtualenv env
+    - . ven/bin/activate
+
 script: python test/test_executor.py --github=t
 branches:
   only:
-    - master
+    #- master
     - refactor
