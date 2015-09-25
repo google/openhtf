@@ -122,13 +122,13 @@ class TestParameterDescriptor(data.Descriptor):
     """Represents a particular parameter in the store."""
 
     def __init__(self, test_run, descriptor):
-      """" temp hack for tests
+      """ temp hack for tests
       if not descriptor.optional:
         self._parameter = test_run.test_parameters.add()
       else:
         self._parameter = htf_pb2.TestParameter()  
       self._parameter.is_optional = descriptor.optional
-      """"
+      """
       self.requires_add = descriptor.optional
 
       self.descriptor = descriptor
@@ -137,7 +137,7 @@ class TestParameterDescriptor(data.Descriptor):
       # Basics
       self._parameter.name = descriptor.name
       self._parameter.description = textwrap.dedent(descriptor.description)
-      self._parameter.status = htf_pb2.ERROR
+      #self._parameter.status = htf_pb2.ERROR
       self._parameter.important = descriptor.important
 
       # Optional Stuff
@@ -180,8 +180,8 @@ class TestParameterDescriptor(data.Descriptor):
         raise TestParameterError(
             'Invalid test parameter, status not set by descriptor',
             self._parameter, self.descriptor)
-      self._parameter.status = (
-          htf_pb2.PASS if result else htf_pb2.FAIL)
+      #self._parameter.status = (
+          #htf_pb2.PASS if result else htf_pb2.FAIL)
       self._parameter.set_time_millis = util.TimeMillis()
 
     def GetValue(self):
@@ -319,42 +319,42 @@ class ExtendedParameterDescriptor(TestParameterDescriptor):
 @ExtendedParameterDescriptor.AddDataDescriptor
 class TextParameterDescriptor(data.BaseDataDescriptor):
   name = 'Text'
-  info_tag = htf_pb2.InformationParameter.TEXT_UTF8
+  #info_tag = htf_pb2.InformationParameter.TEXT_UTF8
   Transform = staticmethod(str)  # pylint: disable=invalid-name
 
 
 @ExtendedParameterDescriptor.AddDataDescriptor
 class JpgParameterDescriptor(data.BaseDataDescriptor):
   name = 'JPG'
-  info_tag = htf_pb2.InformationParameter.JPG
+  #info_tag = htf_pb2.InformationParameter.JPG
   Transform = staticmethod(str)  # pylint: disable=invalid-name
 
 
 @ExtendedParameterDescriptor.AddDataDescriptor
 class PngParameterDescriptor(data.BaseDataDescriptor):
   name = 'PNG'
-  info_tag = htf_pb2.InformationParameter.PNG
+  #info_tag = htf_pb2.InformationParameter.PNG
   Transform = staticmethod(str)  # pylint: disable=invalid-name
 
 
 @ExtendedParameterDescriptor.AddDataDescriptor
 class WavParameterDescriptor(data.BaseDataDescriptor):
   name = 'WAV'
-  info_tag = htf_pb2.InformationParameter.WAV
+  #info_tag = htf_pb2.InformationParameter.WAV
   Transform = staticmethod(str)  # pylint: disable=invalid-name
 
 
 @ExtendedParameterDescriptor.AddDataDescriptor
 class BinaryParameterDescriptor(data.BaseDataDescriptor):
   name = 'Binary'
-  info_tag = htf_pb2.InformationParameter.BINARY
+  #info_tag = htf_pb2.InformationParameter.BINARY
   Transform = staticmethod(str)  # pylint: disable=invalid-name
 
 
 @ExtendedParameterDescriptor.AddDataDescriptor
 class TimeseriesParameterDescriptor(data.BaseDataDescriptor):
   name = 'Timeseries'
-  info_tag = htf_pb2.InformationParameter.TIMESERIES
+  #info_tag = htf_pb2.InformationParameter.TIMESERIES
   Transform = staticmethod(str)  # pylint: disable=invalid-name
 
 
@@ -662,7 +662,8 @@ class ParameterCollection(object):
   def IsParameterPassing(self, name):
     """Returns True if a parameter is passing."""
     status = self.GetParameterStatus(name)
-    return status == htf_pb2.PASS
+    #return status == htf_pb2.PASS
+    return status == "PASS"
 
   def _AssertValidKey(self, name):
     """Raises the given exec_type if name is not a valid parameter."""
@@ -698,10 +699,12 @@ def GetUomFromUnitCode(unit_code):  # pylint: disable=invalid-name
   Returns:
     Either the ANSI UOM value or a None if it is not set.
   """
+  """
   uom_code = (htf_pb2.Units.UnitCode.DESCRIPTOR.values_by_number[
       unit_code].GetOptions().Extensions[htf_pb2.uom_code])
   if uom_code:
     return uom_code
+  """
   return None
 
 
