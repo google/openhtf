@@ -4,9 +4,7 @@ python:
 before_install:
     - sudo apt-get install swig
     - sudo pip install --upgrade pip
-    - sudo pip install virtualenv
-    - virtualenv env
-    - . ven/bin/activate
+    - python setup.py
 
 script: python test/test_executor.py --github=t
 branches:
