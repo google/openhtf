@@ -68,6 +68,7 @@ class TestOpenhtf(unittest.TestCase):
     test = openhtf.Test(phase_one, phase_two)
     typeMap = test.plug_type_map
     self.assertTrue(type(TestOpenhtf.testPlug).__name__ in str(typeMap))
+    self.assertFalse(type(TestOpenhtf.testPlug).__name__ in str(typeMap))
   
   #mock test execution. 
   def test_TestExecutorStarter(self):  
