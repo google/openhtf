@@ -38,17 +38,17 @@ class TestUtil(unittest.TestCase):
     pass
 
   def test_timeExpired_false(self):
+    print "....test_timeExpired_false."
     time.sleep(TestUtil.time_sleep)
     TestUtil.polledtimeout.Restart()
     sec = TestUtil.polledtimeout.seconds
     self.assertLessEqual(sec, TestUtil.time_out - TestUtil.time_sleep)
     self.assertFalse(TestUtil.polledtimeout.HasExpired())
-    print "....test_timeExpired_false."
 
   def test_timeExpired_true(self):
+    print "....test_timeExpired_true."
     TestUtil.polledtimeout.Expire()
     self.assertTrue(TestUtil.polledtimeout.HasExpired())
-    print "....test_timeExpired_true."
 
 def testcase_runner(testlog_dir):
   testcase_file =  os.path.dirname(os.path.abspath(__file__))+'/testcases.txt'
@@ -77,3 +77,8 @@ def testcase_runner(testlog_dir):
       f.write(str(test_result))
       f.write("\n\n====== FAILE ======\n")
       f.write(str(test_result.failures))
+
+  if test_result.wasSuccessful():
+    return True
+  else:
+    return False

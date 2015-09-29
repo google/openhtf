@@ -42,8 +42,9 @@ if __name__ == '__main__':
 
   for testdir in testdirs:
     if testdir  != "" and testdir.strip()[0].isalpha():
+      print " -------- test dir: %s --------" % testdir.strip()
       mod = __import__(testdir.strip(),fromlist=['testcase_runner'])
-      testResult = testResut and getattr(mod, 'testcase_runner')(testlog_dir)
+      testResult = testResult and getattr(mod, 'testcase_runner')(testlog_dir)
 
   if testResult:
     sys.exit(0)
