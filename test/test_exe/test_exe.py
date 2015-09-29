@@ -120,3 +120,8 @@ def testcase_runner(testlog_dir):
       f.write(str(test_result))
       f.write("\n\n====== FAIL ======\n")
       f.write(str(test_result.failures))
+
+  if test_result.wasSuccessful():
+    return True
+  else:
+    return False

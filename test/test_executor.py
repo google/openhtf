@@ -38,9 +38,14 @@ if __name__ == '__main__':
       sys.exit(0)
 
   testdirs = df.readlines()
+  testResult = True
 
   for testdir in testdirs:
     if testdir  != "" and testdir.strip()[0].isalpha():
-      print '=====running tests at ' + testdir.rstrip() + '====='
       mod = __import__(testdir.strip(),fromlist=['testcase_runner'])
-      getattr(mod, 'testcase_runner')(testlog_dir)
+      testResult = testResut and getattr(mod, 'testcase_runner')(testlog_dir)
+
+  if testResult:
+    sys.exit(0)
+  else:
+    sys.exit(1)
