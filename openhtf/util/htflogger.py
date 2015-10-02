@@ -26,7 +26,7 @@ import os
 import re
 import traceback
 
-from openhtf import test_record
+from openhtf.io import test_record
 
 # Logging setup
 HTF_LOGGER_PREFIX = 'htf'
@@ -108,7 +108,7 @@ class HTFLogger(logging.LoggerAdapter):
       raise ValueError('Invalid Failure Code', code)
 
     failure_codes = self._test_record.metadata.setdefault('failure_codes', [])
-    failure_codes.append((code, details)) 
+    failure_codes.append((code, details))
 
 
 class HTFLoggerHandler(logging.Handler):

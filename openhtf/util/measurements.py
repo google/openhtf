@@ -21,30 +21,27 @@ OpenHTF framework will automatically check them against Pass/Fail criteria.
 Measurements should not be used for large binary blobs, which are instead best
 stored as Attachments (see attachments.py).
 
-Measurements are described by the measurements.Descriptor class, a subclass of
+Measurements are described by the measurements.Measurement class, a subclass of
 data.Descriptor with some additional functionality for Units and Dimensions.
 See data.py for more information on data descriptors.  Essentially, the
-Descriptor class is used by test authors to declare Measurements by name, and
-to optionally provide unit, type, and validation information.  Descriptors
+Measurement class is used by test authors to declare measurements by name, and
+to optionally provide unit, type, and validation information.  Measurements
 are attached to Test Phases using the @measurements.measures() decorator.
 
-When measurements are output by the OpenHTF framework, the Descriptor is
+When measurements are output by the OpenHTF framework, the Measurement is
 serialized as a measurements.Declaration, and the values themselves are output
 as per measurements.Measurement.GetValue().  test_record.PhaseRecord objects
 store separate data structures for declarations and values.  See test_record.py
 for more information.
 
-Measurements are declared through the use of a phase decorator. Thus a
-measurement is always associated with a particular phase.
-
 Examples:
 
 @measurements.measures(
-    measurements.Descriptor(
+    measurements.Measurement(
         'number_widgets').Integer().InRange(5, 10).Doc(
         '''This phase parameter tracks the number of widgets.'''))
 @measurements.measures(
-    [measurements.Descriptor(
+    [measurements.Measurement(
         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 def WidgetTestPhase(test):
   ...
@@ -57,7 +54,7 @@ import inspect
 import itertools
 
 # from openhtf.io import records
-from openhtf import test_record
+from openhtf.io import test_record
 from openhtf.util import data
 
 
@@ -93,11 +90,11 @@ class MultipleValidatorsException(Exception):
   """Multiple validators were used when defining a measurement."""
 
 
-class Descriptor(data.Descriptor):
+class Measurement(data.Descriptor):
   """Data descriptor specifically for measurements."""
 
   def __init__(self, name):
-    super(Descriptor, self).__init__()
+    super(Measurement, self).__init__()
     self.name = name
     self.unit_code = None
     self.dimensions = None  # Tuple of unit codes of additional dimensions.
@@ -136,8 +133,8 @@ class Declaration(collections.namedtuple(
   """
 
   @classmethod
-  def FromDescriptor(cls, descriptor, value=None):
-    """Construct a Declaration from a Descriptor."""
+  def FromMeasurement(cls, descriptor, value=None):
+    """Construct a Declaration from a Measurement."""
     numeric_lower_bound = numeric_upper_bound = None
     string_regex = None
     validator_code = None
@@ -162,7 +159,7 @@ class Declaration(collections.namedtuple(
         {None: None, True: 'PASS', False: 'FAIL'}[outcome])
 
 
-class Measurement(object):
+class MeasuredValue(object):
   """Class encapsulating actual values measured.
 
   Note that this is really just a value wrapper with some sanity checks.  See
@@ -170,8 +167,8 @@ class Measurement(object):
   measurement.  This class is the type that Collection actually stores in
   its _values attribute.
 
-  Dimensioned Measurements can be converted to dicts, but undimensioned
-  Measurements will raise InvalidDimensionsError if this is attempted.
+  Dimensional MeasuredValues can be converted to dicts, but undimensioned
+  MeasuredValues will raise InvalidDimensionsError if this is attempted.
   """
  
   def __init__(self, name, num_dimensions):
@@ -190,7 +187,7 @@ class Measurement(object):
 
   @classmethod
   def ForDeclaration(cls, declaration):
-    """Create an unset Measurement for this declaration."""
+    """Create an unset MeasuredValue for this declaration."""
     if declaration.dimensions:
       return cls(declaration.name, len(declaration.dimensions))
     else:
@@ -253,15 +250,15 @@ class Collection(object):  # pylint: disable=too-few-public-methods
   A Collection is created with a list of Descriptor objects (defined above).
   Measurements can't be added after initialization, only accessed and set.
 
-  Measurement values can be set as attributes (see below).  They can also be
-  read as attributes, but you get a Measurement object back if the measurement
+  MeasuredValue values can be set as attributes (see below).  They can also be
+  read as attributes, but you get a MeasuredValue object back if the measurement
   accessed is dimensioned (this is how setting of dimensioned measurements
   works, and so is unavoidable).
 
   Iterating over a Collection results in (key, value) tuples of only set
   measurements and their values.  As such, a Collection can be converted to
   a dict if you want to see all of a dimensioned measurement's values.
-  Alternatively, Measurement objects can also be converted to dicts.
+  Alternatively, MeasuredValue objects can also be converted to dicts.
 
   Example:
     from openhtf.util import measurements
@@ -304,20 +301,21 @@ class Collection(object):  # pylint: disable=too-few-public-methods
   def __setattr__(self, name, value):
     self._AssertValidKey(name)
     record = self._values.setdefault(
-        name, Measurement.ForDeclaration(self._declarations[name]))
+        name, MeasuredValue.ForDeclaration(self._declarations[name]))
     record.SetValue(value)
 
   def __getattr__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     if self._declarations[name].dimensions:
-      return self._values.setdefault(name, Measurement.ForDeclaration(
+      return self._values.setdefault(name, MeasuredValue.ForDeclaration(
           self._declarations[name]))
     if name not in self._values:
       raise MeasurementNotSetError('Measurement not yet set', name)
     return self._values[name].GetValue()
 
   def __setitem__(self, name, value):
-    raise NotImplementedError('Measurements can only be set via attributes.')
+    raise NotImplementedError(
+        'Measurement values can only be set via attributes.')
 
   def __getitem__(self, name):
     """When accessed as a dictionary, get the actual value(s) stored."""
@@ -329,32 +327,32 @@ class Collection(object):  # pylint: disable=too-few-public-methods
     return len(self._declarations)
 
 
-def measures(descriptors):
+def measures(measurements):
   """Decorator-maker used to declare measurements for phases.
 
-  See the measurements module docstring for numerous examples of usage.
+  See the measurements module docstring for examples of usage.
 
   Args:
-    descriptors: List of Descriptor objects to declare, or a single
-        Descriptor object to attach, or a string name from which to
-        create a Descriptor.
+    measurements: List of Measurement objects to declare, or a single
+        Measurement object to attach, or a string name from which to
+        create a Measurement.
   Returns:
     A decorator that declares the measurement(s) for the decorated phase.
   """
   def _maybe_make(meas):
-    """Turn strings into descriptors if necessary."""
-    if isinstance(meas, Descriptor):
+    """Turn strings into Measurement objects if necessary."""
+    if isinstance(meas, Measurement):
       return meas
     elif isinstance(meas, basestring):
-      return Descriptor(meas)
+      return Measurement(meas)
     raise InvalidType('Invalid measurement type: %s' % meas)
 
   # If we were passed in an iterable, make sure each element is an
-  # instance of Descriptor.
-  if hasattr(descriptors, '__iter__'):
-    descriptors = [_maybe_make(meas) for meas in descriptors]
+  # instance of Measurement.
+  if hasattr(measurements, '__iter__'):
+    measurements = [_maybe_make(meas) for meas in measurements]
   else:
-    descriptors = [_maybe_make(descriptors)]
+    measurements = [_maybe_make(measurements)]
 
   # 'descriptors' is guaranteed to be a list of Descriptors here.
   def decorate(wrapped_phase):
@@ -365,6 +363,6 @@ def measures(descriptors):
 
     if not hasattr(phase, 'measurement_descriptors'):
       phase.measurement_descriptors = []
-    phase.measurement_descriptors.extend(descriptors)
+    phase.measurement_descriptors.extend(measurements)
     return wrapped_phase
   return decorate

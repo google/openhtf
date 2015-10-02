@@ -17,7 +17,7 @@
 
 import collections
 
-from openhtf.proto import assembly_pb2  # pylint: disable=no-name-in-module
+from openhtf.io.proto import assembly_pb2  # pylint: disable=no-name-in-module
 
 
 class ComponentGraph(collections.namedtuple('ComponentGraph', ['assembly'])):
