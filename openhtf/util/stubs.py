@@ -16,7 +16,6 @@
 """Stubs for the OpenHTF framework."""
 
 
-from openhtf.exe import testrunadapter
 from openhtf.exe import phase_data
 
 
@@ -24,10 +23,3 @@ def CreateStubTest(phases=None):  # pylint: disable=invalid-name
   """Create and return a stub test."""
   test_metadata = phase_data.TestMetadata('foo')
   return phase_data.phase_data(test_metadata, phases or [])
-
-
-class StubTestRunAdapter(testrunadapter.TestRunAdapter):  # pylint: disable=too-few-public-methods
-  """Testrun adapter for stub test."""
-  def __init__(self, phases=None):
-    self.test = CreateStubTest(phases=phases)
-    super(StubTestRunAdapter, self).__init__(2, self.test)
