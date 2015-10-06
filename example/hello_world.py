@@ -20,6 +20,7 @@ python ./hello_world.py --config ./hello_world.yaml
 """
 
 
+import tempfile
 import time
 
 import example_plug
@@ -66,9 +67,16 @@ def dimensions(test):
   for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):
     test.measurements.lots_of_dims[x, y, z] = x + y + z
 
+def attachments(test):
+  test.Attach('test_attachment', 'This is test attachment data.')
+  with tempfile.NamedTemporaryFile() as f:
+    f.write('This is a file attachment')
+    f.flush()
+    test.AttachFromFile(f.name)
+
 
 if __name__ == '__main__':
-  test = openhtf.Test(hello_world, set_measurements, dimensions)
+  test = openhtf.Test(hello_world, set_measurements, dimensions, attachments)
   test.AddOutputCallback(openhtf.OutputToJson(
     './%(dut_id)s.%(start_time_millis)s', indent=4))
   test.Execute()

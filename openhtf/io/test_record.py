@@ -85,6 +85,7 @@ class PhaseRecord(collections.namedtuple(
   measurements).  See measurements.Record.GetValues().
   """
 
+Attachment = collections.namedtuple('Attachment', 'data mimetype')
 LogRecord = collections.namedtuple('LogRecord', 'level logger_name source '
                                    'lineno timestamp_millis message')
 
