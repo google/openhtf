@@ -17,7 +17,6 @@ import datetime
 import time
 import sys
 import gflags
-import pdb
   
 if __name__ == '__main__':
   FLAGS = gflags.FLAGS
@@ -48,5 +47,5 @@ if __name__ == '__main__':
 
   if testResult:
     sys.exit(0)
-  else:
+  else: 
     sys.exit(1)
