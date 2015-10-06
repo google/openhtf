@@ -68,30 +68,30 @@ class ConfigurationInvalidError(Exception):
   """Indicates the configuration format was invalid."""
 
 
-class ConfigurationParameterAlreadyDeclared(Exception):
-  """Indicates that a configuration parameter was already declared."""
+class ConfigurationAlreadyDeclared(Exception):
+  """Indicates that a configuration key was already declared."""
 
 
 class MissingRequiredConfigurationKeyError(Exception):
-  """Indicates a required configuration parameter is missing."""
+  """Indicates a required configuration key is missing."""
 
 
-class UndeclaredParameterAccessError(Exception):
-  """Indicates that an parameter was required which was not predeclared."""
+class UndeclaredKeyAccessError(Exception):
+  """Indicates that a key was required but not predeclared."""
 
 
-class ConfigurationParameterValidationError(Exception):
+class ConfigurationValidationError(Exception):
   """If a configuration value could not be validated as its expected type."""
 
   def __init__(self, name, declaration, value):
-    super(ConfigurationParameterValidationError, self).__init__(
+    super(ConfigurationValidationError, self).__init__(
         name, declaration, value)
     self.name = name
     self.declaration = declaration
     self.value = value
 
   def __str__(self):
-    return ('Configuration error on parameter: %s (type: %s, value: %s)' %
+    return ('Configuration error on key: %s (type: %s, value: %s)' %
             (self.name, self.declaration.type.name, self.value))
 
 
@@ -106,7 +106,7 @@ class ConfigurationDeclaration(
     """Construct a declaration with the given name, other fields from kwargs."""
     if not kwargs.setdefault('optional', True) and 'default_value' in kwargs:
       raise ConfigurationDeclarationError(
-          'Cannot have a default_value for a required parameter')
+          'Cannot have a default_value for a required key')
 
     for default_none_field in ('description', 'default_value'):
       kwargs.setdefault(default_none_field)
@@ -116,8 +116,8 @@ class ConfigurationDeclaration(
         kwargs['optional'])
 
 
-class _DeclaredParameters(object):
-  """An object which manages config parameter declarations.
+class _DeclaredKeys(object):
+  """An object which manages config declarations.
 
   This object is basically a helper for Config.  It provides locked access to
   a map of declarations and processes configuration values against the
@@ -132,39 +132,39 @@ class _DeclaredParameters(object):
     self._declared = {}
 
   def Declare(self, name, declaration):
-    """Adds a declared parameter to this list of Declared Parameters.
+    """Adds a declared key to this list of Declared Keys.
 
     Args:
       name: The name of this value.
-      declaration: A _DeclaredParameters.DECLARATION object.
+      declaration: A _DeclaredKeys.DECLARATION object.
 
     Raises:
-      ConfigurationParameterAlreadyDeclared: If a declaration already exists for
-          this parameter.
+      ConfigurationKeyAlreadyDeclared: If a declaration already exists for
+          this key.
     """
     if name in self._declared:
-      raise ConfigurationParameterAlreadyDeclared(name)
+      raise ConfigurationKeyAlreadyDeclared(name)
     self._declared[name] = declaration
 
   def CheckValueAgainstDeclaration(self, name, value):
     """Checks that the provided value is valid given its declaration.
 
     Args:
-      name: Name of parameter
+      name: Name of configuration key.
       value: Value from configuration.
 
     Returns:
       The config value if provided, or the default_value if given.
 
     Raises:
-      UndeclaredParameterAccessError: If parameter name is undeclared.
-      MissingRequiredConfigurationKeyError: If parameter is required and value
+      UndeclaredKeyAccessError: If key 'name' is undeclared.
+      MissingRequiredConfigurationKeyError: If key is required and value
           is None
     """
     declaration = self._declared.get(name, None)
 
     if not declaration:
-      raise UndeclaredParameterAccessError(name)
+      raise UndeclaredKeyAccessError(name)
 
     if (value is None
         and declaration.default_value is None
@@ -190,7 +190,7 @@ class _DeclaredParameters(object):
 
 
 class ConfigModel(object):
-  """A model that holds the underlying config values and parameters.
+  """A model that holds the underlying config keys and their values.
 
   By isolating the underlying model it provides a way to lock access to the
   dictionary so we can reload it on demand or otherwise poke it.
@@ -203,11 +203,11 @@ class ConfigModel(object):
       state: A dictionary containing configuration key, values.  By default a
           new one is created.  If one is provided the model is marked as
           loaded.
-      declarations: An object which tracks declared parameters, if not provided
+      declarations: An object which tracks declared keys, if not provided
           a new one is constructed.
     """
     self._state = state if state is not None else {}
-    self._declarations = declarations or _DeclaredParameters()
+    self._declarations = declarations or _DeclaredKeys()
     self._loaded = state is not None
     self.lock = threading.Lock()
 
@@ -248,7 +248,7 @@ class ConfigModel(object):
     """Loads the configuration file from disk.
 
     Args:
-      config_file: The file name to load configuration parameters from.
+      config_file: The file name to load configuration from.
           Defaults to FLAGS.config.
       force_reload: If true this method will ignore the loaded state and reload
           the config from disk.
@@ -272,9 +272,6 @@ class ConfigModel(object):
         data = yaml.safe_load(config_file)
         if not data:
           raise ConfigurationInvalidError('No data', config_file)
-        # Make sure we update the existing instance of all_parameters instead
-        # of assigning a new value to it so we don't break any existing users
-        # of this Config.
         self._state.clear()
         self._state.update(data)
 
@@ -325,10 +322,10 @@ class ConfigModel(object):
     after we've already loaded the authoritative values.
 
     Args:
-      config_dict: Dictionary from which to load parameters.
+      config_dict: Dictionary from which to load configuration keys and values.
 
     Raises:
-      ConfigurationNotLoadedError: Raised when updating empty config parameters.
+      ConfigurationNotLoadedError: Raised when updating empty config values.
     """
     # Can't update only missing when it's all missing.
     if not self._loaded:
@@ -355,14 +352,14 @@ class ConfigModel(object):
   def Declare(self, name, description=None, **kwargs):
     """Declares the use of a configuration variable.
 
-    Currently all configuration variables must be declared.  If a parameter is
+    Currently all configuration variables must be declared.  If a key is
     accessed in the config without being declared then chaos will ensue.  If a
-    file wants to access a parameter another module has declared they are
+    file wants to access a key another module has declared they are
     encouraged to use extern.
 
     Args:
-      name: The name of the parameter.
-      description: Docstring for the parameter, if any.
+      name: The name of the key.
+      description: Docstring for the key, if any.
       **kwargs: See ConfigurationDeclaration.__init__()
     """
     declaration = ConfigurationDeclaration.FromKwargs(
@@ -415,11 +412,11 @@ class Config(object):
     Args:
       name: name of attribute
     Returns:
-      None if parameter not found and is not required, otherwise the value.
+      None if key not found and is not required, otherwise the value.
     Raises:
-      MissingRequiredParameterError: If the parameter was declared required and
+      MissingRequiredKeyError: If the key was declared required and
           is not found.
-      UndeclaredParameterAccessError: If the parameter being accessed was not
+      UndeclaredKeyAccessError: If the key being accessed was not
           declared.
       ConfigurationNotLoadedError: If the config file has not been loaded, this
           typically means you accessed the config at import time.
@@ -548,16 +545,16 @@ class ConfigValue(object):  # pylint: disable=too-few-public-methods
 
 
 def Extern(dummy_name):  # pylint: disable=invalid-name
-  """Declares that a module uses a parameter declared elsewhere.
+  """Declares that a module uses a key declared elsewhere.
 
   This function does nothing but serve as a marker at the top of your file that
-  you're using a config parameter which improves readability greatly.  You're
-  encouraged to use this.  That said since declaration of parameters isn't
-  checked until a parameter is used and since this function does nothing
+  you're using a config key which improves readability greatly.  You're
+  encouraged to use this.  That said since declaration of keys isn't
+  checked until a key is used and since this function does nothing
   everything will still work without it.
 
   Args:
-    unused_name: The name of the parameter.
+    unused_name: The name of the key.
   """
 
 
@@ -596,7 +593,7 @@ def InjectPositionalArgs(method):  # pylint: disable=invalid-name
   # from the configuration *must* be explicitly specified as kwargs.
   @functools.wraps(method)
   def method_wrapper(**kwargs):
-    """Wrapper that pulls values from the Config() for parameters."""
+    """Wrapper that pulls values from the Config()."""
     config = Config()
 
     # Check for keyword args with names that are in the config so we can warn.
