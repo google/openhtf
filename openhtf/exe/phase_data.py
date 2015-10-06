@@ -23,6 +23,7 @@ supported decorators.
 
 import contextlib2
 import inspect
+import logging
 import mimetypes
 
 from openhtf import util
