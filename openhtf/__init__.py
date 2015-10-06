@@ -31,7 +31,7 @@ from openhtf import exe
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import test_state
-from openhtf.io import frontend_api
+from openhtf.io import http_api
 from openhtf.io import rundata
 from openhtf.util import measurements
 
@@ -167,10 +167,10 @@ class Test(object):
     Example:
  
       def PhaseOne(test):
-        # Integrate more whidgets
+        # Integrate more widgets
   
       def PhaseTwo(test):
-        # Analyze whidget integration status
+        # Analyze widget integration status
   
       Test(PhaseOne, PhaseTwo).Execute()
   
@@ -192,20 +192,18 @@ class Test(object):
   
     logging.info('Executing test: %s', self.filename)
     executor = exe.TestExecutor(config, self)
-    # TODO(jethier): Put this back once HttpHandler is updated to take
-    # an instance of TestExecutor instead of a cells dict.
-    #server = http_api.Server(self, executor)
+    server = http_api.Server(executor)
   
     def sigint_handler(*dummy):
       """Handle SIGINT by stopping running executor and handler."""
       print "Received SIGINT. Stopping everything."
       executor.Stop()
-      #server.Stop()
+      server.Stop()
     signal.signal(signal.SIGINT, sigint_handler)
   
-    #server.Start()
+    server.Start()
     executor.Start()
   
     executor.Wait()
-    #server.Stop()
+    server.Stop()
     return
