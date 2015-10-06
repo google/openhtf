@@ -128,6 +128,7 @@ class ConsolePrompt(threading.Thread):
     If this prompt was already stopped, do nothing.
     """
     if not self._stopped:
+      print "Nevermind; prompt was answered from elsewhere."
       self._stopped = True
 
   def run(self):
@@ -142,7 +143,7 @@ class ConsolePrompt(threading.Thread):
       inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
       for stream in inputs:
         if stream == sys.stdin:
-          response = sys.stdin.readline()
+          response = sys.stdin.readline().rstrip()
           self._callback(response)
           self._stopped = True
           return
