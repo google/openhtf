@@ -34,7 +34,6 @@ from openhtf.io import http_handler
 from openhtf.io import rundata
 from openhtf.io import user_input
 from openhtf.util import measurements
-from openhtf.util import parameters
 
 
 FLAGS = gflags.FLAGS
@@ -153,13 +152,6 @@ class Test(object):
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
     self.code = inspect.getsource(frame_record[0])
-    
-    # TODO(jethier): Do something similar to this with measurements and
-    # attachments.
-    # Parameters can be directly attached to phases so we union the lists.
-    self.parameters = parameters.TestParameterList.Union(
-        *(phase.parameters for phase in self.phases
-          if hasattr(phase, 'parameters')))
     
   @property
   def plug_type_map(self):

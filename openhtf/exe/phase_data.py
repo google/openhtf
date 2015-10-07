@@ -23,14 +23,16 @@ supported decorators.
 
 import contextlib2
 import inspect
+import logging
+import mimetypes
 
 from openhtf import util
 from openhtf.io import test_record
 from openhtf.util import measurements
 
 
-class DuplicatePlugError(Exception):
-  """Raised when a test phase requires two plugs with the same name."""
+class DuplicateAttachmentError(Exception):
+  """Raised when two attachments are attached with the same name."""
 
 
 class PhaseData(object):
@@ -54,7 +56,46 @@ class PhaseData(object):
     self.test_record = test_record
     self.state = {}
     self.measurements = None  # Will be populated per-phase.
+    self.attachments = {}
     self.context = contextlib2.ExitStack()
+
+  def Attach(self, name, data, mimetype=None):
+    """Store the given data as an attachment with the given name.
+
+    Args:
+      name: Attachment name under which to store this data.
+      data: Data to attach.
+      mimetype: If provided, will be saved in the attachment.
+
+    Raises:
+      DuplicateAttachmentError: Raised if there is already an attachment with
+        the given name.
+    """
+    if name in self.attachments:
+      raise DuplicateAttachmentError('Duplicate attachment for %s' % name)
+    if mimetype and not mimetypes.guess_extension(mimetype):
+      logging.warning('Unrecognized MIME type: "%s" for attachment "%s"',
+                      mimetype, name)
+    self.attachments[name] = test_record.Attachment(data, mimetype)
+
+  def AttachFromFile(self, filename, name=None, mimetype=None):
+    """Store the contents of the given filename as an attachment.
+
+    Args:
+      filename: The file to read data from to attach.
+      name: If provided, override the attachment name, otherwise it will
+        default to the filename.
+      mimetype: If provided, override the attachment mime type, otherwise the
+        mime type will be guessed based on the file extension.
+
+    Raises:
+      DuplicateAttachmentError: Raised if there is already an attachment with
+        the given name.
+      IOError: Raised if the given filename couldn't be opened.
+    """
+    with open(filename, 'r') as f:
+      self.Attach(name if name is not None else filename, f.read(),
+                  mimetype=mimetypes.guess_type(filename)[0])
 
   @contextlib2.contextmanager
   def RecordPhaseTiming(self, phase):
@@ -67,6 +108,7 @@ class PhaseData(object):
         for desc in getattr(phase, 'measurement_descriptors', [])
     }
     self.measurements = measurements.Collection(measurement_descriptors)
+    self.attachments = {}
     start_time = util.TimeMillis()
 
     # Wrapper class so we can pull the result back from something we yield.
@@ -88,15 +130,16 @@ class PhaseData(object):
               desc, measurement_values.get(name, None))
           for name, desc in measurement_descriptors.iteritems()
       }
-      # Clear this just to be sure.
-      self.measurements = None
       # Append the phase to our test_record.
       self.test_record.phases.append(
           test_record.PhaseRecord(
               phase.__name__, phase.__doc__, inspect.getsource(phase),
               start_time, util.TimeMillis(),
-              measurement_declarations, measurement_values, {},
+              measurement_declarations, measurement_values, self.attachments,
               result_wrapper.result))
+      # Clear these just to be sure.
+      self.measurements = None
+      self.attachments = {}
 
 
 class PhaseResults(object):  # pylint: disable=too-few-public-methods
