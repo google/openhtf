@@ -29,7 +29,7 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('fastboot_download_chunk_size_kb', 1024,
                       'Size of chunks to send when downloading fastboot images')
 
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 DEFAULT_MESSAGE_CALLBACK = lambda m: logging.info('Got %s from device', m)
 FastbootMessage = collections.namedtuple(  # pylint: disable=invalid-name

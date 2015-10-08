@@ -29,7 +29,7 @@ import usb1
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.plugs.usb import usb_handle
 
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 
 class LibUsbHandle(usb_handle.UsbHandle):

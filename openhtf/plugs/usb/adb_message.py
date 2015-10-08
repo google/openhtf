@@ -54,7 +54,7 @@ gflags.DEFINE_boolean('adb_message_log', False,
                       'Set to True to save all incoming and outgoing '
                       'AdbMessages and print them on Close().')
 FLAGS = gflags.FLAGS
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 def make_wire_commands(*ids):
   """Assemble the commands."""

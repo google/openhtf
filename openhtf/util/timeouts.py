@@ -20,7 +20,7 @@ import logging
 import threading
 import time
 
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 class PolledTimeout(object):
   """An object which tracks if a timeout has expired."""

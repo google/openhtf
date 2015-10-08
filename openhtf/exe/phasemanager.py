@@ -45,7 +45,7 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
                       'Test phase timeout in ms', lower_bound=0)
 
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 # Only use 'is' checks, as that does pointer comparison for strings. That makes
 # this the same as an object(), but useful when printed.

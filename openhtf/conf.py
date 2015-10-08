@@ -53,8 +53,7 @@ ConfigurationDeclaration = (
         ['name'],
         {'description': None, 'default_value': None, 'optional': True}))
 
-_LOG = logging.getLogger('HTFTest')
-
+_LOG = logging.getLogger('OpenHTF')
 
 class ConfigurationNotLoadedError(Exception):
   """Raised if a configuration variable is accessed before it is loaded.

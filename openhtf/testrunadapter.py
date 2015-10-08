@@ -35,7 +35,7 @@ from openhtf.util import utils
 from openhtf.util import htflogger
 from openhtf.proto import htf_pb2  # pylint: disable=no-name-in-module
 
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 
 class TestRunAdapter(object):

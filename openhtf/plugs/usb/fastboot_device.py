@@ -29,7 +29,7 @@ CLASS = 0xFF
 SUBCLASS = 0x42
 PROTOCOL = 0x03
 
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 class FastbootDevice(object):
   """Libusb fastboot wrapper with retries."""
 

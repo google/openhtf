@@ -46,7 +46,7 @@ gflags.DEFINE_enum('level', 'warning', ['debug', 'info', 'warning', 'error', 'cr
 FLAGS(sys.argv)
 
 def Setup_logger():
-    htflogger = logging.getLogger('HTFTest')
+    htflogger = logging.getLogger('OpenHTF')
     htflogger.setLevel(FLAGS.level.upper())
     htflogger.propagate = False
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -69,7 +69,7 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 Setup_logger()
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 class OutputToJSON(JSONEncoder):
   """Return an output callback that writes JSON Test Records.

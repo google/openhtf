@@ -91,7 +91,7 @@ from openhtf.util import exceptions
 from openhtf.util import timeouts
 
 FLAGS = gflags.FLAGS
-_LOG = logging.getLogger('HTFTest')
+_LOG = logging.getLogger('OpenHTF')
 
 # Maximum amount of data in an ADB packet, we would like to raise this, but the
 # remote end ignores it (ugh), we only send it to comply with the protocol.

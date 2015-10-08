@@ -92,7 +92,7 @@ class HttpHandler(object):
                           view_func=HtfView.as_view('get', test, cells))  # pylint: disable=no-member
 
     self.server = None
-    self.log = logging.getLogger('HTFTest')
+    self.log = logging.getLogger('OpenHTF')
 
   def Start(self):
     """Start the HTTP server."""

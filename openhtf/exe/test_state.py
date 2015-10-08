@@ -26,6 +26,7 @@ from openhtf.io import test_record
 from openhtf import util
 from openhtf.util import htflogger
 
+
 _LOG = logging.getLogger('openhtf.test_state')
 
 
