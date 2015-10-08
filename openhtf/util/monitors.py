@@ -72,14 +72,17 @@ class _MonitorThread(threads.KillableThread):
     last_poll_time = start_time
     measurement[0] = self.GetValue()
 
-    while True:
-      ctime = time.time()
-      wait_time_s = (self.interval_ms / 1000.0) - (ctime - last_poll_time)
-      if wait_time_s <= 0:
-        last_poll_time = ctime
-        measurement[(ctime - start_time) * 1000] = self.GetValue()
-      else:
-        time.sleep(wait_time_s)
+    try:
+      while True:
+        ctime = time.time()
+        wait_time_s = (self.interval_ms / 1000.0) - (ctime - last_poll_time)
+        if wait_time_s <= 0:
+          last_poll_time = ctime
+          measurement[(ctime - start_time) * 1000] = self.GetValue()
+        else:
+          time.sleep(wait_time_s)
+    except threads.ThreadTerminationError:
+      pass
    
  
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
