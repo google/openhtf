@@ -144,6 +144,7 @@ class Test(object):
     Args:
       *phases: The ordered list of phases to execute for this test.
     """
+    self.loop = False
     self.phases = phases
     self.output_callbacks = []
 
@@ -179,10 +180,7 @@ class Test(object):
     for output_cb in self.output_callbacks:
       output_cb(test_record)
 
-  # TODO(madsci): Execute loops indefinitely right now, we should probably
-  # provide an 'ExecuteOnce' method you can call instead if you don't want
-  # to loop.
-  def Execute(self):
+  def Execute(self, loop=None):
     """Start the OpenHTF framework running with the given test.
   
     Executes this test, iterating over self.phases and executing them.
@@ -200,6 +198,8 @@ class Test(object):
     Returns:
       None when the test framework has exited.
     """
+    if loop is not None:
+      self.loop = loop
     conf.Load()
   
     config = conf.Config()
