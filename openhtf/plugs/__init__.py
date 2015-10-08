@@ -112,7 +112,7 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     pass
 
 
-def requires(**plugs):
+def requires(update_kwargs=True, **plugs):
   """Creates a decorator that passes in plugs when invoked.
 
   This function returns a decorator for a function that will replace positional
@@ -158,15 +158,19 @@ def requires(**plugs):
     @functools.wraps(func)
     def wrapper(phase_data, *args, **kwargs):
       """The wrapper for the decorator to return."""
-      overridden = frozenset(kwargs) & frozenset(plugs)
-      if overridden:
-        raise PlugOverrideError(
-            'Plugs %s overridden by provided arguments %s' %
-            (overridden, kwargs))
+      if update_kwargs:
+        overridden = frozenset(kwargs) & frozenset(plugs)
+        if overridden:
+          raise PlugOverrideError(
+              'Plugs %s overridden by provided arguments %s' %
+              (overridden, kwargs))
+        kwargs.update({plug: phase_data.plugs[plug] for
+                       plug in plugs})
 
-      kwargs.update({plug: phase_data.plugs[plug] for
-                     plug in plugs})
-      return func(phase_data, *args, **kwargs)
+      # Only pass phase_data through to phases, everything else doesn't need it.
+      if getattr(func, 'is_phase_func', False):
+        return func(phase_data, *args, **kwargs)
+      return func(*args, **kwargs)
 
     wrapper.plugs = getattr(func, 'plugs', {})
     duplicates = frozenset(wrapper.plugs) & frozenset(plugs)

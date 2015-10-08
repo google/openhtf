@@ -152,6 +152,11 @@ class Test(object):
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
     self.code = inspect.getsource(frame_record[0])
+    for phase in self.phases:
+      phase.is_phase_func = True
+      while hasattr(phase, 'wraps'):
+        phase = phase.wraps
+        phase.is_phase_func = True
     
   @property
   def plug_type_map(self):

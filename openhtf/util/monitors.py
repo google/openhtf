@@ -44,7 +44,7 @@ def MyPhase(test):
 import functools
 import time
 
-from openhtf.util import plugs
+from openhtf import plugs
 from openhtf.util import measurements
 from openhtf.util import threads
 from openhtf.util import units as uom
@@ -55,46 +55,59 @@ class _MonitorThread(threads.KillableThread):
   daemon = True
 
   def __init__(self, measurement_name, monitor_func, phase_data, interval_ms):
+    super(_MonitorThread, self).__init__()
     self.measurement_name = measurement_name
     self.monitor_func = monitor_func
     self.phase_data = phase_data
     self.interval_ms = interval_ms
 
+  def GetValue(self):
+    if hasattr(self.monitor_func, 'plugs'):
+      return self.monitor_func(self.phase_data)
+    return self.monitor_func()
+
   def run(self):
     measurement = getattr(self.phase_data.measurements, self.measurement_name)
     start_time = time.time()
     last_poll_time = start_time
+    measurement[0] = self.GetValue()
 
     while True:
       ctime = time.time()
       wait_time_s = (self.interval_ms / 1000.0) - (ctime - last_poll_time)
       if wait_time_s <= 0:
         last_poll_time = ctime
-        measurement[(time.time() - start_time) * 1000] = self.monitor_func(
-            self.phase_data)
+        measurement[(ctime - start_time) * 1000] = self.GetValue()
       else:
         time.sleep(wait_time_s)
    
  
-def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=None):
+def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
   def Wrapper(phase_func):
-    @functools.wraps(phase_func):
+    @functools.wraps(phase_func)
     def MonitoredPhaseFunc(phase_data, *args, **kwargs):
-      # start monitor thread, it will call monitor_func(phase_data)
+      # Start monitor thread, it will call monitor_func(phase_data) periodically
       monitor_thread = _MonitorThread(
           measurement_name, monitor_func, phase_data, poll_interval_ms)
-      monitor_thread.Start()
+      monitor_thread.start()
       try:
         return phase_func(phase_data, *args, **kwargs)
       finally:
         monitor_thread.Kill()
+    MonitoredPhaseFunc.wraps = phase_func
     
-    monitor_plugs = {'_' * idx: plug_type for idx, plug_type in
+    # Re-key this dict so we don't have to worry about collisions with
+    # plug.requires() decorators on the phase function.  Since we aren't
+    # updating kwargs here, we don't have to worry about collisions with
+    # kwarg names.
+    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug_type for
+                     idx, plug_type in
                      enumerate(monitor_func.plugs.itervalues(), start=1)}
-    plug_decorator = plugs.requires(**monitor_plugs)
-    measures_decorator = measurement.measures(
+    plug_decorator = plugs.requires(update_kwargs=False, **monitor_plugs)
+    measures_decorator = measurements.measures(
         measurements.Measurement(measurement_name).WithUnitCode(
-            units).WithDimensions(uom.UOM['MILLISECONDS']))
+            units).WithDimensions(uom.UOM['MILLISECOND']))
         
     return plug_decorator(measures_decorator(MonitoredPhaseFunc))
+  return Wrapper
 
