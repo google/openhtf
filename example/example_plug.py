@@ -24,6 +24,7 @@ import openhtf.plugs as plugs
 
 class Example(plugs.BasePlug):   # pylint: disable=no-init
   """Example of a simple plug."""
+  value = [0]
 
   def TearDown(self):
     """Tear down the plug instance."""
@@ -32,4 +33,8 @@ class Example(plugs.BasePlug):   # pylint: disable=no-init
   def DoStuff(self):  # pylint: disable=no-self-use
     """Plug-specific functionality."""
     time.sleep(3)
-    return 'Did stuff!'
+    return 'Example Plug Did stuff!'
+
+  def DoChangingStuff(self):
+    self.value[0] += 1
+    return self.value[0]

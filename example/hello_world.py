@@ -28,6 +28,10 @@ import openhtf
 
 from openhtf.names import *
 
+@plug(example=example_plug.Example)
+def example_monitor(example):
+  return example.DoChangingStuff()
+
 
 @measures(
     Measurement(
@@ -47,6 +51,7 @@ def hello_world(test, example):
 @measures(
     [Measurement(
         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
+@monitors('monitor_measurement', example_monitor)
 def set_measurements(test):
   """Test phase that sets a measurement."""
   test.measurements.level_none = 0
