@@ -204,8 +204,7 @@ class Test(object):
   
     config = conf.Config()
     rundata.RunData(self.filename,
-                    len(config.cell_info),
-# TODO(madsci/jethier): Update rundata interface, these are dummy values.
+    # TODO(madsci/jethier): Update rundata interface, these are dummy values.
                     config.station_id,
                     '0.1',
                     socket.gethostname(),
@@ -213,21 +212,23 @@ class Test(object):
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)
-    starter = exe.TestExecutorStarter(self)
-    handler = http_handler.HttpHandler(self, starter.cells)
+    executor = exe.TestExecutor(config, self)
+    # TODO(jethier): Put this back once HttpHandler is updated to take
+    # an instance of TestExecutor instead of a cells dict.
+    #handler = http_handler.HttpHandler(self, executor)
   
     def sigint_handler(*dummy):
-      """Handle SIGINT by stopping running cells."""
+      """Handle SIGINT by stopping running executor and handler."""
       print "Received SIGINT. Stopping everything."
-      starter.Stop()
-      handler.Stop()
+      executor.Stop()
+      #handler.Stop()
     signal.signal(signal.SIGINT, sigint_handler)
   
-    handler.Start()
-    starter.Start()
+    #handler.Start()
+    executor.Start()
   
-    starter.Wait()
-    handler.Stop()
+    executor.Wait()
+    #handler.Stop()
     return
 
 

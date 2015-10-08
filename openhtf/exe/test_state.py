@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-# TODO(jethier): Rename this file, probably to test_state.py
-
 """TestState module for handling the lifetime of a test.
 
 Test timing, failures, and the UI are handled by this module.
@@ -41,23 +39,18 @@ class InvalidPhaseResultError(Exception):
 
 # TODO(madsci): Add ability to update dut_id after test start.
 class TestState(object):
-  """Encompasses the lifetime of a test in a cell.
-
-  Given the cell number, the test, and the plug map for the cell, this
-  handles starting the test, executing the phases, and ending the test at the
-  right time. Everything related to a test in a cell is run through this.
+  """ This class handles tracking the state of the test.
 
   Args:
-    cell_number: Which cell this test is running in.
-    cell_config: The config specific to this cell.
-    test: phase_data.phase_data instance describing the test to run.
+    config: The config being used for this test.
+    test: openhtf.Test instance describing the test to run.
   """
   State = Enum(
       'RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED', 'WAITING', 'FAIL', 'PASS',
       'CREATED'
   )
 
-  _PHASE_RESULT_TO_CELL_STATE = {
+  _PHASE_RESULT_TO_STATE = {
       phase_data.PhaseResults.CONTINUE: State.WAITING,
       phase_data.PhaseResults.REPEAT: State.WAITING,
       phase_data.PhaseResults.FAIL: State.FAIL,
@@ -67,13 +60,14 @@ class TestState(object):
   _ERROR_STATES = {State.TIMEOUT, State.ERROR}
   _FINISHED_STATES = {State.PASS, State.FAIL} | _ERROR_STATES
 
-  def __init__(self, cell_number, cell_config, test, dut_id):
+  def __init__(self, config, test, dut_id):
     station_id = conf.Config().station_id
     self._state = self.State.CREATED
-    self._cell_config = cell_config
+    self._config = config
     self.record = test_record.TestRecord(
         test.filename, test.docstring, test.code, dut_id, station_id)
-    self.logger = htflogger.HTFLogger(self.record, cell_number)
+    # TODO(amyxchen): Remove the 1 when HTFLogger doesn't expect a cell number.
+    self.logger = htflogger.HTFLogger(self.record, 1)
 
   def SetStateFromPhaseResult(self, phase_result):
     """Set our internal state based on the given phase result.
@@ -89,10 +83,10 @@ class TestState(object):
       details = str(phase_result.phase_result).decode('utf8', 'replace')
       self.record.AddOutcomeDetails(self._state, code, details)
     else:
-      if phase_result.phase_result not in self._PHASE_RESULT_TO_CELL_STATE:
+      if phase_result.phase_result not in self._PHASE_RESULT_TO_STATE:
         raise InvalidPhaseResultError(
             'Phase result is invalid.', phase_result.phase_result)
-      self._state = self._PHASE_RESULT_TO_CELL_STATE[phase_result.phase_result]
+      self._state = self._PHASE_RESULT_TO_STATE[phase_result.phase_result]
 
     return self._state in self._FINISHED_STATES
 

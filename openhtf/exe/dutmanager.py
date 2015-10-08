@@ -15,10 +15,10 @@
 
 """Module for handling connect, disconnect, and serial number of a DUT.
 
-In order for the CellExecutor (see executor.py) to know when to start a test,
-it needs a way to know when a DUT has been connected.  Also, the test can't
-restart until the DUT is removed and re-appears.  The serial for the TestRun
-can be read from the DUT, or from the frontend.
+In order for the TestExecutor (see exe/__init__.py) to know when to start a
+test, it needs a way to know when a DUT has been connected.  Also, the test
+can't restart until the DUT is removed and re-appears.  The serial for the
+TestRun can be read from the DUT, or from the frontend.
 
 This module handles these various functions.
 """
@@ -47,7 +47,7 @@ class InvalidTestStartError(Exception):
 class StubHandler(object):
   """Noop handler for testing."""
 
-  def __init__(self, dummy_cell_number, config):
+  def __init__(self, config):
     self.config = config
 
   def TestStart(self):
@@ -63,7 +63,7 @@ class StubHandler(object):
 class AndroidHandler(object):
   """Class encapsulating ADB/Fastboot access to a DUT."""
 
-  def __init__(self, dummy_cell_number, dummy_config):
+  def __init__(self, unused_config):
     self.serial_number = None
 
   def _TryOpen(self):
@@ -106,36 +106,27 @@ class AndroidHandler(object):
 
 
 class FrontendHandler(object):
-  """Class encapsulating start interactions from the frontend.
+  """Class encapsulating start interactions from the frontend.""" 
 
-  We keep a class-level map of cell number to deque to store incoming events
-  from the frontend.  Interactions with that map and deque are thread-safe.
-  TestStart() and TestStop(), however, are not thread-safe with each other,
-  which is fine because only the framework will ever interally call these, and
-  only ever sequentially.
-  """
-
-  # Map cell number to corresponding deque.
-  DEQUE_MAP = collections.defaultdict(collections.deque)
+  DEQUE = collections.deque()
   DEQUE_COND = threading.Condition()
 
-  def __init__(self, cell_number, dummy_config):
-    self.cell_number = cell_number
+  def __init__(self, unused_config):
     self.serial = None
 
   @classmethod
-  def Enqueue(cls, cell_number, serial=''):
+  def Enqueue(cls, serial=''):
     """Trigger actual test start."""
     with cls.DEQUE_COND:
-      cls.DEQUE_MAP[cell_number].append(serial)
+      cls.DEQUE.append(serial)
       cls.DEQUE_COND.notifyAll()
 
   def _WaitForFrontend(self):
     """Returns serial when received from the frontend."""
     with self.DEQUE_COND:
-      while not len(self.DEQUE_MAP[self.cell_number]):
+      while not len(self.DEQUE):
         self.DEQUE_COND.wait()
-      return self.DEQUE_MAP[self.cell_number].popleft()
+      return self.DEQUE.popleft()
 
   def TestStart(self):
     """Get a serial from the frontend and return it."""
@@ -188,10 +179,10 @@ class DutManager(object):
     self.handler.TestStop()
 
   @classmethod
-  def FromConfig(cls, cell_number, config):
+  def FromConfig(cls, config):
     """Create a handler from config."""
     if config.test_start not in cls.HANDLERS:
       raise InvalidTestStartError(
           '%s not a recognized test_start, expected: %s',
           config.test_start, cls.HANDLERS.keys())
-    return cls(cls.HANDLERS[config.test_start](cell_number, config))
+    return cls(cls.HANDLERS[config.test_start](config))

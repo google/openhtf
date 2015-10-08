@@ -131,8 +131,8 @@ class PhaseExecutorThread(threads.KillableThread):
 class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
-  def __init__(self, cell_config, test, test_state, plugs):
-    self._config = cell_config
+  def __init__(self, config, test, test_state, plugs):
+    self._config = config
     self._phases = list(test.phases)
     self._test_state = test_state
     self._logger = test_state.logger
