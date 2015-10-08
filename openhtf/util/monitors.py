@@ -55,7 +55,8 @@ class _MonitorThread(threads.KillableThread):
   daemon = True
 
   def __init__(self, measurement_name, monitor_func, phase_data, interval_ms):
-    super(_MonitorThread, self).__init__()
+    super(_MonitorThread, self).__init__(
+        name='%s_MonitorThread' % measurement_name)
     self.measurement_name = measurement_name
     self.monitor_func = monitor_func
     self.phase_data = phase_data
@@ -66,23 +67,20 @@ class _MonitorThread(threads.KillableThread):
       return self.monitor_func(self.phase_data)
     return self.monitor_func()
 
-  def run(self):
+  def _ThreadProc(self):
     measurement = getattr(self.phase_data.measurements, self.measurement_name)
     start_time = time.time()
     last_poll_time = start_time
     measurement[0] = self.GetValue()
 
-    try:
-      while True:
-        ctime = time.time()
-        wait_time_s = (self.interval_ms / 1000.0) - (ctime - last_poll_time)
-        if wait_time_s <= 0:
-          last_poll_time = ctime
-          measurement[(ctime - start_time) * 1000] = self.GetValue()
-        else:
-          time.sleep(wait_time_s)
-    except threads.ThreadTerminationError:
-      pass
+    while True:
+      ctime = time.time()
+      wait_time_s = (self.interval_ms / 1000.0) - (ctime - last_poll_time)
+      if wait_time_s <= 0:
+        last_poll_time = ctime
+        measurement[(ctime - start_time) * 1000] = self.GetValue()
+      else:
+        time.sleep(wait_time_s)
    
  
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):

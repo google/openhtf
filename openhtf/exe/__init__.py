@@ -96,7 +96,7 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
     return self
 
   def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
-    if exc_type is not None:
+    if exc_type is not None and exc_type is not threads.ThreadTerminationError:
       # Only log if there is a failure.
       _LOG.exception(self.failure_reason)
       time.sleep(1.0)
