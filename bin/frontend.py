@@ -25,8 +25,8 @@ import os
 import rocket
 import sys
 
-from openhtf.frontend.server import stations
-from openhtf.frontend.server import app
+from openhtf.io.frontend.server import stations
+from openhtf.io.frontend.server import app
 
 FLAGS = gflags.FLAGS
 

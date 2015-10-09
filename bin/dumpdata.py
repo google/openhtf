@@ -18,7 +18,7 @@
 from __future__ import print_function
 import sys
 
-from openhtf import rundata
+from openhtf.io import rundata
 
 
 def main(argv):

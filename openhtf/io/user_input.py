@@ -59,36 +59,36 @@ class PromptManager(object):
   ignore late responses to previous prompts.
   """
   def __init__(self):
-    self._prompt = None
+    self.prompt = None
     self._response = None
     self._cond = threading.Condition()
 
   def DisplayPrompt(self, message, text_input=False):
-    """Prompt for a user response with by showing the message.
+    """Prompt for a user response by showing the message.
 
     Args:
       message: The message to display to the user.
-      need_input: True iff the user needs to provide a string back.
+      text_input: True iff the user needs to provide a string back.
     Returns:
       The string input by the user.
     """
     with self._cond:
-      if self._prompt is not None:
-        self._prompt = None
+      if self.prompt is not None:
+        self.prompt = None
         raise MultiplePromptsError
-      self._prompt = Prompt(id=uuid.uuid4(),
-                            message=message,
-                            text_input=text_input)
+      self.prompt = Prompt(id=uuid.uuid4(),
+                           message=message,
+                           text_input=text_input)
       self._response = None
 
       console_prompt = ConsolePrompt(
-          message, functools.partial(self.Respond, self._prompt.id))
+          message, functools.partial(self.Respond, self.prompt.id))
       console_prompt.start()
       self._cond.wait(FLAGS.prompt_timeout_s)
       console_prompt.Stop()
-      self._prompt = None
+      self.prompt = None
       if self._response is None:
-        self._prompt = None
+        self.prompt = None
         raise PromptUnansweredError
       return self._response
 
@@ -99,14 +99,14 @@ class PromptManager(object):
     match the active prompt, do nothing.
     """
     with self._cond:
-      if self._prompt is not None and prompt_id == self._prompt.id:
+      if self.prompt is not None and prompt_id == self.prompt.id:
         print 'Response received: %s' % response
       self._response = response
       self._cond.notifyAll()
 
 
 # Module-level instance to achieve shared prompt state.
-PROMPTER = PromptManager()
+PROMPT_MANAGER = PromptManager()
 
 
 class ConsolePrompt(threading.Thread):
@@ -128,6 +128,7 @@ class ConsolePrompt(threading.Thread):
     If this prompt was already stopped, do nothing.
     """
     if not self._stopped:
+      print "Nevermind; prompt was answered from elsewhere."
       self._stopped = True
 
   def run(self):
@@ -142,17 +143,17 @@ class ConsolePrompt(threading.Thread):
       inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
       for stream in inputs:
         if stream == sys.stdin:
-          response = sys.stdin.readline()
+          response = sys.stdin.readline().rstrip()
           self._callback(response)
           self._stopped = True
           return
 
 
-def get_prompter():
+def get_prompt_manager():
   """Return the shared prompt manager.
 
   The prompter returned is a module-level instance. Thus rather than implement
   our own Singleton or Borg or DeleBorg, we take advantage of the fact that
   modules are already effectively singletons.
   """
-  return PROMPTER
+  return PROMPT_MANAGER
