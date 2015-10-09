@@ -46,9 +46,10 @@ UOM['PIXEL_LEVEL'] = Unit('PXL', None)
 UOM['ROTATIONS_PER_MINUTE'] = Unit('RPM', 'rpm')
 
 UOM['SECOND'] = Unit('SEC', 's')
+UOM['MILLISECOND'] = Unit('C26', 'ms')
+UOM['MICROSECOND'] = Unit('B98', r'µs')
 UOM['MHZ'] = Unit('MHZ', 'MHz')
 UOM['HERTZ'] = Unit('HTZ', 'Hz')
-UOM['MICROSECOND'] = Unit('B98', r'µs')
 
 UOM['MILLIMETER'] = Unit('MMT', 'mm')
 UOM['CENTIMETER'] = Unit('LC', 'cm')

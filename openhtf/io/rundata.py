@@ -21,7 +21,6 @@ Format:
 
   {
     station_name: string,
-    cell_count: number,
     test_type: string,
     test_version: string,
     http_port: number,
@@ -50,7 +49,7 @@ gflags.DEFINE_string('rundir', '/var/run/openhtf', 'Directory for runfiles.')
 
 
 class RunData(collections.namedtuple(
-    'RunData', ['station_name', 'cell_count', 'test_type', 'test_version',
+    'RunData', ['station_name', 'test_type', 'test_version',
                 'http_host', 'http_port', 'pid'])):
   """Encapsulates the run data stored in an openhtf file."""
 

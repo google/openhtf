@@ -455,8 +455,7 @@ class StackedConfig(Config):
   """Stacked version of Config.
 
   This is a layered (or stacked) Config that allows users to make one set of
-  config values supersede another set. This is useful for creating cell-specific
-  config types that have cell-specific overrides (or cell-specific data).
+  config values supersede another set.
   """
 
   # pylint: disable=super-init-not-called

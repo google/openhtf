@@ -32,14 +32,14 @@ Unit codes for lookup:
 
 import openhtf
 import openhtf.util.measurements
+import openhtf.util.monitors
 import openhtf.plugs
 import openhtf.util.units
 
 
 # Functions used in writing test scripts.
 measures = openhtf.util.measurements.measures
-# TODO(jethier): attaches = openhtf.util.attachments.attaches
-# TODO(jethier): monitors = openhtf.util.monitoring.monitors
+monitors = openhtf.util.monitors.monitors
 plug = openhtf.plugs.requires
 
 

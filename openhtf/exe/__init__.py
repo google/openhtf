@@ -13,11 +13,8 @@
 # limitations under the License.
 
 
-"""TestExecutor executes tests in a cell.
+"""TestExecutor executes tests."""
 
-TestExecuter executes the test for the given cell consecutively, concisely, and
-consistently.
-"""
 import logging
 import time
 
@@ -31,59 +28,9 @@ from openhtf.exe import test_state
 from openhtf.io.proto import htf_pb2
 from openhtf.util import threads
 
-conf.Declare('cell_info', """
-All the information for each cell. This should be a mapping from cell number to
-cell data. What is in the cell data is dictated by the plugs used.
-""", default_value={1: {}})
-
-
-_LOG = logging.getLogger('openhtf.cells')
-
 
 class TestStopError(Exception):
   """Test is being stopped."""
-
-
-class TestExecutorStarter(object):
-  """Starts all the cell executor threads."""
-
-  def __init__(self, test):
-    self.test = test
-    self._config = conf.Config()
-    self.cells = self._MakeCells()
-
-  def _MakeCells(self):
-    """Find and return all the cells."""
-    cell_info = self._config.cell_info
-    _LOG.info('Number of cells to build: %s', len(cell_info))
-
-    cells = {}
-    for cell_idx, cell_data in cell_info.iteritems():
-      cell_config = self._config.CreateStackedConfig(cell_data)
-      cells[cell_idx] = TestExecutor(cell_idx, cell_config, self.test)
-    return cells
-
-  def Start(self):
-    """Start all the cells."""
-    for cell in self.cells.values():
-      cell.start()
-    _LOG.info(
-        'Started %d cells and are left to their own devices from now on.',
-        len(self.cells))
-
-  def Wait(self):
-    """Waits until death."""
-    for cell in self.cells.values():
-      cell.join(365*24*60*60) # Timeout needed for SIGINT handling, so 1 year.
-
-  def Stop(self):
-    """Stop all the cells."""
-    _LOG.info('Stopping cells: %s - %s', self, self.cells)
-    for cell in self.cells.itervalues():
-      cell.Stop()
-    for cell in self.cells.itervalues():
-      cell.join(1)
-    _LOG.info('All cells have been stopped.')
 
 
 class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
@@ -96,9 +43,9 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
     return self
 
   def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
-    if exc_type is not None:
+    if exc_type is not None and exc_type is not threads.ThreadTerminationError:
       # Only log if there is a failure.
-      _LOG.exception(self.failure_reason)
+      logging.exception(self.failure_reason)
       time.sleep(1.0)
     if exc_type is test_state.BlankDutIdError:
       # Suppress BlankDutIdError, it's likely transient.
@@ -108,85 +55,88 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
 
 
 class TestExecutor(threads.KillableThread):
-  """Encompasses the execution of a single test cell."""
+  """Encompasses the execution of a single test."""
 
   daemon = True
 
-  def __init__(self, cell_number, cell_config, test):
+  def __init__(self, config, test):
     super(TestExecutor, self).__init__()
 
     self.test = test
-    self._cell_config = cell_config
-    self._cell_number = cell_number
+    self._config = config
     self._current_exit_stack = None
     self._test_state = None
-    self._dut_manager = dutmanager.DutManager.FromConfig(
-        cell_number, cell_config)
+    self._dut_manager = dutmanager.DutManager.FromConfig(config)
+
+  def Start(self):
+    self.start()
 
   def GetState(self):
     """Return the current TestState object."""
     return self._test_state
 
-  @threads.Loop
   def _ThreadProc(self):
     """Handles one whole test from start to finish.
 
     When this finishes, the parent loops back around and calls us again.
     """
-    with contextlib.ExitStack() as exit_stack, LogSleepSuppress() as suppressor:
-      _LOG.info('Starting test %s', self.test.filename)
-
-      self._current_exit_stack = exit_stack
-      exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
-
-      suppressor.failure_reason = 'TEST_START failed to complete.'
-      dut_id = self._dut_manager.WaitForTestStart()
-
-      suppressor.failure_reason = 'Unable to initialize plugs.'
-      _LOG.info('Initializing plugs.')
-      plug_manager = (
-          plugs.PlugManager.InitializeFromTypes(
-              self.test.plug_type_map))
-      exit_stack.callback(plug_manager.TearDownPlugs)
-
-      _LOG.debug('Making test state and phase executor.')
-      # Store the reason the next function can fail, then call the function.
-      suppressor.failure_reason = 'Test is invalid.'
-      self._test_state = test_state.TestState(
-          self._cell_number, self._cell_config, self.test, dut_id)
-
-      phase_executor = phasemanager.PhaseExecutor(
-          self._cell_config, self.test,
-          self._test_state, plug_manager.plug_map)
-
-      def optionally_stop(exc_type, *dummy):
-        """Always called when we stop a test.
-
-        If an exception happened, we'll check it to see if it was a test
-        error.  If it was not (ie the user intentionally stopped the test),
-        then we'll just return immediately, otherwise we'll wait for the
-        Test Stop mechanism in dutmanager.
-        """
-        # Always stop the phase_executor, if the test ended normally then it
-        # will already be stopped, but this won't hurt anything.  If the test
-        # exited abnormally, we don't want to leave this hanging around in some
-        # weird state.
-        phase_executor.Stop()
-
-        # If Stop was called, we don't care about the test stopping completely
-        # anymore, nor if ctrl-C was hit.
-        if exc_type not in (TestStopError, KeyboardInterrupt):
-          self._dut_manager.WaitForTestStop()
-
-      # Call WaitForTestStop() to match WaitForTestStart().
-      exit_stack.push(optionally_stop)
-
-      suppressor.failure_reason = 'Failed to execute test.'
-      self._ExecuteTest(phase_executor)
+    while True:
+      with contextlib.ExitStack() as exit_stack, LogSleepSuppress() as suppressor:
+        logging.info('Starting test %s', self.test.filename)
+  
+        self._current_exit_stack = exit_stack
+        exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
+  
+        suppressor.failure_reason = 'TEST_START failed to complete.'
+        dut_id = self._dut_manager.WaitForTestStart()
+  
+        suppressor.failure_reason = 'Unable to initialize plugs.'
+        logging.info('Initializing plugs.')
+        plug_manager = (
+            plugs.PlugManager.InitializeFromTypes(
+                self.test.plug_type_map))
+        exit_stack.callback(plug_manager.TearDownPlugs)
+  
+        logging.debug('Making test state and phase executor.')
+        # Store the reason the next function can fail, then call the function.
+        suppressor.failure_reason = 'Test is invalid.'
+        self._test_state = test_state.TestState(
+            self._config, self.test, dut_id)
+  
+        phase_executor = phasemanager.PhaseExecutor(
+            self._config, self.test,
+            self._test_state, plug_manager.plug_map)
+  
+        def optionally_stop(exc_type, *dummy):
+          """Always called when we stop a test.
+  
+          If an exception happened, we'll check it to see if it was a test
+          error.  If it was not (ie the user intentionally stopped the test),
+          then we'll just return immediately, otherwise we'll wait for the
+          Test Stop mechanism in dutmanager.
+          """
+          # Always stop the phase_executor, if the test ended normally then it
+          # will already be stopped, but this won't hurt anything.  If the test
+          # exited abnormally, we don't want to leave this hanging around in some
+          # weird state.
+          phase_executor.Stop()
+  
+          # If Stop was called, we don't care about the test stopping completely
+          # anymore, nor if ctrl-C was hit.
+          if exc_type not in (TestStopError, KeyboardInterrupt):
+            self._dut_manager.WaitForTestStop()
+  
+        # Call WaitForTestStop() to match WaitForTestStart().
+        exit_stack.push(optionally_stop)
+  
+        suppressor.failure_reason = 'Failed to execute test.'
+        self._ExecuteTest(phase_executor)
+        if not self.test.loop:
+          break
 
   def Stop(self):
-    """Stop this cell."""
-    _LOG.info('Stopping test executor.')
+    """Stop this test."""
+    logging.info('Stopping test executor.')
     if self._current_exit_stack:
       # Tell the stack to exit.
       with self._current_exit_stack.pop_all() as stack:
@@ -194,6 +144,10 @@ class TestExecutor(threads.KillableThread):
         stack.push(lambda *exc_details: True)
         raise TestStopError('Stopping.')
     self.Kill()
+
+  def Wait(self):
+    """Waits until death."""
+    self.join(365*24*60*60)  # Timeout needed for SIGINT handling, so 1 year.
 
   def _ExecuteTest(self, phase_executor):
     """Executes one test's phases from start to finish.

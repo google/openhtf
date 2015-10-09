@@ -44,7 +44,8 @@ Examples:
     [measurements.Measurement(
         'level_%s' % i).Number() for i in ['none', 'some', 'all']])
 def WidgetTestPhase(test):
-  ...
+  test.measurements.number_widgets = 5
+  test.measurements.level_none = 10
 
 """
 
@@ -105,7 +106,7 @@ class Measurement(data.Descriptor):
     return self
 
   def WithDimensions(self, *dimensions):
-    """Declare dimensions for this Mmeasurement."""
+    """Declare dimensions for this Measurement."""
     self.dimensions = dimensions
     return self
 
@@ -176,7 +177,7 @@ class MeasuredValue(object):
     self.num_dimensions = num_dimensions
     # Only one of these will actually be used; if num_dimensions is 0, then
     # only self.value is used, otherwise only self.values is used.
-    self.values = {}
+    self.values = collections.OrderedDict()
     self.value = None
 
   def __iter__(self):

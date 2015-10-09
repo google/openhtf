@@ -144,6 +144,7 @@ class Test(object):
     Args:
       *phases: The ordered list of phases to execute for this test.
     """
+    self.loop = False
     self.phases = phases
     self.output_callbacks = []
 
@@ -152,6 +153,11 @@ class Test(object):
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
     self.code = inspect.getsource(frame_record[0])
+    for phase in self.phases:
+      phase.is_phase_func = True
+      while hasattr(phase, 'wraps'):
+        phase = phase.wraps
+        phase.is_phase_func = True
     
   @property
   def plug_type_map(self):
@@ -174,10 +180,7 @@ class Test(object):
     for output_cb in self.output_callbacks:
       output_cb(test_record)
 
-  # TODO(madsci): Execute loops indefinitely right now, we should probably
-  # provide an 'ExecuteOnce' method you can call instead if you don't want
-  # to loop.
-  def Execute(self):
+  def Execute(self, loop=None):
     """Start the OpenHTF framework running with the given test.
   
     Executes this test, iterating over self.phases and executing them.
@@ -195,12 +198,13 @@ class Test(object):
     Returns:
       None when the test framework has exited.
     """
+    if loop is not None:
+      self.loop = loop
     conf.Load()
   
     config = conf.Config()
     rundata.RunData(self.filename,
-                    len(config.cell_info),
-# TODO(madsci/jethier): Update rundata interface, these are dummy values.
+    # TODO(madsci/jethier): Update rundata interface, these are dummy values.
                     config.station_id,
                     '0.1',
                     socket.gethostname(),
@@ -208,21 +212,23 @@ class Test(object):
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)
-    starter = exe.TestExecutorStarter(self)
-    handler = http_handler.HttpHandler(self, starter.cells)
+    executor = exe.TestExecutor(config, self)
+    # TODO(jethier): Put this back once HttpHandler is updated to take
+    # an instance of TestExecutor instead of a cells dict.
+    #handler = http_handler.HttpHandler(self, executor)
   
     def sigint_handler(*dummy):
-      """Handle SIGINT by stopping running cells."""
+      """Handle SIGINT by stopping running executor and handler."""
       print "Received SIGINT. Stopping everything."
-      starter.Stop()
-      handler.Stop()
+      executor.Stop()
+      #handler.Stop()
     signal.signal(signal.SIGINT, sigint_handler)
   
-    handler.Start()
-    starter.Start()
+    #handler.Start()
+    executor.Start()
   
-    starter.Wait()
-    handler.Stop()
+    executor.Wait()
+    #handler.Stop()
     return
 
 
