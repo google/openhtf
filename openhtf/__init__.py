@@ -39,31 +39,33 @@ from openhtf.util import measurements
 from datetime import datetime
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_string('log_dir', '/tmp', 'dir for log files')
-gflags.DEFINE_enum('log_output', 'console', ['console','file','both'], 'output option')
-gflags.DEFINE_enum('level', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'log level')
+gflags.DEFINE_enum('verbosity', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'log level')
+gflags.DEFINE_boolean('quiet', False, '')
+gflags.DEFINE_string('log_file', '', 'log files')
+gflags.DEFINE_enum('log_level', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'log level')
 
 FLAGS(sys.argv)
 
+
 def Setup_logger():
-    htflogger = logging.getLogger('OpenHTF')
-    htflogger.setLevel(FLAGS.level.upper())
-    htflogger.propagate = False
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+  htflogger = logging.getLogger('OpenHTF')
+  htflogger.propagate = False
 
-    cur_time = datetime.utcnow().strftime('%Y-%m-%d-%H:%M:%S.%f')[:-3]
-    fh = logging.FileHandler(FLAGS.log_dir + '/test_' + cur_time +'.log', delay=True)
-    fh.setFormatter(formatter)
-    htflogger.addHandler(fh)
-
+  if FLAGS.log_file:
+    try:
+      formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+      cur_time = datetime.utcnow().strftime('%Y-%m-%d-%H:%M:%S.%f')[:-3]
+      fh = logging.FileHandler(FLAGS.log_file + cur_time, delay=True)
+      fh.setFormatter(formatter)
+      fh.setLevel(FLAGS.log_level.upper())
+      htflogger.addHandler(fh)
+    except:
+      print "log file error:", sys.exc_info()[0]  # think for windows output
+    
+  if not FLAGS.quiet:
     sh = logging.StreamHandler()
-    sh.setFormatter(formatter)
+    sh.setLevel(FLAGS.verbosity.upper())
     htflogger.addHandler(sh)
-
-    if FLAGS.log_output.lower() == 'file': 
-      htflogger.removeHandler(sh)
-    elif FLAGS.log_output.lower() == 'console':
-      htflogger.removeHandler(fh)
 
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
@@ -209,7 +211,7 @@ class Test(object):
     if loop is not None:
       self.loop = loop
     conf.Load()
-  
+
     config = conf.Config()
     rundata.RunData(self.filename,
     # TODO(madsci/jethier): Update rundata interface, these are dummy values.

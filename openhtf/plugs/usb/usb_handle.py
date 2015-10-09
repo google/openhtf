@@ -23,11 +23,8 @@ A UsbHandle object represents a single USB Interface, *not* an entire device.
 
 import abc
 import functools
-import logging
 
 from openhtf.plugs.usb import usb_exceptions
-
-_LOG = logging.getLogger('OpenHTF')
 
 DEFAULT_TIMEOUT_MS = 5000
 FLUSH_READ_SIZE = 1024 * 64

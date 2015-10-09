@@ -20,6 +20,7 @@ import functools
 import logging
 import threading
 
+_LOG = logging.getLogger('OpenHTF')
 
 class ThreadTerminationError(SystemExit):
   """Sibling of SystemExit, but specific to thread termination."""
@@ -54,7 +55,7 @@ class ExceptionSafeThread(threading.Thread):
         raise
     finally:
       self._ThreadFinished()
-      logging.debug('Thread finished: %s', self.name)
+      _LOG.debug('Thread finished: %s', self.name)
 
   def _ThreadProc(self):
     """The method called when executing the thread."""

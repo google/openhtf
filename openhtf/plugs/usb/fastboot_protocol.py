@@ -31,7 +31,7 @@ gflags.DEFINE_integer('fastboot_download_chunk_size_kb', 1024,
 
 _LOG = logging.getLogger('OpenHTF')
 
-DEFAULT_MESSAGE_CALLBACK = lambda m: logging.info('Got %s from device', m)
+DEFAULT_MESSAGE_CALLBACK = lambda m: _LOG.info('Got %s from device', m)
 FastbootMessage = collections.namedtuple(  # pylint: disable=invalid-name
     'FastbootMessage', ['message', 'header'])
 

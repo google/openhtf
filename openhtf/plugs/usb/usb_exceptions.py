@@ -18,6 +18,7 @@
 import libusb1
 import logging
 
+_LOG = logging.getLogger('OpenHTF')
 
 class CommonUsbError(Exception):
   """Exception that both looks good and is functional.
@@ -36,7 +37,7 @@ class CommonUsbError(Exception):
         except TypeError:
           # This is a fairly obscure failure, so we intercept it and emit a
           # more useful error message.
-          logging.error('USB Exceptions expect a format-string, do not include '
+          _LOG.error('USB Exceptions expect a format-string, do not include '
                         'percent symbols to disable this functionality: %s',
                         message)
           raise

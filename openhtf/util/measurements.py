@@ -53,11 +53,13 @@ def WidgetTestPhase(test):
 import collections
 import inspect
 import itertools
+import logging
 
 # from openhtf.io import records
 from openhtf.io import test_record
 from openhtf.util import data
 
+_LOG = logging.getLogger('OpenHTF')
 
 class InvalidDimensionsError(Exception):
   """Raised when there is a problem with measurement dimensions."""
@@ -201,7 +203,7 @@ class MeasuredValue(object):
               self.num_dimensions, value))
 
     if self.value is not None:
-      logging.warning(
+      _LOG.warning(
           'Overriding previous measurement %s value of %s with %s',
           self.name, self.value, value)
     self.value = value
@@ -213,7 +215,7 @@ class MeasuredValue(object):
           'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
                                                            coordinates_len))
     if coordinates in self.values:
-      logging.warning(
+      _LOG.warning(
           'Overriding previous measurement %s[%s] value of %s with %s',
           self.name, coordinates, self.values[coordinates], value)
     self.values[coordinates] = value
