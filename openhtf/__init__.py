@@ -31,6 +31,7 @@ from openhtf import exe
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import test_state
+from openhtf.exe import triggers
 from openhtf.io import http_api
 from openhtf.io import rundata
 from openhtf.util import measurements
@@ -159,7 +160,8 @@ class Test(object):
     for output_cb in self.output_callbacks:
       output_cb(test_record)
 
-  def Execute(self, loop=None):
+  def Execute(self, loop=None, test_start=triggers.AutoStart,
+              test_stop=triggers.AutoStop):
     """Start the OpenHTF framework running with the given test.
   
     Executes this test, iterating over self.phases and executing them.
@@ -191,7 +193,7 @@ class Test(object):
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)
-    executor = exe.TestExecutor(config, self)
+    executor = exe.TestExecutor(config, self, test_start, test_stop)
     server = http_api.Server(executor)
   
     def sigint_handler(*dummy):
