@@ -22,9 +22,9 @@ import contextlib2 as contextlib
 
 from openhtf import conf
 from openhtf import plugs
-from openhtf.exe import dutmanager
 from openhtf.exe import phasemanager
 from openhtf.exe import test_state
+from openhtf.exe import triggers
 from openhtf.io.proto import htf_pb2
 from openhtf.util import threads
 
@@ -59,14 +59,16 @@ class TestExecutor(threads.KillableThread):
 
   daemon = True
 
-  def __init__(self, config, test):
+  def __init__(self, config, test, test_start=triggers.AutoStart,
+               test_stop=triggers.AutoStop):
     super(TestExecutor, self).__init__()
 
     self.test = test
+    self._test_start = test_start
+    self._test_stop = test_stop
     self._config = config
     self._current_exit_stack = None
     self._test_state = None
-    self._dut_manager = dutmanager.DutManager.FromConfig(config)
 
   def Start(self):
     self.start()
@@ -88,7 +90,7 @@ class TestExecutor(threads.KillableThread):
         exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
   
         suppressor.failure_reason = 'TEST_START failed to complete.'
-        dut_id = self._dut_manager.WaitForTestStart()
+        dut_id = self._test_start()
   
         suppressor.failure_reason = 'Unable to initialize plugs.'
         logging.info('Initializing plugs.')
@@ -113,7 +115,7 @@ class TestExecutor(threads.KillableThread):
           If an exception happened, we'll check it to see if it was a test
           error.  If it was not (ie the user intentionally stopped the test),
           then we'll just return immediately, otherwise we'll wait for the
-          Test Stop mechanism in dutmanager.
+          Test Stop mechanism in triggers.py.
           """
           # Always stop the phase_executor, if the test ended normally then it
           # will already be stopped, but this won't hurt anything.  If the test
@@ -124,7 +126,7 @@ class TestExecutor(threads.KillableThread):
           # If Stop was called, we don't care about the test stopping completely
           # anymore, nor if ctrl-C was hit.
           if exc_type not in (TestStopError, KeyboardInterrupt):
-            self._dut_manager.WaitForTestStop()
+            self._test_stop(dut_id)
   
         # Call WaitForTestStop() to match WaitForTestStart().
         exit_stack.push(optionally_stop)
