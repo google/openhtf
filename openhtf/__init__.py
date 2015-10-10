@@ -39,7 +39,7 @@ from openhtf.util import measurements
 from datetime import datetime
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_enum('verbosity', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'log level')
+gflags.DEFINE_enum('verbosity', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'verbosity level')
 gflags.DEFINE_boolean('quiet', False, '')
 gflags.DEFINE_string('log_file', '', 'log files')
 gflags.DEFINE_enum('log_level', 'warning', ['debug', 'info', 'warning', 'error', 'critical'], 'log level')
