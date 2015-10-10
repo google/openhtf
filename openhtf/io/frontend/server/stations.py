@@ -26,7 +26,7 @@ import time
 import gflags
 
 import openhtf
-#from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
+from openhtf.io.proto import frontend_pb2  # pylint: disable=no-name-in-module
 from openhtf.util import file_watcher
 
 
@@ -39,7 +39,7 @@ class Responses(object):  # pylint: disable=too-few-public-methods
   ERROR = object()
 
 MIN_POLL_S = 2
-LOGGER = logging.getLogger('frontend.stations')
+_LOG = logging.getLogger('OpenHTF')
 
 
 class StationManager(object):
@@ -68,19 +68,18 @@ class StationManager(object):
     data = self.stations.get(station_name)
     # If the station is offline, just return an empty response.
     if self.GetStationMap()[station_name] == 'OFFLINE':
-      return "Tamp hack response"
-      #return frontend_pb2.HTFStationResponse()
+      return frontend_pb2.HTFStationResponse()
     if not data:
       return Responses.NOT_FOUND
     rundata, last_time_s, response = data
     if time.time() - last_time_s <= MIN_POLL_S:
-      LOGGER.info('Polling fast for %s, returning recent fetch', station_name)
+      _LOG.info('Polling fast for %s, returning recent fetch', station_name)
       return response
 
     response = requests.get(
         'http://%s:%s/get' % (rundata.http_host, rundata.http_port))
     if response.status_code != 200:
-      LOGGER.error(
+      _LOG.error(
           'Failed to get station response for %s (code: %s)\n%s',
           station_name,
           response.status_code,
