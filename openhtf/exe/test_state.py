@@ -96,9 +96,12 @@ class TestState(object):
 
   def SetStateFinished(self):
     """Mark the state as finished, only called if the test ended normally."""
-    # TODO(madsci): Check for measurement failures and mark the test outcome
-    # accordingly.  For now, we just pass in this case.
-    self._state = self.State.PASS
+    if any(meas.outcome == 'FAIL'
+           for phase in self.record.phases
+           for meas in phase.measurement_declarations.itervalues()):
+      self._state = self.State.FAIL
+    else:
+      self._state = self.State.PASS
 
   def GetFinishedRecord(self):
     """Get a test_record.TestRecord for the finished test.
