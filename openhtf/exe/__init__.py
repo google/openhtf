@@ -24,7 +24,6 @@ from openhtf import conf
 from openhtf import plugs
 from openhtf.exe import phasemanager
 from openhtf.exe import test_state
-from openhtf.exe import triggers
 from openhtf.io.proto import htf_pb2
 from openhtf.util import threads
 
@@ -59,8 +58,7 @@ class TestExecutor(threads.KillableThread):
 
   daemon = True
 
-  def __init__(self, config, test, test_start=triggers.AutoStart,
-               test_stop=triggers.AutoStop):
+  def __init__(self, config, test, test_start, test_stop):
     super(TestExecutor, self).__init__()
 
     self.test = test
