@@ -18,6 +18,8 @@
 import logging
 import time
 
+import mutablerecords
+
 
 def LogEveryNToLogger(n, logger, level, message, *args):  # pylint: disable=invalid-name
   """Logs the given message every n calls to a logger.
@@ -56,6 +58,9 @@ def convert_to_dict(obj):
   """Recursively convert namedtuples to dicts."""
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
+  elif isinstance(obj, mutablerecords.records.RecordClass):
+    obj = {attr: getattr(obj, attr)
+           for attr in type(obj).all_attribute_names}
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):

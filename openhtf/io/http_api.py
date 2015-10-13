@@ -21,6 +21,7 @@ host should serve this API on different TCP ports via the --port flag."""
 
 
 import BaseHTTPServer
+import copy
 import json
 
 import gflags
@@ -54,10 +55,10 @@ class Server(threads.KillableThread):
     def do_GET(self):  # pylint: disable=invalid-name
       """Serialize test state and prompt to JSON and send."""
       record = self.executor.GetState().record
-      response = {'test_state': util.convert_to_dict(record)}
+      response = {'test_state': util.convert_to_dict(copy.deepcopy(record))}
       prompt = user_input.get_prompt_manager().prompt
       if prompt is not None:
-        response['prompt'] = util.convert_to_dict(prompt)
+        response['prompt'] = util.convert_to_dict(copy.deepcopy(prompt))
       self.wfile.write(json.JSONEncoder().encode(response))
 
     def do_POST(self):  # pylint: disable=invalid-name

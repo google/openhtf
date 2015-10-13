@@ -36,6 +36,9 @@ class BlankDutIdError(Exception):
 class InvalidPhaseResultError(Exception):
   """A TestPhase returned an invalid result."""
 
+class TestRecordAlreadyFinishedError(Exception):
+  """Raised when trying to finalize a test record that is already finished."""
+
 
 # TODO(madsci): Add ability to update dut_id after test start.
 class TestState(object):
@@ -65,7 +68,12 @@ class TestState(object):
     self._state = self.State.CREATED
     self._config = config
     self.record = test_record.TestRecord(
-        test.filename, test.docstring, test.code, dut_id, station_id)
+        dut_id=dut_id, station_id=station_id,
+        metadata={
+            'code': test.code,
+            'filename': test.filename,
+            'docstring': test.docstring
+            })
     # TODO(amyxchen): Remove the 1 when HTFLogger doesn't expect a cell number.
     self.logger = htflogger.HTFLogger(self.record, 1)
 
@@ -103,27 +111,34 @@ class TestState(object):
     else:
       self._state = self.State.PASS
 
+  def FinalizeRecord(self):
+    pass
+
   def GetFinishedRecord(self):
     """Get a test_record.TestRecord for the finished test.
+
+    Should only be called once at the conclusion of a test run, and will raise
+    an exception if end_time_millis is already set.
 
     Arguments:
       phase_result: The last phasemanager.TestPhaseResult in the test.
 
     Returns:  An updated test_record.TestRecord that is ready for output.
-    """
-    self.logger.debug('Finishing test execution with state %s.', self._state)
 
-    if 'config' in self.record.metadata:
-      self.logger.warning('config already set in metadata, not saving config')
-    else:
-      self.record.metadata['config'] = conf.Config()
+    Raises: TestRecordAlreadyFinishedError if end_time_millis already set.
+    """
+    if self.record.end_time_millis:
+      raise TestRecordAlreadyFinishedError
+
+    self.logger.debug('Finishing test execution with state %s.', self._state)
 
     if not self.record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
-    return self.record._replace(
-        end_time_millis=util.TimeMillis(), outcome=self._state)
+    self.record.end_time_millis = util.TimeMillis()
+    self.record.outcome = self._state
+    return self.record
 
   def __str__(self):
     return '<%s: %s, %s>' % (

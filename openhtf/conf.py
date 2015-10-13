@@ -31,6 +31,7 @@ import threading
 import yaml
 
 import gflags
+import mutablerecords
 
 from openhtf.util import threads
 
@@ -46,9 +47,11 @@ gflags.DEFINE_multistring(
     'This value will override any existing config value at config load time '
     'and will be a string')
 
-
-class ConfigurationDeclarationError(Exception):
-  """Raised when there is an in valid configuration Declaration."""
+ConfigurationDeclaration = (
+    mutablerecords.Record(
+        'ConfigurationDeclaration',
+        ['name'],
+        {'description': None, 'default_value': None, 'optional': True}))
 
 
 class ConfigurationNotLoadedError(Exception):
@@ -93,27 +96,6 @@ class ConfigurationValidationError(Exception):
   def __str__(self):
     return ('Configuration error on key: %s (type: %s, value: %s)' %
             (self.name, self.declaration.type.name, self.value))
-
-
-class ConfigurationDeclaration(
-    collections.namedtuple('ConfigurationDeclaration',
-                           ['name', 'description',
-                            'default_value', 'optional'])):
-  """Configuration declaration descriptor."""
-
-  @classmethod
-  def FromKwargs(cls, name, **kwargs):
-    """Construct a declaration with the given name, other fields from kwargs."""
-    if not kwargs.setdefault('optional', True) and 'default_value' in kwargs:
-      raise ConfigurationDeclarationError(
-          'Cannot have a default_value for a required key')
-
-    for default_none_field in ('description', 'default_value'):
-      kwargs.setdefault(default_none_field)
-
-    return super(cls, ConfigurationDeclaration).__new__(
-        cls, name, kwargs['description'], kwargs['default_value'],
-        kwargs['optional'])
 
 
 class _DeclaredKeys(object):
@@ -360,9 +342,9 @@ class ConfigModel(object):
     Args:
       name: The name of the key.
       description: Docstring for the key, if any.
-      **kwargs: See ConfigurationDeclaration.__init__()
+      **kwargs: See ConfigurationDeclaration's fields.
     """
-    declaration = ConfigurationDeclaration.FromKwargs(
+    declaration = ConfigurationDeclaration(
         name, description=description, **kwargs)
     self._declarations.Declare(name, declaration)
 

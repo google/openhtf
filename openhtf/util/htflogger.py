@@ -107,8 +107,7 @@ class HTFLogger(logging.LoggerAdapter):
     if not code:
       raise ValueError('Invalid Failure Code', code)
 
-    failure_codes = self._test_record.metadata.setdefault('failure_codes', [])
-    failure_codes.append((code, details))
+    self._test_record.failure_codes.append((code, details))
 
 
 class HTFLoggerHandler(logging.Handler):
