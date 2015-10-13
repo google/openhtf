@@ -21,14 +21,12 @@ host should serve this API on different TCP ports via the --port flag."""
 
 
 import BaseHTTPServer
-import copy
 import json
 
 import gflags
 
 from openhtf import util
 from openhtf.io import user_input
-from openhtf.util import threads
 
 
 FLAGS = gflags.FLAGS
@@ -37,7 +35,7 @@ gflags.DEFINE_integer('port',
                       "Port on which to serve OpenHTF's HTTP API.")
 
 
-class Server(threads.KillableThread):
+class Server(util.threads.KillableThread):
   """Bare-bones HTTP API server for OpenHTF.
 
   Args:
@@ -54,12 +52,8 @@ class Server(threads.KillableThread):
 
     def do_GET(self):  # pylint: disable=invalid-name
       """Serialize test state and prompt to JSON and send."""
-      record = self.executor.GetState().record
-      response = {'test_state': util.convert_to_dict(copy.deepcopy(record))}
-      prompt = user_input.get_prompt_manager().prompt
-      if prompt is not None:
-        response['prompt'] = util.convert_to_dict(copy.deepcopy(prompt))
-      self.wfile.write(json.JSONEncoder().encode(response))
+      state = self.executor.GetState()
+      self.wfile.write(state.SerializeToJSON())
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""

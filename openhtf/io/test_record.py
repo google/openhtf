@@ -50,15 +50,18 @@ class TestRecord(
                                                     details if details else ''))
 
 
-class PhaseRecord(collections.namedtuple(
-    'PhaseRecord', 'name docstring code start_time_millis end_time_millis '
-    'measurement_declarations measurement_values attachments result')):
+class PhaseRecord(
+    mutablerecords.Record(
+        'PhaseRecord', ['name', 'docstring', 'code'],
+        {'measurement_declarations': None, 'measured_values': None,
+         'start_time_millis': None, 'end_time_millis': None,
+         'attachments': None, 'result': None})):
   """The record of a single run of a phase.
 
   Measurement metadata (declarations) and values are stored in separate
   dictionaries, each of which map measurement name to the respective object.  In
   the case of measurement_declarations, those objects are
-  measurements.Declaration instances.  In the case of measurement_values, the
+  measurements.Declaration instances.  In the case of measured_values, the
   objects stored are either single values (in the case of dimensionless
   measurements) or lists of value tuples (in the case of dimensioned
   measurements).  See measurements.Record.GetValues().

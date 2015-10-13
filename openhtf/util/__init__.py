@@ -64,8 +64,7 @@ def convert_to_dict(obj):
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    for key, value in obj.iteritems():
-      obj[key] = convert_to_dict(value)
+    obj = { k: convert_to_dict(v) for k, v in obj.iteritems() }
   elif isinstance(obj, list):
     obj = [convert_to_dict(value) for value in obj]
   elif isinstance(obj, tuple):

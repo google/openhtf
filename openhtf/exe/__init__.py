@@ -101,11 +101,10 @@ class TestExecutor(threads.KillableThread):
         # Store the reason the next function can fail, then call the function.
         suppressor.failure_reason = 'Test is invalid.'
         self._test_state = test_state.TestState(
-            self._config, self.test, dut_id)
+            self._config, self.test, plug_manager.plug_map, dut_id)
   
         phase_executor = phasemanager.PhaseExecutor(
-            self._config, self.test,
-            self._test_state, plug_manager.plug_map)
+            self._config, self.test, self._test_state)
   
         def optionally_stop(exc_type, *dummy):
           """Always called when we stop a test.
@@ -130,6 +129,7 @@ class TestExecutor(threads.KillableThread):
         exit_stack.push(optionally_stop)
   
         suppressor.failure_reason = 'Failed to execute test.'
+        self._test_state.SetStateRunning()
         self._ExecuteTest(phase_executor)
         if not self.test.loop:
           break

@@ -17,12 +17,14 @@
 
 Test timing, failures, and the UI are handled by this module.
 """
-from enum import Enum
+import json
 import logging
+from enum import Enum
 
 from openhtf import conf
 from openhtf.exe import phase_data
 from openhtf.io import test_record
+from openhtf.io import user_input
 from openhtf import util
 from openhtf.util import htflogger
 
@@ -63,7 +65,7 @@ class TestState(object):
   _ERROR_STATES = {State.TIMEOUT, State.ERROR}
   _FINISHED_STATES = {State.PASS, State.FAIL} | _ERROR_STATES
 
-  def __init__(self, config, test, dut_id):
+  def __init__(self, config, test, plugs, dut_id):
     station_id = conf.Config().station_id
     self._state = self.State.CREATED
     self._config = config
@@ -74,8 +76,27 @@ class TestState(object):
             'filename': test.filename,
             'docstring': test.docstring
             })
+    self.phase_data = phase_data.PhaseData(_LOG, config, plugs, self.record)
+    self.running_phase = None
+    self.pending_phases = list(test.phases)
     # TODO(amyxchen): Remove the 1 when HTFLogger doesn't expect a cell number.
     self.logger = htflogger.HTFLogger(self.record, 1)
+
+  def SerializeToJSON(self):
+    """Return a JSON representation of the test's state."""
+    return json.JSONEncoder().encode(util.convert_to_dict(self))
+
+  def _asdict(self):
+    """Return a dict representation of the test's state."""
+    prompt = user_input.get_prompt_manager().prompt
+    return {
+        'state': self._state.key,
+        'record': self.record,
+        'phase_data': self.phase_data,
+        'running_phase': self.running_phase,
+        'pending_phases': {
+            phase.__name__: phase.__doc__ for phase in self.pending_phases},
+        'prompt': prompt}
 
   def SetStateFromPhaseResult(self, phase_result):
     """Set our internal state based on the given phase result.

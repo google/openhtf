@@ -289,6 +289,10 @@ class Collection(object):  # pylint: disable=too-few-public-methods
     object.__setattr__(self, '_declarations', measurement_declarations)
     object.__setattr__(self, '_values', {})
 
+  def _asdict(self):
+    """Return dict of this Collection."""
+    return dict(self)
+
   def _AssertValidKey(self, name):
     """Raises if name is not a valid measurement."""
     if name not in self._declarations:
