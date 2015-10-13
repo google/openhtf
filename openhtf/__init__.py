@@ -75,7 +75,7 @@ class OutputToJSON(JSONEncoder):
       return obj.dictionary
     if obj in test_state.TestState.State:
       return str(obj)
-    return super(OutputToJson, self).default(obj)
+    return super(OutputToJSON, self).default(obj)
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
     as_dict = util.convert_to_dict(test_record)
