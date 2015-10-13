@@ -25,6 +25,7 @@ import sys
 from json import JSONEncoder
 
 import gflags
+import mutablerecords
 
 from openhtf import conf
 from openhtf import exe
@@ -74,11 +75,12 @@ class OutputToJSON(JSONEncoder):
       return obj.dictionary
     if obj in test_state.TestState.State:
       return str(obj)
-    return super(OutputToJSON, self).default(obj)
+    return super(OutputToJson, self).default(obj)
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
-    with open(self.filename_pattern % test_record._asdict(), 'w') as f:
-      f.write(self.encode(util.convert_to_dict(test_record)))
+    as_dict = util.convert_to_dict(test_record)
+    with open(self.filename_pattern % as_dict, 'w') as f:
+      f.write(self.encode(as_dict))
 
 
 def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
