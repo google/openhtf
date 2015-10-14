@@ -28,6 +28,8 @@ from openhtf.io.proto import htf_pb2
 from openhtf.util import threads
 
 
+_LOG = logging.getLogger('OpenHTF')
+
 class TestStopError(Exception):
   """Test is being stopped."""
 
@@ -44,7 +46,7 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
   def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
     if exc_type is not None and exc_type is not threads.ThreadTerminationError:
       # Only log if there is a failure.
-      logging.exception(self.failure_reason)
+      _LOG.exception(self.failure_reason)
       time.sleep(1.0)
     if exc_type is test_state.BlankDutIdError:
       # Suppress BlankDutIdError, it's likely transient.
@@ -82,7 +84,7 @@ class TestExecutor(threads.KillableThread):
     """
     while True:
       with contextlib.ExitStack() as exit_stack, LogSleepSuppress() as suppressor:
-        logging.info('Starting test %s', self.test.filename)
+        _LOG.info('Starting test %s', self.test.filename)
   
         self._current_exit_stack = exit_stack
         exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
@@ -91,13 +93,13 @@ class TestExecutor(threads.KillableThread):
         dut_id = self._test_start()
   
         suppressor.failure_reason = 'Unable to initialize plugs.'
-        logging.info('Initializing plugs.')
+        _LOG.info('Initializing plugs.')
         plug_manager = (
             plugs.PlugManager.InitializeFromTypes(
                 self.test.plug_type_map))
         exit_stack.callback(plug_manager.TearDownPlugs)
   
-        logging.debug('Making test state and phase executor.')
+        _LOG.debug('Making test state and phase executor.')
         # Store the reason the next function can fail, then call the function.
         suppressor.failure_reason = 'Test is invalid.'
         self._test_state = test_state.TestState(
@@ -136,7 +138,7 @@ class TestExecutor(threads.KillableThread):
 
   def Stop(self):
     """Stop this test."""
-    logging.info('Stopping test executor.')
+    _LOG.info('Stopping test executor.')
     if self._current_exit_stack:
       # Tell the stack to exit.
       with self._current_exit_stack.pop_all() as stack:
