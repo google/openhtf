@@ -38,12 +38,14 @@ TestStop:
 import collections
 import threading
 import time
+import logging
 
 from openhtf.plugs.usb import adb_device
 from openhtf.plugs.usb import fastboot_device
 from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 
+_LOG = logging.getLogger('OpenHTF')
 
 def AutoStart():
   return 'UNKNOWN_DUT_ID'
@@ -76,7 +78,7 @@ class AndroidTriggers(object):
       except usb_exceptions.DeviceNotFoundError:
         pass
       except usb_exceptions.MultipleInterfacesFoundError:
-        logging.warning('Multiple Android devices found, ignoring!')
+        _LOG.warning('Multiple Android devices found, ignoring!')
       finally:
         if handle:
           handle.Close()

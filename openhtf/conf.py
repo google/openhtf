@@ -249,7 +249,7 @@ class ConfigModel(object):
 
     try:
       filename = config_file or FLAGS.config
-      logging.info('Loading from config: %s', filename)
+      _LOG.info('Loading from config: %s', filename)
 
       with config_loader(filename) as config_file:
         data = yaml.safe_load(config_file)
@@ -264,7 +264,7 @@ class ConfigModel(object):
         self._state[key] = val
 
       self._loaded = True
-      logging.debug('Configuration loaded: %s', self._state)
+      _LOG.debug('Configuration loaded: %s', self._state)
     except yaml.YAMLError as exception:
       _LOG.exception('Failed to load yaml file: %s', filename)
       raise ConfigurationInvalidError(filename, exception)
