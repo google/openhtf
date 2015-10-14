@@ -53,7 +53,7 @@ class Server(util.threads.KillableThread):
     def do_GET(self):  # pylint: disable=invalid-name
       """Serialize test state and prompt to JSON and send."""
       state = self.executor.GetState()
-      self.wfile.write(state.SerializeToJSON())
+      self.wfile.write(state.AsJSON())
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""

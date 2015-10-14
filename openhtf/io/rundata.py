@@ -71,11 +71,11 @@ class RunData(collections.namedtuple(
     """
     filename = os.path.join(directory, self.station_name)
     with open(filename, 'w') as runfile:
-      runfile.write(self.AsJson())
+      runfile.write(self.AsJSON())
     return filename
 
-  def AsJson(self):
-    """Converts thie run data instance to JSON."""
+  def AsJSON(self):
+    """Converts this run data instance to JSON."""
     data = self._asdict()
     data['http_host'] = self.http_host
     return json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))

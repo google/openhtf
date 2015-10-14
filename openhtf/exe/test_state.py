@@ -82,8 +82,8 @@ class TestState(object):
     # TODO(amyxchen): Remove the 1 when HTFLogger doesn't expect a cell number.
     self.logger = htflogger.HTFLogger(self.record, 1)
 
-  def SerializeToJSON(self):
-    """Return a JSON representation of the test's state."""
+  def AsJSON(self):
+    """Return JSON representation of the test's serialized state."""
     return json.JSONEncoder().encode(util.convert_to_dict(self))
 
   def _asdict(self):
