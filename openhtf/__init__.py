@@ -39,7 +39,6 @@ from openhtf.util import measurements
 
 
 FLAGS = gflags.FLAGS
-FLAGS(sys.argv)
 
 
 class InvalidTestPhaseError(Exception):
@@ -181,6 +180,12 @@ class Test(object):
     Returns:
       None when the test framework has exited.
     """
+    try:
+      FLAGS(sys.argv)  # parse flags
+    except gflags.FlagsError, e:
+      print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
+      sys.exit(1)
+
     if loop is not None:
       self.loop = loop
     conf.Load()
@@ -191,7 +196,7 @@ class Test(object):
                     config.station_id,
                     '0.1',
                     socket.gethostname(),
-                    FLAGS.port,
+                    FLAGS.api_port,
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)

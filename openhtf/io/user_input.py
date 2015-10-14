@@ -18,7 +18,7 @@
 Allows tests to prompt for user input using the framework, so prompts can be
 presented via the CLI interface, the included web frontend, and custom
 frontends alike. Any other part of the framework that needs to access shared
-prompt state should use the openhtf.prompter pseudomodule.
+prompt state should use the openhtf.prompts pseudomodule.
 """
 
 

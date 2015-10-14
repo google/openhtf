@@ -13,9 +13,20 @@
 # limitations under the License.
 
 
-"""The frontend binary for OpenHTF's default web interface.
+"""A basic frontend server for OpenHTF using the HTTP frontend API.
 
-This frontend serves HTML status pages for running OpenHTF instances.
+This server is designed to co-exist on the same system with the test(s) it's
+being pointed at, as it relies on the local rundir for knowledge of which tests
+exist. A client (usually just a normal web browser) can be on any host that can
+make HTTP requests to the server (including localhost).
+
+To start this frontend server, invoke python with the -m flag in a python
+environment where openhtf is installed:
+
+$ python -m openhtf.io.frontend
+
+To access the frontend once it's running, simply point a web browser at the
+frontend server.
 """
 
 from __future__ import print_function
@@ -28,24 +39,24 @@ import sys
 from openhtf.io.frontend.server import stations
 from openhtf.io.frontend.server import app
 
+
 FLAGS = gflags.FLAGS
 
-gflags.DEFINE_boolean('dev_mode', True, 'True to run in developer mode locally')
-gflags.DEFINE_integer('port', 12000, 'The port on which to serve the frontend')
+gflags.DEFINE_integer('port',
+                      12000,
+                      'The port on which to serve the frontend')
 
 
 def main(argv):
   """Start the frontend."""
   try:
     argv = FLAGS(argv)  # parse flags
-  except gflags.FlagsError, exception:
-    print('%s\\nUsage: %s ARGS\\n%s' % (exception,
-                                        sys.argv[0],
-                                        FLAGS), file=sys.stderr)
+  except gflags.FlagsError, e:
+    print('%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS))
     sys.exit(1)
 
   if not os.path.isdir(FLAGS.rundir):
-    print('ERROR: OpenHTF Run directory does not exist', FLAGS.rundir,
+    print('ERROR: OpenHTF run directory does not exist', FLAGS.rundir,
           file=sys.stderr)
     sys.exit(1)
 
@@ -56,10 +67,9 @@ def main(argv):
   rocket_server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
                                 method='wsgi',
                                 app_info={'wsgi_app': openhtf_app})
-  print('Starting server at http://localhost:%d' % FLAGS.port)
+  print('Starting OpenHTF frontend server on http://localhost:%d.' % FLAGS.port)
   rocket_server.start()
 
 
 if __name__ == '__main__':
-  logging.basicConfig(level=logging.DEBUG)
   main(sys.argv)
