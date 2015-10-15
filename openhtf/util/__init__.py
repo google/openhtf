@@ -17,6 +17,7 @@
 
 import logging
 import time
+from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
 
@@ -73,3 +74,19 @@ def convert_to_dict(obj):
     obj = str(obj)
 
   return obj
+
+
+def get_version():
+  """Return the version string of the 'openhtf' package.
+
+  Note: the version number doesn't seem to get properly set when using ipython.
+  """
+  version = 'Unknown'
+
+  try:
+    version = get_distribution('openhtf')
+  
+  except DistributionNotFound:
+    version = 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
+
+  return version

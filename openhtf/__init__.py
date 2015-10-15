@@ -38,6 +38,9 @@ from openhtf.io import rundata
 from openhtf.util import measurements
 
 
+__version__ = util.get_version()
+
+
 FLAGS = gflags.FLAGS
 
 
