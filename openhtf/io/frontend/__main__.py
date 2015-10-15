@@ -43,8 +43,6 @@ import rocket
 
 from openhtf import util
 from openhtf.io import rundata
-# from openhtf.io.frontend.server import stations
-# from openhtf.io.frontend.server import app
 
 
 FLAGS = gflags.FLAGS
@@ -106,16 +104,6 @@ def main(argv):
     sys.exit(1)
 
   app.run()
-
-  # manager = stations.StationManager()
-  # openhtf_app = app.InitializeApp(manager)
-
-  # logging.getLogger('Rocket').setLevel(logging.INFO)  # Make Rocket less chatty
-  # rocket_server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
-  #                               method='wsgi',
-  #                               app_info={'wsgi_app': openhtf_app})
-  # print('Starting OpenHTF frontend server on http://localhost:%d.' % FLAGS.port)
-  # rocket_server.start()
 
 
 if __name__ == '__main__':
