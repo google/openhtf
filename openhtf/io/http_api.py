@@ -30,7 +30,7 @@ from openhtf.io import user_input
 
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('api_port',
+gflags.DEFINE_integer('http_port',
                       8888,
                       "Port on which to serve OpenHTF's HTTP API.")
 
@@ -51,8 +51,21 @@ class Server(util.threads.KillableThread):
     executor = None
 
     def do_GET(self):  # pylint: disable=invalid-name
-      """Reply with a JSON representation of the current test state."""
-      self.wfile.write(self.executor.GetState().AsJSON())
+      """Reply with a JSON representation of the current test state.
+
+      If there is no test state make sure we still serve prompt state in case
+      a test start trigger is waiting on a prompt.
+      """
+      state = self.executor.GetState()
+      prompt = user_input.get_prompt_manager().prompt
+      if state:
+        self.wfile.write(state.AsJSON())
+      else:
+        result = {'state': 'NOTEST'}
+        prompt = user_input.get_prompt_manager().prompt
+        if prompt:
+          result['prompt'] = util.convert_to_dict(prompt)
+        self.wfile.write(json.JSONEncoder().encode(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
@@ -69,5 +82,5 @@ class Server(util.threads.KillableThread):
 
   def _ThreadProc(self):
     """Start up a raw HTTPServer based on our HTTPHandler definition."""
-    server = BaseHTTPServer.HTTPServer(('', FLAGS.api_port), self.HTTPHandler)
+    server = BaseHTTPServer.HTTPServer(('', FLAGS.http_port), self.HTTPHandler)
     server.serve_forever()

@@ -39,6 +39,7 @@ import collections
 import threading
 import time
 
+from openhtf.io import user_input
 from openhtf.plugs.usb import adb_device
 from openhtf.plugs.usb import fastboot_device
 from openhtf.plugs.usb import local_usb
@@ -131,19 +132,6 @@ class FrontendTriggers(object):
   @classmethod
   def TestStart(self):
     """Get a serial from the frontend and return it."""
-    if self.SERIAL is not None:
-      serial = self.SERIAL
-      self.SERIAL = None
-      return serial
-    return self._WaitForFrontend()
-
-  @classmethod
-  def TestStop(self):
-    """Returns when the test is completed and can restart.
-
-    In this case, we don't stop the last test and start the next until a new
-    start event has been received from the frontend.  This means we have to save
-    the serial in that event for the next call to TestStart().
-    """
-    self.SERIAL = self._WaitForFrontend()
-
+    prompt_manager = user_input.get_prompt_manager()
+    return prompt_manager.DisplayPrompt(
+        'Provide a DUT ID in order to start the test.', text_input=True)

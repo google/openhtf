@@ -196,7 +196,7 @@ class Test(object):
                     config.station_id,
                     '0.1',
                     socket.gethostname(),
-                    FLAGS.api_port,
+                    FLAGS.http_port,
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
     logging.info('Executing test: %s', self.filename)

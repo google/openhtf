@@ -146,7 +146,7 @@ setup(
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
     packages=find_packages(exclude='example'),
-    scripts=['bin/frontend.py', 'bin/dumpdata.py'],
+    scripts=['bin/dumpdata.py'],
     cmdclass={
         'build_client': BuildClientCommand,
         'build_proto': BuildProtoCommand,

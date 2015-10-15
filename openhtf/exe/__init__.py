@@ -24,7 +24,6 @@ from openhtf import conf
 from openhtf import plugs
 from openhtf.exe import phasemanager
 from openhtf.exe import test_state
-from openhtf.io.proto import htf_pb2
 from openhtf.util import threads
 
 
@@ -116,14 +115,15 @@ class TestExecutor(threads.KillableThread):
           """
           # Always stop the phase_executor, if the test ended normally then it
           # will already be stopped, but this won't hurt anything.  If the test
-          # exited abnormally, we don't want to leave this hanging around in some
-          # weird state.
+          # exited abnormally, we don't want to leave this hanging around in
+          # some weird state.
           phase_executor.Stop()
   
           # If Stop was called, we don't care about the test stopping completely
           # anymore, nor if ctrl-C was hit.
           if exc_type not in (TestStopError, KeyboardInterrupt):
             self._test_stop(dut_id)
+            self._test_state = None  # Clear test state after stopping.
   
         # Call WaitForTestStop() to match WaitForTestStart().
         exit_stack.push(optionally_stop)

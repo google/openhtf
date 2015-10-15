@@ -84,4 +84,4 @@ if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments)
   test.AddOutputCallback(OutputToJSON(
   		'./%(dut_id)s.%(start_time_millis)s', indent=4))
-  test.Execute()
+  test.Execute(test_start=triggers.FrontendTriggers.TestStart)
