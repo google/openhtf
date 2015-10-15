@@ -1,0 +1,41 @@
+<html>
+<head>
+</head>
+<body>
+{% if 'prompt' in state %}
+<div class="prompt">
+  {{state.prompt.message}}
+</div>
+{% endif %}
+<h1>OpenHTF</h1>
+<h2>Station {{name}}</h2>
+<hr/>
+<div><h3>Current Phase: {{state.running_phase.name}}</h3>
+<p>{{state.running_phase.docstring}}</p>
+<h4>Measurements</h4>
+<ul>
+{% for m in state.running_phase.measurement_declarations %}
+  <li>{{m}}
+    <ul><li>
+    {% if m in state.phase_data.measurements %}
+      {{state.phase_data.measurements[m]}}
+    {% else %}
+      <div class="unset">UNSET</div>
+    {% endif %}
+    </li></ul>
+    </li>
+{% endfor %}
+</ul>
+</div>
+<hr/>
+<div><h3>Pending Phases</h3>
+<ul>
+{% for p in state.pending_phases %}
+  <li>
+  {{p[0]}}
+  </li>
+{% endfor %}
+</ul>
+</div>
+</body>
+</html>

@@ -94,8 +94,8 @@ class TestState(object):
         'record': self.record,
         'phase_data': self.phase_data,
         'running_phase': self.running_phase,
-        'pending_phases': {
-            phase.__name__: phase.__doc__ for phase in self.pending_phases},
+        'pending_phases': [
+            (phase.__name__, phase.__doc__) for phase in self.pending_phases],
         'prompt': prompt}
 
   def SetStateFromPhaseResult(self, phase_result):

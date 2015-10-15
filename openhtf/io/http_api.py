@@ -30,7 +30,7 @@ from openhtf.io import user_input
 
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('port',
+gflags.DEFINE_integer('api_port',
                       8888,
                       "Port on which to serve OpenHTF's HTTP API.")
 
@@ -51,9 +51,8 @@ class Server(util.threads.KillableThread):
     executor = None
 
     def do_GET(self):  # pylint: disable=invalid-name
-      """Serialize test state and prompt to JSON and send."""
-      state = self.executor.GetState()
-      self.wfile.write(state.AsJSON())
+      """Reply with a JSON representation of the current test state."""
+      self.wfile.write(self.executor.GetState().AsJSON())
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
@@ -70,5 +69,5 @@ class Server(util.threads.KillableThread):
 
   def _ThreadProc(self):
     """Start up a raw HTTPServer based on our HTTPHandler definition."""
-    server = BaseHTTPServer.HTTPServer(('', FLAGS.port), self.HTTPHandler)
+    server = BaseHTTPServer.HTTPServer(('', FLAGS.api_port), self.HTTPHandler)
     server.serve_forever()

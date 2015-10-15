@@ -30,21 +30,66 @@ frontend server.
 """
 
 from __future__ import print_function
-import gflags
+import httplib
+import json
 import logging
 import os
-import rocket
+import socket
 import sys
 
-from openhtf.io.frontend.server import stations
-from openhtf.io.frontend.server import app
+import flask
+import gflags
+import rocket
+
+from openhtf import util
+from openhtf.io import rundata
+# from openhtf.io.frontend.server import stations
+# from openhtf.io.frontend.server import app
 
 
 FLAGS = gflags.FLAGS
 
-gflags.DEFINE_integer('port',
-                      12000,
-                      'The port on which to serve the frontend')
+gflags.DEFINE_integer('frontend_port', 12000,
+                      'The port on which to serve the frontend.')
+gflags.DEFINE_integer('poll_interval', 500,
+                      'Desired time between frontend polls in milliseconds.')
+
+
+app = flask.Flask(__name__)
+cache = None
+
+
+def refresh_cache():
+  global cache
+  cache = {data.station_name: data
+           for data in rundata.EnumerateRunDirectory(FLAGS.rundir)}
+
+
+@app.route('/')
+def station_list():
+  refresh_cache()
+  stations = [
+      {'data': data,'status': 'ONLINE' if data.IsAlive() else 'OFFLINE'}
+      for _, data in cache.iteritems()]
+  return flask.render_template('station_list.html',
+                               stations=stations,
+                               host=socket.gethostname())
+
+
+@app.route('/stations/<name>/')
+def station(name):
+  refresh_cache()
+  data = cache[name]
+  conn = httplib.HTTPConnection('localhost', data.http_port)
+  try:
+    conn.request('GET', '/')
+  except socket.error as e:
+    return 'Station unreachable.'
+  response = conn.getresponse()
+  if response.status != 200:
+    return 'Station borked.'
+  state = json.loads(response.read())
+  return flask.render_template('station.html', name=name, state=state)
 
 
 def main(argv):
@@ -60,15 +105,17 @@ def main(argv):
           file=sys.stderr)
     sys.exit(1)
 
-  manager = stations.StationManager()
-  openhtf_app = app.InitializeApp(manager)
+  app.run()
 
-  logging.getLogger('Rocket').setLevel(logging.INFO)  # Make Rocket less chatty
-  rocket_server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
-                                method='wsgi',
-                                app_info={'wsgi_app': openhtf_app})
-  print('Starting OpenHTF frontend server on http://localhost:%d.' % FLAGS.port)
-  rocket_server.start()
+  # manager = stations.StationManager()
+  # openhtf_app = app.InitializeApp(manager)
+
+  # logging.getLogger('Rocket').setLevel(logging.INFO)  # Make Rocket less chatty
+  # rocket_server = rocket.Rocket(interfaces=('0.0.0.0', FLAGS.port),
+  #                               method='wsgi',
+  #                               app_info={'wsgi_app': openhtf_app})
+  # print('Starting OpenHTF frontend server on http://localhost:%d.' % FLAGS.port)
+  # rocket_server.start()
 
 
 if __name__ == '__main__':
