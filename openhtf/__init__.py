@@ -50,12 +50,13 @@ FLAGS(sys.argv)
 def Setup_logger():
   htflogger = logging.getLogger('OpenHTF')
   htflogger.propagate = False
+  htflogger.setLevel(logging.DEBUG)
+  formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
   if FLAGS.log_file:
     try:
-      formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
       cur_time = datetime.utcnow().strftime('%Y-%m-%d-%H:%M:%S.%f')[:-3]
-      fh = logging.FileHandler(FLAGS.log_file + cur_time, delay=True)
+      fh = logging.FileHandler(FLAGS.log_file + cur_time)
       fh.setFormatter(formatter)
       fh.setLevel(FLAGS.log_level.upper())
       htflogger.addHandler(fh)
@@ -63,7 +64,8 @@ def Setup_logger():
       print "log file error:", sys.exc_info()[0]  # think for windows output
     
   if not FLAGS.quiet:
-    sh = logging.StreamHandler()
+    sh = logging.StreamHandler(stream=sys.stdout)
+    sh.setFormatter(formatter)
     sh.setLevel(FLAGS.verbosity.upper())
     htflogger.addHandler(sh)
 
@@ -221,7 +223,7 @@ class Test(object):
                     FLAGS.port,
                     os.getpid()).SaveToFile(FLAGS.rundir)
   
-    logging.info('Executing test: %s', self.filename)
+    _LOG.info('Executing test: %s', self.filename)
     executor = exe.TestExecutor(config, self, test_start, test_stop)
     server = http_api.Server(executor)
   
