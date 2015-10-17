@@ -104,34 +104,8 @@ class AndroidTriggers(object):
     cls.serial_number = None
 
 
-class FrontendTriggers(object):
-  """Class encapsulating start interactions from the frontend.""" 
-
-  DEQUE = collections.deque()
-  DEQUE_COND = threading.Condition()
-  SERIAL = None
-
-  def __init__(self, unused_config):
-    self.serial = None
-
-  @classmethod
-  def Enqueue(cls, serial=''):
-    """Trigger actual test start."""
-    with cls.DEQUE_COND:
-      cls.DEQUE.append(serial)
-      cls.DEQUE_COND.notifyAll()
-
-  @classmethod
-  def _WaitForFrontend(self):
-    """Returns serial when received from the frontend."""
-    with self.DEQUE_COND:
-      while not len(self.DEQUE):
-        self.DEQUE_COND.wait()
-      return self.DEQUE.popleft()
-
-  @classmethod
-  def TestStart(self):
-    """Get a serial from the frontend and return it."""
-    prompt_manager = user_input.get_prompt_manager()
-    return prompt_manager.DisplayPrompt(
-        'Provide a DUT ID in order to start the test.', text_input=True)
+def FrontendTestStart():
+  """Get a serial from the frontend and return it."""
+  prompt_manager = user_input.get_prompt_manager()
+  return prompt_manager.DisplayPrompt(
+      'Provide a DUT ID in order to start the test.', text_input=True)

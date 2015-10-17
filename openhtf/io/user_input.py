@@ -84,7 +84,7 @@ class PromptManager(object):
       console_prompt = ConsolePrompt(
           message, functools.partial(self.Respond, self.prompt.id))
       console_prompt.start()
-      self._cond.wait(FLAGS.prompt_timeout_s)
+      self._cond.wait(int(FLAGS.prompt_timeout_s))
       console_prompt.Stop()
       self.prompt = None
       if self._response is None:
@@ -100,9 +100,8 @@ class PromptManager(object):
     """
     with self._cond:
       if self.prompt is not None and prompt_id == self.prompt.id:
-        print 'Response received: %s' % response
-      self._response = response
-      self._cond.notifyAll()
+        self._response = response
+        self._cond.notifyAll()
 
 
 # Module-level instance to achieve shared prompt state.

@@ -1,41 +1,52 @@
 <html>
 <head>
+<script type="text/javascript">
+  var state = { prompt_id: null };
+  function ajax(url, method, message, callback) {
+    var request = new XMLHttpRequest();
+    request.onreadystatechange = function() {
+        if (request.readyState == XMLHttpRequest.DONE ) {
+           if(request.status == 200){
+               callback(request.responseText);
+           }
+         }
+    }
+    request.open(method, url, true);
+    request.send(message);
+  }
+  function submit(id) {
+    var field = document.getElementById('prompt_field');
+    url = 'prompt/' + id + '/';
+    ajax(url, 'POST', field.value, function(){ refresh('prompt'); });
+  }
+  function enter_check(id) {
+    if (event.keyCode == 13){
+      submit(id)
+    }
+  }
+  function refresh(id){
+    ajax('template/' + id + '/', 'GET', '',
+         function(new_doc){
+            document.getElementById(id).innerHTML = new_doc; });
+  }
+  function poll(interval_ms) {
+    if (interval_ms == undefined) {interval_ms = 3000;}
+    refresh('test');
+    ajax('prompt/', 'GET', '', function(id){
+      if (id != state.prompt_id) {
+        state.prompt_id = id;
+        refresh('prompt');
+      }
+    });
+    setTimeout(function() { poll(interval_ms); }, interval_ms);
+  }
+  function setup(){
+    poll();
+  }
+</script>
 </head>
-<body>
-{% if 'prompt' in state %}
-<div class="prompt">
-  {{state.prompt.message}}
-</div>
-{% endif %}
-<h1>OpenHTF</h1>
-<h2>Station {{name}}</h2>
-<hr/>
-<div><h3>Current Phase: {{state.running_phase.name}}</h3>
-<p>{{state.running_phase.docstring}}</p>
-<h4>Measurements</h4>
-<ul>
-{% for m in state.running_phase.measurement_declarations %}
-  <li>{{m}}
-    <ul><li>
-    {% if m in state.phase_data.measurements %}
-      {{state.phase_data.measurements[m]}}
-    {% else %}
-      <div class="unset">UNSET</div>
-    {% endif %}
-    </li></ul>
-    </li>
-{% endfor %}
-</ul>
-</div>
-<hr/>
-<div><h3>Pending Phases</h3>
-<ul>
-{% for p in state.pending_phases %}
-  <li>
-  {{p[0]}}
-  </li>
-{% endfor %}
-</ul>
-</div>
+<body onload="setup()">
+<div id="prompt"></div>
+<div id="test"></div>
 </body>
 </html>

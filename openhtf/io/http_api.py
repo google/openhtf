@@ -22,6 +22,7 @@ host should serve this API on different TCP ports via the --port flag."""
 
 import BaseHTTPServer
 import json
+import uuid
 
 import gflags
 
@@ -69,8 +70,10 @@ class Server(util.threads.KillableThread):
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
-      data = json.loads(self.rfile.read())
-      user_input.get_prompt_manager().Respond(data['id'], data['response'])
+      raw = self.rfile.read()
+      data = json.loads(raw)
+      user_input.get_prompt_manager().Respond(
+          uuid.UUID((data['id'])), data['response'])
 
   def Start(self):
     """Give the server a style-conformant Start method."""
