@@ -68,6 +68,7 @@ class TestExecutor(threads.KillableThread):
     self._test_state = None
 
   def Start(self):
+    """Style-compliant start method."""
     self.start()
 
   def GetState(self):
@@ -80,34 +81,35 @@ class TestExecutor(threads.KillableThread):
     When this finishes, the parent loops back around and calls us again.
     """
     while True:
-      with contextlib.ExitStack() as exit_stack, LogSleepSuppress() as suppressor:
+      with contextlib.ExitStack() as exit_stack, \
+          LogSleepSuppress() as suppressor:
         logging.info('Starting test %s', self.test.filename)
-  
+
         self._current_exit_stack = exit_stack
         exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
-  
+
         suppressor.failure_reason = 'TEST_START failed to complete.'
         dut_id = self._test_start()
-  
+
         suppressor.failure_reason = 'Unable to initialize plugs.'
         logging.info('Initializing plugs.')
         plug_manager = (
             plugs.PlugManager.InitializeFromTypes(
                 self.test.plug_type_map))
         exit_stack.callback(plug_manager.TearDownPlugs)
-  
+
         logging.debug('Making test state and phase executor.')
         # Store the reason the next function can fail, then call the function.
         suppressor.failure_reason = 'Test is invalid.'
         self._test_state = test_state.TestState(
             self._config, self.test, plug_manager.plug_map, dut_id)
-  
+
         phase_executor = phasemanager.PhaseExecutor(
-            self._config, self.test, self._test_state)
-  
+            self._config, self._test_state)
+
         def optionally_stop(exc_type, *dummy):
           """Always called when we stop a test.
-  
+
           If an exception happened, we'll check it to see if it was a test
           error.  If it was not (ie the user intentionally stopped the test),
           then we'll just return immediately, otherwise we'll wait for the
@@ -118,16 +120,16 @@ class TestExecutor(threads.KillableThread):
           # exited abnormally, we don't want to leave this hanging around in
           # some weird state.
           phase_executor.Stop()
-  
+
           # If Stop was called, we don't care about the test stopping completely
           # anymore, nor if ctrl-C was hit.
           if exc_type not in (TestStopError, KeyboardInterrupt):
             self._test_stop(dut_id)
             self._test_state = None  # Clear test state after stopping.
-  
+
         # Call WaitForTestStop() to match WaitForTestStart().
         exit_stack.push(optionally_stop)
-  
+
         suppressor.failure_reason = 'Failed to execute test.'
         self._test_state.SetStateRunning()
         self._ExecuteTest(phase_executor)

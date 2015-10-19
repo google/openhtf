@@ -32,18 +32,14 @@ frontend server.
 from __future__ import print_function
 import httplib
 import json
-import logging
 import os
 import socket
 import sys
 
 import flask
 import gflags
-import rocket
 
-from openhtf import util
 from openhtf.io import rundata
-from openhtf.io import user_input
 
 
 FLAGS = gflags.FLAGS
@@ -54,18 +50,19 @@ gflags.DEFINE_integer('poll_interval', 500,
                       'Desired time between frontend polls in milliseconds.')
 
 
-app = flask.Flask(__name__)
-prompts = user_input.get_prompt_manager()
+app = flask.Flask(__name__)  # pylint: disable=invalid-name
 
 
 def cache():
-  return {data.station_name: data
-         for data in rundata.EnumerateRunDirectory(FLAGS.rundir)}
+  """Return an up-to-date mapping of stations."""
+  return {data.station_id: data
+          for data in rundata.EnumerateRunDirectory(FLAGS.rundir)}
 
 
-def query_framework(station_name, method='GET', message=None):
+def query_framework(station_id, method='GET', message=None):
+  """Query a running instance of OpenHTF for state."""
   result = None
-  data = cache()[station_name]
+  data = cache()[station_id]
   conn = httplib.HTTPConnection('localhost', data.http_port)
   args = [method, '/']
   if message:
@@ -86,6 +83,7 @@ def query_framework(station_name, method='GET', message=None):
 
 @app.route('/', methods=['GET'])
 def station_list():
+  """Handle a request for a list of known local OpenHTF stations."""
   stations = [
       {'data': data,'status': 'ONLINE' if data.IsAlive() else 'OFFLINE'}
       for _, data in cache().iteritems()]
@@ -94,20 +92,24 @@ def station_list():
                                host=socket.gethostname())
 
 
-@app.route('/station/<name>/', methods=['GET'])
-def station(name):
-  state = query_framework(name)
-  return flask.render_template('station.html', name=name, state=state)
+@app.route('/station/<station_id>/', methods=['GET'])
+def station(station_id):
+  """Handle a request for the state of a particular station."""
+  state = query_framework(station_id)
+  return flask.render_template('station.html', name=station_id, state=state)
 
 
-@app.route('/station/<name>/template/<template>/')
-def station_template(name, template):
-  state = state = query_framework(name)
-  return flask.render_template('%s.html' % template, name=name, state=state)
+@app.route('/station/<station_id>/template/<template>/')
+def station_template(station_id, template):
+  """Handle requests for individual pieces of station pages."""
+  state = state = query_framework(station_id)
+  return flask.render_template(
+      '%s.html' % template, name=station_id, state=state)
 
 
 @app.route('/station/<name>/prompt/', methods=['GET'])
 def get_prompt(name):
+  """Handle a request for a station's prompt state."""
   state = query_framework(name)
   print('HACK 1')
   if ('prompt' not in state) or (state['prompt'] == 'None'):
@@ -117,8 +119,9 @@ def get_prompt(name):
 
 @app.route('/station/<name>/prompt/<id>/', methods=['POST'])
 def prompt(name, id):
+  """Handle requests that respond to prompts."""
   msg = json.JSONEncoder().encode({'id': id, 'response': flask.request.data})
-  foo = query_framework(name, method='POST', message=msg)
+  query_framework(name, method='POST', message=msg)
   return 'OK'
 
 

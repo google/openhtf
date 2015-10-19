@@ -17,11 +17,9 @@
 
 
 import collections
-import inspect
 
 import mutablerecords
 
-from openhtf import conf
 from openhtf import util
 
 
@@ -29,7 +27,7 @@ class InvalidMeasurementDimensions(Exception):
   """Raised when a measurement is taken with the wrong number of dimensions."""
 
 
-class TestRecord(
+class TestRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
         {'start_time_millis': util.TimeMillis, 'end_time_millis': None,
@@ -50,7 +48,7 @@ class TestRecord(
                                                     details if details else ''))
 
 
-class PhaseRecord(
+class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
         'PhaseRecord', ['name', 'docstring', 'code'],
         {'measurement_declarations': None, 'measured_values': None,

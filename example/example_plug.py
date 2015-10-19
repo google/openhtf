@@ -19,7 +19,12 @@
 import logging
 import time
 
+import openhtf.conf as conf
 import openhtf.plugs as plugs
+
+
+conf.Declare('example_plug_increment',
+             description='Increment constant for example plug.')
 
 
 class Example(plugs.BasePlug):   # pylint: disable=no-init
@@ -36,5 +41,7 @@ class Example(plugs.BasePlug):   # pylint: disable=no-init
     return 'Example Plug Did Stuff!'
 
   def DoChangingStuff(self):
-    self.value[0] += 1
+    """Increment output successive calls."""
+    config = conf.Config()
+    self.value[0] += config.example_plug_increment
     return self.value[0]

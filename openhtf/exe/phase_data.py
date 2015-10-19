@@ -34,7 +34,7 @@ class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
 
-class PhaseData(object):
+class PhaseData(object):  # pylint: disable=too-many-instance-attributes
   """The phase data object passed to test phases as the first argument.
 
   Fields:
@@ -48,11 +48,11 @@ class PhaseData(object):
         phase.  This stack is pop'd after each phase.
     test_record: The test_record.TestRecord for the currently running test.
   """
-  def __init__(self, logger, config, plugs, test_record):
+  def __init__(self, logger, config, plugs, record):
     self.logger = logger
     self.config = config
     self.plugs = plugs
-    self.test_record = test_record
+    self.test_record = record
     self.state = {}
     self.measurements = None  # Will be populated per-phase.
     self.attachments = {}
@@ -100,12 +100,15 @@ class PhaseData(object):
         the given name.
       IOError: Raised if the given filename couldn't be opened.
     """
-    with open(filename, 'r') as f:
-      self.Attach(name if name is not None else filename, f.read(),
-                  mimetype=mimetypes.guess_type(filename)[0])
+    with open(filename, 'r') as f:  # pylint: disable=invalid-name
+      self.Attach(
+          name if name is not None else filename, f.read(),
+          mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
+              filename)[0])
 
   @contextlib2.contextmanager
   def RecordPhaseTiming(self, phase, test_state):
+    """Context manager for the execution of a single phase."""
     while hasattr(phase, 'wraps'):
       phase = phase.wraps
 
@@ -123,12 +126,12 @@ class PhaseData(object):
     test_state.phase_data.attachments = {}
     test_state.running_phase.start_time_millis = util.TimeMillis()
 
-    # Wrapper class so we can pull the result back from something we yield.
-    class ResultWrapper(object):
+    class ResultWrapper(object):  # pylint: disable=too-few-public-methods
+      """Wrapper so we can pull the result back from something we yield."""
       def __init__(self):
         self.result = None
 
-      def SetResult(self, result):
+      def SetResult(self, result):  # pylint: disable=missing-docstring
         self.result = result
     result_wrapper = ResultWrapper()
 

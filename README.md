@@ -154,3 +154,9 @@ code written to enable OpenHTF to interact with a particular type of hardware,
 whether that be a DUT itself or a piece of test equipment. OpenHTF comes
 packaged with a growing collection of useful plugs, but supports the
 creation of custom plugs as well.
+
+
+## Using OpenHTF
+The fastest way to get started is to take a look in the `example/` directory,
+where you'll find sample test scripts and plugs. In addition, many of OpenHTF's
+modules are fairly well documented inline through the use of docstrings.

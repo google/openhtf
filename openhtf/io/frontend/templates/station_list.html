@@ -7,11 +7,11 @@
 <ul>
 {% for s in stations %}
   <li>
-  <a href="/station/{{s.data.station_name}}/">
-  {{s.data.station_name}}
+  <a href="/station/{{s.data.station_id}}/">
+  {{s.data.station_id}}
   </a>
     <ul>
-      <li>{{s.data.test_type}}</li>
+      <li>{{s.data.script_name}}</li>
       <li>{{s.status}}</li>
     </ul>
   </li>

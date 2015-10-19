@@ -38,8 +38,10 @@ import openhtf.util.monitors
 import openhtf.util.units
 
 
+# pylint: disable=invalid-name
+
 # Pseudomodules.
-prompts = openhtf.io.user_input.get_prompt_manager()  # pylint: disable=invalid-name
+prompts = openhtf.io.user_input.get_prompt_manager()
 triggers = openhtf.exe.triggers
 
 

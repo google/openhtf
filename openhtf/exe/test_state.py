@@ -42,7 +42,6 @@ class TestRecordAlreadyFinishedError(Exception):
   """Raised when trying to finalize a test record that is already finished."""
 
 
-# TODO(madsci): Add ability to update dut_id after test start.
 class TestState(object):
   """ This class handles tracking the state of the test.
 
@@ -79,7 +78,6 @@ class TestState(object):
     self.phase_data = phase_data.PhaseData(_LOG, config, plugs, self.record)
     self.running_phase = None
     self.pending_phases = list(test.phases)
-    # TODO(amyxchen): Remove the 1 when HTFLogger doesn't expect a cell number.
     self.logger = htflogger.HTFLogger(self.record, 1)
 
   def AsJSON(self):
@@ -132,8 +130,6 @@ class TestState(object):
     else:
       self._state = self.State.PASS
 
-  def FinalizeRecord(self):
-    pass
 
   def GetFinishedRecord(self):
     """Get a test_record.TestRecord for the finished test.

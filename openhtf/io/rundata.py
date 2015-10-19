@@ -13,16 +13,15 @@
 # limitations under the License.
 
 
-"""Parse and create htf run data.
+"""Parse and create OpenHTF run data.
 
 Format:
-  The htf run data is in the JSON format and specifies the basic information
+  OpenHTF run data is in the JSON format and specifies the basic information
   about a running OpenHTF instance.
 
   {
-    station_name: string,
-    test_type: string,
-    test_version: string,
+    station_id: string,
+    script_name: string,
     http_port: number,
     http_host: string,  // Always localhost
     pid: number,
@@ -49,7 +48,7 @@ gflags.DEFINE_string('rundir', '/var/run/openhtf', 'Directory for runfiles.')
 
 
 class RunData(collections.namedtuple(
-    'RunData', ['station_name', 'test_type', 'test_version',
+    'RunData', ['station_id', 'script_name',
                 'http_host', 'http_port', 'pid'])):
   """Encapsulates the run data stored in an openhtf file."""
 
@@ -69,7 +68,7 @@ class RunData(collections.namedtuple(
     Return:
       The filename of this rundata.
     """
-    filename = os.path.join(directory, self.station_name)
+    filename = os.path.join(directory, self.station_id)
     with open(filename, 'w') as runfile:
       runfile.write(self.AsJSON())
     return filename

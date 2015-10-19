@@ -28,6 +28,7 @@ import openhtf
 
 from openhtf.names import *
 
+
 @plug(example=example_plug.Example)
 def example_monitor(example):
   return example.DoChangingStuff()
@@ -84,4 +85,4 @@ if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments)
   test.AddOutputCallback(OutputToJSON(
   		'./%(dut_id)s.%(start_time_millis)s', indent=4))
-  test.Execute(test_start=triggers.FrontendTestStart)
+  test.Execute(test_start=triggers.PromptForTestStart())

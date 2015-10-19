@@ -38,10 +38,10 @@ import logging
 
 import gflags
 
-from openhtf import conf
 from openhtf.exe import phase_data
 from openhtf.io import test_record
 from openhtf.util import threads
+
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
@@ -49,16 +49,12 @@ gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
 
 _LOG = logging.getLogger('htf.phasemanager')
 
+
 # Only use 'is' checks, as that does pointer comparison for strings. That makes
 # this the same as an object(), but useful when printed.
 DIDNT_FINISH = 'DIDNT_FINISH'
 
 
-# TODO(jethier): Do we really need this to be a tuple?  All we do is check if
-# phase_result is an instance of BaseException and set raised_exception based
-# on that.  Why not just save whatever we would store in phase_result and then
-# do the subclass check when we care?  It's annoying to see
-# phase_result.phase_result everywhere.
 class TestPhaseResult(collections.namedtuple(
     'TestPhaseResult', ['phase_result', 'raised_exception'])):
   """Result of a phase, and whether it raised an exception or not."""
@@ -133,7 +129,7 @@ class PhaseExecutorThread(threads.KillableThread):
 class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
-  def __init__(self, config, test, test_state):
+  def __init__(self, config, test_state):
     self._config = config
     self._test_state = test_state
     self._logger = test_state.logger
@@ -178,7 +174,7 @@ class PhaseExecutor(object):
       phase_thread.start()
       self._current_phase = phase_thread
       result_wrapper.SetResult(phase_thread.JoinOrDie())
-    
+
     if result_wrapper.result.phase_result == phase_data.PhaseResults.CONTINUE:
       self._test_state.pending_phases.pop(0)
 
