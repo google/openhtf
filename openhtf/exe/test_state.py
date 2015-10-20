@@ -26,7 +26,7 @@ from openhtf.exe import phase_data
 from openhtf.io import test_record
 from openhtf.io import user_input
 from openhtf import util
-from openhtf.util import htflogger
+from openhtf.util import logs
 
 
 _LOG = logging.getLogger(__name__)
@@ -76,10 +76,14 @@ class TestState(object):
             'filename': test.filename,
             'docstring': test.docstring
             })
-    self.phase_data = phase_data.PhaseData(_LOG, config, plugs, self.record)
+    self.logger = logging.getLogger(test.filename)
+    self.logger.setLevel(logging.DEBUG)  # Let the handler do the filtering.
+    self.logger.addHandler(logs.RecordHandler(self.record))
+    self.phase_data = phase_data.PhaseData(self.logger, config, plugs,
+                                           self.record)
     self.running_phase = None
     self.pending_phases = list(test.phases)
-    self.logger = htflogger.HTFLogger(self.record, 1)
+    
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""

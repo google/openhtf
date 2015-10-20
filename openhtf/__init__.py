@@ -35,7 +35,7 @@ from openhtf.exe import test_state
 from openhtf.exe import triggers
 from openhtf.io import http_api
 from openhtf.io import rundata
-from openhtf.util import measurements
+from openhtf.util import measurements, logs
 
 
 FLAGS = gflags.FLAGS
@@ -190,7 +190,7 @@ class Test(object):
       print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
       sys.exit(1)
 
-    util.setup_logger()
+    logs.setup_logger()
 
     if loop is not None:
       self.loop = loop
