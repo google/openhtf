@@ -38,10 +38,9 @@ from openhtf.io import rundata
 from openhtf.util import measurements
 
 
-__version__ = util.get_version()
-
-
 FLAGS = gflags.FLAGS
+__version__ = util.get_version()
+_LOG = logging.getLogger(__name__)
 
 
 class InvalidTestPhaseError(Exception):
@@ -191,6 +190,8 @@ class Test(object):
       print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
       sys.exit(1)
 
+    util.setup_logger()
+
     if loop is not None:
       self.loop = loop
     conf.Load()
@@ -202,7 +203,7 @@ class Test(object):
                     FLAGS.http_port,
                     os.getpid()).SaveToFile(FLAGS.rundir)
 
-    logging.info('Executing test: %s', self.filename)
+    _LOG.info('Executing test: %s', self.filename)
     executor = exe.TestExecutor(config, self, test_start, test_stop)
     server = http_api.Server(executor)
 

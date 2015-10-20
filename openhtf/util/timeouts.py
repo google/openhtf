@@ -20,6 +20,7 @@ import logging
 import threading
 import time
 
+_LOG = logging.getLogger(__name__)
 
 class PolledTimeout(object):
   """An object which tracks if a timeout has expired."""
@@ -414,7 +415,7 @@ def ExecuteAfterDelay(time_s, func, *args, **kwargs):
     try:
       func(*args, **kwargs)
     except Exception:  # pylint: disable=broad-except
-      logging.exception('Error executing %s after %s expires.', func, timeout)
+      _LOG.exception('Error executing %s after %s expires.', func, timeout)
   if timeout.remaining is not None:
     thread = threading.Thread(target=Target)
     thread.start()

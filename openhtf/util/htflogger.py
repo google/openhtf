@@ -78,10 +78,10 @@ class HTFLogger(logging.LoggerAdapter):
         {'cell_number': cell_number})
     self._test_record = test_record
     self._handler = HTFLoggerHandler(test_record)
-    self.logger.setLevel(logging.DEBUG)
     self.logger.addFilter(MAC_FILTER)
     self.logger.addHandler(self._handler)
-
+    openhtfLog = logging.getLogger('OpenHTF')
+    self.logger.setLevel(openhtfLog.getEffectiveLevel())
   def __del__(self):  # pylint: disable=invalid-name
     self.logger.removeHandler(self._handler)
 

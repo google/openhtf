@@ -99,6 +99,7 @@ class AdbDevice(object):
 
   def Close(self):
     """Close the ADB connection."""
+    self.filesync_service.Close()
     self._adb_connection.Close()
 
   def Install(self, apk_path, destination_dir=None, timeout_ms=None):

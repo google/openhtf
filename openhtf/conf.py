@@ -62,6 +62,7 @@ ConfigurationDeclaration = (  # pylint: disable=invalid-name
         ['name'],
         {'description': None, 'default_value': None, 'optional': True}))
 
+_LOG = logging.getLogger(__name__)
 
 class ConfigurationNotLoadedError(Exception):
   """Raised if a configuration variable is accessed before it is loaded.
@@ -257,7 +258,7 @@ class ConfigModel(object):
 
     try:
       filename = config_file or FLAGS.config
-      logging.info('Loading from config: %s', filename)
+      _LOG.info('Loading from config: %s', filename)
 
       with config_loader(filename) as config_file:
         data = yaml.safe_load(config_file)
@@ -272,12 +273,12 @@ class ConfigModel(object):
         self._state[key] = val
 
       self._loaded = True
-      logging.debug('Configuration loaded: %s', self._state)
+      _LOG.debug('Configuration loaded: %s', self._state)
     except yaml.YAMLError as exception:
-      logging.exception('Failed to load yaml file: %s', filename)
+      _LOG.exception('Failed to load yaml file: %s', filename)
       raise ConfigurationInvalidError(filename, exception)
     except IOError as exception:
-      logging.exception('Configuration failed loaded: %s', filename)
+      _LOG.exception('Configuration failed loaded: %s', filename)
       raise ConfigurationMissingError(filename, exception)
 
     return True
@@ -588,18 +589,18 @@ def InjectPositionalArgs(method):  # pylint: disable=invalid-name
 
     # Check for keyword args with names that are in the config so we can warn.
     for bad_name in set(kwarg_names) & set(config.dictionary.keys()):
-      logging.warning('Keyword arg %s not set from configuration, but is a '
-                      'configuration key', bad_name)
+      _LOG.warning('Keyword arg %s not set from configuration, but is a '
+                   'configuration key', bad_name)
 
     # Set positional args from configuration values.
     config_args = {name: config[name] for name in arg_names if name in config}
 
     for overridden in set(kwargs) & set(config_args):
-      logging.warning('Overriding provided kwarg %s=%s with value %s from '
-                      'configuration', overridden, kwargs[overridden],
-                      config_args[overridden])
+      _LOG.warning('Overriding provided kwarg %s=%s with value %s from '
+                   'configuration', overridden, kwargs[overridden],
+                   config_args[overridden])
     kwargs.update(config_args)
-    logging.info('Invoking %s with %s', method.__name__, kwargs)
+    _LOG.info('Invoking %s with %s', method.__name__, kwargs)
     return method(**kwargs)
 
   # We have to check for a 'self' parameter explicitly because Python doesn't

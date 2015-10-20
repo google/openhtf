@@ -53,11 +53,13 @@ def WidgetTestPhase(test):
 import collections
 import inspect
 import itertools
+import logging
 
 # from openhtf.io import records
 from openhtf.io import test_record
 from openhtf.util import data
 
+_LOG = logging.getLogger(__name__)
 
 class InvalidDimensionsError(Exception):
   """Raised when there is a problem with measurement dimensions."""
@@ -171,7 +173,7 @@ class MeasuredValue(object):
   Dimensional MeasuredValues can be converted to dicts, but undimensioned
   MeasuredValues will raise InvalidDimensionsError if this is attempted.
   """
- 
+
   def __init__(self, name, num_dimensions):
     self.name = name
     self.num_dimensions = num_dimensions
@@ -180,7 +182,7 @@ class MeasuredValue(object):
     self.values = collections.OrderedDict()
     self.value = None
 
-  def __iter__(self):
+  def __iter__(self):  # pylint: disable=invalid-name
     if self.num_dimesions:
       return self.values.iteritems()
     raise InvalidDimensionsError(
@@ -201,24 +203,24 @@ class MeasuredValue(object):
               self.num_dimensions, value))
 
     if self.value is not None:
-      logging.warning(
+      _LOG.warning(
           'Overriding previous measurement %s value of %s with %s',
           self.name, self.value, value)
     self.value = value
  
-  def __setitem__(self, coordinates, value):
+  def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
     coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
     if coordinates_len != self.num_dimensions:
       raise InvalidDimensionsError(
           'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
                                                            coordinates_len))
     if coordinates in self.values:
-      logging.warning(
+      _LOG.warning(
           'Overriding previous measurement %s[%s] value of %s with %s',
           self.name, coordinates, self.values[coordinates], value)
     self.values[coordinates] = value
 
-  def __getitem__(self, coordinates):
+  def __getitem__(self, coordinates):  # pylint: disable=invalid-name
     return self.values[coordinates]
 
   def GetValue(self):
@@ -298,7 +300,7 @@ class Collection(object):  # pylint: disable=too-few-public-methods
     if name not in self._declarations:
       raise NotAMeasurementError('Not a measurement', name)
 
-  def __iter__(self):
+  def __iter__(self):  # pylint: disable=invalid-name
     def _GetMeasValue(item):
       return item[0], item[1].GetValue()
     return itertools.imap(_GetMeasValue, self._values.iteritems())
@@ -318,11 +320,11 @@ class Collection(object):  # pylint: disable=too-few-public-methods
       raise MeasurementNotSetError('Measurement not yet set', name)
     return self._values[name].GetValue()
 
-  def __setitem__(self, name, value):
+  def __setitem__(self, name, value):  # pylint: disable=invalid-name
     raise NotImplementedError(
         'Measurement values can only be set via attributes.')
 
-  def __getitem__(self, name):
+  def __getitem__(self, name):  # pylint: disable=invalid-name
     """When accessed as a dictionary, get the actual value(s) stored."""
     if name in self._values:
       return self._values[name].GetValue()

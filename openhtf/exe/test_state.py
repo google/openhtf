@@ -28,7 +28,8 @@ from openhtf.io import user_input
 from openhtf import util
 from openhtf.util import htflogger
 
-_LOG = logging.getLogger('openhtf.test_state')
+
+_LOG = logging.getLogger(__name__)
 
 
 class BlankDutIdError(Exception):

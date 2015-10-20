@@ -17,9 +17,24 @@
 
 import logging
 import time
+import sys
+from datetime import datetime
 from pkg_resources import get_distribution, DistributionNotFound
 
+import gflags
 import mutablerecords
+
+
+FLAGS = gflags.FLAGS
+
+gflags.DEFINE_enum('verbosity',
+                   'warning', ['debug', 'info', 'warning', 'error', 'critical'],
+                   'Console verbosity level.')
+gflags.DEFINE_boolean('quiet', False, '')
+gflags.DEFINE_string('log_file', '', 'log files')
+gflags.DEFINE_enum('log_level', 'warning', ['debug', 'info', 'warning', 'error',
+                                            'critical'],
+                   'Logging verbosity level.')
 
 
 def LogEveryNToLogger(n, logger, level, message, *args):  # pylint: disable=invalid-name
@@ -65,7 +80,7 @@ def convert_to_dict(obj):
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    obj = { k: convert_to_dict(v) for k, v in obj.iteritems() }
+    obj = {k: convert_to_dict(v) for k, v in obj.iteritems()}
   elif isinstance(obj, list):
     obj = [convert_to_dict(value) for value in obj]
   elif isinstance(obj, tuple):
@@ -85,8 +100,33 @@ def get_version():
 
   try:
     version = get_distribution('openhtf')
-  
+
   except DistributionNotFound:
     version = 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
 
   return version
+
+
+def setup_logger():
+  """Configure logging for OpenHTF based on command line flags."""
+  logger = logging.getLogger('openhtf')
+  logger.propagate = False
+  logger.setLevel(logging.DEBUG)
+  formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+  if FLAGS.log_file:
+    try:
+      cur_time = datetime.utcnow().strftime('%Y-%m-%d-%H:%M:%S.%f')[:-3]
+      file_handler = logging.FileHandler(FLAGS.log_file + cur_time)
+      file_handler.setFormatter(formatter)
+      file_handler.setLevel(FLAGS.log_level.upper())
+      logger.addHandler(file_handler)
+    except IOError as exception:
+      print ('Failed to set up log file due to error: %s. '
+             'Continuing anyway.' % exception)
+
+  if not FLAGS.quiet:
+    console_handler = logging.StreamHandler(stream=sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(FLAGS.verbosity.upper())
+    logger.addHandler(console_handler)

@@ -29,6 +29,7 @@ from openhtf import util
 from openhtf.io import test_record
 from openhtf.util import measurements
 
+_LOG = logging.getLogger(__name__)
 
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
@@ -81,8 +82,8 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     if name in self.attachments:
       raise DuplicateAttachmentError('Duplicate attachment for %s' % name)
     if mimetype and not mimetypes.guess_extension(mimetype):
-      logging.warning('Unrecognized MIME type: "%s" for attachment "%s"',
-                      mimetype, name)
+      _LOG.warning('Unrecognized MIME type: "%s" for attachment "%s"',
+                   mimetype, name)
     self.attachments[name] = test_record.Attachment(data, mimetype)
 
   def AttachFromFile(self, filename, name=None, mimetype=None):

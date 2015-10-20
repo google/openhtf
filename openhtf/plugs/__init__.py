@@ -91,6 +91,7 @@ self._my_config having a value of 'my_config_value'.
 import functools
 import logging
 
+_LOG = logging.getLogger(__name__)
 
 class PlugOverrideError(Exception):
   """Raised when a plug would be overridden by a kwarg."""
@@ -217,13 +218,12 @@ class PlugManager(object):
     """
     plug_map = {}
     for plug, plug_type in plug_type_map.iteritems():
-      logging.info('Instantiating %s for plug %s', plug_type,
-                   plug)
+      _LOG.info('Instantiating %s for plug %s', plug_type, plug)
       try:
         plug_map[plug] = plug_type()
       except Exception:  # pylint: disable=broad-except
-        logging.exception('Exception instantiating %s for plug %s:',
-                          plug_type, plug)
+        _LOG.exception('Exception instantiating %s for plug %s:',
+                       plug_type, plug)
         raise
     return cls(plug_map)
 
@@ -249,6 +249,5 @@ class PlugManager(object):
       try:
         plug.TearDown()
       except Exception:  # pylint: disable=broad-except
-        logging.warning('Exception calling TearDown on %s:', plug,
-                        exc_info=True)
+        _LOG.warning('Exception calling TearDown on %s:', plug, exc_info=True)
     self.plug_map.clear()

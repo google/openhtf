@@ -44,6 +44,7 @@ from openhtf.plugs.usb import fastboot_device
 from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 
+_LOG = logging.getLogger(__name__)
 
 def AutoStart():  # pylint: disable=invalid-name
   """Start the test immediately with a dummy DUT ID."""
@@ -79,7 +80,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
       except usb_exceptions.DeviceNotFoundError:
         pass
       except usb_exceptions.MultipleInterfacesFoundError:
-        logging.warning('Multiple Android devices found, ignoring!')
+        _LOG.warning('Multiple Android devices found, ignoring!')
       finally:
         if handle:
           handle.Close()
