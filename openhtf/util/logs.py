@@ -24,12 +24,27 @@ show up in the HTF output.
 import logging
 import os
 import re
+import sys
 import traceback
+from datetime import datetime
+
+import gflags
 
 from openhtf.io import test_record
 
-# Logging setup
-HTF_LOGGER_PREFIX = 'htf'
+
+FLAGS = gflags.FLAGS
+
+gflags.DEFINE_enum('verbosity',
+                   'warning', ['debug', 'info', 'warning', 'error', 'critical'],
+                   'Console verbosity level.')
+gflags.DEFINE_boolean('quiet', False, '')
+gflags.DEFINE_string('log_file', '', 'log files')
+gflags.DEFINE_enum('log_level', 'warning', ['debug', 'info', 'warning', 'error',
+                                            'critical'],
+                   'Logging verbosity level.')
+
+LOGGER_PREFIX = 'openhtf'
 
 
 class MacAddressLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
@@ -59,64 +74,13 @@ class MacAddressLogFilter(logging.Filter):  # pylint: disable=too-few-public-met
 MAC_FILTER = MacAddressLogFilter()
 
 
-# TODO(amyxchen): Once we remove cells, we really don't need this to be
-# a LoggerAdapter anymore, we should be able to do everything we need with
-# just a custom Handler.
-class HTFLogger(logging.LoggerAdapter):
-  """A standard interface for providing additional logging methods.
-
-  This class is passed to a phase via the 'logger' attribute of the phase_data
-  object (the first argument passed to test phases).  It provides standard
-  logging methods (debug, info, log, warning, error, critical, exception).  It
-  also provides an additional HTF specific logging mechanism for logging
-  failure codes.
-  """
-
-  def __init__(self, test_record, cell_number, prefix=HTF_LOGGER_PREFIX):
-    super(HTFLogger, self).__init__(
-        logging.getLogger(prefix).getChild('cells.%s' % cell_number),
-        {'cell_number': cell_number})
-    self._test_record = test_record
-    self._handler = HTFLoggerHandler(test_record)
-    self.logger.setLevel(logging.DEBUG)
-    self.logger.addFilter(MAC_FILTER)
-    self.logger.addHandler(self._handler)
-
-  def __del__(self):  # pylint: disable=invalid-name
-    self.logger.removeHandler(self._handler)
-
-  def __str__(self):
-    return '<HTFLogger for cell %s: %s>' % (self.extra['cell_number'],
-                                            self._test_record.dut_id)
-  __repr__ = __str__
-
-  def AddFailureCode(self, code, details):
-    """Adds a failure code to the TestRecord's metadata 'failure_codes' key.
-
-    This is useful if a test is going to return from a phase either via ABORT or
-    FAIL so that we can make some sense as to why they bailed.
-
-    Args:
-      code: The failure code, should be a single word (no spaces) indicating
-          what caused the failure. Something like: NO_WIFI_SIGNAL.
-      details: An optional full description of the failure.
-
-    Raises:
-      ValueError: If code is not provided.
-    """
-    if not code:
-      raise ValueError('Invalid Failure Code', code)
-
-    self._test_record.failure_codes.append((code, details))
-
-
-class HTFLoggerHandler(logging.Handler):
+class RecordHandler(logging.Handler):
   """A handler to save logs to an HTF TestRecord."""
 
   def __init__(self, test_record):
-    super(HTFLoggerHandler, self).__init__()
-    self.setLevel(logging.DEBUG)
+    super(RecordHandler, self).__init__(level=logging.DEBUG)
     self._test_record = test_record
+    self.addFilter(MAC_FILTER)
 
   def emit(self, record):
     """Save a logging.LogRecord to our test record.
@@ -141,7 +105,28 @@ class HTFLoggerHandler(logging.Handler):
     self._test_record.log_records.append(log_record)
 
 
-# Add our filter to the root loggers we know about, and initialize them.
-logging.getLogger().addFilter(MAC_FILTER)
-logging.getLogger(HTF_LOGGER_PREFIX).addFilter(MAC_FILTER)
-logging.getLogger(HTF_LOGGER_PREFIX).getChild('cells').addFilter(MAC_FILTER)
+def setup_logger():
+  """Configure logging for OpenHTF based on command line flags."""
+  logger = logging.getLogger('openhtf')
+  logger.propagate = False
+  logger.setLevel(logging.DEBUG)
+  formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+  if FLAGS.log_file:
+    try:
+      cur_time = datetime.utcnow().strftime('%Y-%m-%d-%H:%M:%S.%f')[:-3]
+      file_handler = logging.FileHandler(FLAGS.log_file + cur_time)
+      file_handler.setFormatter(formatter)
+      file_handler.setLevel(FLAGS.log_level.upper())
+      file_handler.addFilter(MAC_FILTER)
+      logger.addHandler(file_handler)
+    except IOError as exception:
+      print ('Failed to set up log file due to error: %s. '
+             'Continuing anyway.' % exception)
+
+  if not FLAGS.quiet:
+    console_handler = logging.StreamHandler(stream=sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(FLAGS.verbosity.upper())
+    console_handler.addFilter(MAC_FILTER)
+    logger.addHandler(console_handler)

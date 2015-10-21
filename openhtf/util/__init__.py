@@ -17,6 +17,7 @@
 
 import logging
 import time
+from datetime import datetime
 from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
@@ -65,7 +66,7 @@ def convert_to_dict(obj):
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    obj = { k: convert_to_dict(v) for k, v in obj.iteritems() }
+    obj = {k: convert_to_dict(v) for k, v in obj.iteritems()}
   elif isinstance(obj, list):
     obj = [convert_to_dict(value) for value in obj]
   elif isinstance(obj, tuple):
@@ -85,7 +86,7 @@ def get_version():
 
   try:
     version = get_distribution('openhtf')
-  
+
   except DistributionNotFound:
     version = 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
 

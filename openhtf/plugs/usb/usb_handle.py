@@ -27,10 +27,9 @@ import logging
 
 from openhtf.plugs.usb import usb_exceptions
 
-_LOG = logging.getLogger('usb_handles')
-
 DEFAULT_TIMEOUT_MS = 5000
 FLUSH_READ_SIZE = 1024 * 64
+_LOG = logging.getLogger(__name__)
 
 
 def RequiresOpenHandle(method):  # pylint: disable=invalid-name

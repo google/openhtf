@@ -55,7 +55,6 @@ def _open_usb_handle(**kwargs):
   if conf.Config().usb_server:
     return None
   else:
-    print 'Opening LibUsbHandle with: %s' % kwargs
     return local_usb.LibUsbHandle.Open(**kwargs)
 
 
