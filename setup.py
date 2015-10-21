@@ -57,7 +57,7 @@ requires = [    # pylint: disable=invalid-name
 
 setup(
     name='openhtf',
-    version='0.9',
+    version='1.0',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
     author_email='madsci@google.com',
