@@ -15,87 +15,208 @@
 
 """The main OpenHTF entry point."""
 
+import inspect
+import itertools
 import logging
 import os
 import signal
 import socket
 import sys
+from json import JSONEncoder
 
 import gflags
+import mutablerecords
 
-from openhtf import executor
-from openhtf import http_handler
-from openhtf import rundata
-from openhtf import htftest
-from openhtf import user_input
-from openhtf.util import configuration
+from openhtf import conf
+from openhtf import exe
+from openhtf import plugs
+from openhtf import util
+from openhtf.exe import test_state
+from openhtf.exe import triggers
+from openhtf.io import http_api
+from openhtf.io import rundata
+from openhtf.util import measurements, logs
 
 
 FLAGS = gflags.FLAGS
-FLAGS(sys.argv)
+__version__ = util.get_version()
+_LOG = logging.getLogger(__name__)
 
 
-# Pseudomodule for shared user input prompt state.
-prompter = user_input.get_prompter()  # pylint: disable=invalid-name
-
-class InvalidTestError(Exception):
-  """Raised when a test is registered incomplete or otherwise invalid."""
+class InvalidTestPhaseError(Exception):
+  """Raised when an invalid method is decorated."""
 
 
-def execute_test(metadata, phases):
-  """Start the OpenHTF framework running with the given test.
+class OutputToJSON(JSONEncoder):
+  """Return an output callback that writes JSON Test Records.
+
+  An example filename_pattern might be:
+    '/data/test_records/%(dut_id)s.%(start_time_millis)s'
+
+  To use this output mechanism:
+    test = openhtf.Test(PhaseOne, PhaseTwo)
+    test.AddOutputCallback(openhtf.OutputToJson(
+        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
 
   Args:
-    metadata: A TestMetadata instance.
-    phases: The ordered list of phases to execute for this test.
+    filename_pattern: A format string specifying the filename to write to,
+      will be formatted with the Test Record as a dictionary.
+  """
 
-  Raises:
-    InvalidTestError: Raised if the test is invalid for some reason.
+  def __init__(self, filename_pattern, **kwargs):
+    super(OutputToJSON, self).__init__(**kwargs)
+    self.filename_pattern = filename_pattern
 
-  Example:
-    METADATA = htftest.TestMetadata(name='test')
-    etc...
+  def default(self, obj):
+    # Handle a few custom objects that end up in our output.
+    if isinstance(obj, BaseException):
+      # Just repr exceptions.
+      return repr(obj)
+    if isinstance(obj, conf.Config):
+      return obj.dictionary
+    if obj in test_state.TestState.State:
+      return str(obj)
+    return super(OutputToJSON, self).default(obj)
 
-    def PhaseOne(test):
-      # Integrate more whidgets
+  def __call__(self, test_record):  # pylint: disable=invalid-name
+    as_dict = util.convert_to_dict(test_record)
+    with open(self.filename_pattern % as_dict, 'w') as f:  # pylint: disable=invalid-name
+      f.write(self.encode(as_dict))
 
-    def PhaseTwo(test):
-      # Analyze whidget integration status
 
-    htftest.ExecuteTest(METADATA, (PhaseOne, PhaseTwo))
+def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
+  """Decorator to wrap a test phase function with the given options.
+
+  Args:
+    timeout_s: Timeout to use for the phase, in seconds.
+    run_if: Callback that decides whether to run the phase or not.  The
+      callback will be passed the phase_data the phase would be run with.
 
   Returns:
-    None when the test framework has exited.
+    A wrapper function that takes a phase_func and returns a
+        TestPhaseInfo for it with the given options set.
   """
-  if not metadata.proto.HasField('version_string'):
-    raise InvalidTestError('Version is required.')
 
-  configuration.Load()
+  def Wrap(phase_func):  # pylint: disable=invalid-name
+    """Attach the given options to the phase_func."""
 
-  config = configuration.HTFConfig()
-  rundata.RunData(metadata.proto.name,
-                  len(config.cell_info),
-                  config.test_type,
-                  metadata.proto.version_string,
-                  socket.gethostname(),
-                  FLAGS.http_port,
-                  os.getpid()).SaveToFile(FLAGS.rundir)
+    # Test Phases must take at least one argument (the phase data tuple).
+    if len(inspect.getargspec(phase_func).args) < 1:
+      raise InvalidTestPhaseError(phase_func, 'Not enough args')
 
-  test = htftest.HTFTest(metadata, phases)
-  logging.info('Executing test: %s', test.name)
-  starter = executor.CellExecutorStarter(test)
-  handler = http_handler.HttpHandler(test.metadata, starter.cells)
+    if timeout_s is not None:
+      phase_func.timeout_s = timeout_s
+    if run_if is not None:
+      phase_func.run_if = run_if
+    return phase_func
+  return Wrap
 
-  def sigint_handler(*dummy):
-    """Handle SIGINT by stopping running cells."""
-    print "Received SIGINT. Stopping everything."
-    starter.Stop()
-    handler.Stop()
-  signal.signal(signal.SIGINT, sigint_handler)
 
-  handler.Start()
-  starter.Start()
+class Test(object):
+  """An object that represents an OpenHTF test.
 
-  starter.Wait()
-  handler.Stop()
-  return
+  This object encapsulates the static test state including an ordered tuple of
+  phases to execute.
+
+  Args:
+    *phases: The ordered list of phases to execute for this test.
+  """
+
+  def __init__(self, *phases):
+    """Creates a new Test to be executed.
+    Args:
+      *phases: The ordered list of phases to execute for this test.
+    """
+    self.loop = False
+    self.phases = phases
+    self.output_callbacks = []
+
+    # Pull some metadata from the frame in which this Test was created.
+    frame_record = inspect.stack()[1]
+    self.filename = os.path.basename(frame_record[1])
+    self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
+    self.code = inspect.getsource(frame_record[0])
+    for phase in self.phases:
+      phase.is_phase_func = True
+      while hasattr(phase, 'wraps'):
+        phase = phase.wraps
+        phase.is_phase_func = True
+
+  @property
+  def plug_type_map(self):
+    """Returns dict mapping name to plug type for all phases."""
+    plug_type_map = {}
+    for plug, plug_type in itertools.chain.from_iterable(
+        phase.plugs.iteritems() for phase in self.phases
+        if hasattr(phase, 'plugs')):
+      if (plug in plug_type_map and
+          plug_type is not plug_type_map[plug]):
+        raise plugs.DuplicatePlugError(
+            'Duplicate plug with different type: %s' % plug)
+      plug_type_map[plug] = plug_type
+    return plug_type_map
+
+  def AddOutputCallback(self, callback):
+    """Add the given function as an output module to this test."""
+    self.output_callbacks.append(callback)
+
+  def OutputTestRecord(self, test_record):
+    """Feed the record of this test to all output modules."""
+    for output_cb in self.output_callbacks:
+      output_cb(test_record)
+
+  def Execute(self, loop=None, test_start=triggers.AutoStart,
+              test_stop=triggers.AutoStop):
+    """Start the OpenHTF framework running with the given test.
+
+    Executes this test, iterating over self.phases and executing them.
+
+    Example:
+
+      def PhaseOne(test):
+        # Integrate more widgets
+
+      def PhaseTwo(test):
+        # Analyze widget integration status
+
+      Test(PhaseOne, PhaseTwo).Execute()
+
+    Returns:
+      None when the test framework has exited.
+    """
+    try:
+      FLAGS(sys.argv)  # parse flags
+    except gflags.FlagsError, e:  # pylint: disable=invalid-name
+      print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
+      sys.exit(1)
+
+    logs.setup_logger()
+
+    if loop is not None:
+      self.loop = loop
+    conf.Load()
+
+    config = conf.Config()
+    rundata.RunData(config.station_id,
+                    self.filename,
+                    socket.gethostname(),
+                    FLAGS.http_port,
+                    os.getpid()).SaveToFile(FLAGS.rundir)
+
+    _LOG.info('Executing test: %s', self.filename)
+    executor = exe.TestExecutor(config, self, test_start, test_stop)
+    server = http_api.Server(executor)
+
+    def sigint_handler(*dummy):
+      """Handle SIGINT by stopping running executor and handler."""
+      print "Received SIGINT. Stopping everything."
+      executor.Stop()
+      server.Stop()
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    server.Start()
+    executor.Start()
+
+    executor.Wait()
+    server.Stop()
+    return

@@ -15,18 +15,15 @@
 
 """Data descriptors for OpenHTF.
 
-Need to describe some data? Use a data descriptor!
-
-Pass one of these into OpenHTF parameters, config definitions, resource
-creation, or anything that accepts data descriptors to describe some piece of
-data. These descriptors handle type-specific and generic validation added via
-AddValidator and any capability added via AddCapability.
+Need to describe some data? Use a data descriptor! These descriptors handle
+type-specific and generic validation added via AddValidator and any capability
+added via AddCapability.
 
 For accepting these descriptors, when you need to do something more than
 verification, create a map from each type supported to a function that handles
 the descriptor and executes code specific to your functionality. For instance,
-parameters take one descriptor and map it to a class that handles modifying
-TestRun protos with the limits, value, verification result, etc. If you don't
+measurements take one descriptor and map it to a class that handles modifying
+TestRecords with the limits, value, verification result, etc. If you don't
 need anything other than verification, like configuration, no extra code is
 necessary.
 
@@ -323,13 +320,6 @@ class Descriptor(object):
     return type_cls
 
 
-class OptionalDescriptor(Descriptor):
-  """Used to describe optional data going into other descriptors."""
-
-  def __init__(self):
-    super(OptionalDescriptor, self).__init__()
-    self._optional = True
-
 # Built-in descriptors:
 
 
@@ -543,7 +533,7 @@ class InRange(Validator):
 
 
 @Descriptor.AddValidator
-class Matches(Validator):
+class Equals(Validator):
   """Validates that value == expected."""
 
   def __init__(self, expected):
@@ -566,7 +556,8 @@ class Matches(Validator):
     return True
 
   def __str__(self):
-    return 'Matches(%s)' % self.expected
+    return '<%s: %s>' % (type(self).__name__, self.expected)
+  __repr__ = __str__
 
 
 @Descriptor.AddValidator
@@ -608,6 +599,3 @@ class Enum(Validator):
   def __str__(self):
     return 'Enum(%s)' % self.valid_values
 
-
-# Aliases
-Optional = OptionalDescriptor

@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.swp
 
 # Python dist/packaging
 .Python
@@ -24,9 +25,12 @@ var/
 env/
 venv/
 
-
 # built protos
 *pb2.py
 
 # node stuff
 node_modules/
+
+# Sublime Text stuff
+*.sublime-project
+*.sublime-workspace

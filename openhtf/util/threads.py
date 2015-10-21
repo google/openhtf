@@ -20,8 +20,9 @@ import functools
 import logging
 import threading
 
+_LOG = logging.getLogger(__name__)
 
-class ThreadTerminationError(BaseException):
+class ThreadTerminationError(SystemExit):
   """Sibling of SystemExit, but specific to thread termination."""
 
 
@@ -49,12 +50,12 @@ class ExceptionSafeThread(threading.Thread):
     try:
       self._ThreadProc()
     except Exception as exception:
-      logging.exception('Thread raised an exception: %s', self.name)
-      self._ThreadException(exception)
-      raise
+      if not self._ThreadException(exception):
+        logging.exception('Thread raised an exception: %s', self.name)
+        raise
     finally:
       self._ThreadFinished()
-      logging.debug('Thread finished: %s', self.name)
+      _LOG.debug('Thread finished: %s', self.name)
 
   def _ThreadProc(self):
     """The method called when executing the thread."""
@@ -63,7 +64,10 @@ class ExceptionSafeThread(threading.Thread):
     """The method called once _ThreadProc has finished."""
 
   def _ThreadException(self, exception):
-    """The method called if _ThreadProc raises an exception."""
+    """The method called if _ThreadProc raises an exception.
+  
+    To suppress the exception, return True from this method.
+    """
 
 
 class KillableThread(ExceptionSafeThread):
@@ -88,6 +92,10 @@ class KillableThread(ExceptionSafeThread):
       # Something bad happened, call with a NULL exception to undo.
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
       raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
+
+  def _ThreadException(self, exception):
+    """Suppress the exception when we're Kill()'d."""
+    return isinstance(exception, ThreadTerminationError)
 
 
 class NoneByDefaultThreadLocal(threading.local):  # pylint: disable=too-few-public-methods

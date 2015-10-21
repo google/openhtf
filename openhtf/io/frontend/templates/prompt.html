@@ -1,0 +1,11 @@
+{% if 'prompt' in state %}
+  {{ state.prompt.message }}
+  {% if state.prompt.text_input %}
+    <input type="text"
+           id="prompt_field"
+           onkeydown="javascript:enter_check('{{state.prompt.id}}');">
+    <span class="ok">
+      <a href="javascript:submit('{{state.prompt.id}}');">OK</a>
+    </span>
+  {% endif %}
+{% endif %}

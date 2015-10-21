@@ -16,59 +16,73 @@
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
-python ./hello_world.py --openhtf_config ./hello_world.yaml
+python ./hello_world.py --config ./hello_world.yaml
 """
 
 
+import tempfile
 import time
 
-import example_capability
+import example_plug
 import openhtf
 
-from openhtf import htftest
-import openhtf.capabilities as capabilities
-from openhtf.util import parameters
+from openhtf.names import *
 
 
-METADATA = htftest.TestMetadata(name='openhtf_example')
-METADATA.SetVersion(1)
-METADATA.Doc('Example tester')
-
-METADATA.AddParameter('favorite_number').Number().InRange(0, 10).Doc(
-    "Example numeric parameter.")
-METADATA.AddParameter('favorite_word').String().MatchesRegex(r'elaborate').Doc(
-    '''Example string parameter.''')
+@plug(example=example_plug.Example)
+def example_monitor(example):
+  return example.DoChangingStuff()
 
 
-@parameters.AddParameters(
-    parameters.TestParameterDescriptor(
+@measures(
+    Measurement(
         'widget_type').String().MatchesRegex(r'.*Widget$').Doc(
-            '''This phase parameter tracks the type of widgets.'''))
-@parameters.AddParameters(
-    [parameters.TestParameterDescriptor(
-        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
-@capabilities.requires(example=example_capability.Example)
+            '''This measurement tracks the type of widgets.'''))
+@plug(example=example_plug.Example)
 def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')
-  test.parameters.widget_type = openhtf.prompter.DisplayPrompt(
-      'What\'s the widget type?')
+  test.measurements.widget_type = prompts.DisplayPrompt(
+      'What\'s the widget type?', text_input=True)
   test.logger.info('Example says: %s', example.DoStuff())
 
 
-def set_params(test):
-  """Test phase that sets a parameter."""
-  test.parameters.favorite_number = 9
+# Timeout if this phase takes longer than 10 seconds.
+@TestPhase(timeout_s=10)
+@measures(
+    [Measurement(
+        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
+@monitors('monitor_measurement', example_monitor)
+def set_measurements(test):
+  """Test phase that sets a measurement."""
+  test.measurements.level_none = 0
   time.sleep(2)
-  test.parameters.favorite_word = 'Elaborate'
+  test.measurements.level_some = 8
   time.sleep(2)
-  test.parameters.level_none = 0
+  test.measurements.level_all = 9
   time.sleep(2)
-  test.parameters.level_some = 8
-  time.sleep(2)
-  test.parameters.level_all = 9
-  time.sleep(2)
+
+
+@measures([
+    Measurement('dimensions').WithDimensions(UOM['HERTZ']),
+    Measurement('lots_of_dims').WithDimensions(
+        UOM['HERTZ'], UOM['BYTE'], UOM['RADIAN'])])
+def dimensions(test):
+  for dim in range(5):
+    test.measurements.dimensions[dim] = 1 << dim
+  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):
+    test.measurements.lots_of_dims[x, y, z] = x + y + z
+
+def attachments(test):
+  test.Attach('test_attachment', 'This is test attachment data.')
+  with tempfile.NamedTemporaryFile() as f:
+    f.write('This is a file attachment')
+    f.flush()
+    test.AttachFromFile(f.name)
 
 
 if __name__ == '__main__':
-  openhtf.execute_test(METADATA, [hello_world, set_params])
+  test = openhtf.Test(hello_world, set_measurements, dimensions, attachments)
+  test.AddOutputCallback(OutputToJSON(
+  		'./%(dut_id)s.%(start_time_millis)s', indent=4))
+  test.Execute(test_start=triggers.PromptForTestStart())
