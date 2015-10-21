@@ -1,6 +1,6 @@
 **DISCLAIMER:** This is not an official Google product.
 
-# OpenHTF [![Build Status](https://travis-ci.org/google/openhtf.svg?branch=master)](https://travis-ci.org/google/openhtf)
+# OpenHTF  [![Build Status](https://travis-ci.org/google/openhtf.svg?branch=master)](https://travis-ci.org/google/openhtf)
 The open-source hardware testing framework.
 
 
