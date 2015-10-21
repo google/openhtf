@@ -19,7 +19,7 @@ test, it needs a way to know when a DUT has been connected.  Also, the test
 can't restart until the DUT is removed and re-appears.  The serial for the
 TestRun can be read from the DUT, or from the frontend.
 
-This module handles these various functions.  Custom implementations of test
+This module provides some built-in triggers. Custom implementations of test
 start and stop triggers must follow the following interface:
 
 TestStart:
@@ -35,25 +35,28 @@ TestStop:
     Blocks until the test can re-start, then returns None.
 """
 
-import collections
-import threading
+import logging
 import time
 
+from openhtf.io import user_input
 from openhtf.plugs.usb import adb_device
 from openhtf.plugs.usb import fastboot_device
 from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 
 
-def AutoStart():
+def AutoStart():  # pylint: disable=invalid-name
+  """Start the test immediately with a dummy DUT ID."""
   return 'UNKNOWN_DUT_ID'
 
 
-def AutoStop(unused_dut_id):
+def AutoStop(dummy_dut_id):  # pylint: disable=invalid-name
+  """Stop the test immediately regardless of DUT ID given."""
   pass
 
 
-class AndroidTriggers(object):
+class AndroidTriggers(object):  # pylint: disable=invalid-name
+  """Test start and stop triggers for Android devices."""
 
   @classmethod
   def _TryOpen(cls):
@@ -85,7 +88,8 @@ class AndroidTriggers(object):
   @classmethod
   def TestStartFrontend(cls):
     """Start when frontend event comes, but get serial from USB."""
-    FrontendTriggers.TestStart()
+    PromptForTestStart('Connect Android device and press ENTER.',
+                       text_input=False)()
     return cls.TestStart()
 
   @classmethod
@@ -103,47 +107,11 @@ class AndroidTriggers(object):
     cls.serial_number = None
 
 
-class FrontendTriggers(object):
-  """Class encapsulating start interactions from the frontend.""" 
-
-  DEQUE = collections.deque()
-  DEQUE_COND = threading.Condition()
-  SERIAL = None
-
-  def __init__(self, unused_config):
-    self.serial = None
-
-  @classmethod
-  def Enqueue(cls, serial=''):
-    """Trigger actual test start."""
-    with cls.DEQUE_COND:
-      cls.DEQUE.append(serial)
-      cls.DEQUE_COND.notifyAll()
-
-  @classmethod
-  def _WaitForFrontend(self):
-    """Returns serial when received from the frontend."""
-    with self.DEQUE_COND:
-      while not len(self.DEQUE):
-        self.DEQUE_COND.wait()
-      return self.DEQUE.popleft()
-
-  @classmethod
-  def TestStart(self):
-    """Get a serial from the frontend and return it."""
-    if self.SERIAL is not None:
-      serial = self.SERIAL
-      self.SERIAL = None
-      return serial
-    return self._WaitForFrontend()
-
-  @classmethod
-  def TestStop(self):
-    """Returns when the test is completed and can restart.
-
-    In this case, we don't stop the last test and start the next until a new
-    start event has been received from the frontend.  This means we have to save
-    the serial in that event for the next call to TestStart().
-    """
-    self.SERIAL = self._WaitForFrontend()
-
+# pylint: disable=invalid-name
+def PromptForTestStart(message='Provide a DUT ID in order to start the test.',
+                       text_input=True):
+  """Make a test start trigger based on prompting the user for input."""
+  def trigger():  # pylint: disable=missing-docstring
+    prompt_manager = user_input.get_prompt_manager()
+    return prompt_manager.DisplayPrompt(message, text_input=text_input)
+  return trigger

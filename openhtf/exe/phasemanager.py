@@ -33,13 +33,15 @@ framework.
 """
 
 import collections
+import inspect
 import logging
 
 import gflags
 
-from openhtf import conf
 from openhtf.exe import phase_data
+from openhtf.io import test_record
 from openhtf.util import threads
+
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
@@ -47,16 +49,12 @@ gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
 
 _LOG = logging.getLogger('htf.phasemanager')
 
+
 # Only use 'is' checks, as that does pointer comparison for strings. That makes
 # this the same as an object(), but useful when printed.
 DIDNT_FINISH = 'DIDNT_FINISH'
 
 
-# TODO(jethier): Do we really need this to be a tuple?  All we do is check if
-# phase_result is an instance of BaseException and set raised_exception based
-# on that.  Why not just save whatever we would store in phase_result and then
-# do the subclass check when we care?  It's annoying to see
-# phase_result.phase_result everywhere.
 class TestPhaseResult(collections.namedtuple(
     'TestPhaseResult', ['phase_result', 'raised_exception'])):
   """Result of a phase, and whether it raised an exception or not."""
@@ -131,13 +129,11 @@ class PhaseExecutorThread(threads.KillableThread):
 class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
-  def __init__(self, config, test, test_state, plugs):
+  def __init__(self, config, test_state):
     self._config = config
-    self._phases = list(test.phases)
     self._test_state = test_state
     self._logger = test_state.logger
-    self._phase_data = phase_data.PhaseData(
-        self._logger, self._config, plugs, self._test_state.record)
+    self._phase_data = self._test_state.phase_data
     self._current_phase = None
 
   def ExecutePhases(self):
@@ -150,8 +146,8 @@ class PhaseExecutor(object):
       TestPhaseResult instance that wraps the phase's name, result and whether
         it's an exception or not.
     """
-    while self._phases:
-      result = self._ExecuteOnePhase(self._phases[0])
+    while self._test_state.pending_phases:
+      result = self._ExecuteOnePhase(self._test_state.pending_phases[0])
       if not result:
         continue
       yield result
@@ -163,22 +159,24 @@ class PhaseExecutor(object):
     if hasattr(phase, 'run_if') and not phase.run_if(self._phase_data):
       self._logger.info(
           'Phase %s skipped due to run_if returning falsey.', phase.__name__)
-      self._phases.pop(0)
+      self._test_state.pending_phases.pop(0)
       return
 
     self._logger.info('Executing phase %s with plugs %s',
                       phase.__name__, self._phase_data.plugs)
 
-    self._test_state.SetStateRunning()
+    self._test_state.running_phase = test_record.PhaseRecord(
+        phase.__name__, phase.__doc__, inspect.getsource(phase))
 
-    with self._phase_data.RecordPhaseTiming(phase) as result_wrapper:
+    with self._phase_data.RecordPhaseTiming(
+        phase, self._test_state) as result_wrapper:
       phase_thread = PhaseExecutorThread(phase, self._phase_data)
       phase_thread.start()
       self._current_phase = phase_thread
       result_wrapper.SetResult(phase_thread.JoinOrDie())
-    
+
     if result_wrapper.result.phase_result == phase_data.PhaseResults.CONTINUE:
-      self._phases.pop(0)
+      self._test_state.pending_phases.pop(0)
 
     self._logger.debug('Phase finished with state %s', result_wrapper.result)
     return result_wrapper.result

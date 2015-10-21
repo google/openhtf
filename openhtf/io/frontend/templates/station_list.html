@@ -1,0 +1,21 @@
+<html>
+<head>
+</head>
+<body>
+<h1>OpenHTF</h1>
+<h2>Stations on {{host}}</h2>
+<ul>
+{% for s in stations %}
+  <li>
+  <a href="/station/{{s.data.station_id}}/">
+  {{s.data.station_id}}
+  </a>
+    <ul>
+      <li>{{s.data.script_name}}</li>
+      <li>{{s.status}}</li>
+    </ul>
+  </li>
+{% endfor %}
+</ul>
+</body>
+</html>

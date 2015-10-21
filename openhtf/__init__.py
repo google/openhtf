@@ -38,8 +38,10 @@ from openhtf.io import rundata
 from openhtf.util import measurements
 
 
+__version__ = util.get_version()
+
+
 FLAGS = gflags.FLAGS
-FLAGS(sys.argv)
 
 
 class InvalidTestPhaseError(Exception):
@@ -79,7 +81,7 @@ class OutputToJSON(JSONEncoder):
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
     as_dict = util.convert_to_dict(test_record)
-    with open(self.filename_pattern % as_dict, 'w') as f:
+    with open(self.filename_pattern % as_dict, 'w') as f:  # pylint: disable=invalid-name
       f.write(self.encode(as_dict))
 
 
@@ -140,7 +142,7 @@ class Test(object):
       while hasattr(phase, 'wraps'):
         phase = phase.wraps
         phase.is_phase_func = True
-    
+
   @property
   def plug_type_map(self):
     """Returns dict mapping name to plug type for all phases."""
@@ -156,58 +158,64 @@ class Test(object):
     return plug_type_map
 
   def AddOutputCallback(self, callback):
+    """Add the given function as an output module to this test."""
     self.output_callbacks.append(callback)
 
   def OutputTestRecord(self, test_record):
+    """Feed the record of this test to all output modules."""
     for output_cb in self.output_callbacks:
       output_cb(test_record)
 
   def Execute(self, loop=None, test_start=triggers.AutoStart,
               test_stop=triggers.AutoStop):
     """Start the OpenHTF framework running with the given test.
-  
+
     Executes this test, iterating over self.phases and executing them.
 
     Example:
- 
+
       def PhaseOne(test):
         # Integrate more widgets
-  
+
       def PhaseTwo(test):
         # Analyze widget integration status
-  
+
       Test(PhaseOne, PhaseTwo).Execute()
-  
+
     Returns:
       None when the test framework has exited.
     """
+    try:
+      FLAGS(sys.argv)  # parse flags
+    except gflags.FlagsError, e:  # pylint: disable=invalid-name
+      print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
+      sys.exit(1)
+
     if loop is not None:
       self.loop = loop
     conf.Load()
-  
+
     config = conf.Config()
-    rundata.RunData(self.filename,
-    # TODO(madsci/jethier): Update rundata interface, these are dummy values.
-                    config.station_id,
-                    '0.1',
+    rundata.RunData(config.station_id,
+                    self.filename,
                     socket.gethostname(),
-                    FLAGS.port,
+                    FLAGS.http_port,
                     os.getpid()).SaveToFile(FLAGS.rundir)
-  
+
     logging.info('Executing test: %s', self.filename)
     executor = exe.TestExecutor(config, self, test_start, test_stop)
     server = http_api.Server(executor)
-  
+
     def sigint_handler(*dummy):
       """Handle SIGINT by stopping running executor and handler."""
       print "Received SIGINT. Stopping everything."
       executor.Stop()
       server.Stop()
     signal.signal(signal.SIGINT, sigint_handler)
-  
+
     server.Start()
     executor.Start()
-  
+
     executor.Wait()
     server.Stop()
     return

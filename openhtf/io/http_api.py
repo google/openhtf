@@ -21,23 +21,22 @@ host should serve this API on different TCP ports via the --port flag."""
 
 
 import BaseHTTPServer
-import copy
 import json
+import uuid
 
 import gflags
 
 from openhtf import util
 from openhtf.io import user_input
-from openhtf.util import threads
 
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('port',
+gflags.DEFINE_integer('http_port',
                       8888,
                       "Port on which to serve OpenHTF's HTTP API.")
 
 
-class Server(threads.KillableThread):
+class Server(util.threads.KillableThread):
   """Bare-bones HTTP API server for OpenHTF.
 
   Args:
@@ -53,18 +52,28 @@ class Server(threads.KillableThread):
     executor = None
 
     def do_GET(self):  # pylint: disable=invalid-name
-      """Serialize test state and prompt to JSON and send."""
-      record = self.executor.GetState().record
-      response = {'test_state': util.convert_to_dict(copy.deepcopy(record))}
+      """Reply with a JSON representation of the current test state.
+
+      If there is no test state make sure we still serve prompt state in case
+      a test start trigger is waiting on a prompt.
+      """
+      state = self.executor.GetState()
       prompt = user_input.get_prompt_manager().prompt
-      if prompt is not None:
-        response['prompt'] = util.convert_to_dict(copy.deepcopy(prompt))
-      self.wfile.write(json.JSONEncoder().encode(response))
+      if state:
+        self.wfile.write(state.AsJSON())
+      else:
+        result = {'state': 'NOTEST'}
+        prompt = user_input.get_prompt_manager().prompt
+        if prompt:
+          result['prompt'] = util.convert_to_dict(prompt)
+        self.wfile.write(json.JSONEncoder().encode(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
-      data = json.loads(self.rfile.read())
-      user_input.get_prompt_manager().Respond(data['id'], data['response'])
+      raw = self.rfile.read()
+      data = json.loads(raw)
+      user_input.get_prompt_manager().Respond(
+          uuid.UUID((data['id'])), data['response'])
 
   def Start(self):
     """Give the server a style-conformant Start method."""
@@ -76,5 +85,5 @@ class Server(threads.KillableThread):
 
   def _ThreadProc(self):
     """Start up a raw HTTPServer based on our HTTPHandler definition."""
-    server = BaseHTTPServer.HTTPServer(('', FLAGS.port), self.HTTPHandler)
+    server = BaseHTTPServer.HTTPServer(('', FLAGS.http_port), self.HTTPHandler)
     server.serve_forever()

@@ -38,8 +38,11 @@ import openhtf.util.monitors
 import openhtf.util.units
 
 
-# Pseudomodule for shared user input prompt state.
-prompts = openhtf.io.user_input.get_prompt_manager()  # pylint: disable=invalid-name
+# pylint: disable=invalid-name
+
+# Pseudomodules.
+prompts = openhtf.io.user_input.get_prompt_manager()
+triggers = openhtf.exe.triggers
 
 
 # Functions used in writing test scripts.

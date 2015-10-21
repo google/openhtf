@@ -15,14 +15,22 @@
 
 """Interface to OpenHTF configuration files.
 
-OpenHTF configuration files contain values which are specific to a single
-tester. Any values which apply to all testers of a given type should be handled
-by FLAGS or another mechanism.
+OpenHTF configuration files contain values which are specific to an individual
+station. Any values which apply to all stations of a given type should be
+handled by FLAGS or another mechanism.
 
-TODO(jethier): add an example of how to declare and use configuration.
+Config keys must be declared as in the following example:
+
+conf.Declare('antimatter_intermix_constant',
+             description='Intermix constant calibrated for our warp core.')
+
+Declared keys can later be accessed by instantiating a Config object:
+
+...
+config = conf.Config()
+warp_core.SetIntermixConstant(config.antimatter_intermix_constant)
 """
 
-import collections
 import copy
 import functools
 import inspect
@@ -34,6 +42,7 @@ import gflags
 import mutablerecords
 
 from openhtf.util import threads
+
 
 FLAGS = gflags.FLAGS
 
@@ -47,7 +56,7 @@ gflags.DEFINE_multistring(
     'This value will override any existing config value at config load time '
     'and will be a string')
 
-ConfigurationDeclaration = (
+ConfigurationDeclaration = (  # pylint: disable=invalid-name
     mutablerecords.Record(
         'ConfigurationDeclaration',
         ['name'],
@@ -101,11 +110,11 @@ class ConfigurationValidationError(Exception):
 class _DeclaredKeys(object):
   """An object which manages config declarations.
 
-  This object is basically a helper for Config.  It provides locked access to
-  a map of declarations and processes configuration values against the
-  declaration.  It must be guarded since declarations are updated at import time
-  and if something is lazily imported we could race between updating the
-  declarations map and reading it to check a config value.
+  This object is a helper for Config.  It provides locked access to a map of
+  declarations and processes configuration values against the declaration.  It
+  must be guarded since declarations are updated at import time and if something
+  is lazily imported we could race between updating the declarations map and
+  reading it to check a config value.
 
   Not thread-safe, requires an external lock!
   """
@@ -121,11 +130,11 @@ class _DeclaredKeys(object):
       declaration: A _DeclaredKeys.DECLARATION object.
 
     Raises:
-      ConfigurationKeyAlreadyDeclared: If a declaration already exists for
+      ConfigurationAlreadyDeclared: If a declaration already exists for
           this key.
     """
     if name in self._declared:
-      raise ConfigurationKeyAlreadyDeclared(name)
+      raise ConfigurationAlreadyDeclared(name)
     self._declared[name] = declaration
 
   def CheckValueAgainstDeclaration(self, name, value):
@@ -530,9 +539,9 @@ def Extern(dummy_name):  # pylint: disable=invalid-name
 
   This function does nothing but serve as a marker at the top of your file that
   you're using a config key which improves readability greatly.  You're
-  encouraged to use this.  That said since declaration of keys isn't
-  checked until a key is used and since this function does nothing
-  everything will still work without it.
+  encouraged to use this.  That said since declaration of keys isn't checked
+  until a key is used and since this function does nothing everything will still
+  work without it.
 
   Args:
     unused_name: The name of the key.

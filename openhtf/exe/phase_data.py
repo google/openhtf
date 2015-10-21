@@ -22,7 +22,6 @@ supported decorators.
 """
 
 import contextlib2
-import inspect
 import logging
 import mimetypes
 
@@ -35,7 +34,7 @@ class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
 
-class PhaseData(object):
+class PhaseData(object):  # pylint: disable=too-many-instance-attributes
   """The phase data object passed to test phases as the first argument.
 
   Fields:
@@ -49,15 +48,23 @@ class PhaseData(object):
         phase.  This stack is pop'd after each phase.
     test_record: The test_record.TestRecord for the currently running test.
   """
-  def __init__(self, logger, config, plugs, test_record):
+  def __init__(self, logger, config, plugs, record):
     self.logger = logger
     self.config = config
     self.plugs = plugs
-    self.test_record = test_record
+    self.test_record = record
     self.state = {}
     self.measurements = None  # Will be populated per-phase.
     self.attachments = {}
     self.context = contextlib2.ExitStack()
+
+  def _asdict(self):
+    """Return a dict of this PhaseData's public data."""
+    return {'measurements': self.measurements,
+            'attachments': [name for name in self.attachments],
+            'plugs': {
+                k: v.__module__ + '.' + v.__class__.__name__
+                for k, v in self.plugs.iteritems()}}
 
   def Attach(self, name, data, mimetype=None):
     """Store the given data as an attachment with the given name.
@@ -93,12 +100,15 @@ class PhaseData(object):
         the given name.
       IOError: Raised if the given filename couldn't be opened.
     """
-    with open(filename, 'r') as f:
-      self.Attach(name if name is not None else filename, f.read(),
-                  mimetype=mimetypes.guess_type(filename)[0])
+    with open(filename, 'r') as f:  # pylint: disable=invalid-name
+      self.Attach(
+          name if name is not None else filename, f.read(),
+          mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
+              filename)[0])
 
   @contextlib2.contextmanager
-  def RecordPhaseTiming(self, phase):
+  def RecordPhaseTiming(self, phase, test_state):
+    """Context manager for the execution of a single phase."""
     while hasattr(phase, 'wraps'):
       phase = phase.wraps
 
@@ -107,39 +117,45 @@ class PhaseData(object):
         desc.name: desc
         for desc in getattr(phase, 'measurement_descriptors', [])
     }
-    self.measurements = measurements.Collection(measurement_descriptors)
-    self.attachments = {}
-    start_time = util.TimeMillis()
+    # Populate dummy declaration list for frontend API.
+    test_state.running_phase.measurement_declarations = {
+        name: None for name in measurement_descriptors
+    }
+    test_state.phase_data.measurements = measurements.Collection(
+        measurement_descriptors)
+    test_state.phase_data.attachments = {}
+    test_state.running_phase.start_time_millis = util.TimeMillis()
 
-    # Wrapper class so we can pull the result back from something we yield.
-    class ResultWrapper(object):
+    class ResultWrapper(object):  # pylint: disable=too-few-public-methods
+      """Wrapper so we can pull the result back from something we yield."""
       def __init__(self):
         self.result = None
 
-      def SetResult(self, result):
+      def SetResult(self, result):  # pylint: disable=missing-docstring
         self.result = result
     result_wrapper = ResultWrapper()
 
     try:
       yield result_wrapper
     finally:
-      # Serialize measurement values and descriptors.
-      measurement_values = dict(self.measurements)
-      measurement_declarations = {
+      # Serialize measured values and descriptors.
+      values = dict(test_state.phase_data.measurements)
+      declarations = {
           name: measurements.Declaration.FromMeasurement(
-              desc, measurement_values.get(name, None))
+              desc, values.get(name, None))
           for name, desc in measurement_descriptors.iteritems()
       }
-      # Append the phase to our test_record.
-      self.test_record.phases.append(
-          test_record.PhaseRecord(
-              phase.__name__, phase.__doc__, inspect.getsource(phase),
-              start_time, util.TimeMillis(),
-              measurement_declarations, measurement_values, self.attachments,
-              result_wrapper.result))
-      # Clear these just to be sure.
-      self.measurements = None
-      self.attachments = {}
+      # Fill out and append the PhaseRecord to our test_record.
+      test_state.running_phase.measured_values = values
+      test_state.running_phase.measurement_declarations = declarations
+      test_state.running_phase.end_time_millis = util.TimeMillis()
+      test_state.running_phase.result = result_wrapper.result
+      self.test_record.phases.append(test_state.running_phase)
+
+      # Clear these between uses for the frontend API.
+      test_state.phase_data.measurements = None
+      test_state.phase_data.attachments = None
+      test_state.running_phase = None
 
 
 class PhaseResults(object):  # pylint: disable=too-few-public-methods
