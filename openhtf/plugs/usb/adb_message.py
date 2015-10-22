@@ -103,8 +103,9 @@ class AdbTransportAdapter(object):
     self._writer_lock = threading.Lock()
 
   def __str__(self):
-    return str(self._transport)
-
+    trans = str(self._transport)
+    return '<%s: (%s)' % (type(self).__name__, trans[1:])
+ 
   def Close(self):
     """Close the connection."""
     self._transport.Close()
@@ -288,8 +289,8 @@ class AdbMessage(object):
     return self.WIRE_TO_CMD[self._command]
 
   def __str__(self):
-    return '<%s %s(%s, %s): %s (%s bytes)>' % (
-        self.__class__.__name__,
+    return '<%s: %s(%s, %s): %s (%s bytes)>' % (
+        type(self).__name__,
         self.command,
         self.arg0,
         self.arg1,

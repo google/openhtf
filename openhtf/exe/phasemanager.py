@@ -122,7 +122,7 @@ class PhaseExecutorThread(threads.KillableThread):
     return self._phase.__name__
 
   def __str__(self):
-    return '<%s: %s>' % (type(self).__name__, self.name)
+    return '<%s: (%s)>' % (type(self).__name__, self.name)
   __repr__ = __str__
 
 
@@ -162,7 +162,7 @@ class PhaseExecutor(object):
       self._test_state.pending_phases.pop(0)
       return
 
-    self._logger.info('Executing phase %s with plugs %s',
+    _LOG.info('Executing phase %s with plugs %s',
                       phase.__name__, self._phase_data.plugs)
 
     self._test_state.running_phase = test_record.PhaseRecord(
@@ -178,7 +178,7 @@ class PhaseExecutor(object):
     if result_wrapper.result.phase_result == phase_data.PhaseResults.CONTINUE:
       self._test_state.pending_phases.pop(0)
 
-    self._logger.debug('Phase finished with state %s', result_wrapper.result)
+    _LOG.debug('Phase finished with state %s', result_wrapper.result)
     return result_wrapper.result
 
   def Stop(self):

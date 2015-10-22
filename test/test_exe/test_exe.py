@@ -24,7 +24,6 @@ import mock
 import openhtf.plugs as plugs
 from openhtf import exe
 from openhtf import conf
-from openhtf.exe import dutmanager
 
 class UnittestPlug(plugs.BasePlug):   # pylint: disable=no-init
     def SetupCap(self):
@@ -46,8 +45,8 @@ def phase_two(test, testPlug):
     print "phase_two completed"
 
 #function mock WaitTestStop
-def dut_side_effect():
-    return "test stopped"
+def open_side_effect():
+    return False
 
 class TestOpenhtf(unittest.TestCase):
   def __init__(self, unittest_name):
@@ -72,9 +71,9 @@ class TestOpenhtf(unittest.TestCase):
     self.assertTrue(type(TestOpenhtf.testPlug).__name__ in str(typeMap))
   
   #mock test execution. 
-  def test_TestExecutorStarter(self):  
-    print '...test_TestExecutorStarter'
-    mock_starter = mock.Mock(spec=exe.TestExecutorStarter)
+  def test_TestExecutor(self):  
+    print '...test_TestExecutor'
+    mock_starter = mock.Mock(spec=exe.TestExecutor)
     mock_starter.Start()
     mock_starter.Start.assert_called_with()
     mock_starter.Wait()
@@ -82,17 +81,25 @@ class TestOpenhtf(unittest.TestCase):
     mock_starter.Stop()
     mock_starter.Stop.assert_called_with()
   
-  @mock.patch.object(dutmanager.FrontendHandler, "_WaitForFrontend")
-  @mock.patch.object(dutmanager.DutManager, "WaitForTestStop", side_effect=dut_side_effect)
-  def test_DutManager(self, mock_wait, mock_dutmanager_wait):
-    print '...test_DutManager'
-    mock_wait.return_value = True
-    mock_dutmanager_wait.return_value = True
-    manager = dutmanager.DutManager.FromConfig(123456, conf.Config())
-    manager.WaitForTestStart()
-    dutmanager.FrontendHandler._WaitForFrontend.assert_called_with()
-    ret = manager.WaitForTestStop()
-    self.assertEqual(ret, "test stopped")
+  @mock.patch.object(exe.triggers.AndroidTriggers, "_TryOpen", side_effect=open_side_effect)
+  @mock.patch.object(exe.triggers.AndroidTriggers, "TestStart", return_value='123456')
+  def test_AndroidTriggers(self, mock_open, mock_start):
+    print '...test_AndroidTriggers'
+    serial = exe.triggers.AndroidTriggers.TestStart()
+    self.assertEqual(serial, "123456")
+    exe.triggers.AndroidTriggers.TestStop()
+
+  def test_classString(self):  
+    print '...test_classString'
+    check_list = ['PhaseExecutorThread', 'phase_one']
+    phase_thread = exe.phasemanager.PhaseExecutorThread(phase_one, " ")
+    name = str(phase_thread)
+    found = True
+    for item in check_list:
+      if not item in name:
+        found = False
+    if not found:
+      self.assertEqual(0, 1)
 
 def testcase_runner(testlog_dir):
   testcase_file =  os.path.dirname(os.path.abspath(__file__))+'/testcases.txt'
