@@ -38,7 +38,7 @@ class TestUtil(unittest.TestCase):
     pass
 
   def test_timeExpired_false(self):
-    print "....test_timeExpired_false."
+    print '....test_timeExpired_false.'
     time.sleep(TestUtil.time_sleep)
     TestUtil.polledtimeout.Restart()
     sec = TestUtil.polledtimeout.seconds
@@ -46,7 +46,7 @@ class TestUtil(unittest.TestCase):
     self.assertFalse(TestUtil.polledtimeout.HasExpired())
 
   def test_timeExpired_true(self):
-    print "....test_timeExpired_true."
+    print '....test_timeExpired_true.'
     TestUtil.polledtimeout.Expire()
     self.assertTrue(TestUtil.polledtimeout.HasExpired())
 
@@ -55,9 +55,9 @@ def testcase_runner(testlog_dir):
   suite = unittest.TestSuite()
 
   try:
-    f = open(testcase_file, "r")
+    f = open(testcase_file, 'r')
   except IOError:
-      print "WARNING: %s does not exist, quit test" % testcase_file
+      print 'WARNING: %s does not exist, quit test" % testcase_file'
 
   tests = f.readlines()
 
@@ -66,16 +66,16 @@ def testcase_runner(testlog_dir):
       suite.addTest(TestUtil(test.strip()))   
   
   test_result = unittest.TextTestRunner().run(suite)
-  now =  datetime.datetime.now().strftime("%m-%d-%d_%H:%M:%S")
+  now =  datetime.datetime.now().strftime('%m-%d-%d_%H:%M:%S')
   classname = os.path.dirname(os.path.abspath(__file__)).split('/')[-1]
   
   if testlog_dir:
     log = testlog_dir + '/'+ classname.strip() + '_' + now
 
     with open(log, 'w') as f:
-      f.write("====== Test Result =====\n")
+      f.write('====== Test Result =====\n')
       f.write(str(test_result))
-      f.write("\n\n====== FAILE ======\n")
+      f.write('\n\n====== FAILE ======\n')
       f.write(str(test_result.failures))
 
   if test_result.wasSuccessful():

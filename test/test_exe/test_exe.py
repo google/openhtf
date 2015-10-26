@@ -27,22 +27,22 @@ from openhtf import conf
 
 class UnittestPlug(plugs.BasePlug):   # pylint: disable=no-init
     def SetupCap(self):
-      print "Set up the capability instance."
+      print 'Set up the plugs instance.'
 
     def TearDownCap(self):
-      print "Tear down the capability instance."
+      print 'Tear down the plugs instance.'
 
     def DoStuff(self):  # pylint: disable=no-self-use
-      print "Capability-specific functionality."
+      print 'Plugs-specific functionality.'
 
 def phase_one(test, testPlug):
     time.sleep(1)
-    print "phase_one completed"
+    print 'phase_one completed'
 
 @plugs.requires(testPlug=UnittestPlug)
 def phase_two(test, testPlug):
     time.sleep(2)
-    print "phase_two completed"
+    print 'phase_two completed'
 
 #function mock WaitTestStop
 def open_side_effect():
@@ -65,7 +65,7 @@ class TestOpenhtf(unittest.TestCase):
     pass
 
   def test_plug_type_map(self):
-    print "....test_plug_type_map"
+    print '....test_plug_type_map'
     test = openhtf.Test(phase_one, phase_two)
     typeMap = test.plug_type_map
     self.assertTrue(type(TestOpenhtf.testPlug).__name__ in str(typeMap))
@@ -81,12 +81,12 @@ class TestOpenhtf(unittest.TestCase):
     mock_starter.Stop()
     mock_starter.Stop.assert_called_with()
   
-  @mock.patch.object(exe.triggers.AndroidTriggers, "_TryOpen", side_effect=open_side_effect)
-  @mock.patch.object(exe.triggers.AndroidTriggers, "TestStart", return_value='123456')
+  @mock.patch.object(exe.triggers.AndroidTriggers, '_TryOpen', side_effect=open_side_effect)
+  @mock.patch.object(exe.triggers.AndroidTriggers, 'TestStart', return_value='123456')
   def test_AndroidTriggers(self, mock_open, mock_start):
     print '...test_AndroidTriggers'
     serial = exe.triggers.AndroidTriggers.TestStart()
-    self.assertEqual(serial, "123456")
+    self.assertEqual(serial, '123456')
     exe.triggers.AndroidTriggers.TestStop()
 
   def test_classString(self):  
@@ -106,9 +106,9 @@ def testcase_runner(testlog_dir):
   suite = unittest.TestSuite()
 
   try:
-    f = open(testcase_file, "r")
+    f = open(testcase_file, 'r')
   except IOError:
-    print "WARNING: %s does not exist, quit test" % testcase_file
+    print 'WARNING: %s does not exist, quit test' % testcase_file
 
   tests = f.readlines()
 
@@ -124,9 +124,9 @@ def testcase_runner(testlog_dir):
     log = testlog_dir + '/'+ classname.strip() + '_' + now
 
     with open(log, 'w') as f:
-      f.write("====== Test Result =====\n")
+      f.write('====== Test Result =====\n')
       f.write(str(test_result))
-      f.write("\n\n====== FAIL ======\n")
+      f.write('\n\n====== FAIL ======\n')
       f.write(str(test_result.failures))
 
   if test_result.wasSuccessful():

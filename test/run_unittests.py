@@ -40,15 +40,15 @@ def main(argv):
 
   testdirs = os.path.dirname(os.path.abspath(__file__)) + '/test_dirs.txt'
 
-  with open(testdirs, "r") as dirfile:
+  with open(testdirs, 'r') as dirfile:
     testdirs = dirfile.readlines()
 
   passing = True
 
   for testdir in testdirs:
     test = testdir.strip()
-    if test != "" and test[0].isalpha():
-      print " -------- test dir: %s --------" % test
+    if test != '' and test[0].isalpha():
+      print '-------- test dir: %s --------' % test
       mod = __import__(test, fromlist=[test])
       passing = passing and getattr(mod, 'testcase_runner')(testlog_dir)
 
