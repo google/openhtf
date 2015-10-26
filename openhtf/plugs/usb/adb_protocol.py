@@ -149,7 +149,7 @@ class AdbStream(object):
     return self._transport.IsClosed()
 
   def __str__(self):
-    return '<%s(%s) %s->%s>' % (type(self).__name__,
+    return '<%s: (%s, %s->%s)>' % (type(self).__name__,
                                 self._destination,
                                 self._transport.local_id,
                                 self._transport.remote_id)
@@ -261,7 +261,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
     self._reader_lock = threading.Lock()
 
   def __str__(self):
-    return '<%s %s->%s>' % (type(self).__name__,
+    return '<%s: (%s->%s)>' % (type(self).__name__,
                             self.local_id,
                             self.remote_id)
   __repr__ = __str__
@@ -853,7 +853,6 @@ class AdbConnection(object):
       adb_transport = adb_message.DebugAdbTransportAdapter(transport)
     else:
       adb_transport = adb_message.AdbTransportAdapter(transport)
-
     adb_transport.WriteMessage(
         adb_message.AdbMessage(
             command='CNXN', arg0=ADB_VERSION, arg1=MAX_ADB_DATA,

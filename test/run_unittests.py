@@ -33,7 +33,6 @@ def main(argv):
   """Execute OpenHTF unittests."""
   FLAGS(argv)
   testlog_dir = None
-
   if not FLAGS.travis:
     testlog_dir = FLAGS.testlog_dir
     if not os.path.exists(testlog_dir):
@@ -41,22 +40,21 @@ def main(argv):
 
   testdirs = os.path.dirname(os.path.abspath(__file__)) + '/test_dirs.txt'
 
-  with open(testdirs, "r") as dirfile:
+  with open(testdirs, 'r') as dirfile:
     testdirs = dirfile.readlines()
 
   passing = True
 
   for testdir in testdirs:
-    if testdir != "" and testdir.strip()[0].isalpha():
-      print " -------- test dir: %s --------" % testdir.strip()
-      mod = __import__(testdir.strip(), fromlist=['testcase_runner'])
+    test = testdir.strip()
+    if test != '' and test[0].isalpha():
+      print '-------- test dir: %s --------' % test
+      mod = __import__(test, fromlist=[test])
       passing = passing and getattr(mod, 'testcase_runner')(testlog_dir)
 
   if passing:
     sys.exit(0)
   sys.exit(1)
 
-
 if __name__ == '__main__':
-  # main(sys.argv)
-  pass
+  main(sys.argv)

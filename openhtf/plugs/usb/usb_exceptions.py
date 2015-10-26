@@ -59,8 +59,7 @@ class LibusbWrappingError(CommonUsbError):
     self.usb_error = usb_error
 
   def __str__(self):
-    return '%s: %s' % (
-        super(LibusbWrappingError, self).__str__(), str(self.usb_error))
+    return '<%s: %s>' % (type(self).__name__, str(self.usb_error))
 
   def IsTimeout(self):
     """Returns True if the USBError we are wrapping is a timeout error."""

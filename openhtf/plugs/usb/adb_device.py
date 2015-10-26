@@ -83,7 +83,7 @@ class AdbDevice(object):
         adb_connection)
 
   def __str__(self):
-    return '<%s %s(%s) @%s>' % (type(self).__name__,
+    return '<%s: %s(%s) @%s>' % (type(self).__name__,
                                 self._adb_connection.serial,
                                 self._adb_connection.systemtype,
                                 self._adb_connection.transport)

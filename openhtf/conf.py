@@ -104,8 +104,8 @@ class ConfigurationValidationError(Exception):
     self.value = value
 
   def __str__(self):
-    return ('Configuration error on key: %s (type: %s, value: %s)' %
-            (self.name, self.declaration.type.name, self.value))
+    return ('<%s: (Configuration error on key: %s (type: %s, value: %s))>' %
+            (type(self).__name__, self.name, self.declaration.type.name, self.value))
 
 
 class _DeclaredKeys(object):
@@ -494,7 +494,7 @@ class StackedConfig(Config):
     return any(model.ContainsKey(name) for model in self._models)
 
   def __str__(self):
-    return '<StackedConfig (loaded: %s): 0x%x>' % (self.loaded, id(self))
+    return '<%s: (loaded: %s: 0x%x)>' % (type(self).__name__, self.loaded, id(self))
   __repr__ = __str__
 
 
@@ -531,7 +531,7 @@ class ConfigValue(object):  # pylint: disable=too-few-public-methods
     return self.value
 
   def __str__(self):
-    return '(ConfigKey: %s)' % self.config_key
+    return '<%s: (ConfigKey: %s)' % (type(self).__name__, self.config_key)
   __repr__ = __str__
 
 

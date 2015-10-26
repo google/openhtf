@@ -79,7 +79,7 @@ class BaseDataDescriptor(object):
     return value
 
   def __str__(self):
-    return self.__class__.__name__.split('_', 1)[-1]
+    return '<%s>' % (type(self).__name__)
 
 
 class Validator(object):
@@ -273,7 +273,7 @@ class Descriptor(object):
     return validator_cls
 
   def __str__(self):
-    return '%s for %s' % (type(self).__name__, self.type)
+    return '<%s for %s>' % (type(self).__name__, self.type)
 
   def __getattr__(self, attr):  # pylint: disable=invalid-name
     raise AttributeError((
@@ -529,7 +529,7 @@ class InRange(Validator):
     return True
 
   def __str__(self):
-    return 'InRange(%s, %s)' % (self.minimum, self.maximum)
+    return '<%s: (%s, %s)>' % (type(self).__name__,self.minimum, self.maximum)
 
 
 @Descriptor.AddValidator
@@ -577,7 +577,7 @@ class MatchesRegex(Validator):
     return True
 
   def __str__(self):
-    return 'MatchesRegex(%s)' % self.regex_pattern
+    return '<%s: (%s)>' % (type(self).__name__,self.regex_pattern)
 
 
 @Descriptor.AddValidator
@@ -597,5 +597,5 @@ class Enum(Validator):
     return True
 
   def __str__(self):
-    return 'Enum(%s)' % self.valid_values
+    return '<%s: (%s)>' % (type(self).__name__, self.valid_values)
 
