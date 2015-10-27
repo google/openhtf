@@ -50,7 +50,7 @@ class TestUtil(unittest.TestCase):
     TestUtil.polledtimeout.Expire()
     self.assertTrue(TestUtil.polledtimeout.HasExpired())
 
-def testcase_runner(testlog_dir):
+def testcase_runner():
   testcase_file =  os.path.dirname(os.path.abspath(__file__))+'/testcases.txt'
   suite = unittest.TestSuite()
 
@@ -69,14 +69,13 @@ def testcase_runner(testlog_dir):
   now =  datetime.datetime.now().strftime('%m-%d-%d_%H:%M:%S')
   classname = os.path.dirname(os.path.abspath(__file__)).split('/')[-1]
   
-  if testlog_dir:
-    log = testlog_dir + '/'+ classname.strip() + '_' + now
+  log = '/tmp/'+ classname.strip() + '_' + now
 
-    with open(log, 'w') as f:
-      f.write('====== Test Result =====\n')
-      f.write(str(test_result))
-      f.write('\n\n====== FAILE ======\n')
-      f.write(str(test_result.failures))
+  with open(log, 'w') as f:
+    f.write('====== Test Result =====\n')
+    f.write(str(test_result))
+    f.write('\n\n====== FAILE ======\n')
+    f.write(str(test_result.failures))
 
   if test_result.wasSuccessful():
     return True
