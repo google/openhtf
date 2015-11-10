@@ -19,25 +19,14 @@ import os.path
 import sys
 import gflags
 
-
 FLAGS = gflags.FLAGS
 
-gflags.DEFINE_string('testlog_dir',
-                     '/var/run/openhtf/unittest_log',
-                     'Location for unittest logs.')
-
 gflags.DEFINE_boolean('travis', False, 'Set this flag if being run by travis.')
-
 
 def main(argv):
   """Execute OpenHTF unittests."""
   FLAGS(argv)
-  testlog_dir = None
-  if not FLAGS.travis:
-    testlog_dir = FLAGS.testlog_dir
-    if not os.path.exists(testlog_dir):
-      os.makedirs(testlog_dir)
-
+  
   testdirs = os.path.dirname(os.path.abspath(__file__)) + '/test_dirs.txt'
 
   with open(testdirs, 'r') as dirfile:
@@ -50,7 +39,7 @@ def main(argv):
     if test != '' and test[0].isalpha():
       print '-------- test dir: %s --------' % test
       mod = __import__(test, fromlist=[test])
-      passing = passing and getattr(mod, 'testcase_runner')(testlog_dir)
+      passing = passing and getattr(mod, 'testcase_runner')()
 
   if passing:
     sys.exit(0)

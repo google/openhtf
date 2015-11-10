@@ -101,7 +101,7 @@ class TestOpenhtf(unittest.TestCase):
     if not found:
       self.assertEqual(0, 1)
 
-def testcase_runner(testlog_dir):
+def testcase_runner():
   testcase_file =  os.path.dirname(os.path.abspath(__file__))+'/testcases.txt'
   suite = unittest.TestSuite()
 
@@ -120,14 +120,13 @@ def testcase_runner(testlog_dir):
   now =  datetime.datetime.now().strftime("%m-%d-%d_%H:%M:%S")
   classname = os.path.dirname(os.path.abspath(__file__)).split('/')[-1]
 
-  if testlog_dir:
-    log = testlog_dir + '/'+ classname.strip() + '_' + now
-
-    with open(log, 'w') as f:
-      f.write('====== Test Result =====\n')
-      f.write(str(test_result))
-      f.write('\n\n====== FAIL ======\n')
-      f.write(str(test_result.failures))
+  log = '/tmp/'+ classname.strip() + '_' + now
+  print log
+  with open(log, 'w') as f:
+    f.write('====== Test Result =====\n')
+    f.write(str(test_result))
+    f.write('\n\n====== FAIL ======\n')
+    f.write(str(test_result.failures))
 
   if test_result.wasSuccessful():
     return True
