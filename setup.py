@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Setup script for OpenHTF."""
 
 import os
+import sys
 
 from distutils.command.clean import clean
 from setuptools import find_packages
 from setuptools import setup
+from setuptools.command.test import test
 
 
 class CleanCommand(clean):
@@ -55,6 +56,35 @@ requires = [    # pylint: disable=invalid-name
 ]
 
 
+class PyTestCommand(test):
+  # Derived from
+  # https://github.com/chainreactionmfg/cara/blob/master/setup.py
+  user_options = [
+      ('pytest-args=', None, 'Arguments to pass to py.test'),
+      ('pytest-cov=', None, 'Enable coverage. Choose output type: '
+       'term, html, xml, annotate, or multiple with comma separation'),
+  ]
+
+  def initialize_options(self):
+    test.initialize_options(self)
+    self.pytest_args = 'test'
+    self.pytest_cov = None
+
+  def finalize_options(self):
+    test.finalize_options(self)
+    self.test_args = []
+    self.test_suite = True
+
+  def run(self):
+    import pytest
+    cov = ''
+    if self.pytest_cov is not None:
+      outputs = ' '.join('--cov-report %s' % output
+                         for output in self.pytest_cov.split(','))
+      cov = ' --cov openhtf ' + outputs
+    sys.exit(pytest.main(self.pytest_args + cov))
+
+
 setup(
     name='openhtf',
     version='1.0',
@@ -66,6 +96,8 @@ setup(
     packages=find_packages(exclude='example'),
     cmdclass={
         'clean': CleanCommand,
+        'test': PyTestCommand,
     },
     install_requires=requires,
+    tests_require=['pytest'],
 )
