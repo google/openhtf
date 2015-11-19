@@ -77,6 +77,7 @@ class PyTestCommand(test):
     self.test_suite = True
 
   def run(self):
+    test.run(self)
     import pytest
     cov = ''
     if self.pytest_cov is not None:
