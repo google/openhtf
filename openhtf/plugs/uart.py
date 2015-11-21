@@ -95,35 +95,51 @@ class SerialPlug(plugs.BasePlug):
       self.logger.debug(e)
       return False
 
-  def SendRawCmd(self, cmd, timeoutin_ms=200, boolreadinput=True):
+  def SendRawCmd(self, cmd, timeoutin_ms=200, boolreadinput=True, outputlength=0):
     """
     convert ascii cmd to raw bytes, send over uart, and convert raw byte results back to ascii for display
-    set boolreadinput to False if you don't expect an output otherwise an error will be raised.
+    :param boolreadinput: Set to False if you don't expect an output otherwise an error will be raised.
+    :param outputlength: expected return data length.  If non-zero will read till this condtion is met or timeout
     """
-    self.logger.debug('serial input: ' + cmd)
+    self.logger.debug('[Sin] <-: %s' % cmd)
     inputbinary = binascii.unhexlify(cmd)
-    if self._portHandler ==  None:
+
+    if self._portHandler is None:
       raise serial.portNotOpenError
 
     self._portHandler.write(inputbinary)
     out = ''
 
     if boolreadinput:
+      # binary data is half the length
+      outputlength = outputlength / 2
       timeout = timeouts.PolledTimeout.FromMillis(timeoutin_ms)
 
-      while (self._portHandler.inWaiting() <= 0) and (timeout.HasExpired() == False):
-        time.sleep(self._buffertime / 1000.0)
+      if outputlength > 0:
+        # read until expected output length
+        while (len(out) < outputlength) and (timeout.HasExpired() == False):
+          if self._portHandler.inWaiting() > 0:
+            out += self._portHandler.read(1)
 
-      if timeout.HasExpired() and boolreadinput:
-        self.logger.debug('timeout serial ')
-        raise SerialPlugExceptions('timeout waiting for serial data.')
+        if timeout.HasExpired():
+          self.logger.debug('timeout serial: data length: %i %s ' % (len(out), out) )
+          raise SerialPlugExceptions('timeout waiting for serial data.')
+
       else:
-        while self._portHandler.inWaiting() > 0:
-          out += self._portHandler.read(1)
+        # wait for data then read
+        while (self._portHandler.inWaiting() <= 0) and (timeout.HasExpired() == False):
+          time.sleep(self._buffertime / 1000.0)
+
+        if timeout.HasExpired() and boolreadinput:
+          self.logger.debug('timeout serial ')
+          raise SerialPlugExceptions('timeout waiting for serial data.')
+        else:
+          while self._portHandler.inWaiting() > 0:
+            out += self._portHandler.read(1)
 
       if out != '':
         output = binascii.hexlify(out)
-        self.logger.debug('serial output:  ' + output)
+        self.logger.debug('[Sout] ->: %s (%i)' % (output, len(output)))
       else:
         output = ''
         self.logger.debug('didn\'t get any output...')
@@ -132,29 +148,45 @@ class SerialPlug(plugs.BasePlug):
 
     return output
 
-  def PollRawData(self, timeoutin_ms=1000):
-    """ poll for data till timeout.  Doesn't send anything to serial device """
+  def PollRawData(self, timeoutin_ms=1000, minreadtime_ms=0, outputlength=0):
+    """ poll for data till timeout.  Doesn't send anything to serial device
+        :param minreadtime_ms: keep reading for this long if outputlength=0
+        :param outputlength: expected return data length.  If non-zero will read till this condtion is met or timeout
+    """
     if self._portHandler is None:
       raise serial.portNotOpenError
 
     out = ''
     timeout = timeouts.PolledTimeout.FromMillis(timeoutin_ms)
+    outputlength = outputlength / 2
 
-    # wait data to be available
-    while (self._portHandler.inWaiting() <= 0) and (timeout.HasExpired() == False):
-      time.sleep(self._buffertime / 1000.0)
+    if outputlength > 0:
+      # read until expected output length
+      while (len(out) < outputlength) and (timeout.HasExpired() == False):
+        if self._portHandler.inWaiting() > 0:
+          out += self._portHandler.read(1)
 
-    # read it
-    if timeout.HasExpired():
-      self.logger.debug('Timeout expired and still no data!!!')
-      raise SerialPlugExceptions('timeout waiting for serial data.')
+      if timeout.HasExpired():
+        self.logger.debug('timeout serial ')
+        raise SerialPlugExceptions('timeout waiting for serial data.')
+
     else:
-      while (self._portHandler.inWaiting() > 0):
-        out += self._portHandler.read(1)
+      # wait data to be available
+      while (self._portHandler.inWaiting() <= 0) and (timeout.HasExpired() == False):
+        time.sleep(self._buffertime / 1000.0)
+
+      # read it
+      if timeout.HasExpired():
+        self.logger.debug('Timeout expired and still no data!!!')
+        raise SerialPlugExceptions('timeout waiting for serial data.')
+      else:
+        while (self._portHandler.inWaiting() > 0) or (minreadtime_ms > timeout.seconds*1000):
+          if self._portHandler.inWaiting() > 0:
+            out += self._portHandler.read(1)
 
     if out != '':
       output = binascii.hexlify(out)
-      self.logger.debug('serial output:  ' + output)
+      self.logger.debug('[Sout] ->: %s (%i)' % (output, len(output)))
     else:
       output = ''
       self.logger.debug('didn\'t get any output...')
@@ -163,10 +195,10 @@ class SerialPlug(plugs.BasePlug):
 
   def SendAsciiCmd(self, cmd):
     """  send ascii over uart  """
-    if self._portHandler ==  None:
+    if self._portHandler is None:
       raise serial.portNotOpenError
 
-    self.logger.debug('serial input: ' + cmd)
+    self.logger.debug('[Sin] <-: ' + cmd)
     self._portHandler.write(cmd)
     out = ''
 
@@ -175,7 +207,7 @@ class SerialPlug(plugs.BasePlug):
       out += self._portHandler.read(1)
 
     if out != '':
-      self.logger.debug('serial output:  ' + out)
+      self.logger.debug('[Sout] ->: ' + out)
     else:
       self.logger.debug('didn\'t get any output...')
 
@@ -185,7 +217,7 @@ class SerialPlug(plugs.BasePlug):
     """
     close the port if it's opened
     """
-    if (self._portOpened):
+    if self._portOpened:
         self.logger.debug('closing serial port!!!')
         self._portHandler.close()
 
