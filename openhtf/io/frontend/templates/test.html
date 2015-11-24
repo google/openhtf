@@ -14,7 +14,7 @@
 <p>{{state.running_phase.docstring}}</p>
 <h4>Measurements</h4>
 <table border=1>
-{% for m in state.running_phase.measurement_declarations %}
+{% for m in state.running_phase.measurements %}
   <tr>
     <td>{{m}}</td>
     {% if m in state.phase_data.measurements %}

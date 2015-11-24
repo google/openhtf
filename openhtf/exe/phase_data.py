@@ -114,16 +114,17 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       phase = phase.wraps
 
     # Check for measurement descriptors and track them in the PhaseRecord.
-    measurement_descriptors = {
-        desc.name: desc
-        for desc in getattr(phase, 'measurement_descriptors', [])
+    measurement_map = {
+        measurement.name: measurement
+        for measurement in getattr(phase, 'measurements', [])
     }
     # Populate dummy declaration list for frontend API.
-    test_state.running_phase.measurement_declarations = {
-        name: None for name in measurement_descriptors
+    test_state.running_phase.measurements = {
+        measurement.name: measurement._asdict()
+        for measurement in measurement_map.itervalues()
     }
-    test_state.phase_data.measurements = measurements.Collection(
-        measurement_descriptors)
+    test_state.phase_data.measurements = (
+        measurements.Collection(measurement_map))
     test_state.phase_data.attachments = {}
     test_state.running_phase.start_time_millis = util.TimeMillis()
 
@@ -139,16 +140,15 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     try:
       yield result_wrapper
     finally:
-      # Serialize measured values and descriptors.
+      # Serialize measurements and measured values, validate as we go.
       values = dict(test_state.phase_data.measurements)
-      declarations = {
-          name: measurements.Declaration.FromMeasurement(
-              desc, values.get(name, None))
-          for name, desc in measurement_descriptors.iteritems()
+      validated_measurements = {
+          name: measurement.Validate(values.get(name, None))
+          for name, measurement in measurement_map.iteritems()
       }
       # Fill out and append the PhaseRecord to our test_record.
       test_state.running_phase.measured_values = values
-      test_state.running_phase.measurement_declarations = declarations
+      test_state.running_phase.measurements = validated_measurements
       test_state.running_phase.end_time_millis = util.TimeMillis()
       test_state.running_phase.result = result_wrapper.result
       self.test_record.phases.append(test_state.running_phase)

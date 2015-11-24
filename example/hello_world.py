@@ -36,37 +36,40 @@ def example_monitor(example):
 
 @measures(
     Measurement(
-        'widget_type').String().MatchesRegex(r'.*Widget$').Doc(
-            '''This measurement tracks the type of widgets.'''))
+        'widget_type').MatchesRegex(r'.*Widget$').Doc(
+            '''This measurement tracks the type of widgets.'''),
+    Measurement(
+        'widget_color').Doc('Color of the widget'))
 @plug(example=example_plug.Example)
 def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.DisplayPrompt(
       'What\'s the widget type?', text_input=True)
+  test.measurements.widget_color = 'Black'
   test.logger.info('Example says: %s', example.DoStuff())
 
 
 # Timeout if this phase takes longer than 10 seconds.
 @TestPhase(timeout_s=10)
 @measures(
-    [Measurement(
-        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
+    *(Measurement(
+        'level_%s' % i) for i in ['none', 'some', 'all']))
 @monitors('monitor_measurement', example_monitor)
 def set_measurements(test):
   """Test phase that sets a measurement."""
   test.measurements.level_none = 0
-  time.sleep(2)
+  time.sleep(1)
   test.measurements.level_some = 8
-  time.sleep(2)
+  time.sleep(1)
   test.measurements.level_all = 9
-  time.sleep(2)
+  time.sleep(1)
 
 
-@measures([
+@measures(
     Measurement('dimensions').WithDimensions(UOM['HERTZ']),
     Measurement('lots_of_dims').WithDimensions(
-        UOM['HERTZ'], UOM['BYTE'], UOM['RADIAN'])])
+        UOM['HERTZ'], UOM['BYTE'], UOM['RADIAN']))
 def dimensions(test):
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim
