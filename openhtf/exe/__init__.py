@@ -17,6 +17,7 @@
 
 import logging
 import time
+from enum import Enum
 
 import contextlib2 as contextlib
 
@@ -24,6 +25,7 @@ from openhtf import conf
 from openhtf import plugs
 from openhtf.exe import phasemanager
 from openhtf.exe import test_state
+from openhtf.io import user_input
 from openhtf.util import threads
 
 
@@ -32,7 +34,6 @@ _LOG = logging.getLogger(__name__)
 
 class TestStopError(Exception):
   """Test is being stopped."""
-
 
 class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
   """Abstraction for supressing stuff we don't care about."""
@@ -60,6 +61,11 @@ class TestExecutor(threads.KillableThread):
 
   daemon = True
 
+  FrameworkStatus = Enum(
+      'CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING', 'STOP_WAIT',
+      'FINISHING'
+  )
+
   def __init__(self, config, test, test_start, test_stop):
     super(TestExecutor, self).__init__()
 
@@ -69,6 +75,13 @@ class TestExecutor(threads.KillableThread):
     self._config = config
     self._current_exit_stack = None
     self._test_state = None
+    self._status = self.FrameworkStatus.CREATED
+
+  def _asdict(self):
+    """Return a dictionary representation of this executor."""
+    return {'station_id': self._config.station_id,
+            'prompt': user_input.get_prompt_manager().prompt,
+            'status': self._status.key}
 
   def Start(self):
     """Style-compliant start method."""
@@ -119,15 +132,19 @@ class TestExecutor(threads.KillableThread):
       plug_manager = self._MakePlugManager(suppressor)
       phase_executor = self._MakePhaseExecutor()
 
+      self._status = self.FrameworkStatus.EXECUTING
       suppressor.failure_reason = 'Failed to execute test.'
       self._ExecuteTestPhases(phase_executor)
+      self._status = self.FrameworkStatus.FINISHING
       self.test.OutputTestRecord(self._test_state.GetFinishedRecord())
 
   def _MakePlugManager(self, suppressor):
     """Perform some initialization and create a PlugManager."""
+    self._status = self.FrameworkStatus.START_WAIT
     suppressor.failure_reason = 'TEST_START failed to complete.'
     dut_id = self._test_start()
 
+    self._status = self.FrameworkStatus.INITIALIZING
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
     plug_manager = (
@@ -163,6 +180,7 @@ class TestExecutor(threads.KillableThread):
       # If Stop was called, we don't care about the test stopping completely
       # anymore, nor if ctrl-C was hit.
       if exc_type not in (TestStopError, KeyboardInterrupt):
+        self._status = self.FrameworkStatus.STOP_WAIT
         self._test_stop(self._test_state.record.dut_id)
         self._test_state = None  # Clear test state after stopping.
 

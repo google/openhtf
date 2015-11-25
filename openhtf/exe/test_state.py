@@ -17,14 +17,12 @@
 
 Test timing, failures, and the UI are handled by this module.
 """
-import json
 import logging
 from enum import Enum
 
 from openhtf import conf
 from openhtf.exe import phase_data
 from openhtf.io import test_record
-from openhtf.io import user_input
 from openhtf import util
 from openhtf.util import logs
 
@@ -54,18 +52,18 @@ class TestState(object):
                          'WAITING', 'FAIL', 'PASS', 'CREATED'])
 
   _PHASE_RESULT_TO_STATE = {
-      phase_data.PhaseResults.CONTINUE: State.WAITING,
-      phase_data.PhaseResults.REPEAT: State.WAITING,
-      phase_data.PhaseResults.FAIL: State.FAIL,
-      phase_data.PhaseResults.TIMEOUT: State.TIMEOUT,
+      phase_data.PhaseResults.CONTINUE: Status.WAITING,
+      phase_data.PhaseResults.REPEAT: Status.WAITING,
+      phase_data.PhaseResults.FAIL: Status.FAIL,
+      phase_data.PhaseResults.TIMEOUT: Status.TIMEOUT,
   }
 
-  _ERROR_STATES = {State.TIMEOUT, State.ERROR}
-  _FINISHED_STATES = {State.PASS, State.FAIL} | _ERROR_STATES
+  _ERROR_STATES = {Status.TIMEOUT, Status.ERROR}
+  _FINISHED_STATES = {Status.PASS, Status.FAIL} | _ERROR_STATES
 
   def __init__(self, config, test, plugs, dut_id):
     station_id = conf.Config().station_id
-    self._state = self.State.CREATED
+    self._status = self.Status.CREATED
     self._config = config
     self.record = test_record.TestRecord(
         dut_id=dut_id, station_id=station_id,
@@ -89,15 +87,13 @@ class TestState(object):
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
-    prompt = user_input.get_prompt_manager().prompt
     return {
-        'state': self._state.key,
+        'status': self._status.key,
         'record': self.record,
         'phase_data': self.phase_data,
         'running_phase': self.running_phase,
-        'pending_phases': [
-            (phase.__name__, phase.__doc__) for phase in self.pending_phases],
-        'prompt': prompt}
+        'pending_phases': [(phase.func.__name__, phase.func.__doc__)
+                           for phase in self.pending_phases]}
 
   def SetStateFromPhaseResult(self, phase_result):
     """Set our internal state based on the given phase result.
@@ -108,21 +104,21 @@ class TestState(object):
     Returns: True if the test has finished.
     """
     if phase_result.raised_exception:
-      self._state = self.State.ERROR
+      self._status = self.Status.ERROR
       code = str(type(phase_result.phase_result).__name__)
       details = str(phase_result.phase_result).decode('utf8', 'replace')
-      self.record.AddOutcomeDetails(self._state, code, details)
+      self.record.AddOutcomeDetails(self._status, code, details)
     else:
       if phase_result.phase_result not in self._PHASE_RESULT_TO_STATE:
         raise InvalidPhaseResultError(
             'Phase result is invalid.', phase_result.phase_result)
-      self._state = self._PHASE_RESULT_TO_STATE[phase_result.phase_result]
+      self._status = self._PHASE_RESULT_TO_STATE[phase_result.phase_result]
 
-    return self._state in self._FINISHED_STATES
+    return self._status in self._FINISHED_STATES
 
   def SetStateRunning(self):
     """Mark the test as actually running (rather than waiting)."""
-    self._state = self.State.RUNNING
+    self._status = self.Status.RUNNING
 
   def SetStateFinished(self):
     """Mark the state as finished, only called if the test ended normally."""
@@ -131,7 +127,7 @@ class TestState(object):
            for meas in phase.measurements.itervalues()):
       self._state = self.State.FAIL
     else:
-      self._state = self.State.PASS
+      self._status = self.Status.PASS
 
 
   def GetFinishedRecord(self):
@@ -150,14 +146,14 @@ class TestState(object):
     if self.record.end_time_millis:
       raise TestRecordAlreadyFinishedError
 
-    self.logger.debug('Finishing test execution with state %s.', self._state)
+    self.logger.debug('Finishing test execution with state %s.', self._status)
 
     if not self.record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     self.record.end_time_millis = util.TimeMillis()
-    self.record.outcome = self._state
+    self.record.outcome = self._status
     return self.record
 
   def __str__(self):
@@ -165,4 +161,3 @@ class TestState(object):
         type(self).__name__, self.record.station_id, self.record.dut_id
     )
   __repr__ = __str__
-

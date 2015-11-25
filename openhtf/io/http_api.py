@@ -22,51 +22,102 @@ host should serve this API on different TCP ports via the --port flag."""
 
 import BaseHTTPServer
 import json
+import logging
+import threading
 import uuid
 
 import gflags
 
 from openhtf import util
 from openhtf.io import user_input
+from openhtf.util import multicast
 
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('http_port',
                       8888,
                       "Port on which to serve OpenHTF's HTTP API.")
+gflags.DEFINE_string('multicast_address',
+                     multicast.DEFAULT_ADDRESS,
+                     'Address to use for API port discovery service.')
+gflags.DEFINE_integer('multicast_port',
+                      multicast.DEFAULT_PORT,
+                      "Port on which to serve API port discovery service.")
+gflags.DEFINE_integer('multicast_ttl',
+                      multicast.DEFAULT_TTL,
+                      'TTL for multicast messages.')
 
 
-class Server(util.threads.KillableThread):
+_LOG = logging.getLogger(__name__)
+
+
+class Server(object):
+  """Frontend API server for openhtf.
+
+  Starts up two services as separate threads. An HTTP server that serves
+  detailed information about this intance of openhtf, and a multicast listener
+  that helps frontends find and connect to the HTTP server.
+  
+  Args:
+    executor: An openhtf.exe.TestExecutor object.
+  """
+  KILL_TIMEOUT_S = 1  # Seconds to wait between service kill attempts.
+
+
+  def __init__(self, executor):
+    super(Server, self).__init__()
+
+    def multicast_response(message):
+      """Formulate a response to a station discovery ping."""
+      if message == multicast.PING_STRING:
+        return json.JSONEncoder().encode(
+            {multicast.PING_RESPONSE_KEY: FLAGS.http_port})
+      else:
+        _LOG.debug(
+            'Received non-openhtf traffic on multicast socket: %s' % message)
+
+    self.servers = [HTTPServer(executor),
+                    multicast.MulticastListener(multicast_response,
+                                                FLAGS.multicast_address,
+                                                FLAGS.multicast_port,
+                                                FLAGS.multicast_ttl)]
+
+  def Start(self):
+    """Start all service threads."""
+    for server in self.servers:
+      server.start()
+
+  def Stop(self):
+    """Stop all service threads."""
+    for server in self.servers:
+      while server.is_alive():
+        server.Stop()
+        server.join(self.KILL_TIMEOUT_S)
+
+
+class HTTPServer(threading.Thread):
   """Bare-bones HTTP API server for OpenHTF.
 
   Args:
     executor: An openhtf.exe.TestExecutor object.
   """
   def __init__(self, executor):
-    super(Server, self).__init__()
-    self.HTTPHandler.executor = executor
+    super(HTTPServer, self).__init__()
+    self._HTTPHandler.executor = executor
+    self._server = None
 
-  class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+  class _HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """Request handler class for OpenHTF's HTTP API."""
 
     executor = None
 
     def do_GET(self):  # pylint: disable=invalid-name
-      """Reply with a JSON representation of the current test state.
-
-      If there is no test state make sure we still serve prompt state in case
-      a test start trigger is waiting on a prompt.
+      """Reply with a JSON representation of the current framwork and test
+      states.
       """
-      state = self.executor.GetState()
-      prompt = user_input.get_prompt_manager().prompt
-      if state:
-        self.wfile.write(state.AsJSON())
-      else:
-        result = {'state': 'NOTEST'}
-        prompt = user_input.get_prompt_manager().prompt
-        if prompt:
-          result['prompt'] = util.convert_to_dict(prompt)
-        self.wfile.write(json.dumps(result))
+      result = {'test': util.convert_to_dict(self.executor.GetState()),
+                'framework': util.convert_to_dict(self.executor)}
+      self.wfile.write(json.JSONEncoder().encode(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
@@ -75,15 +126,12 @@ class Server(util.threads.KillableThread):
       user_input.get_prompt_manager().Respond(
           uuid.UUID((data['id'])), data['response'])
 
-  def Start(self):
-    """Give the server a style-conformant Start method."""
-    self.start()
-
   def Stop(self):
-    """Stop the server."""
-    self.Kill()
+    """Stop the HTTP server."""
+    self._server.shutdown()
 
-  def _ThreadProc(self):
+  def run(self):
     """Start up a raw HTTPServer based on our HTTPHandler definition."""
-    server = BaseHTTPServer.HTTPServer(('', FLAGS.http_port), self.HTTPHandler)
-    server.serve_forever()
+    self._server = BaseHTTPServer.HTTPServer(
+        ('', FLAGS.http_port), self._HTTPHandler)
+    self._server.serve_forever()
