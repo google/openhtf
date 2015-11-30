@@ -106,7 +106,7 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
                      enumerate(monitor_func.plugs.itervalues(), start=1)}
     plug_decorator = plugs.requires(update_kwargs=False, **monitor_plugs)
     measures_decorator = measurements.measures(
-        measurements.Measurement(measurement_name).WithUnitCode(
+        measurements.Measurement(measurement_name).WithUnits(
             units).WithDimensions(uom.UOM['MILLISECOND']))
         
     return plug_decorator(measures_decorator(MonitoredPhaseFunc))
