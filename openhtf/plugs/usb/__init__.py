@@ -26,6 +26,8 @@ To use these plugs:
   def MyPhase(test, adb):
     adb.Shell('ls')
 """
+import commands
+import logging
 
 import openhtf.plugs as plugs
 from openhtf import conf
@@ -36,9 +38,10 @@ from openhtf.plugs.usb import local_usb
 conf.Declare('usb_server', 'USB Server IP/Hostname')
 conf.Declare('usb_server_port', 'USB Server Port',
              default_value=10000)
-
 conf.Declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
+conf.Declare('unit_name', 'cambrionix unit name')
 
+_LOG = logging.getLogger(__name__)
 
 def _open_usb_handle(**kwargs):
   """Open a UsbHandle subclass, based on configuration.
@@ -57,17 +60,35 @@ def _open_usb_handle(**kwargs):
   else:
     return local_usb.LibUsbHandle.Open(**kwargs)
 
+def _get_usb_serial(unit_name):
+  """Get a usb serial based on the Cambrionix unit mac address in configuration."""
+  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "LIST, %s"' % unit_name 
+  serial = commands.getstatusoutput(cmd)[1] 
 
+  serial = 'LWP1A02A15110225' 
+
+  _LOG.error('get serial:%s on unit:%s' % (serial, unit_name))
+
+  return serial
+  
 # pylint: disable=too-few-public-methods
 class FastbootPlug(plugs.BasePlug):
   """Plug that provides fastboot."""
 
   def __new__(cls):
+    serial = None
+    unit_name = conf.Config().unit_name
+
+    if unit_name:
+      serial = _get_usb_serial(unit_name)
+
     device = fastboot_device.FastbootDevice.Connect(
         _open_usb_handle(
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
-            interface_protocol=fastboot_device.PROTOCOL))
+            interface_protocol=fastboot_device.PROTOCOL,
+            serial_number = serial
+            ))
     device.TearDown = device.Close  # pylint: disable=invalid-name
     return device
 
@@ -81,11 +102,19 @@ class AdbPlug(plugs.BasePlug):
       kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(
           conf.Config().libusb_rsa_key)]
 
+    serial = None
+    unit_name = conf.Config().unit_name
+
+    if unit_name:
+      serial = _get_usb_serial(unit_name)
+
     device = adb_device.AdbDevice.Connect(
         _open_usb_handle(
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
-            interface_protocol=adb_device.PROTOCOL),
+            interface_protocol=adb_device.PROTOCOL,
+            serial_number=serial
+            ),
         **kwargs)
     device.TearDown = device.Close  # pylint: disable=invalid-name
     return device
