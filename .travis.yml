@@ -1,13 +1,15 @@
 language: python
 python:
   - "2.7"
-install:
-    - sudo apt-get install swig
-    - sudo pip install --upgrade pip
-    - pip install -r requirements.txt
-before_script:
-    - sudo apt-get install libusb-1.0-0-dev
-script: python test/run_unittests.py --travis
+addons:
+  apt:
+    packages:
+      - swig
+      - libusb-1.0-0-dev
+cache:
+  - pip
+  - apt
+script: python setup.py test
 branches:
   only:
     - master
