@@ -1,0 +1,4 @@
+station_id: acroname_power_supply_example
+serial_number_of_EtherStem: 0xd171001e
+default_power_module_voltage_output: 5000000
+default_power_module_current_limit: 1000000
