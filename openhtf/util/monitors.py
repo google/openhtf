@@ -44,6 +44,7 @@ def MyPhase(test):
 import functools
 import time
 
+import openhtf
 from openhtf import plugs
 from openhtf.util import measurements
 from openhtf.util import threads
@@ -54,18 +55,16 @@ class _MonitorThread(threads.KillableThread):
 
   daemon = True
 
-  def __init__(self, measurement_name, monitor_func, phase_data, interval_ms):
+  def __init__(self, measurement_name, monitor_phase, phase_data, interval_ms):
     super(_MonitorThread, self).__init__(
         name='%s_MonitorThread' % measurement_name)
     self.measurement_name = measurement_name
-    self.monitor_func = monitor_func
+    self.monitor_phase = monitor_phase
     self.phase_data = phase_data
     self.interval_ms = interval_ms
 
   def GetValue(self):
-    if hasattr(self.monitor_func, 'plugs'):
-      return self.monitor_func(self.phase_data)
-    return self.monitor_func()
+    return self.monitor_phase(self.phase_data)
 
   def _ThreadProc(self):
     measurement = getattr(self.phase_data.measurements, self.measurement_name)
@@ -81,34 +80,35 @@ class _MonitorThread(threads.KillableThread):
         measurement[(ctime - start_time) * 1000] = self.GetValue()
       else:
         time.sleep(wait_time_s)
-   
- 
+
+
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
+  monitor = openhtf.TestPhaseInfo.WrapOrReturn(monitor_func)
   def Wrapper(phase_func):
     @functools.wraps(phase_func)
     def MonitoredPhaseFunc(phase_data, *args, **kwargs):
-      # Start monitor thread, it will call monitor_func(phase_data) periodically
+      # Start monitor thread, it will call monitor.func(phase_data) periodically
       monitor_thread = _MonitorThread(
-          measurement_name, monitor_func, phase_data, poll_interval_ms)
+          measurement_name, monitor, phase_data, poll_interval_ms)
       monitor_thread.start()
       try:
         return phase_func(phase_data, *args, **kwargs)
       finally:
         monitor_thread.Kill()
-    MonitoredPhaseFunc.wraps = phase_func
-    
+    phase = openhtf.TestPhaseInfo.WrapOrReturn(phase_func)
+
     # Re-key this dict so we don't have to worry about collisions with
     # plug.requires() decorators on the phase function.  Since we aren't
     # updating kwargs here, we don't have to worry about collisions with
     # kwarg names.
-    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug_type for
-                     idx, plug_type in
-                     enumerate(monitor_func.plugs.itervalues(), start=1)}
+    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug.cls for
+                     idx, plug in enumerate(monitor.plugs, start=1)}
     plug_decorator = plugs.requires(update_kwargs=False, **monitor_plugs)
     measures_decorator = measurements.measures(
         measurements.Measurement(measurement_name).WithUnits(
             units).WithDimensions(uom.UOM['MILLISECOND']))
-        
-    return plug_decorator(measures_decorator(MonitoredPhaseFunc))
+    phase_func, phase.func = phase.func, MonitoredPhaseFunc
+
+    return plug_decorator(measures_decorator(phase))
   return Wrapper
 
