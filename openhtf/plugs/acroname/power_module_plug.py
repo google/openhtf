@@ -69,7 +69,15 @@ class ChangeCurrentLimitError(Exception):
 class TurnOffPowerSupplyError(Exception):
  """Error turning off power supply."""
 
- 
+
+
+def CheckReturnCode(code, action_str):
+  if not code:
+    _LOG.info("Result of %s: %d", action_str, code)
+  else:
+    _LOG.error("""Error connecting to power module through 
+      EtherStem while attempting to %s: %d""", action_str,code)
+    raise ConnectingToPowerModuleThroughEtherStemError() 
 
 
 class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
@@ -94,7 +102,6 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     """
     # codes below is to discover EtherStem on network
     stem_list = discover.find_all(Spec.TCPIP)
-    EtherStemFound = False
     if not stem_list:
       _LOG.info('None EtherStem is found.')
       raise NoneEtherStemFoundError
@@ -105,7 +112,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         spec = stem_list[stem_index]
         EtherStemFound = True
         break
-    if not EtherStemFound:
+    else:
       _LOG.info('No Matching EtherStem is found.')
       raise NoMatchingEtherStemFoundError
       
@@ -123,41 +130,28 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       _LOG.info("Connecting to EtherStem Succeed.")
 
     # codes below is to connect Power Module through EtherStem
-    res_list=[]
 
     res = self.EtherStem.i2c[0].setPullup(1)
-    res_list.append(res)
-    _LOG.info("Result of setting link stem pullups:"+str(res))
+    CheckReturnCode(res, "setPullUp")
 
     res = self.EtherStem.system.save()
-    res_list.append(res)
-    _LOG.info("Result of saving link stem:"+str(res))
+    CheckReturnCode(res, "EtherStemSave")
     
     res = self.EtherStem.setModuleAddress(self.MTMPowerModuleAddress)
-    res_list.append(res)
-    _LOG.info("Result of setting power module's module address:"+str(res))
+    CheckReturnCode(res, "setModuleAddress")
 
     res = self.EtherStem.system.setRouter(self.routerAddress)
-    res_list.append(res)
-    _LOG.info("Result of setting power module's router address:"+str(res))
+    CheckReturnCode(res, "setRouterAddress")
     
     res = self.EtherStem.system.save()
-    res_list.append(res)
-    _LOG.info("Result of saving link stem:"+str(res))
+    CheckReturnCode(res, "EtherStemSave")
     
     res = self.EtherStem.system.reset()
     res_list.append(res)
-    _LOG.info("Result of resetting link stem:"+str(res))
+    CheckReturnCode(res, "reset")
     
     res = self.power_module.connect_through_link_module(self.EtherStem)
-    res_list.append(res)
-    _LOG.info("Result of connecting power module through EtherStem:"+str(res))
-
-    if all(results == 0 for results in res_list):
-      _LOG.info("Success in connecting power module through EtherStem.")
-    else:
-      _LOG.info("Error connecting power module through EtherStem.")
-      raise ConnectingToPowerModuleThroughEtherStemError
+    CheckReturnCode(res, "PowerModuleConnectThroughLink")
 
 
   def NoShortCircuit(self):
