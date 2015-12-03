@@ -118,7 +118,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       
     
     # codes below is to connect EtherStem
-    _LOG.info("Connecting to EtherStem with serial number:0x%X" %self.serial_number)
+    _LOG.info("Connecting to EtherStem with serial number: ",hex(self.serial_number).upper())
     print("Connecting to EtherStem with serial number: 0x%X" % self.serial_number)
     print "spec = "+str(spec)
     res = self.EtherStem.connect_from_spec(spec)
@@ -234,17 +234,17 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     # i = float(imeas/1000000)
     return imeas
 
-  def ChangeVoltage(self, voltage):
+  def ChangeVoltage(self, voltage_uV):
     """Change output voltage value."""
     # res1 = self.power_module.rail[0].setEnableExternal(0)
     # sleep(0.5)
     for i in range(3):
-      res = self.power_module.rail[0].setVoltage(voltage)
+      res = self.power_module.rail[0].setVoltage(voltage_uV)
       sleep(0.5)
-      vmeas= self.GetVoltage()
-      print "vmeas=: %d"%vmeas
+      vmeas_uV = self.GetVoltage()
+      print "vmeas=: %d"%vmeas_uV
       if res==0 and (
-        (voltage-100000)<=vmeas<=(voltage+100000)):
+        (voltage_uV-100000)<=vmeas_uV<=(voltage_uV+100000)):
         # res3 = self.power_module.rail[0].setEnableExternal(1)
         # if res3 ==0:
         # print "Succeed in changing voltage."
@@ -259,11 +259,11 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         raise ChangeVoltageError
 
 
-  def ChangeCurrentLimit(self,current_limit):
+  def ChangeCurrentLimit(self,current_limit_uA):
     """Change current limit value."""
     # res1 = self.power_module.rail[0].setEnableExternal(0)
     # sleep(0.5)
-    res2 = self.power_module.rail[0].setCurrentLimit(current_limit)
+    res2 = self.power_module.rail[0].setCurrentLimit(current_limit_uA)
     # print ("vmeas = %d uV" %vmeas)
     # v = round((float(vmeas)/float(1000000)))
     sleep(0.5)
