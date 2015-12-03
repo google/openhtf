@@ -95,20 +95,20 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     # codes below is to discover EtherStem on network
     stem_list = discover.find_all(Spec.TCPIP)
     EtherStemFound = False
-    if stem_list is not []:
-      for stem in stem_list:
-        print "stem: "+str(stem)
-        if stem.serial_number == self.serial_number:
-          stem_index = stem_list.index(stem)
-          spec = stem_list[stem_index]
-          EtherStemFound = True
-          break
-      if not EtherStemFound:
-        _LOG.info('No Matching EtherStem is found.')
-        raise NoMatchingEtherStemFoundError
-    else:
+    if not stem_list:
       _LOG.info('None EtherStem is found.')
       raise NoneEtherStemFoundError
+    for stem in stem_list:
+      print "stem: "+str(stem)
+      if stem.serial_number == self.serial_number:
+        stem_index = stem_list.index(stem)
+        spec = stem_list[stem_index]
+        EtherStemFound = True
+        break
+    if not EtherStemFound:
+      _LOG.info('No Matching EtherStem is found.')
+      raise NoMatchingEtherStemFoundError
+      
     
     # codes below is to connect EtherStem
     _LOG.info("Connecting to EtherStem with serial number:0x%X" %self.serial_number)
