@@ -37,22 +37,21 @@ class CleanCommand(clean):
     os.system('rm -vrf %s' % ' '.join(targets))
 
 
-requires = [    # pylint: disable=invalid-name
+requires = [  # pylint: disable=invalid-name
     'contextlib2==0.4.0',
     'enum==0.4.4',
     'Flask==0.10.1',
-    'itsdangerous==0.24',
-    'Jinja2==2.7.3',
+    'inotify==0.2.4',
     'libusb1==1.3.0',
     'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
     'mutablerecords==0.2.4',
     'pyaml==15.3.1',
+    'mutablerecords==0.2.4',
     'python-gflags==2.0',
     'PyYAML==3.11',
     'Rocket==1.2.4',
     'singledispatch==3.4.0.3',
-    'six==1.9.0',
     'Werkzeug==0.10.4',
 ]
 
