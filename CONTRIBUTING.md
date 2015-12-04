@@ -39,6 +39,6 @@ To set up an OpenHTF dev environment, follow the steps below.
 4. `(cd to openhtf directory)`
 5. `virtualenv venv`
 6. `. venv/bin/activate`
-7. `pip install -r requirements.txt`
+7. `python setup.py develop`
 8. `sudo mkdir /var/run/openhtf`
 9. `sudo chmod 777 /var/run/openhtf/`
