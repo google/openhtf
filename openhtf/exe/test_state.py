@@ -130,7 +130,7 @@ class TestState(object):
     """Mark the state as finished, only called if the test ended normally."""
     if any(meas.outcome == 'FAIL'
            for phase in self.record.phases
-           for meas in phase.measurement_declarations.itervalues()):
+           for meas in phase.measurements.itervalues()):
       self._state = self.State.FAIL
     else:
       self._state = self.State.PASS

@@ -21,31 +21,28 @@ OpenHTF framework will automatically check them against Pass/Fail criteria.
 Measurements should not be used for large binary blobs, which are instead best
 stored as Attachments (see attachments.py).
 
-Measurements are described by the measurements.Measurement class, a subclass of
-data.Descriptor with some additional functionality for Units and Dimensions.
-See data.py for more information on data descriptors.  Essentially, the
-Measurement class is used by test authors to declare measurements by name, and
-to optionally provide unit, type, and validation information.  Measurements
+Measurements are described by the measurements.Measurement class.  Essentially,
+the Measurement class is used by test authors to declare measurements by name,
+and to optionally provide unit, type, and validation information.  Measurements
 are attached to Test Phases using the @measurements.measures() decorator.
 
-When measurements are output by the OpenHTF framework, the Measurement is
-serialized as a measurements.Declaration, and the values themselves are output
-as per measurements.Measurement.GetValue().  test_record.PhaseRecord objects
-store separate data structures for declarations and values.  See test_record.py
-for more information.
+When measurements are output by the OpenHTF framework, the Measurement objects
+are serialized into the 'measurements' field on the PhaseRecord, and the values
+themselves are similarly output in the 'measured_values' field on the
+PhaseRecord.  See test_record.py for more information.
 
 Examples:
 
-@measurements.measures(
-    measurements.Measurement(
-        'number_widgets').Integer().InRange(5, 10).Doc(
-        '''This phase parameter tracks the number of widgets.'''))
-@measurements.measures(
-    [measurements.Measurement(
-        'level_%s' % i).Number() for i in ['none', 'some', 'all']])
-def WidgetTestPhase(test):
-  test.measurements.number_widgets = 5
-  test.measurements.level_none = 10
+  @measurements.measures(
+      measurements.Measurement(
+          'number_widgets').InRange(5, 10).Doc(
+          '''This phase parameter tracks the number of widgets.'''))
+  @measurements.measures(
+      *(measurements.Measurement('level_%s' % lvl)
+        for lvl in ('none', 'some', 'all')))
+  def WidgetTestPhase(test):
+    test.measurements.number_widgets = 5
+    test.measurements.level_none = 10
 
 """
 
@@ -54,12 +51,14 @@ import collections
 import inspect
 import itertools
 import logging
+import mutablerecords
 
 # from openhtf.io import records
 from openhtf.io import test_record
-from openhtf.util import data
+from openhtf.util import validators
 
 _LOG = logging.getLogger(__name__)
+
 
 class InvalidDimensionsError(Exception):
   """Raised when there is a problem with measurement dimensions."""
@@ -93,18 +92,34 @@ class MultipleValidatorsException(Exception):
   """Multiple validators were used when defining a measurement."""
 
 
-class Measurement(data.Descriptor):
-  """Data descriptor specifically for measurements."""
+class Measurement(  # pylint: disable=no-init
+    mutablerecords.Record(
+        'Measurement', ['name'],
+        {'units': None, 'dimensions': None, 'docstring': None,
+         'validators': list, 'outcome': None})):
+  """Record encapsulating descriptive data for a measurement.
 
-  def __init__(self, name):
-    super(Measurement, self).__init__()
-    self.name = name
-    self.unit_code = None
-    self.dimensions = None  # Tuple of unit codes of additional dimensions.
+  This record includes an _asdict() method so it can be easily output.  Output
+  is as you would expect, except that 'outcome' is updated to 'PASS', 'FAIL',
+  or 'UNSET' accordingly.
 
-  def WithUnitCode(self, unit_code):
-    """Declare the unit for this Descriptor."""
-    self.unit_code = unit_code
+  Attributes:
+    name: Name of the measurement.
+    docstring: Optional string describing this measurement.
+    units: UOM code of the units for the measurement being taken.
+    dimensions: Tuple of UOM codes for units of dimensions.
+    validators: List of callable validator objects to perform pass/fail checks.
+    outcome: Either True or False if Validate() has been called with a non-None
+      value, otherwise None.
+  """
+
+  def Doc(self, docstring):
+    self.docstring = docstring
+    return self
+
+  def WithUnits(self, units):
+    """Declare the units for this Measurement."""
+    self.units = units
     return self
 
   def WithDimensions(self, *dimensions):
@@ -112,54 +127,47 @@ class Measurement(data.Descriptor):
     self.dimensions = dimensions
     return self
 
+  def WithValidator(self, validator):
+    if not callable(validator):
+      raise ValueError('Validator must be callable', validator)
+    self.validators.append(validator)
+    return self
 
-class Declaration(collections.namedtuple(
-    'Declaration',
-    'name units dimensions numeric_lower_bound numeric_upper_bound '
-    'string_regex validator_code outcome')):
-  """
-  Describes a measurement as it was declared.
+  def __getattr__(self, attr):
+    """Support our default set of validators as direct attributes."""
+    # Don't provide a back door to validators.py private stuff accidentally.
+    if attr.startswith('_') or not hasattr(validators, attr):
+      raise AttributeError("'%s' object has no attribute '%s'" % (
+          type(self).__name__, attr))
 
-  At most one of the following may be set:
-    - Lower and/or upper numeric limits
-    - A regular expression for matching against strings
-    - The source code of an arbitrary validation function
+    # Create a wrapper to invoke the attribute from within validators.
+    def _WithValidator(*args, **kwargs):
+      return self.WithValidator(getattr(validators, attr)(*args, **kwargs))
+    return _WithValidator
 
-  Attributes:
-    units: UOM code of the units for the measurement being taken.
-    dimensions: Tuple of UOM codes for units of dimensions.
-    numeric_lower_bound: For numeric measurements, the lower bound.
-    numeric_upper_bound: For numeric measurements, the upper bound.
-    string_regex: For string measurements, a regular expression to match.
-    validator_code: Source code of a custom validator.
-    outcome: Either 'PASS' or 'FAIL' if the value was set, otherwise None.
-  """
+  def Validate(self, value):
+    """Validate this measurement and update its 'outcome' field."""
+    # Make sure we don't do anything weird with updating measurement values.
+    if self.outcome is not None:
+      raise RuntimeError('Validate must only be called once')
 
-  @classmethod
-  def FromMeasurement(cls, descriptor, value=None):
-    """Construct a Declaration from a Measurement."""
-    numeric_lower_bound = numeric_upper_bound = None
-    string_regex = None
-    validator_code = None
-    outcome = None if value is None else True
+    # Ignore unset measurements.
+    if value is not None:
+      # Pass if all our validators return True.
+      self.outcome = all(v(value) for v in self.validators)
 
-    for validator in descriptor.validators:
-      if value is not None:
-        outcome = outcome and validator.SafeValidate(value)
-      if isinstance(validator, data.InRange):
-        numeric_lower_bound = validator.minimum
-        numeric_upper_bound = validator.maximum
-      elif isinstance(validator, data.Equals):
-        numeric_lower_bound = numeric_upper_bound = validator.expected
-      elif isinstance(validator, data.MatchesRegex):
-        string_regex = validator.regex_pattern
-      else:
-        validator_code = inspect.getsource(validator)
+    return self
 
-    return cls(
-        descriptor.name, descriptor.unit_code, descriptor.dimensions,
-        numeric_lower_bound, numeric_upper_bound, string_regex, validator_code,
-        {None: None, True: 'PASS', False: 'FAIL'}[outcome])
+  def _asdict(self):
+    retval = {
+        'name': self.name,
+        'outcome': {None: 'UNSET', True: 'PASS', False: 'FAIL'}[self.outcome]}
+    if len(self.validators):
+      retval['validators'] = [str(v) for v in self.validators]
+    for attr in ('units', 'dimensions', 'docstring'):
+      if getattr(self, attr) is not None:
+        retval[attr] = getattr(self, attr)
+    return retval
 
 
 class MeasuredValue(object):
@@ -189,12 +197,12 @@ class MeasuredValue(object):
         'Cannot iterate over undimensioned measurement.')
 
   @classmethod
-  def ForDeclaration(cls, declaration):
-    """Create an unset MeasuredValue for this declaration."""
-    if declaration.dimensions:
-      return cls(declaration.name, len(declaration.dimensions))
+  def ForMeasurement(cls, measurement):
+    """Create an unset MeasuredValue for this measurement."""
+    if measurement.dimensions:
+      return cls(measurement.name, len(measurement.dimensions))
     else:
-      return cls(declaration.name, 0)
+      return cls(measurement.name, 0)
 
   def SetValue(self, value):
     if self.num_dimensions:
@@ -250,7 +258,7 @@ class Collection(object):  # pylint: disable=too-few-public-methods
   This collection can have measurement values retrieved and set via getters and
   setters.
 
-  A Collection is created with a list of Descriptor objects (defined above).
+  A Collection is created with a list of Measurement objects (defined above).
   Measurements can't be added after initialization, only accessed and set.
 
   MeasuredValue values can be set as attributes (see below).  They can also be
@@ -263,13 +271,15 @@ class Collection(object):  # pylint: disable=too-few-public-methods
   a dict if you want to see all of a dimensioned measurement's values.
   Alternatively, MeasuredValue objects can also be converted to dicts.
 
+  This class is intended for use only internally within the OpenHTF framework.
+
   Example:
     from openhtf.util import measurements
     from openhtf.util.units import UOM
 
     self.measurements = measurements.Collection([
-        measurements.Descriptor('widget_height'),
-        measurements.Descriptor('widget_freq_response').WithDimensions(
+        measurements.Measurement('widget_height'),
+        measurements.Measurement('widget_freq_response').WithDimensions(
             UOM['HERTZ'])])
     self.measurements.widget_height = 3
     print self.measurements.widget_height            # 3
@@ -284,38 +294,34 @@ class Collection(object):  # pylint: disable=too-few-public-methods
     # [(5, 10), (6, 11)]
   """
 
-  __slots__ = ('_declarations', '_values')
+  __slots__ = ('_measurements', '_values')
 
-  def __init__(self, measurement_declarations):
+  def __init__(self, measurements):
     # We have setattr so we have to bypass it to set attributes.
-    object.__setattr__(self, '_declarations', measurement_declarations)
+    object.__setattr__(self, '_measurements', measurements)
     object.__setattr__(self, '_values', {})
-
-  def _asdict(self):
-    """Return dict of this Collection."""
-    return dict(self)
 
   def _AssertValidKey(self, name):
     """Raises if name is not a valid measurement."""
-    if name not in self._declarations:
+    if name not in self._measurements:
       raise NotAMeasurementError('Not a measurement', name)
 
   def __iter__(self):  # pylint: disable=invalid-name
-    def _GetMeasValue(item):
+    def _GetMeasurementValue(item):
       return item[0], item[1].GetValue()
-    return itertools.imap(_GetMeasValue, self._values.iteritems())
+    return itertools.imap(_GetMeasurementValue, self._values.iteritems())
 
   def __setattr__(self, name, value):
     self._AssertValidKey(name)
     record = self._values.setdefault(
-        name, MeasuredValue.ForDeclaration(self._declarations[name]))
+        name, MeasuredValue.ForMeasurement(self._measurements[name]))
     record.SetValue(value)
 
   def __getattr__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
-    if self._declarations[name].dimensions:
-      return self._values.setdefault(name, MeasuredValue.ForDeclaration(
-          self._declarations[name]))
+    if self._measurements[name].dimensions:
+      return self._values.setdefault(name, MeasuredValue.ForMeasurement(
+          self._measurements[name]))
     if name not in self._values:
       raise MeasurementNotSetError('Measurement not yet set', name)
     return self._values[name].GetValue()
@@ -331,10 +337,10 @@ class Collection(object):  # pylint: disable=too-few-public-methods
     return None
 
   def __len__(self):  # pylint: disable=invalid-name
-    return len(self._declarations)
+    return len(self._measurements)
 
 
-def measures(measurements):
+def measures(*measurements):
   """Decorator-maker used to declare measurements for phases.
 
   See the measurements module docstring for examples of usage.
@@ -361,15 +367,16 @@ def measures(measurements):
   else:
     measurements = [_maybe_make(measurements)]
 
-  # 'descriptors' is guaranteed to be a list of Descriptors here.
+  # 'descriptors' is guaranteed to be a list of Measurements here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
     phase = wrapped_phase
     while hasattr(phase, 'wraps'):
       phase = phase.wraps
 
-    if not hasattr(phase, 'measurement_descriptors'):
-      phase.measurement_descriptors = []
-    phase.measurement_descriptors.extend(measurements)
+    if not hasattr(phase, 'measurements'):
+      phase.measurements = []
+    phase.measurements.extend(measurements)
     return wrapped_phase
   return decorate
+

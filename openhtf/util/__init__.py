@@ -62,7 +62,9 @@ def convert_to_dict(obj):
     obj = obj._asdict()
   elif isinstance(obj, mutablerecords.records.RecordClass):
     obj = {attr: getattr(obj, attr)
-           for attr in type(obj).all_attribute_names}
+           for attr in type(obj).all_attribute_names
+           if (getattr(obj, attr) is not None or
+               attr in type(obj).required_attributes)}
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
@@ -71,7 +73,8 @@ def convert_to_dict(obj):
     obj = [convert_to_dict(value) for value in obj]
   elif isinstance(obj, tuple):
     obj = tuple(convert_to_dict(value) for value in obj)
-  else:
+  elif obj is not None:
+    # Leave None as None to distinguish it from "None".
     obj = str(obj)
 
   return obj

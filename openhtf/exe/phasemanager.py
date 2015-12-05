@@ -165,8 +165,12 @@ class PhaseExecutor(object):
     _LOG.info('Executing phase %s with plugs %s',
                       phase.__name__, self._phase_data.plugs)
 
+    root_phase = phase
+    while hasattr(root_phase, 'wraps'):
+      root_phase = root_phase.wraps
+
     self._test_state.running_phase = test_record.PhaseRecord(
-        phase.__name__, phase.__doc__, inspect.getsource(phase))
+        phase.__name__, inspect.getsource(root_phase), docstring=phase.__doc__)
 
     with self._phase_data.RecordPhaseTiming(
         phase, self._test_state) as result_wrapper:
