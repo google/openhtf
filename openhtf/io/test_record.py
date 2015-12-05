@@ -53,7 +53,7 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
         'PhaseRecord', ['name', 'code'],
         {'measurements': None, 'measured_values': None,
          'start_time_millis': None, 'end_time_millis': None,
-         'attachments': None, 'result': None, 'docstring': None})):
+         'attachments': dict, 'result': None, 'docstring': None})):
   """The record of a single run of a phase.
 
   Measurement metadata (declarations) and values are stored in separate
