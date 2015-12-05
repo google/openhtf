@@ -46,8 +46,7 @@ from openhtf.util import threads
 
 FLAGS = gflags.FLAGS
 
-gflags.DEFINE_string('config',
-                     '/usr/local/openhtf_client/config/clientfoo.yaml',
+gflags.DEFINE_string('config', None,
                      'The OpenHTF configuration file for this tester')
 
 gflags.DEFINE_multistring(
@@ -235,7 +234,7 @@ class ConfigModel(object):
   # pylint: enable=missing-docstring
 
   @threads.Synchronized
-  def Load(self, config_file=None, force_reload=False,
+  def Load(self, force_reload=False,
            config_loader=lambda fname: open(fname, 'r')):
     """Loads the configuration file from disk.
 
@@ -257,29 +256,31 @@ class ConfigModel(object):
       return False
 
     try:
-      filename = config_file or FLAGS.config
-      _LOG.info('Loading from config: %s', filename)
-
-      with config_loader(filename) as config_file:
-        data = yaml.safe_load(config_file)
-        if not data:
-          raise ConfigurationInvalidError('No data', config_file)
-        self._state.clear()
-        self._state.update(data)
+      if FLAGS.config:
+        _LOG.info('Loading from config: %s', FLAGS.config)
+        with config_loader(FLAGS.config) as config_file:
+          data = yaml.safe_load(config_file)
+          if not data:
+            raise ConfigurationInvalidError('No data', config_file)
+          self._state.clear()
+          self._state.update(data)
 
       # Load string values from flags
       for keyval in FLAGS.config_value:
         key, val = keyval.split('=')
         self._state[key] = val
+   
+      if 'station_id' not in self._state:
+        raise MissingRequiredConfigurationKeyError('Missing station_id configuration key')
 
       self._loaded = True
       _LOG.debug('Configuration loaded: %s', self._state)
     except yaml.YAMLError as exception:
-      _LOG.exception('Failed to load yaml file: %s', filename)
-      raise ConfigurationInvalidError(filename, exception)
+      _LOG.exception('Failed to load yaml file: %s', FLAGS.config)
+      raise ConfigurationInvalidError(FLAGS.config, exception)
     except IOError as exception:
-      _LOG.exception('Configuration failed loaded: %s', filename)
-      raise ConfigurationMissingError(filename, exception)
+      _LOG.exception('Configuration failed loaded: %s', FLAGS.config)
+      raise ConfigurationMissingError(FLAGS.config, exception)
 
     return True
 
