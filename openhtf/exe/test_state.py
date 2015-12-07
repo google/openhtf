@@ -34,8 +34,6 @@ from openhtf.util import logs
 
 _LOG = logging.getLogger(__name__)
 
-FLAGS = gflags.FLAGS
-
 class BlankDutIdError(Exception):
   """DUT serial cannot be blank at the end of a test."""
 
