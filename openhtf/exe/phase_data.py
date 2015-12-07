@@ -151,7 +151,9 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       test_state.running_phase.measurements = validated_measurements
       test_state.running_phase.end_time_millis = util.TimeMillis()
       test_state.running_phase.result = result_wrapper.result
-      test_state.running_phase.attachments.update(self.attachments)
+      
+      if test_state.running_phase.attachments:
+        test_state.running_phase.attachments.update(self.attachments)
       self.test_record.phases.append(test_state.running_phase)
 
       # Clear these between uses for the frontend API.
