@@ -82,7 +82,6 @@ class PyTestCommand(test):
       outputs = ' '.join('--cov-report %s' % output
                          for output in self.pytest_cov.split(','))
       cov = ' --cov openhtf ' + outputs
-
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
