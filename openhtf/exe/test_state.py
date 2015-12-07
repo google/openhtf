@@ -19,9 +19,6 @@ Test timing, failures, and the UI are handled by this module.
 """
 import json
 import logging
-import gflags
-import sys
-
 from enum import Enum
 
 from openhtf import conf
