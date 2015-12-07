@@ -83,12 +83,7 @@ class TestState(object):
     self.logger = logging.getLogger(test.filename)
     self.logger.setLevel(logging.DEBUG)  # Let the handler do the filtering.
     self.logger.addHandler(logs.RecordHandler(self.record))
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    console_handler = logging.StreamHandler(stream=sys.stdout)
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(FLAGS.verbosity.upper())
-    self.logger.addHandler(console_handler)
-
+    
     self.phase_data = phase_data.PhaseData(self.logger, config, plugs,
                                            self.record)
     self.running_phase = None
