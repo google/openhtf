@@ -64,7 +64,7 @@ class PyTestCommand(test):
       ('pytest-cov=', None, 'Enable coverage. Choose output type: '
        'term, html, xml, annotate, or multiple with comma separation'),
   ]
-
+  
   def initialize_options(self):
     test.initialize_options(self)
     self.pytest_args = 'test'
@@ -75,14 +75,14 @@ class PyTestCommand(test):
     self.test_args = []
     self.test_suite = True
 
-  def run(self):
-    test.run(self)
+  def run_tests(self):
     import pytest
     cov = ''
     if self.pytest_cov is not None:
       outputs = ' '.join('--cov-report %s' % output
                          for output in self.pytest_cov.split(','))
       cov = ' --cov openhtf ' + outputs
+
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
