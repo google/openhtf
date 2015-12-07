@@ -19,6 +19,9 @@ Test timing, failures, and the UI are handled by this module.
 """
 import json
 import logging
+import gflags
+import sys
+
 from enum import Enum
 
 from openhtf import conf
@@ -31,6 +34,7 @@ from openhtf.util import logs
 
 _LOG = logging.getLogger(__name__)
 
+FLAGS = gflags.FLAGS
 
 class BlankDutIdError(Exception):
   """DUT serial cannot be blank at the end of a test."""
@@ -79,6 +83,7 @@ class TestState(object):
     self.logger = logging.getLogger(test.filename)
     self.logger.setLevel(logging.DEBUG)  # Let the handler do the filtering.
     self.logger.addHandler(logs.RecordHandler(self.record))
+    
     self.phase_data = phase_data.PhaseData(self.logger, config, plugs,
                                            self.record)
     self.running_phase = None
