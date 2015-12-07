@@ -26,6 +26,8 @@ To use these plugs:
   def MyPhase(test, adb):
     adb.Shell('ls')
 """
+import commands
+import logging
 
 import openhtf.plugs as plugs
 from openhtf import conf
@@ -36,56 +38,150 @@ from openhtf.plugs.usb import local_usb
 conf.Declare('usb_server', 'USB Server IP/Hostname')
 conf.Declare('usb_server_port', 'USB Server Port',
              default_value=10000)
-
 conf.Declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
+conf.Declare('device_type', 'android, fastboot or general usb type')
+conf.Declare('usb_hub', 'local or Ethersyncy')
+
+_LOG = logging.getLogger(__name__)
+
+class GeneralUsbAttributeError(Exception):
+  """Indicates the usb class/subclass/protocol info was invalid."""
+
+class general_usb(object):
+  def __init__(self, usb_class=None, usb_subclass=None, usb_protocol=None):
+    self.usb_class = usb_class
+    self.usb_subclass = usb_subclass
+    self.usb_protocol = usb_protocol
+
+  @property
+  def CLASS(self):
+    return self.usb_class
+  @property
+  def SUBCLASS(self):
+    return self.usb_subclass
+  @property
+  def PROTOCOL(self):
+      return self.usb_protocol 
+
+""" Config file example for device at Ethersync
+device_type: android (fastboot, general)
+usb_hub: 
+  Ethersync:
+   unit_name: EtherSyncca9167
+   mac_addr: 78:a5:04:ca:91:66
+
+---- Config file example for android/fastboot usb at local 
+device_type: android (fastboot)
+usb_hub: local
+
+---- Config file example for android/fastboot usb at local
+device_type: general
+usb_hub: 
+   local:
+      class: xxxxx
+      subclass: xxxxx
+      protocol: xxxxx
+      vendor_id:  xxxx (optional)
+      product_id: xxxxx(optional)
+      serial: (device serial number, optional)
+""" 
 
 
-def _open_usb_handle(**kwargs):
-  """Open a UsbHandle subclass, based on configuration.
+def _get_usb_serial(unit_name):
+  """Get a usb serial based on the Cambrionix unit mac address in configuration."""
+  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "LIST, %s"' % unit_name 
+  serial = commands.getstatusoutput(cmd)[1] 
+  #TODO, remove the folloing line when the command works
+  serial = 'LWP1A02A15110225' 
+  _LOG.info('get serial:%s on unit:%s' % (serial, unit_name))
 
-  If configuration 'usb_server' is set, use it to connect to remote usb,
-  otherwise attempt to connect locally.
+  return serial
 
-  Args:
-    **kwargs: Arguments to pass to respective handle's Open() method.
+def _open_usb_handle():
+  dev_type = conf.Config().device_type
+  usb_hub = conf.Config().usb_hub 
+  serial = None
+  vendor_id = None
+  product_id = None
+  device = None
 
-  Returns:
-    Instance of UsbHandle.
-  """
-  if conf.Config().usb_server:
-    return None
+  if isinstance(usb_hub, dict):
+    if usb_hub.has_key('Ethersync'):
+      device = usb_hub['Ethersync']
+      if isinstance(device, dict) and device.has_key('unit_name'):
+        serial = _get_usb_serial(device['unit_name'])
+      else:
+        raise GeneralUsbAttributeError('Ethersync needs mac address and and/or unit name')
+    else:
+      device = usb_hub['local']
   else:
-    return local_usb.LibUsbHandle.Open(**kwargs)
+    device = usb_hub
 
+  if dev_type == 'fastboot':
+    device = fastboot_device
+  elif dev_type == 'android': 
+    device = adb_device 
+  elif dev_type == 'general': 
+    if isinstance(device, dict):
+      try:
+        vendor_id = device['vendor_id']
+      except KeyError:
+        pass
+      try:
+        product_id = device['product_id']
+      except KeyError:
+        pass
+      try:
+        serial = device['serial']
+      except KeyError:
+        pass
+        
+      try:
+        device = general_usb(device['class'], device['subclass'], device['protocol'])
+      except KeyError:
+        raise GeneralUsbAttributeError('must set class\subclass\protocol for general type \
+                                          device:%s', device)
+    else:
+      raise GeneralUsbAttributeError('must set attribute for general device:%s', device)
+  else:
+    raise GeneralUsbAttributeError('must set device type')
 
+  return local_usb.LibUsbHandle.Open(
+         interface_class = device.CLASS,
+         interface_subclass = device.SUBCLASS,
+         interface_protocol = device.PROTOCOL,
+         serial_number = serial,
+         vendor_id = vendor_id,
+         product_id = product_id)
+ 
 # pylint: disable=too-few-public-methods
 class FastbootPlug(plugs.BasePlug):
   """Plug that provides fastboot."""
 
   def __new__(cls):
-    device = fastboot_device.FastbootDevice.Connect(
-        _open_usb_handle(
-            interface_class=fastboot_device.CLASS,
-            interface_subclass=fastboot_device.SUBCLASS,
-            interface_protocol=fastboot_device.PROTOCOL))
+    handle = _open_usb_handle()
+    device = fastboot_device.FastbootDevice.Connect(handle)
     device.TearDown = device.Close  # pylint: disable=invalid-name
     return device
 
 
 class AdbPlug(plugs.BasePlug):
   """Plug that provides ADB."""
-
   def __new__(cls):
     kwargs = {}
     if conf.Config().libusb_rsa_key:
       kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(
           conf.Config().libusb_rsa_key)]
-
-    device = adb_device.AdbDevice.Connect(
-        _open_usb_handle(
-            interface_class=adb_device.CLASS,
-            interface_subclass=adb_device.SUBCLASS,
-            interface_protocol=adb_device.PROTOCOL),
-        **kwargs)
+    handle = _open_usb_handle()
+    device = adb_device.AdbDevice.Connect(handle, **kwargs)
     device.TearDown = device.Close  # pylint: disable=invalid-name
+    return device
+
+class UsbPlug(plugs.BasePlug):
+  """Plug that provides general USB."""
+
+  def __new__(cls):
+    device = _open_usb_handle()
+    device.TearDown = device.Close  # pylint: disable=invalid-name
+  
     return device
