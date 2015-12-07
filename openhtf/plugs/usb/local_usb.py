@@ -174,7 +174,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
   @classmethod
   def IterOpen(cls, name=None, interface_class=None, interface_subclass=None,
                interface_protocol=None, serial_number=None, port_path=None,
-               default_timeout_ms=None):
+               vendor_id=None, product_id=None, default_timeout_ms=None):
     """Find and yield locally connected devices that match.
 
     Note that devices are opened (and interfaces claimd) as they are yielded.
@@ -207,14 +207,20 @@ class LibUsbHandle(usb_handle.UsbHandle):
 
     for device in devices:
       try:
-        if (serial_number is not None and
-            device.getSerialNumber() != serial_number):
+        if (vendor_id is not None and device.getVendorID() != vendor_id):
+          continue  
+              
+        if (product_id is not None and device.getProductID() != product_id):
+          continue
+
+        if (serial_number is not None and 
+           device.getSerialNumber() != serial_number):
           continue
 
         if (port_path is not None and
             cls._DeviceToSysfsPath(device) != port_path):
           continue
-
+       
         for setting in device.iterSettings():
           if (interface_class is not None and
               setting.getClass() != interface_class):
