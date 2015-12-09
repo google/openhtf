@@ -83,7 +83,7 @@ class TestState(object):
                                            self.record)
     self.running_phase = None
     self.pending_phases = list(test.phases)
-    
+
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
@@ -130,7 +130,7 @@ class TestState(object):
     """Mark the state as finished, only called if the test ended normally."""
     if any(meas.outcome == 'FAIL'
            for phase in self.record.phases
-           for meas in phase.measurements.itervalues()):
+           for meas in phase.measured_values.itervalues()):
       self._state = self.State.FAIL
     else:
       self._state = self.State.PASS

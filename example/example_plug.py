@@ -37,7 +37,7 @@ class Example(plugs.BasePlug):   # pylint: disable=no-init
 
   def DoStuff(self):  # pylint: disable=no-self-use
     """Plug-specific functionality."""
-    time.sleep(3)
+    time.sleep(1)
     return 'Example Plug Did Stuff!'
 
   def DoChangingStuff(self):

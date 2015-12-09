@@ -95,13 +95,11 @@ class MultipleValidatorsException(Exception):
 class Measurement(  # pylint: disable=no-init
     mutablerecords.Record(
         'Measurement', ['name'],
-        {'units': None, 'dimensions': None, 'docstring': None,
-         'validators': list, 'outcome': None})):
+        {'units': None, 'dimensions': list, 'docstring': None,
+         'validators': list})):
   """Record encapsulating descriptive data for a measurement.
 
-  This record includes an _asdict() method so it can be easily output.  Output
-  is as you would expect, except that 'outcome' is updated to 'PASS', 'FAIL',
-  or 'UNSET' accordingly.
+  This record includes an _asdict() method so it can be easily output.
 
   Attributes:
     name: Name of the measurement.
@@ -109,8 +107,6 @@ class Measurement(  # pylint: disable=no-init
     units: UOM code of the units for the measurement being taken.
     dimensions: Tuple of UOM codes for units of dimensions.
     validators: List of callable validator objects to perform pass/fail checks.
-    outcome: Either True or False if Validate() has been called with a non-None
-      value, otherwise None.
   """
 
   def Doc(self, docstring):
@@ -145,27 +141,12 @@ class Measurement(  # pylint: disable=no-init
       return self.WithValidator(getattr(validators, attr)(*args, **kwargs))
     return _WithValidator
 
-  def Validate(self, value):
-    """Validate this measurement and update its 'outcome' field."""
-    # Make sure we don't do anything weird with updating measurement values.
-    if self.outcome is not None:
-      raise RuntimeError('Validate must only be called once')
-
-    # Ignore unset measurements.
-    if value is not None:
-      # Pass if all our validators return True.
-      self.outcome = all(v(value) for v in self.validators)
-
-    return self
-
   def _asdict(self):
-    retval = {
-        'name': self.name,
-        'outcome': {None: 'UNSET', True: 'PASS', False: 'FAIL'}[self.outcome]}
+    retval = {'name': self.name}
     if len(self.validators):
       retval['validators'] = [str(v) for v in self.validators]
     for attr in ('units', 'dimensions', 'docstring'):
-      if getattr(self, attr) is not None:
+      if getattr(self, attr):
         retval[attr] = getattr(self, attr)
     return retval
 
@@ -180,15 +161,24 @@ class MeasuredValue(object):
 
   Dimensional MeasuredValues can be converted to dicts, but undimensioned
   MeasuredValues will raise InvalidDimensionsError if this is attempted.
+
+  Attributes:
+    name: Name of the measurement.
+    num_dimensions: Number of dimensions.
+    value or values: Value or dict of values set by phases.
+    validators: List of callable validator objects to perform pass/fail checks.
   """
 
-  def __init__(self, name, num_dimensions):
+  def __init__(self, name, validators, num_dimensions):
     self.name = name
     self.num_dimensions = num_dimensions
+    self.validators = validators
     # Only one of these will actually be used; if num_dimensions is 0, then
     # only self.value is used, otherwise only self.values is used.
-    self.values = collections.OrderedDict()
-    self.value = None
+    if num_dimensions == 0:
+      self.value = None
+    else:
+      self.values = collections.OrderedDict()
 
   def __iter__(self):  # pylint: disable=invalid-name
     if self.num_dimesions:
@@ -199,12 +189,14 @@ class MeasuredValue(object):
   @classmethod
   def ForMeasurement(cls, measurement):
     """Create an unset MeasuredValue for this measurement."""
-    if measurement.dimensions:
-      return cls(measurement.name, len(measurement.dimensions))
-    else:
-      return cls(measurement.name, 0)
+    return cls(
+        measurement.name, measurement.validators, len(measurement.dimensions))
+
+  def GetOutcome(self):
+    return all(v(self.value) for v in self.validators)
 
   def SetValue(self, value):
+    # Only accessed by a phase when non-dimensional.
     if self.num_dimensions:
       raise InvalidDimensionsError(
           'Expected %s-dimensional coordinates, got dimensionless value %s' % (
@@ -215,21 +207,6 @@ class MeasuredValue(object):
           'Overriding previous measurement %s value of %s with %s',
           self.name, self.value, value)
     self.value = value
- 
-  def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
-    coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
-    if coordinates_len != self.num_dimensions:
-      raise InvalidDimensionsError(
-          'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
-                                                           coordinates_len))
-    if coordinates in self.values:
-      _LOG.warning(
-          'Overriding previous measurement %s[%s] value of %s with %s',
-          self.name, coordinates, self.values[coordinates], value)
-    self.values[coordinates] = value
-
-  def __getitem__(self, coordinates):  # pylint: disable=invalid-name
-    return self.values[coordinates]
 
   def GetValue(self):
     """Return the value(s) stored in this record.
@@ -251,7 +228,24 @@ class MeasuredValue(object):
       # We have no dimensions, just output our value.
       return self.value
 
- 
+  def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
+    # Only accessed by a phase when multi-dimensional.
+    coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
+    if coordinates_len != self.num_dimensions:
+      raise InvalidDimensionsError(
+          'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
+                                                           coordinates_len))
+    if coordinates in self.values:
+      _LOG.warning(
+          'Overriding previous measurement %s[%s] value of %s with %s',
+          self.name, coordinates, self.values[coordinates], value)
+    self.values[coordinates] = value
+
+  def __getitem__(self, coordinates):  # pylint: disable=invalid-name
+    # Only accessed by a phase when multi-dimensional.
+    return self.values[coordinates]
+
+
 class Collection(object):  # pylint: disable=too-few-public-methods
   """Encapsulates a collection of measurements.
 
@@ -307,9 +301,10 @@ class Collection(object):  # pylint: disable=too-few-public-methods
       raise NotAMeasurementError('Not a measurement', name)
 
   def __iter__(self):  # pylint: disable=invalid-name
-    def _GetMeasurementValue(item):
-      return item[0], item[1].GetValue()
-    return itertools.imap(_GetMeasurementValue, self._values.iteritems())
+    return ((name, val.GetValue()) for name, val in self._values.iteritems())
+
+  def GetMeasuredValues(self):
+    return self._values
 
   def __setattr__(self, name, value):
     self._AssertValidKey(name)
@@ -320,8 +315,10 @@ class Collection(object):  # pylint: disable=too-few-public-methods
   def __getattr__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     if self._measurements[name].dimensions:
-      return self._values.setdefault(name, MeasuredValue.ForMeasurement(
-          self._measurements[name]))
+      if name not in self._values:
+        self._values[name] = (
+            MeasuredValue.ForMeasurement(self._measurements[name]))
+      return self._values[name]
     if name not in self._values:
       raise MeasurementNotSetError('Measurement not yet set', name)
     return self._values[name].GetValue()

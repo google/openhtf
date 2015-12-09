@@ -69,3 +69,10 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
 Attachment = collections.namedtuple('Attachment', 'data mimetype')
 LogRecord = collections.namedtuple('LogRecord', 'level logger_name source '
                                    'lineno timestamp_millis message')
+
+class MeasuredRecord(
+    collections.namedtuple('MeasuredRecord', ['value', 'outcome'])):
+
+  @classmethod
+  def FromMeasuredValue(cls, val):
+    return cls(val.GetValue(), val.GetOutcome())

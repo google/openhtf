@@ -141,14 +141,12 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       yield result_wrapper
     finally:
       # Serialize measurements and measured values, validate as we go.
-      values = dict(test_state.phase_data.measurements)
-      validated_measurements = {
-          name: measurement.Validate(values.get(name, None))
-          for name, measurement in measurement_map.iteritems()
-      }
       # Fill out and append the PhaseRecord to our test_record.
-      test_state.running_phase.measured_values = values
-      test_state.running_phase.measurements = validated_measurements
+      measured_values = test_state.phase_data.measurements.GetMeasuredValues()
+      test_state.running_phase.measured_values = {
+          name: test_record.MeasuredRecord.FromMeasuredValue(value)
+          for name, value in measured_values.iteritems()}
+      test_state.running_phase.measurements = measurement_map
       test_state.running_phase.end_time_millis = util.TimeMillis()
       test_state.running_phase.result = result_wrapper.result
       self.test_record.phases.append(test_state.running_phase)
