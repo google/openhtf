@@ -125,6 +125,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
         measurement.name: copy.deepcopy(measurement)
         for measurement in phase.measurements
     }
+    
     # Populate dummy declaration list for frontend API.
     test_state.running_phase.measurements = {
         measurement.name: measurement._asdict()
