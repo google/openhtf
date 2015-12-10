@@ -35,6 +35,8 @@ simply attach them to the Measurement with the .WithValidator() method:
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will also 'FAIL'
 
+Notes:
+
 Note the extra level of indirection when registering a validator. This allows
 you to parameterize your validator (like in the LessThan example) when it is
 being applied to the measurement.  If you don't need this level of indirection,
@@ -42,6 +44,10 @@ it's recommended that you simply use .WithValidator() instead.
 
 Also note the validator will be str()'d in the output, so if you want a
 meaningful description of what it does, you should implement a __str__ method.
+
+Validators must also be deepcopy()'able, and may need to implement __deepcopy__
+if they are implemented by a class that has internal state that is not copyable
+by the default copy.deepcopy().
 """
 
 import re
@@ -107,11 +113,15 @@ class Validators(object):
     """Validator to verify a string value matches a regex."""
   
     def __init__(self, re_module, regex):
+      self._re_module = re_module
       self._compiled = re_module.compile(regex)
       self._regex = regex
   
     def __call__(self, value):
       return self._compiled.match(str(value)) is not None
+
+    def __deepcopy__(self, memo):
+      return type(self)(self._re_module, self._regex)
   
     def __str__(self):
       return "'x' matches /%s/" % self._regex
