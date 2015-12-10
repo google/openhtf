@@ -1,0 +1,238 @@
+// Copyright 2014 Google Inc. All Rights Reserved.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+syntax = "proto2";
+
+package openhtf;
+
+import "units.proto";
+
+enum Status {
+  PASS = 1;
+  FAIL = 2;
+  ERROR = 3;
+  RUNNING = 4;
+
+  CREATED = 5;
+  TIMEOUT = 6;
+  ABORTED = 7;
+  WAITING = 8;
+
+  CONSUME = 10;
+  RMA = 11;
+  REWORK = 12;
+  SCRAP = 13;
+  DEBUG = 14;
+}
+
+// For better documentation:
+// https://sites.google.com/a/google.com/factoryfactory/data-formats/test-runs
+// A record of a test run including any parameters that were tested and if the
+// test passed, failed, or ended in an error.
+// NOTE: If you're interested in a 'unique-key' using dut_serial,
+// start_time_millis has been the unofficial strategy
+message TestRun {
+  /*
+   * The serial number of the device under test.  This is typically the omap
+   * serial number but in some tests is something else (elton serial or even
+   * the assembled device serial).
+   */
+  required string dut_serial = 1;
+
+  // The name of the tester where this run was started
+  required string tester_name = 2;
+  required TestInfo test_info = 3;
+  required Status test_status = 4;
+
+  // The openhtf cell number where this test took place
+  optional int32 cell_number = 15;
+
+  optional int64 start_time_millis = 8;
+  optional int64 end_time_millis = 9;
+  // An optional name that can be given to a specific test run
+  optional string run_name = 10;
+
+  repeated TestParameter test_parameters = 5;
+  repeated InformationParameter info_parameters = 6;
+  // A list of log lines logged by a test
+  repeated TestRunLogMessage test_logs = 11;
+
+  // FailureCode's gather information about tester failure/errors.
+  repeated FailureCode failure_codes = 19;
+
+  // A field which (optionally) contains the name of the person conducting
+  // the test or otherwise responsible for the data.
+  optional string operator_name = 22;
+
+  // For non-serialized items, we can track them via lot_number and a part_id
+  // within the lot (such as "This try of items is lot #FOT123 and this is the
+  // part in slot 6 of the tray.  In this case, a unique dut should be
+  // synthesized and stored in the required field dut_serial, and the
+  // synthetic_dut flag should be set.
+  optional string lot_number = 23;
+  optional string part_id = 24;
+  optional bool synthetic_dut = 25;
+
+  // Not supported by OpenHTF
+  //optional Assembly assembly = 26;
+  repeated Timing timings = 27;
+  repeated Phase phases = 28;
+
+  // The version of the test framework that created this test run
+  optional string framework_build = 17;
+  // Next tag = 29;
+}
+
+message TestInfo {
+  // The name of this test station (provided by Jabil)
+  required string name = 1;
+  optional string description = 2;
+  optional string version_string = 5;
+  // Next tag = 6
+}
+
+// A parameter which is extra information from a test run.  These values are not
+// used to pass or fail a test but may be useful when inspecting data.
+message InformationParameter {
+  // Tag identifying the type of informational data encoded in the info parameter.
+  enum InformationTag {
+    JPG = 2;
+    PNG = 3;
+    WAV = 4;
+
+    // Indicates that this value is binary data with no real ability to display
+    // it in a UI.  This data is stored in value_binary.
+    BINARY = 5;
+
+    // Data is a gasp.TimeSeriesPb.
+    TIMESERIES = 6;
+
+    // Data is text, encoded in UTF-8
+    TEXT_UTF8 = 7;
+
+    TIFF = 8;
+    MP4 = 9;
+
+    // next tag = 10
+  }
+
+
+  required string name = 1;
+
+  optional bytes value_binary = 7;
+
+  optional string description = 3;
+  optional int64 set_time_millis = 8;
+
+  // Practically required. This parameter can be used to tag similar parameters
+  // simplifying selecting them via dremel and giving a frontend some sort of
+  // semantic when displaying them
+  optional string parameter_tag = 5;
+
+  optional InformationTag type = 4;
+
+  // next tag = 9
+}
+
+// FailureCode's describe an error/failure ocurred in a tester that we would
+// like to deal with in the openhtf server to get a possible action for the person
+// doing the test to proceed. 'code' may be the exception name or a parameter
+// name. 'details' involve some possible more information which describes the
+// reason for failing.
+message FailureCode {
+  optional string code = 1;
+  optional string details = 2;
+}
+
+message TimeInfo {
+  optional int64 start_time_millis = 1;
+  optional int64 end_time_millis = 2;
+}
+
+message Timing {
+  optional string name = 1;
+  optional string description = 2;
+
+  optional TimeInfo time_info = 3;
+}
+
+message Phase {
+  optional string name = 1;
+  optional string description = 2;
+  repeated string capabilities = 3;
+
+  optional TimeInfo timing = 4;
+}
+
+message TestRunLogMessage {
+  // The approximate level categories of a log message
+  // Corresponds to the python level name
+  enum Level {
+    DEBUG = 10;
+    INFO = 20;
+    WARNING = 30;
+    ERROR = 40;
+    CRITICAL = 50;
+  }
+
+  optional int64 timestamp_millis = 1;
+  optional string log_message = 2;
+  optional string logger_name = 3;
+
+  // The levelno should be a python level so
+  // DEBUG <= 10
+  // INFO <= 20
+  // WARNING <= 30
+  // ERROR <= 40
+  // CRITICAL/FATAL <= 50
+  optional int32 levelno = 4;
+  // Optional, levelno is the canonical source this is more for convenience.
+  optional Level level = 7;
+
+  optional string log_source = 5;
+  optional int32 lineno = 6;
+
+  // next tag 8
+}
+
+// A parameter which is tested during a test run. These are parameteric values
+// which are used to pass or fail the test.
+message TestParameter {
+  required string name = 1;
+  optional Status status = 2;
+  optional string description = 6;
+  optional bool important = 18;
+  // An optional tag, this parameter can be used to tag similar parameters
+  // simplifying selecting them via dremel and giving a frontend some sort of
+  // semantic when displaying them
+  optional string parameter_tag = 16;
+
+  // If this parameter is numeric then fill in these fields
+  optional double numeric_value = 11;
+  optional double numeric_minimum = 12;
+  optional double numeric_maximum = 13;
+
+  // If this parameter is text then fill in these fields
+  optional string text_value = 14;
+  // This field may be a regular expression describing the expected value
+  optional string expected_text = 15;
+
+  optional bool is_optional = 17;
+  optional int64 set_time_millis = 19;
+  optional Units.UnitCode unit_code = 20;
+  // Next tag = 21
+
+  extensions 5000 to 5199;
+}
