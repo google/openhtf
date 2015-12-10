@@ -114,11 +114,10 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       phase = phase.wraps
 
     # Check for measurement descriptors and track them in the PhaseRecord.
-    
-    measurement_map = {}
-    for measurement in getattr(phase, 'measurements', []):
-      measurement.outcome = None
-      measurement_map[measurement.name] = measurement
+    measurement_map = {
+        measurement.name: measurement
+        for measurement in getattr(phase, 'measurements', [])
+    }
 
     # Populate dummy declaration list for frontend API.
     test_state.running_phase.measurements = {
