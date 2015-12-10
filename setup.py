@@ -13,10 +13,14 @@
 # limitations under the License.
 """Setup script for OpenHTF."""
 
+import glob
 import os
+import subprocess
 import sys
 
+from distutils.command.build import build
 from distutils.command.clean import clean
+from distutils.cmd import Command
 from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.test import test
@@ -36,6 +40,38 @@ class CleanCommand(clean):
     ]
     os.system('rm -vrf %s' % ' '.join(targets))
 
+class BuildProtoCommand(Command):
+  """Custom setup command to build protocol buffers."""
+  description = "Builds the proto files into python files."""
+  user_options = [('protoc=', None, 'Path to the protoc compiler.'),
+                  ('protodir=', None, 'Path to proto files.'),
+                  ('outdir=', 'o', 'Where to output .py files.')]
+
+  def initialize_options(self):
+    self.protoc = './bin/protoc'
+    self.protodir = './openhtf/io/proto'
+    self.outdir = './openhtf/io/proto'
+
+  def finalize_options(self):
+    pass
+
+  def run(self):
+    # Build regular proto files.
+    protos = glob.glob(os.path.join(self.protodir, '*.proto'))
+    if protos:
+      print "Attempting to build proto files:\n%s" % '\n'.join(protos)
+      subprocess.check_call([
+          self.protoc,
+          '-I', self.protodir,
+          '--python_out', self.outdir,
+          ] + protos)
+    else:
+      print "Found no proto files to build."
+
+
+# Make building protos part of building overall.
+build.sub_commands.insert(0, ('build_proto', None))
+
 
 requires = [  # pylint: disable=invalid-name
     'contextlib2==0.4.0',
@@ -46,6 +82,7 @@ requires = [  # pylint: disable=invalid-name
     'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
     'mutablerecords==0.2.6',
+    'protobuf==2.6.1',
     'pyaml==15.3.1',
     'python-gflags==2.0',
     'PyYAML==3.11',
@@ -94,6 +131,7 @@ setup(
     maintainer_email='jethier@google.com',
     packages=find_packages(exclude='example'),
     cmdclass={
+        'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
         'test': PyTestCommand,
     },
