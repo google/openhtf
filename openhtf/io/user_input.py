@@ -37,7 +37,6 @@ gflags.DEFINE_integer('prompt_timeout_s',
                        None,
                       'User prompt timeout in seconds.')
 
-
 class PromptInputError(Exception):
   """Raised in the event that a prompt returns without setting the response."""
 
@@ -51,7 +50,6 @@ class PromptUnansweredError(Exception):
 
 Prompt = collections.namedtuple('Prompt', 'id message text_input')
 
-
 class PromptManager(object):
   """Top level abstraction for OpenHTF user prompt functionality.
 
@@ -64,7 +62,7 @@ class PromptManager(object):
     self._cond = threading.Condition()
 
   def DisplayPrompt(self, message, text_input=False,
-                    timeout_s=None):
+                    timeout=int(FLAGS.prompt_timeout_s)):
     """Prompt for a user response by showing the message.
 
     Args:
