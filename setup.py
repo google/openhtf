@@ -44,12 +44,14 @@ class BuildProtoCommand(Command):
   """Custom setup command to build protocol buffers."""
   description = "Builds the proto files into python files."""
   user_options = [('protoc=', None, 'Path to the protoc compiler.'),
-                  ('protodir=', None, 'Path to proto files.'),
+                  ('protodir=', None, 'Path to protobuf install.'),
+                  ('indir=', 'i', 'Directory containing input .proto files'),
                   ('outdir=', 'o', 'Where to output .py files.')]
 
   def initialize_options(self):
-    self.protoc = './bin/protoc'
-    self.protodir = './openhtf/io/proto'
+    self.protoc = '/usr/bin/protoc'
+    self.protodir = '/usr/include'
+    self.indir = './openhtf/io/proto'
     self.outdir = './openhtf/io/proto'
 
   def finalize_options(self):
@@ -57,12 +59,13 @@ class BuildProtoCommand(Command):
 
   def run(self):
     # Build regular proto files.
-    protos = glob.glob(os.path.join(self.protodir, '*.proto'))
+    protos = glob.glob(os.path.join(self.indir, '*.proto'))
     if protos:
       print "Attempting to build proto files:\n%s" % '\n'.join(protos)
       subprocess.check_call([
           self.protoc,
-          '-I', self.protodir,
+          '--proto_path', self.indir,
+          '--proto_path', self.protodir,
           '--python_out', self.outdir,
           ] + protos)
     else:
