@@ -120,7 +120,7 @@ class Validators(object):
     def __call__(self, value):
       return self._compiled.match(str(value)) is not None
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, dummy_memo):
       return type(self)(self._re_module, self._regex)
   
     def __str__(self):

@@ -104,7 +104,8 @@ class TestExecutor(threads.KillableThread):
   def _RunTestLoop(self):
     """Handles one whole test from start to finish.
 
-    When this finishes, the parent loops back around and calls us again.
+    By default, this will loop indefinitely.  Call _RunTestLoop.once(self) to
+    run the test only once.
     """
     with contextlib.ExitStack() as exit_stack, \
         LogSleepSuppress() as suppressor:
