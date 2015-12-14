@@ -106,7 +106,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       _LOG.info('None EtherStem is found.')
       raise NoneEtherStemFoundError
     for stem in stem_list:
-      print "stem: "+str(stem)
+      # print "stem: "+str(stem)
       if stem.serial_number == self.serial_number:
         stem_index = stem_list.index(stem)
         spec = stem_list[stem_index]
@@ -119,10 +119,10 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     
     # codes below is to connect EtherStem
     _LOG.info("Connecting to EtherStem with serial number: ",hex(self.serial_number).upper())
-    print("Connecting to EtherStem with serial number: 0x%X" % self.serial_number)
-    print "spec = "+str(spec)
+    # print("Connecting to EtherStem with serial number: 0x%X" % self.serial_number)
+    # print "spec = "+str(spec)
     res = self.EtherStem.connect_from_spec(spec)
-    print("Result of Connecting to EtherStem: " +str(res))
+    # print("Result of Connecting to EtherStem: " +str(res))
     if res != 0:
       _LOG.info("Error of connecting to EtherStem:"+str(res))
       raise ConnectingToEtherStemError
@@ -147,7 +147,6 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     CheckReturnCode(res, "EtherStemSave")
     
     res = self.EtherStem.system.reset()
-    res_list.append(res)
     CheckReturnCode(res, "reset")
     
     res = self.power_module.connect_through_link_module(self.EtherStem)
@@ -242,7 +241,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       res = self.power_module.rail[0].setVoltage(voltage_uV)
       sleep(0.5)
       vmeas_uV = self.GetVoltage()
-      print "vmeas=: %d"%vmeas_uV
+      # print "vmeas=: %d"%vmeas_uV
       if res==0 and (
         (voltage_uV-100000)<=vmeas_uV<=(voltage_uV+100000)):
         # res3 = self.power_module.rail[0].setEnableExternal(1)
@@ -253,7 +252,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         #else:
         #  raise ChangeVoltageError
       elif i==2:
-        print "Error in changing voltage: res: %d" %res
+        # print "Error in changing voltage: res: %d" %res
         # print "vmeas=: %d"%vmeas
         _LOG.info("Error in changing voltage.")
         raise ChangeVoltageError
@@ -294,7 +293,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         self.power_module.disconnect()
         break
       elif i==2:
-        print "Error turning off power supply:"
-        print "res = %d" %res
+        # print "Error turning off power supply:"
+        # print "res = %d" %res
         _LOG.info("Error turning of power supply.")
         raise TurnOffPowerSupplyError
