@@ -69,6 +69,7 @@ usb_hub:
   Ethersync:
    unit_name: EtherSyncca9167
    mac_addr: 78:a5:04:ca:91:66
+   port_addr: 8589934803
 
 ---- Config file example for android/fastboot usb at local 
 device_type: android (fastboot)
@@ -87,13 +88,14 @@ usb_hub:
 """ 
 
 
-def _get_usb_serial(unit_name):
+def _get_usb_serial(port_addr):
   """Get a usb serial based on the Cambrionix unit mac address in configuration."""
-  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "LIST, %s"' % unit_name 
-  serial = commands.getstatusoutput(cmd)[1] 
-  #TODO, remove the folloing line when the command works
-  serial = 'LWP1A02A15110225' 
-  _LOG.info('get serial:%s on unit:%s' % (serial, unit_name))
+  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "DEVICE INFO, %s"' % port_addr 
+  info = commands.getstatusoutput(cmd)[1] 
+  serial_info = info.split('SERIAL:')[1]
+  serial = serial_info.split('\n')[0].strip()
+
+  _LOG.info('get serial:%s on port:%s' % (serial, port_addr))
 
   return serial
 
@@ -108,10 +110,10 @@ def _open_usb_handle():
   if isinstance(usb_hub, dict):
     if usb_hub.has_key('Ethersync'):
       device = usb_hub['Ethersync']
-      if isinstance(device, dict) and device.has_key('unit_name'):
-        serial = _get_usb_serial(device['unit_name'])
+      if isinstance(device, dict) and device.has_key('port_addr'):
+        serial = _get_usb_serial(device['port_addr'])
       else:
-        raise GeneralUsbAttributeError('Ethersync needs mac address and and/or unit name')
+        raise GeneralUsbAttributeError('Ethersync needs port_addr address and and/or mac_addr')
     else:
       device = usb_hub['local']
   else:
