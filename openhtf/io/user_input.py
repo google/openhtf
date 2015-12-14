@@ -48,6 +48,7 @@ class MultiplePromptsError(Exception):
 class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
+
 Prompt = collections.namedtuple('Prompt', 'id message text_input')
 
 
