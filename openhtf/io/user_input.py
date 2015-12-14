@@ -37,6 +37,7 @@ gflags.DEFINE_integer('prompt_timeout_s',
                       300,
                       'User prompt timeout in seconds.')
 
+
 class PromptInputError(Exception):
   """Raised in the event that a prompt returns without setting the response."""
 
@@ -48,6 +49,7 @@ class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 Prompt = collections.namedtuple('Prompt', 'id message text_input')
+
 
 class PromptManager(object):
   """Top level abstraction for OpenHTF user prompt functionality.
@@ -81,7 +83,7 @@ class PromptManager(object):
 
       console_prompt = ConsolePrompt(
           message, functools.partial(self.Respond, self.prompt.id))
-      console_prompt.start() 
+      console_prompt.start()
       self._cond.wait(timeout)
       console_prompt.Stop()
       self.prompt = None
