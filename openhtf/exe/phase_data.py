@@ -22,6 +22,7 @@ supported decorators.
 """
 
 import contextlib2
+import copy
 import logging
 import mimetypes
 
@@ -115,7 +116,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
 
     # Check for measurement descriptors and track them in the PhaseRecord.
     measurement_map = {
-        measurement.name: measurement
+        measurement.name: copy.deepcopy(measurement)
         for measurement in getattr(phase, 'measurements', [])
     }
     # Populate dummy declaration list for frontend API.
