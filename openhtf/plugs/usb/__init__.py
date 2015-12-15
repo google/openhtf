@@ -61,7 +61,7 @@ class general_usb(object):
     return self.usb_subclass
   @property
   def PROTOCOL(self):
-      return self.usb_protocol 
+    return self.usb_protocol
 
 """ Config file example for device at Ethersync
 device_type: android (fastboot, general)
@@ -85,13 +85,13 @@ usb_hub:
       vendor_id:  xxxx (optional)
       product_id: xxxxx(optional)
       serial: (device serial number, optional)
-""" 
+"""
 
 
 def _get_usb_serial(port_addr):
   """Get a usb serial based on the Cambrionix unit mac address in configuration."""
-  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "DEVICE INFO, %s"' % port_addr 
-  info = commands.getstatusoutput(cmd)[1] 
+  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "DEVICE INFO, %s"' % port_addr
+  info = commands.getstatusoutput(cmd)[1]
   serial_info = info.split('SERIAL:')[1]
   serial = serial_info.split('\n')[0].strip()
 
@@ -101,7 +101,7 @@ def _get_usb_serial(port_addr):
 
 def _open_usb_handle():
   dev_type = conf.Config().device_type
-  usb_hub = conf.Config().usb_hub 
+  usb_hub = conf.Config().usb_hub
   serial = None
   vendor_id = None
   product_id = None
@@ -121,9 +121,9 @@ def _open_usb_handle():
 
   if dev_type == 'fastboot':
     device = fastboot_device
-  elif dev_type == 'android': 
-    device = adb_device 
-  elif dev_type == 'general': 
+  elif dev_type == 'android':
+    device = adb_device
+  elif dev_type == 'general':
     if isinstance(device, dict):
       try:
         vendor_id = device['vendor_id']
@@ -137,24 +137,25 @@ def _open_usb_handle():
         serial = device['serial']
       except KeyError:
         pass
-        
+
       try:
         device = general_usb(device['class'], device['subclass'], device['protocol'])
       except KeyError:
-        raise GeneralUsbAttributeError('must set class\subclass\protocol for general type \
-                                          device:%s', device)
+        raise GeneralUsbAttributeError('must set class\subclass\protocol for \
+                                        general type device:%s', device)
     else:
-      raise GeneralUsbAttributeError('must set attribute for general device:%s', device)
+      raise GeneralUsbAttributeError('must set attribute for general \
+                                      device:%s', device)
   else:
     raise GeneralUsbAttributeError('must set device type')
 
   return local_usb.LibUsbHandle.Open(
-         interface_class = device.CLASS,
-         interface_subclass = device.SUBCLASS,
-         interface_protocol = device.PROTOCOL,
-         serial_number = serial,
-         vendor_id = vendor_id,
-         product_id = product_id)
+         interface_class=device.CLASS,
+         interface_subclass=device.SUBCLASS,
+         interface_protocol=device.PROTOCOL,
+         serial_number=serial,
+         vendor_id=vendor_id,
+         product_id=product_id)
  
 # pylint: disable=too-few-public-methods
 class FastbootPlug(plugs.BasePlug):

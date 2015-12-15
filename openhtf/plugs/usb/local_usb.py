@@ -207,20 +207,20 @@ class LibUsbHandle(usb_handle.UsbHandle):
 
     for device in devices:
       try:
-        if (vendor_id is not None and device.getVendorID() != vendor_id):
-          continue  
-              
-        if (product_id is not None and device.getProductID() != product_id):
+        if vendor_id is not None and device.getVendorID() != vendor_id:
           continue
 
-        if (serial_number is not None and 
-           device.getSerialNumber() != serial_number):
+        if product_id is not None and device.getProductID() != product_id:
+          continue
+
+        if (serial_number is not None and
+            device.getSerialNumber() != serial_number):
           continue
 
         if (port_path is not None and
             cls._DeviceToSysfsPath(device) != port_path):
           continue
-       
+          
         for setting in device.iterSettings():
           if (interface_class is not None and
               setting.getClass() != interface_class):
