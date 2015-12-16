@@ -17,9 +17,31 @@
 For details of what these interfaces look like, see acroname_powermodule.py.
 To use these plugs:
 
-  from openhtf import plugs
-  from openhtf.plugs.acroname import power_module_plug
-  @plug(acroname_PowerModule = power_module_plug.PowerSupplyControl)
-  def MyPhase(test, acroname_PowerModule):
-    acroname_PowerModule.setVoltage(5000000)
+  Follow these steps to use the plug:
+
+a. Import this plug on top of your test codes:
+
+   from openhtf.plugs.acroname import power_module_plug
+
+b.  Add the Python decorators on top of the test phases that will use the power module plug.
+
+@plug(power_module=power_module_plug.PowerSupplyControl)
+def test_phase(test,power_module):
+
+c.  The right sequence to control power module:
+	1. power_module.DiscoverAndConnectModule()
+	2. Check no short circuit before configure and turn on
+ 			power_module.NoShortCircuit()
+	3. power_module.ConfigurePowerSupply()
+  			Note: default voltage and current limit are set based on the config.yaml
+	4. power_module.TurnOnPowerSupply()
+	5. Optionally, measure voltage and current:
+   			power_module.GetVoltage()
+    		power_module.GetCurrent()
+	6. Optionally, you can change voltage and current limit:
+    		power_module.ChangeVoltage(3300000)
+    		power_module.ChangeCurrentLimit(2000000)
+	7. Finally, once done, turn off and disconnect power module
+    Note: This is an option, not required step during tests.
+        power_module.TurnOffAndDisconnect()
 """
