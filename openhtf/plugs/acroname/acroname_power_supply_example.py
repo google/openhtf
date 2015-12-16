@@ -13,24 +13,8 @@
 # limitations under the License.
 
 
-"""Example Acronmae Power Module control logic.
-
-Right sequence to control power module:
-
-1. power_module.DiscoverAndConnectModule()
-2. Check no short circuit before configure and turn on
-  power_module.NoShortCircuit()
-3. power_module.ConfigurePowerSupply()
-   Note: default voltage and current limit are set based on the config.yaml
-4. power_module.TurnOnPowerSupply()
-5. Optionally, measure voltage and current:
-    power_module.GetVoltage()
-    power_module.GetCurrent()
-5. Optionally, you can change voltage and current limit:
-    power_module.ChangeVoltage(3300000)
-    power_module.ChangeCurrentLimit(2000000)
-6. Finally, once done with test, turn off and disconnect power module:
-    power_module.TurnOffAndDisconnect()
+"""
+Example of Acronmae Power Module control logic.
 
 Run with (your virtualenv must be activated first):
 python ./acroname_power_supply_example.py --config ./acroname_power_supply_example.yaml
@@ -48,10 +32,6 @@ import openhtf
 from openhtf.plugs.acroname import power_module_plug
 
 from openhtf.names import *
-
-class PowerModuleShortCircuitError(Exception):
- """Short Circuit Found on Power Module."""
-
 
 
 # Timeout if this phase takes longer than 180 seconds.
@@ -80,11 +60,13 @@ def configure_and_turn_on_power_module(test, power_module):
     # default_power_module_voltage_output: 5000000
     # default_power_module_current_limit: 1000000
     power_module.TurnOnPowerSupply()
+  """
   else:
+    # short circuit error would be raised in the plug
     test.logger.info('Short circuit found on power module!')
     print('Short circuit found on power module!')
     raise PowerModuleShortCircuitError
-
+  """
 
 
 # Timeout if this phase takes longer than 10 seconds.
@@ -141,7 +123,8 @@ def get_power_module_measurements2(test,power_module):
 @plug(power_module=power_module_plug.PowerSupplyControl)
 def turn_off_and_disconnect_power_module(test,power_module):
   """Test phase that turns off and disconnects acroname power measurement."""
-  power_module.TurnOffAndDisconnect()
+  power_module.PowerOff()
+  power_module.Disconnect()
 
 
 

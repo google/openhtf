@@ -69,6 +69,11 @@ class ChangeCurrentLimitError(Exception):
 class TurnOffPowerSupplyError(Exception):
  """Error turning off power supply."""
 
+class PowerModuleShortCircuitError(Exception):
+ """Short Circuit Found on Power Module."""
+
+class DisconnectPowerModuleError(Exception):
+ """Error disconnecting power module."""
 
 
 def CheckReturnCode(code, action_str):
@@ -175,9 +180,10 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         self.power_module.rail[0].setEnableExternal(0)
         self.power_module.digital[0].setState(0)
         self.power_module.disconnect()
-        _LOG.info("Power module is not in right state. Close connection.")
+        _LOG.info("Power module is not in right state.There is short circuit. Close connection.")
+        raise PowerModuleShortCircuitError
         # print "Power module is not in right state. Close connection."
-        return False
+        # return False
     else:
         # print "Power module is in right state. Continue."
         return True
@@ -241,7 +247,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       res = self.power_module.rail[0].setVoltage(voltage_uV)
       sleep(0.5)
       vmeas_uV = self.GetVoltage()
-      # print "vmeas=: %d"%vmeas_uV
+      # print "change vmeas=: %d"%vmeas_uV
       if res==0 and (
         (voltage_uV-100000)<=vmeas_uV<=(voltage_uV+100000)):
         # res3 = self.power_module.rail[0].setEnableExternal(1)
@@ -253,7 +259,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         #  raise ChangeVoltageError
       elif i==2:
         # print "Error in changing voltage: res: %d" %res
-        # print "vmeas=: %d"%vmeas
+        # print "vmeas_uV=: %d"%vmeas_uV
         _LOG.info("Error in changing voltage.")
         raise ChangeVoltageError
 
@@ -282,18 +288,22 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       _LOG.info("Error in changing current limit..")
       raise ChangeCurrentLimitError
 
-  def TurnOffAndDisconnect(self):
+  def PowerOff(self):
     """"""
     for i in range(3):
+      sleep(1)
       res = self.power_module.rail[0].setEnableExternal(0)
-      sleep(0.5)
+      sleep(1)
       if res == 0:
         # print "Succeed in turning off power supply."
         _LOG.info("Succeed in turning off power supply.")
-        self.power_module.disconnect()
         break
       elif i==2:
         # print "Error turning off power supply:"
-        # print "res = %d" %res
+        print "res = %d" %res
         _LOG.info("Error turning of power supply.")
         raise TurnOffPowerSupplyError
+
+  def Disconnect(self):
+    """"""
+    self.power_module.disconnect()
