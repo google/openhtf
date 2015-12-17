@@ -64,7 +64,7 @@ class PromptManager(object):
     self._cond = threading.Condition()
 
   def DisplayPrompt(self, message, text_input=False,
-                    timeout=FLAGS.prompt_timeout_s):
+                    timeout_s=None):
     """Prompt for a user response by showing the message.
 
     Args:
