@@ -67,9 +67,7 @@ class general_usb(object):
 device_type: android (fastboot, general)
 usb_hub: 
   Ethersync:
-   unit_name: EtherSyncca9167
-   mac_addr: 78:a5:04:ca:91:66
-   port_addr: 8589934803
+   prot_addr: EtherSyncca9166.214
 
 ---- Config file example for android/fastboot usb at local 
 device_type: android (fastboot)
@@ -90,13 +88,16 @@ usb_hub:
 
 def _get_usb_serial(port_addr):
   """Get a usb serial based on the Cambrionix unit mac address in configuration."""
-  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "DEVICE INFO, %s"' % port_addr
+  cmd = '/usr/local/google/home/amyxchen/esuit64 -t "DEVICE INFO,%s"' % port_addr.strip()
   info = commands.getstatusoutput(cmd)[1]
-  serial_info = info.split('SERIAL:')[1]
-  serial = serial_info.split('\n')[0].strip()
+  serial = None
 
-  _LOG.info('get serial:%s on port:%s' % (serial, port_addr))
-
+  if "SERIAL" in info:
+    serial_info = info.split('SERIAL:')[1]
+    serial = serial_info.split('\n')[0].strip()
+    _LOG.info('get serial:%s on port:%s' % (serial, port_addr))
+  else:
+    raise GeneralUsbAttributeError('No USB device detected')
   return serial
 
 def _open_usb_handle():
@@ -106,14 +107,14 @@ def _open_usb_handle():
   vendor_id = None
   product_id = None
   device = None
-
+      
   if isinstance(usb_hub, dict):
     if usb_hub.has_key('Ethersync'):
       device = usb_hub['Ethersync']
       if isinstance(device, dict) and device.has_key('port_addr'):
         serial = _get_usb_serial(device['port_addr'])
       else:
-        raise GeneralUsbAttributeError('Ethersync needs port_addr address and and/or mac_addr')
+        raise GeneralUsbAttributeError('Ethersync needs port_addr address to be set')
     else:
       device = usb_hub['local']
   else:
@@ -156,7 +157,7 @@ def _open_usb_handle():
          serial_number=serial,
          vendor_id=vendor_id,
          product_id=product_id)
- 
+
 # pylint: disable=too-few-public-methods
 class FastbootPlug(plugs.BasePlug):
   """Plug that provides fastboot."""
