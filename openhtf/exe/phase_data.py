@@ -22,6 +22,7 @@ supported decorators.
 """
 
 import contextlib2
+import copy
 import logging
 import mimetypes
 
@@ -115,10 +116,9 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
 
     # Check for measurement descriptors and track them in the PhaseRecord.
     measurement_map = {
-        measurement.name: measurement
+        measurement.name: copy.deepcopy(measurement)
         for measurement in getattr(phase, 'measurements', [])
     }
-
     # Populate dummy declaration list for frontend API.
     test_state.running_phase.measurements = {
         measurement.name: measurement._asdict()
@@ -152,6 +152,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       test_state.running_phase.measurements = validated_measurements
       test_state.running_phase.end_time_millis = util.TimeMillis()
       test_state.running_phase.result = result_wrapper.result
+      test_state.running_phase.attachments.update(self.attachments)
       self.test_record.phases.append(test_state.running_phase)
 
       # Clear these between uses for the frontend API.

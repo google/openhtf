@@ -64,7 +64,7 @@ class PyTestCommand(test):
       ('pytest-cov=', None, 'Enable coverage. Choose output type: '
        'term, html, xml, annotate, or multiple with comma separation'),
   ]
-  
+
   def initialize_options(self):
     test.initialize_options(self)
     self.pytest_args = 'test'
