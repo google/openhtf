@@ -42,6 +42,10 @@ conf.Declare('default_power_module_voltage_output',
 conf.Declare('default_power_module_current_limit',
              description='Defalut power module current limit in uA.')
 
+conf.Declare('MTM_PowerModule_Connection',
+             description='MTM Power Module COnnection Parameters.')
+
+
 class NoneEtherStemFoundError(Exception):
  """No EtherStem module is found on the network."""
 
@@ -91,31 +95,36 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
   def __init__(self):
     config = conf.Config()
-    self.serial_number = config.serial_number_of_EtherStem
+    self.connection_type = config.MTM_PowerModule_Connection['link_type']
+    self.serial_number = config.MTM_PowerModule_Connection['link_serial_number']
     self.voltage = config.default_power_module_voltage_output
     self.current_limit = config.default_power_module_current_limit
     self.MTMPowerModuleAddress = 6
     self.routerAddress = 4
     self.EtherStem = MTMEtherStem()
     self.power_module = MTMPM1()
-
+    if self.connection_type == 'MTM_EtherStem':
+      self.stem_list = discover.find_all(Spec.TCPIP)
+    elif self.connection_type == 'MTM_USBStem': 
+      self.stem_list = discover.find_all(Spec.USB)
+    elif self.connection_type == 'USB':
+      self.serial_number = config.MTM_PowerModule_Connection['power_module_serial_number']
+      self.stem_list = discover.find_all(Spec.USB)
   def DiscoverAndConnectModule(self):
     """
     Discover all EtherStems on network.
     Connect the one with the serial number specified in config yaml file.
     The connection from server to EtherStem is Ethernet via TCPIP.
     """
-    # codes below is to discover EtherStem on network
-    stem_list = discover.find_all(Spec.TCPIP)
-    if not stem_list:
+    if not self.stem_list:
       _LOG.info('None EtherStem is found.')
       raise NoneEtherStemFoundError
-    for stem in stem_list:
+    for stem in self.stem_list:
       # print "stem: "+str(stem)
       if stem.serial_number == self.serial_number:
-        stem_index = stem_list.index(stem)
-        spec = stem_list[stem_index]
-        EtherStemFound = True
+        stem_index = self.stem_list.index(stem)
+        spec = self.stem_list[stem_index]
+        # EtherStemFound = True
         break
     else:
       _LOG.info('No Matching EtherStem is found.')
@@ -135,7 +144,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       _LOG.info("Connecting to EtherStem Succeed.")
 
     # codes below is to connect Power Module through EtherStem
-
+    # TO CONSIDER USB LOCAL CONNECTION CASE
     res = self.EtherStem.i2c[0].setPullup(1)
     CheckReturnCode(res, "setPullUp")
 
