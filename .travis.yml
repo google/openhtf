@@ -7,6 +7,13 @@ addons:
       - swig
       - libusb-1.0-0-dev
 cache:
-  - pip
-  - apt
-script: python setup.py test
+  pip: true
+  apt: true
+  directories:
+    - .tox
+    - $HOME/.cache/pip
+env:
+  - TOXENV=py27
+install:
+  - pip install tox
+script: tox
