@@ -54,7 +54,6 @@ requires = [  # pylint: disable=invalid-name
     'Werkzeug==0.10.4',
 ]
 
-
 class PyTestCommand(test):
   # Derived from
   # https://github.com/chainreactionmfg/cara/blob/master/setup.py
