@@ -26,6 +26,8 @@ import copy
 import logging
 import mimetypes
 
+import mutablerecords
+
 from openhtf import util
 from openhtf.io import test_record
 from openhtf.util import measurements
@@ -34,6 +36,12 @@ _LOG = logging.getLogger(__name__)
 
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
+
+
+class ResultWrapper(mutablerecords.Record('ResultWrapper', [], {'result': None})):
+  """Wrapper so yielded object can receive a result."""
+  def SetResult(self, result):
+    self.result = result
 
 
 class PhaseData(object):  # pylint: disable=too-many-instance-attributes
@@ -63,7 +71,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
   def _asdict(self):
     """Return a dict of this PhaseData's public data."""
     return {'measurements': self.measurements,
-            'attachments': [name for name in self.attachments],
+            'attachments': self.attachments.keys(),
             'plugs': {
                 k: v.__module__ + '.' + v.__class__.__name__
                 for k, v in self.plugs.iteritems()}}
@@ -111,13 +119,11 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
   @contextlib2.contextmanager
   def RecordPhaseTiming(self, phase, test_state):
     """Context manager for the execution of a single phase."""
-    while hasattr(phase, 'wraps'):
-      phase = phase.wraps
 
     # Check for measurement descriptors and track them in the PhaseRecord.
     measurement_map = {
         measurement.name: copy.deepcopy(measurement)
-        for measurement in getattr(phase, 'measurements', [])
+        for measurement in phase.measurements
     }
     # Populate dummy declaration list for frontend API.
     test_state.running_phase.measurements = {
@@ -129,13 +135,6 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     test_state.phase_data.attachments = {}
     test_state.running_phase.start_time_millis = util.TimeMillis()
 
-    class ResultWrapper(object):  # pylint: disable=too-few-public-methods
-      """Wrapper so we can pull the result back from something we yield."""
-      def __init__(self):
-        self.result = None
-
-      def SetResult(self, result):  # pylint: disable=missing-docstring
-        self.result = result
     result_wrapper = ResultWrapper()
 
     try:

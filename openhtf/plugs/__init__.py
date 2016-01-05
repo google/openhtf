@@ -91,6 +91,10 @@ self._my_config having a value of 'my_config_value'.
 import functools
 import logging
 
+import mutablerecords
+
+import openhtf
+
 _LOG = logging.getLogger(__name__)
 
 class PlugOverrideError(Exception):
@@ -152,42 +156,21 @@ def requires(update_kwargs=True, **plugs):
         passing plugs as keyword args.
 
     Raises:
-      DuplicatePlugsError:  If a plug name is declared twice for the
+      DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-
-    @functools.wraps(func)
-    def wrapper(phase_data, *args, **kwargs):
-      """The wrapper for the decorator to return."""
-      if update_kwargs:
-        overridden = frozenset(kwargs) & frozenset(plugs)
-        if overridden:
-          raise PlugOverrideError(
-              'Plugs %s overridden by provided arguments %s' %
-              (overridden, kwargs))
-        kwargs.update({plug: phase_data.plugs[plug] for
-                       plug in plugs})
-
-      # Only pass phase_data through to phases, everything else doesn't need it.
-      if getattr(func, 'is_phase_func', False):
-        return func(phase_data, *args, **kwargs)
-      return func(*args, **kwargs)
-
-    wrapper.plugs = getattr(func, 'plugs', {})
+    wrapper = openhtf.TestPhaseInfo.WrapOrReturn(func)
     duplicates = frozenset(wrapper.plugs) & frozenset(plugs)
     if duplicates:
       raise DuplicatePlugError(
-          'Plugs %s required multiple times on phase %s' % (
-              duplicates, func))
-    wrapper.plugs.update(plugs)
-    # functools.wraps doesn't explicitly save this anywhere, and we need it to
-    # pull out the source lines later.
-    wrapper.wraps = func
+          'Plugs %s required multiple times on phase %s' % (duplicates, func))
+    wrapper.plugs.extend([openhtf.PhasePlug(name, plug, update_kwargs)
+                          for name, plug in plugs.iteritems()])
     return wrapper
   return result
 
 
-class PlugManager(object):
+class PlugManager(mutablerecords.Record('PlugManager', ['plug_map'])):
   """Class to manage the lifetimes of plugs.
 
   This class handles instantiation of plugs at test start and calling
@@ -199,7 +182,7 @@ class PlugManager(object):
   Instead, an instance should be obtained by calling InitializeFromTypes().
 
   Attributes:
-    plugs: Dict mapping name to instantiated plug.  Can only be
+    plug_map: Dict mapping name to instantiated plug.  Can only be
   accessed after calling InitializePlugs().
   """
 
@@ -226,14 +209,6 @@ class PlugManager(object):
                        plug_type, plug)
         raise
     return cls(plug_map)
-
-  def __init__(self, plug_map):
-    """Create a plug manager for the life of a test.
-
-    Args:
-      plug_map: Dict mapping plug name to instance.
-    """
-    self.plug_map = plug_map
 
   def TearDownPlugs(self):
     """Call TearDown() on all instantiated plugs.
