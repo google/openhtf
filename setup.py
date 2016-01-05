@@ -47,7 +47,6 @@ requires = [  # pylint: disable=invalid-name
     'MarkupSafe==0.23',
     'mutablerecords==0.2.4',
     'pyaml==15.3.1',
-    'mutablerecords==0.2.4',
     'python-gflags==2.0',
     'PyYAML==3.11',
     'Rocket==1.2.4',
