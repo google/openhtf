@@ -15,13 +15,12 @@
 
 """SerialPlug used for serial communication.
 
-Requires the following keys in .yaml configuration file.
-Uses the openhtf.conf utility to access configuration file keys.
+  Call SerialPlug's GetsSerialHandle to get an instance
+  to each serial device you need access to.
 
-.yaml file
-  SerialPlug:
-    serial_port: /dev/ttyUSB*     # serial dev name search format.
-    serial_baudrate: 19600
+  SerialPlug.GetSerialHandle parameters:
+    serial_port: /dev/ttyUSB0     # serial dev name.
+    serial_baudrate: 19600        # baud rate
     serial_parity: N              # PARITY_NONE, PARITY_EVEN, PARITY_ODD,
                                     PARITY_MARK,
                                     PARITY_SPACE = 'N', 'E', 'O', 'M', 'S'
@@ -30,18 +29,18 @@ Uses the openhtf.conf utility to access configuration file keys.
     serial_bytesize: 8            # FIVEBITS, SIXBITS, SEVENBITS,
                                     EIGHTBITS = (5, 6, 7, 8)
     serial_rtscts: 0              # boolean type
-    serial_timeout: None
+    serial_timeout: 0
+    serial_min_buffer_time: 50    # minimum wait time after a write before
+                                    we read the input buffer
 """
-
 import binascii
-import glob
 import logging
 import time
-import serial
 
 import openhtf.conf as conf
 import openhtf.plugs as plugs
 from openhtf.util import timeouts
+import serial
 
 conf.Declare('SerialPlug')
 
@@ -51,34 +50,78 @@ class SerialPlugExceptions(Exception):
 
 
 class SerialPlug(plugs.BasePlug):
-  """A Plug for serial communication."""
+  """A Plug for serial communication.
+
+     Call GetSerialHandle to get an instance.
+  """
 
   def __init__(self):
+    self.logger = logging.getLogger(__name__)
+    self.logger.debug('Init %s', type(self).__name__)
+
+  def GetSerialHandle(self,
+                      serial_port='/dev/ttyUSB*',
+                      serial_baudrate=19600,
+                      serial_parity='N',
+                      serial_stopbits=1,
+                      serial_bytesize=8,
+                      serial_rtscts=False,
+                      serial_timeout=0,
+                      serial_min_buffer_time=50):
+
+    return SerialDevice(serial_port,
+                        serial_baudrate,
+                        serial_parity,
+                        serial_stopbits,
+                        serial_bytesize,
+                        serial_rtscts,
+                        serial_timeout,
+                        serial_min_buffer_time)
+
+
+class SerialDevice(object):
+  """A Plug for serial communication."""
+
+  def __init__(self,
+               serial_port,
+               serial_baudrate,
+               serial_parity,
+               serial_stopbits,
+               serial_bytesize,
+               serial_rtscts,
+               serial_timeout,
+               serial_min_buffer_time):
     """Setup child logger and initialize instance variables."""
-    self.logger = logging.getLogger('openhtf.' + __name__)
+    self.logger = logging.getLogger(__name__)
+
+    self._serial_port = serial_port
+    self._serial_baudrate = serial_baudrate
+    self._serial_parity = serial_parity
+    self._serial_stopbits = serial_stopbits
+    self._serial_bytesize = serial_bytesize
+    self._serial_rtscts = serial_rtscts
+    self._serial_timeout = serial_timeout
+    self._buffer_time = serial_min_buffer_time
 
     self.logger.debug('Instantiating %s with these settings:'
                       , type(self).__name__)
     self.logger.debug(' port: %s'
-                      , conf.Config().SerialPlug['serial_port'])
-    self.logger.debug(' baudrate: %s'
-                      , conf.Config().SerialPlug['serial_baudrate'])
+                      , self._serial_port)
+    self.logger.debug(' baudrate: %d'
+                      , self._serial_baudrate)
     self.logger.debug(' parity: %s'
-                      , conf.Config().SerialPlug['serial_parity'])
-    self.logger.debug(' stopbits: %s'
-                      , conf.Config().SerialPlug['serial_stopbits'])
-    self.logger.debug(' bytesize: %s'
-                      , conf.Config().SerialPlug['serial_bytesize'])
+                      , self._serial_parity)
+    self.logger.debug(' stopbits: %d'
+                      , self._serial_stopbits)
+    self.logger.debug(' bytesize: %d'
+                      , self._serial_bytesize)
     self.logger.debug(' rtscts: %s'
-                      , conf.Config().SerialPlug['serial_rtscts'])
+                      , self._serial_rtscts)
     self.logger.debug(' timeout: %s'
-                      , conf.Config().SerialPlug['serial_timeout'])
-    self.logger.debug(' timeout: %s'
-                      , conf.Config().SerialPlug['serial_min_buffer_time'])
+                      , self._serial_timeout)
+    self.logger.debug(' buffer time: %d'
+                      , self._buffer_time)
 
-    self._buffer_time = float(conf.Config().
-                              SerialPlug[
-                                  'serial_min_buffer_time'])
     self._port_handler = None
     self._port_opened = False
 
@@ -95,25 +138,18 @@ class SerialPlug(plugs.BasePlug):
     """
     self.logger.debug('%s: %s !'
                       , type(self).__name__, self.OpenPort.__name__)
-    # get exact port name for DUT
-    ports = glob.glob(conf.Config().SerialPlug['serial_port'])
-
-    if len(ports) != 1:
-      raise SerialPlugExceptions('there are %d serial devices!  '
-                                 'Expecting one!' % len(ports))
-    else:
-      self.logger.debug('got: %s', ports[0])
 
     try:
       self._port_handler = serial.Serial(
-          port=ports[0],
-          baudrate=int(conf.Config().SerialPlug['serial_baudrate']),
-          parity=conf.Config().SerialPlug['serial_parity'],
-          stopbits=int(conf.Config().SerialPlug['serial_stopbits']),
-          bytesize=int(conf.Config().SerialPlug['serial_bytesize']),
-          rtscts=bool(int(conf.Config().SerialPlug['serial_rtscts']))
+          port=self._serial_port,
+          baudrate=self._serial_baudrate,
+          parity=self._serial_parity,
+          stopbits=self._serial_stopbits,
+          bytesize=self._serial_bytesize,
+          rtscts=self._serial_rtscts
       )
-      self.logger.debug('%s open success!', ports[0])
+
+      self.logger.debug('%s open success!', self._serial_port)
       self._port_opened = True
       return True
     except (OSError, serial.SerialException) as e:
