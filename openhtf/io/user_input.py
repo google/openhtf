@@ -34,7 +34,7 @@ import gflags
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('prompt_timeout_s',
-                      300,
+                       None,
                       'User prompt timeout in seconds.')
 
 
@@ -63,7 +63,8 @@ class PromptManager(object):
     self._response = None
     self._cond = threading.Condition()
 
-  def DisplayPrompt(self, message, text_input=False):
+  def DisplayPrompt(self, message, text_input=False,
+                    timeout_s=None):
     """Prompt for a user response by showing the message.
 
     Args:
@@ -84,7 +85,7 @@ class PromptManager(object):
       console_prompt = ConsolePrompt(
           message, functools.partial(self.Respond, self.prompt.id))
       console_prompt.start()
-      self._cond.wait(int(FLAGS.prompt_timeout_s))
+      self._cond.wait(timeout_s or FLAGS.prompt_timeout_s)
       console_prompt.Stop()
       self.prompt = None
       if self._response is None:

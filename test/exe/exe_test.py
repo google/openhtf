@@ -35,6 +35,7 @@ class UnittestPlug(plugs.BasePlug):
     print 'Plugs-specific functionality.'
 
 
+@openhtf.TestPhaseOptions()
 def phase_one(test, test_plug):
   time.sleep(1)
   print 'phase_one completed'
