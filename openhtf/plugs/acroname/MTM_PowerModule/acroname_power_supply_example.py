@@ -26,6 +26,7 @@ To log info into a file, add 2 flags following the command above:
 
 import tempfile
 import time
+from time import sleep
 
 #import example_plug
 import openhtf 
@@ -33,23 +34,24 @@ from openhtf.plugs.acroname.MTM_PowerModule import power_module_plug
 
 from openhtf.names import *
 
-
 # Timeout if this phase takes longer than 180 seconds.
-@TestPhase(timeout_s= 180)
+# @TestPhase(timeout_s= 3)
 @plug(power_module=power_module_plug.PowerSupplyControl)
 def discover_and_connect_power_module(test, power_module):
   """Test phase that discovers and connects power module."""
-  test.logger.info('Discover and connect power module...')
+  print('Connecting the BrainStem network...')
+  #test.logger.info('Discover and connect power module...')
   # print('Trying to connect...')
   power_module.DiscoverAndConnectModule()
-  test.logger.info('Success in connect!')
+  #test.logger.info('Success in connect!')
   print('Success in connect!')
 
 
 
 # Timeout if this phase takes longer than 180 seconds.
-@TestPhase(timeout_s=180)
+
 @plug(power_module=power_module_plug.PowerSupplyControl)
+#@TestPhase(timeout_s=10)
 def configure_and_turn_on_power_module(test, power_module):
   """Test phase that configures and turns on power module."""
   test.logger.info('Checking and configuring power module...')
@@ -70,7 +72,7 @@ def configure_and_turn_on_power_module(test, power_module):
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@TestPhase(timeout_s=10)
+#@TestPhase(timeout_s=10)
 @measures([Measurement(
   'acroname_power_voltage').Number().InRange(4900000,5100000).Doc(
   'Voltage of Acroname Power Module Output, Unit: uV')])
@@ -82,14 +84,12 @@ def get_power_module_measurements(test,power_module):
   """Test phase that gets acroname power measurement."""
   test.measurements.acroname_power_voltage = power_module.GetVoltage()
   print("voltage = %d uV" %test.measurements.acroname_power_voltage)
-  time.sleep(1)
   test.measurements.acroname_power_current = power_module.GetCurrent()
   print("current = %d uA" %test.measurements.acroname_power_current)
-  time.sleep(1)
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@TestPhase(timeout_s=10)
+#@TestPhase(timeout_s=10)
 @plug(power_module=power_module_plug.PowerSupplyControl)
 def power_module_change_voltage_current_limit(test,power_module):
   """Test phase that gets acroname power measurement."""
@@ -99,7 +99,7 @@ def power_module_change_voltage_current_limit(test,power_module):
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@TestPhase(timeout_s=10)
+#@TestPhase(timeout_s=10)
 @measures([Measurement(
   'acroname_power_voltage2').Number().InRange(3200000,3400000).Doc(
   'Voltage of Acroname Power Module Output, Unit: uV')])
@@ -111,15 +111,13 @@ def get_power_module_measurements2(test,power_module):
   """Test phase that gets acroname power measurement."""
   test.measurements.acroname_power_voltage2 = power_module.GetVoltage()
   print("voltage2 = %d uV" %test.measurements.acroname_power_voltage2)
-  time.sleep(1)
   test.measurements.acroname_power_current2 = power_module.GetCurrent()
   print("current2 = %d uA" %test.measurements.acroname_power_current2)
-  time.sleep(1)
 
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@TestPhase(timeout_s=10)
+#@TestPhase(timeout_s=10)
 @plug(power_module=power_module_plug.PowerSupplyControl)
 def turn_off_and_disconnect_power_module(test,power_module):
   """Test phase that turns off and disconnects acroname power measurement."""
@@ -128,13 +126,23 @@ def turn_off_and_disconnect_power_module(test,power_module):
 
 
 
+
+
 if __name__ == '__main__':
-  test = openhtf.Test(discover_and_connect_power_module, 
+  
+  test = openhtf.Test(discover_and_connect_power_module,
                       configure_and_turn_on_power_module,
                       get_power_module_measurements,
                       power_module_change_voltage_current_limit,
-                      get_power_module_measurements2,
-                      turn_off_and_disconnect_power_module)
-  test.AddOutputCallback(OutputToJSON(
-  		'./%(dut_id)s.%(start_time_millis)s', indent=4))
-  test.Execute(test_start=triggers.PromptForTestStart())
+                      get_power_module_measurements2)
+  """
+  test = openhtf.Test(power_module_change_voltage_current_limit,
+                      get_power_module_measurements2)
+  """
+  #cleanUp = openhtf.Test(turn_off_and_disconnect_power_module)
+  #test.AddOutputCallback(OutputToJSON(
+  #		'./%(dut_id)s.%(start_time_millis)s', indent=4))
+  #test.Execute(test_start=triggers.PromptForTestStart())
+  test.Execute()
+  
+  #cleanUp.Execute()
