@@ -1,22 +1,124 @@
 """Output a TestRun proto for mfg-inspector.com"""
 
+import gflags
 import json
-import optparse
+import logging
 import threading
 import zlib
 import httplib2
-from oauth2client.client import SignedJwtAssertionCredentials
-from oauth2client.client import Storage
-import quantum_data_pb2
+import oath2client.client
+
+from openhtf.io.proto import quantum_data_pb2
+from openhtf.io.proto import testrun_pb2
+
+gflags.DEFINE_string('guzzle_service_account_name', None,
+                     'Account name to use for uploading to Guzzle')
+gflags.DEFINE_string('guzzle_private_key_file', None,
+                     'Filename containing oauth2 private key for '
+                     'uploading to Guzzle')
+FLAGS = gflags.FLAGS
 
 DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
                    'uploads/quantum_upload/')
 TOKEN_URI = 'https://accounts.google.com/o/oauth2/token'
 SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
 
+class TestRun(testrun_pb2.TestRun):
 
-# pylint: disable=g-bad-name
-class MemStorage(Storage):
+  MIMETYPE_MAP = {
+      'image/jpeg': testrun_pb2.InformationParameter.JPG,
+      'image/png': testrun_pb2.InformationParameter.PNG,
+      'audio/x-wav': testrun_pb2.InformationParameter.WAV,
+      'text/plain': testrun_pb2.InformationParameter.TEXT_UTF8,
+      'image/tiff': testrun_pb2.InformationParameter.TIFF,
+      'video/mp4': testrun_pb2.InformationParameter.MP4,
+  }
+
+  @classmethod
+  def FromTestRecord(cls, record):
+    """Create a TestRun proto from an OpenHTF TestRecord.
+
+    Most fields are just copied over, some are pulled out of metadata (listed
+    below), and measurements are munged a bit for backwards compatibility.
+
+    Metadata fields:
+      'test_description': TestInfo's description field.
+      'test_version': TestInfo's version_string field.
+      'run_name': TestRun's run_name field.
+      'operator_name': TestRun's operator_name field.
+
+
+    Returns:  An instance of the TestRun proto for the given record.
+    """
+    testrun = cls()
+    # Copy header-like info over, mostly obvious, some stuff comes from metadata.
+    testrun.dut_serial = record.dut_id
+    testrun.tester_name = record.station_id
+    testrun.test_info.name = record.station_id
+    if 'test_description' in record.metadata:
+      testrun.test_info.description = record.metadata['test_description']
+    if 'test_version' in record.metadata:
+      testrun.test_info.version_string = record.metadata['test_version']
+    if record.outcome is None:
+      testrun.test_status = testrun_pb2.ERROR
+    elif record.outcome:
+      testrun.test_status = testrun_pb2.PASS
+    else:
+      testrun.test_status = testrun_pb2.FAIL
+    testrun.start_time_millis = record.start_time_millis
+    testrun.end_time_millis = record.end_time_millis
+    if 'run_name' in record.metadata:
+      testrun.run_name = record.metadata['run_name']
+    for details in record.outcome_details:
+      testrun_code = testrun.failure_codes.add()
+      if ':' in details:
+        testrun_code.code, testrun_code.details = details.split(':', 1)
+      else:
+        testrun_code.details = details
+        
+    # Run through phases and pull out stuff we care about.
+    for phase in record.phases: 
+      testrun_phase = testrun.phases.add()
+      testrun_phase.name = phase.name
+      testrun_phase.description = phase.code
+      testrun_phase.timing.start_time_millis = phase.start_time_millis
+      testrun_phase.timing.end_time_millis = phase.end_time_millis
+
+      for name, (data, mimetype) in phase.attachments.iteritems():
+        testrun_param = testrun.info_parameters.add()
+        testrun_param.name = name
+        testrun_param.value_binary = data
+        if mimetype in cls.MIMETYPE_MAP:
+          testrun_param.type = cls.MIMETYPE_MAP[mimetype]
+        else:
+          testrun_param.type = testrun_pb2.InformationParameter.BINARY
+
+      # Flatten parameters for backwards compatibility, watch for collisions, and
+      # use some sane limits for very large multidimensional measurements.
+      # TODO(madsci): Do this.
+
+    # Copy log records over, this is a fairly straightforward mapping.
+    for log in record.log_records:
+      testrun_log = testrun.test_logs.add()
+      testrun_log.timestamp_millis = log.timestamp_millis
+      testrun_log.log_message = log.message
+      testrun_log.logger_name = log.logger_name
+      testrun_log.levelno = log.level
+      if log.level <= logging.DEBUG:
+        testrun_log.level = testrun_pb2.TestRunLogMessage.DEBUG
+      elif log.level <= logging.INFO:
+        testrun_log.level = testrun_pb2.TestRunLogMessage.INFO
+      elif log.level <= logging.WARNING:
+        testrun_log.level = testrun_pb2.TestRunLogMessage.WARNING
+      elif log.level <= logging.ERROR:
+        testrun_log.level = testrun_pb2.TestRunLogMessage.ERROR
+      elif log.level <= logging.CRITICAL:
+        testrun_log.level = testrun_pb2.TestRunLogMessage.CRITICAL
+      testrun_log.log_source = log.source
+      testrun_log.lineno = log.lineno
+
+
+class MemStorage(oath2client.client.Storage):
   """Storage class that keeps credentials in memory.
 
   This provides a thread-safe repository which can be used by httplib objects
@@ -45,32 +147,28 @@ class MemStorage(Storage):
 
   def locked_put(self, credentials):
     self._credentials = credentials
-# pylint: enable=g-bad-name
 
 
-def UploadTestRun(pathname, credentials):
+def UploadTestRun(testrun, credentials):
   """Uploads the TestRun at a particular file.
 
   Args:
-    pathname: The pathname of the test run to upload.
+    testrun: TestRun proto to upload.
     credentials: An OAuth2Credentials object to use for authenticated uploads.
   """
 
-  with open(pathname) as f:
-    data = f.read()
-
-  h = httplib2.Http()
-  if credentials.access_token_expired:
-    credentials.refresh(h)
-  credentials.authorize(h)
-
   test_run_envelope = quantum_data_pb2.TestRunEnvelope()
-  compressed = zlib.compress(data)
+  compressed = zlib.compress(testrun.SerializeToString())
   test_run_envelope.payload = compressed
   test_run_envelope.payload_type = quantum_data_pb2.COMPRESSED_TEST_RUN
-  serialized = test_run_envelope.SerializeToString()
+  serialized_envelope = test_run_envelope.SerializeToString()
 
-  _, content = h.request(DESTINATION_URL, 'POST', serialized)
+  http = httplib2.Http()
+  if credentials.access_token_expired:
+    credentials.refresh(http)
+  credentials.authorize(http)
+
+  _, content = http.request(DESTINATION_URL, 'POST', serialized_envelope)
   if content.split('\n', 1)[0] == 'OK':
     print 'OK'
   else:
@@ -91,11 +189,11 @@ def main():
   with open(key) as f:
     keydata = f.read()
 
-  credentials = SignedJwtAssertionCredentials(
+  credentials = oath2client.client.SignedJwtAssertionCredentials(
       service_account_name=user,
       private_key=keydata,
       scope=SCOPE_CODE_URI,
-      user_agent='Guzzle Upload Client',
+      user_agent='OpenHTF Guzzle Upload Client',
       token_uri=TOKEN_URI)
   credentials.set_store(MemStorage())
 
