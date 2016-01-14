@@ -33,6 +33,13 @@ class TestRun(testrun_pb2.TestRun):
       'image/tiff': testrun_pb2.InformationParameter.TIFF,
       'video/mp4': testrun_pb2.InformationParameter.MP4,
   }
+  OUTCOME_MAP = {
+      'ERROR': testrun_pb2.ERROR,
+      'TIMEOUT': testrun_pb2.ERROR,
+      'ABORTED': testrun_pb2.ERROR,
+      'FAIL': testrun_pb2.FAIL,
+      'PASS': testrun_pb2.PASS,
+  }
 
   @classmethod
   def FromTestRecord(cls, record):
@@ -59,12 +66,7 @@ class TestRun(testrun_pb2.TestRun):
       testrun.test_info.description = record.metadata['test_description']
     if 'test_version' in record.metadata:
       testrun.test_info.version_string = record.metadata['test_version']
-    if record.outcome is None:
-      testrun.test_status = testrun_pb2.ERROR
-    elif record.outcome:
-      testrun.test_status = testrun_pb2.PASS
-    else:
-      testrun.test_status = testrun_pb2.FAIL
+    testrun.test_status = cls.OUTCOME_MAP.get(record.outcome, testrun_pb2.ERROR)
     testrun.start_time_millis = record.start_time_millis
     testrun.end_time_millis = record.end_time_millis
     if 'run_name' in record.metadata:
