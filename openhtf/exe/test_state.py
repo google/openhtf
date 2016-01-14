@@ -159,7 +159,7 @@ class TestState(object):
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     self.record.end_time_millis = util.TimeMillis()
-    self.record.outcome = self._state
+    self.record.outcome = str(self._state)
     return self.record
 
   def __str__(self):
