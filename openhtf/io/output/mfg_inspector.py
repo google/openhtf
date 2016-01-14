@@ -3,6 +3,7 @@
 import gflags
 import json
 import logging
+import numbers
 import threading
 import zlib
 import httplib2
@@ -10,6 +11,7 @@ import oath2client.client
 
 from openhtf.io.proto import quantum_data_pb2
 from openhtf.io.proto import testrun_pb2
+from openhtf.util import validators
 
 gflags.DEFINE_string('guzzle_service_account_name', None,
                      'Account name to use for uploading to Guzzle')
@@ -95,9 +97,39 @@ class TestRun(testrun_pb2.TestRun):
         else:
           testrun_param.type = testrun_pb2.InformationParameter.BINARY
 
-      # Flatten parameters for backwards compatibility, watch for collisions, and
-      # use some sane limits for very large multidimensional measurements.
-      # TODO(madsci): Do this.
+      for name, measurement in phase.measurements.iteritems():
+        testrun_param = testrun.test_parameters.add()
+        testrun_param.name = name
+        testrun_param.status = (
+            testrun_pb2.PASS if measurement.outcome else testrun_pb2.FAIL)
+        if measurement.docstring:
+          testrun_param.description = measurement.docstring
+        if measurement.units:
+          testrun_param.unit_code = measurement.units
+
+        value = phase.measured_values[name]
+        if measurement.dimensions is None:
+          # Just a plain ol' value.
+          if isinstance(value, numbers.Number):
+            testrun_param.numeric_value = float(value)
+          else:
+            testrun_param.text_value = str(value)
+          # Check for validators we know how to translate.
+          for validator in measurement.validators:
+            if isinstance(validator, validators.InRange):
+              if validator.minimum is not None:
+                testrun_param.numeric_minimum = float(validator.minimum)
+              if validator.maximum is not None:
+                testrun_param.numeric_maximum = float(validator.maximum)
+            elif isinstance(validator, validators.RegexMatcher):
+              testrun_param.expected_text = validator.regex
+            else:
+              testrun_param.description += '\nValidator: ' + str(validator)
+        else:
+          # Flatten parameters for backwards compatibility, watch for collisions, and
+          # use some sane limits for very large multidimensional measurements.
+          # TODO(madsci): Do this.
+          pass
 
     # Copy log records over, this is a fairly straightforward mapping.
     for log in record.log_records:
