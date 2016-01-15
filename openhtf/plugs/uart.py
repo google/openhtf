@@ -42,8 +42,6 @@ import openhtf.plugs as plugs
 from openhtf.util import timeouts
 import serial
 
-conf.Declare('SerialPlug')
-
 
 class SerialPlugExceptions(Exception):
   """Raised when failing to connect to serial device."""
