@@ -4,6 +4,9 @@ from json import JSONEncoder
 from openhtf import conf
 from openhtf import util
 from openhtf.exe import test_state
+from openhtf.io.output import mfg_inspector
+
+from google.protobuf import text_format
 
 
 class OutputToJSON(JSONEncoder):
@@ -41,4 +44,16 @@ class OutputToJSON(JSONEncoder):
     as_dict = util.convert_to_dict(test_record)
     with open(self.filename_pattern % as_dict, 'w') as f:  # pylint: disable=invalid-name
       f.write(self.encode(as_dict))
+
+
+class OutputToTestRunProto(object):
+
+  def __init__(self, filename_pattern):
+    self.filename_pattern = filename_pattern
+
+  def __call__(self, test_record):
+    as_dict = util.convert_to_dict(test_record)
+    with open(self.filename_pattern % as_dict, 'w') as f:
+      f.write(mfg_inspector.TestRunFromTestRecord(
+          test_record).SerializeToString())
 
