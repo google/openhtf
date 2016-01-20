@@ -11,6 +11,7 @@ import zlib
 
 #from openhtf.io.proto import quantum_data_pb2
 from openhtf.io.proto import testrun_pb2
+from openhtf.io.proto import units_pb2
 from openhtf.util import validators
 
 gflags.DEFINE_string('guzzle_service_account_name', None,
@@ -26,20 +27,28 @@ TOKEN_URI = 'https://accounts.google.com/o/oauth2/token'
 SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
 
 MIMETYPE_MAP = {
-    'image/jpeg': testrun_pb2.InformationParameter.JPG,
-    'image/png': testrun_pb2.InformationParameter.PNG,
-    'audio/x-wav': testrun_pb2.InformationParameter.WAV,
-    'text/plain': testrun_pb2.InformationParameter.TEXT_UTF8,
-    'image/tiff': testrun_pb2.InformationParameter.TIFF,
-    'video/mp4': testrun_pb2.InformationParameter.MP4,
+  'image/jpeg': testrun_pb2.InformationParameter.JPG,
+  'image/png': testrun_pb2.InformationParameter.PNG,
+  'audio/x-wav': testrun_pb2.InformationParameter.WAV,
+  'text/plain': testrun_pb2.InformationParameter.TEXT_UTF8,
+  'image/tiff': testrun_pb2.InformationParameter.TIFF,
+  'video/mp4': testrun_pb2.InformationParameter.MP4,
 }
 OUTCOME_MAP = {
-    'ERROR': testrun_pb2.ERROR,
-    'TIMEOUT': testrun_pb2.ERROR,
-    'ABORTED': testrun_pb2.ERROR,
-    'FAIL': testrun_pb2.FAIL,
-    'PASS': testrun_pb2.PASS,
+  'ERROR': testrun_pb2.ERROR,
+  'TIMEOUT': testrun_pb2.ERROR,
+  'ABORTED': testrun_pb2.ERROR,
+  'FAIL': testrun_pb2.FAIL,
+  'PASS': testrun_pb2.PASS,
 }
+UOM_CODE_MAP = {
+  u.GetOptions().Extensions[units_pb2.uom_code]: num
+  for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
+}
+# Control how many flattened parameters we'll output per multidimensional
+# measurement.
+MAX_PARAMS_PER_MEASUREMENT = 100
+
 
 def TestRunFromTestRecord(record):
   """Create a TestRun proto from an OpenHTF TestRecord.
@@ -78,6 +87,8 @@ def TestRunFromTestRecord(record):
       testrun_code.details = details
 
   # Run through phases and pull out stuff we care about.
+  used_parameter_names = set()
+  mangled_parameters = {}
   for phase in record.phases:
     testrun_phase = testrun.phases.add()
     testrun_phase.name = phase.name
@@ -95,6 +106,7 @@ def TestRunFromTestRecord(record):
         testrun_param.type = testrun_pb2.InformationParameter.BINARY
 
     for name, measurement in phase.measurements.iteritems():
+      used_parameter_names.add(name)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = name
       testrun_param.status = (
@@ -102,7 +114,7 @@ def TestRunFromTestRecord(record):
       if measurement.docstring:
         testrun_param.description = measurement.docstring
       if measurement.units:
-        testrun_param.unit_code = measurement.units
+        testrun_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
 
       value = phase.measured_values[name]
       if measurement.dimensions is None:
@@ -125,8 +137,38 @@ def TestRunFromTestRecord(record):
       else:
         # Flatten parameters for backwards compatibility, watch for collisions, and
         # use some sane limits for very large multidimensional measurements.
-        # TODO(madsci): Do this.
-        pass
+        for current_value in value[:MAX_PARAMS_PER_MEASUREMENT]:
+          # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
+          mangled_name = '_'.join([name] + [
+              '%s%s' % (
+                dim_val,
+                dim_units.uom_suffix if dim_units.uom_suffix else '') for
+              dim_val, dim_units in zip(
+                current_value[:-1], measurement.dimensions)])
+          if mangled_name in mangled_parameters:
+            logging.warning('Mangled name %s already in use', mangled_name)
+            continue
+          mangled_param = testrun_pb2.TestParameter()
+          mangled_param.name = mangled_name
+          mangled_param.numeric_value = float(current_value[-1])
+          if measurement.units:
+            mangled_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
+          mangled_param.description = (
+              'Mangled parameter from measurement %s with dimensions %s' % (
+              name, tuple(d.uom_suffix for d in measurement.dimensions)))
+          for validator in measurement.validators:
+            mangled_param.description += '\nValidator: ' + str(validator)
+          mangled_parameters[mangled_name] = mangled_param
+
+  # Now we can do this, since we have added all non-dimensional parameters and
+  # can avoid name collisions.
+  for mangled_name, mangled_param in mangled_parameters.iteritems():
+    if mangled_name in used_parameter_names:
+      logging.warning('Mangled name %s in use by non-mangled parameter',
+                      mangled_name)
+      continue
+    testrun_param = testrun.test_parameters.add()
+    testrun_param.CopyFrom(mangled_param)
 
   # Copy log records over, this is a fairly straightforward mapping.
   for log in record.log_records:

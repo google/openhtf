@@ -56,4 +56,7 @@ class OutputToTestRunProto(object):
     with open(self.filename_pattern % as_dict, 'w') as f:
       f.write(mfg_inspector.TestRunFromTestRecord(
           test_record).SerializeToString())
+    with open((self.filename_pattern + '.text') % as_dict, 'w') as f:
+      f.write(text_format.MessageToString(
+          mfg_inspector.TestRunFromTestRecord(test_record)))
 
