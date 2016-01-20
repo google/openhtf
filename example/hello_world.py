@@ -73,7 +73,7 @@ def set_measurements(test):
 @measures(
     Measurement('dimensions').WithDimensions(UOM['HERTZ']),
     Measurement('lots_of_dims').WithDimensions(
-        UOM['HERTZ'], UOM['BYTE'], UOM['RADIAN']))
+        UOM['HERTZ'], UOM['SECOND'], UOM['RADIAN']))
 def dimensions(test):
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim
