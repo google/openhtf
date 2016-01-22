@@ -45,14 +45,18 @@ requires = [  # pylint: disable=invalid-name
     'libusb1==1.3.0',
     'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
-    'mutablerecords==0.2.4',
+    'mutablerecords==0.2.6',
     'pyaml==15.3.1',
-    'mutablerecords==0.2.4',
     'python-gflags==2.0',
     'PyYAML==3.11',
     'Rocket==1.2.4',
     'singledispatch==3.4.0.3',
     'Werkzeug==0.10.4',
+]
+
+tests_require = [
+    'mock',
+    'pytest',
 ]
 
 
@@ -75,8 +79,7 @@ class PyTestCommand(test):
     self.test_args = []
     self.test_suite = True
 
-  def run(self):
-    test.run(self)
+  def run_tests(self):
     import pytest
     cov = ''
     if self.pytest_cov is not None:
@@ -100,5 +103,5 @@ setup(
         'test': PyTestCommand,
     },
     install_requires=requires,
-    tests_require=['pytest'],
+    tests_require=tests_require,
 )

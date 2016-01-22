@@ -83,7 +83,7 @@ class TestState(object):
                                            self.record)
     self.running_phase = None
     self.pending_phases = list(test.phases)
-    
+
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""

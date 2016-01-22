@@ -74,71 +74,6 @@ class TestExecutor(threads.KillableThread):
     """Style-compliant start method."""
     self.start()
 
-  def GetState(self):
-    """Return the current TestState object."""
-    return self._test_state
-
-  def _ThreadProc(self):
-    """Handles one whole test from start to finish.
-
-    When this finishes, the parent loops back around and calls us again.
-    """
-    while True:
-      with contextlib.ExitStack() as exit_stack, \
-          LogSleepSuppress() as suppressor:
-        _LOG.info('Starting test %s', self.test.filename)
-
-        self._current_exit_stack = exit_stack
-        exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
-
-        suppressor.failure_reason = 'TEST_START failed to complete.'
-        dut_id = self._test_start()
-
-        suppressor.failure_reason = 'Unable to initialize plugs.'
-        _LOG.info('Initializing plugs.')
-        plug_manager = (
-            plugs.PlugManager.InitializeFromTypes(
-                self.test.plug_type_map))
-        exit_stack.callback(plug_manager.TearDownPlugs)
-
-        _LOG.debug('Making test state and phase executor.')
-        # Store the reason the next function can fail, then call the function.
-        suppressor.failure_reason = 'Test is invalid.'
-        self._test_state = test_state.TestState(
-            self._config, self.test, plug_manager.plug_map, dut_id)
-
-        phase_executor = phasemanager.PhaseExecutor(
-            self._config, self._test_state)
-
-        def optionally_stop(exc_type, *dummy):
-          """Always called when we stop a test.
-
-          If an exception happened, we'll check it to see if it was a test
-          error.  If it was not (ie the user intentionally stopped the test),
-          then we'll just return immediately, otherwise we'll wait for the
-          Test Stop mechanism in triggers.py.
-          """
-          # Always stop the phase_executor, if the test ended normally then it
-          # will already be stopped, but this won't hurt anything.  If the test
-          # exited abnormally, we don't want to leave this hanging around in
-          # some weird state.
-          phase_executor.Stop()
-
-          # If Stop was called, we don't care about the test stopping completely
-          # anymore, nor if ctrl-C was hit.
-          if exc_type not in (TestStopError, KeyboardInterrupt):
-            self._test_stop(dut_id)
-            self._test_state = None  # Clear test state after stopping.
-
-        # Call WaitForTestStop() to match WaitForTestStart().
-        exit_stack.push(optionally_stop)
-
-        suppressor.failure_reason = 'Failed to execute test.'
-        self._test_state.SetStateRunning()
-        self._ExecuteTest(phase_executor)
-        if not self.test.loop:
-          break
-
   def Stop(self):
     """Stop this test."""
     _LOG.info('Stopping test executor.')
@@ -154,17 +89,96 @@ class TestExecutor(threads.KillableThread):
     """Waits until death."""
     self.join(365*24*60*60)  # Timeout needed for SIGINT handling, so 1 year.
 
-  def _ExecuteTest(self, phase_executor):
+  def GetState(self):
+    """Return the current TestState object."""
+    return self._test_state
+
+  def _ThreadProc(self):
+    """Main entry point for this Thread, conditionally loop the test."""
+    if not self.test.loop:
+      self._RunTestLoop.once(self)
+    else:
+      self._RunTestLoop()
+
+  @threads.Loop
+  def _RunTestLoop(self):
+    """Handles one whole test from start to finish.
+
+    By default, this will loop indefinitely.  Call _RunTestLoop.once(self) to
+    run the test only once.
+    """
+    with contextlib.ExitStack() as exit_stack, \
+        LogSleepSuppress() as suppressor:
+      # Top level steps required to run a single iteration of the Test.
+      _LOG.info('Starting test %s', self.test.filename)
+
+      # Save exit_stack on self so we can access it when Stop() is called.
+      self._current_exit_stack = exit_stack
+      exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
+
+      plug_manager = self._MakePlugManager(suppressor)
+      phase_executor = self._MakePhaseExecutor()
+
+      suppressor.failure_reason = 'Failed to execute test.'
+      self._ExecuteTestPhases(phase_executor)
+      self.test.OutputTestRecord(self._test_state.GetFinishedRecord())
+
+  def _MakePlugManager(self, suppressor):
+    """Perform some initialization and create a PlugManager."""
+    suppressor.failure_reason = 'TEST_START failed to complete.'
+    dut_id = self._test_start()
+
+    _LOG.info('Initializing plugs.')
+    suppressor.failure_reason = 'Unable to initialize plugs.'
+    plug_manager = (
+        plugs.PlugManager.InitializeFromTypes(
+            self.test.plug_type_map))
+    self._current_exit_stack.callback(plug_manager.TearDownPlugs)
+
+    suppressor.failure_reason = 'Test is invalid.'
+    self._test_state = test_state.TestState(
+        self._config, self.test, plug_manager.plug_map, dut_id)
+
+    return plug_manager
+
+  def _MakePhaseExecutor(self):
+    """Create a phasemanager.PhaseExecutor and set it up."""
+    phase_executor = phasemanager.PhaseExecutor(
+        self._config, self._test_state)
+
+    def optionally_stop(exc_type, *dummy):
+      """Always called when we stop a test.
+
+      If an exception happened, we'll check it to see if it was a test
+      error.  If it was not (ie the user intentionally stopped the test),
+      then we'll just return immediately, otherwise we'll wait for the
+      Test Stop mechanism in triggers.py.
+      """
+      # Always stop the phase_executor, if the test ended normally then it
+      # will already be stopped, but this won't hurt anything.  If the test
+      # exited abnormally, we don't want to leave this hanging around in
+      # some weird state.
+      phase_executor.Stop()
+
+      # If Stop was called, we don't care about the test stopping completely
+      # anymore, nor if ctrl-C was hit.
+      if exc_type not in (TestStopError, KeyboardInterrupt):
+        self._test_stop(self._test_state.record.dut_id)
+        self._test_state = None  # Clear test state after stopping.
+
+    self._current_exit_stack.push(optionally_stop)
+    return phase_executor
+
+  def _ExecuteTestPhases(self, phase_executor):
     """Executes one test's phases from start to finish.
 
     Raises:
       InvalidPhaseResultError: Raised when a phase doesn't return
           phase_data.TestPhaseInfo.TEST_PHASE_RESULT_*
     """
+    self._test_state.SetStateRunning()
     for phase_result in phase_executor.ExecutePhases():
       if self._test_state.SetStateFromPhaseResult(phase_result):
         break
     else:
       self._test_state.SetStateFinished()
-
-    self.test.OutputTestRecord(self._test_state.GetFinishedRecord())
