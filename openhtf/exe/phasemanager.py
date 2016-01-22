@@ -37,6 +37,7 @@ import inspect
 import logging
 
 import gflags
+import mutablerecords
 
 from openhtf.exe import phase_data
 from openhtf.io import test_record
@@ -87,8 +88,8 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def JoinOrDie(self):
     """Wait for thread to finish, return a TestPhaseResult with its response."""
-    if hasattr(self._phase, 'timeout_s'):
-      self.join(self._phase.timeout_s)
+    if self._phase.options.timeout_s is not None:
+      self.join(self._phase.options.timeout_s)
     else:
       self.join(FLAGS.phase_default_timeout_ms / 1000.0)
 
@@ -119,22 +120,16 @@ class PhaseExecutorThread(threads.KillableThread):
 
   @property
   def name(self):
-    return self._phase.__name__
+    return self._phase.func.__name__
 
   def __str__(self):
     return '<%s: (%s)>' % (type(self).__name__, self.name)
   __repr__ = __str__
 
 
-class PhaseExecutor(object):
+class PhaseExecutor(mutablerecords.Record(
+    'PhaseExecutor', ['_config', '_test_state'], {'_current_phase': None})):
   """Encompasses the execution of the phases of a test."""
-
-  def __init__(self, config, test_state):
-    self._config = config
-    self._test_state = test_state
-    self._logger = test_state.logger
-    self._phase_data = self._test_state.phase_data
-    self._current_phase = None
 
   def ExecutePhases(self):
     """Executes each phase or skips them, yielding TestPhaseResult instances.
@@ -154,27 +149,23 @@ class PhaseExecutor(object):
 
   def _ExecuteOnePhase(self, phase):
     """Executes the given phase."""
+    data = self._test_state.phase_data
 
     # Check this as early as possible.
-    if hasattr(phase, 'run_if') and not phase.run_if(self._phase_data):
-      _LOG.info(
-          'Phase %s skipped due to run_if returning falsey.', phase.__name__)
+    if phase.options.run_if and not phase.options.run_if(data):
+      _LOG.info('Phase %s skipped due to run_if returning falsey.',
+                phase.func.__name__)
       self._test_state.pending_phases.pop(0)
       return
 
-    _LOG.info('Executing phase %s with plugs %s',
-                      phase.__name__, self._phase_data.plugs)
-
-    root_phase = phase
-    while hasattr(root_phase, 'wraps'):
-      root_phase = root_phase.wraps
+    _LOG.info(
+        'Executing phase %s with plugs %s', phase.func.__name__, data.plugs)
 
     self._test_state.running_phase = test_record.PhaseRecord(
-        phase.__name__, inspect.getsource(root_phase), docstring=phase.__doc__)
+        phase.func.__name__, phase.source, docstring=phase.func.__doc__)
 
-    with self._phase_data.RecordPhaseTiming(
-        phase, self._test_state) as result_wrapper:
-      phase_thread = PhaseExecutorThread(phase, self._phase_data)
+    with data.RecordPhaseTiming(phase, self._test_state) as result_wrapper:
+      phase_thread = PhaseExecutorThread(phase, data)
       phase_thread.start()
       self._current_phase = phase_thread
       result_wrapper.SetResult(phase_thread.JoinOrDie())
