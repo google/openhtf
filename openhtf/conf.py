@@ -273,7 +273,7 @@ class ConfigModel(object):
         self._state[key] = val
 
       self._loaded = True
-      _LOG.debug('Configuration loaded: %s', self._state)
+      _LOG.debug('Configuration loaded: %s', str(self._state))
     except yaml.YAMLError as exception:
       _LOG.exception('Failed to load yaml file: %s', filename)
       raise ConfigurationInvalidError(filename, exception)

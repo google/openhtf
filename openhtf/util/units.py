@@ -84,3 +84,4 @@ UOM['NEWTON'] = Unit('NEW', 'N')
 
 UOM['CUBIC_CENTIMETER_PER_SEC'] = Unit('2J', 'cm³/s')
 UOM['MILLIBAR'] = Unit('MBR', 'mbar')
+UOM['LUX'] = Unit('LX', 'lx')

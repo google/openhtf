@@ -27,7 +27,7 @@ import re
 import sys
 import traceback
 from datetime import datetime
-
+from openhtf import util
 import gflags
 
 from openhtf.io import test_record
@@ -111,11 +111,10 @@ def setup_logger():
   logger.propagate = False
   logger.setLevel(logging.DEBUG)
   formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
   if FLAGS.log_file:
     try:
-      cur_time = datetime.utcnow().strftime('%Y-%m-%d-%H:%M:%S.%f')[:-3]
-      file_handler = logging.FileHandler(FLAGS.log_file + cur_time)
+      cur_time = str(util.TimeMillis())
+      file_handler = logging.FileHandler(FLAGS.log_file + '.' + cur_time)
       file_handler.setFormatter(formatter)
       file_handler.setLevel(FLAGS.log_level.upper())
       file_handler.addFilter(MAC_FILTER)
