@@ -39,7 +39,7 @@ class CleanCommand(clean):
 
 requires = [  # pylint: disable=invalid-name
     'contextlib2==0.4.0',
-    'enum==0.4.4',
+    'enum34==1.1.2',
     'Flask==0.10.1',
     'inotify==0.2.4',
     'libusb1==1.3.0',

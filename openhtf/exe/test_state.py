@@ -50,10 +50,8 @@ class TestState(object):
     config: The config being used for this test.
     test: openhtf.Test instance describing the test to run.
   """
-  State = Enum(
-      'RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED', 'WAITING', 'FAIL', 'PASS',
-      'CREATED'
-  )
+  State = Enum('State', ['RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED',
+                         'WAITING', 'FAIL', 'PASS', 'CREATED'])
 
   _PHASE_RESULT_TO_STATE = {
       phase_data.PhaseResults.CONTINUE: State.WAITING,
