@@ -54,11 +54,6 @@ requires = [  # pylint: disable=invalid-name
     'Werkzeug==0.10.4',
 ]
 
-tests_require = [
-    'mock',
-    'pytest',
-]
-
 
 class PyTestCommand(test):
   # Derived from
@@ -103,5 +98,4 @@ setup(
         'test': PyTestCommand,
     },
     install_requires=requires,
-    tests_require=tests_require,
 )
