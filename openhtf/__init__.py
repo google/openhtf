@@ -22,6 +22,8 @@ import os
 import signal
 import socket
 import sys
+import requests
+import json
 from json import JSONEncoder
 
 import gflags
@@ -42,7 +44,25 @@ FLAGS = gflags.FLAGS
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
 
+conf.Declare('project', 'project name')
+conf.Declare('data_server', 'data server')
+conf.Declare('shopfloor', 'shopfloor server')
+conf.Declare('upload_data', 'if need upload test result to server')
 
+"""
+  upload_data default value is true, otherwise, the test results keep at local
+  if upload data to data server, need to set project, data server url and/or
+  shopfloor server url if send test results to shopfloor as well. the test
+  info sending to shopfloor include: 
+     StationId, SN, result, start_time, end_time
+
+  config yaml:
+  upload_data: true       
+  project: rio
+  data_server: 'http://172.17.71.10:5150/api/?source=testrun&project='
+  shopfloor: 'http://172.17.71.10:5150/api/testrun'
+~
+"""
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
@@ -66,6 +86,9 @@ class OutputToJSON(JSONEncoder):
   def __init__(self, filename_pattern, **kwargs):
     super(OutputToJSON, self).__init__(**kwargs)
     self.filename_pattern = filename_pattern
+    self._data_server = None
+    self._shopfloor = None
+    self._project = None
 
   def default(self, obj):
     # Handle a few custom objects that end up in our output.
@@ -83,6 +106,80 @@ class OutputToJSON(JSONEncoder):
     with open(self.filename_pattern % as_dict, 'w') as f:  # pylint: disable=invalid-name
       f.write(self.encode(as_dict))
 
+    config = conf.Config()
+    if config.upload_data:
+      if not self._data_server:
+        project = config.project
+        server = config.data_server
+        shopfloor = config.shopfloor
+        if project and server:
+          self._data_server = server + project
+        else:
+          raise ValueError('No project and/or data_server set')
+
+        if shopfloor:
+          self._shopfloor = shopfloor
+
+        if not (project and self._data_server):
+          raise ValueError('No project, data_server and/or shopfloor set')
+
+      headers = {'Accept' : 'application/json',
+                 'Content-Type' : 'application/json'}
+      files = [f for f in os.listdir('.') if os.path.isfile(f)]
+                
+      test_info = {}
+      for f in files:
+        resp = requests.post(self._data_server, data=open(f, 'rb'),
+                             headers=headers)
+        rc_data = resp.status_code
+        rc_floor = 0
+        if rc_data == 200 and self._shopfloor:
+          json_data = json.load(open(f))
+          test_info['start_time'] = json_data['start_time_millis']
+          test_info['end_time'] = json_data['end_time_millis']
+          test_info['station_id'] = json_data['station_id']
+          test_info['serial_number'] = json_data['dut_id']
+          test_info['project'] = project
+          result = json_data['outcome']
+
+          test_info['result'] = result
+          if result == 'FAIL':
+            phases=json_data['phases']
+            for phase in phases:
+              measurements = phase['measurements']
+              for measurement in measurements:
+                result = measurements[measurement]
+                if result['outcome'] == 'FAIL':
+                  test_info['phase'] = phase['name']
+                  failed_item = result['name']
+                  test_info['value'] =phase['measured_values'][failed_item]
+                  limits=result['validators'][0].split('<=')
+                  if len(limits) > 2:
+                    test_info['lower'] = limits[0]
+                    test_info['upper'] = limits[2]
+                  elif len(limits) == 2:
+                    if limits[0] == 'x':
+                      test_info['upper'] = limits[1]
+                      test_info['lower'] = limits[1]
+                    else:
+                      test_info['uper'] = limits[0]
+                      test_info['lower'] = limits[0]
+                  break
+              else:
+                continue
+              break
+          resp = requests.post(self._shopfloor, data=json.dumps(test_info),
+                                   headers=headers)
+          test_info.clear()
+          rc_floor = resp.status_code
+
+        if rc_data == 200 and (rc_floor == 200 or rc_floor == 0):
+          os.remove(f)
+          _LOG.info('Result successfully loaded, id')
+        elif rc_data != 200:
+          _LOG.warning('Error on upload file to server rc:%d', rc_data)
+        else:
+          _LOG.warning('Error on upload file to shopfloor rc:%d', rc_floor)
 
 class TestPhaseOptions(mutablerecords.Record(
     'TestPhaseOptions', [], {'timeout_s': None, 'run_if': None})):
