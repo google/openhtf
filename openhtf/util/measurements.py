@@ -54,6 +54,7 @@ import logging
 import mutablerecords
 
 # from openhtf.io import records
+import openhtf
 from openhtf.io import test_record
 from openhtf.util import validators
 
@@ -215,7 +216,7 @@ class MeasuredValue(object):
           'Overriding previous measurement %s value of %s with %s',
           self.name, self.value, value)
     self.value = value
- 
+
   def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
     coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
     if coordinates_len != self.num_dimensions:
@@ -251,8 +252,8 @@ class MeasuredValue(object):
       # We have no dimensions, just output our value.
       return self.value
 
- 
-class Collection(object):  # pylint: disable=too-few-public-methods
+
+class Collection(mutablerecords.Record('Collection', ['_measurements'], {'_values': dict})):
   """Encapsulates a collection of measurements.
 
   This collection can have measurement values retrieved and set via getters and
@@ -294,17 +295,10 @@ class Collection(object):  # pylint: disable=too-few-public-methods
     # [(5, 10), (6, 11)]
   """
 
-  __slots__ = ('_measurements', '_values')
-
-  def __init__(self, measurements):
-    # We have setattr so we have to bypass it to set attributes.
-    object.__setattr__(self, '_measurements', measurements)
-    object.__setattr__(self, '_values', {})
-
   def _AssertValidKey(self, name):
     """Raises if name is not a valid measurement."""
     if name not in self._measurements:
-      raise NotAMeasurementError('Not a measurement', name)
+      raise NotAMeasurementError('Not a measurement', name, self._measurements)
 
   def __iter__(self):  # pylint: disable=invalid-name
     def _GetMeasurementValue(item):
@@ -362,7 +356,7 @@ def measures(*measurements):
 
   # If we were passed in an iterable, make sure each element is an
   # instance of Measurement.
-  if hasattr(measurements, '__iter__'):
+  if isinstance(measurements, collections.Iterable):
     measurements = [_maybe_make(meas) for meas in measurements]
   else:
     measurements = [_maybe_make(measurements)]
@@ -370,13 +364,8 @@ def measures(*measurements):
   # 'descriptors' is guaranteed to be a list of Measurements here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
-    phase = wrapped_phase
-    while hasattr(phase, 'wraps'):
-      phase = phase.wraps
-
-    if not hasattr(phase, 'measurements'):
-      phase.measurements = []
+    phase = openhtf.TestPhaseInfo.WrapOrReturn(wrapped_phase)
     phase.measurements.extend(measurements)
-    return wrapped_phase
+    return phase
   return decorate
 

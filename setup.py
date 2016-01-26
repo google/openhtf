@@ -39,15 +39,14 @@ class CleanCommand(clean):
 
 requires = [  # pylint: disable=invalid-name
     'contextlib2==0.4.0',
-    'enum==0.4.4',
+    'enum34==1.1.2',
     'Flask==0.10.1',
     'inotify==0.2.4',
     'libusb1==1.3.0',
     'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
-    'mutablerecords==0.2.4',
+    'mutablerecords==0.2.6',
     'pyaml==15.3.1',
-    'mutablerecords==0.2.4',
     'python-gflags==2.0',
     'PyYAML==3.11',
     'Rocket==1.2.4',
@@ -99,5 +98,4 @@ setup(
         'test': PyTestCommand,
     },
     install_requires=requires,
-    tests_require=['pytest'],
 )
