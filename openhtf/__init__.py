@@ -45,32 +45,56 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 
-def TestPhase(timeout_s=None, run_if=None):  # pylint: disable=invalid-name
-  """Decorator to wrap a test phase function with the given options.
-
-  Args:
+class TestPhaseOptions(mutablerecords.Record(
+    'TestPhaseOptions', [], {'timeout_s': None, 'run_if': None})):
+  """
+  Attributes:
     timeout_s: Timeout to use for the phase, in seconds.
     run_if: Callback that decides whether to run the phase or not.  The
       callback will be passed the phase_data the phase would be run with.
 
-  Returns:
-    A wrapper function that takes a phase_func and returns a
-        TestPhaseInfo for it with the given options set.
+  Example Usage:
+    @TestPhaseOptions(timeout_s=1)
+    def PhaseFunc(test):
+      pass
   """
 
-  def Wrap(phase_func):  # pylint: disable=invalid-name
-    """Attach the given options to the phase_func."""
+  def __call__(self, phase_func):
+    phase = TestPhaseInfo.WrapOrReturn(phase_func)
+    phase.options = self
+    return phase
 
-    # Test Phases must take at least one argument (the phase data tuple).
-    if len(inspect.getargspec(phase_func).args) < 1:
-      raise InvalidTestPhaseError(phase_func, 'Not enough args')
+PhasePlug = mutablerecords.Record('PhasePlug', ['name', 'cls', 'update_kwargs'])
 
-    if timeout_s is not None:
-      phase_func.timeout_s = timeout_s
-    if run_if is not None:
-      phase_func.run_if = run_if
-    return phase_func
-  return Wrap
+
+class TestPhaseInfo(mutablerecords.Record(
+    'TestPhaseInfo', ['func', 'source'],
+    {'options': TestPhaseOptions, 'plugs': list, 'measurements': list})):
+  """TestPhase function and related information.
+
+  Attributes:
+    func: Function to be called (with phase_data as first argument).
+    source: Source code of func.
+    options: TestPhaseOptions instance.
+    plugs: List of PhasePlug instances.
+    measurements: List of Measurement objects.
+  """
+
+  @classmethod
+  def WrapOrReturn(cls, func):
+    if not isinstance(func, cls):
+      func = cls(func, inspect.getsource(func))
+    return func
+
+  def __call__(self, phase_data):
+    plug_kwargs = {plug.name: phase_data.plugs[plug.name]
+                   for plug in self.plugs if plug.update_kwargs}
+    arg_info = inspect.getargspec(self.func)
+    if len(arg_info.args) == len(plug_kwargs) and not arg_info.varargs:
+      # Underlying function has no room for phase_data as an arg. If it expects
+      # it but miscounted arguments, we'll get another error farther down.
+      return self.func(**plug_kwargs)
+    return self.func(phase_data, **plug_kwargs)
 
 
 class Test(object):
@@ -85,11 +109,12 @@ class Test(object):
 
   def __init__(self, *phases):
     """Creates a new Test to be executed.
+
     Args:
       *phases: The ordered list of phases to execute for this test.
     """
     self.loop = False
-    self.phases = phases
+    self.phases = [TestPhaseInfo.WrapOrReturn(phase) for phase in phases]
     self.output_callbacks = []
 
     # Pull some metadata from the frame in which this Test was created.
@@ -97,19 +122,14 @@ class Test(object):
     self.filename = os.path.basename(frame_record[1])
     self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
     self.code = inspect.getsource(frame_record[0])
-    for phase in self.phases:
-      phase.is_phase_func = True
-      while hasattr(phase, 'wraps'):
-        phase = phase.wraps
-        phase.is_phase_func = True
 
   @property
   def plug_type_map(self):
     """Returns dict mapping name to plug type for all phases."""
     plug_type_map = {}
     for plug, plug_type in itertools.chain.from_iterable(
-        phase.plugs.iteritems() for phase in self.phases
-        if hasattr(phase, 'plugs')):
+        ((plug.name, plug.cls) for plug in phase.plugs)
+        for phase in self.phases):
       if (plug in plug_type_map and
           plug_type is not plug_type_map[plug]):
         raise plugs.DuplicatePlugError(

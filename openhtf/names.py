@@ -55,5 +55,5 @@ plug = openhtf.plugs.requires
 # Classes used in writing test scripts.
 Measurement = openhtf.util.measurements.Measurement
 OutputToJSON = openhtf.io.output.OutputToJSON
-TestPhase = openhtf.TestPhase
+TestPhase = openhtf.TestPhaseOptions
 UOM = openhtf.util.units.UOM
