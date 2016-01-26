@@ -37,6 +37,7 @@ import os
 import signal
 import socket
 import sys
+import threading
 import time
 
 import gflags
@@ -86,7 +87,7 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
     """
 
 
-class StationStore(threads.KillableThread):
+class StationStore(threading.Thread):
   """Self-updating store of stations visible on the local network(s).
 
   Station data is stored in the 'stations' attribute, a dictionary mapping
@@ -102,6 +103,15 @@ class StationStore(threads.KillableThread):
   def MessageFramework(host, port, method='GET', message=None):
     """Interact with a running instance of openhtf via its HTTP API.
 
+    The default method, 'GET', returns a JSON representation of station state,
+    while 'POST' can be used to respond to prompts. For example:
+
+      # Get the state of the openhtf instance at 192.168.2.25:10500.
+      station_state = MessageFramework(192.168.2.25, 10500)
+
+      # Respond to a prompt for the DUT's serial number:
+      MessageFramework(192.168.2.25, 10500, method='POST', 'SN-NCC1701D')
+
     Args:
       host: The IP address of the host running openhtf.
       port: The TCP port of openhtf's HTTP API on host.
@@ -111,6 +121,9 @@ class StationStore(threads.KillableThread):
     result = None
     conn = httplib.HTTPConnection(host, int(port))
     args = [method, '/']
+    if message and method == 'GET':
+      _LOG.warning("Message provided for 'GET' request will be ignored: %s",
+                   message)
     if message and method == 'POST':
       args.append(message)
     try:
@@ -140,7 +153,7 @@ class StationStore(threads.KillableThread):
         _LOG.warning('Ignoring unrecognized discovery response from %s: %s' % (
             host, response))
 
-  def _ThreadProc(self):
+  def run(self):
     """Continuously scan for new stations and add them to the store."""
     self._live = True
     while self._live:
@@ -149,9 +162,8 @@ class StationStore(threads.KillableThread):
 
   def _Track(self, host, port):
     """Start tracking the given station."""
-    if (host, port) not in self.stations:
-      self.stations[(host, port)] = Station()
-    if self.stations[(host,  port)].station_id is None:
+    station = self.stations.setdefault((host, port), Station())
+    if station.station_id is None:
       self.GetStationState(host, port)
 
   def GetStationState(self, host, port):
@@ -165,11 +177,15 @@ class StationStore(threads.KillableThread):
           'Store was queried for an unknown station: %s:%s' % (host, port))
       return None
     response = self.MessageFramework(host, port)
-    self.stations[(host, port)].state = response
+    self.stations[host, port].state = response
     if response is not None:
-      station_id = response['framework']['station_id']
-      self.stations[(host, port)].station_id = station_id
-    return response
+      try:
+        station_id = response['framework']['station_id']
+        self.stations[host, port].station_id = station_id
+        return response
+      except KeyError:
+        _LOG.warn('Malformed station state response from (%s:%s): %s',
+                  host, port, response)
 
   def Stop(self):
     """Stop the store."""
