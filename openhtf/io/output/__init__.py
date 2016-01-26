@@ -25,7 +25,7 @@ class OutputToJSON(JSONEncoder):
       will be formatted with the Test Record as a dictionary.
   """
 
-  def __init__(self, filename_pattern, **kwargs):
+  def __init__(self, filename_pattern=None, **kwargs):
     super(OutputToJSON, self).__init__(**kwargs)
     self.filename_pattern = filename_pattern
 
@@ -41,6 +41,7 @@ class OutputToJSON(JSONEncoder):
     return super(OutputToJSON, self).default(obj)
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
+    assert self.filename_pattern, 'filename_pattern required'
     as_dict = util.convert_to_dict(test_record)
     with open(self.filename_pattern % as_dict, 'w') as f:  # pylint: disable=invalid-name
       f.write(self.encode(as_dict))
