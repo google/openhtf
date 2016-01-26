@@ -9,6 +9,7 @@ import zlib
 #import httplib2
 #import oath2client.client
 
+import openhtf.io.output as output
 #from openhtf.io.proto import quantum_data_pb2
 from openhtf.io.proto import testrun_pb2
 from openhtf.io.proto import units_pb2
@@ -86,8 +87,21 @@ def TestRunFromTestRecord(record):
     else:
       testrun_code.details = details
 
-  # Run through phases and pull out stuff we care about.
-  used_parameter_names = set()
+  # Save a copy of the JSON-ified record in an attachment so we can access
+  # un-mangled fields later if we want.  Remove attachments since those get
+  # copied over and can potentially be quite large.
+  record_dict = util.convert_to_dict(record)
+  for phase in record_dict['phases']:
+    del phase['attachments']
+  record_json = output.OutputToJSON().encode(record_dict)
+  testrun_param = testrun.info_parameters.add()
+  testrun_param.name = 'OpenHTF_record.json'
+  testrun_param.value_binary = unicode(record_json, 'UTF-8')
+  testrun_param.type = testrun_pb2.InformationParameter.TEXT_UTF8
+
+  # Run through phases and pull out stuff we care about.  Generate mangled
+  # parameters afterwards so we give real measurements priority getting names.
+  used_parameter_names = set('OpenHTF_record.json')
   mangled_parameters = {}
   for phase in record.phases:
     testrun_phase = testrun.phases.add()
@@ -97,6 +111,9 @@ def TestRunFromTestRecord(record):
     testrun_phase.timing.end_time_millis = phase.end_time_millis
 
     for name, (data, mimetype) in phase.attachments.iteritems():
+      while name in used_parameter_names:
+        name += '_'  # Hack to avoid collisions between phases.
+      used_parameter_names.add(name)
       testrun_param = testrun.info_parameters.add()
       testrun_param.name = name
       testrun_param.value_binary = data
@@ -106,6 +123,8 @@ def TestRunFromTestRecord(record):
         testrun_param.type = testrun_pb2.InformationParameter.BINARY
 
     for name, measurement in phase.measurements.iteritems():
+      while name in used_parameter_names:
+        name += '_'
       used_parameter_names.add(name)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = name
@@ -145,9 +164,9 @@ def TestRunFromTestRecord(record):
                 dim_units.uom_suffix if dim_units.uom_suffix else '') for
               dim_val, dim_units in zip(
                 current_value[:-1], measurement.dimensions)])
-          if mangled_name in mangled_parameters:
+          while mangled_name in mangled_parameters:
             logging.warning('Mangled name %s already in use', mangled_name)
-            continue
+            mangled_name += '_'
           mangled_param = testrun_pb2.TestParameter()
           mangled_param.name = mangled_name
           mangled_param.numeric_value = float(current_value[-1])
@@ -163,10 +182,10 @@ def TestRunFromTestRecord(record):
   # Now we can do this, since we have added all non-dimensional parameters and
   # can avoid name collisions.
   for mangled_name, mangled_param in mangled_parameters.iteritems():
-    if mangled_name in used_parameter_names:
+    while mangled_name in used_parameter_names:
       logging.warning('Mangled name %s in use by non-mangled parameter',
                       mangled_name)
-      continue
+      mangled_name += '_'
     testrun_param = testrun.test_parameters.add()
     testrun_param.CopyFrom(mangled_param)
 
