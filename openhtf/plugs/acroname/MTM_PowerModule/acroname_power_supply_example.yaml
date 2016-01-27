@@ -1,7 +1,8 @@
 station_id: acroname_power_supply_example
 MTM_PowerModule_Connection:
-  link_type: USB
-  link_serial_number: 0xD171001E 
-  power_module_serial_number: 0x2787f6e8
-default_power_module_voltage_output: 5000000
-default_power_module_current_limit: 1000000
+  link_type: MTM_EtherStem
+  link_serial_number: 0x0474051B
+  power_module_serial_number: 0x2C8CFDE3
+MTM_PowerModule:
+  voltage_output: 5000000
+  current_limit: 1000000

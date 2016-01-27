@@ -34,11 +34,12 @@ from openhtf.plugs.acroname.MTM_PowerModule import power_module_plug
 
 from openhtf.names import *
 
-# Timeout if this phase takes longer than 180 seconds.
+
+
 # @TestPhase(timeout_s= 3)
 @plug(power_module=power_module_plug.PowerSupplyControl)
 def discover_and_connect_power_module(test, power_module):
-  """Test phase that discovers and connects power module."""
+  #Test phase that discovers and connects power module.
   print('Connecting the BrainStem network...')
   #test.logger.info('Discover and connect power module...')
   # print('Trying to connect...')
@@ -48,27 +49,27 @@ def discover_and_connect_power_module(test, power_module):
 
 
 
-# Timeout if this phase takes longer than 180 seconds.
+
 
 @plug(power_module=power_module_plug.PowerSupplyControl)
 #@TestPhase(timeout_s=10)
 def configure_and_turn_on_power_module(test, power_module):
-  """Test phase that configures and turns on power module."""
+  #Test phase that configures and turns on power module.
   test.logger.info('Checking and configuring power module...')
   print('Checking and configuring power module...')
-  if power_module.NoShortCircuit():
-    power_module.ConfigurePowerSupply() 
+  #if power_module.NoShortCircuit():
+  power_module.ConfigurePowerSupply() 
     # set voltage and current limit to defalut values defined in .yaml file
     # default_power_module_voltage_output: 5000000
     # default_power_module_current_limit: 1000000
-    power_module.TurnOnPowerSupply()
-  """
-  else:
+  power_module.TurnOnPowerSupply()
+
+  #else:
     # short circuit error would be raised in the plug
-    test.logger.info('Short circuit found on power module!')
-    print('Short circuit found on power module!')
-    raise PowerModuleShortCircuitError
-  """
+  #  test.logger.info('Short circuit found on power module!')
+  #  print('Short circuit found on power module!')
+  #  raise PowerModuleShortCircuitError
+
 
 
 # Timeout if this phase takes longer than 10 seconds.
@@ -129,20 +130,18 @@ def turn_off_and_disconnect_power_module(test,power_module):
 
 
 if __name__ == '__main__':
-  
   test = openhtf.Test(discover_and_connect_power_module,
-                      configure_and_turn_on_power_module,
-                      get_power_module_measurements,
-                      power_module_change_voltage_current_limit,
-                      get_power_module_measurements2)
-  """
-  test = openhtf.Test(power_module_change_voltage_current_limit,
-                      get_power_module_measurements2)
-  """
+                       configure_and_turn_on_power_module,
+                       get_power_module_measurements,
+                       power_module_change_voltage_current_limit,
+                       get_power_module_measurements2,
+                       turn_off_and_disconnect_power_module)
+
   #cleanUp = openhtf.Test(turn_off_and_disconnect_power_module)
   #test.AddOutputCallback(OutputToJSON(
   #		'./%(dut_id)s.%(start_time_millis)s', indent=4))
   #test.Execute(test_start=triggers.PromptForTestStart())
+  
   test.Execute()
   
   #cleanUp.Execute()

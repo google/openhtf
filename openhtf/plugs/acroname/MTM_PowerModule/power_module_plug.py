@@ -18,7 +18,7 @@
 
 import logging
 import time
-from time import sleep
+# from time import sleep
 
 import openhtf.conf as conf
 import openhtf.plugs as plugs
@@ -36,11 +36,11 @@ _LOG = logging.getLogger(__name__)
 conf.Declare('serial_number_of_EtherStem',
              description='Serial number of EtherStem that connects PowerModule to Ethernet.')
 
-conf.Declare('default_power_module_voltage_output',
-             description='Defalut power module voltage output in uV.')
+conf.Declare('MTM_PowerModule',
+             description='MTM Power Module configurations voltage output in uV and current limit in uA.')
 
-conf.Declare('default_power_module_current_limit',
-             description='Defalut power module current limit in uA.')
+# conf.Declare('default_power_module_current_limit',
+#             description='Defalut power module current limit in uA.')
 
 conf.Declare('MTM_PowerModule_Connection',
              description='MTM Power Module COnnection Parameters.')
@@ -98,8 +98,8 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     self.connection_type = config.MTM_PowerModule_Connection['link_type']
     self.link_module_serial_number = config.MTM_PowerModule_Connection['link_serial_number']
     self.power_module_serial_number = config.MTM_PowerModule_Connection['power_module_serial_number']
-    self.voltage = config.default_power_module_voltage_output
-    self.current_limit = config.default_power_module_current_limit
+    self.voltage = config.MTM_PowerModule['voltage_output']
+    self.current_limit = config.MTM_PowerModule['current_limit']
     self.MTMPowerModuleAddress = 6
     self.routerAddress = 4
     if self.connection_type == 'MTM_EtherStem':
@@ -120,11 +120,13 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     """
   def DiscoverAndConnectModule(self):
     """
-    Discover all EtherStems on network.
+    Discover a power module if it is not connected yet.
     Connect the one with the serial number specified in config yaml file.
-    The connection from server to EtherStem is Ethernet via TCPIP.
     """
     # spec = discover.find_first_module(Spec.TCPIP)
+    print "Is power module connected?"
+    print self.power_module.is_connected()
+
     if self.connection_type == 'USB':
       res = self.power_module.connect(self.power_module_serial_number)
       print "res = "+str(res)
@@ -237,22 +239,25 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     res_list.append(res)
 
     if all(result == 0 for result in res_list):
-      # print "Succeed in configuring and turning on power supply."
+      print "Succeed in configuring and turning on power supply."
       _LOG.info("Succeed in configuring and turning on power supply.")
     else:
       # print "Error configuring and turning on power supply."
       _LOG.info("Error configuring and turning on power supply.")
+      print "configuration result list: "+str(res_list)
       raise ConfigurePowerSupplyError
 
   def TurnOnPowerSupply(self):
     """"""
     res = self.power_module.rail[0].setEnableExternal(1)
+    voltage_meas = self.GetVoltage()
     if res == 0 and ( 
-      (self.voltage-100000)<=self.GetVoltage()<=(self.voltage+100000)):
+      (self.voltage-100000)<=voltage_meas<=(self.voltage+100000)):
       # print "Succeed in turning on power supply."
       _LOG.info("Succeed in turning on power supply.")
     else:
       print "res = "+str(res)
+      print "GetVoltage: %d"%voltage_meas
       # print "Error turning on power supply."
       _LOG.info("Error turning on power supply.")
       raise TurnOnPowerSupplyError
