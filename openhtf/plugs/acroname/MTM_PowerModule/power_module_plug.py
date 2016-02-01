@@ -18,7 +18,7 @@
 
 import logging
 import time
-# from time import sleep
+from time import sleep
 
 import openhtf.conf as conf
 import openhtf.plugs as plugs
@@ -100,6 +100,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     self.power_module_serial_number = config.MTM_PowerModule_Connection['power_module_serial_number']
     self.voltage = config.MTM_PowerModule['voltage_output']
     self.current_limit = config.MTM_PowerModule['current_limit']
+    self.is_first_time_setup = config.MTM_PowerModule_Connection['first_time_setup']
     self.MTMPowerModuleAddress = 6
     self.routerAddress = 4
     if self.connection_type == 'MTM_EtherStem':
@@ -135,11 +136,35 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       _LOG.info("Connected to Power Module with serial number: ",hex(self.power_module_serial_number).upper())
       print("Connected to Power Module with serial number: 0x%X" % self.power_module_serial_number)
     else:
+      print "Connecting to link stem..."
       res = self.link_stem.connect(self.link_module_serial_number)
       print "res = "+str(res)
-      CheckReturnCode(res, "link_module.connect")
+      CheckReturnCode(res, "link_stem.connect")
       _LOG.info("Connected to Link Module with serial number: ",hex(self.link_module_serial_number).upper())
       print("Connected to Link Module with serial number: 0x%X" % self.link_module_serial_number)
+      
+      if self.is_first_time_setup:
+        # These configruation need to be done once only unless there is hardware change in the network
+        res = self.link_stem.i2c[0].setPullup(1)
+        CheckReturnCode(res, "LinkStemsetPullUp")
+
+        res = self.link_stem.system.save()
+        CheckReturnCode(res, "LinkStemSave")
+    
+        res = self.link_stem.setModuleAddress(self.MTMPowerModuleAddress)
+        CheckReturnCode(res, "setModuleAddress")
+
+        res = self.link_stem.system.setRouter(self.routerAddress)
+        CheckReturnCode(res, "setRouterAddress")
+    
+        res = self.link_stem.system.save()
+        CheckReturnCode(res, "LinkStemSave")
+    
+        res = self.link_stem.system.reset()
+        CheckReturnCode(res, "Linkreset")
+        
+      # res = self.power_module.connect_through_link_module(self.EtherStem)
+      # CheckReturnCode(res, "PowerModuleConnectThroughLink")
       res = self.power_module.connect_through_link_module(self.link_stem)
       CheckReturnCode(res, "PowerModuleConnectThroughLink")
     
@@ -169,30 +194,8 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
     # codes below is to connect Power Module through EtherStem
     # TO CONSIDER USB LOCAL CONNECTION CASE
-    """
-    # These configruation need to be done once only unless there is hardware change in the network
     
-    res = self.EtherStem.i2c[0].setPullup(1)
-    CheckReturnCode(res, "setPullUp")
-
-    res = self.EtherStem.system.save()
-    CheckReturnCode(res, "EtherStemSave")
     
-    res = self.EtherStem.setModuleAddress(self.MTMPowerModuleAddress)
-    CheckReturnCode(res, "setModuleAddress")
-
-    res = self.EtherStem.system.setRouter(self.routerAddress)
-    CheckReturnCode(res, "setRouterAddress")
-    
-    res = self.EtherStem.system.save()
-    CheckReturnCode(res, "EtherStemSave")
-    
-    res = self.EtherStem.system.reset()
-    CheckReturnCode(res, "reset")
-    """
-
-    # res = self.power_module.connect_through_link_module(self.EtherStem)
-    # CheckReturnCode(res, "PowerModuleConnectThroughLink")
 
 
   def NoShortCircuit(self):
@@ -225,14 +228,15 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
   def ConfigurePowerSupply(self):  # pylint: disable=no-self-use
     """Set Voltage, Current Limit, operational mode, kelvin sensing mode..."""
     res_list=[]
+    if self.is_first_time_setup:
+      #This is one time setup:
+      res = self.power_module.rail[0].setKelvinSensingMode(1)
+      res_list.append(res)
+
+      res = self.power_module.rail[0].setOperationalMode(1)
+      res_list.append(res)
 
     res = self.power_module.rail[0].setVoltage(self.voltage)
-    res_list.append(res)
-
-    res = self.power_module.rail[0].setKelvinSensingMode(1)
-    res_list.append(res)
-
-    res = self.power_module.rail[0].setOperationalMode(1)
     res_list.append(res)
 
     res = self.power_module.rail[0].setCurrentLimit(self.current_limit)
@@ -250,9 +254,10 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
   def TurnOnPowerSupply(self):
     """"""
     res = self.power_module.rail[0].setEnableExternal(1)
+    sleep(0.1)
     voltage_meas = self.GetVoltage()
     if res == 0 and ( 
-      (self.voltage-100000)<=voltage_meas<=(self.voltage+100000)):
+      (self.voltage-500000)<=voltage_meas<=(self.voltage+500000)):
       # print "Succeed in turning on power supply."
       _LOG.info("Succeed in turning on power supply.")
     else:
@@ -272,6 +277,8 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
   def GetCurrent(self):
     """Measure current and return current value."""
     imeas = self.power_module.rail[0].getCurrent().value
+    error = self.power_module.rail[0].getCurrent().error
+    print("GetCurrent Error:%d"%error)
     # print("imeas=%d uA" %imeas)
     # i = float(imeas/1000000)
     return imeas
@@ -282,6 +289,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     # sleep(0.5)
     for i in range(3):
       res = self.power_module.rail[0].setVoltage(voltage_uV)
+      sleep(0.1)
       vmeas_uV = self.GetVoltage()
       # print "change vmeas=: %d"%vmeas_uV
       if res==0 and (

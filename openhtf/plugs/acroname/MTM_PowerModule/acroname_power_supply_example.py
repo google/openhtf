@@ -62,6 +62,7 @@ def configure_and_turn_on_power_module(test, power_module):
     # set voltage and current limit to defalut values defined in .yaml file
     # default_power_module_voltage_output: 5000000
     # default_power_module_current_limit: 1000000
+    # sleep(0.5)
   power_module.TurnOnPowerSupply()
 
   #else:
@@ -134,8 +135,8 @@ if __name__ == '__main__':
                        configure_and_turn_on_power_module,
                        get_power_module_measurements,
                        power_module_change_voltage_current_limit,
-                       get_power_module_measurements2,
-                       turn_off_and_disconnect_power_module)
+                       get_power_module_measurements2
+                       )
 
   #cleanUp = openhtf.Test(turn_off_and_disconnect_power_module)
   #test.AddOutputCallback(OutputToJSON(
