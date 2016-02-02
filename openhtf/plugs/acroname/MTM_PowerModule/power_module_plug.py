@@ -27,7 +27,7 @@ from brainstem import discover
 from brainstem.link import Spec
 from brainstem.stem import MTMPM1
 from brainstem.stem import MTMEtherStem
-from brainstem.stem import USBStem
+from brainstem.stem import MTMUSBStem
 from brainstem.defs import model_info
 
 # _LOG = logging.getLogger("openhtf.example.plugs.acroname.power_module_plug.py")
@@ -106,7 +106,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     if self.connection_type == 'MTM_EtherStem':
       self.link_stem = MTMEtherStem()
     elif self.connection_type == 'MTM_USBStem': 
-      self.link_stem = USBStem()
+      self.link_stem = MTMUSBStem()
 
     self.power_module = MTMPM1()
     
@@ -130,13 +130,26 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
     if self.connection_type == 'USB':
       res = self.power_module.connect(self.power_module_serial_number)
+      if self.is_first_time_setup:
+        res = self.power_module.system.setRouter(self.MTMPowerModuleAddress)
+        #CheckReturnCode(res, "setRouterAddress")
+      
+        res = self.power_module.system.save()
+        #CheckReturnCode(res, "LinkStemSave")
+
+        res = self.power_module.system.reset()
+        #CheckReturnCode(res, "PowerModulereset")
+    
+      
       print "res = "+str(res)
       print("is power module connected? %d"%self.power_module.is_connected())
       CheckReturnCode(res, "power_module.connect")
       _LOG.info("Connected to Power Module with serial number: ",hex(self.power_module_serial_number).upper())
       print("Connected to Power Module with serial number: 0x%X" % self.power_module_serial_number)
+    
     else:
       print "Connecting to link stem..."
+      
       res = self.link_stem.connect(self.link_module_serial_number)
       print "res = "+str(res)
       CheckReturnCode(res, "link_stem.connect")
@@ -144,29 +157,56 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       print("Connected to Link Module with serial number: 0x%X" % self.link_module_serial_number)
       
       if self.is_first_time_setup:
+        # connect to the power module through the link stem's lnik
+        res = self.power_module.connect_through_link_module(self.link_stem)
+
         # These configruation need to be done once only unless there is hardware change in the network
         res = self.link_stem.i2c[0].setPullup(1)
-        CheckReturnCode(res, "LinkStemsetPullUp")
+        #CheckReturnCode(res, "LinkStemsetPullUp")
 
-        res = self.link_stem.system.save()
-        CheckReturnCode(res, "LinkStemSave")
-    
-        res = self.link_stem.setModuleAddress(self.MTMPowerModuleAddress)
-        CheckReturnCode(res, "setModuleAddress")
+        #res = self.link_stem.system.save()
+        #CheckReturnCode(res, "LinkStemSave")
+        
+        # set link stem object to talk to the power module 
+        # res = self.link_stem.setModuleAddress(self.MTMPowerModuleAddress)
+        # CheckReturnCode(res, "setModuleAddress")
 
+        # get the module address the link_stem's link is connected to
+        # we will set this as the BrainStem network router
+        
+        #res = self.link_stem.module()
+        #routerAddress = res
+        #print "link stem's module address %d" %routerAddress
+
+        # set the link stem's module address offsets to 0
+        # we will assume the link stem hardware offsets are 0
+        res = self.link_stem.system.setModuleSoftwareOffset(0)
+
+        # set the link stem's router address
         res = self.link_stem.system.setRouter(self.routerAddress)
-        CheckReturnCode(res, "setRouterAddress")
-    
+        #CheckReturnCode(res, "setRouterAddress")
+      
+        res = self.power_module.system.setRouter(self.routerAddress)
+        #CheckReturnCode(res, "setRouterAddress")
+
         res = self.link_stem.system.save()
         CheckReturnCode(res, "LinkStemSave")
+
+        res = self.power_module.system.save()
+        #CheckReturnCode(res, "PowerModuleSave")
+    
+        res = self.power_module.system.reset()
+        #CheckReturnCode(res, "PowerModulereset")
     
         res = self.link_stem.system.reset()
         CheckReturnCode(res, "Linkreset")
         
       # res = self.power_module.connect_through_link_module(self.EtherStem)
       # CheckReturnCode(res, "PowerModuleConnectThroughLink")
-      res = self.power_module.connect_through_link_module(self.link_stem)
-      CheckReturnCode(res, "PowerModuleConnectThroughLink")
+      # res = self.link_stem.connect(self.link_module_serial_number)
+      # CheckReturnCode(res, "PowerModuleConnectThroughLink")
+      # res = self.power_module.connect_through_link_module(self.link_stem)
+      # CheckReturnCode(res, "PowerModuleConnectThroughLink")
     
     
 
@@ -234,9 +274,11 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       res_list.append(res)
 
       res = self.power_module.rail[0].setOperationalMode(1)
+      #auto mode: 0
       res_list.append(res)
 
-    res = self.power_module.rail[0].setVoltage(self.voltage)
+    #res = self.power_module.rail[0].setVoltage(self.voltage)
+    self.ChangeVoltage(self.voltage)
     res_list.append(res)
 
     res = self.power_module.rail[0].setCurrentLimit(self.current_limit)
@@ -254,14 +296,13 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
   def TurnOnPowerSupply(self):
     """"""
     res = self.power_module.rail[0].setEnableExternal(1)
-    sleep(0.1)
     voltage_meas = self.GetVoltage()
     if res == 0 and ( 
-      (self.voltage-500000)<=voltage_meas<=(self.voltage+500000)):
+      (self.voltage-0.5e6)<=voltage_meas<=(self.voltage+500000)):
       # print "Succeed in turning on power supply."
       _LOG.info("Succeed in turning on power supply.")
     else:
-      print "res = "+str(res)
+      print "Error enabling rail0: res = "+str(res)
       print "GetVoltage: %d"%voltage_meas
       # print "Error turning on power supply."
       _LOG.info("Error turning on power supply.")
@@ -269,7 +310,14 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
   def GetVoltage(self):
     """Measure voltage and return voltage value."""
-    vmeas = self.power_module.rail[0].getVoltage().value
+    res = self.power_module.rail[0].getVoltage()
+    vmeas=0.0
+    if res.error == 0:
+      vmeas = res.value
+    else:
+      print "GetVoltage(): Error getting power module voltage: %d"%(res.error)
+      if not res.value:
+        print "GetVoltage(): %.3f" % (res.value)
     # print ("vmeas = %d uV" %vmeas)
     # v = round((float(vmeas)/float(1000000)))
     return vmeas

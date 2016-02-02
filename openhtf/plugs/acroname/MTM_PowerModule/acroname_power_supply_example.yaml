@@ -1,8 +1,8 @@
 station_id: acroname_power_supply_example
 MTM_PowerModule_Connection:
-  link_type: MTM_EtherStem
-  link_serial_number: 0xD171001E 
-  power_module_serial_number: 0x2C8CFDE3
+  link_type: MTM_USBStem
+  link_serial_number: 0xCC6C1D03
+  power_module_serial_number: 0x2787F6E8
   first_time_setup: True
 MTM_PowerModule:
   voltage_output: 4000000
