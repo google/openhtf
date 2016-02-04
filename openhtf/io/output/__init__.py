@@ -1,54 +1,12 @@
 """Output module for outputting to JSON."""
 
-import oath2client.client
+import oauth2client.client
+import threading
 
-from json import JSONEncoder
-from openhtf import conf
 from openhtf import util
-from openhtf.exe import test_state
 from openhtf.io.output import mfg_inspector
 
-from google.protobuf import text_format
-
-
-class OutputToJSON(JSONEncoder):
-  """Return an output callback that writes JSON Test Records.
-
-  An example filename_pattern might be:
-    '/data/test_records/%(dut_id)s.%(start_time_millis)s'
-
-  To use this output mechanism:
-    test = openhtf.Test(PhaseOne, PhaseTwo)
-    test.AddOutputCallback(openhtf.OutputToJson(
-        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
-
-  Args:
-    filename_pattern: A format string specifying the filename to write to,
-      will be formatted with the Test Record as a dictionary.
-  """
-
-  def __init__(self, filename_pattern, **kwargs):
-    super(OutputToJSON, self).__init__(**kwargs)
-    self.filename_pattern = filename_pattern
-
-  def default(self, obj):
-    # Handle a few custom objects that end up in our output.
-    if isinstance(obj, BaseException):
-      # Just repr exceptions.
-      return repr(obj)
-    if isinstance(obj, conf.Config):
-      return obj.dictionary
-    if obj in test_state.TestState.State:
-      return str(obj)
-    return super(OutputToJSON, self).default(obj)
-
-  # pylint: disable=invalid-name
-  def __call__(self, test_record):
-    assert self.filename_pattern, 'filename_pattern required'
-    as_dict = util.convert_to_dict(test_record)
-    with open(self.filename_pattern % as_dict, 'w') as f:
-      f.write(self.encode(as_dict))
-  # pylint: enable=invalid-name
+OutputToJSON = json_factory.OutputToJSON
 
 
 class OutputToTestRunProto(object):
@@ -77,7 +35,7 @@ class OutputToTestRunProto(object):
           test_record).SerializeToString())
 
 
-class OutputToMfgInspector(object):
+class UploadToMfgInspector(object):
   """Generate a mfg-inspector TestRun proto and upload it.
 
   Create an output callback to upload to mfg-inspector.com using the given
@@ -90,7 +48,7 @@ class OutputToMfgInspector(object):
   DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
                      'uploads/quantum_upload/')
 
-  class _MemStorage(oath2client.client.Storage):
+  class _MemStorage(oauth2client.client.Storage):
     """Helper Storage class that keeps credentials in memory."""
     def __init__(self):
       self._lock = threading.Lock()
@@ -113,7 +71,7 @@ class OutputToMfgInspector(object):
     self.keydata = keydata
 
   def __call__(self, test_record):
-    credentials = oath2client.client.SignedJwtAssertionCredentials(
+    credentials = oauth2client.client.SignedJwtAssertionCredentials(
         service_account_name=self.user,
         private_key=self.keydata,
         scope=self.SCOPE_CODE_URI,
@@ -121,8 +79,7 @@ class OutputToMfgInspector(object):
         token_uri=self.TOKEN_URI)
     credentials.set_store(self._MemStorage())
 
-    testrun = mfg_inspector.TestRunFromTestRecord(
-        util.convert_to_dict(test_record))
+    testrun = mfg_inspector.TestRunFromTestRecord(test_record)
     try:
       mfg_inspector.UploadTestRun(testrun, self.DESTINATION_URL, credentials)
     except mfg_inspector.UploadFailedError:

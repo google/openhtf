@@ -41,7 +41,7 @@ enum Status {
 // TestRunEnvelope object.  deflate is used for compression.
 enum PayloadType {
   COMPRESSED_TEST_RUN = 1;
-  COMPRESSED_VARZ = 2 [deprecated=true];
+  COMPRESSED_VARZ = 2;
   COMPRESSED_LOGFILE = 3;
   WATCHMEN_VIDEO = 4;
 }
@@ -76,7 +76,7 @@ message TestRun {
   required Status test_status = 4;
 
   // The openhtf cell number where this test took place
-  optional int32 cell_number = 15 [deprecated=True];
+  optional int32 cell_number = 15 [deprecated=true];
 
   optional int64 start_time_millis = 8;
   optional int64 end_time_millis = 9;
@@ -101,13 +101,13 @@ message TestRun {
   // part in slot 6 of the tray.  In this case, a unique dut should be
   // synthesized and stored in the required field dut_serial, and the
   // synthetic_dut flag should be set.
-  optional string lot_number = 23 [deprecated=True];
-  optional string part_id = 24 [deprecated=True];
-  optional bool synthetic_dut = 25 [deprecated=True];
+  optional string lot_number = 23 [deprecated=true];
+  optional string part_id = 24 [deprecated=true];
+  optional bool synthetic_dut = 25 [deprecated=true];
 
   //optional Assembly assembly = 26;
-  repeated Timing timings = 27 [deprecated=True];
-  repeated Phase phases = 28 [deprecated=True];
+  repeated Timing timings = 27 [deprecated=true];
+  repeated Phase phases = 28 [deprecated=true];
 
   // The version of the test framework that created this test run
   optional string framework_build = 17;

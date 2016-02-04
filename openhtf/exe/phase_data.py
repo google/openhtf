@@ -34,6 +34,7 @@ from openhtf.util import measurements
 
 _LOG = logging.getLogger(__name__)
 
+
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
@@ -152,10 +153,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       test_state.running_phase.measurements = validated_measurements
       test_state.running_phase.end_time_millis = util.TimeMillis()
       test_state.running_phase.result = result_wrapper.result
-     
-      if test_state.running_phase.attachments:
-        test_state.running_phase.attachments.update(self.attachments)
-
+      test_state.running_phase.attachments.update(self.attachments)
       self.test_record.phases.append(test_state.running_phase)
 
       # Clear these between uses for the frontend API.
