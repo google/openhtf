@@ -6,24 +6,24 @@ module, and will typically be a type, instances of which are callable:
 
   from openhtf.util import validators
   from openhtf.util import measurements
-  
+
   class MyLessThanValidator(object):
     def __init__(self, limit):
       self.limit = limit
-  
+
     # This will be invoked to test if the measurement is 'PASS' or 'FAIL'.
     def __call__(self, value):
       return value < self.limit
-  
+
   # Name defaults to the validator's __name__ attribute unless overridden.
   validators.Register(MyLessThanValidator, name='LessThan')
-  
+
   # Now you can refer to the validator by name directly on measurements.
   @measurements.measures(
       measurements.Measurement('my_measurement').LessThan(4))
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will have outcome 'FAIL'
-  
+
 For simpler validators, you don't need to register them at all, you can
 simply attach them to the Measurement with the .WithValidator() method:
 
@@ -75,7 +75,7 @@ class Validators(object):
 
   class InRange(object):
     """Validator to verify a numeric value is within a range."""
-  
+
     def __init__(self, minimum=None, maximum=None):
       if minimum is None and maximum is None:
         raise ValueError('Must specify minimum, maximum, or both')
@@ -83,7 +83,7 @@ class Validators(object):
         raise ValueError('Minimum cannot be greater than maximum')
       self.minimum = minimum
       self.maximum = maximum
-  
+
     def __call__(self, value):
       # Check for equal bounds first so we can use with non-numeric values.
       if self.minimum == self.maximum and value != self.minimum:
@@ -93,7 +93,7 @@ class Validators(object):
       if self.maximum is not None and value > self.maximum:
         return False
       return True
-  
+
     def __str__(self):
       assert self.minimum is not None or self.maximum is not None
       if self.minimum is not None and self.maximum is not None:
@@ -104,25 +104,25 @@ class Validators(object):
         return '%s <= x' % self.minimum
       if self.maximum is not None:
         return 'x <= %s' % self.maximum
-  
+
   @classmethod
   def Equals(cls, value):
     return cls.InRange(minimum=value, maximum=value)
-      
+
   class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
-  
+
     def __init__(self, re_module, regex):
       self._re_module = re_module
       self._compiled = re_module.compile(regex)
       self.regex = regex
-  
+
     def __call__(self, value):
       return self._compiled.match(str(value)) is not None
 
     def __deepcopy__(self, dummy_memo):
       return type(self)(self._re_module, self.regex)
-  
+
     def __str__(self):
       return "'x' matches /%s/" % self.regex
 
