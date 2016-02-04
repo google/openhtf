@@ -1,24 +1,17 @@
 """Output or upload a TestRun proto for mfg-inspector.com"""
 
-import gflags
 import json
 import logging
 import numbers
-import threading
 import zlib
 import httplib2
 
-import openhtf.io.output as output
+from openhtf.io.output import json_factory
 from openhtf.io.proto import testrun_pb2
 from openhtf.io.proto import units_pb2
-from openhtf.util import validators
 
-gflags.DEFINE_string('guzzle_service_account_name', None,
-                     'Account name to use for uploading to Guzzle')
-gflags.DEFINE_string('guzzle_private_key_file', None,
-                     'Filename containing oauth2 private key for '
-                     'uploading to Guzzle')
-FLAGS = gflags.FLAGS
+from openhtf import util
+from openhtf.util import validators
 
 MIMETYPE_MAP = {
   'image/jpeg': testrun_pb2.InformationParameter.JPG,
@@ -29,11 +22,11 @@ MIMETYPE_MAP = {
   'video/mp4': testrun_pb2.InformationParameter.MP4,
 }
 OUTCOME_MAP = {
-  'ERROR': testrun_pb2.ERROR,
-  'TIMEOUT': testrun_pb2.ERROR,
-  'ABORTED': testrun_pb2.ERROR,
-  'FAIL': testrun_pb2.FAIL,
-  'PASS': testrun_pb2.PASS,
+  'State.ERROR': testrun_pb2.ERROR,
+  'State.TIMEOUT': testrun_pb2.ERROR,
+  'State.ABORTED': testrun_pb2.ERROR,
+  'State.FAIL': testrun_pb2.FAIL,
+  'State.PASS': testrun_pb2.PASS,
 }
 UOM_CODE_MAP = {
   u.GetOptions().Extensions[units_pb2.uom_code]: num
@@ -57,6 +50,7 @@ def TestRunFromTestRecord(record):
   Metadata fields:
     'test_description': TestInfo's description field.
     'test_version': TestInfo's version_string field.
+    'test_name': TestInfo's name field.
     'run_name': TestRun's run_name field.
     'operator_name': TestRun's operator_name field.
 
@@ -67,7 +61,11 @@ def TestRunFromTestRecord(record):
   # Copy header-like info over, mostly obvious, some stuff comes from metadata.
   testrun.dut_serial = record.dut_id
   testrun.tester_name = record.station_id
-  testrun.test_info.name = record.station_id
+  if 'test_name' in record.metadata:
+    testrun.test_info.name = record.metadata['test_name']
+  else:
+    # Default to copying tester_name into test_info.name.
+    testrun.test_info.name = record.station_id
   if 'test_description' in record.metadata:
     testrun.test_info.description = record.metadata['test_description']
   if 'test_version' in record.metadata:
@@ -87,13 +85,11 @@ def TestRunFromTestRecord(record):
   # Save a copy of the JSON-ified record in an attachment so we can access
   # un-mangled fields later if we want.  Remove attachments since those get
   # copied over and can potentially be quite large.
-  record_dict = util.convert_to_dict(record)
-  for phase in record_dict['phases']:
-    del phase['attachments']
-  record_json = output.OutputToJSON().encode(record_dict)
+  record_dict = util.convert_to_dict(record, ignore_keys=('attachments',))
+  record_json = json_factory.OutputToJSON().encode(record_dict)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
-  testrun_param.value_binary = unicode(record_json, 'UTF-8')
+  testrun_param.value_binary = record_json
   testrun_param.type = testrun_pb2.InformationParameter.TEXT_UTF8
 
   # Run through phases and pull out stuff we care about.  Generate mangled
@@ -226,7 +222,7 @@ def UploadTestRun(testrun, destination, credentials=None):
   test_run_envelope.payload_type = testrun_pb2.COMPRESSED_TEST_RUN
   serialized_envelope = test_run_envelope.SerializeToString()
 
-  _, content = http.request(DESTINATION_URL, 'POST', serialized_envelope)
+  _, content = http.request(destination, 'POST', serialized_envelope)
   if content.split('\n', 1)[0] != 'OK':
     results = json.loads(content)
     raise UploadFailedError(results['error'], results)

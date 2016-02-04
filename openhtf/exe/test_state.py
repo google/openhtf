@@ -126,13 +126,12 @@ class TestState(object):
 
   def SetStateFinished(self):
     """Mark the state as finished, only called if the test ended normally."""
-    if any(meas.outcome == 'FAIL'
+    if any(not meas.outcome
            for phase in self.record.phases
            for meas in phase.measurements.itervalues()):
       self._state = self.State.FAIL
     else:
       self._state = self.State.PASS
-
 
   def GetFinishedRecord(self):
     """Get a test_record.TestRecord for the finished test.

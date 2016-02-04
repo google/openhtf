@@ -34,6 +34,7 @@ from openhtf.util import measurements
 
 _LOG = logging.getLogger(__name__)
 
+
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
