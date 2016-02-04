@@ -19,7 +19,6 @@ gflags.DEFINE_string('guzzle_private_key_file', None,
                      'Filename containing oauth2 private key for '
                      'uploading to Guzzle')
 FLAGS = gflags.FLAGS
-
 MIMETYPE_MAP = {
   'image/jpeg': testrun_pb2.InformationParameter.JPG,
   'image/png': testrun_pb2.InformationParameter.PNG,

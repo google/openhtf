@@ -84,6 +84,7 @@ requires = [  # pylint: disable=invalid-name
     'libusb1==1.3.0',
     'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
+    'protobuf==2.6.1',
     'mutablerecords==0.2.6',
     'protobuf==2.6.1',
     'pyaml==15.3.1',

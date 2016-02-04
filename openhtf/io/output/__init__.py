@@ -129,3 +129,9 @@ class OutputToMfgInspector(object):
       # For now, just log the exception.  Once output is a bit more robust,
       # we can propagate this up and handle it accordingly.
       logging.exception('Upload to mfg-inspector failed!')
+=======
+    with open((self.filename_pattern + '.text') % as_dict, 'w') as f:
+      f.write(text_format.MessageToString(
+          mfg_inspector.TestRunFromTestRecord(test_record)))
+
+>>>>>>> origin/proto_output
