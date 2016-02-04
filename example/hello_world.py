@@ -94,4 +94,7 @@ if __name__ == '__main__':
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
   test.AddOutputCallback(output.OutputToTestRunProto(
       './%(dut_id)s.%(start_time_millis)s.testrun'))
+  test.AddOutputCallback(output.UploadToMfgInspector(
+    '851529617800-96d8t60qbs5b73bhkd1b8s9tclbc4uqr@developer.gserviceaccount.com',
+    open('/google/src/head/depot/google3/codelab/warhol/swarf-upload-key-intentionally-public.p12', 'r').read()))
   test.Execute(test_start=triggers.PromptForTestStart())

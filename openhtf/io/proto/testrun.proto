@@ -37,6 +37,25 @@ enum Status {
   DEBUG = 14;
 }
 
+// Indicates the type of data stored in the payload of a
+// TestRunEnvelope object.  deflate is used for compression.
+enum PayloadType {
+  COMPRESSED_TEST_RUN = 1;
+  COMPRESSED_VARZ = 2 [deprecated=true];
+  COMPRESSED_LOGFILE = 3;
+  WATCHMEN_VIDEO = 4;
+}
+
+// Used for transport of a TestRun from the P-Server to Quantum.
+// Contains an entire TestRun proto, plus shipping information.
+// These get persisted in blobstore, with a RawTestRunRef (see
+// below) stored in bigtable.
+message TestRunEnvelope {
+  // optional TestRun test_run = 1 [deprecated=true];
+  optional PayloadType payload_type = 2;
+  optional bytes payload = 3;
+}
+
 // For better documentation:
 // https://sites.google.com/a/google.com/factoryfactory/data-formats/test-runs
 // A record of a test run including any parameters that were tested and if the
