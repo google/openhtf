@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
 python ./hello_world.py --config ./hello_world.yaml
 """
-
 
 import tempfile
 import time
@@ -27,7 +25,6 @@ import example_plug
 import openhtf
 
 from openhtf.names import *
-import openhtf.io.output as output
 
 
 @plug(example=example_plug.Example)
@@ -90,10 +87,15 @@ def attachments(test):
 
 if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
-      test_name='MyTest', test_description='OpenHTF Example Test', test_version='1.0.0')
+      # Some metadata fields, these in particular are used by mfg-inspector,
+      # but you can include any metadata fields.
+      test_name='MyTest', test_description='OpenHTF Example Test',
+      test_version='1.0.0')
   test.AddOutputCallback(OutputToJSON(
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
-  test.AddOutputCallback(output.UploadToMfgInspector(
-    '851529617800-96d8t60qbs5b73bhkd1b8s9tclbc4uqr@developer.gserviceaccount.com',
-    open('/google/src/head/depot/google3/codelab/warhol/swarf-upload-key-intentionally-public.p12', 'r').read()))
+  # Example of how to upload to mfg-inspector.  Replace user email and key,
+  # these are dummy values.
+  #test.AddOutputCallback(output.UploadToMfgInspector(
+  #  'foobarbaz_gaia_id@developer.gserviceaccount.com',
+  #  open('my-upload-key.p12', 'r').read()))
   test.Execute(test_start=triggers.PromptForTestStart())
