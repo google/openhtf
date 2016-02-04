@@ -1,4 +1,4 @@
-"""Output a TestRun proto for mfg-inspector.com"""
+"""Output or upload a TestRun proto for mfg-inspector.com"""
 
 import gflags
 import json
@@ -6,11 +6,9 @@ import logging
 import numbers
 import threading
 import zlib
-#import httplib2
-#import oath2client.client
+import httplib2
 
 import openhtf.io.output as output
-#from openhtf.io.proto import quantum_data_pb2
 from openhtf.io.proto import testrun_pb2
 from openhtf.io.proto import units_pb2
 from openhtf.util import validators
@@ -21,11 +19,6 @@ gflags.DEFINE_string('guzzle_private_key_file', None,
                      'Filename containing oauth2 private key for '
                      'uploading to Guzzle')
 FLAGS = gflags.FLAGS
-
-DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
-                   'uploads/quantum_upload/')
-TOKEN_URI = 'https://accounts.google.com/o/oauth2/token'
-SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
 
 MIMETYPE_MAP = {
   'image/jpeg': testrun_pb2.InformationParameter.JPG,
@@ -49,6 +42,10 @@ UOM_CODE_MAP = {
 # Control how many flattened parameters we'll output per multidimensional
 # measurement.
 MAX_PARAMS_PER_MEASUREMENT = 100
+
+
+class UploadFailedError(Exception):
+  """Raised when an upload to mfg-inspector fails."""
 
 
 def TestRunFromTestRecord(record):
@@ -210,85 +207,26 @@ def TestRunFromTestRecord(record):
     testrun_log.lineno = log.lineno
   return testrun
 
-if False:
-  class MemStorage(oath2client.client.Storage):
-    """Storage class that keeps credentials in memory.
 
-    This provides a thread-safe repository which can be used by httplib objects
-    associated with an OAuth2Credential object as they fetch and refresh tokens.
+def UploadTestRun(testrun, destination, credentials=None):
+  """Uploads the TestRun at a particular file.
 
-    store = MemStorage()
-    creds = SignedJwtAssertionCredentials(...)
-    creds.set_store(store)
-
-    h = httplib2.Http()
-    creds.authorize(h)  # Fetches and stores token for future Http instances.
-    """
-
-    def __init__(self):
-      self._lock = threading.Lock()
-      self._credentials = None
-
-    def acquire_lock(self):
-      self._lock.acquire(True)
-
-    def release_lock(self):
-      self._lock.release()
-
-    def locked_get(self):
-      return self._credentials
-
-    def locked_put(self, credentials):
-      self._credentials = credentials
-
-
-  def UploadTestRun(testrun, credentials):
-    """Uploads the TestRun at a particular file.
-
-    Args:
-      testrun: TestRun proto to upload.
-      credentials: An OAuth2Credentials object to use for authenticated uploads.
-    """
-
-    test_run_envelope = quantum_data_pb2.TestRunEnvelope()
-    compressed = zlib.compress(testrun.SerializeToString())
-    test_run_envelope.payload = compressed
-    test_run_envelope.payload_type = quantum_data_pb2.COMPRESSED_TEST_RUN
-    serialized_envelope = test_run_envelope.SerializeToString()
-
-    http = httplib2.Http()
+  Args:
+    testrun: TestRun proto to upload.
+    credentials: An OAuth2Credentials object to use for authenticated uploads.
+  """
+  http = httplib2.Http()
+  if credentials:
     if credentials.access_token_expired:
       credentials.refresh(http)
     credentials.authorize(http)
 
-    _, content = http.request(DESTINATION_URL, 'POST', serialized_envelope)
-    if content.split('\n', 1)[0] == 'OK':
-      print 'OK'
-    else:
-      results = json.loads(content)
-      error = results['error']
-      print error
+  test_run_envelope = testrun_pb2.TestRunEnvelope()
+  test_run_envelope.payload = zlib.compress(testrun.SerializeToString())
+  test_run_envelope.payload_type = testrun_pb2.COMPRESSED_TEST_RUN
+  serialized_envelope = test_run_envelope.SerializeToString()
 
-  def main():
-    parser = optparse.OptionParser()
-    parser.add_option('-k', '--key', dest='key', help='oauth key')
-    parser.add_option('-u', '--user', dest='user', help='oauth user')
-    options, _ = parser.parse_args()
-
-    key = options.key
-    user = options.user
-    path = options.path
-
-    with open(key) as f:
-      keydata = f.read()
-
-    credentials = oath2client.client.SignedJwtAssertionCredentials(
-        service_account_name=user,
-        private_key=keydata,
-        scope=SCOPE_CODE_URI,
-        user_agent='OpenHTF Guzzle Upload Client',
-        token_uri=TOKEN_URI)
-    credentials.set_store(MemStorage())
-
-    UploadTestRun(path, credentials)
-
+  _, content = http.request(DESTINATION_URL, 'POST', serialized_envelope)
+  if content.split('\n', 1)[0] != 'OK':
+    results = json.loads(content)
+    raise UploadFailedError(results['error'], results)
