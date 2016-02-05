@@ -1,7 +1,10 @@
 """Module for outputting test record to JSON-formatted files."""
 
 from json import JSONEncoder
+
+from openhtf import conf
 from openhtf import util
+from openhtf.exe import test_state
 
 
 class OutputToJSON(JSONEncoder):
