@@ -1,15 +1,17 @@
 """Output module for outputting to JSON."""
 
+import logging
 import oauth2client.client
 import threading
 
 from openhtf import util
+from openhtf.io.output import json_factory
 from openhtf.io.output import mfg_inspector
 
-OutputToJSON = json_factory.OutputToJSON
+OutputToJSON = json_factory.OutputToJSON  # pylint: disable=invalid-name
 
 
-class OutputToTestRunProto(object):
+class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
   """Return an output callback that writes mfg-inspector TestRun Protos.
 
   An example filename_pattern might be:
@@ -28,14 +30,14 @@ class OutputToTestRunProto(object):
   def __init__(self, filename_pattern):
     self.filename_pattern = filename_pattern
 
-  def __call__(self, test_record):
+  def __call__(self, test_record):  # pylint: disable=invalid-name
     as_dict = util.convert_to_dict(test_record)
-    with open(self.filename_pattern % as_dict, 'w') as f:
-      f.write(mfg_inspector.TestRunFromTestRecord(
+    with open(self.filename_pattern % as_dict, 'w') as outfile:
+      outfile.write(mfg_inspector.TestRunFromTestRecord(
           test_record).SerializeToString())
 
 
-class UploadToMfgInspector(object):
+class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
   """Generate a mfg-inspector TestRun proto and upload it.
 
   Create an output callback to upload to mfg-inspector.com using the given
@@ -48,6 +50,7 @@ class UploadToMfgInspector(object):
   DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
                      'uploads/quantum_upload/')
 
+  # pylint: disable=invalid-name,missing-docstring
   class _MemStorage(oauth2client.client.Storage):
     """Helper Storage class that keeps credentials in memory."""
     def __init__(self):
@@ -65,12 +68,13 @@ class UploadToMfgInspector(object):
 
     def locked_put(self, credentials):
       self._credentials = credentials
+  # pylint: enable=invalid-name,missing-docstring
 
   def __init__(self, user, keydata):
     self.user = user
     self.keydata = keydata
 
-  def __call__(self, test_record):
+  def __call__(self, test_record):  # pylint: disable=invalid-name
     credentials = oauth2client.client.SignedJwtAssertionCredentials(
         service_account_name=self.user,
         private_key=self.keydata,

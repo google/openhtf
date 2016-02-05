@@ -13,6 +13,7 @@ from openhtf.io.proto import units_pb2
 from openhtf import util
 from openhtf.util import validators
 
+# pylint: disable=no-member
 MIMETYPE_MAP = {
   'image/jpeg': testrun_pb2.InformationParameter.JPG,
   'image/png': testrun_pb2.InformationParameter.PNG,
@@ -32,6 +33,8 @@ UOM_CODE_MAP = {
   u.GetOptions().Extensions[units_pb2.uom_code]: num
   for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
 }
+# pylint: enable=no-member
+
 # Control how many flattened parameters we'll output per multidimensional
 # measurement.
 MAX_PARAMS_PER_MEASUREMENT = 100
@@ -41,24 +44,13 @@ class UploadFailedError(Exception):
   """Raised when an upload to mfg-inspector fails."""
 
 
-def TestRunFromTestRecord(record):
-  """Create a TestRun proto from an OpenHTF TestRecord.
+# pylint: disable=invalid-name
+def _PopulateHeader(record, testrun):
+  """Populate header-like info in testrun from record.
 
-  Most fields are just copied over, some are pulled out of metadata (listed
-  below), and measurements are munged a bit for backwards compatibility.
-
-  Metadata fields:
-    'test_description': TestInfo's description field.
-    'test_version': TestInfo's version_string field.
-    'test_name': TestInfo's name field.
-    'run_name': TestRun's run_name field.
-    'operator_name': TestRun's operator_name field.
-
-
-  Returns:  An instance of the TestRun proto for the given record.
+  Mostly obvious, some stuff comes from metadata, see docstring of
+  TestRunFromTestRecord for details.
   """
-  testrun = testrun_pb2.TestRun()
-  # Copy header-like info over, mostly obvious, some stuff comes from metadata.
   testrun.dut_serial = record.dut_id
   testrun.tester_name = record.station_id
   if 'test_name' in record.metadata:
@@ -82,19 +74,77 @@ def TestRunFromTestRecord(record):
     else:
       testrun_code.details = details
 
-  # Save a copy of the JSON-ified record in an attachment so we can access
-  # un-mangled fields later if we want.  Remove attachments since those get
-  # copied over and can potentially be quite large.
+
+def _AttachJson(record, testrun):
+  """Attach a copy of the JSON-ified record as an info parameter.
+
+  Save a copy of the JSON-ified record in an attachment so we can access
+  un-mangled fields later if we want.  Remove attachments since those get
+  copied over and can potentially be quite large.
+  """
   record_dict = util.convert_to_dict(record, ignore_keys=('attachments',))
   record_json = json_factory.OutputToJSON().encode(record_dict)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = record_json
+  # pylint: disable=no-member
   testrun_param.type = testrun_pb2.InformationParameter.TEXT_UTF8
+  # pylint: enable=no-member
 
-  # Run through phases and pull out stuff we care about.  Generate mangled
-  # parameters afterwards so we give real measurements priority getting names.
-  used_parameter_names = set('OpenHTF_record.json')
+
+def _ExtractAttachments(phase, testrun, used_parameter_names):
+  """Extract attachments, just copy them over."""
+  for name, (data, mimetype) in phase.attachments.iteritems():
+    while name in used_parameter_names:
+      name += '_'  # Hack to avoid collisions between phases.
+    used_parameter_names.add(name)
+    testrun_param = testrun.info_parameters.add()
+    testrun_param.name = name
+    testrun_param.value_binary = data
+    if mimetype in MIMETYPE_MAP:
+      testrun_param.type = MIMETYPE_MAP[mimetype]
+    else:
+      # pylint: disable=no-member
+      testrun_param.type = testrun_pb2.InformationParameter.BINARY
+      # pylint: enable=no-member
+
+
+def _MangleMeasurement(name, value, measurement, mangled_parameters):
+  """Flatten parameters for backwards compatibility, watch for collisions.
+
+  We generate these by doing some name mangling, using some sane limits for
+  very large multidimensional measurements.
+  """
+  for current_value in value[:MAX_PARAMS_PER_MEASUREMENT]:
+    # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
+    mangled_name = '_'.join([name] + [
+        '%s%s' % (
+          dim_val,
+          dim_units.uom_suffix if dim_units.uom_suffix else '') for
+        dim_val, dim_units in zip(
+          current_value[:-1], measurement.dimensions)])
+    while mangled_name in mangled_parameters:
+      logging.warning('Mangled name %s already in use', mangled_name)
+      mangled_name += '_'
+    mangled_param = testrun_pb2.TestParameter()
+    mangled_param.name = mangled_name
+    mangled_param.numeric_value = float(current_value[-1])
+    if measurement.units:
+      mangled_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
+    mangled_param.description = (
+        'Mangled parameter from measurement %s with dimensions %s' % (
+        name, tuple(d.uom_suffix for d in measurement.dimensions)))
+    for validator in measurement.validators:
+      mangled_param.description += '\nValidator: ' + str(validator)
+    mangled_parameters[mangled_name] = mangled_param
+
+
+def _ExtractParameters(record, testrun, used_parameter_names):
+  """Extract parameters from phases.
+
+  Generate mangled parameters afterwards so we give real measurements priority
+  getting names.
+  """
   mangled_parameters = {}
   for phase in record.phases:
     testrun_phase = testrun.phases.add()
@@ -103,18 +153,7 @@ def TestRunFromTestRecord(record):
     testrun_phase.timing.start_time_millis = phase.start_time_millis
     testrun_phase.timing.end_time_millis = phase.end_time_millis
 
-    for name, (data, mimetype) in phase.attachments.iteritems():
-      while name in used_parameter_names:
-        name += '_'  # Hack to avoid collisions between phases.
-      used_parameter_names.add(name)
-      testrun_param = testrun.info_parameters.add()
-      testrun_param.name = name
-      testrun_param.value_binary = data
-      if mimetype in MIMETYPE_MAP:
-        testrun_param.type = MIMETYPE_MAP[mimetype]
-      else:
-        testrun_param.type = testrun_pb2.InformationParameter.BINARY
-
+    _ExtractAttachments(phase, testrun, used_parameter_names)
     for name, measurement in phase.measurements.iteritems():
       while name in used_parameter_names:
         name += '_'
@@ -147,33 +186,12 @@ def TestRunFromTestRecord(record):
           else:
             testrun_param.description += '\nValidator: ' + str(validator)
       else:
-        # Flatten parameters for backwards compatibility, watch for collisions, and
-        # use some sane limits for very large multidimensional measurements.
-        for current_value in value[:MAX_PARAMS_PER_MEASUREMENT]:
-          # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
-          mangled_name = '_'.join([name] + [
-              '%s%s' % (
-                dim_val,
-                dim_units.uom_suffix if dim_units.uom_suffix else '') for
-              dim_val, dim_units in zip(
-                current_value[:-1], measurement.dimensions)])
-          while mangled_name in mangled_parameters:
-            logging.warning('Mangled name %s already in use', mangled_name)
-            mangled_name += '_'
-          mangled_param = testrun_pb2.TestParameter()
-          mangled_param.name = mangled_name
-          mangled_param.numeric_value = float(current_value[-1])
-          if measurement.units:
-            mangled_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
-          mangled_param.description = (
-              'Mangled parameter from measurement %s with dimensions %s' % (
-              name, tuple(d.uom_suffix for d in measurement.dimensions)))
-          for validator in measurement.validators:
-            mangled_param.description += '\nValidator: ' + str(validator)
-          mangled_parameters[mangled_name] = mangled_param
+        _MangleMeasurement(name, value, measurement, mangled_parameters)
+  return mangled_parameters
 
-  # Now we can do this, since we have added all non-dimensional parameters and
-  # can avoid name collisions.
+
+def _AddMangledParameters(testrun, mangled_parameters, used_parameter_names):
+  """Add any mangled parameters we generated from multidim measurements."""
   for mangled_name, mangled_param in mangled_parameters.iteritems():
     while mangled_name in used_parameter_names:
       logging.warning('Mangled name %s in use by non-mangled parameter',
@@ -182,13 +200,16 @@ def TestRunFromTestRecord(record):
     testrun_param = testrun.test_parameters.add()
     testrun_param.CopyFrom(mangled_param)
 
-  # Copy log records over, this is a fairly straightforward mapping.
+
+def _AddLogLines(record, testrun):
+  """Copy log records over, this is a fairly straightforward mapping."""
   for log in record.log_records:
     testrun_log = testrun.test_logs.add()
     testrun_log.timestamp_millis = log.timestamp_millis
     testrun_log.log_message = log.message
     testrun_log.logger_name = log.logger_name
     testrun_log.levelno = log.level
+    # pylint: disable=no-member
     if log.level <= logging.DEBUG:
       testrun_log.level = testrun_pb2.TestRunLogMessage.DEBUG
     elif log.level <= logging.INFO:
@@ -199,8 +220,35 @@ def TestRunFromTestRecord(record):
       testrun_log.level = testrun_pb2.TestRunLogMessage.ERROR
     elif log.level <= logging.CRITICAL:
       testrun_log.level = testrun_pb2.TestRunLogMessage.CRITICAL
+    # pylint: enable=no-member
     testrun_log.log_source = log.source
     testrun_log.lineno = log.lineno
+
+
+def TestRunFromTestRecord(record):
+  """Create a TestRun proto from an OpenHTF TestRecord.
+
+  Most fields are just copied over, some are pulled out of metadata (listed
+  below), and measurements are munged a bit for backwards compatibility.
+
+  Metadata fields:
+    'test_description': TestInfo's description field.
+    'test_version': TestInfo's version_string field.
+    'test_name': TestInfo's name field.
+    'run_name': TestRun's run_name field.
+    'operator_name': TestRun's operator_name field.
+
+
+  Returns:  An instance of the TestRun proto for the given record.
+  """
+  testrun = testrun_pb2.TestRun()
+  _PopulateHeader(record, testrun)
+  _AttachJson(record, testrun)
+
+  used_parameter_names = set('OpenHTF_record.json')
+  mangled_parameters = _ExtractParameters(record, testrun, used_parameter_names)
+  _AddMangledParameters(testrun, mangled_parameters, used_parameter_names)
+  _AddLogLines(record, testrun)
   return testrun
 
 
