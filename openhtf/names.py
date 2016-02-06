@@ -31,7 +31,7 @@ Unit codes for lookup:
 """
 
 import openhtf
-import openhtf.io.output
+import openhtf.io.output.json_factory
 import openhtf.io.user_input
 import openhtf.plugs
 import openhtf.util.measurements
@@ -54,6 +54,6 @@ plug = openhtf.plugs.requires
 
 # Classes used in writing test scripts.
 Measurement = openhtf.util.measurements.Measurement
-OutputToJSON = openhtf.io.output.OutputToJSON
+OutputToJSON = openhtf.io.output.json_factory.OutputToJSON
 TestPhase = openhtf.TestPhaseOptions
 UOM = openhtf.util.units.UOM
