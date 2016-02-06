@@ -8,8 +8,6 @@ from openhtf import util
 from openhtf.io.output import json_factory
 from openhtf.io.output import mfg_inspector
 
-OutputToJSON = json_factory.OutputToJSON  # pylint: disable=invalid-name
-
 
 class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
   """Return an output callback that writes mfg-inspector TestRun Protos.
