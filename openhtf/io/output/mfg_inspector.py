@@ -83,7 +83,7 @@ def _AttachJson(record, testrun):
   copied over and can potentially be quite large.
   """
   record_dict = util.convert_to_dict(record, ignore_keys=('attachments',))
-  record_json = json_factory.OutputToJSON().encode(record_dict)
+  record_json = json_factory.OutputToJSON(sort_keys=True).encode(record_dict)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = record_json
