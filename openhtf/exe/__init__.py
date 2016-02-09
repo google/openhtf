@@ -61,10 +61,9 @@ class TestExecutor(threads.KillableThread):
 
   daemon = True
 
-  FrameworkStatus = Enum(
-      'CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING', 'STOP_WAIT',
-      'FINISHING'
-  )
+  FrameworkStatus = Enum('FrameworkStatus',
+                         ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
+                          'STOP_WAIT','FINISHING'])
 
   def __init__(self, config, test, test_start, test_stop):
     super(TestExecutor, self).__init__()
@@ -81,7 +80,7 @@ class TestExecutor(threads.KillableThread):
     """Return a dictionary representation of this executor."""
     return {'station_id': self._config.station_id,
             'prompt': user_input.get_prompt_manager().prompt,
-            'status': self._status.key}
+            'status': self._status.name}
 
   def Start(self):
     """Style-compliant start method."""

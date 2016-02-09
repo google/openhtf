@@ -50,6 +50,9 @@ gflags.DEFINE_integer('multicast_ttl',
 
 _LOG = logging.getLogger(__name__)
 
+PING_STRING = 'OPENHTF_PING'
+PING_RESPONSE_KEY = 'OPENHTF_PING_RESPONSE'
+
 
 class Server(object):
   """Frontend API server for openhtf.
@@ -69,9 +72,8 @@ class Server(object):
 
     def multicast_response(message):
       """Formulate a response to a station discovery ping."""
-      if message == multicast.PING_STRING:
-        return json.JSONEncoder().encode(
-            {multicast.PING_RESPONSE_KEY: FLAGS.http_port})
+      if message == PING_STRING:
+        return json.dumps({PING_RESPONSE_KEY: FLAGS.http_port})
       else:
         _LOG.debug(
             'Received non-openhtf traffic on multicast socket: %s' % message)
@@ -117,7 +119,7 @@ class HTTPServer(threading.Thread):
       """
       result = {'test': util.convert_to_dict(self.executor.GetState()),
                 'framework': util.convert_to_dict(self.executor)}
-      self.wfile.write(json.JSONEncoder().encode(result))
+      self.wfile.write(json.dumps(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""

@@ -30,6 +30,7 @@ frontend server.
 """
 
 from __future__ import print_function
+import collections
 import httplib
 import json
 import logging
@@ -46,9 +47,10 @@ import tornado.escape
 import tornado.ioloop
 import tornado.web
 
+from openhtf.io.http_api import PING_STRING
+from openhtf.io.http_api import PING_RESPONSE_KEY
 from openhtf.util import logs
 from openhtf.util import multicast
-from openhtf.util import threads
 
 
 FLAGS = gflags.FLAGS
@@ -97,7 +99,7 @@ class StationStore(threading.Thread):
     super(StationStore, self).__init__()
     self._live = False
     self.hostname = socket.gethostname()
-    self.stations = {}
+    self.stations = collections.defaultdict(Station)
 
   @staticmethod
   def MessageFramework(host, port, method='GET', message=None):
@@ -130,9 +132,7 @@ class StationStore(threading.Thread):
       conn.request(*args)
       if method == 'GET':
         response = conn.getresponse()
-        if response.status != 200:
-          result = None
-        else:
+        if response.status == 200:
           result = json.loads(response.read())
     except socket.error as e:
       result = None
@@ -141,13 +141,13 @@ class StationStore(threading.Thread):
 
   def _Discover(self):
     """Use multicast to discover stations on the local network."""
-    responses = multicast.send(multicast.PING_STRING,
+    responses = multicast.send(PING_STRING,
                                FLAGS.discovery_address,
                                FLAGS.discovery_port,
                                FLAGS.discovery_ttl)
     for host, response in responses:
       try:
-        port = json.loads(response)[multicast.PING_RESPONSE_KEY]
+        port = json.loads(response)[PING_RESPONSE_KEY]
         self._Track(host, port)
       except (KeyError, ValueError):
         _LOG.warning('Ignoring unrecognized discovery response from %s: %s' % (
@@ -158,12 +158,14 @@ class StationStore(threading.Thread):
     self._live = True
     while self._live:
       self._Discover()
+      # TODO(jethier): Refactor this to use events instead of sleeping.
+      #                See comment in PR #59 for details.
       time.sleep(FLAGS.discovery_interval_s)
 
   def _Track(self, host, port):
     """Start tracking the given station."""
-    station = self.stations.setdefault((host, port), Station())
-    if station.station_id is None:
+    station = self.stations[host, port]
+    if station.station_id == UNKNOWN_STATION_ID:
       self.GetStationState(host, port)
 
   def GetStationState(self, host, port):

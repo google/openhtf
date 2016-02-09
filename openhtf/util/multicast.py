@@ -33,8 +33,6 @@ DEFAULT_ADDRESS = '239.1.1.1'
 DEFAULT_PORT = 10000
 DEFAULT_TTL = 1
 MAX_MESSAGE_BYTES = 1024  # Maximum allowable message length in bytes.
-PING_STRING = 'OPENHTF_PING'
-PING_RESPONSE_KEY = 'OPENHTF_PING_RESPONSE'
 
 
 class MulticastListener(threading.Thread):
@@ -80,17 +78,19 @@ class MulticastListener(threading.Thread):
     self._sock.setsockopt(
         socket.IPPROTO_IP,
         socket.IP_ADD_MEMBERSHIP,
+        # IP_ADD_MEMBERSHIP is the 8-byte group address followed by the IP
+        # assigned to the interface on which to listen.
         struct.pack(
             '!4sL',
             socket.inet_aton(self.address),
-            socket.INADDR_ANY))
+            socket.INADDR_ANY))  # Listen on all interfaces.
 
     while self._live:
       try:
         data, address = self._sock.recvfrom(MAX_MESSAGE_BYTES)
         _LOG.debug('Received multicast message from %s: %s'% (address, data))
         response = self._callback(data)
-        if response:
+        if response is not None:
           self._sock.sendto(response, address)
       except socket.timeout:
         continue
