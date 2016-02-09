@@ -17,12 +17,12 @@
 
 import inspect
 import itertools
+import json
 import logging
 import os
 import signal
 import socket
 import sys
-from json import JSONEncoder
 
 import gflags
 import mutablerecords
@@ -47,7 +47,7 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 
-class OutputToJSON(JSONEncoder):
+class OutputToJSON(json.JSONEncoder):
   """Return an output callback that writes JSON Test Records.
 
   An example filename_pattern might be:

@@ -85,7 +85,7 @@ class TestState(object):
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
-    return json.JSONEncoder().encode(util.convert_to_dict(self))
+    return json.dumps(util.convert_to_dict(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
