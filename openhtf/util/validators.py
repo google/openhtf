@@ -6,24 +6,24 @@ module, and will typically be a type, instances of which are callable:
 
   from openhtf.util import validators
   from openhtf.util import measurements
-  
+
   class MyLessThanValidator(object):
     def __init__(self, limit):
       self.limit = limit
-  
+
     # This will be invoked to test if the measurement is 'PASS' or 'FAIL'.
     def __call__(self, value):
       return value < self.limit
-  
+
   # Name defaults to the validator's __name__ attribute unless overridden.
   validators.Register(MyLessThanValidator, name='LessThan')
-  
+
   # Now you can refer to the validator by name directly on measurements.
   @measurements.measures(
       measurements.Measurement('my_measurement').LessThan(4))
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will have outcome 'FAIL'
-  
+
 For simpler validators, you don't need to register them at all, you can
 simply attach them to the Measurement with the .WithValidator() method:
 
@@ -75,61 +75,61 @@ class Validators(object):
 
   class InRange(object):
     """Validator to verify a numeric value is within a range."""
-  
+
     def __init__(self, minimum=None, maximum=None):
       if minimum is None and maximum is None:
         raise ValueError('Must specify minimum, maximum, or both')
       if minimum is not None and maximum is not None and minimum > maximum:
         raise ValueError('Minimum cannot be greater than maximum')
-      self._minimum = minimum
-      self._maximum = maximum
-  
+      self.minimum = minimum
+      self.maximum = maximum
+
     def __call__(self, value):
       # Check for equal bounds first so we can use with non-numeric values.
-      if self._minimum == self._maximum and value != self._minimum:
+      if self.minimum == self.maximum and value != self.minimum:
         return False
-      if self._minimum is not None and value < self._minimum:
+      if self.minimum is not None and value < self.minimum:
         return False
-      if self._maximum is not None and value > self._maximum:
+      if self.maximum is not None and value > self.maximum:
         return False
       return True
-  
+
     def __str__(self):
-      assert self._minimum is not None or self._maximum is not None
-      if self._minimum is not None and self._maximum is not None:
-        if self._minimum == self._maximum:
-          return 'x == %s' % self._minimum
-        return '%s <= x <= %s' % (self._minimum, self._maximum)
-      if self._minimum is not None:
-        return '%s <= x' % self._minimum
-      if self._maximum is not None:
-        return 'x <= %s' % self._maximum
-  
+      assert self.minimum is not None or self.maximum is not None
+      if self.minimum is not None and self.maximum is not None:
+        if self.minimum == self.maximum:
+          return 'x == %s' % self.minimum
+        return '%s <= x <= %s' % (self.minimum, self.maximum)
+      if self.minimum is not None:
+        return '%s <= x' % self.minimum
+      if self.maximum is not None:
+        return 'x <= %s' % self.maximum
+
   @classmethod
   def Equals(cls, value):
     return cls.InRange(minimum=value, maximum=value)
-      
-  class _MatchesRegex(object):
+
+  class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
-  
+
     def __init__(self, re_module, regex):
       self._re_module = re_module
       self._compiled = re_module.compile(regex)
-      self._regex = regex
-  
+      self.regex = regex
+
     def __call__(self, value):
       return self._compiled.match(str(value)) is not None
 
     def __deepcopy__(self, dummy_memo):
-      return type(self)(self._re_module, self._regex)
-  
+      return type(self)(self._re_module, self.regex)
+
     def __str__(self):
-      return "'x' matches /%s/" % self._regex
+      return "'x' matches /%s/" % self.regex
 
   # We have to use our saved reference to the re module because this module
   # has lost all references by the sys.modules replacement and has been gc'd.
   def MatchesRegex(self, regex):
-    return self._MatchesRegex(self.re_module, regex)
+    return self.RegexMatcher(self.re_module, regex)
 
 
 sys.modules[__name__] = Validators(re)
