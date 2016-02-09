@@ -76,7 +76,7 @@ class TestOpenhtf(unittest.TestCase):
         dimensions, test_name='TestTest', test_description='Unittest test',
         test_version='1.0.0')
     self.test.AddOutputCallback(_ReplaceStartEndTimes(OutputToJSON(
-        os.path.join(self.tempdir, 'record.json'))))
+        os.path.join(self.tempdir, 'record.json'), sort_keys=True)))
     self.test.AddOutputCallback(_ReplaceStartEndTimes(
         output.OutputToTestRunProto(
             os.path.join(self.tempdir, 'record.testrun'))))
