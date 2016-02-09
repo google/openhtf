@@ -180,10 +180,8 @@ class Test(object):
       self.loop = loop
     conf.Load()
 
-    config = conf.Config()
-
     _LOG.info('Executing test: %s', self.filename)
-    executor = exe.TestExecutor(config, self, test_start, test_stop)
+    executor = exe.TestExecutor(conf.Config(), self, test_start, test_stop)
     server = http_api.Server(executor)
 
     def sigint_handler(*dummy):
