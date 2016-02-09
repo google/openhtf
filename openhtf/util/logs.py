@@ -97,7 +97,7 @@ class RecordHandler(logging.Handler):
       message += '\n' + ''.join(traceback.format_exception(
           *record.exc_info))
     message = message.decode('utf8', 'replace')
-
+    
     log_record = test_record.LogRecord(
         record.levelno, record.name, os.path.basename(record.pathname),
         record.lineno, int(record.created * 1000), message

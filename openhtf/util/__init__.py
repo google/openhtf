@@ -56,11 +56,8 @@ def TimeMillis():  # pylint: disable=invalid-name
   return int(time.time() * 1000)
 
 
-def convert_to_dict(obj, ignore_keys=tuple()):
+def convert_to_dict(obj):
   """Recursively convert namedtuples to dicts."""
-  # Because it's *really* annoying to pass a single string accidentally.
-  assert not isinstance(ignore_keys, basestring), 'Pass a real iterable!'
-
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
   elif isinstance(obj, mutablerecords.records.RecordClass):
@@ -71,12 +68,11 @@ def convert_to_dict(obj, ignore_keys=tuple()):
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    obj = {k: convert_to_dict(v, ignore_keys) for k, v in obj.iteritems()
-           if k not in ignore_keys}
+    obj = {k: convert_to_dict(v) for k, v in obj.iteritems()}
   elif isinstance(obj, list):
-    obj = [convert_to_dict(value, ignore_keys) for value in obj]
+    obj = [convert_to_dict(value) for value in obj]
   elif isinstance(obj, tuple):
-    obj = tuple(convert_to_dict(value, ignore_keys) for value in obj)
+    obj = tuple(convert_to_dict(value) for value in obj)
   elif obj is not None:
     # Leave None as None to distinguish it from "None".
     obj = str(obj)

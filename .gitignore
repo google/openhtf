@@ -7,8 +7,6 @@ __pycache__/
 # Python dist/packaging
 .Python
 build/
-.cache/
-.coverage
 develop-eggs/
 dist/
 downloads/
@@ -28,7 +26,7 @@ env/
 venv/
 
 # built protos
-*_pb2.py
+*pb2.py
 
 # node stuff
 node_modules/
@@ -36,6 +34,3 @@ node_modules/
 # Sublime Text stuff
 *.sublime-project
 *.sublime-workspace
-
-# Tox temporary files
-.tox/
