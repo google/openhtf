@@ -47,7 +47,8 @@ class InvalidTestPhaseError(Exception):
 
 class TestPhaseOptions(mutablerecords.Record(
     'TestPhaseOptions', [], {'timeout_s': None, 'run_if': None})):
-  """
+  """Options used to override default test phase behaviors.
+
   Attributes:
     timeout_s: Timeout to use for the phase, in seconds.
     run_if: Callback that decides whether to run the phase or not.  The
@@ -63,6 +64,7 @@ class TestPhaseOptions(mutablerecords.Record(
     phase = TestPhaseInfo.WrapOrReturn(phase_func)
     phase.options = self
     return phase
+
 
 PhasePlug = mutablerecords.Record('PhasePlug', ['name', 'cls', 'update_kwargs'])
 

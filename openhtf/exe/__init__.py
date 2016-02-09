@@ -21,7 +21,6 @@ from enum import Enum
 
 import contextlib2 as contextlib
 
-from openhtf import conf
 from openhtf import plugs
 from openhtf.exe import phasemanager
 from openhtf.exe import test_state
