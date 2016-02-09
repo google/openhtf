@@ -126,13 +126,12 @@ class TestState(object):
 
   def SetStateFinished(self):
     """Mark the state as finished, only called if the test ended normally."""
-    if any(meas.outcome == 'FAIL'
+    if any(not meas.outcome
            for phase in self.record.phases
            for meas in phase.measurements.itervalues()):
       self._state = self.State.FAIL
     else:
       self._state = self.State.PASS
-
 
   def GetFinishedRecord(self):
     """Get a test_record.TestRecord for the finished test.
@@ -157,7 +156,7 @@ class TestState(object):
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     self.record.end_time_millis = util.TimeMillis()
-    self.record.outcome = self._state
+    self.record.outcome = str(self._state)
     return self.record
 
   def __str__(self):
