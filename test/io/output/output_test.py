@@ -26,6 +26,7 @@ import openhtf.io.output as output
 from openhtf import conf
 
 from openhtf.io.output import mfg_inspector
+from openhtf.io.proto import testrun_pb2
 from openhtf.names import *
 
 # Load our canonical 'correct' outputs from files.
@@ -88,4 +89,5 @@ class TestOpenhtf(unittest.TestCase):
 
   def testTestrun(self):
     with open(os.path.join(self.tempdir, 'record.testrun'), 'rb') as trfile:
-      self.assertEquals(EXPECTED_TESTRUN, trfile.read())
+      self.assertEquals(testrun_pb2.TestRun.FromString(EXPECTED_TESTRUN),
+                        testrun_pb2.TestRun.FromString(trfile.read()))
