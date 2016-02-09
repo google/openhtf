@@ -40,7 +40,6 @@ class CleanCommand(clean):
 requires = [  # pylint: disable=invalid-name
     'contextlib2==0.4.0',
     'enum34==1.1.2',
-    'Flask==0.10.1',
     'inotify==0.2.4',
     'libusb1==1.3.0',
     'M2Crypto==0.22.3',
@@ -49,8 +48,8 @@ requires = [  # pylint: disable=invalid-name
     'pyaml==15.3.1',
     'python-gflags==2.0',
     'PyYAML==3.11',
-    'Rocket==1.2.4',
     'singledispatch==3.4.0.3',
+    'tornado==4.3',
     'Werkzeug==0.10.4',
 ]
 

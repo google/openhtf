@@ -39,7 +39,8 @@ def example_monitor(example):
         'widget_type').MatchesRegex(r'.*Widget$').Doc(
             '''This measurement tracks the type of widgets.'''),
     Measurement(
-        'widget_color').Doc('Color of the widget'))
+        'widget_color').Doc('Color of the widget'),
+    Measurement('widget_size').InRange(1, 4))
 @plug(example=example_plug.Example)
 def hello_world(test, example):
   """A hello world test phase."""
@@ -47,6 +48,7 @@ def hello_world(test, example):
   test.measurements.widget_type = prompts.DisplayPrompt(
       'What\'s the widget type?', text_input=True)
   test.measurements.widget_color = 'Black'
+  test.measurements.widget_size = 3
   test.logger.info('Example says: %s', example.DoStuff())
 
 

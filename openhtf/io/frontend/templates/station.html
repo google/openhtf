@@ -30,7 +30,7 @@
             document.getElementById(id).innerHTML = new_doc; });
   }
   function poll(interval_ms) {
-    if (interval_ms == undefined) {interval_ms = 3000;}
+    if (interval_ms == undefined) {interval_ms = {{interval}};}
     refresh('test');
     ajax('prompt/', 'GET', '', function(id){
       if (id != state.prompt_id) {

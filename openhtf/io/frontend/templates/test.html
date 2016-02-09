@@ -1,40 +1,44 @@
 <h1>OpenHTF</h1>
-<h2>Station {{name}}</h2>
+{% if state == None %}
+<div class="offline">
+<p>Station is currently offline.</p>
+{% else %}
+<h2>Station {{state['framework']['station_id']}}</h2>
 <hr/>
-{% if state.state == 'NOTEST' %}
+{% if state['test'] == None %}
 <div class="notest">
 <p>openhtf is running, but no test is currently executing.</p>
 </div>
-{% elif state.state == 'OFFLINE' %}
-<div class="offline">
-<p>Station is currently offline.</p>
+
 </div>
 {% else %}
-<div class="current_phase"><h3>Current Phase: {{state.running_phase.name}}</h3>
-<p>{{state.running_phase.docstring}}</p>
+<div class="current_phase">
+  <h3>Current Phase: {{ state['test']['running_phase']['name'] }}</h3>
+<p>{{ state['test']['running_phase']['docstring'] }}</p>
 <h4>Measurements</h4>
 <table border=1>
-{% for m in state.running_phase.measurements %}
+{% for m in state['test']['running_phase']['measurements'] %}
   <tr>
-    <td>{{m}}</td>
-    {% if m in state.phase_data.measurements %}
-      <td>{{state.phase_data.measurements[m]}}</td>
+    <td>{{ m }}</td>
+    {% if m in state['test']['phase_data']['measurements'] %}
+      <td>{{ state['test']['phase_data']['measurements'][m] }}</td>
     {% else %}
       <td><div class="UNSET">UNSET</div></td>
-    {% endif %}
+    {% end %}
     </li></ul>
     </li>
-{% endfor %}
+{% end %}
 </table>
 </div>
 <hr/>
 <div class="pending_phases"><h3>Pending Phases</h3>
 <ul>
-{% for p in state.pending_phases %}
+{% for p in state['test']['pending_phases'] %}
   <li>
-  {{p[0]}}
+  {{ p[0] }}
   </li>
-{% endfor %}
+{% end %}
 </ul>
 </div>
-{% endif %}
+{% end %}
+{% end %}
