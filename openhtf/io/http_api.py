@@ -66,7 +66,7 @@ class Server(util.threads.KillableThread):
         prompt = user_input.get_prompt_manager().prompt
         if prompt:
           result['prompt'] = util.convert_to_dict(prompt)
-        self.wfile.write(json.JSONEncoder().encode(result))
+        self.wfile.write(json.dumps(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""

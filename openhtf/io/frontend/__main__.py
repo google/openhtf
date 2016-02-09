@@ -120,7 +120,7 @@ def get_prompt(name):
 @app.route('/station/<name>/prompt/<id>/', methods=['POST'])
 def prompt(name, id):
   """Handle requests that respond to prompts."""
-  msg = json.JSONEncoder().encode({'id': id, 'response': flask.request.data})
+  msg = json.dumps({'id': id, 'response': flask.request.data})
   query_framework(name, method='POST', message=msg)
   return 'OK'
 
