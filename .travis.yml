@@ -6,6 +6,8 @@ addons:
     packages:
       - swig
       - libusb-1.0-0-dev
+      - libprotobuf-dev
+      - protobuf-compiler
 cache:
   pip: true
   apt: true
