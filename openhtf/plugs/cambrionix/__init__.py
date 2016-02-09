@@ -58,10 +58,14 @@ class EtherSync(object):
     cmd = (['esuit64', '-t', arg])
     info = subprocess.check_output(cmd,stderr=subprocess.STDOUT)
     serial = None
-
     if "SERIAL" in info:
       serial_info = info.split('SERIAL:')[1]
       serial = serial_info.split('\n')[0].strip()
+      use_info = info.split('BY')[1].split(' ')[1]
+      if use_info == 'NO':
+        cmd = (['esuit64', '-t', 'AUTO USE ALL'])
+        subprocess.check_output(cmd,stderr=subprocess.STDOUT)
+        time.sleep(50.0/1000.0)
     else:
       raise ValueError('No USB device detected')
     return serial
