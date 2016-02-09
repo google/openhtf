@@ -16,7 +16,7 @@ import subprocess
 from openhtf.plugs.usb import local_usb
 
 class EtherSync(object):
-  """EtherSync object for the access of usb device connected to 
+  """EtherSync object for the access of usb device connected to
      Cambrionix unit."""
 
   port_map = {
@@ -39,7 +39,7 @@ class EtherSync(object):
     addr_info=mac_addr.lower().split(':')
     if (len(addr_info) < 6):
       raise ValueError('Invalid mac address')
-    
+
     addr_info[2] = 'EtherSync'
     self._addr=''.join(addr_info[2:])
 
