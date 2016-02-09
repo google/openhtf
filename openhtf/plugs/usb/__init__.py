@@ -43,11 +43,11 @@ def _open_usb_handle(**kwargs):
   """Open a UsbHandle subclass, based on configuration.
 
   If configuration 'remote_usb' is set, use it to connect to remote usb,
-  otherwise attempt to connect locally.'remote_usb' is set to usb type,
-  EtherSync or other.
-
+  otherwise attempt to connect locally.'remote_usb' is set to usb type, 
+  EtherSync or other. 
+  
   Example of Cambrionix unit in config:
-  remote_usb: ethersync
+  remote_usb: ethersync 
   ethersync:
        mac_addr: 78:a5:04:ca:91:66
        plug_port: 5
@@ -67,11 +67,11 @@ def _open_usb_handle(**kwargs):
       mac_addr = device['mac_addr']
       port = device['plug_port']
     except (KeyError,TypeError):
-      raise ValueError('Ethersync needs mac_addr and plug_port to be set')
+      raise ValueError('Ethersync needs mac_addr and plug_port to be set') 
     else:
-      ethersync = cambrionix.EtherSync(mac_addr)
+      ethersync = cambrionix.EtherSync(mac_addr) 
       serial = ethersync.GetUSBSerial(port)
-
+  
   return local_usb.LibUsbHandle.Open(serial_number=serial, **kwargs)
 
 

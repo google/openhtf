@@ -105,7 +105,7 @@ class AdbTransportAdapter(object):
   def __str__(self):
     trans = str(self._transport)
     return '<%s: (%s)' % (type(self).__name__, trans[1:])
-
+ 
   def Close(self):
     """Close the connection."""
     self._transport.Close()

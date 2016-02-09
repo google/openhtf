@@ -65,7 +65,7 @@ class ExceptionSafeThread(threading.Thread):
 
   def _ThreadException(self, exception):
     """The method called if _ThreadProc raises an exception.
-
+  
     To suppress the exception, return True from this method.
     """
 
