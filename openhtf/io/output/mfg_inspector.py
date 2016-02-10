@@ -192,7 +192,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
 
 def _AddMangledParameters(testrun, mangled_parameters, used_parameter_names):
   """Add any mangled parameters we generated from multidim measurements."""
-  for mangled_name, mangled_param in mangled_parameters.iteritems():
+  for mangled_name, mangled_param in sorted(mangled_parameters.items()):
     while mangled_name in used_parameter_names:
       logging.warning('Mangled name %s in use by non-mangled parameter',
                       mangled_name)

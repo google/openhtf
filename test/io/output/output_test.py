@@ -100,10 +100,10 @@ class TestOpenhtf(unittest.TestCase):
       self.assertEquals(expected, actual)
     except Exception:
       logging.error('***** TestRun proto mismatch:*****')
-      for expected_line, actual_line in zip(
+      for line_no, (expected_line, actual_line) in enumerate(zip(
           text_format.MessageToString(expected).splitlines(),
-          text_format.MessageToString(actual).splitlines()):
+          text_format.MessageToString(actual).splitlines())):
         if expected_line != actual_line:
-          logging.error('"%s" != "%s"', expected_line, actual_line)
+          logging.error('%s: "%s" != "%s"', line_no, expected_line, actual_line)
       logging.error('^^^^^ TestRun proto diff ^^^^^')
       raise
