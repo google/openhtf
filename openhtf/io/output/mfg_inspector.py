@@ -94,7 +94,7 @@ def _AttachJson(record, testrun):
 
 def _ExtractAttachments(phase, testrun, used_parameter_names):
   """Extract attachments, just copy them over."""
-  for name, (data, mimetype) in phase.attachments.iteritems():
+  for name, (data, mimetype) in sorted(phase.attachments.items()):
     while name in used_parameter_names:
       name += '_'  # Hack to avoid collisions between phases.
     used_parameter_names.add(name)
@@ -154,7 +154,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
     testrun_phase.timing.end_time_millis = phase.end_time_millis
 
     _ExtractAttachments(phase, testrun, used_parameter_names)
-    for name, measurement in phase.measurements.iteritems():
+    for name, measurement in sorted(phase.measurements.items()):
       while name in used_parameter_names:
         name += '_'
       used_parameter_names.add(name)
