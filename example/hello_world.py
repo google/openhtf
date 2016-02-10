@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
 python ./hello_world.py --config ./hello_world.yaml
 """
 
-
 import tempfile
 import time
 
 import example_plug
 import openhtf
+import openhtf.io.output as output
 
 from openhtf.names import *
 
@@ -71,7 +70,7 @@ def set_measurements(test):
 @measures(
     Measurement('dimensions').WithDimensions(UOM['HERTZ']),
     Measurement('lots_of_dims').WithDimensions(
-        UOM['HERTZ'], UOM['BYTE'], UOM['RADIAN']))
+        UOM['HERTZ'], UOM['SECOND'], UOM['RADIAN']))
 def dimensions(test):
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim
@@ -87,7 +86,18 @@ def attachments(test):
 
 
 if __name__ == '__main__':
-  test = openhtf.Test(hello_world, set_measurements, dimensions, attachments)
+  test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
+      # Some metadata fields, these in particular are used by mfg-inspector,
+      # but you can include any metadata fields.
+      test_name='MyTest', test_description='OpenHTF Example Test',
+      test_version='1.0.0')
   test.AddOutputCallback(OutputToJSON(
-  		'./%(dut_id)s.%(start_time_millis)s', indent=4))
+      './%(dut_id)s.%(start_time_millis)s.json', indent=4))
+  test.AddOutputCallback(output.OutputToTestRunProto(
+      './%(dut_id)s.%(start_time_millis)s.json'))
+  # Example of how to upload to mfg-inspector.  Replace user email and key,
+  # these are dummy values.
+  #test.AddOutputCallback(output.UploadToMfgInspector(
+  #  'foobarbaz_gaia_id@developer.gserviceaccount.com',
+  #  open('my-upload-key.p12', 'r').read()))
   test.Execute(test_start=triggers.PromptForTestStart())
