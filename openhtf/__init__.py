@@ -34,7 +34,6 @@ from openhtf import conf
 from openhtf import exe
 from openhtf import plugs
 from openhtf import util
-from openhtf.exe import test_state
 from openhtf.exe import triggers
 from openhtf.io import http_api
 from openhtf.util import measurements, logs
@@ -58,9 +57,6 @@ conf.Declare('upload_data', 'if need upload test result to server')
 
   config yaml:
   upload_data: true       
-  project: rio
-  data_server: 'http://172.17.71.10:5150/api/?source=testrun&project='
-  shopfloor: 'http://172.17.71.10:5150/api/testrun'
 ~
 """
 class InvalidTestPhaseError(Exception):
@@ -120,9 +116,6 @@ class OutputToJSON(json.JSONEncoder):
         if shopfloor:
           self._shopfloor = shopfloor
 
-        if not (project and self._data_server):
-          raise ValueError('No project, data_server and/or shopfloor set')
-
       headers = {'Accept' : 'application/json',
                  'Content-Type' : 'application/json'}
       files = [f for f in os.listdir('.') if os.path.isfile(f)]
@@ -180,6 +173,7 @@ class OutputToJSON(json.JSONEncoder):
           _LOG.warning('Error on upload file to server rc:%d', rc_data)
         else:
           _LOG.warning('Error on upload file to shopfloor rc:%d', rc_floor)
+
 
 class TestPhaseOptions(mutablerecords.Record(
     'TestPhaseOptions', [], {'timeout_s': None, 'run_if': None})):
@@ -241,14 +235,16 @@ class Test(object):
 
   Args:
     *phases: The ordered list of phases to execute for this test.
+    **metadata: Any metadata that should be associated with test records.
   """
 
-  def __init__(self, *phases):
+  def __init__(self, *phases, **metadata):
     """Creates a new Test to be executed.
 
     Args:
       *phases: The ordered list of phases to execute for this test.
     """
+    self.metadata = metadata
     self.loop = False
     self.phases = [TestPhaseInfo.WrapOrReturn(phase) for phase in phases]
     self.output_callbacks = []
@@ -279,6 +275,7 @@ class Test(object):
 
   def OutputTestRecord(self, test_record):
     """Feed the record of this test to all output modules."""
+    test_record.metadata.update(self.metadata)
     for output_cb in self.output_callbacks:
       output_cb(test_record)
 
@@ -313,10 +310,8 @@ class Test(object):
       self.loop = loop
     conf.Load()
 
-    config = conf.Config()
-
     _LOG.info('Executing test: %s', self.filename)
-    executor = exe.TestExecutor(config, self, test_start, test_stop)
+    executor = exe.TestExecutor(conf.Config(), self, test_start, test_stop)
     server = http_api.Server(executor)
 
     def sigint_handler(*dummy):
