@@ -14,11 +14,14 @@
 """Unit tests for the openhtf.io.output module."""
 
 import atexit
+import logging
 import os.path
 import shutil
+import sys
 import tempfile
 import time
 import unittest
+import google.protobuf.text_format as text_format
 
 import openhtf
 import openhtf.io.output as output
@@ -88,6 +91,19 @@ class TestOpenhtf(unittest.TestCase):
       self.assertEquals(EXPECTED_JSON, jsonfile.read())
 
   def testTestrun(self):
+    expected = testrun_pb2.TestRun.FromString(EXPECTED_TESTRUN)
     with open(os.path.join(self.tempdir, 'record.testrun'), 'rb') as trfile:
-      self.assertEquals(testrun_pb2.TestRun.FromString(EXPECTED_TESTRUN),
-                        testrun_pb2.TestRun.FromString(trfile.read()))
+      actual = testrun_pb2.TestRun.FromString(trfile.read())
+    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+
+    try:
+      self.assertEquals(expected, actual)
+    except Exception:
+      logging.error('***** TestRun proto mismatch:*****')
+      for expected_line, actual_line in zip(
+          text_format.MessageToString(expected).splitlines(),
+          text_format.MessageToString(actual).splitlines()):
+        if expected_line != actual_line:
+          logging.error('"%s" != "%s"', expected_line, actual_line)
+      logging.error('^^^^^ TestRun proto diff ^^^^^')
+      raise
