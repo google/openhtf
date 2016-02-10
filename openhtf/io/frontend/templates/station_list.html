@@ -3,19 +3,15 @@
 </head>
 <body>
 <h1>OpenHTF</h1>
-<h2>Stations on {{host}}</h2>
+<h2>Stations</h2>
 <ul>
-{% for s in stations %}
+{% for host, port in stations %}
   <li>
-  <a href="/station/{{s.data.station_id}}/">
-  {{s.data.station_id}}
-  </a>
-    <ul>
-      <li>{{s.data.script_name}}</li>
-      <li>{{s.status}}</li>
-    </ul>
+    <a href="/stations/{{ host }}/{{ port }}/">
+    {{ stations[(host, port)].station_id }}
+    </a>
   </li>
-{% endfor %}
+{% end %}
 </ul>
 </body>
 </html>

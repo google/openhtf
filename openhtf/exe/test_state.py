@@ -17,14 +17,12 @@
 
 Test timing, failures, and the UI are handled by this module.
 """
-import json
 import logging
 from enum import Enum
 
 from openhtf import conf
 from openhtf.exe import phase_data
 from openhtf.io import test_record
-from openhtf.io import user_input
 from openhtf import util
 from openhtf.util import logs
 
@@ -50,10 +48,8 @@ class TestState(object):
     config: The config being used for this test.
     test: openhtf.Test instance describing the test to run.
   """
-  State = Enum(
-      'RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED', 'WAITING', 'FAIL', 'PASS',
-      'CREATED'
-  )
+  State = Enum('State', ['RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED',
+                         'WAITING', 'FAIL', 'PASS', 'CREATED'])
 
   _PHASE_RESULT_TO_STATE = {
       phase_data.PhaseResults.CONTINUE: State.WAITING,
@@ -87,19 +83,17 @@ class TestState(object):
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
-    return json.JSONEncoder().encode(util.convert_to_dict(self))
+    return json.dumps(util.convert_to_dict(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
-    prompt = user_input.get_prompt_manager().prompt
     return {
-        'state': self._state.key,
+        'status': self._state.name,
         'record': self.record,
         'phase_data': self.phase_data,
         'running_phase': self.running_phase,
-        'pending_phases': [
-            (phase.__name__, phase.__doc__) for phase in self.pending_phases],
-        'prompt': prompt}
+        'pending_phases': [(phase.func.__name__, phase.func.__doc__)
+                           for phase in self.pending_phases]}
 
   def SetStateFromPhaseResult(self, phase_result):
     """Set our internal state based on the given phase result.
@@ -167,4 +161,3 @@ class TestState(object):
         type(self).__name__, self.record.station_id, self.record.dut_id
     )
   __repr__ = __str__
-

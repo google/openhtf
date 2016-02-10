@@ -239,8 +239,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
     message_queue: The Queue of AdbMessages intended for this stream.
     closed: True if this transport has been closed, from either end.
   """
-  ClosedState = Enum(  # pylint: disable=invalid-name
-      'CLOSED', 'PENDING', 'OPEN')
+  ClosedState = Enum('ClosedState', ['CLOSED', 'PENDING', 'OPEN'])
 
   def __init__(self, adb_connection, local_id, message_queue):
     self.adb_connection = adb_connection

@@ -6,6 +6,8 @@ addons:
     packages:
       - swig
       - libusb-1.0-0-dev
+      - libprotobuf-dev
+      - protobuf-compiler
 cache:
   pip: true
   apt: true
@@ -17,5 +19,7 @@ before_cache:
 env:
   - TOXENV=py27
 install:
-  - pip install tox
+  - pip install tox coveralls
 script: tox
+after_success:
+  - coveralls

@@ -1,11 +1,13 @@
-{% if 'prompt' in state %}
-  {{ state.prompt.message }}
-  {% if state.prompt.text_input %}
+{% if state is not None and state['framework']['prompt'] is not None %}
+{% if 'id' in state['framework']['prompt'] %}
+  {{ state['framework']['prompt']['message'] }}
+  {% if state['framework']['prompt']['text_input'] %}
     <input type="text"
            id="prompt_field"
-           onkeydown="javascript:enter_check('{{state.prompt.id}}');">
+           onkeydown="javascript:enter_check('{{ state['framework']['prompt']['id'] }}');">
     <span class="ok">
-      <a href="javascript:submit('{{state.prompt.id}}');">OK</a>
+      <a href="javascript:submit('{{ state['framework']['prompt']['id'] }}');">OK</a>
     </span>
-  {% endif %}
-{% endif %}
+  {% end %}
+{% end %}
+{% end %}

@@ -17,6 +17,7 @@
 
 import inspect
 import itertools
+import json
 import logging
 import os
 import signal
@@ -36,7 +37,6 @@ from openhtf import util
 from openhtf.exe import test_state
 from openhtf.exe import triggers
 from openhtf.io import http_api
-from openhtf.io import rundata
 from openhtf.util import measurements, logs
 
 
@@ -67,7 +67,7 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 
-class OutputToJSON(JSONEncoder):
+class OutputToJSON(json.JSONEncoder):
   """Return an output callback that writes JSON Test Records.
 
   An example filename_pattern might be:
@@ -314,11 +314,6 @@ class Test(object):
     conf.Load()
 
     config = conf.Config()
-    rundata.RunData(config.station_id,
-                    self.filename,
-                    socket.gethostname(),
-                    FLAGS.http_port,
-                    os.getpid()).SaveToFile(FLAGS.rundir)
 
     _LOG.info('Executing test: %s', self.filename)
     executor = exe.TestExecutor(config, self, test_start, test_stop)
@@ -326,7 +321,7 @@ class Test(object):
 
     def sigint_handler(*dummy):
       """Handle SIGINT by stopping running executor and handler."""
-      print "Received SIGINT. Stopping everything."
+      _LOG.error('Received SIGINT. Stopping everything.')
       executor.Stop()
       server.Stop()
     signal.signal(signal.SIGINT, sigint_handler)
