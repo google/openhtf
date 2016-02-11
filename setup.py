@@ -49,8 +49,15 @@ class BuildProtoCommand(Command):
                   ('outdir=', 'o', 'Where to output .py files.')]
 
   def initialize_options(self):
-    self.protoc = '/usr/bin/protoc'
-    self.protodir = '/usr/include'
+    try:
+      prefix = subprocess.check_output(
+          'pkg-config --variable prefix protobuf'.split()).strip()
+    except subprocess.CalledProcessError:
+      # Default to /usr?
+      prefix = '/usr'
+
+    self.protoc = os.path.join(prefix, 'bin', 'protoc')
+    self.protodir = os.path.join(prefix, 'include')
     self.indir = './openhtf/io/proto'
     self.outdir = './openhtf/io/proto'
 
@@ -105,7 +112,7 @@ class PyTestCommand(test):
       ('pytest-cov=', None, 'Enable coverage. Choose output type: '
        'term, html, xml, annotate, or multiple with comma separation'),
   ]
-  
+
   def initialize_options(self):
     test.initialize_options(self)
     self.pytest_args = 'test'
