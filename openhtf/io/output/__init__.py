@@ -68,9 +68,25 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
       self._credentials = credentials
   # pylint: enable=invalid-name,missing-docstring
 
-  def __init__(self, user, keydata):
+  def __init__(self, user, keydata, token_uri=TOKEN_URI):
     self.user = user
     self.keydata = keydata
+    self.token_uri = token_uri
+
+  @classmethod
+  def from_json(cls, json_data):
+    """Create an uploader given (parsed) JSON data.
+
+    Note that this is a JSON-formatted key file downloaded from Google when
+    the service account key is created, *NOT* a json-encoded
+    oauth2client.client.SignedJwtAssertionCredentials object.
+
+    Args:
+      json_data: Dict containing the loaded JSON key data.
+    """
+    return cls(user=json_data['client_email'],
+               keydata=json_data['private_key'],
+               token_uri=json_data['token_uri'])
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
     credentials = oauth2client.client.SignedJwtAssertionCredentials(
@@ -78,7 +94,7 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
         private_key=self.keydata,
         scope=self.SCOPE_CODE_URI,
         user_agent='OpenHTF Guzzle Upload Client',
-        token_uri=self.TOKEN_URI)
+        token_uri=self.token_uri)
     credentials.set_store(self._MemStorage())
 
     testrun = mfg_inspector.TestRunFromTestRecord(test_record)
