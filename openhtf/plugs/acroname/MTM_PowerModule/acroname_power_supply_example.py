@@ -45,7 +45,7 @@ def discover_and_connect_power_module(test, power_module):
   # print('Trying to connect...')
   power_module.DiscoverAndConnectModule()
   #test.logger.info('Success in connect!')
-  print('Success in connect!')
+  # print('Success in connect!')
 
 
 
@@ -135,7 +135,8 @@ if __name__ == '__main__':
                        configure_and_turn_on_power_module,
                        get_power_module_measurements,
                        power_module_change_voltage_current_limit,
-                       get_power_module_measurements2
+                       get_power_module_measurements2,
+                       turn_off_and_disconnect_power_module
                        )
 
   #cleanUp = openhtf.Test(turn_off_and_disconnect_power_module)

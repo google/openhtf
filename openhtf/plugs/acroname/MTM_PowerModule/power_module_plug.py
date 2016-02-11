@@ -110,15 +110,6 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
     self.power_module = MTMPM1()
     
-    """
-    if self.connection_type == 'MTM_EtherStem':
-      self.stem_list = discover.find_all(Spec.TCPIP)
-    elif self.connection_type == 'MTM_USBStem': 
-      self.stem_list = discover.find_all(Spec.USB)
-    elif self.connection_type == 'USB':
-      self.serial_number = config.MTM_PowerModule_Connection['power_module_serial_number']
-      self.stem_list = discover.find_all(Spec.USB)
-    """
   def DiscoverAndConnectModule(self):
     """
     Discover a power module if it is not connected yet.
@@ -129,7 +120,12 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     print self.power_module.is_connected()
 
     if self.connection_type == 'USB':
+      spec = discover.find_all(Spec.USB)
+      #spec = discover.find_module(Spec.USB,self.power_module_serial_number)
+      print "spec: "+str(spec)
+      print "USB serial number: 0x" + str(hex(spec[0].serial_number))
       res = self.power_module.connect(self.power_module_serial_number)
+      print "power module connection res: %d"%res
       if self.is_first_time_setup:
         res = self.power_module.system.setRouter(self.MTMPowerModuleAddress)
         #CheckReturnCode(res, "setRouterAddress")
@@ -140,32 +136,27 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         res = self.power_module.system.reset()
         #CheckReturnCode(res, "PowerModulereset")
     
-      
-      print "res = "+str(res)
       print("is power module connected? %d"%self.power_module.is_connected())
       CheckReturnCode(res, "power_module.connect")
       _LOG.info("Connected to Power Module with serial number: ",hex(self.power_module_serial_number).upper())
-      print("Connected to Power Module with serial number: 0x%X" % self.power_module_serial_number)
-    
+      
     else:
       print "Connecting to link stem..."
       
       res = self.link_stem.connect(self.link_module_serial_number)
-      print "res = "+str(res)
       CheckReturnCode(res, "link_stem.connect")
       _LOG.info("Connected to Link Module with serial number: ",hex(self.link_module_serial_number).upper())
-      print("Connected to Link Module with serial number: 0x%X" % self.link_module_serial_number)
-      
-      if self.is_first_time_setup:
-        # connect to the power module through the link stem's lnik
-        res = self.power_module.connect_through_link_module(self.link_stem)
+      print "Is link stem connected now?"
+      print self.link_stem.is_connected()
 
-        # These configruation need to be done once only unless there is hardware change in the network
+      res = self.power_module.connect_through_link_module(self.link_stem)
+
+      if self.is_first_time_setup:
+        # This is one-time configuration to set up the network
         res = self.link_stem.i2c[0].setPullup(1)
         #CheckReturnCode(res, "LinkStemsetPullUp")
 
-        #res = self.link_stem.system.save()
-        #CheckReturnCode(res, "LinkStemSave")
+      
         
         # set link stem object to talk to the power module 
         # res = self.link_stem.setModuleAddress(self.MTMPowerModuleAddress)
@@ -199,8 +190,10 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         #CheckReturnCode(res, "PowerModulereset")
     
         res = self.link_stem.system.reset()
-        CheckReturnCode(res, "Linkreset")
+        #CheckReturnCode(res, "Linkreset")
         
+      print "Is power module connected now?"
+      print self.power_module.is_connected() 
       # res = self.power_module.connect_through_link_module(self.EtherStem)
       # CheckReturnCode(res, "PowerModuleConnectThroughLink")
       # res = self.link_stem.connect(self.link_module_serial_number)
@@ -279,11 +272,10 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
     #res = self.power_module.rail[0].setVoltage(self.voltage)
     self.ChangeVoltage(self.voltage)
-    res_list.append(res)
-
-    res = self.power_module.rail[0].setCurrentLimit(self.current_limit)
-    res_list.append(res)
-
+    #res_list.append(res)
+    self.ChangeCurrentLimit(self.current_limit)
+    
+    """
     if all(result == 0 for result in res_list):
       print "Succeed in configuring and turning on power supply."
       _LOG.info("Succeed in configuring and turning on power supply.")
@@ -292,7 +284,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
       _LOG.info("Error configuring and turning on power supply.")
       print "configuration result list: "+str(res_list)
       raise ConfigurePowerSupplyError
-
+    """
   def TurnOnPowerSupply(self):
     """"""
     res = self.power_module.rail[0].setEnableExternal(1)
@@ -337,7 +329,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     # sleep(0.5)
     for i in range(3):
       res = self.power_module.rail[0].setVoltage(voltage_uV)
-      sleep(0.1)
+      #sleep(0.1)
       vmeas_uV = self.GetVoltage()
       # print "change vmeas=: %d"%vmeas_uV
       if res==0 and (
