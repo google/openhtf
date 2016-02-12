@@ -13,6 +13,7 @@
 # limitations under the License.
 """Setup script for OpenHTF."""
 
+import errno
 import glob
 import os
 import subprocess
@@ -42,7 +43,7 @@ class CleanCommand(clean):
 
 class BuildProtoCommand(Command):
   """Custom setup command to build protocol buffers."""
-  description = "Builds the proto files into python files."""
+  description = 'Builds the proto files into python files.'
   user_options = [('protoc=', None, 'Path to the protoc compiler.'),
                   ('protodir=', None, 'Path to protobuf install.'),
                   ('indir=', 'i', 'Directory containing input .proto files'),
@@ -61,15 +62,28 @@ class BuildProtoCommand(Command):
     # Build regular proto files.
     protos = glob.glob(os.path.join(self.indir, '*.proto'))
     if protos:
-      print "Attempting to build proto files:\n%s" % '\n'.join(protos)
-      subprocess.check_call([
+      print 'Attempting to build proto files:\n%s' % '\n'.join(protos)
+      cmd = [
           self.protoc,
           '--proto_path', self.indir,
           '--proto_path', self.protodir,
           '--python_out', self.outdir,
-          ] + protos)
+      ] + protos
+      try:
+        subprocess.check_call(cmd)
+      except OSError as e:
+        if e.errno == errno.ENOENT:
+          print 'Could not find the protobuf compiler at %s' % self.protoc
+          print ('On many Linux systems, this is fixed by installing the '
+                 '"protobuf-compiler" and "libprotobuf-dev" packages.')
+        raise
+      except subprocess.CalledProcessError:
+        print 'Could not build proto files.'
+        print ('This could be due to missing helper files. On many Linux '
+               'systems, this is fixed by installing the '
+               '"libprotobuf-dev" package.')
     else:
-      print "Found no proto files to build."
+      print 'Found no proto files to build.'
 
 
 # Make building protos part of building overall.
@@ -105,7 +119,7 @@ class PyTestCommand(test):
       ('pytest-cov=', None, 'Enable coverage. Choose output type: '
        'term, html, xml, annotate, or multiple with comma separation'),
   ]
-  
+
   def initialize_options(self):
     test.initialize_options(self)
     self.pytest_args = 'test'
