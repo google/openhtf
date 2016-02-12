@@ -155,11 +155,12 @@ def _ExtractParameters(record, testrun, used_parameter_names):
 
     _ExtractAttachments(phase, testrun, used_parameter_names)
     for name, measurement in sorted(phase.measurements.items()):
-      while name in used_parameter_names:
-        name += '_'
-      used_parameter_names.add(name)
+      tr_name = name
+      while tr_name in used_parameter_names:
+        tr_name += '_'
+      used_parameter_names.add(tr_name)
       testrun_param = testrun.test_parameters.add()
-      testrun_param.name = name
+      testrun_param.name = tr_name
       testrun_param.status = (
           testrun_pb2.PASS if measurement.outcome else testrun_pb2.FAIL)
       if measurement.docstring:
@@ -167,6 +168,9 @@ def _ExtractParameters(record, testrun, used_parameter_names):
       if measurement.units:
         testrun_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
 
+      if name not in phase.measured_values:
+        testrun_param.status = testrun_pb2.ERROR
+        continue
       value = phase.measured_values[name]
       if measurement.dimensions is None:
         # Just a plain ol' value.
