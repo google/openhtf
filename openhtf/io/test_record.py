@@ -27,6 +27,13 @@ class InvalidMeasurementDimensions(Exception):
   """Raised when a measurement is taken with the wrong number of dimensions."""
 
 
+Attachment = collections.namedtuple('Attachment', 'data mimetype')
+LogRecord = collections.namedtuple(
+    'LogRecord', 'level logger_name source lineno timestamp_millis message')
+OutcomeDetails = collections.namedtuple(
+    'OutcomeDetails', 'code_type code description')
+
+
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
@@ -44,8 +51,7 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
       code: A code name or number.
       details: A string providing details about the outcome code.
     """
-    self.outcome_details.append('%s Code %s: %s' % (code_type, code,
-                                                    details if details else ''))
+    self.outcome_details.append(OutcomeDetails(code_type, code, details or ''))
 
 
 class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
@@ -65,7 +71,3 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
 
   See measurements.Record.GetValues() for more information.
   """
-
-Attachment = collections.namedtuple('Attachment', 'data mimetype')
-LogRecord = collections.namedtuple('LogRecord', 'level logger_name source '
-                                   'lineno timestamp_millis message')

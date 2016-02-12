@@ -11,6 +11,7 @@ from openhtf.io.proto import testrun_pb2
 from openhtf.io.proto import units_pb2
 
 from openhtf import util
+from openhtf.exe import test_state
 from openhtf.util import validators
 
 # pylint: disable=no-member
@@ -69,10 +70,12 @@ def _PopulateHeader(record, testrun):
     testrun.run_name = record.metadata['run_name']
   for details in record.outcome_details:
     testrun_code = testrun.failure_codes.add()
-    if ':' in details:
-      testrun_code.code, testrun_code.details = details.split(':', 1)
+    if details.code_type == test_state.TestState.State.ERROR:
+      testrun_code.code = details.code
+      testrun_code.details = details.description
     else:
-      testrun_code.details = details
+      testrun_code.code = details.code_type
+      testrun_code.details = '%s: %s' % (details.code, details.description)
 
 
 def _AttachJson(record, testrun):
