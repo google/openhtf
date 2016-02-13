@@ -121,7 +121,7 @@ class TestExecutor(threads.KillableThread):
     with contextlib.ExitStack() as exit_stack, \
         LogSleepSuppress() as suppressor:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self.test.filename)
+      _LOG.info('Starting test %s', self.test.code_info.name)
 
       # Save exit_stack on self so we can access it when Stop() is called.
       self._current_exit_stack = exit_stack
@@ -147,7 +147,7 @@ class TestExecutor(threads.KillableThread):
     suppressor.failure_reason = 'Unable to initialize plugs.'
     plug_manager = (
         plugs.PlugManager.InitializeFromTypes(
-            self.test.plug_type_map))
+            self.test.GetPlugTypeMap()))
     self._current_exit_stack.callback(plug_manager.TearDownPlugs)
 
     suppressor.failure_reason = 'Test is invalid.'

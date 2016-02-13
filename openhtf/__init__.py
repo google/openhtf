@@ -33,7 +33,8 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.exe import triggers
 from openhtf.io import http_api
-from openhtf.util import measurements, logs
+from openhtf.util import logs
+from openhtf.util import measurements
 
 
 FLAGS = gflags.FLAGS
@@ -43,6 +44,105 @@ _LOG = logging.getLogger(__name__)
 
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
+
+
+def Test(*phases, **metadata):
+  return TestInfo(phases, metadata=metadata)
+
+
+class TestInfo(mutablerecords.Record(
+    'Test', ['phases'], {
+        'loop': False,
+        'metadata': dict,
+        # Have to wrap with lambda: or else the trigger gets called in __init__.
+        'test_start': lambda: triggers.AutoStart,
+        'test_stop': lambda: triggers.AutoStop,
+        'output_callbacks': list,
+        # pylint: disable=used-before-assignment
+        'code_info': lambda: CodeInfo.ForModuleFromStack(levels_up=5),
+    })):
+  """An object that represents an OpenHTF test.
+
+  This object encapsulates the static test information that is set once and used
+  by the framework along the way.
+
+  Example:
+
+    def PhaseOne(test):
+      # Integrate more widgets
+
+    def PhaseTwo(test):
+      # Analyze widget integration status
+
+    Test(PhaseOne, PhaseTwo).Execute()
+
+    # Or more directly:
+    TestInfo([PhaseOne, PhaseTwo]).Execute()
+
+  Attributes:
+    phases: The phases to execute for this test.
+    metadata: Any metadata that should be associated with test records.
+    code_info: Information about the module that created the test.
+    test_start: Trigger for starting the test, defaults to AutoStart with a
+        dummy serial number.
+    test_stop: Trigger for when the test is over, defaults to AutoStop to
+        immediately stop after the phase.
+    output_callbacks: List of callbacks to be called with the results
+        output from this test.
+  """
+
+  def __init__(self, *args, **kwargs):
+    super(TestInfo, self).__init__(*args, **kwargs)
+    self.phases = [TestPhaseInfo.WrapOrReturn(phase) for phase in self.phases]
+
+  def AddOutputCallback(self, callback):
+    """Add the given function as an output module to this test."""
+    self.output_callbacks.append(callback)
+
+  def OutputTestRecord(self, test_record):
+    """Feed the record of this test to all output modules."""
+    test_record.metadata.update(self.metadata)
+    for output_cb in self.output_callbacks:
+      output_cb(test_record)
+
+  def GetPlugTypeMap(self):
+    """Returns dict mapping name to plug type for all phases."""
+    plug_type_map = {}
+    for plug, plug_type in itertools.chain.from_iterable(
+        ((plug.name, plug.cls) for plug in phase.plugs)
+        for phase in self.phases):
+      if (plug in plug_type_map and
+          plug_type is not plug_type_map[plug]):
+        raise plugs.DuplicatePlugError(
+            'Duplicate plug with different type: %s' % plug)
+      plug_type_map[plug] = plug_type
+    return plug_type_map
+
+  def Execute(self):
+    """Starts the framework and executes the given test."""
+    SetupFramework()
+
+    _LOG.info('Executing test: %s', self.code_info.name)
+    executor = exe.TestExecutor(
+        conf.Config(), self, self.test_start, self.test_stop)
+    server = http_api.Server(executor)
+    StopOnSigInt([server.Stop, executor.Stop])
+    server.Start()
+    executor.Start()
+    executor.Wait()
+    server.Stop()
+
+
+def SetupFramework():
+  """Sets up various bits of the framework. Only needs to be called once."""
+  try:
+    sys.argv = FLAGS(sys.argv)  # parse flags
+  except gflags.FlagsError, e:  # pylint: disable=invalid-name
+    print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
+    sys.exit(1)
+
+  logs.setup_logger()
+  conf.Load()
 
 
 class TestPhaseOptions(mutablerecords.Record(
@@ -69,17 +169,19 @@ class TestPhaseOptions(mutablerecords.Record(
     return phase
 
 
-PhasePlug = mutablerecords.Record('PhasePlug', ['name', 'cls', 'update_kwargs'])
+class PhasePlug(mutablerecords.Record(
+    'PhasePlug', ['name', 'cls'], {'update_kwargs': True})):
+  """Information about the use of a plug in a phase."""
 
 
 class TestPhaseInfo(mutablerecords.Record(
-    'TestPhaseInfo', ['func', 'source'],
+    'TestPhaseInfo', ['func', 'code_info'],
     {'options': TestPhaseOptions, 'plugs': list, 'measurements': list})):
   """TestPhase function and related information.
 
   Attributes:
     func: Function to be called (with phase_data as first argument).
-    source: Source code of func.
+    code_info: Info about the source code of func.
     options: TestPhaseOptions instance.
     plugs: List of PhasePlug instances.
     measurements: List of Measurement objects.
@@ -99,7 +201,7 @@ class TestPhaseInfo(mutablerecords.Record(
       A new TestPhaseInfo object.
     """
     if not isinstance(func, cls):
-      return cls(func, inspect.getsource(func))
+      func = cls(func, CodeInfo.ForFunction(func))
     # We want to copy so that a phase can be reused with different options, etc.
     return mutablerecords.CopyRecord(func)
 
@@ -114,103 +216,32 @@ class TestPhaseInfo(mutablerecords.Record(
     return self.func(phase_data, **plug_kwargs)
 
 
-class Test(object):
-  """An object that represents an OpenHTF test.
+class CodeInfo(mutablerecords.Record(
+    'CodeInfo', ['name', 'docstring', 'sourcecode'])):
+  """Information regarding the running tester code."""
 
-  This object encapsulates the static test state including an ordered tuple of
-  phases to execute.
+  @classmethod
+  def ForModuleFromStack(cls, levels_up=1):
+    # levels_up is how many frames up to go:
+    #  0: This function (useless).
+    #  1: The function calling this (likely).
+    #  2+: The function calling 'you' (likely in the framework).
+    frame, filename = inspect.stack(context=0)[levels_up][:2]
+    module = inspect.getmodule(frame)
+    return cls(os.path.basename(filename), inspect.getdoc(module),
+               inspect.getsource(frame))
 
-  Args:
-    *phases: The ordered list of phases to execute for this test.
-    **metadata: Any metadata that should be associated with test records.
-  """
+  @classmethod
+  def ForFunction(cls, func):
+    return cls(func.__name__, inspect.getdoc(func), inspect.getsource(func))
 
-  def __init__(self, *phases, **metadata):
-    """Creates a new Test to be executed.
 
-    Args:
-      *phases: The ordered list of phases to execute for this test.
-    """
-    self.metadata = metadata
-    self.loop = False
-    self.phases = [TestPhaseInfo.WrapOrCopy(phase) for phase in phases]
-    self.output_callbacks = []
+def StopOnSigInt(callbacks):
+  """Handles SigInt by calling the given callbacks."""
 
-    # Pull some metadata from the frame in which this Test was created.
-    frame_record = inspect.stack()[1]
-    self.filename = os.path.basename(frame_record[1])
-    self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
-    self.code = inspect.getsource(frame_record[0])
-
-  @property
-  def plug_type_map(self):
-    """Returns dict mapping name to plug type for all phases."""
-    plug_type_map = {}
-    for plug, plug_type in itertools.chain.from_iterable(
-        ((plug.name, plug.cls) for plug in phase.plugs)
-        for phase in self.phases):
-      if (plug in plug_type_map and
-          plug_type is not plug_type_map[plug]):
-        raise plugs.DuplicatePlugError(
-            'Duplicate plug with different type: %s' % plug)
-      plug_type_map[plug] = plug_type
-    return plug_type_map
-
-  def AddOutputCallback(self, callback):
-    """Add the given function as an output module to this test."""
-    self.output_callbacks.append(callback)
-
-  def OutputTestRecord(self, test_record):
-    """Feed the record of this test to all output modules."""
-    test_record.metadata.update(self.metadata)
-    for output_cb in self.output_callbacks:
-      output_cb(test_record)
-
-  def Execute(self, loop=None, test_start=triggers.AutoStart,
-              test_stop=triggers.AutoStop):
-    """Start the OpenHTF framework running with the given test.
-
-    Executes this test, iterating over self.phases and executing them.
-
-    Example:
-
-      def PhaseOne(test):
-        # Integrate more widgets
-
-      def PhaseTwo(test):
-        # Analyze widget integration status
-
-      Test(PhaseOne, PhaseTwo).Execute()
-
-    Returns:
-      None when the test framework has exited.
-    """
-    try:
-      FLAGS(sys.argv)  # parse flags
-    except gflags.FlagsError, e:  # pylint: disable=invalid-name
-      print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
-      sys.exit(1)
-
-    logs.setup_logger()
-
-    if loop is not None:
-      self.loop = loop
-    conf.Load()
-
-    _LOG.info('Executing test: %s', self.filename)
-    executor = exe.TestExecutor(conf.Config(), self, test_start, test_stop)
-    server = http_api.Server(executor)
-
-    def sigint_handler(*dummy):
-      """Handle SIGINT by stopping running executor and handler."""
-      _LOG.error('Received SIGINT. Stopping everything.')
-      executor.Stop()
-      server.Stop()
-    signal.signal(signal.SIGINT, sigint_handler)
-
-    server.Start()
-    executor.Start()
-
-    executor.Wait()
-    server.Stop()
-    return
+  def _Handler(*_):
+    """Handle SIGINT by stopping running executor and handler."""
+    _LOG.error('Received SIGINT. Stopping everything.')
+    for cb in callbacks:
+      cb()
+  signal.signal(signal.SIGINT, _Handler)

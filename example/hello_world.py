@@ -106,4 +106,5 @@ if __name__ == '__main__':
   #    test.AddOutputCallback(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
 
-  test.Execute(test_start=triggers.PromptForTestStart())
+  test.test_start = triggers.PromptForTestStart()
+  test.Execute()

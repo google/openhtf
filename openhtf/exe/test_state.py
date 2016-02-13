@@ -17,14 +17,15 @@
 
 Test timing, failures, and the UI are handled by this module.
 """
+import json
 import logging
-import sys
+
 from enum import Enum
 
 from openhtf import conf
+from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
-from openhtf import util
 from openhtf.util import logs
 
 
@@ -38,12 +39,13 @@ class BlankDutIdError(Exception):
 class InvalidPhaseResultError(Exception):
   """A TestPhase returned an invalid result."""
 
+
 class TestRecordAlreadyFinishedError(Exception):
   """Raised when trying to finalize a test record that is already finished."""
 
 
 class TestState(object):
-  """ This class handles tracking the state of the test.
+  """This class handles tracking the state of the test.
 
   Args:
     config: The config being used for this test.
@@ -68,9 +70,9 @@ class TestState(object):
     self.record = test_record.TestRecord(
         dut_id=dut_id, station_id=config.station_id,
         metadata={
-            'code': test.code,
-            'filename': test.filename,
-            'docstring': test.docstring
+            'code': test.code_info.sourcecode,
+            'filename': test.code_info.name,
+            'docstring': test.code_info.docstring
             })
 
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
@@ -80,7 +82,6 @@ class TestState(object):
                                            self.record)
     self.running_phase = None
     self.pending_phases = list(test.phases)
-
 
   def __del__(self):
     self.logger.removeHandler(self._record_handler)

@@ -164,8 +164,9 @@ def requires(update_kwargs=True, **plugs):
     if duplicates:
       raise DuplicatePlugError(
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
-    wrapper.plugs.extend([openhtf.PhasePlug(name, plug, update_kwargs)
-                          for name, plug in plugs.iteritems()])
+    wrapper.plugs.extend([
+        openhtf.PhasePlug(name, plug, update_kwargs=update_kwargs)
+        for name, plug in plugs.iteritems()])
     return wrapper
   return result
 
