@@ -62,11 +62,10 @@ class TestState(object):
   _FINISHED_STATES = {State.PASS, State.FAIL} | _ERROR_STATES
 
   def __init__(self, config, test, plugs, dut_id):
-    station_id = conf.Config().station_id
     self._state = self.State.CREATED
     self._config = config
     self.record = test_record.TestRecord(
-        dut_id=dut_id, station_id=station_id,
+        dut_id=dut_id, station_id=config.station_id,
         metadata={
             'code': test.code,
             'filename': test.filename,

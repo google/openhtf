@@ -41,8 +41,8 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
   EXPECTED_TESTRUN = testrunfile.read()
 
 
-def _ReplaceStartEndTimes(output_callback):
-  """Helper to wrap output callbacks and replace start/end times."""
+def _CleanVariability(output_callback):
+  """Helper to replace start/end times and other variability."""
   def _Wrapper(record):
     if 'code' in record.metadata:
       del record.metadata['code']
@@ -53,7 +53,8 @@ def _ReplaceStartEndTimes(output_callback):
     record.end_time_millis = 67892
     timestamp = 12346
     for idx, log in list(enumerate(record.log_records)):
-      record.log_records[idx] = log._replace(timestamp_millis=timestamp)
+      record.log_records[idx] = log._replace(
+          timestamp_millis=timestamp, lineno=123)
       timestamp += 1
     return output_callback(record)
   return _Wrapper
@@ -79,9 +80,9 @@ class TestOpenhtf(unittest.TestCase):
     self.test = openhtf.Test(
         dimensions, test_name='TestTest', test_description='Unittest test',
         test_version='1.0.0')
-    self.test.AddOutputCallback(_ReplaceStartEndTimes(OutputToJSON(
+    self.test.AddOutputCallback(_CleanVariability(OutputToJSON(
         os.path.join(self.tempdir, 'record.json'), sort_keys=True)))
-    self.test.AddOutputCallback(_ReplaceStartEndTimes(
+    self.test.AddOutputCallback(_CleanVariability(
         output.OutputToTestRunProto(
             os.path.join(self.tempdir, 'record.testrun'))))
     self.test.Execute()

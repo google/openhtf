@@ -60,20 +60,20 @@ def _open_usb_handle(**kwargs):
   """
 
   serial = None
-  remote_usb = conf.Config().remote_usb
+  config = conf.Config()
+  remote_usb = config.remote_usb
   if remote_usb:
-    remote_usb = remote_usb.strip()
-    if remote_usb == 'ethersync':
-      device = conf.Config()[remote_usb]
+    if remote_usb.strip() == 'ethersync':
+      device = config.ethersync
       try:
         mac_addr = device['mac_addr']
         port = device['plug_port']
       except (KeyError,TypeError):
-        raise ValueError('Ethersync needs mac_addr and plug_port to be set') 
+        raise ValueError('Ethersync needs mac_addr and plug_port to be set')
       else:
-        ethersync = cambrionix.EtherSync(mac_addr) 
+        ethersync = cambrionix.EtherSync(mac_addr)
         serial = ethersync.GetUSBSerial(port)
- 
+
   return local_usb.LibUsbHandle.Open(serial_number=serial, **kwargs)
 
 
@@ -96,9 +96,9 @@ class AdbPlug(plugs.BasePlug):
 
   def __new__(cls):
     kwargs = {}
-    if conf.Config().libusb_rsa_key:
-      kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(
-          conf.Config().libusb_rsa_key)]
+    config = conf.Config()
+    if config.libusb_rsa_key:
+      kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(config.libusb_rsa_key)]
 
     device = adb_device.AdbDevice.Connect(
         _open_usb_handle(
