@@ -15,6 +15,7 @@
 
 import glob
 import os
+import platform
 import subprocess
 import sys
 
@@ -53,13 +54,18 @@ class BuildProtoCommand(Command):
       prefix = subprocess.check_output(
           'pkg-config --variable prefix protobuf'.split()).strip()
     except subprocess.CalledProcessError:
-      # Default to /usr?
-      prefix = '/usr'
+      if platform.system() in {'Linux', 'Mac'}:
+        # Default to /usr?
+        prefix = '/usr'
+      else:
+        raise NotImplementedError(
+            'Windows support in-progress. Help us by submitting an issue! '
+            'https://github.com/google/openhtf/issues/new')
 
     self.protoc = os.path.join(prefix, 'bin', 'protoc')
     self.protodir = os.path.join(prefix, 'include')
-    self.indir = './openhtf/io/proto'
-    self.outdir = './openhtf/io/proto'
+    self.indir = os.path.join(os.getcwd(), 'openhtf', 'io', 'proto')
+    self.outdir = os.path.join(os.getcwd(), 'openhtf', 'io', 'proto')
 
   def finalize_options(self):
     pass
