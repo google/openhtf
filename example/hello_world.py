@@ -18,6 +18,8 @@ Run with (your virtualenv must be activated first):
 python ./hello_world.py --config ./hello_world.yaml
 """
 
+import json
+import os.path
 import tempfile
 import time
 
@@ -95,9 +97,13 @@ if __name__ == '__main__':
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
   test.AddOutputCallback(output.OutputToTestRunProto(
       './%(dut_id)s.%(start_time_millis)s.json'))
-  # Example of how to upload to mfg-inspector.  Replace user email and key,
-  # these are dummy values.
-  #test.AddOutputCallback(output.UploadToMfgInspector(
-  #  'foobarbaz_gaia_id@developer.gserviceaccount.com',
-  #  open('my-upload-key.p12', 'r').read()))
+  # Example of how to upload to mfg-inspector.  Replace filename with your
+  # JSON-formatted private key downloaded from Google Developers Console
+  # when you created the Service Account you intend to use, or name it
+  # 'my_private_key.json'.
+  if os.path.isfile('my_private_key.json'):
+    with open('my_private_key.json', 'r') as json_file:
+      test.AddOutputCallback(output.UploadToMfgInspector.from_json(json.load(
+          json_file)))
+
   test.Execute(test_start=triggers.PromptForTestStart())

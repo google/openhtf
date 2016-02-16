@@ -34,11 +34,11 @@ class CleanCommand(clean):
     targets = [
         './dist',
         './*.egg-info',
-        './openhtf/proto/*_pb2.py',
-        '**/*.pyc',
-        '**/*.tgz',
+        './openhtf/io/proto/*_pb2.py',
+        './openhtf/**/*.pyc',
     ]
-    os.system('rm -vrf %s' % ' '.join(targets))
+    os.system('shopt -s globstar; rm -vrf %s' % ' '.join(targets))
+
 
 class BuildProtoCommand(Command):
   """Custom setup command to build protocol buffers."""
@@ -76,26 +76,25 @@ class BuildProtoCommand(Command):
 build.sub_commands.insert(0, ('build_proto', None))
 
 
-requires = [  # pylint: disable=invalid-name
+install_requires = [  # pylint: disable=invalid-name
     'contextlib2==0.4.0',
     'enum34==1.1.2',
     'inotify==0.2.4',
     'libusb1==1.3.0',
     'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
-    'mock==1.3.0',
     'mutablerecords==0.2.6',
     'oauth2client==1.5.2',
     'protobuf==2.6.1',
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
-    'pytest==2.8.7',
     'python-gflags==2.0',
     'PyYAML==3.11',
     'singledispatch==3.4.0.3',
     'tornado==4.3',
     'Werkzeug==0.10.4',
 ]
+
 
 class PyTestCommand(test):
   # Derived from
@@ -117,6 +116,8 @@ class PyTestCommand(test):
     self.test_suite = True
 
   def run_tests(self):
+    self.run_command('build_proto')
+
     import pytest
     cov = ''
     if self.pytest_cov is not None:
@@ -141,5 +142,12 @@ setup(
         'clean': CleanCommand,
         'test': PyTestCommand,
     },
-    install_requires=requires,
+    install_requires=install_requires,
+    setup_requires=[
+        'wheel==0.29.0',
+    ],
+    tests_require=[
+        'mock==1.3.0',
+        'pytest==2.8.7',
+    ],
 )
