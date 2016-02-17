@@ -1,9 +1,11 @@
 station_id: acroname_power_supply_example
 MTM_PowerModule_Connection:
   link_type: USB
+  router_address: 4
+  power_module_address: 6
   link_serial_number: 0xCB6B1A04
   power_module_serial_number: 0x2B8BFAE4
-  first_time_setup: False
+  first_time_setup: Ture
 MTM_PowerModule:
   voltage_output: 4000000
   current_limit: 1000000

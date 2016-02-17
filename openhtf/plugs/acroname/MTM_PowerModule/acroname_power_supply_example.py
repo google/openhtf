@@ -57,13 +57,13 @@ def configure_and_turn_on_power_module(test, power_module):
   #Test phase that configures and turns on power module.
   test.logger.info('Checking and configuring power module...')
   print('Checking and configuring power module...')
-  #if power_module.NoShortCircuit():
-  power_module.ConfigurePowerSupply() 
+  if power_module.NoShortCircuit():
+    power_module.ConfigurePowerSupply() 
     # set voltage and current limit to defalut values defined in .yaml file
     # default_power_module_voltage_output: 5000000
     # default_power_module_current_limit: 1000000
     # sleep(0.5)
-  power_module.TurnOnPowerSupply()
+    power_module.TurnOnPowerSupply()
 
   #else:
     # short circuit error would be raised in the plug
@@ -124,7 +124,7 @@ def get_power_module_measurements2(test,power_module):
 def turn_off_and_disconnect_power_module(test,power_module):
   """Test phase that turns off and disconnects acroname power measurement."""
   power_module.PowerOff()
-  power_module.Disconnect()
+  #power_module.Disconnect()
 
 
 
@@ -140,10 +140,10 @@ if __name__ == '__main__':
                        )
 
   #cleanUp = openhtf.Test(turn_off_and_disconnect_power_module)
-  #test.AddOutputCallback(OutputToJSON(
-  #		'./%(dut_id)s.%(start_time_millis)s', indent=4))
-  #test.Execute(test_start=triggers.PromptForTestStart())
+  test.AddOutputCallback(OutputToJSON(
+  		'./%(dut_id)s.%(start_time_millis)s', indent=4))
+  test.Execute(test_start=triggers.PromptForTestStart())
   
-  test.Execute()
+  #test.Execute()
   
   #cleanUp.Execute()
