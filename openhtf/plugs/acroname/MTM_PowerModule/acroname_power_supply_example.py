@@ -36,44 +36,20 @@ from openhtf.names import *
 
 
 
-# @TestPhase(timeout_s= 3)
 @plug(power_module=power_module_plug.PowerSupplyControl)
-def discover_and_connect_power_module(test, power_module):
+def connect_and_turn_on_power_module(test, power_module):
   #Test phase that discovers and connects power module.
-  print('Connecting the BrainStem network...')
-  #test.logger.info('Discover and connect power module...')
-  # print('Trying to connect...')
+  print('Connecting power module...')
   power_module.DiscoverAndConnectModule()
-  #test.logger.info('Success in connect!')
-  # print('Success in connect!')
 
+  print('Configuring power module...')
+  power_module.ConfigurePowerSupply()
 
-
-
-
-@plug(power_module=power_module_plug.PowerSupplyControl)
-#@TestPhase(timeout_s=10)
-def configure_and_turn_on_power_module(test, power_module):
-  #Test phase that configures and turns on power module.
-  test.logger.info('Checking and configuring power module...')
-  print('Checking and configuring power module...')
   if power_module.NoShortCircuit():
-    power_module.ConfigurePowerSupply() 
-    # set voltage and current limit to defalut values defined in .yaml file
-    # default_power_module_voltage_output: 5000000
-    # default_power_module_current_limit: 1000000
-    # sleep(0.5)
+    print('Turn on power module...')
     power_module.TurnOnPowerSupply()
 
-  #else:
-    # short circuit error would be raised in the plug
-  #  test.logger.info('Short circuit found on power module!')
-  #  print('Short circuit found on power module!')
-  #  raise PowerModuleShortCircuitError
 
-
-
-# Timeout if this phase takes longer than 10 seconds.
 #@TestPhase(timeout_s=10)
 @measures([Measurement(
   'acroname_power_voltage').Number().InRange(4900000,5100000).Doc(
@@ -81,27 +57,6 @@ def configure_and_turn_on_power_module(test, power_module):
 @measures([Measurement(
   'acroname_power_current').Number().InRange(0,1000000).Doc(
   'Current of Acroname Power Module Output, Unit: uA')])
-@plug(power_module=power_module_plug.PowerSupplyControl)
-def get_power_module_measurements(test,power_module):
-  """Test phase that gets acroname power measurement."""
-  test.measurements.acroname_power_voltage = power_module.GetVoltage()
-  print("voltage = %d uV" %test.measurements.acroname_power_voltage)
-  test.measurements.acroname_power_current = power_module.GetCurrent()
-  print("current = %d uA" %test.measurements.acroname_power_current)
-
-
-# Timeout if this phase takes longer than 10 seconds.
-#@TestPhase(timeout_s=10)
-@plug(power_module=power_module_plug.PowerSupplyControl)
-def power_module_change_voltage_current_limit(test,power_module):
-  """Test phase that gets acroname power measurement."""
-  power_module.ChangeVoltage(3300000)
-  power_module.ChangeCurrentLimit(2000000)
-
-
-
-# Timeout if this phase takes longer than 10 seconds.
-#@TestPhase(timeout_s=10)
 @measures([Measurement(
   'acroname_power_voltage2').Number().InRange(3200000,3400000).Doc(
   'Voltage of Acroname Power Module Output, Unit: uV')])
@@ -109,41 +64,42 @@ def power_module_change_voltage_current_limit(test,power_module):
   'acroname_power_current2').Number().InRange(0,2000000).Doc(
   'Current of Acroname Power Module Output, Unit: uA')])
 @plug(power_module=power_module_plug.PowerSupplyControl)
-def get_power_module_measurements2(test,power_module):
+def measure_and_adjust_power(test,power_module):
   """Test phase that gets acroname power measurement."""
+  test.measurements.acroname_power_voltage = power_module.GetVoltage()
+  print("voltage = %d uV" %test.measurements.acroname_power_voltage)
+
+  test.measurements.acroname_power_current = power_module.GetCurrent()
+  print("current = %d uA" %test.measurements.acroname_power_current)
+
+  # change voltage and current limit: 3.3V 2A
+  power_module.Set_Voltage_and_CurrentLimit(3300000,2000000)
+  # power_module.ChangeVoltage(3300000)
+  # power_module.ChangeCurrentLimit(2000000)
+
+  # measure again
   test.measurements.acroname_power_voltage2 = power_module.GetVoltage()
   print("voltage2 = %d uV" %test.measurements.acroname_power_voltage2)
+
   test.measurements.acroname_power_current2 = power_module.GetCurrent()
   print("current2 = %d uA" %test.measurements.acroname_power_current2)
 
-
-
-# Timeout if this phase takes longer than 10 seconds.
+"""
 #@TestPhase(timeout_s=10)
 @plug(power_module=power_module_plug.PowerSupplyControl)
 def turn_off_and_disconnect_power_module(test,power_module):
-  """Test phase that turns off and disconnects acroname power measurement."""
+  # Test phase that turns off and disconnects acroname power measurement.
   power_module.PowerOff()
-  #power_module.Disconnect()
-
-
+  power_module.Disconnect()
+"""
 
 
 
 if __name__ == '__main__':
-  test = openhtf.Test(discover_and_connect_power_module,
-                       configure_and_turn_on_power_module,
-                       get_power_module_measurements,
-                       power_module_change_voltage_current_limit,
-                       get_power_module_measurements2,
-                       turn_off_and_disconnect_power_module
+  test = openhtf.Test(connect_and_turn_on_power_module,
+                       measure_and_adjust_power,
                        )
 
-  #cleanUp = openhtf.Test(turn_off_and_disconnect_power_module)
   test.AddOutputCallback(OutputToJSON(
   		'./%(dut_id)s.%(start_time_millis)s', indent=4))
   test.Execute(test_start=triggers.PromptForTestStart())
-  
-  #test.Execute()
-  
-  #cleanUp.Execute()

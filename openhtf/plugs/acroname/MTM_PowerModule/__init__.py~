@@ -50,7 +50,7 @@ a. Configure BrainStem network parameters in .yaml file:
 
 b. Import this plug on top of test codes:
 
-   from openhtf.plugs.acroname.MTM_PowerModule import power_module_plug
+   from openhtf.plugs.acroname import power_module_plug
 
 c.  Add the Python decorators on top of the test phases that will use the power module plug.
 

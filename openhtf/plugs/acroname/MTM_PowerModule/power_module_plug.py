@@ -67,9 +67,9 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     self.connection_type = config.MTM_PowerModule_Connection['link_type']
     self.link_module_serial_number = config.MTM_PowerModule_Connection['link_serial_number']
     self.power_module_serial_number = config.MTM_PowerModule_Connection['power_module_serial_number']
-    self.voltage = config.MTM_PowerModule['voltage_output']
-    self.current_limit = config.MTM_PowerModule['current_limit']
-    self.is_first_time_setup = config.MTM_PowerModule_Connection['first_time_setup']
+    self.voltage = config.MTM_PowerModule['default_voltage_output']
+    self.current_limit = config.MTM_PowerModule['default_current_limit']
+    # self.is_first_time_setup = config.MTM_PowerModule_Connection['first_time_setup']
     self.MTMPowerModuleAddress = config.MTM_PowerModule_Connection['power_module_address']
     self.routerAddress = config.MTM_PowerModule_Connection['router_address'] 
     if self.connection_type == 'MTM_EtherStem':
@@ -89,12 +89,13 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     # print self.power_module.is_connected()
 
     if self.connection_type == 'USB':
-      spec = discover.find_all(Spec.USB)
+      # spec = discover.find_all(Spec.USB)
       #spec = discover.find_module(Spec.USB,self.power_module_serial_number)
       # print "spec: "+str(spec)
       # print "USB serial number: 0x" + str(hex(spec[0].serial_number))
       res = self.power_module.connect(self.power_module_serial_number)
       # print "power module connection res: %d"%res
+      """
       if self.is_first_time_setup:
         res = self.power_module.system.setRouter(self.MTMPowerModuleAddress)
         #CheckReturnCode(res, "setRouterAddress")
@@ -104,22 +105,25 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
         res = self.power_module.system.reset()
         #CheckReturnCode(res, "PowerModulereset")
-    
+        sleep(0.1)
+      """
       # print("is power module connected? %d"%self.power_module.is_connected())
-      CheckReturnCode(res, "power_module.connect")
+      #CheckReturnCode(res, "power_module.connect")
       _LOG.info("Connected to Power Module with serial number: ",hex(self.power_module_serial_number).upper())
       
     else:
       # print "Connecting to link stem..."
       
       res = self.link_stem.connect(self.link_module_serial_number)
-      CheckReturnCode(res, "link_stem.connect")
+      #CheckReturnCode(res, "link_stem.connect")
       _LOG.info("Connected to Link Module with serial number: ",hex(self.link_module_serial_number).upper())
       # print "Is link stem connected now?"
       # print self.link_stem.is_connected()
 
       res = self.power_module.connect_through_link_module(self.link_stem)
-
+      # print "Is power module connected now?"
+      # print self.power_module.is_connected() 
+      """
       if self.is_first_time_setup:
         # This is one-time configuration to set up the network
         res = self.link_stem.i2c[0].setPullup(1)
@@ -134,7 +138,6 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         
         #res = self.link_stem.module()
         #routerAddress = res
-        #print "link stem's module address %d" %routerAddress
 
         # set the link stem's module address offsets to 0
         # we will assume the link stem hardware offsets are 0
@@ -148,7 +151,7 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         #CheckReturnCode(res, "setRouterAddress")
 
         res = self.link_stem.system.save()
-        CheckReturnCode(res, "LinkStemSave")
+        #CheckReturnCode(res, "LinkStemSave")
 
         res = self.power_module.system.save()
         #CheckReturnCode(res, "PowerModuleSave")
@@ -158,7 +161,8 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     
         res = self.link_stem.system.reset()
         #CheckReturnCode(res, "Linkreset")
-        
+        sleep(0.1)
+      """
       # print "Is power module connected now?"
       # print self.power_module.is_connected() 
       # res = self.power_module.connect_through_link_module(self.EtherStem)
@@ -197,20 +201,15 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
 
   def ConfigurePowerSupply(self):  # pylint: disable=no-self-use
     """Set Voltage, Current Limit, operational mode, kelvin sensing mode..."""
-    res_list=[]
-    if self.is_first_time_setup:
-      #This is one time setup:
-      res = self.power_module.rail[0].setKelvinSensingMode(1)
-      res_list.append(res)
+    res = self.power_module.rail[0].setKelvinSensingMode(1)
+    # CheckReturnCode(res,"setKelvinSensingMode")
 
-      res = self.power_module.rail[0].setOperationalMode(1)
-      #auto mode: 0
-      res_list.append(res)
+    res = self.power_module.rail[0].setOperationalMode(1)
+    #CheckReturnCode(res,"setOperationalMode")
 
-    #res = self.power_module.rail[0].setVoltage(self.voltage)
-    self.ChangeVoltage(self.voltage)
-    #res_list.append(res)
-    self.ChangeCurrentLimit(self.current_limit)
+    self.Set_Voltage_and_CurrentLimit(self.voltage,self.current_limit)
+    # self.ChangeVoltage(self.voltage)
+    # self.ChangeCurrentLimit(self.current_limit)
     
 
   def TurnOnPowerSupply(self):
@@ -219,26 +218,28 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     voltage_meas = self.GetVoltage()
     if res == 0 and ( 
       (self.voltage-0.5e6)<=voltage_meas<=(self.voltage+500000)):
-      # print "Succeed in turning on power supply."
+        # print "Succeed in turning on power supply."
       _LOG.info("Succeed in turning on power supply.")
     else:
       # print "Error enabling rail0: res = "+str(res)
       # print "GetVoltage: %d"%voltage_meas
       # print "Error turning on power supply."
       _LOG.info("Error turning on power supply.")
-      raise PowerModuleError
+      CheckReturnCode(res,"TurnOnPowerSupply")
 
   def GetVoltage(self):
     """Measure voltage and return voltage value."""
-    res = self.power_module.rail[0].getVoltage()
-    vmeas=0.0
-    if res.error == 0:
-      vmeas = res.value
-    else:
-      # print "GetVoltage(): Error getting power module voltage: %d"%(res.error)
-      if not res.value:
-        # print "GetVoltage(): %.3f" % (res.value)
-        CheckReturnCode(res,"ChangingVoltage")
+    for i in range(3):
+      res = self.power_module.rail[0].getVoltage()
+      vmeas=0.0
+      if res.error == 0:
+        vmeas = res.value
+        break
+      elif i ==2:
+        # print "GetVoltage(): Error getting power module voltage: %d"%(res.error)
+        #print "GetVoltage(): %.3f" % (res.value)
+        CheckReturnCode(res.error,"GetVoltage")
+        return 0.0
     # print ("vmeas = %d uV" %vmeas)
     # v = round((float(vmeas)/float(1000000)))
     return vmeas
@@ -252,8 +253,39 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     # i = float(imeas/1000000)
     return imeas
 
-  def ChangeVoltage(self, voltage_uV):
-    """Change output voltage value."""
+  def Set_Voltage_and_CurrentLimit(self, voltage_uV,current_limit_uA):
+    """Set output voltage value and current limit."""
+    # res1 = self.power_module.rail[0].setEnableExternal(0)
+    # sleep(0.5)
+    for i in range(3):
+      res = self.power_module.rail[0].setVoltage(voltage_uV)
+      # sleep(0.1)
+      # vmeas_uV = self.GetVoltage()
+      # print "change vmeas=: %d"%vmeas_uV
+      if res==0:
+      # if res==0 and (
+      #   (voltage_uV-500000)<=vmeas_uV<=(voltage_uV+500000)):
+        # res3 = self.power_module.rail[0].setEnableExternal(1)
+        # if res3 ==0:
+        # print "Succeed in changing voltage."
+        _LOG.info("Succeed in changing voltage.")
+        break
+        #else:
+        #  raise ChangeVoltageError
+      elif i==2:
+        # print "Error in changing voltage: res: %d" %res
+        # print "vmeas_uV=: %d"%vmeas_uV
+        _LOG.info("Error in changing voltage.")
+        CheckReturnCode(res,"SetVoltageOuput")
+
+    res = self.power_module.rail[0].setCurrentLimit(current_limit_uA)
+    # print ("vmeas = %d uV" %vmeas)
+    # v = round((float(vmeas)/float(1000000)))
+    CheckReturnCode(res,"SetCurrentLimit")
+
+  """
+  def SetVoltage(self, voltage_uV):
+    # Set output voltage value.
     # res1 = self.power_module.rail[0].setEnableExternal(0)
     # sleep(0.5)
     for i in range(3):
@@ -277,28 +309,15 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         raise PowerModuleError
 
 
-  def ChangeCurrentLimit(self,current_limit_uA):
-    """Change current limit value."""
+  def SetCurrentLimit(self,current_limit_uA):
+    # Set current limit value.
     # res1 = self.power_module.rail[0].setEnableExternal(0)
     # sleep(0.5)
-    res2 = self.power_module.rail[0].setCurrentLimit(current_limit_uA)
+    res = self.power_module.rail[0].setCurrentLimit(current_limit_uA)
     # print ("vmeas = %d uV" %vmeas)
     # v = round((float(vmeas)/float(1000000)))
-    if res2==0:
-      # print "Succeed in changing current limit."
-      _LOG.info("Succeed in changing current limit..")
-      """
-      res3 = self.power_module.rail[0].setEnableExternal(1)
-      if res3 ==0:
-        # print "Succeed in changing voltage."
-        _LOG.info("Succeed in changing voltage.")
-      else:
-        raise ChangeCurrentLimitError
-      """
-    else:
-      # print "Error in changing current limit.."
-      _LOG.info("Error in changing current limit..")
-      raise PowerModuleError
+    CheckReturnCode(res,"ChangeCurrentLimit")
+  """
 
   def PowerOff(self):
     """"""
@@ -312,14 +331,14 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
         # print "Error turning off power supply:"
         # print "res = %d" %res
         _LOG.info("Error turning of power supply.")
-        raise PowerModuleError
-  """
+        CheckReturnCode(res,"PowerOff")
+  
   def Disconnect(self):
     """"""
     self.power_module.disconnect()
     if self.connection_type != 'USB':
       self.link_stem.disconnect()
-  """
+  
   
   def TearDown(self):
     """This method is optional.
@@ -327,6 +346,4 @@ class PowerSupplyControl(plugs.BasePlug):   # pylint: disable=no-init
     If implemented, it will be called at the end
     of the test.
     """
-    self.power_module.disconnect()
-    if self.connection_type != 'USB':
-      self.link_stem.disconnect()
+    self.Disconnect()
