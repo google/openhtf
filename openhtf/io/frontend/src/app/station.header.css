@@ -1,0 +1,61 @@
+.station-header {
+  margin: 0px 24px 0px 24px;
+  overflow: hidden;
+}
+
+
+.left {
+  display: table;
+}
+
+
+.right {
+  display: table;
+  text-align: right;
+}
+
+
+.cardholder {
+  display: table-cell;
+}
+
+
+.navbar > div {
+  display: inline-block;
+  font-size: 8pt;
+  padding: 3px 10px 3px 10px;
+  text-align: center;
+}
+
+
+.navbar i {
+  font-size: 30px;
+}
+
+
+.station-id-area {
+  display: table-cell;
+  padding: 3px 0px 0px 8px;
+  vertical-align: top;
+}
+
+
+.station-id-area .station-id-label {
+  font-size: 18pt;
+}
+
+
+.station-id-area .socket-label {
+  font-size: 8pt;
+}
+
+
+.countdown {
+  display: table-cell;
+  background: #303030;
+  border-radius: 5px;
+  color: #e0e0e0;
+  padding: 0px 5px 0px 5px;
+  font-size: 21px;
+  font-weight: 600;
+}

@@ -1,0 +1,65 @@
+// Copyright 2016 Google Inc.All Rights Reserved.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+declare var $: any;  // Global provided by the jquery package.
+
+import {NumberPipe}   from 'angular2/common';
+import {Component,
+        Input,
+        OnChanges,
+        SimpleChange} from 'angular2/core';
+
+import {MillisUTCToLocalStr, StatusToColor} from './utils';
+
+import 'file?name=/templates/station.testheader.html!./station.testheader.html';
+import 'file?name=/styles/station.testheader.css!./station.testheader.css';
+
+
+/** The TestHeader view component. **/
+@Component({
+  selector: 'test-header',
+  templateUrl: 'templates/station.testheader.html',
+  styleUrls: ['styles/station.testheader.css'],
+  pipes: [MillisUTCToLocalStr, StatusToColor]
+})
+export class TestHeader implements OnChanges {
+  @Input() dutID: string;
+  @Input() startTime: number;
+  @Input() endTime: number;
+  @Input() duration: number;
+  @Input() status: string;
+  indicatorPipe: StatusToColor; // See ngOnChanges.
+
+  constructor() {
+    this.indicatorPipe = new StatusToColor();
+  }
+
+  /**
+   * Executed when this component's properties change.
+   * @param changes - Object describing the changes.
+   */
+  ngOnChanges(changes: { [propName: string]: SimpleChange }) {
+    // The materialize-css "tab" indicator div needs to be colorized to match
+    // the test header, and the way we colorize things is by applying classes
+    // to tags. The indicator div is not in TestHeader's template, so we find
+    // it and apply the right classes to it manually on changes.
+    if (changes['status']) {
+      $('.test-header-nav .indicator').removeClass(
+          this.indicatorPipe.transform(changes['status'].previousValue));
+      $('.test-header-nav .indicator').addClass(
+        this.indicatorPipe.transform(changes['status'].currentValue));
+    }
+  }
+}

@@ -1,0 +1,13 @@
+<test-header
+  [dutID]="testState.dutID"
+  [start]="testState.startTime"
+  [end]="testState.endTime"
+  [duration]="testState.duration"
+  [status]="testState.outcome">
+</test-header>
+<phases id="phases"
+  [completedPhases]="testState.completedPhases"
+  [currentPhase]="testState.currentPhase"
+  [pendingPhases]="testState.pendingPhases">
+</phases>
+<logs id="logs" [entries]="testState.logEntries"></logs>

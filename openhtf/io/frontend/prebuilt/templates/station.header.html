@@ -1,0 +1,31 @@
+<div class="station-header">
+  <div class="left">
+    <div class="cardholder">
+      <div class="card blue lighten-1 white-text">
+        <div class="navbar">
+          <div>
+            <div><i class="material-icons">bookmark</i></div>
+            <div>CURRENT</div>
+          </div>
+          <div class="blue-grey-text text-lighten-3">
+            <div><i class="material-icons">history</i></div>
+            <div>HISTORY</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="station-id-area blue-text text-lighten-1">
+      <div class="station-id-label">
+        {{framework.station_id}}
+      </div>
+      <div class="socket-label">{{ip}} : {{port}}</div>
+    </div>
+  </div>
+  <div class="right">
+    <div *ngIf="countdown.millisRemaining > 0"
+         (click)="countdown.pauseOrUnpause()"
+         class="countdown">
+      {{(countdown.millisRemaining / 1000) | number:['2.0-0']}}
+    </div>
+  </div>
+</div>

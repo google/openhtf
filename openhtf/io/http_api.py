@@ -116,6 +116,7 @@ class HTTPServer(threading.Thread):
       self.send_response(200)
       self.end_headers()
       self.wfile.write(json.dumps(result))
+      command, path, version = self.requestline.split()
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""

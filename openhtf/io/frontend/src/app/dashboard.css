@@ -1,0 +1,23 @@
+.card {
+  display: inline-block;
+  margin-right: 20px;
+  padding: 8px;
+}
+
+
+.station-name {
+  font-size: 17px;
+}
+
+
+.details {
+  font-size: 10px;
+}
+
+
+.status {
+  font-size: 10px;
+  font-weight: 300;
+  text-align: right;
+  margin-top: .5em;
+}

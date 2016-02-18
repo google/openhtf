@@ -1,0 +1,74 @@
+.phase-header-text {
+  display: table;
+  font-size: 17px;
+  font-weight: 300;
+  width: 100%;
+}
+
+
+.phase-header-text .name {
+  display: table-cell;
+  text-align: left;
+}
+
+
+.phase-header-text .cycle-time {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+
+.phase-header-text .status {
+  display: table-cell;
+  text-align: right;
+}
+
+
+.docstring {
+  font-weight: 300;
+}
+
+
+p {
+  padding-bottom: 8px;
+  padding-top: 8px;
+}
+
+
+.measurement-container {
+  text-align: center;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  width: 100%;
+}
+
+
+.measurement-listing {
+  border-collapse: separate;
+  border-spacing: 0px .3em;
+  font-size: 14px;
+  font-weight: 400;
+  margin-left: 3%;
+  margin-right: 3%;
+  width: 94%;
+}
+
+
+.measurement .name {
+  border-bottom-left-radius: .3em;
+  border-top-left-radius: .3em;
+}
+
+
+.measurement td {
+  border-radius: 0;
+  padding: .3em 1em .3em 1em;
+}
+
+
+.measurement .outcome {
+  border-bottom-right-radius: .3em;
+  border-top-right-radius: .3em;
+  font-weight: 600;
+  text-align: right;
+}

@@ -1,0 +1,18 @@
+<div>
+  <station-header [countdown]="countdown"
+                  [framework]="framework"
+                  [ip]="ip"
+                  [port]="port">
+  </station-header>
+  <div class="card-panel wait
+              blue-grey lighten-3 blue-grey-text text-lighten-1">
+    <div *ngIf="framework.status == 'START_WAIT'">
+      <div *ngIf="!dutID">
+        <h5 class="center-align">waiting for test start trigger...</h5>
+      </div>
+    </div>
+  </div>
+  <current-test [countdown]="countdown"
+                [testState]="test">
+  </current-test>
+</div>
