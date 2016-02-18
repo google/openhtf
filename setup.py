@@ -93,6 +93,7 @@ install_requires = [  # pylint: disable=invalid-name
     'singledispatch==3.4.0.3',
     'tornado==4.3',
     'Werkzeug==0.10.4',
+    'requests == 2.2.1',
 ]
 
 

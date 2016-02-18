@@ -93,6 +93,7 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
+  OutputToJSON = output.json_factory.OutputToJSON
   test.AddOutputCallback(OutputToJSON(
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
   test.AddOutputCallback(output.OutputToTestRunProto(
