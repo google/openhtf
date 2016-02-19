@@ -230,7 +230,9 @@ class ConfigModel(object):
 
   @threads.Synchronized
   def ContainsKey(self, name):
-    return name in self._state
+    return name in self._state or (
+        name in self._declarations and
+        self._declarations[name].default_value is not None)
 
   # pylint: enable=missing-docstring
 
