@@ -93,7 +93,6 @@ build.sub_commands.insert(0, ('build_proto', None))
 install_requires = [  # pylint: disable=invalid-name
     'contextlib2==0.4.0',
     'enum34==1.1.2',
-    'inotify==0.2.4',
     'libusb1==1.3.0',
     'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
