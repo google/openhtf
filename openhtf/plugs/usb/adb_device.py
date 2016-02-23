@@ -31,9 +31,15 @@ class, subclass, and protocol.
 """
 
 import cStringIO
+import logging
 import os.path
 
-from M2Crypto import RSA
+try:
+  from M2Crypto import RSA
+except ImportError:
+  logging.exception('Failed to import M2Crypto, did you pip install '
+                    'openhtf[usb_plugs]?')
+  raise
 
 from openhtf.plugs.usb import adb_protocol
 from openhtf.plugs.usb import filesync_service
