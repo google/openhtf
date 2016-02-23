@@ -19,7 +19,7 @@ python ./hello_world.py --config ./hello_world.yaml
 """
 
 import json
-import os.path
+import os
 import tempfile
 import time
 
@@ -82,10 +82,21 @@ def dimensions(test):
 
 def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
-  with tempfile.NamedTemporaryFile() as f:
-    f.write('This is a file attachment')
-    f.flush()
-    test.AttachFromFile(f.name)
+  # Windows doesn't allow reading from an open NamedTemporaryFile, so we
+  # have to do this the hard way.  Typically in a real test, you would have
+  # invoked some external program that generated an output file.
+  handle = filename = None
+  try:
+    handle, filename = tempfile.mkstemp(prefix='openhtf_example')
+    os.write(handle, 'This is a file attachment')
+    os.close(handle)
+    handle = None
+    test.AttachFromFile(filename)
+  finally:
+    if handle:
+      os.close(handle)
+    if filename:
+      os.remove(filename)
 
 
 if __name__ == '__main__':
@@ -102,9 +113,9 @@ if __name__ == '__main__':
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
   # 'my_private_key.json'.
-  if os.path.isfile('my_private_key.json'):
-    with open('my_private_key.json', 'r') as json_file:
-      test.AddOutputCallback(output.UploadToMfgInspector.from_json(json.load(
-          json_file)))
+  #if os.path.isfile('my_private_key.json'):
+  #  with open('my_private_key.json', 'r') as json_file:
+  #    test.AddOutputCallback(output.UploadToMfgInspector.from_json(json.load(
+  #        json_file)))
 
   test.Execute(test_start=triggers.PromptForTestStart())
