@@ -148,7 +148,6 @@ class ConsolePrompt(threading.Thread):
         # Windows doesn't support file-like objects for select(), so fall back
         # to raw_input().
         self._callback(raw_input(self._message + '\n\r'))
-        self._stopped = True
       else:
         # First, display the prompt to the console.
         print self._message
