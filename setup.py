@@ -104,11 +104,9 @@ class BuildProtoCommand(Command):
 build.sub_commands.insert(0, ('build_proto', None))
 
 
-install_requires = [  # pylint: disable=invalid-name
+INSTALL_REQUIRES = [
     'contextlib2==0.4.0',
     'enum34==1.1.2',
-    'libusb1==1.3.0',
-    'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
     'mutablerecords==0.2.6',
     'oauth2client==1.5.2',
@@ -169,7 +167,13 @@ setup(
         'clean': CleanCommand,
         'test': PyTestCommand,
     },
-    install_requires=install_requires,
+    install_requires=INSTALL_REQUIRES,
+    extras_require={
+        'usb_plugs': [
+            'libusb1==1.3.0',
+            'M2Crypto==0.22.3',
+        ],
+    },
     setup_requires=[
         'wheel==0.29.0',
     ],
