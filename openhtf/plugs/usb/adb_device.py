@@ -37,8 +37,8 @@ import os.path
 try:
   from M2Crypto import RSA
 except ImportError:
-  logging.exception('Failed to import M2Crypto, did you pip install '
-                    'openhtf[usb_plugs]?')
+  logging.error('Failed to import M2Crypto, did you pip install '
+                'openhtf[usb_plugs]?')
   raise
 
 from openhtf.plugs.usb import adb_protocol

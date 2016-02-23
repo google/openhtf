@@ -28,8 +28,8 @@ try:
   import libusb1
   import usb1
 except ImportError:
-  logging.exception('Failed to import libusb, did you pip install '
-                    'openhtf[usb_plugs]?')
+  logging.error('Failed to import libusb, did you pip install '
+                'openhtf[usb_plugs]?')
   raise
 
 from openhtf.plugs.usb import usb_exceptions
