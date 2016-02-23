@@ -20,8 +20,8 @@ import logging
 try:
   import libusb1
 except ImportError:
-  logging.exception('Failed to import libusb, did you pip install '
-                    'openhtf[usb_plugs]?')
+  logging.error('Failed to import libusb, did you pip install '
+                'openhtf[usb_plugs]?')
   raise
 
 _LOG = logging.getLogger(__name__)
