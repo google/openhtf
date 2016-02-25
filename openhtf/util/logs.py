@@ -73,7 +73,7 @@ gflags.DEFINE_enum('log-file-level', 'warning', ['debug', 'info', 'warning',
                    'Logging verbosity level for log file output.')
 
 LOGGER_PREFIX = 'openhtf'
-RECORD_LOGGER = '.'.join(LOGGER_PREFIX, 'test_record')
+RECORD_LOGGER = '.'.join((LOGGER_PREFIX, 'test_record'))
 
 
 class MacAddressLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
