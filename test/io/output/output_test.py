@@ -84,7 +84,7 @@ class TestOpenhtf(unittest.TestCase):
     self.test.AddOutputCallback(_CleanVariability(json_factory.OutputToJSON(
         os.path.join(self.tempdir, 'record.json'), sort_keys=True)))
     self.test.AddOutputCallback(_CleanVariability(
-        output.OutputToTestRunProto(
+        mfg_inspector.OutputToTestRunProto(
             os.path.join(self.tempdir, 'record.testrun'))))
     self.test.Execute()
 

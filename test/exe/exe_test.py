@@ -71,14 +71,6 @@ class TestOpenhtf(unittest.TestCase):
     mock_starter.Wait()
     mock_starter.Stop()
 
-  @mock.patch.multiple(exe.triggers.AndroidTriggers,
-                       _TryOpen=mock.Mock(return_value=False),
-                       TestStart=mock.Mock(return_value='123456'))
-  def testAndroidTriggers(self):
-    serial = exe.triggers.AndroidTriggers.TestStart()
-    self.assertEqual(serial, '123456')
-    exe.triggers.AndroidTriggers.TestStop()
-
   def testClassString(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
     phase_thread = exe.phasemanager.PhaseExecutorThread(phase_one, ' ')
