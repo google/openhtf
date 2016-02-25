@@ -27,6 +27,7 @@ import example_plug
 import openhtf
 import openhtf.io.output as output
 
+from openhtf.io.output import json_factory
 from openhtf.names import *
 
 
@@ -93,7 +94,7 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.AddOutputCallback(OutputToJSON(
+  test.AddOutputCallback(json_factory.OutputToJSON(
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
   test.AddOutputCallback(output.OutputToTestRunProto(
       './%(dut_id)s.%(start_time_millis)s.json'))
