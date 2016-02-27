@@ -6,7 +6,7 @@ import threading
 
 from openhtf import util
 from openhtf.io.output import json_factory
-from openhtf.io.output import mfg_inspector
+#from openhtf.io.output import mfg_inspector
 
 
 class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
