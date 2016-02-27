@@ -39,7 +39,9 @@ class UploadJSON(OutputToJSON):
                  'Content-Type' : 'application/json'}
     self.data_server = None
     self.file_dir = filename_pattern.split('%')[0]
-    self.save_dir = None
+    self.save_dir = os.path.join(self.file_dir, 'saved')
+    if not os.path.isdir(self.save_dir):
+      os.mkdir(self.save_dir)
 
   # pylint: disable=invalid-name
   def __call__(self, test_record):
@@ -59,9 +61,6 @@ class UploadJSON(OutputToJSON):
       resp = requests.post(self.data_server, data=open(f, 'rb'),
                              headers=self.headers)
       if resp.status_code == 200:
-        if not self.save_dir:
-          self.save_dir = os.path.join(self.file_dir, 'saved')
-          os.mkdir(self.save_dir)
         shutil.move(f, self.save_dir)
         #os.remove(f)  //keep the record for the time being
         _LOG.info('Test record successfully loaded to servers.')
