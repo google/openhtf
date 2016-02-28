@@ -18,6 +18,7 @@
 Test timing, failures, and the UI are handled by this module.
 """
 import logging
+import sys
 from enum import Enum
 
 from openhtf import conf
@@ -71,9 +72,11 @@ class TestState(object):
             'filename': test.filename,
             'docstring': test.docstring
             })
-    self.logger = logging.getLogger(test.filename)
+    self.logger = logging.getLogger(logs.RECORD_LOGGER)
+    self.logger.propagate = False
     self.logger.setLevel(logging.DEBUG)  # Let the handler do the filtering.
     self.logger.addHandler(logs.RecordHandler(self.record))
+    self.logger.addHandler(logging.StreamHandler(stream=sys.stdout))
     self.phase_data = phase_data.PhaseData(self.logger, config, plugs,
                                            self.record)
     self.running_phase = None

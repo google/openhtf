@@ -28,6 +28,7 @@ import openhtf.io.output as output
 
 from openhtf import conf
 
+from openhtf.io.output import json_factory
 from openhtf.io.output import mfg_inspector
 from openhtf.io.proto import testrun_pb2
 from openhtf.names import *
@@ -80,7 +81,7 @@ class TestOpenhtf(unittest.TestCase):
     self.test = openhtf.Test(
         dimensions, test_name='TestTest', test_description='Unittest test',
         test_version='1.0.0')
-    self.test.AddOutputCallback(_CleanVariability(OutputToJSON(
+    self.test.AddOutputCallback(_CleanVariability(json_factory.OutputToJSON(
         os.path.join(self.tempdir, 'record.json'), sort_keys=True)))
     self.test.AddOutputCallback(_CleanVariability(
         output.OutputToTestRunProto(
