@@ -82,6 +82,7 @@ class BuildProtoCommand(Command):
         print ('This could be due to missing helper files. On many Linux '
                'systems, this is fixed by installing the '
                '"libprotobuf-dev" package.')
+        raise
     else:
       print 'Found no proto files to build.'
 
