@@ -292,24 +292,27 @@ class SerialDevice(object):
 
     return output
 
-  def SendAsciiCmd(self, cmd):
+  def SendAsciiCmd(self, cmd, bool_read_input=True):
     """Send ascii over uart."""
 
     if self._port_handler is None:
       raise serial.portNotOpenError
 
     self.logger.debug('[Sin] <-: ' + cmd)
-    self._port_handler.write(cmd)
+    self._port_handler.write(cmd + '\r\n')
     out = ''
 
-    time.sleep(self._buffer_time / 1000.0)
-    while self._port_handler.inWaiting() > 0:
-      out += self._port_handler.read(1)
+    if bool_read_input:
+      time.sleep(self._buffer_time / 1000.0)
+      while self._port_handler.inWaiting() > 0:
+        out += self._port_handler.read(1)
 
-    if out:
-      self.logger.debug('[Sout] ->: ' + out)
+      if out:
+        self.logger.debug('[Sout] ->: ' + out)
+      else:
+        self.logger.debug('didn\'t get any output...')
     else:
-      self.logger.debug('didn\'t get any output...')
+      out = None
 
     return out
 
