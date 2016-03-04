@@ -147,14 +147,15 @@ class TestState(object):
     if self.record.end_time_millis:
       raise TestRecordAlreadyFinishedError
 
-    self.logger.debug('Finishing test execution with state %s.', self._state)
+    self.logger.debug('Finishing test execution with state %s.',
+                      self._state.name)
 
     if not self.record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     self.record.end_time_millis = util.TimeMillis()
-    self.record.outcome = str(self._state)
+    self.record.outcome = self._state.name
     return self.record
 
   def __str__(self):

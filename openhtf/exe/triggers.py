@@ -116,3 +116,12 @@ def PromptForTestStart(message='Provide a DUT ID in order to start the test.',
     prompt_manager = user_input.get_prompt_manager()
     return prompt_manager.DisplayPrompt(message, text_input=text_input)
   return trigger
+
+
+def PromptForTestStop(message='Hit ENTER to complete the test.',
+                      text_input=False):
+  """Make a test stop trigger based on prompting the user for a response."""
+  def trigger(dummy_dut_id):  # pylint: disable=missing-docstring
+    prompt_manager = user_input.get_prompt_manager()
+    return prompt_manager.DisplayPrompt(message, text_input=text_input)
+  return trigger
