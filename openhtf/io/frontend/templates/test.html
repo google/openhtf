@@ -12,6 +12,17 @@
 
 </div>
 {% else %}
+  <h2>{{state['test']['record']['dut_id']}}</h2>
+  {% if state['test']['status'] == 'PASS' %}
+    <h1 style="color:green;">
+  {% elif state['test']['status'] == 'FAIL' %}
+    <h1 style="color:red;">
+  {% else %}
+    <h1 style="color:orange;">
+  {% end %}
+  {{state['test']['status']}}</h1>
+
+{% if state['framework']['status'] == 'EXECUTING' %}
 <div class="current_phase">
   <h3>Current Phase: {{ state['test']['running_phase']['name'] }}</h3>
 <p>{{ state['test']['running_phase']['docstring'] }}</p>
@@ -40,5 +51,6 @@
 {% end %}
 </ul>
 </div>
+{% end %}
 {% end %}
 {% end %}

@@ -158,7 +158,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
 
       # Clear these between uses for the frontend API.
       test_state.phase_data.measurements = None
-      test_state.phase_data.attachments = None
+      test_state.phase_data.attachments = {}
       test_state.running_phase = None
 
 
