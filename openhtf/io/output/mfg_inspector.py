@@ -194,6 +194,14 @@ def _ExtractParameters(record, testrun, used_parameter_names):
             testrun_param.description += '\nValidator: ' + str(validator)
       else:
         _MangleMeasurement(name, value, measurement, mangled_parameters)
+      if testrun_param.status == testrun_pb2.FAIL:
+        testrun_code = testrun.failure_codes.add()
+        testrun_code.code = testrun_param.name
+        if measurement.dimensions is None:
+          if testrun_param.numeric_value:
+            testrun_code.details = str(testrun_param.numeric_value)
+          else:
+            testrun_code.details = testrun_param.text_value
   return mangled_parameters
 
 
