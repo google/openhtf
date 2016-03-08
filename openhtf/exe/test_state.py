@@ -72,16 +72,18 @@ class TestState(object):
             'filename': test.filename,
             'docstring': test.docstring
             })
+
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
-    self.logger.propagate = False
-    self.logger.setLevel(logging.DEBUG)  # Let the handler do the filtering.
-    self.logger.addHandler(logs.RecordHandler(self.record))
-    self.logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+    self._record_handler = logs.RecordHandler(self.record)
+    self.logger.addHandler(self._record_handler)
     self.phase_data = phase_data.PhaseData(self.logger, config, plugs,
                                            self.record)
     self.running_phase = None
     self.pending_phases = list(test.phases)
 
+
+  def __del__(self):
+    self.logger.removeHandler(self._record_handler)
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
@@ -156,6 +158,7 @@ class TestState(object):
 
     self.record.end_time_millis = util.TimeMillis()
     self.record.outcome = self._state.name
+    self.logger.removeHandler(self._record_handler)
     return self.record
 
   def __str__(self):
