@@ -20,7 +20,6 @@ python ./hello_world.py --config ./hello_world.yaml
 
 import json
 import os
-import tempfile
 import time
 
 import example_plug
@@ -85,18 +84,7 @@ def dimensions(test):
 
 def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
-  # Windows doesn't allow reading from an open NamedTemporaryFile, so we
-  # have to do this the hard way.  Typically in a real test, you would have
-  # invoked some external program that generated an output file.
-  try:
-    f = None
-    with tempfile.NamedTemporaryFile(delete=False) as f:
-      f.write('This is a file attachment')
-      f.close()
-      test.AttachFromFile(f.name)
-  finally:
-    if f:
-      os.remove(f.name)
+  test.AttachFromFile('example_attachment.txt')
 
 
 if __name__ == '__main__':
