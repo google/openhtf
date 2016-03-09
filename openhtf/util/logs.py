@@ -136,6 +136,11 @@ class RecordHandler(logging.Handler):
 
 def setup_logger():
   """Configure logging for OpenHTF based on command line flags."""
+  record_logger = logging.getLogger(RECORD_LOGGER)
+  record_logger.propagate = False
+  record_logger.setLevel(logging.DEBUG)
+  record_logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+
   logger = logging.getLogger(LOGGER_PREFIX)
   logger.propagate = False
   logger.setLevel(logging.DEBUG)
