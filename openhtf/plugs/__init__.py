@@ -159,7 +159,7 @@ def requires(update_kwargs=True, **plugs):
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-    wrapper = openhtf.TestPhaseInfo.WrapOrReturn(func)
+    wrapper = openhtf.TestPhaseInfo.WrapOrCopy(func)
     duplicates = frozenset(wrapper.plugs) & frozenset(plugs)
     if duplicates:
       raise DuplicatePlugError(
