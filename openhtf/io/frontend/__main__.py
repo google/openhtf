@@ -39,7 +39,6 @@ import signal
 import socket
 import sys
 import threading
-import time
 
 import gflags
 import mutablerecords
@@ -97,7 +96,7 @@ class StationStore(threading.Thread):
   """
   def __init__(self):
     super(StationStore, self).__init__()
-    self._live = False
+    self._death_event = threading.Event()
     self.hostname = socket.gethostname()
     self.stations = collections.defaultdict(Station)
 
@@ -155,12 +154,9 @@ class StationStore(threading.Thread):
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
-    self._live = True
-    while self._live:
+    while not self._death_event.is_set():
       self._Discover()
-      # TODO(jethier): Refactor this to use events instead of sleeping.
-      #                See comment in PR #59 for details.
-      time.sleep(FLAGS.discovery_interval_s)
+      self._death_event.wait(FLAGS.discovery_interval_s)
 
   def _Track(self, host, port):
     """Start tracking the given station."""
@@ -191,7 +187,7 @@ class StationStore(threading.Thread):
 
   def Stop(self):
     """Stop the store."""
-    self._live = False
+    self._death_event.set()
     self.join()
 
 
