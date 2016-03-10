@@ -28,13 +28,18 @@ To use these plugs:
 """
 import commands
 import logging
+import time
 
 import openhtf.plugs as plugs
 from openhtf import conf
 from openhtf.plugs.usb import adb_device
 from openhtf.plugs.usb import fastboot_device
 from openhtf.plugs.usb import local_usb
+from openhtf.plugs.usb import usb_exceptions
 from openhtf.plugs import cambrionix
+
+_LOG = logging.getLogger(__name__)
+
 conf.Declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
 conf.Declare('remote_usb', 'ethersync or other')
 conf.Declare('ethersync', 'ethersync configuration')
@@ -108,3 +113,55 @@ class AdbPlug(plugs.BasePlug):
         **kwargs)
     device.TearDown = device.Close  # pylint: disable=invalid-name
     return device
+
+
+class AndroidTriggers(object):  # pylint: disable=invalid-name
+  """Test start and stop triggers for Android devices."""
+
+  @classmethod
+  def _TryOpen(cls):
+    """Try to open a USB handle."""
+    handle = None
+    for usb_cls, subcls, protocol in [(adb_device.CLASS,
+                                       adb_device.SUBCLASS,
+                                       adb_device.PROTOCOL),
+                                      (fastboot_device.CLASS,
+                                       fastboot_device.SUBCLASS,
+                                       fastboot_device.PROTOCOL)]:
+      try:
+        handle = local_usb.LibUsbHandle.Open(
+            serial_number=cls.serial_number,
+            interface_class=usb_cls,
+            interface_subclass=subcls,
+            interface_protocol=protocol)
+        cls.serial_number = handle.serial_number
+        return True
+      except usb_exceptions.DeviceNotFoundError:
+        pass
+      except usb_exceptions.MultipleInterfacesFoundError:
+        _LOG.warning('Multiple Android devices found, ignoring!')
+      finally:
+        if handle:
+          handle.Close()
+    return False
+
+  @classmethod
+  def TestStartFrontend(cls):
+    """Start when frontend event comes, but get serial from USB."""
+    PromptForTestStart('Connect Android device and press ENTER.',
+                       text_input=False)()
+    return cls.TestStart()
+
+  @classmethod
+  def TestStart(cls):
+    """Returns serial when the test is ready to start."""
+    while not cls._TryOpen():
+      time.sleep(1)
+    return cls.serial_number
+
+  @classmethod
+  def TestStop(cls):
+    """Returns True when the test is completed and can restart."""
+    while cls._TryOpen():
+      time.sleep(1)
+    cls.serial_number = None

@@ -19,8 +19,7 @@ python ./hello_world.py --config ./hello_world.yaml
 """
 
 import json
-import os.path
-import tempfile
+import os
 import time
 
 import example_plug
@@ -29,6 +28,8 @@ import openhtf.io.output as output
 
 from openhtf.io.output import json_factory
 from openhtf.names import *
+# Uncomment for mfg-inspector output, requires setup.py build_proto.
+#from openhtf.io.output import mfg_inspector
 
 
 @plug(example=example_plug.Example)
@@ -80,12 +81,10 @@ def dimensions(test):
   for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):
     test.measurements.lots_of_dims[x, y, z] = x + y + z
 
+
 def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
-  with tempfile.NamedTemporaryFile() as f:
-    f.write('This is a file attachment')
-    f.flush()
-    test.AttachFromFile(f.name)
+  test.AttachFromFile('example_attachment.txt')
 
 
 if __name__ == '__main__':
@@ -96,15 +95,15 @@ if __name__ == '__main__':
       test_version='1.0.0')
   test.AddOutputCallback(json_factory.OutputToJSON(
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
-  test.AddOutputCallback(output.OutputToTestRunProto(
-      './%(dut_id)s.%(start_time_millis)s.pb'))
+  #test.AddOutputCallback(mfg_inspector.OutputToTestRunProto(
+  #    './%(dut_id)s.%(start_time_millis)s.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
   # 'my_private_key.json'.
-  if os.path.isfile('my_private_key.json'):
-    with open('my_private_key.json', 'r') as json_file:
-      test.AddOutputCallback(output.UploadToMfgInspector.from_json(json.load(
-          json_file)))
+  #if os.path.isfile('my_private_key.json'):
+  #  with open('my_private_key.json', 'r') as json_file:
+  #    test.AddOutputCallback(mfg_inspector.UploadToMfgInspector.from_json(
+  #        json.load(json_file)))
 
   test.Execute(test_start=triggers.PromptForTestStart())

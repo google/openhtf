@@ -24,13 +24,19 @@ prompt state should use the openhtf.prompts pseudomodule.
 
 import collections
 import functools
+import logging
+import platform
 import select
 import sys
-import termios
 import threading
 import uuid
 
 import gflags
+
+if platform.system() != 'Windows':
+  import termios
+
+_LOG = logging.getLogger(__name__)
 
 FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('prompt_timeout_s',
@@ -81,6 +87,9 @@ class PromptManager(object):
                            message=message,
                            text_input=text_input)
       self._response = None
+      _LOG.debug('Displaying prompt (%s): "%s"%s%s', self.prompt.id,
+                 message, ', Expects text' if text_input else '',
+                 ', Timeout: %s sec' % timeout_s if timeout_s else '')
 
       console_prompt = ConsolePrompt(
           message, functools.partial(self.Respond, self.prompt.id))
@@ -99,6 +108,7 @@ class PromptManager(object):
     If there is no active prompt or the prompt id being responded to doesn't
     match the active prompt, do nothing.
     """
+    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
     with self._cond:
       if self.prompt is not None and prompt_id == self.prompt.id:
         self._response = response
@@ -133,20 +143,27 @@ class ConsolePrompt(threading.Thread):
 
   def run(self):
     """Main logic for this thread to execute."""
-    # First, display the prompt to the console.
-    print self._message
+    try:
+      if platform.system() == 'Windows':
+        # Windows doesn't support file-like objects for select(), so fall back
+        # to raw_input().
+        self._callback(raw_input(self._message + '\n\r'))
+      else:
+        # First, display the prompt to the console.
+        print self._message
 
-    # Before reading, clear any lingering buffered terminal input.
-    termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+        # Before reading, clear any lingering buffered terminal input.
+        termios.tcflush(sys.stdin, termios.TCIOFLUSH)
 
-    while not self._stopped:
-      inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
-      for stream in inputs:
-        if stream == sys.stdin:
-          response = sys.stdin.readline().rstrip()
-          self._callback(response)
-          self._stopped = True
-          return
+        while not self._stopped:
+          inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
+          for stream in inputs:
+            if stream is sys.stdin:
+              response = sys.stdin.readline().rstrip()
+              self._callback(response)
+              return
+    finally:
+      self._stopped = True
 
 
 def get_prompt_manager():
