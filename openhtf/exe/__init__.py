@@ -65,7 +65,7 @@ class TestExecutor(threads.KillableThread):
                           'STOP_WAIT','FINISHING'])
 
   def __init__(self, config, test, test_start, test_stop):
-    super(TestExecutor, self).__init__()
+    super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self.test = test
     self._test_start = test_start
