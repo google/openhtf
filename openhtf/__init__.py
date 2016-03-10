@@ -61,8 +61,11 @@ class TestPhaseOptions(mutablerecords.Record(
   """
 
   def __call__(self, phase_func):
-    phase = TestPhaseInfo.WrapOrReturn(phase_func)
-    phase.options = self
+    phase = TestPhaseInfo.WrapOrCopy(phase_func)
+    for attr in self.__slots__:
+      value = getattr(self, attr)
+      if value is not None:
+        setattr(phase.options, attr, value)
     return phase
 
 
@@ -83,10 +86,22 @@ class TestPhaseInfo(mutablerecords.Record(
   """
 
   @classmethod
-  def WrapOrReturn(cls, func):
+  def WrapOrCopy(cls, func):
+    """Return a new TestPhaseInfo from the given function or instance.
+
+    We want to return a new copy so that you can reuse a phase with different
+    options, plugs, measurements, etc.
+
+    Args:
+      func: A phase function or TestPhaseInfo instance.
+
+    Returns:
+      A new TestPhaseInfo object.
+    """
     if not isinstance(func, cls):
-      func = cls(func, inspect.getsource(func))
-    return func
+      return cls(func, inspect.getsource(func))
+    # We want to copy so that a phase can be reused with different options, etc.
+    return mutablerecords.CopyRecord(func)
 
   def __call__(self, phase_data):
     plug_kwargs = {plug.name: phase_data.plugs[plug.name]
@@ -118,7 +133,7 @@ class Test(object):
     """
     self.metadata = metadata
     self.loop = False
-    self.phases = [TestPhaseInfo.WrapOrReturn(phase) for phase in phases]
+    self.phases = [TestPhaseInfo.WrapOrCopy(phase) for phase in phases]
     self.output_callbacks = []
 
     # Pull some metadata from the frame in which this Test was created.
