@@ -12,14 +12,12 @@ cache:
   pip: true
   apt: true
   directories:
-    - .tox
     - $HOME/.cache/pip
-before_cache:
-  - rm -r .tox/dist/
 env:
   - TOXENV=py27
 install:
   - pip install tox coveralls
+  - pip install -e .
 script: tox
 after_success:
   - coveralls
