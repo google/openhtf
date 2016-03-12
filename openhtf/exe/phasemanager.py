@@ -80,7 +80,6 @@ class PhaseOutcome(collections.namedtuple(
     if not (phase_result is None or
             isinstance(phase_result, Exception) or
             isinstance(phase_result, openhtf.PhaseResult)):
-             
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
     super(PhaseOutcome, self).__init__(phase_result)
 
@@ -98,8 +97,9 @@ class PhaseOutcome(collections.namedtuple(
 class PhaseExecutorThread(threads.KillableThread):
   """Handles the execution and result of a single test phase.
 
-  The thread's result will be stored in phase_thread.result after it's finished,
-  DIDNT_FINISH until then. It will be an instance of PhaseOutcome.
+  The phase outcome will be stored in the _phase_outcome attribute once it is
+  known (_phase_outcome is None until then), and it will be a PhaseOutcome
+  instance.
   """
 
   def __init__(self, phase, phase_data):

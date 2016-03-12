@@ -40,6 +40,7 @@ from openhtf.util import logs
 from openhtf.util import measurements
 
 FLAGS = gflags.FLAGS
+__version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
 
 
