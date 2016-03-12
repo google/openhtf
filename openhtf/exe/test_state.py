@@ -87,7 +87,7 @@ class TestState(object):
     """Set our internal state based on the given phase outcome.
 
     Args:
-      phase_outcome: An instance of phasemanager.PhaseOutcome
+      phase_outcome: An instance of phase_executor.PhaseOutcome
 
     Returns: True if the test has finished prematurely (failed).
     """

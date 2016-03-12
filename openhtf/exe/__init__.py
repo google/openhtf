@@ -21,7 +21,7 @@ from enum import Enum
 import contextlib2 as contextlib
 
 from openhtf import plugs
-from openhtf.exe import phasemanager
+from openhtf.exe import phase_executor
 from openhtf.exe import test_state
 from openhtf.io import user_input
 from openhtf.util import threads
@@ -127,11 +127,11 @@ class TestExecutor(threads.KillableThread):
       exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
 
       plug_manager = self._MakePlugManager(suppressor)
-      phase_executor = self._MakePhaseExecutor()
+      executor = self._MakePhaseExecutor()
 
       self._status = self.FrameworkStatus.EXECUTING
       suppressor.failure_reason = 'Failed to execute test.'
-      self._ExecuteTestPhases(phase_executor)
+      self._ExecuteTestPhases(executor)
       self._status = self.FrameworkStatus.FINISHING
       self.test.OutputTestRecord(self._test_state.GetFinishedRecord())
 
@@ -155,8 +155,8 @@ class TestExecutor(threads.KillableThread):
     return plug_manager
 
   def _MakePhaseExecutor(self):
-    """Create a phasemanager.PhaseExecutor and set it up."""
-    phase_executor = phasemanager.PhaseExecutor(self._test_state)
+    """Create a phase_executor.PhaseExecutor and set it up."""
+    executor = phase_executor.PhaseExecutor(self._test_state)
 
     def optionally_stop(exc_type, *dummy):
       """Always called when we stop a test.
@@ -166,11 +166,11 @@ class TestExecutor(threads.KillableThread):
       then we'll just return immediately, otherwise we'll wait for the
       Test Stop mechanism in triggers.py.
       """
-      # Always stop the phase_executor, if the test ended normally then it
+      # Always stop the PhaseExecutor, if the test ended normally then it
       # will already be stopped, but this won't hurt anything.  If the test
       # exited abnormally, we don't want to leave this hanging around in
       # some weird state.
-      phase_executor.Stop()
+      executor.Stop()
 
       # If Stop was called, we don't care about the test stopping completely
       # anymore, nor if ctrl-C was hit.
@@ -180,12 +180,12 @@ class TestExecutor(threads.KillableThread):
         self._test_state = None  # Clear test state after stopping.
 
     self._current_exit_stack.push(optionally_stop)
-    return phase_executor
+    return executor
 
-  def _ExecuteTestPhases(self, phase_executor):
+  def _ExecuteTestPhases(self, executor):
     """Executes one test's phases from start to finish."""
     self._test_state.SetStateRunning()
-    for phase_outcome in phase_executor.ExecutePhases():
+    for phase_outcome in executor.ExecutePhases():
       if self._test_state.SetStateFromPhaseOutcome(phase_outcome):
         break
     else:
