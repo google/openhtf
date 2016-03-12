@@ -146,12 +146,12 @@ class TestExecutor(threads.KillableThread):
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
     plug_manager = (
-        plugs.PlugManager.InitializeFromTypes(self.test.plug_type_map))
+        plugs.PlugManager.InitializeFromTypeMap(self.test.plug_type_map))
     self._current_exit_stack.callback(plug_manager.TearDownPlugs)
 
     suppressor.failure_reason = 'Test is invalid.'
     self._test_state = test_state.TestState(
-        self._config, self.test, plug_manager.plug_map, dut_id)
+        self.test, plug_manager.plug_map, dut_id)
 
     return plug_manager
 
@@ -185,15 +185,10 @@ class TestExecutor(threads.KillableThread):
     return phase_executor
 
   def _ExecuteTestPhases(self, phase_executor):
-    """Executes one test's phases from start to finish.
-
-    Raises:
-      InvalidPhaseResultError: Raised when a phase doesn't return
-          phase_data.TestPhaseInfo.TEST_PHASE_RESULT_*
-    """
+    """Executes one test's phases from start to finish."""
     self._test_state.SetStateRunning()
-    for phase_result in phase_executor.ExecutePhases():
-      if self._test_state.SetStateFromPhaseResult(phase_result):
+    for phase_outcome in phase_executor.ExecutePhases():
+      if self._test_state.SetStateFromPhaseOutcome(phase_outcome):
         break
     else:
       self._test_state.SetStateFinished()

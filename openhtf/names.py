@@ -21,7 +21,7 @@ used names:
 Decorators for test phase functions:
   @measures     Attach measurements to test phases.
   @plug         Use a hardware plug in a test phase.
-  @TestPhase    Make a test phase out of any function.
+  @TestPhase    Make a test phase out of any function, using given options.
 
 Classes for instantiation:
   Measurement   A measurement to be taken within a test phase.
@@ -49,10 +49,11 @@ triggers = openhtf.exe.triggers
 # Functions used in writing test scripts.
 measures = openhtf.util.measurements.measures
 monitors = openhtf.util.monitors.monitors
-plug = openhtf.plugs.requires
+plug = openhtf.plugs.plug
 
 
 # Classes used in writing test scripts.
 Measurement = openhtf.util.measurements.Measurement
-TestPhase = openhtf.TestPhaseOptions
+TestPhase = openhtf.PhaseOptions
+PhaseResult = openhtf.PhaseResult
 UOM = openhtf.util.units.UOM

@@ -16,7 +16,7 @@
 """Module encapsulating test phase data.
 
 HTF tests are comprised of a series of test phases.  These test phases are
-wrapped in phase_data.TestPhaseInfo objects to keep track of some necessary
+wrapped in openhtf.PhaseInfo objects to keep track of some necessary
 state. This wrapping happens by decorating a method with any of various
 supported decorators.
 """
@@ -28,6 +28,7 @@ import mimetypes
 
 import mutablerecords
 
+from openhtf import conf
 from openhtf import util
 from openhtf.io import test_record
 from openhtf.util import measurements
@@ -39,10 +40,11 @@ class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
 
-class ResultWrapper(mutablerecords.Record('ResultWrapper', [], {'result': None})):
-  """Wrapper so yielded object can receive a result."""
-  def SetResult(self, result):
-    self.result = result
+class OutcomeWrapper(mutablerecords.Record(
+    'OutcomeWrapper', [], {'outcome': None})):
+  """Wrapper so yielded object can receive an outcome."""
+  def SetOutcome(self, outcome):
+    self.outcome = outcome
 
 
 class PhaseData(object):  # pylint: disable=too-many-instance-attributes
@@ -59,9 +61,9 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
         phase.  This stack is pop'd after each phase.
     test_record: The test_record.TestRecord for the currently running test.
   """
-  def __init__(self, logger, config, plugs, record):
+  def __init__(self, logger, plugs, record):
     self.logger = logger
-    self.config = config
+    self.config = conf.Config()
     self.plugs = plugs
     self.test_record = record
     self.state = {}
@@ -128,19 +130,19 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     }
 
     # Populate dummy declaration list for frontend API.
-    test_state.running_phase.measurements = {
+    test_state.running_phase_record.measurements = {
         measurement.name: measurement._asdict()
         for measurement in measurement_map.itervalues()
     }
     test_state.phase_data.measurements = (
         measurements.Collection(measurement_map))
     test_state.phase_data.attachments = {}
-    test_state.running_phase.start_time_millis = util.TimeMillis()
+    test_state.running_phase_record.start_time_millis = util.TimeMillis()
 
-    result_wrapper = ResultWrapper()
+    outcome_wrapper = OutcomeWrapper()
 
     try:
-      yield result_wrapper
+      yield outcome_wrapper
     finally:
       # Serialize measurements and measured values, validate as we go.
       values = dict(test_state.phase_data.measurements)
@@ -149,34 +151,14 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
           for name, measurement in measurement_map.iteritems()
       }
       # Fill out and append the PhaseRecord to our test_record.
-      test_state.running_phase.measured_values = values
-      test_state.running_phase.measurements = validated_measurements
-      test_state.running_phase.end_time_millis = util.TimeMillis()
-      test_state.running_phase.result = result_wrapper.result
-      test_state.running_phase.attachments.update(self.attachments)
-      self.test_record.phases.append(test_state.running_phase)
+      test_state.running_phase_record.measured_values = values
+      test_state.running_phase_record.measurements = validated_measurements
+      test_state.running_phase_record.end_time_millis = util.TimeMillis()
+      test_state.running_phase_record.result = outcome_wrapper.outcome
+      test_state.running_phase_record.attachments.update(self.attachments)
+      self.test_record.phases.append(test_state.running_phase_record)
 
       # Clear these between uses for the frontend API.
       test_state.phase_data.measurements = None
       test_state.phase_data.attachments = {}
-      test_state.running_phase = None
-
-
-class PhaseResults(object):  # pylint: disable=too-few-public-methods
-  """Constants used to indicate the result of a test phase function.
-
-  These values are returned when a phase is called:
-
-    CONTINUE: Phase complete, continue to next phase.
-    REPEAT: Phase needs to be repeated.
-    TIMEOUT: Phase timed out.  Abort the test.
-  """
-  CONTINUE = 'RESULT_CONTINUE'
-  REPEAT = 'RESULT_REPEAT'
-  FAIL = 'RESULT_FAIL'
-  TIMEOUT = 'RESULT_TIMEOUT'
-  VALID_RESULTS = [
-      CONTINUE,
-      REPEAT,
-      FAIL,
-  ]
+      test_state.running_phase_record = None

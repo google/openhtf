@@ -20,9 +20,16 @@ import collections
 import inspect
 import os
 
+import gflags
 import mutablerecords
 
 from openhtf import util
+
+gflags.DEFINE_bool(
+    'capture_test_source', True,
+    'If True, inspect test source and save it in the output.')
+
+FLAGS = gflags.FLAGS
 
 
 class InvalidMeasurementDimensions(Exception):
@@ -88,9 +95,10 @@ class CodeInfo(mutablerecords.Record(
     #  2+: The function calling 'you' (likely in the framework).
     frame, filename = inspect.stack(context=0)[levels_up][:2]
     module = inspect.getmodule(frame)
-    return cls(os.path.basename(filename), inspect.getdoc(module),
-               inspect.getsource(frame))
+    source = inspect.getsource(frame) if FLAGS.capture_test_source else ''
+    return cls(os.path.basename(filename), inspect.getdoc(module), source)
 
   @classmethod
   def ForFunction(cls, func):
-    return cls(func.__name__, inspect.getdoc(func), inspect.getsource(func))
+    source = inspect.getsource(func) if FLAGS.capture_test_source else ''
+    return cls(func.__name__, inspect.getdoc(func), source)

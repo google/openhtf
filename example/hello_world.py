@@ -50,6 +50,8 @@ def hello_world(test, example):
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.DisplayPrompt(
       'What\'s the widget type?', text_input=True)
+  if test.measurements.widget_type == 'raise':
+    raise Exception()
   test.measurements.widget_color = 'Black'
   test.measurements.widget_size = 3
   test.logger.info('Example says: %s', example.DoStuff())
