@@ -25,6 +25,8 @@ Decorators for test phase functions:
 
 Classes for instantiation:
   Measurement   A measurement to be taken within a test phase.
+  PhaseResult   Return value from phases for controlling the framework.
+  Test          Type to instantiate an OpenHTF test.
 
 Unit codes for lookup:
   UOM           Reference for SI units and their codes.
@@ -56,4 +58,5 @@ plug = openhtf.plugs.plug
 Measurement = openhtf.util.measurements.Measurement
 TestPhase = openhtf.PhaseOptions
 PhaseResult = openhtf.PhaseResult
+Test = openhtf.Test
 UOM = openhtf.util.units.UOM
