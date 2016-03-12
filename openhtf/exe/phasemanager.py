@@ -79,8 +79,8 @@ class PhaseOutcome(collections.namedtuple(
   def __init__(self, phase_result):
     if not (phase_result is None or
             isinstance(phase_result, Exception) or
-            (isinstance(phase_result, openhtf.PhaseResult) and
-             phase_result.valid_phase_return)):
+            isinstance(phase_result, openhtf.PhaseResult)):
+             
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
     super(PhaseOutcome, self).__init__(phase_result)
 
@@ -156,12 +156,12 @@ class PhaseExecutorThread(threads.KillableThread):
 
 
 class PhaseExecutor(mutablerecords.Record(
-    'PhaseExecutor', ['_config', 'test_state'], {'_current_phase': None})):
+    'PhaseExecutor', ['test_state'], {'_current_phase_thread': None})):
   """Encompasses the execution of the phases of a test."""
   # TODO(madsci): continue removing mutablerecords here.
   def __init__(self, test_state):
     self.test_state = test_state
-    self.current_phase = None
+    self._current_phase_thread = None
 
   def ExecutePhases(self):
     """Executes each phase or skips them, yielding PhaseOutcome instances.
@@ -193,7 +193,7 @@ class PhaseExecutor(mutablerecords.Record(
     with phase_data.RecordPhaseTiming(phase, self.test_state) as outcome_wrapper:
       phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
-      self._current_phase = phase_thread
+      self._current_phase_thread = phase_thread
       outcome_wrapper.SetOutcome(phase_thread.JoinOrDie())
 
     if outcome_wrapper.outcome.phase_result == openhtf.PhaseResult.CONTINUE:
@@ -204,5 +204,5 @@ class PhaseExecutor(mutablerecords.Record(
 
   def Stop(self):
     """Stops the current phase."""
-    if self._current_phase:
-      self._current_phase.Kill()
+    if self._current_phase_thread:
+      self._current_phase_thread.Kill()

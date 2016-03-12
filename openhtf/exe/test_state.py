@@ -22,6 +22,8 @@ import logging
 
 from enum import Enum
 
+import openhtf
+
 from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
@@ -53,11 +55,10 @@ class TestState(object):
   """
   State = Enum('State', ['CREATED', 'RUNNING', 'COMPLETED'])
 
-  def __init__(self, test, plug_map, dut_id):
+  def __init__(self, test, plug_map, dut_id, station_id):
     self._state = self.State.CREATED
     self.record = test_record.TestRecord(
         dut_id=dut_id, station_id=config.station_id, code_info=test.code_info)
-
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)
     self.logger.addHandler(self._record_handler)
@@ -133,9 +134,6 @@ class TestState(object):
       raise TestRecordAlreadyFinishedError('Test already finished at',
                                            self.record.end_time_millis)
 
-    self.logger.debug('Finishing test execution with state %s.',
-                      self._state.name)
-
     if not self.record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
@@ -143,6 +141,9 @@ class TestState(object):
     if not self.record.outcome:
       raise FrameworkError(
           'Internal framework error, test outcome unset!')
+
+    self.logger.debug('Finishing test execution with outcome %s.',
+                      self.record.outcome)
 
     self.record.end_time_millis = util.TimeMillis()
     self.logger.removeHandler(self._record_handler)

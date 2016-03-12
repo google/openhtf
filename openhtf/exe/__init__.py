@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """TestExecutor executes tests."""
 
 import logging
@@ -27,12 +26,12 @@ from openhtf.exe import test_state
 from openhtf.io import user_input
 from openhtf.util import threads
 
-
 _LOG = logging.getLogger(__name__)
 
 
 class TestStopError(Exception):
   """Test is being stopped."""
+
 
 class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
   """Abstraction for supressing stuff we don't care about."""
@@ -151,14 +150,13 @@ class TestExecutor(threads.KillableThread):
 
     suppressor.failure_reason = 'Test is invalid.'
     self._test_state = test_state.TestState(
-        self.test, plug_manager.plug_map, dut_id)
+        self.test, plug_manager.plug_map, dut_id, self._config.station_id)
 
     return plug_manager
 
   def _MakePhaseExecutor(self):
     """Create a phasemanager.PhaseExecutor and set it up."""
-    phase_executor = phasemanager.PhaseExecutor(
-        self._config, self._test_state)
+    phase_executor = phasemanager.PhaseExecutor(self._test_state)
 
     def optionally_stop(exc_type, *dummy):
       """Always called when we stop a test.
