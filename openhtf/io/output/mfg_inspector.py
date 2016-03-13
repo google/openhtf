@@ -348,7 +348,7 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
                keydata=json_data['private_key'],
                token_uri=json_data['token_uri'])
 
-  def UploadTestRun(testrun, destination, credentials=None):
+  def UploadTestRun(self, testrun, destination, credentials=None):
     """Uploads the TestRun at a particular file.
   
     Args:
