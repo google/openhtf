@@ -71,7 +71,7 @@ class TestState(object):
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
-    return json.dumps(util.convert_to_dict(self))
+    return json.dumps(util.ConvertToBaseTypes(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
@@ -93,16 +93,16 @@ class TestState(object):
     """
     # Handle a few cases where the test is ending prematurely.
     if phase_outcome.raised_exception:
-      self.record.outcome = 'ERROR'
+      self.record.outcome = test_record.Outcome.ERROR
       code = str(type(phase_outcome.phase_result).__name__)
-      details = str(phase_outcome.phase_result).decode('utf8', 'replace')
-      self.record.AddOutcomeDetails(self._state.name, code, details)
+      description = str(phase_outcome.phase_result).decode('utf8', 'replace')
+      self.record.AddOutcomeDetails(code, description)
       self._state = self.State.COMPLETED
     elif phase_outcome.is_timeout:
-      self.record.outcome = 'TIMEOUT'
+      self.record.outcome = test_record.Outcome.TIMEOUT
       self._state = self.State.COMPLETED
     elif phase_outcome.phase_result == openhtf.PhaseResult.FAIL:
-      self.record.outcome = 'FAIL'
+      self.record.outcome = test_record.Outcome.FAIL
       self._state = self.State.COMPLETED
 
     return self._state == self.State.COMPLETED
@@ -116,9 +116,9 @@ class TestState(object):
     if any(not meas.outcome
            for phase in self.record.phases
            for meas in phase.measurements.itervalues()):
-      self.record.outcome = 'FAIL'
+      self.record.outcome = test_record.Outcome.FAIL
     else:
-      self.record.outcome = 'PASS'
+      self.record.outcome = test_record.Outcome.PASS
 
   def GetFinishedRecord(self):
     """Get a test_record.TestRecord for the finished test.
@@ -143,7 +143,7 @@ class TestState(object):
           'Internal framework error, test outcome unset!')
 
     self.logger.debug('Finishing test execution with outcome %s.',
-                      self.record.outcome)
+                      self.record.outcome.name)
 
     self.record.end_time_millis = util.TimeMillis()
     self.logger.removeHandler(self._record_handler)

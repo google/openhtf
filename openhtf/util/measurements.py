@@ -51,9 +51,11 @@ import collections
 import inspect
 import itertools
 import logging
+
+from enum import Enum
+
 import mutablerecords
 
-# from openhtf.io import records
 import openhtf
 from openhtf.io import test_record
 from openhtf.util import validators
@@ -93,16 +95,23 @@ class MultipleValidatorsException(Exception):
   """Multiple validators were used when defining a measurement."""
 
 
+class Outcome(Enum):
+  """Enum values for measurement 'outcome' fields."""
+  PASS = 'PASS'
+  FAIL = 'FAIL'
+  UNSET = 'UNSET'
+
+
 class Measurement(  # pylint: disable=no-init
     mutablerecords.Record(
         'Measurement', ['name'],
         {'units': None, 'dimensions': None, 'docstring': None,
-         'validators': list, 'outcome': None})):
+         'validators': list, 'outcome': Outcome.UNSET})):
   """Record encapsulating descriptive data for a measurement.
 
   This record includes an _asdict() method so it can be easily output.  Output
-  is as you would expect, except that 'outcome' is updated to 'PASS', 'FAIL',
-  or 'UNSET' accordingly.
+  is as you would expect, a dict mapping non-None fields to their values
+  (validators are stringified with str()).
 
   Attributes:
     name: Name of the measurement.
@@ -110,8 +119,7 @@ class Measurement(  # pylint: disable=no-init
     units: UOM code of the units for the measurement being taken.
     dimensions: Tuple of UOM codes for units of dimensions.
     validators: List of callable validator objects to perform pass/fail checks.
-    outcome: Either True or False if Validate() has been called with a non-None
-      value, otherwise None.
+    outcome: One of the Outcome() enumeration values, starting at UNSET.
   """
 
   def Doc(self, docstring):
@@ -149,20 +157,24 @@ class Measurement(  # pylint: disable=no-init
   def Validate(self, value):
     """Validate this measurement and update its 'outcome' field."""
     # Make sure we don't do anything weird with updating measurement values.
-    if self.outcome is not None:
+    if self.outcome != Outcome.UNSET:
       raise RuntimeError('Validate must only be called once')
 
     # Ignore unset measurements.
     if value is not None:
       # Pass if all our validators return True.
-      self.outcome = all(v(value) for v in self.validators)
+      if all(v(value) for v in self.validators):
+        self.outcome = Outcome.PASS
+      else:
+        self.outcome = Outcome.FAIL
 
     return self
 
   def _asdict(self):
     retval = {
         'name': self.name,
-        'outcome': {None: 'UNSET', True: 'PASS', False: 'FAIL'}[self.outcome]}
+        'outcome': self.outcome,
+    }
     if len(self.validators):
       retval['validators'] = [str(v) for v in self.validators]
     for attr in ('units', 'dimensions', 'docstring'):
