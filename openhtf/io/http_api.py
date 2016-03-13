@@ -130,7 +130,8 @@ class HTTPServer(threading.Thread):
 
   def Stop(self):
     """Stop the HTTP server."""
-    self._server.shutdown()
+    if self._server:
+      self._server.shutdown()
 
   def run(self):
     """Start up a raw HTTPServer based on our HTTPHandler definition."""
