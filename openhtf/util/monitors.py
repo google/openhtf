@@ -83,7 +83,7 @@ class _MonitorThread(threads.KillableThread):
 
 
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
-  monitor = openhtf.TestPhaseInfo.WrapOrReturn(monitor_func)
+  monitor = openhtf.TestPhaseInfo.WrapOrCopy(monitor_func)
   def Wrapper(phase_func):
     @functools.wraps(phase_func)
     def MonitoredPhaseFunc(phase_data, *args, **kwargs):
@@ -95,7 +95,7 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
         return phase_func(phase_data, *args, **kwargs)
       finally:
         monitor_thread.Kill()
-    phase = openhtf.TestPhaseInfo.WrapOrReturn(phase_func)
+    phase = openhtf.TestPhaseInfo.WrapOrCopy(phase_func)
 
     # Re-key this dict so we don't have to worry about collisions with
     # plug.requires() decorators on the phase function.  Since we aren't
