@@ -37,7 +37,6 @@ import inspect
 import logging
 
 import gflags
-import mutablerecords
 
 import openhtf
 from openhtf.exe import phase_data
@@ -155,10 +154,8 @@ class PhaseExecutorThread(threads.KillableThread):
   __repr__ = __str__
 
 
-class PhaseExecutor(mutablerecords.Record(
-    'PhaseExecutor', ['test_state'], {'_current_phase_thread': None})):
+class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
-  # TODO(madsci): continue removing mutablerecords here.
   def __init__(self, test_state):
     self.test_state = test_state
     self._current_phase_thread = None
