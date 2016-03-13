@@ -376,7 +376,7 @@ def measures(*measurements):
   # 'descriptors' is guaranteed to be a list of Measurements here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
-    phase = openhtf.TestPhaseInfo.WrapOrCopy(wrapped_phase)
+    phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
     phase.measurements.extend(measurements)
     return phase
   return decorate
