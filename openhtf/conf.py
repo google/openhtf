@@ -128,16 +128,20 @@ import mutablerecords
 
 from openhtf.util import threads
 
+# If provided, --config-file will cause the given file to be Load()ed when the
+# conf module is initially imported.
 gflags.DEFINE_string('config-file', None,
-                     'The OpenHTF configuration file for this tester')
+                     'File from which to load configuration values.')
 
 gflags.DEFINE_multistring(
     'config-value', [], 'Allows specifying a configuration key=value '
     'on the command line.  The format should be --config-value=key=value. '
     'This value will override any loaded value, and will be a string.')
 
+FLAGS = gflags.FLAGS
 
-class Configuration(object):  # pylint: disable=too-many-instance-attributes
+
+class Configuration(object):
   """A singleton class to replace the 'conf' module.
 
   This class provides the configuration interface described in the module
@@ -172,7 +176,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       self.has_default = 'default_value' in kwargs
   # pylint: enable=invalid-name,bad-super-call,too-few-public-methods
 
-  def __init__(self, flags, logger, lock, _functools, **kwargs):
+  def __init__(self, logger, lock, _functools, **kwargs):
     """Initializes the configuration state.
 
     We have to pull everything we need from global scope into here because we
@@ -180,26 +184,27 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     references.
 
     Args:
-      flags: gflags.FLAGS object used to access flag values.
       logger: Logger to use for logging messages within this class.
       lock: Threading.Lock to use for locking access to config values.
       _functools: Reference to the functools module so we can use it internally
           for decorating methods.
       **kwargs: Modules we need to access within this class.
     """
-    self._flags = flags
     self._logger = logger
     self._lock = lock
     self._functools = _functools
     self._modules = kwargs
     self._declarations = {}
-    self._loaded_values = {}
-    self._flag_values = {}
-    for keyval in self._flags['config-value'].value:
-      self._flag_values.setdefault(*keyval.split('=', 1))
 
-    # Everywhere that uses configuration uses this, so we just declare it here.
-    self.Declare('station_id', 'The name of this tester')
+    # Populate loaded_values with values from --config-file, if it was given.
+    self._loaded_values = {}
+    if FLAGS['config-file'].value:
+      self.LoadFromFile(FLAGS['config-file'].value)
+
+    # Populate flag_values from flags now.
+    self._flag_values = {}
+    for keyval in FLAGS['config-value'].value:
+      self.values.setdefault(*keyval.split('=', 1))
 
   # Don't use Synchronized on this one, because __getitem__ handles it.
   def __getattr__(self, attr):  # pylint: disable=invalid-name
@@ -290,23 +295,17 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       return exception
     return parsed_json
 
-  def LoadFromFile(self, config_file=None, _override=True):
+  def LoadFromFile(self, filename, _override=True):
     """Loads the configuration from a file.
 
     Args:
-      config_file: The file name to load configuration from.  Defaults to
-          '--config-file' flag value if provided.  If neither flag nor keyword
-          arg is provided, will raise a ValueError.
+      config_file: The file name to load configuration from.
       _override: If True, override previously set values, otherwise don't.
 
     Raises:
       ConfigurationInvalidError: If configuration file can't be read, or can't
           be parsed as either YAML or JSON.
-      ValueError: If neither config_file arg nor --config-file flag are set.
     """
-    filename = config_file or self._flags['config-file'].value
-    if not filename:
-      raise ValueError('No config filename provided')
     self._logger.info('Loading configuration from file: %s', filename)
 
     try:
@@ -461,5 +460,5 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 # Swap out the module for a singleton instance of Configuration so we can
 # provide __getattr__ and __getitem__ functionality at the module level.
 sys.modules[__name__] = Configuration(
-    gflags.FLAGS, logging.getLogger(__name__), threading.Lock(), functools,
+    logging.getLogger(__name__), threading.Lock(), functools,
     inspect=inspect, json=json, yaml=yaml)
