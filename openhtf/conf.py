@@ -354,13 +354,14 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     Args:
       dictionary: The dictionary to update.
     """
+    undeclared_keys = []
     for key, value in dictionary.iteritems():
       # Warn in this case.  We raise if you try to access a config key that
       # hasn't been declared, but we don't raise here so that you can use
       # configuration files that are supersets of required configuration for
       # any particular test station.
       if key not in self._declarations:
-        self._logger.warning('Ignoring undeclared configuration key: %s', key)
+        undeclared_keys.append(key)
         continue
       if key in self._loaded_values:
         if _override:
@@ -373,6 +374,8 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
               value, key, self._loaded_values[key])
           continue
       self._loaded_values[key] = value
+    self._logger.warning('Ignoring undeclared configuration keys: %s',
+                         undeclared_keys)
 
   @threads.Synchronized
   def _asdict(self):
@@ -433,16 +436,16 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
                                'is a configuration key', kwarg)
 
       # Set positional args from configuration values.
-      config_args = {name: self[name] for name in arg_names if name in self}
+      final_kwargs = {name: self[name] for name in arg_names if name in self}
 
-      for overridden in set(kwargs) & set(config_args):
+      for overridden in set(kwargs) & set(final_kwargs):
         self._logger.warning('Overriding configuration value for kwarg %s (%s) '
                              'with provided kwarg value: %s', overridden,
                              self[overridden], kwargs[overridden])
-        del config_args[overridden]
-      kwargs.update(config_args)
-      self._logger.debug('Invoking %s with %s', method.__name__, kwargs)
-      return method(**kwargs)
+
+      final_kwargs.update(kwargs)
+      self._logger.debug('Invoking %s with %s', method.__name__, final_kwargs)
+      return method(**final_kwargs)
 
     # We have to check for a 'self' parameter explicitly because Python doesn't
     # pass it as a keyword arg, it passes it as the first positional arg.
