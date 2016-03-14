@@ -31,12 +31,9 @@ class OutputToJSON(JSONEncoder):
     self.inline_attachments = inline_attachments
 
   def default(self, obj):
-    # Handle a few custom objects that end up in our output.
     if isinstance(obj, BaseException):
       # Just repr exceptions.
       return repr(obj)
-    if isinstance(obj, conf.Config):
-      return obj.dictionary
     return super(OutputToJSON, self).default(obj)
 
   # pylint: disable=invalid-name
