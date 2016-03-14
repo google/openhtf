@@ -128,7 +128,7 @@ import mutablerecords
 
 from openhtf.util import threads
 
-gflags.DEFINE_string('config_file', None,
+gflags.DEFINE_string('config-file', None,
                      'The OpenHTF configuration file for this tester')
 
 gflags.DEFINE_multistring(
@@ -294,15 +294,17 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     """Loads the configuration from a file.
 
     Args:
-      config_file: The file name to load configuration from.
-          Defaults to FLAGS.config_file.
+      config_file: The file name to load configuration from.  Defaults to
+          '--config-file' flag value if provided.  If neither flag nor keyword
+          arg is provided, will raise a ValueError.
       _override: If True, override previously set values, otherwise don't.
 
     Raises:
       ConfigurationInvalidError: If configuration file can't be read, or can't
           be parsed as either YAML or JSON.
+      ValueError: If neither config_file arg nor --config-file flag are set.
     """
-    filename = config_file or self._flags.config_file
+    filename = config_file or self._flags['config-file'].value
     if not filename:
       raise ValueError('No config filename provided')
     self._logger.info('Loading configuration from file: %s', filename)
