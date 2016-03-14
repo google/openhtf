@@ -20,6 +20,7 @@ from enum import Enum
 
 import contextlib2 as contextlib
 
+from openhtf import conf
 from openhtf import plugs
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
@@ -63,20 +64,19 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT','FINISHING'])
 
-  def __init__(self, config, test, test_start, test_stop):
+  def __init__(self, test, test_start, test_stop):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self.test = test
     self._test_start = test_start
     self._test_stop = test_stop
-    self._config = config
     self._current_exit_stack = None
     self._test_state = None
     self._status = self.FrameworkStatus.CREATED
 
   def _asdict(self):
     """Return a dictionary representation of this executor."""
-    return {'station_id': self._config.station_id,
+    return {'station_id': conf.station_id,
             'prompt': user_input.get_prompt_manager().prompt,
             'status': self._status.name}
 
@@ -150,8 +150,7 @@ class TestExecutor(threads.KillableThread):
 
     suppressor.failure_reason = 'Test is invalid.'
     self._test_state = test_state.TestState(
-        self._config, self.test, plug_manager.plug_map, dut_id,
-        self._config.station_id)
+        self.test, plug_manager.plug_map, dut_id, conf.station_id)
 
     return plug_manager
 

@@ -2,7 +2,6 @@
 
 from json import JSONEncoder
 
-from openhtf import conf
 from openhtf import util
 from openhtf.exe import test_state
 
