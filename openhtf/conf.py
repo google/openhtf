@@ -304,7 +304,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     """
     filename = config_file or self._flags.config_file
     if not filename:
-      raise self.ConfigurationInvalidError('No config filename provided')
+      raise ValueError('No config filename provided')
     self._logger.info('Loading configuration from file: %s', filename)
 
     try:
