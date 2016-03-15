@@ -43,14 +43,7 @@ LogRecord = collections.namedtuple(
     'LogRecord', 'level logger_name source lineno timestamp_millis message')
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
-
-
-class Outcome(Enum):
-  """Enumeration for possible 'outcome' field values in TestRecords."""
-  PASS = 'PASS'
-  FAIL = 'FAIL'
-  ERROR = 'ERROR'
-  TIMEOUT = 'TIMEOUT'
+Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT'])
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
