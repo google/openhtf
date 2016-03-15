@@ -42,6 +42,7 @@ _LOG = logging.getLogger(__name__)
 
 conf.Declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
 conf.Declare('remote_usb', 'ethersync or other')
+conf.Declare('ethersync', 'ethersync configuration')
 
 def _open_usb_handle(**kwargs):
   """Open a UsbHandle subclass, based on configuration.
@@ -68,7 +69,6 @@ def _open_usb_handle(**kwargs):
   remote_usb = config.remote_usb
   if remote_usb:
     if remote_usb.strip() == 'ethersync':
-      conf.Declare('ethersync', 'ethersync configuration')
       device = config.ethersync
       try:
         mac_addr = device['mac_addr']
@@ -76,7 +76,7 @@ def _open_usb_handle(**kwargs):
       except (KeyError,TypeError):
         raise ValueError('Ethersync needs mac_addr and plug_port to be set')
       else:
-        ethersync = cambrionix.EtherSync()
+        ethersync = cambrionix.EtherSync(mac_addr)
         serial = ethersync.GetUSBSerial(port)
 
   return local_usb.LibUsbHandle.Open(serial_number=serial, **kwargs)

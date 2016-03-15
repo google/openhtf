@@ -118,7 +118,6 @@ INSTALL_REQUIRES = [
     'singledispatch==3.4.0.3',
     'tornado==4.3',
     'Werkzeug==0.10.4',
-    'requests == 2.2.1',
 ]
 
 

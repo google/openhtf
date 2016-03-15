@@ -31,7 +31,6 @@ from openhtf import conf
 
 from openhtf.io.output import json_factory
 from openhtf.io.output import mfg_inspector
-from openhtf.io.output import json_factory
 from openhtf.io.proto import testrun_pb2
 from openhtf.names import *
 
