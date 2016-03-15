@@ -111,6 +111,12 @@ lists of values when possible.
 Lastly, configuration values may also be provided via the --config-value flag,
 but this is discouraged, and should only be used for debugging purposes.
 
+Configuration values loaded via commandline flags, either --config-file or
+--config-value, are not checked against Declarations.  This allows for using
+configuration files that are supersets of required configuration.  Declarations
+are *always* checked upon configuration value access, however, so you still
+must declare any keys you wish to use.
+
 Loaded configuration values may be purged via the Reset() method, but this
 should only be used for testing purposes.
 """
@@ -196,15 +202,65 @@ class Configuration(object):
     self._modules = kwargs
     self._declarations = {}
 
+    # Parse just the flags we care about, since this happens at import time.
+    sys.argv = self._ParseSingleFlag(sys.argv, 'config-file')
+    sys.argv = self._ParseSingleFlag(sys.argv, 'config-value')
+
     # Populate loaded_values with values from --config-file, if it was given.
     self._loaded_values = {}
     if FLAGS['config-file'].value:
-      self.LoadFromFile(FLAGS['config-file'].value)
+      self.LoadFromFile(FLAGS['config-file'].value, _allow_undeclared=True)
 
     # Populate flag_values from flags now.
     self._flag_values = {}
     for keyval in FLAGS['config-value'].value:
-      self.values.setdefault(*keyval.split('=', 1))
+      self._flag_values.setdefault(*keyval.split('=', 1))
+
+  @staticmethod
+  def _ParseSingleFlag(argv, flag_name):
+    """Parse a single gflag from argv.
+
+    This duplicates some of the parsing done in gflags, but we do it here so we
+    can access certain flags at module import time, without forcing the user to
+    have to parse all commandline flags beforehand.  We also don't want to parse
+    all commandline flags as a side effect of loading this module, so we do this
+    bit of hackery to parse just the ones we care about.
+
+    Args:
+      argv: sys.argv to parse, new argv will be returned, like gflags.FLAGS().
+      flag_name: flag name to parse for, will raise if it's not registered.
+    """
+    if len(argv) < 2:
+      return argv
+
+    flag = FLAGS.FlagDict()[flag_name]
+    indices_to_delete = set()
+    for idx, arg in enumerate(argv[1:], start=1):
+      if arg.startswith('-'):
+        arg = arg.lstrip('-')
+        if '=' in arg:
+          # '--config-file=foo.json' syntax, split on the first '='.
+          name, value = arg.split('=', 1)
+        elif idx + 1 >= len(argv):
+          # If no value is given, skip this token.  gflags actually raises in
+          # this case, but we'll just ignore it and let gflags do the raising
+          # when the arguments are parsed for real.
+          continue
+        else:
+          # '--config-file foo.json' syntax, grab the entire next arg.
+          name, value = arg, argv[idx + 1]
+        # If this flag matches the name we want, set the value.
+        if name == flag_name:
+          flag.Parse(value)
+          indices_to_delete.add(idx)
+          if '=' not in arg:
+            indices_to_delete.add(idx + 1)
+
+    # If we found at least one value, mark the flag as not using default.
+    flag.using_default_value = False
+
+    # Return a copy of argv, minus any args we parsed.
+    return [v for i, v in enumerate(argv) if i not in indices_to_delete]
 
   # Don't use Synchronized on this one, because __getitem__ handles it.
   def __getattr__(self, attr):  # pylint: disable=invalid-name
@@ -295,12 +351,14 @@ class Configuration(object):
       return exception
     return parsed_json
 
-  def LoadFromFile(self, filename, _override=True):
+  def LoadFromFile(self, filename, _override=True, _allow_undeclared=False):
     """Loads the configuration from a file.
+
+    Parsed contents must be a single dict mapping config key to value.
 
     Args:
       config_file: The file name to load configuration from.
-      _override: If True, override previously set values, otherwise don't.
+      See LoadFromDict() for other args' descriptions.
 
     Raises:
       ConfigurationInvalidError: If configuration file can't be read, or can't
@@ -318,13 +376,15 @@ class Configuration(object):
     parsed_yaml = self._TryParseYaml(config_data)
     if isinstance(parsed_yaml, dict):
       self._logger.debug('Configuration loaded as YAML: %s', parsed_yaml)
-      self.LoadFromDict(parsed_yaml, _override=_override)
+      self.LoadFromDict(
+          parsed_yaml, _override=_override, _allow_undeclared=_allow_undeclared)
       return
 
     parsed_json = self._TryParseJson(config_data)
     if isinstance(parsed_json, dict):
       self._logger.debug('Configuration loaded as JSON: %s', parsed_json)
-      self.LoadFromDict(parsed_json, _override=_override)
+      self.LoadFromDict(
+          parsed_json, _override=_override, _allow_undeclared=_allow_undeclared)
       return
 
     if not isinstance(parsed_yaml, Exception):
@@ -339,19 +399,24 @@ class Configuration(object):
         'Failed to load from %s as either YAML or JSON' % filename,
         parsed_yaml, parsed_json)
 
-  def Load(self, _override=True, **kwargs):
-    """Load configuration values from kwargs."""
-    self.LoadFromDict(kwargs, _override=_override)
+  def Load(self, _override=True, _allow_undeclared=False, **kwargs):
+    """Load configuration values from kwargs, see LoadFromDict()."""
+    self.LoadFromDict(
+        kwargs, _override=_override, _allow_undeclared=_allow_undeclared)
 
   @threads.Synchronized
-  def LoadFromDict(self, dictionary, _override=True):
+  def LoadFromDict(self, dictionary, _override=True, _allow_undeclared=False):
     """Loads the config with values from a dictionary instead of a file.
 
     This is meant for testing and bin purposes and shouldn't be used in most
     applications.
 
     Args:
-      dictionary: The dictionary to update.
+      dictionary: The dictionary containing config keys/values to update.
+      _override: If True, new values will override previous values.
+      _allow_undeclared: If True, silently load undeclared keys, otherwise
+          warn and ignore the value.  Typically used for loading config
+          files before declarations have been evaluated.
     """
     undeclared_keys = []
     for key, value in dictionary.iteritems():
@@ -359,7 +424,7 @@ class Configuration(object):
       # hasn't been declared, but we don't raise here so that you can use
       # configuration files that are supersets of required configuration for
       # any particular test station.
-      if key not in self._declarations:
+      if key not in self._declarations and not _allow_undeclared:
         undeclared_keys.append(key)
         continue
       if key in self._loaded_values:
@@ -373,8 +438,9 @@ class Configuration(object):
               value, key, self._loaded_values[key])
           continue
       self._loaded_values[key] = value
-    self._logger.warning('Ignoring undeclared configuration keys: %s',
-                         undeclared_keys)
+    if undeclared_keys:
+      self._logger.warning('Ignoring undeclared configuration keys: %s',
+                           undeclared_keys)
 
   @threads.Synchronized
   def _asdict(self):
