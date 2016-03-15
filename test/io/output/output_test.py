@@ -14,6 +14,7 @@
 """Unit tests for the openhtf.io.output module."""
 
 import atexit
+import difflib
 import logging
 import os.path
 import shutil
@@ -73,39 +74,48 @@ def dimensions(test):
 
 class TestOpenhtf(unittest.TestCase):
 
-  def __init__(self, unittest_name):
-    super(TestOpenhtf, self).__init__(unittest_name)
-    self.tempdir = tempfile.mkdtemp()
-    atexit.register(shutil.rmtree, self.tempdir)
+  @classmethod
+  def setUpClass(cls):
+    tempdir = tempfile.mkdtemp()
+    atexit.register(shutil.rmtree, tempdir)
     conf.LoadFromDict({'station_id': 'unittest_openhtf'}, force_reload=True)
-    self.test = openhtf.Test(
+    test = openhtf.Test(
         dimensions, test_name='TestTest', test_description='Unittest test',
         test_version='1.0.0')
-    self.test.AddOutputCallback(_CleanVariability(json_factory.OutputToJSON(
-        os.path.join(self.tempdir, 'record.json'), sort_keys=True)))
-    self.test.AddOutputCallback(_CleanVariability(
+    test.AddOutputCallback(_CleanVariability(json_factory.OutputToJSON(
+        os.path.join(tempdir, 'record.json'), sort_keys=True, indent=2)))
+    test.AddOutputCallback(_CleanVariability(
         mfg_inspector.OutputToTestRunProto(
-            os.path.join(self.tempdir, 'record.testrun'))))
-    self.test.Execute()
+            os.path.join(tempdir, 'record.testrun'))))
+    test.Execute()
+    cls.tempdir = tempdir
+
+  def _CompareOutput(self, expected, actual):
+    # Remove any problems from trailing newlines.
+    expected, actual = expected.strip(), actual.strip()
+
+    if expected == actual:
+      return
+
+    # Output the diff first.
+    logging.error('***** TestRun mismatch:*****')
+    for line in difflib.unified_diff(
+        expected.splitlines(), actual.splitlines(),
+        fromfile='expected', tofile='actual', lineterm=''):
+      logging.error(line)
+    logging.error('^^^^^  TestRun diff  ^^^^^')
+
+    # Then raise the AssertionError as expected.
+    assert expected == actual
 
   def testJson(self):
     with open(os.path.join(self.tempdir, 'record.json'), 'r') as jsonfile:
-      self.assertEquals(EXPECTED_JSON, jsonfile.read())
+      self._CompareOutput(EXPECTED_JSON, jsonfile.read())
 
   def testTestrun(self):
     expected = testrun_pb2.TestRun.FromString(EXPECTED_TESTRUN)
     with open(os.path.join(self.tempdir, 'record.testrun'), 'rb') as trfile:
       actual = testrun_pb2.TestRun.FromString(trfile.read())
-    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
-
-    try:
-      self.assertEquals(expected, actual)
-    except Exception:
-      logging.error('***** TestRun proto mismatch:*****')
-      for line_no, (expected_line, actual_line) in enumerate(zip(
-          text_format.MessageToString(expected).splitlines(),
-          text_format.MessageToString(actual).splitlines())):
-        if expected_line != actual_line:
-          logging.error('%s: "%s" != "%s"', line_no, expected_line, actual_line)
-      logging.error('^^^^^ TestRun proto diff ^^^^^')
-      raise
+      self._CompareOutput(
+          text_format.MessageToString(expected),
+          text_format.MessageToString(actual))
