@@ -22,7 +22,6 @@ import logging
 
 from enum import Enum
 
-from openhtf import conf
 from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
@@ -68,12 +67,7 @@ class TestState(object):
     self._state = self.State.CREATED
     self._config = config
     self.record = test_record.TestRecord(
-        dut_id=dut_id, station_id=config.station_id,
-        metadata={
-            'code': test.code_info.sourcecode,
-            'filename': test.code_info.name,
-            'docstring': test.code_info.docstring
-            })
+        dut_id=dut_id, station_id=config.station_id, code_info=test.code_info)
 
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)

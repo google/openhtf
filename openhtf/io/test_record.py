@@ -17,6 +17,8 @@
 
 
 import collections
+import inspect
+import os
 
 import mutablerecords
 
@@ -39,6 +41,7 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
         'TestRecord', ['dut_id', 'station_id'],
         {'start_time_millis': util.TimeMillis, 'end_time_millis': None,
          'outcome': None, 'outcome_details': list,
+         'code_info': None,
          'metadata': dict,
          'phases': list, 'log_records': list})):
   """The record of a single run of a test."""
@@ -56,7 +59,7 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
 
 class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
-        'PhaseRecord', ['name', 'code'],
+        'PhaseRecord', ['name', 'codeinfo'],
         {'measurements': None, 'measured_values': None,
          'start_time_millis': None, 'end_time_millis': None,
          'attachments': dict, 'result': None, 'docstring': None})):
@@ -71,3 +74,23 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
 
   See measurements.Record.GetValues() for more information.
   """
+
+
+class CodeInfo(mutablerecords.Record(
+    'CodeInfo', ['name', 'docstring', 'sourcecode'])):
+  """Information regarding the running tester code."""
+
+  @classmethod
+  def ForModuleFromStack(cls, levels_up=1):
+    # levels_up is how many frames up to go:
+    #  0: This function (useless).
+    #  1: The function calling this (likely).
+    #  2+: The function calling 'you' (likely in the framework).
+    frame, filename = inspect.stack(context=0)[levels_up][:2]
+    module = inspect.getmodule(frame)
+    return cls(os.path.basename(filename), inspect.getdoc(module),
+               inspect.getsource(frame))
+
+  @classmethod
+  def ForFunction(cls, func):
+    return cls(func.__name__, inspect.getdoc(func), inspect.getsource(func))

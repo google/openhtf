@@ -19,7 +19,6 @@ import inspect
 import itertools
 import json
 import logging
-import os
 import signal
 import socket
 import sys
@@ -33,6 +32,7 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.exe import triggers
 from openhtf.io import http_api
+from openhtf.io import test_record
 from openhtf.util import logs
 from openhtf.util import measurements
 
@@ -59,7 +59,8 @@ class TestInfo(mutablerecords.Record(
         'test_stop': lambda: triggers.AutoStop,
         'output_callbacks': list,
         # pylint: disable=used-before-assignment
-        'code_info': lambda: CodeInfo.ForModuleFromStack(levels_up=5),
+        'code_info': (
+            lambda: test_record.CodeInfo.ForModuleFromStack(levels_up=5)),
     })):
   """An object that represents an OpenHTF test.
 
@@ -99,11 +100,11 @@ class TestInfo(mutablerecords.Record(
     """Add the given function as an output module to this test."""
     self.output_callbacks.append(callback)
 
-  def OutputTestRecord(self, test_record):
+  def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
-    test_record.metadata.update(self.metadata)
+    record.metadata.update(self.metadata)
     for output_cb in self.output_callbacks:
-      output_cb(test_record)
+      output_cb(record)
 
   def GetPlugTypeMap(self):
     """Returns dict mapping name to plug type for all phases."""
@@ -201,7 +202,7 @@ class TestPhaseInfo(mutablerecords.Record(
       A new TestPhaseInfo object.
     """
     if not isinstance(func, cls):
-      func = cls(func, CodeInfo.ForFunction(func))
+      func = cls(func, test_record.CodeInfo.ForFunction(func))
     # We want to copy so that a phase can be reused with different options, etc.
     return mutablerecords.CopyRecord(func)
 
@@ -214,26 +215,6 @@ class TestPhaseInfo(mutablerecords.Record(
       # it but miscounted arguments, we'll get another error farther down.
       return self.func(**plug_kwargs)
     return self.func(phase_data, **plug_kwargs)
-
-
-class CodeInfo(mutablerecords.Record(
-    'CodeInfo', ['name', 'docstring', 'sourcecode'])):
-  """Information regarding the running tester code."""
-
-  @classmethod
-  def ForModuleFromStack(cls, levels_up=1):
-    # levels_up is how many frames up to go:
-    #  0: This function (useless).
-    #  1: The function calling this (likely).
-    #  2+: The function calling 'you' (likely in the framework).
-    frame, filename = inspect.stack(context=0)[levels_up][:2]
-    module = inspect.getmodule(frame)
-    return cls(os.path.basename(filename), inspect.getdoc(module),
-               inspect.getsource(frame))
-
-  @classmethod
-  def ForFunction(cls, func):
-    return cls(func.__name__, inspect.getdoc(func), inspect.getsource(func))
 
 
 def StopOnSigInt(callbacks):
