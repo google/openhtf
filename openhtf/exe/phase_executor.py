@@ -55,8 +55,7 @@ class InvalidPhaseResultError(Exception):
   """Raised when a PhaseOutcome is created with an invalid phase result."""
 
 
-class PhaseOutcome(collections.namedtuple(
-    'PhaseOutcome', 'phase_result')):
+class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   """Provide some utility and sanity around phase return values.
 
   This should not be confused with openhtf.PhaseResult.  PhaseResult is an
@@ -76,9 +75,8 @@ class PhaseOutcome(collections.namedtuple(
   other value will raise an InvalidPhaseResultError.
   """
   def __init__(self, phase_result):
-    if not (phase_result is None or
-            isinstance(phase_result, Exception) or
-            isinstance(phase_result, openhtf.PhaseResult)):
+    if (phase_result is not None and
+        not isinstance(phase_result, (Exception, openhtf.PhaseResult))):
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
     super(PhaseOutcome, self).__init__(phase_result)
 

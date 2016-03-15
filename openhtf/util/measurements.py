@@ -95,11 +95,7 @@ class MultipleValidatorsException(Exception):
   """Multiple validators were used when defining a measurement."""
 
 
-class Outcome(Enum):
-  """Enum values for measurement 'outcome' fields."""
-  PASS = 'PASS'
-  FAIL = 'FAIL'
-  UNSET = 'UNSET'
+Outcome = Enum('Outcome', ['PASS', 'FAIL', 'UNSET'])
 
 
 class Measurement(  # pylint: disable=no-init

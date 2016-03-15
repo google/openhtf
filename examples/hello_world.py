@@ -51,7 +51,8 @@ def hello_world(test):
   test.logger.info('Hello World!')
 
   # As described above, this is how measurements are set.  The value that has
-  # been set can also be accessed, but can only be set once.
+  # been set can also be accessed, but should only be set once (this will be
+  # enforced in the future, for now it's best-practice).
   test.measurements.hello_world_measurement = 'Hello Again!'
 
 
