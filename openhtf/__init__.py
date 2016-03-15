@@ -15,6 +15,7 @@
 
 """The main OpenHTF entry point."""
 
+import collections
 import inspect
 import itertools
 import json
@@ -46,26 +47,8 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 
-def Test(*phases, **metadata):
-  return TestInfo(phases, metadata=metadata)
-
-
-class TestInfo(mutablerecords.Record(
-    'Test', ['phases'], {
-        'loop': False,
-        'metadata': dict,
-        # Have to wrap with lambda: or else the trigger gets called in __init__.
-        'test_start': lambda: triggers.AutoStart,
-        'test_stop': lambda: triggers.AutoStop,
-        'output_callbacks': list,
-        # pylint: disable=used-before-assignment
-        'code_info': (
-            lambda: test_record.CodeInfo.ForModuleFromStack(levels_up=5)),
-    })):
+class Test(object):
   """An object that represents an OpenHTF test.
-
-  This object encapsulates the static test information that is set once and used
-  by the framework along the way.
 
   Example:
 
@@ -76,37 +59,86 @@ class TestInfo(mutablerecords.Record(
       # Analyze widget integration status
 
     Test(PhaseOne, PhaseTwo).Execute()
+  """
 
-    # Or more directly:
-    TestInfo([PhaseOne, PhaseTwo]).Execute()
+  def __init__(self, *phases, **metadata):
+    code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
+    self._test_info = TestData(phases, metadata=metadata, code_info=code_info)
+    self._output_callbacks = []
+    self.loop = False
+
+  def AddOutputCallback(self, callback):
+    """Add the given function as an output module to this test."""
+    self._output_callbacks.append(callback)
+
+  def OutputTestRecord(self, record):
+    """Feed the record of this test to all output modules."""
+    record.metadata.update(self._test_info.metadata)
+    for output_cb in self._output_callbacks:
+      output_cb(record)
+
+  # TODO(fahhem): Cleanup accesses to these attributes and remove these proxies.
+  @property
+  def plug_type_map(self):
+    return self._test_info.plug_type_map
+
+  @property
+  def phases(self):
+    return self._test_info.phases
+
+  @property
+  def code_info(self):
+    return self._test_info.code_info
+
+  @property
+  def metadata(self):
+    return self._test_info.metadata
+
+  def Execute(self, loop=None,
+              test_start=triggers.AutoStart, test_stop=triggers.AutoStop):
+    """Starts the framework and executes the given test.
+    Args:
+      test_start: Trigger for starting the test, defaults to AutoStart with a
+          dummy serial number.
+      test_stop: Trigger for when the test is over, defaults to AutoStop to
+          immediately stop after the phase.
+      output_callbacks: List of callbacks to be called with the results
+          output from this test.
+    """
+    SetupFramework()
+
+    if loop is not None:
+      self.loop = loop
+
+    _LOG.info('Executing test: %s', self.code_info.name)
+    executor = exe.TestExecutor(conf.Config(), self, test_start, test_stop)
+    server = http_api.Server(executor)
+    StopOnSigInt([server.Stop, executor.Stop])
+    server.Start()
+    executor.Start()
+    executor.Wait()
+    server.Stop()
+
+
+class TestData(collections.namedtuple(
+    'TestData', ['phases', 'code_info', 'metadata'])):
+  """An object that represents the reusable portions of an OpenHTF test.
+
+  This object encapsulates the static test information that is set once and used
+  by the framework along the way.
 
   Attributes:
     phases: The phases to execute for this test.
     metadata: Any metadata that should be associated with test records.
     code_info: Information about the module that created the test.
-    test_start: Trigger for starting the test, defaults to AutoStart with a
-        dummy serial number.
-    test_stop: Trigger for when the test is over, defaults to AutoStop to
-        immediately stop after the phase.
-    output_callbacks: List of callbacks to be called with the results
-        output from this test.
   """
 
-  def __init__(self, *args, **kwargs):
-    super(TestInfo, self).__init__(*args, **kwargs)
-    self.phases = [TestPhaseInfo.WrapOrReturn(phase) for phase in self.phases]
+  def __new__(cls, phases, code_info, metadata):
+    phases = [TestPhaseInfo.WrapOrCopy(phase) for phase in phases]
+    return super(TestData, cls).__new__(cls, phases, code_info, metadata)
 
-  def AddOutputCallback(self, callback):
-    """Add the given function as an output module to this test."""
-    self.output_callbacks.append(callback)
-
-  def OutputTestRecord(self, record):
-    """Feed the record of this test to all output modules."""
-    record.metadata.update(self.metadata)
-    for output_cb in self.output_callbacks:
-      output_cb(record)
-
-  def GetPlugTypeMap(self):
+  @property
+  def plug_type_map(self):
     """Returns dict mapping name to plug type for all phases."""
     plug_type_map = {}
     for plug, plug_type in itertools.chain.from_iterable(
@@ -118,20 +150,6 @@ class TestInfo(mutablerecords.Record(
             'Duplicate plug with different type: %s' % plug)
       plug_type_map[plug] = plug_type
     return plug_type_map
-
-  def Execute(self):
-    """Starts the framework and executes the given test."""
-    SetupFramework()
-
-    _LOG.info('Executing test: %s', self.code_info.name)
-    executor = exe.TestExecutor(
-        conf.Config(), self, self.test_start, self.test_stop)
-    server = http_api.Server(executor)
-    StopOnSigInt([server.Stop, executor.Stop])
-    server.Start()
-    executor.Start()
-    executor.Wait()
-    server.Stop()
 
 
 def SetupFramework():
@@ -221,7 +239,7 @@ def StopOnSigInt(callbacks):
   """Handles SigInt by calling the given callbacks."""
 
   def _Handler(*_):
-    """Handle SIGINT by stopping running executor and handler."""
+    """Calls the given callbacks."""
     _LOG.error('Received SIGINT. Stopping everything.')
     for cb in callbacks:
       cb()

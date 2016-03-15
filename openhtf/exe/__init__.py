@@ -146,8 +146,7 @@ class TestExecutor(threads.KillableThread):
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
     plug_manager = (
-        plugs.PlugManager.InitializeFromTypes(
-            self.test.GetPlugTypeMap()))
+        plugs.PlugManager.InitializeFromTypes(self.test.plug_type_map))
     self._current_exit_stack.callback(plug_manager.TearDownPlugs)
 
     suppressor.failure_reason = 'Test is invalid.'
