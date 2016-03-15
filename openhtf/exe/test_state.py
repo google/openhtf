@@ -55,7 +55,7 @@ class TestState(object):
   """
   State = Enum('State', ['CREATED', 'RUNNING', 'COMPLETED'])
 
-  def __init__(self, test, plug_map, dut_id, station_id):
+  def __init__(self, config, test, plug_map, dut_id, station_id):
     self._state = self.State.CREATED
     self.record = test_record.TestRecord(
         dut_id=dut_id, station_id=config.station_id, code_info=test.code_info)

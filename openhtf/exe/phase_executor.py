@@ -182,7 +182,7 @@ class PhaseExecutor(object):
 
     _LOG.info('Executing phase %s with plugs %s', phase.name, phase_data.plugs)
 
-    self._test_state.running_phase = test_record.PhaseRecord(
+    self.test_state.running_phase_record = test_record.PhaseRecord(
         phase.name, phase.code_info)
 
     with phase_data.RecordPhaseTiming(phase, self.test_state) as outcome_wrapper:

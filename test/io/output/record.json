@@ -1,1 +1,90 @@
-{"dut_id": "UNKNOWN_DUT_ID", "end_time_millis": "67892", "log_records": [{"level": "10", "lineno": "123", "logger_name": "openhtf.test_record", "message": "Finishing test execution with outcome PASS.", "source": "test_state.py", "timestamp_millis": "12346"}], "metadata": {"docstring": "Unit tests for the openhtf.io.output module.", "filename": "output_test.py", "test_description": "Unittest test", "test_name": "TestTest", "test_version": "1.0.0"}, "outcome": "PASS", "outcome_details": [], "phases": [{"attachments": {"test_attachment": {"data": "This is test attachment data.", "mimetype": null}}, "code": "@measures(\n    Measurement('measurement'),\n    Measurement('dimensions').WithDimensions(UOM['HERTZ']))\ndef dimensions(test):\n  test.measurements.measurement = 1\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  test.Attach('test_attachment', 'This is test attachment data.')\n", "end_time_millis": "67891", "measured_values": {"dimensions": [["0", "1"], ["1", "2"], ["2", "4"], ["3", "8"], ["4", "16"]], "measurement": "1"}, "measurements": {"dimensions": {"dimensions": [{"uom_code": "HTZ", "uom_suffix": "Hz"}], "name": "dimensions", "outcome": "PASS"}, "measurement": {"name": "measurement", "outcome": "PASS"}}, "name": "dimensions", "result": {"phase_result": "CONTINUE"}, "start_time_millis": "12345"}], "start_time_millis": "12344", "station_id": "unittest_openhtf"}
+{
+  "code_info": {
+    "docstring": "Unit tests for the openhtf.io.output module.", 
+    "name": "output_test.py", 
+    "sourcecode": "  @classmethod\n  def setUpClass(cls):\n    tempdir = '/tmp/madsci' #tempfile.mkdtemp()\n    #atexit.register(shutil.rmtree, tempdir)\n    conf.LoadFromDict({'station_id': 'unittest_openhtf'}, force_reload=True)\n    test = openhtf.Test(\n        dimensions, test_name='TestTest', test_description='Unittest test',\n        test_version='1.0.0')\n    test.AddOutputCallback(_CleanVariability(json_factory.OutputToJSON(\n        os.path.join(tempdir, 'record.json'), sort_keys=True, indent=2)))\n    test.AddOutputCallback(_CleanVariability(\n        mfg_inspector.OutputToTestRunProto(\n            os.path.join(tempdir, 'record.testrun'))))\n    test.Execute()\n    cls.tempdir = tempdir\n"
+  }, 
+  "dut_id": "UNKNOWN_DUT_ID", 
+  "end_time_millis": "67892", 
+  "log_records": [
+    {
+      "level": "10", 
+      "lineno": "123", 
+      "logger_name": "openhtf.test_record", 
+      "message": "Finishing test execution with outcome PASS.", 
+      "source": "test_state.py", 
+      "timestamp_millis": "12346"
+    }
+  ], 
+  "metadata": {
+    "test_description": "Unittest test", 
+    "test_name": "TestTest", 
+    "test_version": "1.0.0"
+  }, 
+  "outcome": "PASS", 
+  "outcome_details": [], 
+  "phases": [
+    {
+      "attachments": {
+        "test_attachment": {
+          "data": "This is test attachment data.", 
+          "mimetype": null
+        }
+      }, 
+      "codeinfo": {
+        "docstring": null, 
+        "name": "dimensions", 
+        "sourcecode": "@measures(\n    Measurement('measurement'),\n    Measurement('dimensions').WithDimensions(UOM['HERTZ']))\ndef dimensions(test):\n  test.measurements.measurement = 1\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  test.Attach('test_attachment', 'This is test attachment data.')\n"
+      }, 
+      "end_time_millis": "67891", 
+      "measured_values": {
+        "dimensions": [
+          [
+            "0", 
+            "1"
+          ], 
+          [
+            "1", 
+            "2"
+          ], 
+          [
+            "2", 
+            "4"
+          ], 
+          [
+            "3", 
+            "8"
+          ], 
+          [
+            "4", 
+            "16"
+          ]
+        ], 
+        "measurement": "1"
+      }, 
+      "measurements": {
+        "dimensions": {
+          "dimensions": [
+            {
+              "uom_code": "HTZ", 
+              "uom_suffix": "Hz"
+            }
+          ], 
+          "name": "dimensions", 
+          "outcome": "PASS"
+        }, 
+        "measurement": {
+          "name": "measurement", 
+          "outcome": "PASS"
+        }
+      }, 
+      "name": "dimensions", 
+      "result": {
+        "phase_result": "CONTINUE"
+      }, 
+      "start_time_millis": "12345"
+    }
+  ], 
+  "start_time_millis": "12344", 
+  "station_id": "unittest_openhtf"
+}

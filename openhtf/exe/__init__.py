@@ -150,7 +150,8 @@ class TestExecutor(threads.KillableThread):
 
     suppressor.failure_reason = 'Test is invalid.'
     self._test_state = test_state.TestState(
-        self.test, plug_manager.plug_map, dut_id, self._config.station_id)
+        self._config, self.test, plug_manager.plug_map, dut_id,
+        self._config.station_id)
 
     return plug_manager
 
