@@ -46,8 +46,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 def _CleanVariability(output_callback):
   """Helper to replace start/end times and other variability."""
   def _Wrapper(record):
-    if 'code' in record.metadata:
-      del record.metadata['code']
+    record.code_info = None
     record.start_time_millis = 12344
     for phase in record.phases:
       phase.start_time_millis = 12345

@@ -1,9 +1,4 @@
 {
-  "code_info": {
-    "docstring": "Unit tests for the openhtf.io.output module.", 
-    "name": "output_test.py", 
-    "sourcecode": "  @classmethod\n  def setUpClass(cls):\n    tempdir = '/tmp/madsci' #tempfile.mkdtemp()\n    #atexit.register(shutil.rmtree, tempdir)\n    conf.LoadFromDict({'station_id': 'unittest_openhtf'}, force_reload=True)\n    test = openhtf.Test(\n        dimensions, test_name='TestTest', test_description='Unittest test',\n        test_version='1.0.0')\n    test.AddOutputCallback(_CleanVariability(json_factory.OutputToJSON(\n        os.path.join(tempdir, 'record.json'), sort_keys=True, indent=2)))\n    test.AddOutputCallback(_CleanVariability(\n        mfg_inspector.OutputToTestRunProto(\n            os.path.join(tempdir, 'record.testrun'))))\n    test.Execute()\n    cls.tempdir = tempdir\n"
-  }, 
   "dut_id": "UNKNOWN_DUT_ID", 
   "end_time_millis": "67892", 
   "log_records": [
