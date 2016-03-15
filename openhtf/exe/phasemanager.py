@@ -162,7 +162,7 @@ class PhaseExecutor(mutablerecords.Record(
         'Executing phase %s with plugs %s', phase.func.__name__, data.plugs)
 
     self._test_state.running_phase = test_record.PhaseRecord(
-        phase.func.__name__, phase.source, docstring=phase.func.__doc__)
+        phase.func.__name__, phase.code_info)
 
     with data.RecordPhaseTiming(phase, self._test_state) as result_wrapper:
       phase_thread = PhaseExecutorThread(phase, data)

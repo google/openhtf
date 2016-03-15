@@ -154,7 +154,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
   for phase in record.phases:
     testrun_phase = testrun.phases.add()
     testrun_phase.name = phase.name
-    testrun_phase.description = phase.code
+    testrun_phase.description = phase.codeinfo.sourcecode
     testrun_phase.timing.start_time_millis = phase.start_time_millis
     testrun_phase.timing.end_time_millis = phase.end_time_millis
 
