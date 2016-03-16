@@ -123,7 +123,6 @@ should only be used for testing purposes.
 
 import functools
 import inspect
-import json
 import logging
 import sys
 import threading
@@ -354,22 +353,6 @@ class Configuration(object):
     if self._flags['config-file'].value:
       self.LoadFromFile(self._flags['config-file'].value, _allow_undeclared=True)
 
-  def _TryParseYaml(self, maybe_yaml_data):
-    """Attempt to parse the given data as yaml, return result or exception."""
-    try:
-      parsed_yaml = self._modules['yaml'].safe_load(maybe_yaml_data)
-    except self._modules['yaml'].YAMLError as exception:
-      return exception
-    return parsed_yaml
-
-  def _TryParseJson(self, maybe_json_data):
-    """Attempt to parse the given data as json, return result or exception."""
-    try:
-      parsed_json = self._modules['json'].loads(maybe_json_data)
-    except ValueError as exception:
-      return exception
-    return parsed_json
-
   def LoadFromFile(self, filename, _override=True, _allow_undeclared=False):
     """Loads the configuration from a file.
 
@@ -381,42 +364,31 @@ class Configuration(object):
 
     Raises:
       ConfigurationInvalidError: If configuration file can't be read, or can't
-          be parsed as either YAML or JSON.
+          be parsed as either YAML (or JSON, which is a subset of YAML).
     """
     self._logger.info('Loading configuration from file: %s', filename)
 
     try:
-      with open(filename, 'rb') as yaml_or_json_file:
-        config_data = yaml_or_json_file.read()
+      with open(filename, 'rb') as yaml_file:
+        config_data = yaml_file.read()
     except IOError as exception:
       self._logger.exception('Configuration file load failed: %s', filename)
       raise self.ConfigurationInvalidError(filename, exception)
 
-    parsed_yaml = self._TryParseYaml(config_data)
-    if isinstance(parsed_yaml, dict):
-      self._logger.debug('Configuration loaded as YAML: %s', parsed_yaml)
-      self.LoadFromDict(
-          parsed_yaml, _override=_override, _allow_undeclared=_allow_undeclared)
-      return
+    try:
+      parsed_yaml = self._modules['yaml'].safe_load(config_data)
+    except self._modules['yaml'].YAMLError as exception:
+      raise self.ConfigurationInvalidError(
+          'Failed to load from %s as YAML' % filename, exception)
 
-    parsed_json = self._TryParseJson(config_data)
-    if isinstance(parsed_json, dict):
-      self._logger.debug('Configuration loaded as JSON: %s', parsed_json)
-      self.LoadFromDict(
-          parsed_json, _override=_override, _allow_undeclared=_allow_undeclared)
-      return
-
-    if not isinstance(parsed_yaml, Exception):
+    if not isinstance(parsed_yaml, dict):
       # Parsed YAML, but it's not a dict.
       raise self.ConfigurationInvalidError(
           'YAML parsed, but wrong type, should be dict', parsed_yaml)
-    if not isinstance(parsed_json, Exception):
-      # Parsed JSON, but it's not a dict.
-      raise self.ConfigurationInvalidError(
-          'JSON parsed, but wrong type, should be dict', parsed_json)
-    raise self.ConfigurationInvalidError(
-        'Failed to load from %s as either YAML or JSON' % filename,
-        parsed_yaml, parsed_json)
+
+    self._logger.debug('Configuration loaded from file: %s', parsed_yaml)
+    self.LoadFromDict(
+        parsed_yaml, _override=_override, _allow_undeclared=_allow_undeclared)
 
   def Load(self, _override=True, _allow_undeclared=False, **kwargs):
     """Load configuration values from kwargs, see LoadFromDict()."""
@@ -546,4 +518,4 @@ class Configuration(object):
 # provide __getattr__ and __getitem__ functionality at the module level.
 sys.modules[__name__] = Configuration(
     FLAGS, logging.getLogger(__name__), threading.RLock(), functools,
-    inspect=inspect, json=json, yaml=yaml)
+    inspect=inspect, yaml=yaml)

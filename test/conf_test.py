@@ -120,6 +120,9 @@ class TestConf(unittest.TestCase):
     setattr(gflags.FLAGS, 'config-file', self.BAD_FILENAME)
     with self.assertRaises(conf.ConfigurationInvalidError):
       conf.Reset()
+    setattr(gflags.FLAGS, 'config-file', 'notfound')
+    with self.assertRaises(conf.ConfigurationInvalidError):
+      conf.Reset()
 
   def testInjectPositionalArgs(self):
     @conf.InjectPositionalArgs
