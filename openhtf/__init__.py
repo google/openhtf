@@ -27,6 +27,8 @@ import sys
 import gflags
 import mutablerecords
 
+from enum import Enum
+
 from openhtf import conf
 from openhtf import exe
 from openhtf import plugs
@@ -36,7 +38,6 @@ from openhtf.io import http_api
 from openhtf.io import test_record
 from openhtf.util import logs
 from openhtf.util import measurements
-
 
 FLAGS = gflags.FLAGS
 __version__ = util.get_version()
@@ -134,7 +135,7 @@ class TestData(collections.namedtuple(
   """
 
   def __new__(cls, phases, code_info, metadata):
-    phases = [TestPhaseInfo.WrapOrCopy(phase) for phase in phases]
+    phases = [PhaseInfo.WrapOrCopy(phase) for phase in phases]
     return super(TestData, cls).__new__(cls, phases, code_info, metadata)
 
   @property
@@ -164,8 +165,21 @@ def SetupFramework():
   conf.Load()
 
 
-class TestPhaseOptions(mutablerecords.Record(
-    'TestPhaseOptions', [], {'timeout_s': None, 'run_if': None})):
+class PhaseResult(Enum):
+  """Result of a phase.
+
+  These values can be returned by a test phase to control what the framework
+  does after the phase.  CONTINUE causes the framework to execute the next
+  phase, REPEAT causes the framework to execute that same phase again, and FAIL
+  causes the framework to stop executing and mark the test as failed.
+  """
+  CONTINUE = 'PHASE_CONTINUE'
+  REPEAT = 'PHASE_REPEAT'
+  FAIL = 'PHASE_FAIL'
+
+
+class PhaseOptions(mutablerecords.Record(
+    'PhaseOptions', [], {'timeout_s': None, 'run_if': None})):
   """Options used to override default test phase behaviors.
 
   Attributes:
@@ -174,13 +188,13 @@ class TestPhaseOptions(mutablerecords.Record(
       callback will be passed the phase_data the phase would be run with.
 
   Example Usage:
-    @TestPhaseOptions(timeout_s=1)
+    @PhaseOptions(timeout_s=1)
     def PhaseFunc(test):
       pass
   """
 
   def __call__(self, phase_func):
-    phase = TestPhaseInfo.WrapOrCopy(phase_func)
+    phase = PhaseInfo.WrapOrCopy(phase_func)
     for attr in self.__slots__:
       value = getattr(self, attr)
       if value is not None:
@@ -193,36 +207,44 @@ class PhasePlug(mutablerecords.Record(
   """Information about the use of a plug in a phase."""
 
 
-class TestPhaseInfo(mutablerecords.Record(
-    'TestPhaseInfo', ['func', 'code_info'],
-    {'options': TestPhaseOptions, 'plugs': list, 'measurements': list})):
-  """TestPhase function and related information.
+class PhaseInfo(mutablerecords.Record(
+    'PhaseInfo', ['func', 'code_info'],
+    {'options': PhaseOptions, 'plugs': list, 'measurements': list})):
+  """Phase function and related information.
 
   Attributes:
     func: Function to be called (with phase_data as first argument).
     code_info: Info about the source code of func.
-    options: TestPhaseOptions instance.
+    options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
     measurements: List of Measurement objects.
   """
 
   @classmethod
   def WrapOrCopy(cls, func):
-    """Return a new TestPhaseInfo from the given function or instance.
+    """Return a new PhaseInfo from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different
     options, plugs, measurements, etc.
 
     Args:
-      func: A phase function or TestPhaseInfo instance.
+      func: A phase function or PhaseInfo instance.
 
     Returns:
-      A new TestPhaseInfo object.
+      A new PhaseInfo object.
     """
     if not isinstance(func, cls):
       func = cls(func, test_record.CodeInfo.ForFunction(func))
     # We want to copy so that a phase can be reused with different options, etc.
     return mutablerecords.CopyRecord(func)
+
+  @property
+  def name(self):
+    return self.func.__name__
+
+  @property
+  def doc(self):
+    return self.func.__doc__
 
   def __call__(self, phase_data):
     plug_kwargs = {plug.name: phase_data.plugs[plug.name]
@@ -237,7 +259,6 @@ class TestPhaseInfo(mutablerecords.Record(
 
 def StopOnSigInt(callbacks):
   """Handles SigInt by calling the given callbacks."""
-
   def _Handler(*_):
     """Calls the given callbacks."""
     _LOG.error('Received SIGINT. Stopping everything.')

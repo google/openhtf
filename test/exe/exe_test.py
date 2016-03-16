@@ -35,13 +35,13 @@ class UnittestPlug(plugs.BasePlug):
     print 'Plugs-specific functionality.'
 
 
-@openhtf.TestPhaseOptions()
+@openhtf.PhaseOptions()
 def phase_one(test, test_plug):
   time.sleep(1)
   print 'phase_one completed'
 
 
-@plugs.requires(test_plug=UnittestPlug)
+@plugs.plug(test_plug=UnittestPlug)
 def phase_two(test, test_plug):
   time.sleep(2)
   print 'phase_two completed'
@@ -73,7 +73,7 @@ class TestOpenhtf(unittest.TestCase):
 
   def testClassString(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
-    phase_thread = exe.phasemanager.PhaseExecutorThread(phase_one, ' ')
+    phase_thread = exe.phase_executor.PhaseExecutorThread(phase_one, ' ')
     name = str(phase_thread)
     found = True
     for item in check_list:

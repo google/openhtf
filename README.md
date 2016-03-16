@@ -159,6 +159,6 @@ creation of custom plugs as well.
 
 
 ## Using OpenHTF
-The fastest way to get started is to take a look in the `example/` directory,
+The fastest way to get started is to take a look in the `examples/` directory,
 where you'll find sample test scripts and plugs. In addition, many of OpenHTF's
 modules are fairly well documented inline through the use of docstrings.

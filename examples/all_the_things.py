@@ -15,7 +15,7 @@
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
-python ./hello_world.py --config ./hello_world.yaml
+python all_the_things.py --config=example_config.yaml
 """
 
 import json
@@ -32,9 +32,9 @@ from openhtf.names import *
 #from openhtf.io.output import mfg_inspector
 
 
-@plug(example=example_plug.Example)
+@plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
-  return example.DoChangingStuff()
+  return example.Increment()
 
 
 @measures(
@@ -44,15 +44,17 @@ def example_monitor(example):
     Measurement(
         'widget_color').Doc('Color of the widget'),
     Measurement('widget_size').InRange(1, 4))
-@plug(example=example_plug.Example)
+@plug(example=example_plug.ExamplePlug)
 def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.DisplayPrompt(
       'What\'s the widget type?', text_input=True)
+  if test.measurements.widget_type == 'raise':
+    raise Exception()
   test.measurements.widget_color = 'Black'
   test.measurements.widget_size = 3
-  test.logger.info('Example says: %s', example.DoStuff())
+  test.logger.info('Plug value: %s', example.Increment())
 
 
 # Timeout if this phase takes longer than 10 seconds.

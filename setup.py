@@ -161,7 +161,7 @@ setup(
     author_email='madsci@google.com',
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
-    packages=find_packages(exclude='example'),
+    packages=find_packages(exclude='examples'),
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,

@@ -13,7 +13,8 @@ from openhtf.io.proto import testrun_pb2
 from openhtf.io.proto import units_pb2
 
 from openhtf import util
-from openhtf.exe import test_state
+from openhtf.io import test_record
+from openhtf.util import measurements
 from openhtf.util import validators
 
 # pylint: disable=no-member
@@ -26,11 +27,10 @@ MIMETYPE_MAP = {
   'video/mp4': testrun_pb2.InformationParameter.MP4,
 }
 OUTCOME_MAP = {
-  'State.ERROR': testrun_pb2.ERROR,
-  'State.TIMEOUT': testrun_pb2.ERROR,
-  'State.ABORTED': testrun_pb2.ERROR,
-  'State.FAIL': testrun_pb2.FAIL,
-  'State.PASS': testrun_pb2.PASS,
+  test_record.Outcome.ERROR: testrun_pb2.ERROR,
+  test_record.Outcome.FAIL: testrun_pb2.FAIL,
+  test_record.Outcome.PASS: testrun_pb2.PASS,
+  test_record.Outcome.TIMEOUT: testrun_pb2.ERROR,
 }
 UOM_CODE_MAP = {
   u.GetOptions().Extensions[units_pb2.uom_code]: num
@@ -65,19 +65,15 @@ def _PopulateHeader(record, testrun):
     testrun.test_info.description = record.metadata['test_description']
   if 'test_version' in record.metadata:
     testrun.test_info.version_string = record.metadata['test_version']
-  testrun.test_status = OUTCOME_MAP.get(record.outcome, testrun_pb2.ERROR)
+  testrun.test_status = OUTCOME_MAP[record.outcome]
   testrun.start_time_millis = record.start_time_millis
   testrun.end_time_millis = record.end_time_millis
   if 'run_name' in record.metadata:
     testrun.run_name = record.metadata['run_name']
   for details in record.outcome_details:
     testrun_code = testrun.failure_codes.add()
-    if details.code_type == test_state.TestState.State.ERROR:
-      testrun_code.code = details.code
-      testrun_code.details = details.description
-    else:
-      testrun_code.code = details.code_type
-      testrun_code.details = '%s: %s' % (details.code, details.description)
+    testrun_code.code = details.code
+    testrun_code.details = details.description
 
 
 def _AttachJson(record, testrun):
@@ -87,7 +83,7 @@ def _AttachJson(record, testrun):
   un-mangled fields later if we want.  Remove attachments since those get
   copied over and can potentially be quite large.
   """
-  record_dict = util.convert_to_dict(record, ignore_keys=('attachments',))
+  record_dict = util.ConvertToBaseTypes(record, ignore_keys=('attachments',))
   record_json = json_factory.OutputToJSON(sort_keys=True).encode(record_dict)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
@@ -166,8 +162,11 @@ def _ExtractParameters(record, testrun, used_parameter_names):
       used_parameter_names.add(tr_name)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
-      testrun_param.status = (
-          testrun_pb2.PASS if measurement.outcome else testrun_pb2.FAIL)
+      if measurement.outcome == measurements.Outcome.PASS:
+        testrun_param.status = testrun_pb2.PASS
+      else:
+        # FAIL or UNSET results in a FAIL in the TestRun output.
+        testrun_param.status = testrun_pb2.FAIL
       if measurement.docstring:
         testrun_param.description = measurement.docstring
       if measurement.units:
@@ -290,7 +289,7 @@ class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
     self.filename_pattern = filename_pattern
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
-    as_dict = util.convert_to_dict(test_record)
+    as_dict = util.ConvertToBaseTypes(test_record)
     with open(self.filename_pattern % as_dict, 'w') as outfile:
       outfile.write(_TestRunFromTestRecord(test_record).SerializeToString())
 

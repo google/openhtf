@@ -18,6 +18,7 @@
 import logging
 import time
 from datetime import datetime
+from enum import Enum
 from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
@@ -56,8 +57,24 @@ def TimeMillis():  # pylint: disable=invalid-name
   return int(time.time() * 1000)
 
 
-def convert_to_dict(obj, ignore_keys=tuple()):
-  """Recursively convert namedtuples to dicts."""
+def ConvertToBaseTypes(obj, ignore_keys=tuple()):
+  """Recursively convert objects into base types, mostly dicts and strings.
+
+  This is used to convert some special types of objects used internally into
+  base types for more friendly output via mechanisms such as JSON.  It is used
+  for sending internal objects via the network and outputting test records.
+  Specifically, the conversions that are performed:
+
+    - If an object has an _asdict() method, use that to convert it to a dict.
+    - mutablerecords Record instances are converted to dicts that map
+      attribute name to value.  Optional attributes with a value of None are
+      skipped.
+    - Enum instances are converted to strings via their .name attribute.
+    - Other non-None values are converted to strings via str().
+  
+  This results in the return value containing only dicts, lists, tuples,
+  strings, and None.
+  """
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, basestring), 'Pass a real iterable!'
 
@@ -68,15 +85,17 @@ def convert_to_dict(obj, ignore_keys=tuple()):
            for attr in type(obj).all_attribute_names
            if (getattr(obj, attr) is not None or
                attr in type(obj).required_attributes)}
+  elif isinstance(obj, Enum):
+    obj = obj.name
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    obj = {k: convert_to_dict(v, ignore_keys) for k, v in obj.iteritems()
+    obj = {k: ConvertToBaseTypes(v, ignore_keys) for k, v in obj.iteritems()
            if k not in ignore_keys}
   elif isinstance(obj, list):
-    obj = [convert_to_dict(value, ignore_keys) for value in obj]
+    obj = [ConvertToBaseTypes(value, ignore_keys) for value in obj]
   elif isinstance(obj, tuple):
-    obj = tuple(convert_to_dict(value, ignore_keys) for value in obj)
+    obj = tuple(ConvertToBaseTypes(value, ignore_keys) for value in obj)
   elif obj is not None:
     # Leave None as None to distinguish it from "None".
     obj = str(obj)

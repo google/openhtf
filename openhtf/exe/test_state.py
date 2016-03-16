@@ -22,11 +22,12 @@ import logging
 
 from enum import Enum
 
+import openhtf
+
 from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
 from openhtf.util import logs
-
 
 _LOG = logging.getLogger(__name__)
 
@@ -35,8 +36,9 @@ class BlankDutIdError(Exception):
   """DUT serial cannot be blank at the end of a test."""
 
 
-class InvalidPhaseResultError(Exception):
-  """A TestPhase returned an invalid result."""
+class FrameworkError(Exception):
+  """Raised when we end up in an invalid internal state somehow."""
+
 
 
 class TestRecordAlreadyFinishedError(Exception):
@@ -47,34 +49,21 @@ class TestState(object):
   """This class handles tracking the state of the test.
 
   Args:
-    config: The config being used for this test.
     test: openhtf.Test instance describing the test to run.
+    plug_map: dict mapping plug name to instances.
+    dut_id: DUT identifier, if it's known, otherwise None.
   """
-  State = Enum('State', ['RUNNING', 'ERROR', 'TIMEOUT', 'ABORTED',
-                         'WAITING', 'FAIL', 'PASS', 'CREATED'])
+  State = Enum('State', ['CREATED', 'RUNNING', 'COMPLETED'])
 
-  _PHASE_RESULT_TO_STATE = {
-      phase_data.PhaseResults.CONTINUE: State.WAITING,
-      phase_data.PhaseResults.REPEAT: State.WAITING,
-      phase_data.PhaseResults.FAIL: State.FAIL,
-      phase_data.PhaseResults.TIMEOUT: State.TIMEOUT,
-  }
-
-  _ERROR_STATES = {State.TIMEOUT, State.ERROR}
-  _FINISHED_STATES = {State.PASS, State.FAIL} | _ERROR_STATES
-
-  def __init__(self, config, test, plugs, dut_id):
+  def __init__(self, config, test, plug_map, dut_id, station_id):
     self._state = self.State.CREATED
-    self._config = config
     self.record = test_record.TestRecord(
         dut_id=dut_id, station_id=config.station_id, code_info=test.code_info)
-
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)
     self.logger.addHandler(self._record_handler)
-    self.phase_data = phase_data.PhaseData(self.logger, config, plugs,
-                                           self.record)
-    self.running_phase = None
+    self.phase_data = phase_data.PhaseData(self.logger, plug_map, self.record)
+    self.running_phase_record = None
     self.pending_phases = list(test.phases)
 
   def __del__(self):
@@ -82,7 +71,7 @@ class TestState(object):
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
-    return json.dumps(util.convert_to_dict(self))
+    return json.dumps(util.ConvertToBaseTypes(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
@@ -90,33 +79,36 @@ class TestState(object):
         'status': self._state.name,
         'record': self.record,
         'phase_data': self.phase_data,
-        'running_phase': self.running_phase,
+        'running_phase_record': self.running_phase_record,
         'pending_phases': [(phase.func.__name__, phase.func.__doc__)
                            for phase in self.pending_phases]}
 
-  def SetStateFromPhaseResult(self, phase_result):
-    """Set our internal state based on the given phase result.
+  def SetStateFromPhaseOutcome(self, phase_outcome):
+    """Set our internal state based on the given phase outcome.
 
     Args:
-      phase_result: An instance of phasemanager.TestPhaseResult
+      phase_outcome: An instance of phase_executor.PhaseOutcome
 
-    Returns: True if the test has finished.
+    Returns: True if the test has finished prematurely (failed).
     """
-    if phase_result.raised_exception:
-      self._state = self.State.ERROR
-      code = str(type(phase_result.phase_result).__name__)
-      details = str(phase_result.phase_result).decode('utf8', 'replace')
-      self.record.AddOutcomeDetails(self._state, code, details)
-    else:
-      if phase_result.phase_result not in self._PHASE_RESULT_TO_STATE:
-        raise InvalidPhaseResultError(
-            'Phase result is invalid.', phase_result.phase_result)
-      self._state = self._PHASE_RESULT_TO_STATE[phase_result.phase_result]
+    # Handle a few cases where the test is ending prematurely.
+    if phase_outcome.raised_exception:
+      self.record.outcome = test_record.Outcome.ERROR
+      code = str(type(phase_outcome.phase_result).__name__)
+      description = str(phase_outcome.phase_result).decode('utf8', 'replace')
+      self.record.AddOutcomeDetails(code, description)
+      self._state = self.State.COMPLETED
+    elif phase_outcome.is_timeout:
+      self.record.outcome = test_record.Outcome.TIMEOUT
+      self._state = self.State.COMPLETED
+    elif phase_outcome.phase_result == openhtf.PhaseResult.FAIL:
+      self.record.outcome = test_record.Outcome.FAIL
+      self._state = self.State.COMPLETED
 
-    return self._state in self._FINISHED_STATES
+    return self._state == self.State.COMPLETED
 
   def SetStateRunning(self):
-    """Mark the test as actually running (rather than waiting)."""
+    """Mark the test as actually running (as opposed to CREATED)."""
     self._state = self.State.RUNNING
 
   def SetStateFinished(self):
@@ -124,9 +116,9 @@ class TestState(object):
     if any(not meas.outcome
            for phase in self.record.phases
            for meas in phase.measurements.itervalues()):
-      self._state = self.State.FAIL
+      self.record.outcome = test_record.Outcome.FAIL
     else:
-      self._state = self.State.PASS
+      self.record.outcome = test_record.Outcome.PASS
 
   def GetFinishedRecord(self):
     """Get a test_record.TestRecord for the finished test.
@@ -134,30 +126,31 @@ class TestState(object):
     Should only be called once at the conclusion of a test run, and will raise
     an exception if end_time_millis is already set.
 
-    Arguments:
-      phase_result: The last phasemanager.TestPhaseResult in the test.
-
     Returns:  An updated test_record.TestRecord that is ready for output.
 
     Raises: TestRecordAlreadyFinishedError if end_time_millis already set.
     """
     if self.record.end_time_millis:
-      raise TestRecordAlreadyFinishedError
-
-    self.logger.debug('Finishing test execution with state %s.',
-                      self._state.name)
+      raise TestRecordAlreadyFinishedError('Test already finished at',
+                                           self.record.end_time_millis)
 
     if not self.record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
+    if not self.record.outcome:
+      raise FrameworkError(
+          'Internal framework error, test outcome unset!')
+
+    self.logger.debug('Finishing test execution with outcome %s.',
+                      self.record.outcome.name)
+
     self.record.end_time_millis = util.TimeMillis()
-    self.record.outcome = self._state.name
     self.logger.removeHandler(self._record_handler)
     return self.record
 
   def __str__(self):
-    return '<%s: %s, %s>' % (
-        type(self).__name__, self.record.station_id, self.record.dut_id
+    return '<%s: %s@%s>' % (
+        type(self).__name__, self.record.dut_id, self.record.station_id
     )
   __repr__ = __str__

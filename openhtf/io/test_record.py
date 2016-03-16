@@ -20,9 +20,18 @@ import collections
 import inspect
 import os
 
+import gflags
 import mutablerecords
 
+from enum import Enum
+
 from openhtf import util
+
+gflags.DEFINE_bool(
+    'capture_test_source', True,
+    'If True, inspect test source and save it in the output.')
+
+FLAGS = gflags.FLAGS
 
 
 class InvalidMeasurementDimensions(Exception):
@@ -33,7 +42,8 @@ Attachment = collections.namedtuple('Attachment', 'data mimetype')
 LogRecord = collections.namedtuple(
     'LogRecord', 'level logger_name source lineno timestamp_millis message')
 OutcomeDetails = collections.namedtuple(
-    'OutcomeDetails', 'code_type code description')
+    'OutcomeDetails', 'code description')
+Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT'])
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
@@ -46,15 +56,14 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
          'phases': list, 'log_records': list})):
   """The record of a single run of a test."""
 
-  def AddOutcomeDetails(self, code_type, code, details=None):
-    """Adds a code with optional details to this record's outcome_details.
+  def AddOutcomeDetails(self, code, description=''):
+    """Adds a code with optional description to this record's outcome_details.
 
     Args:
-      code_type: String specifying the type of code ('Error' or 'Failure').
       code: A code name or number.
-      details: A string providing details about the outcome code.
+      description: A string providing more details about the outcome code.
     """
-    self.outcome_details.append(OutcomeDetails(code_type, code, details or ''))
+    self.outcome_details.append(OutcomeDetails(code, description))
 
 
 class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
@@ -88,9 +97,10 @@ class CodeInfo(mutablerecords.Record(
     #  2+: The function calling 'you' (likely in the framework).
     frame, filename = inspect.stack(context=0)[levels_up][:2]
     module = inspect.getmodule(frame)
-    return cls(os.path.basename(filename), inspect.getdoc(module),
-               inspect.getsource(frame))
+    source = inspect.getsource(frame) if FLAGS.capture_test_source else ''
+    return cls(os.path.basename(filename), inspect.getdoc(module), source)
 
   @classmethod
   def ForFunction(cls, func):
-    return cls(func.__name__, inspect.getdoc(func), inspect.getsource(func))
+    source = inspect.getsource(func) if FLAGS.capture_test_source else ''
+    return cls(func.__name__, inspect.getdoc(func), source)
