@@ -26,9 +26,6 @@ from openhtf.io.output import json_factory
 # is just a convenience.  See names.py for an exhaustive list.
 from openhtf.names import *
 
-# TODO(madsci): Clean up conf so we don't need to do this.
-from openhtf import conf
-
 
 # The @measures annotation notifies the OpenHTF framework that this test
 # phase will be taking a measurement that we'd like to call
@@ -70,9 +67,6 @@ if __name__ == '__main__':
   # slightly for human readability.
   test.AddOutputCallback(
       json_factory.OutputToJSON('./hello_world.json', indent=4))
-
-  # TODO(madsci): Clean up conf so we don't need to do this.
-  conf.LoadFromDict({})
 
   # PromptForTestStart prompts the operator for a DUT ID, a unique identifier
   # for the DUT (Device Under Test).  OpenHTF requires that a DUT ID is set
