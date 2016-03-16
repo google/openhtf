@@ -444,7 +444,7 @@ class Configuration(object):
     # Only update keys that are declared so we don't allow injecting
     # un-declared keys via commandline flags.
     for key, value in self._flag_values.iteritems():
-      if key in retval:
+      if key in self._declarations:
         retval[key] = value
     return retval
 

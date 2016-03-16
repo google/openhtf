@@ -1,0 +1,3 @@
+# Valid YAML, but not a single dict like we expect.
+- 'just a list'
+- 'not a dict'

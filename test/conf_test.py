@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2016 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@ import sys
 sys.argv.extend([
     '--config-value=flag_key=flag_value',
     '--config-value', 'other_flag=other_value',
+# You can specify arbitrary keys, but they'll get ignored if they aren't
+# actually declared anywhere (included here to make sure of that).
+    '--config_value=undeclared_flag=who_cares',
 ])
 
 import os.path
@@ -38,18 +41,13 @@ conf.Declare('no_default')
 
 class TestConf(unittest.TestCase):
 
-  JSON_FILENAME = os.path.join(os.path.dirname(__file__), 'test_config.json')
   YAML_FILENAME = os.path.join(os.path.dirname(__file__), 'test_config.yaml')
-  BAD_FILENAME = os.path.join(os.path.dirname(__file__), 'bad_config.txt')
+  BAD_FORMAT = os.path.join(os.path.dirname(__file__), 'bad_config.txt')
+  NOT_A_DICT = os.path.join(os.path.dirname(__file__), 'bad_config.yaml')
 
   def tearDown(self):
     gflags.FLAGS.Reset()
     conf.Reset()
-
-  def testJsonConfig(self):
-    setattr(gflags.FLAGS, 'config-file', self.JSON_FILENAME)
-    conf.Reset()
-    self.assertEquals('json_test_value', conf.json_test_key)
 
   def testYamlConfig(self):
     setattr(gflags.FLAGS, 'config-file', self.YAML_FILENAME)
@@ -89,6 +87,8 @@ class TestConf(unittest.TestCase):
       'station_id': 'station_id',
       'string_default': 'default',
       'none_default': None,
+      'flag_key': 'flag_value',
+      'other_flag': 'other_value',
     }, conf._asdict())
 
   def testUndeclared(self):
@@ -117,7 +117,10 @@ class TestConf(unittest.TestCase):
       conf.Declare('Invalid')
 
   def testBadConfigFile(self):
-    setattr(gflags.FLAGS, 'config-file', self.BAD_FILENAME)
+    setattr(gflags.FLAGS, 'config-file', self.NOT_A_DICT)
+    with self.assertRaises(conf.ConfigurationInvalidError):
+      conf.Reset()
+    setattr(gflags.FLAGS, 'config-file', self.BAD_FORMAT)
     with self.assertRaises(conf.ConfigurationInvalidError):
       conf.Reset()
     setattr(gflags.FLAGS, 'config-file', 'notfound')
@@ -135,11 +138,11 @@ class TestConf(unittest.TestCase):
 
   def testInjectPositionalArgsOverrides(self):
     @conf.InjectPositionalArgs
-    def TestFunction(string_default, no_default='new_default'):
+    def TestFunction(string_default, none_default='new_default'):
       # Make sure when we pass a kwarg, it overrides the config value.
       self.assertEquals('overridden', string_default)
       # Make sure kwargs don't come from config, only positional args.
-      self.assertEquals('new_default', no_default)
+      self.assertEquals('new_default', none_default)
 
     TestFunction(string_default='overridden')
 
