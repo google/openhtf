@@ -163,6 +163,7 @@ def SetupFramework():
 
   logs.setup_logger()
   conf.Load()
+  conf.LoadMissingFromDict({'station_id': socket.gethostname()})
 
 
 class PhaseResult(Enum):
