@@ -182,7 +182,10 @@ class Configuration(object):
       self.has_default = 'default_value' in kwargs
   # pylint: enable=invalid-name,bad-super-call,too-few-public-methods
 
-  def __init__(self, logger, lock, _functools, **kwargs):
+  __slots__ = ('_flags', '_logger', '_lock', '_functools', '_modules',
+               '_declarations', '_flag_values', '_loaded_values')
+
+  def __init__(self, flags, logger, lock, _functools, **kwargs):
     """Initializes the configuration state.
 
     We have to pull everything we need from global scope into here because we
@@ -196,6 +199,7 @@ class Configuration(object):
           for decorating methods.
       **kwargs: Modules we need to access within this class.
     """
+    self._flags = flags
     self._logger = logger
     self._lock = lock
     self._functools = _functools
@@ -206,18 +210,15 @@ class Configuration(object):
     sys.argv = self._ParseSingleFlag(sys.argv, 'config-file')
     sys.argv = self._ParseSingleFlag(sys.argv, 'config-value')
 
-    # Populate loaded_values with values from --config-file, if it was given.
-    self._loaded_values = {}
-    if FLAGS['config-file'].value:
-      self.LoadFromFile(FLAGS['config-file'].value, _allow_undeclared=True)
-
     # Populate flag_values from flags now.
     self._flag_values = {}
-    for keyval in FLAGS['config-value'].value:
+    for keyval in flags['config-value'].value:
       self._flag_values.setdefault(*keyval.split('=', 1))
 
-  @staticmethod
-  def _ParseSingleFlag(argv, flag_name):
+    # Initialize self._loaded_values and load from --config-file if it's set.
+    self.Reset()
+
+  def _ParseSingleFlag(self, argv, flag_name):
     """Parse a single gflag from argv.
 
     This duplicates some of the parsing done in gflags, but we do it here so we
@@ -233,7 +234,7 @@ class Configuration(object):
     if len(argv) < 2:
       return argv
 
-    flag = FLAGS.FlagDict()[flag_name]
+    flag = self._flags.FlagDict()[flag_name]
     indices_to_delete = set()
     for idx, arg in enumerate(argv[1:], start=1):
       if arg.startswith('-'):
@@ -262,10 +263,23 @@ class Configuration(object):
     # Return a copy of argv, minus any args we parsed.
     return [v for i, v in enumerate(argv) if i not in indices_to_delete]
 
+  @staticmethod
+  def _IsValidKey(key):
+    return key and key[0].islower()
+
+  def __setattr__(self, attr, value):
+    """Provide a useful error when attempting to set a value via setattr()."""
+    if self._IsValidKey(attr):
+      raise AttributeError("Can't set conf values by attribute, use Load()")
+    # __slots__ is defined above, so this will raise an AttributeError if the
+    # attribute isn't one we expect; this limits the number of ways to abuse the
+    # conf module singleton instance.
+    super(type(self), self).__setattr__(attr, value)
+
   # Don't use Synchronized on this one, because __getitem__ handles it.
   def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Get a config value via attribute access."""
-    if attr and attr[0].islower():
+    if self._IsValidKey(attr):
       return self[attr]
     # Config keys all begin with a lowercase letter, so treat this normally.
     raise AttributeError("'%s' object has no attribute '%s'" %
@@ -318,7 +332,7 @@ class Configuration(object):
       **kwargs: Other kwargs to pass to the Declaration, only default_value
           is currently supported.
     """
-    if not name or not name[0].islower():
+    if not self._IsValidKey(name):
       raise self.InvalidKeyError(
           'Invalid key name, must begin with a lowercase letter', name)
     if name in self._declarations:
@@ -329,11 +343,16 @@ class Configuration(object):
 
   @threads.Synchronized
   def Reset(self):
-    """Reset the loaded state of the configuration.
+    """Reset the loaded state of the configuration to what it was at import.
 
-    Note that this does *not* reset values set by commandline flags.
+    Note that this does *not* reset values set by commandline flags or loaded
+    from --config-file (in fact, any values loaded from --config-file that have
+    been overridden are reset to their value from --config-file).
     """
-    self._loaded_values.clear()
+    # Populate loaded_values with values from --config-file, if it was given.
+    self._loaded_values = {}
+    if self._flags['config-file'].value:
+      self.LoadFromFile(self._flags['config-file'].value, _allow_undeclared=True)
 
   def _TryParseYaml(self, maybe_yaml_data):
     """Attempt to parse the given data as yaml, return result or exception."""
@@ -526,5 +545,5 @@ class Configuration(object):
 # Swap out the module for a singleton instance of Configuration so we can
 # provide __getattr__ and __getitem__ functionality at the module level.
 sys.modules[__name__] = Configuration(
-    logging.getLogger(__name__), threading.Lock(), functools,
+    FLAGS, logging.getLogger(__name__), threading.RLock(), functools,
     inspect=inspect, json=json, yaml=yaml)
