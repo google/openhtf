@@ -42,9 +42,6 @@ class TestConf(unittest.TestCase):
   YAML_FILENAME = os.path.join(os.path.dirname(__file__), 'test_config.yaml')
   BAD_FILENAME = os.path.join(os.path.dirname(__file__), 'bad_config.txt')
 
-  def setUp(self):
-    conf.Load(overridden_key='overridden_value')
-
   def tearDown(self):
     gflags.FLAGS.Reset()
     conf.Reset()
@@ -59,11 +56,13 @@ class TestConf(unittest.TestCase):
     conf.Reset()
     self.assertEquals('yaml_test_value', conf.yaml_test_key)
 
-  def testLoadOverridesFile(self):
+  def testLoadOverride(self):
+    conf.Load(overridden_key='overridden_value')
     conf.Load(overridden_key='new_value')
     self.assertEquals('new_value', conf.overridden_key)
 
   def testLoadNoOverride(self):
+    conf.Load(overridden_key='overridden_value')
     conf.Load(overridden_key='new_value', _override=False)
     self.assertEquals('overridden_value', conf.overridden_key)
 
@@ -83,6 +82,14 @@ class TestConf(unittest.TestCase):
     # Make sure flag value takes precedence, even if a value is loaded.
     conf.Load(flag_key='loaded_value')
     self.assertEquals('flag_value', conf.flag_key)
+
+  def testAsDict(self):
+    conf.Load(station_id='station_id')
+    self.assertEquals({
+      'station_id': 'station_id',
+      'string_default': 'default',
+      'none_default': None,
+    }, conf._asdict())
 
   def testUndeclared(self):
     with self.assertRaises(conf.UndeclaredKeyError):
@@ -113,3 +120,31 @@ class TestConf(unittest.TestCase):
     setattr(gflags.FLAGS, 'config-file', self.BAD_FILENAME)
     with self.assertRaises(conf.ConfigurationInvalidError):
       conf.Reset()
+
+  def testInjectPositionalArgs(self):
+    @conf.InjectPositionalArgs
+    def TestFunction(string_default, no_default, not_declared):
+      self.assertEquals('default', string_default)
+      self.assertEquals('passed_value', no_default)
+      self.assertEquals('not_declared', not_declared)
+
+    TestFunction(no_default='passed_value', not_declared='not_declared')
+
+  def testInjectPositionalArgsOverrides(self):
+    @conf.InjectPositionalArgs
+    def TestFunction(string_default, no_default='new_default'):
+      # Make sure when we pass a kwarg, it overrides the config value.
+      self.assertEquals('overridden', string_default)
+      # Make sure kwargs don't come from config, only positional args.
+      self.assertEquals('new_default', no_default)
+
+    TestFunction(string_default='overridden')
+
+  def testInjectPositionalArgsClass(self):
+    class TestClass(object):
+      @conf.InjectPositionalArgs
+      def __init__(self, string_default):
+        self.string_default = string_default
+
+    instance = TestClass()
+    self.assertEquals('default', instance.string_default)

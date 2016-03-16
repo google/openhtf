@@ -471,7 +471,7 @@ class Configuration(object):
     retval.update(self._loaded_values)
     # Only update keys that are declared so we don't allow injecting
     # un-declared keys via commandline flags.
-    for key, value in self._flag_values:
+    for key, value in self._flag_values.iteritems():
       if key in retval:
         retval[key] = value
     return retval
