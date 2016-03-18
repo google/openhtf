@@ -146,7 +146,7 @@ gflags.DEFINE_multistring(
 FLAGS = gflags.FLAGS
 
 
-class Configuration(object):
+class Configuration(object):  # pylint: disable=too-many-instance-attributes
   """A singleton class to replace the 'conf' module.
 
   This class provides the configuration interface described in the module
@@ -264,6 +264,7 @@ class Configuration(object):
 
   @staticmethod
   def _IsValidKey(key):
+    """Return True if key is a valid configuration key."""
     return key and key[0].islower()
 
   def __setattr__(self, attr, value):
@@ -272,7 +273,10 @@ class Configuration(object):
       raise AttributeError("Can't set conf values by attribute, use Load()")
     # __slots__ is defined above, so this will raise an AttributeError if the
     # attribute isn't one we expect; this limits the number of ways to abuse the
-    # conf module singleton instance.
+    # conf module singleton instance.  Also note that we can't use super()
+    # normally here because of the sys.modules swap (Configuration is no longer
+    # defined, and evaluates to None if used here).
+    # pylint: disable=bad-super-call
     super(type(self), self).__setattr__(attr, value)
 
   # Don't use Synchronized on this one, because __getitem__ handles it.
@@ -351,7 +355,8 @@ class Configuration(object):
     # Populate loaded_values with values from --config-file, if it was given.
     self._loaded_values = {}
     if self._flags['config-file'].value:
-      self.LoadFromFile(self._flags['config-file'].value, _allow_undeclared=True)
+      self.LoadFromFile(self._flags['config-file'].value,
+                        _allow_undeclared=True)
 
   def LoadFromFile(self, filename, _override=True, _allow_undeclared=False):
     """Loads the configuration from a file.
@@ -453,12 +458,14 @@ class Configuration(object):
 
     This decorator wraps the given method, so that any positional arguments are
     passed with corresponding values from the configuration.  The name of the
-    positional argument must match the configuration key.  Keyword arguments
-    are not modified, but should not be named such that they match configuration
-    keys anyway (this will result in a warning message).
+    positional argument must match the configuration key.
+
+    Keyword arguments are *NEVER* modified, even if their names match
+    configuration keys.  Avoid naming keyword args names that are also
+    configuration keys to avoid confusion.
 
     Additional positional arguments may be used that do not appear in the
-    configuration, but those arguments *must* be specified as keyword arguments
+    configuration, but those arguments *MUST* be specified as keyword arguments
     upon invokation of the method.  This is to avoid ambiguity in which
     positional arguments are getting which values.
 
