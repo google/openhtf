@@ -65,11 +65,10 @@ def _open_usb_handle(**kwargs):
   """
 
   serial = None
-  config = conf.Config()
-  remote_usb = config.remote_usb
+  remote_usb = conf.remote_usb
   if remote_usb:
     if remote_usb.strip() == 'ethersync':
-      device = config.ethersync
+      device = conf.ethersync
       try:
         mac_addr = device['mac_addr']
         port = device['plug_port']
@@ -101,9 +100,8 @@ class AdbPlug(plugs.BasePlug):
 
   def __new__(cls):
     kwargs = {}
-    config = conf.Config()
-    if config.libusb_rsa_key:
-      kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(config.libusb_rsa_key)]
+    if conf.libusb_rsa_key:
+      kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
 
     device = adb_device.AdbDevice.Connect(
         _open_usb_handle(

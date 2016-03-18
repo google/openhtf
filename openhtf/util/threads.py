@@ -112,10 +112,10 @@ class NoneByDefaultThreadLocal(threading.local):  # pylint: disable=too-few-publ
 
 
 def Synchronized(func):  # pylint: disable=invalid-name
-  """Hold self.lock while executing func."""
+  """Hold self._lock while executing func."""
   @functools.wraps(func)
   def synchronized_method(self, *args, **kwargs):
     """Wrapper to return."""
-    with self.lock:
+    with self._lock:
       return func(self, *args, **kwargs)
   return synchronized_method

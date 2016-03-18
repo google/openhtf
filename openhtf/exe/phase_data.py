@@ -28,7 +28,6 @@ import mimetypes
 
 import mutablerecords
 
-from openhtf import conf
 from openhtf import util
 from openhtf.io import test_record
 from openhtf.util import measurements
@@ -54,7 +53,6 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     logger: A python logger that goes to the testrun proto, with functions like
         debug, info, warn, error, and exception.
     state: A dictionary for passing state data along to future phases.
-    config: A Config object with attributes matching declared config keys.
     plugs: Dict mapping plug names to instances to use in phases.
     measurements: A measurements.Collection for setting measurement values.
     context: A contextlib.ExitStack, which simplifies context managers in a
@@ -63,7 +61,6 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
   """
   def __init__(self, logger, plugs, record):
     self.logger = logger
-    self.config = conf.Config()
     self.plugs = plugs
     self.test_record = record
     self.state = {}
