@@ -56,8 +56,6 @@ message TestRunEnvelope {
   optional bytes payload = 3;
 }
 
-// For better documentation:
-// https://sites.google.com/a/google.com/factoryfactory/data-formats/test-runs
 // A record of a test run including any parameters that were tested and if the
 // test passed, failed, or ended in an error.
 // NOTE: If you're interested in a 'unique-key' using dut_serial,
