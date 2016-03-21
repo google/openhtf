@@ -28,6 +28,7 @@ from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
 from openhtf.util import logs
+from openhtf.util import measurements
 
 _LOG = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ class TestState(object):
 
   def SetStateFinished(self):
     """Mark the state as finished, only called if the test ended normally."""
-    if any(not meas.outcome
+    if any(meas.outcome != measurements.Outcome.PASS
            for phase in self.record.phases
            for meas in phase.measurements.itervalues()):
       self.record.outcome = test_record.Outcome.FAIL
