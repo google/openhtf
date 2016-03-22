@@ -15,11 +15,11 @@
 
 """The main OpenHTF entry point."""
 
+import collections
 import inspect
 import itertools
 import json
 import logging
-import os
 import signal
 import socket
 import sys
@@ -27,14 +27,25 @@ import sys
 import gflags
 import mutablerecords
 
+from enum import Enum
+
 from openhtf import conf
 from openhtf import exe
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import triggers
 from openhtf.io import http_api
-from openhtf.util import measurements, logs
+from openhtf.io import test_record
+from openhtf.util import logs
+from openhtf.util import measurements
 
+# All tests require a station_id.  This can be via the --config-file
+# automatically loaded by OpenHTF, provided explicitly to the config with
+# conf.Load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
+# with conf.LoadFromDict({..., 'station_id': 'My_Station'}).  If none of those
+# are provided then we'll fall back to the machine's hostname.
+conf.Declare('station_id', 'The name of this test station',
+             default_value=socket.gethostname())
 
 FLAGS = gflags.FLAGS
 __version__ = util.get_version()
@@ -45,87 +56,95 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 
-class TestPhaseOptions(mutablerecords.Record(
-    'TestPhaseOptions', [], {'timeout_s': None, 'run_if': None})):
-  """Options used to override default test phase behaviors.
-
-  Attributes:
-    timeout_s: Timeout to use for the phase, in seconds.
-    run_if: Callback that decides whether to run the phase or not.  The
-      callback will be passed the phase_data the phase would be run with.
-
-  Example Usage:
-    @TestPhaseOptions(timeout_s=1)
-    def PhaseFunc(test):
-      pass
-  """
-
-  def __call__(self, phase_func):
-    phase = TestPhaseInfo.WrapOrReturn(phase_func)
-    phase.options = self
-    return phase
-
-
-PhasePlug = mutablerecords.Record('PhasePlug', ['name', 'cls', 'update_kwargs'])
-
-
-class TestPhaseInfo(mutablerecords.Record(
-    'TestPhaseInfo', ['func', 'source'],
-    {'options': TestPhaseOptions, 'plugs': list, 'measurements': list})):
-  """TestPhase function and related information.
-
-  Attributes:
-    func: Function to be called (with phase_data as first argument).
-    source: Source code of func.
-    options: TestPhaseOptions instance.
-    plugs: List of PhasePlug instances.
-    measurements: List of Measurement objects.
-  """
-
-  @classmethod
-  def WrapOrReturn(cls, func):
-    if not isinstance(func, cls):
-      func = cls(func, inspect.getsource(func))
-    return func
-
-  def __call__(self, phase_data):
-    plug_kwargs = {plug.name: phase_data.plugs[plug.name]
-                   for plug in self.plugs if plug.update_kwargs}
-    arg_info = inspect.getargspec(self.func)
-    if len(arg_info.args) == len(plug_kwargs) and not arg_info.varargs:
-      # Underlying function has no room for phase_data as an arg. If it expects
-      # it but miscounted arguments, we'll get another error farther down.
-      return self.func(**plug_kwargs)
-    return self.func(phase_data, **plug_kwargs)
-
-
 class Test(object):
   """An object that represents an OpenHTF test.
 
-  This object encapsulates the static test state including an ordered tuple of
-  phases to execute.
+  Example:
 
-  Args:
-    *phases: The ordered list of phases to execute for this test.
-    **metadata: Any metadata that should be associated with test records.
+    def PhaseOne(test):
+      # Integrate more widgets
+
+    def PhaseTwo(test):
+      # Analyze widget integration status
+
+    Test(PhaseOne, PhaseTwo).Execute()
   """
 
   def __init__(self, *phases, **metadata):
-    """Creates a new Test to be executed.
-
-    Args:
-      *phases: The ordered list of phases to execute for this test.
-    """
-    self.metadata = metadata
+    code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
+    self._test_info = TestData(phases, metadata=metadata, code_info=code_info)
+    self._output_callbacks = []
     self.loop = False
-    self.phases = [TestPhaseInfo.WrapOrReturn(phase) for phase in phases]
-    self.output_callbacks = []
 
-    # Pull some metadata from the frame in which this Test was created.
-    frame_record = inspect.stack()[1]
-    self.filename = os.path.basename(frame_record[1])
-    self.docstring = inspect.getdoc(inspect.getmodule(frame_record[0]))
-    self.code = inspect.getsource(frame_record[0])
+  def AddOutputCallback(self, callback):
+    """Add the given function as an output module to this test."""
+    self._output_callbacks.append(callback)
+
+  def OutputTestRecord(self, record):
+    """Feed the record of this test to all output modules."""
+    record.metadata.update(self._test_info.metadata)
+    for output_cb in self._output_callbacks:
+      output_cb(record)
+
+  # TODO(fahhem): Cleanup accesses to these attributes and remove these proxies.
+  @property
+  def plug_type_map(self):
+    return self._test_info.plug_type_map
+
+  @property
+  def phases(self):
+    return self._test_info.phases
+
+  @property
+  def code_info(self):
+    return self._test_info.code_info
+
+  @property
+  def metadata(self):
+    return self._test_info.metadata
+
+  def Execute(self, loop=None,
+              test_start=triggers.AutoStart, test_stop=triggers.AutoStop):
+    """Starts the framework and executes the given test.
+    Args:
+      test_start: Trigger for starting the test, defaults to AutoStart with a
+          dummy serial number.
+      test_stop: Trigger for when the test is over, defaults to AutoStop to
+          immediately stop after the phase.
+      output_callbacks: List of callbacks to be called with the results
+          output from this test.
+    """
+    SetupFramework()
+
+    if loop is not None:
+      self.loop = loop
+
+    _LOG.info('Executing test: %s', self.code_info.name)
+    executor = exe.TestExecutor(self, test_start, test_stop)
+    server = http_api.Server(executor)
+    StopOnSigInt([server.Stop, executor.Stop])
+    server.Start()
+    executor.Start()
+    executor.Wait()
+    server.Stop()
+
+
+class TestData(collections.namedtuple(
+    'TestData', ['phases', 'code_info', 'metadata'])):
+  """An object that represents the reusable portions of an OpenHTF test.
+
+  This object encapsulates the static test information that is set once and used
+  by the framework along the way.
+
+  Attributes:
+    phases: The phases to execute for this test.
+    metadata: Any metadata that should be associated with test records.
+    code_info: Information about the module that created the test.
+  """
+
+  def __new__(cls, phases, code_info, metadata):
+    phases = [PhaseInfo.WrapOrCopy(phase) for phase in phases]
+    return super(TestData, cls).__new__(cls, phases, code_info, metadata)
 
   @property
   def plug_type_map(self):
@@ -141,61 +160,115 @@ class Test(object):
       plug_type_map[plug] = plug_type
     return plug_type_map
 
-  def AddOutputCallback(self, callback):
-    """Add the given function as an output module to this test."""
-    self.output_callbacks.append(callback)
 
-  def OutputTestRecord(self, test_record):
-    """Feed the record of this test to all output modules."""
-    test_record.metadata.update(self.metadata)
-    for output_cb in self.output_callbacks:
-      output_cb(test_record)
+def SetupFramework():
+  """Sets up various bits of the framework. Only needs to be called once."""
+  try:
+    sys.argv = FLAGS(sys.argv)  # parse flags
+  except gflags.FlagsError, e:  # pylint: disable=invalid-name
+    print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
+    sys.exit(1)
 
-  def Execute(self, loop=None, test_start=triggers.AutoStart,
-              test_stop=triggers.AutoStop):
-    """Start the OpenHTF framework running with the given test.
+  logs.setup_logger()
 
-    Executes this test, iterating over self.phases and executing them.
 
-    Example:
+class PhaseResult(Enum):
+  """Result of a phase.
 
-      def PhaseOne(test):
-        # Integrate more widgets
+  These values can be returned by a test phase to control what the framework
+  does after the phase.  CONTINUE causes the framework to execute the next
+  phase, REPEAT causes the framework to execute that same phase again, and FAIL
+  causes the framework to stop executing and mark the test as failed.
+  """
+  CONTINUE = 'PHASE_CONTINUE'
+  REPEAT = 'PHASE_REPEAT'
+  FAIL = 'PHASE_FAIL'
 
-      def PhaseTwo(test):
-        # Analyze widget integration status
 
-      Test(PhaseOne, PhaseTwo).Execute()
+class PhaseOptions(mutablerecords.Record(
+    'PhaseOptions', [], {'timeout_s': None, 'run_if': None})):
+  """Options used to override default test phase behaviors.
+
+  Attributes:
+    timeout_s: Timeout to use for the phase, in seconds.
+    run_if: Callback that decides whether to run the phase or not.  The
+      callback will be passed the phase_data the phase would be run with.
+
+  Example Usage:
+    @PhaseOptions(timeout_s=1)
+    def PhaseFunc(test):
+      pass
+  """
+
+  def __call__(self, phase_func):
+    phase = PhaseInfo.WrapOrCopy(phase_func)
+    for attr in self.__slots__:
+      value = getattr(self, attr)
+      if value is not None:
+        setattr(phase.options, attr, value)
+    return phase
+
+
+class PhasePlug(mutablerecords.Record(
+    'PhasePlug', ['name', 'cls'], {'update_kwargs': True})):
+  """Information about the use of a plug in a phase."""
+
+
+class PhaseInfo(mutablerecords.Record(
+    'PhaseInfo', ['func', 'code_info'],
+    {'options': PhaseOptions, 'plugs': list, 'measurements': list})):
+  """Phase function and related information.
+
+  Attributes:
+    func: Function to be called (with phase_data as first argument).
+    code_info: Info about the source code of func.
+    options: PhaseOptions instance.
+    plugs: List of PhasePlug instances.
+    measurements: List of Measurement objects.
+  """
+
+  @classmethod
+  def WrapOrCopy(cls, func):
+    """Return a new PhaseInfo from the given function or instance.
+
+    We want to return a new copy so that you can reuse a phase with different
+    options, plugs, measurements, etc.
+
+    Args:
+      func: A phase function or PhaseInfo instance.
 
     Returns:
-      None when the test framework has exited.
+      A new PhaseInfo object.
     """
-    try:
-      FLAGS(sys.argv)  # parse flags
-    except gflags.FlagsError, e:  # pylint: disable=invalid-name
-      print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
-      sys.exit(1)
+    if not isinstance(func, cls):
+      func = cls(func, test_record.CodeInfo.ForFunction(func))
+    # We want to copy so that a phase can be reused with different options, etc.
+    return mutablerecords.CopyRecord(func)
 
-    logs.setup_logger()
+  @property
+  def name(self):
+    return self.func.__name__
 
-    if loop is not None:
-      self.loop = loop
-    conf.Load()
+  @property
+  def doc(self):
+    return self.func.__doc__
 
-    _LOG.info('Executing test: %s', self.filename)
-    executor = exe.TestExecutor(conf.Config(), self, test_start, test_stop)
-    server = http_api.Server(executor)
+  def __call__(self, phase_data):
+    plug_kwargs = {plug.name: phase_data.plugs[plug.name]
+                   for plug in self.plugs if plug.update_kwargs}
+    arg_info = inspect.getargspec(self.func)
+    if len(arg_info.args) == len(plug_kwargs) and not arg_info.varargs:
+      # Underlying function has no room for phase_data as an arg. If it expects
+      # it but miscounted arguments, we'll get another error farther down.
+      return self.func(**plug_kwargs)
+    return self.func(phase_data, **plug_kwargs)
 
-    def sigint_handler(*dummy):
-      """Handle SIGINT by stopping running executor and handler."""
-      _LOG.error('Received SIGINT. Stopping everything.')
-      executor.Stop()
-      server.Stop()
-    signal.signal(signal.SIGINT, sigint_handler)
 
-    server.Start()
-    executor.Start()
-
-    executor.Wait()
-    server.Stop()
-    return
+def StopOnSigInt(callbacks):
+  """Handles SigInt by calling the given callbacks."""
+  def _Handler(*_):
+    """Calls the given callbacks."""
+    _LOG.error('Received SIGINT. Stopping everything.')
+    for cb in callbacks:
+      cb()
+  signal.signal(signal.SIGINT, _Handler)

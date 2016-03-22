@@ -1,17 +1,20 @@
 """Output or upload a TestRun proto for mfg-inspector.com"""
 
+import httplib2
 import json
 import logging
 import numbers
+import oauth2client.client
+import threading
 import zlib
-import httplib2
 
 from openhtf.io.output import json_factory
 from openhtf.io.proto import testrun_pb2
 from openhtf.io.proto import units_pb2
 
 from openhtf import util
-from openhtf.exe import test_state
+from openhtf.io import test_record
+from openhtf.util import measurements
 from openhtf.util import validators
 
 # pylint: disable=no-member
@@ -24,11 +27,10 @@ MIMETYPE_MAP = {
   'video/mp4': testrun_pb2.InformationParameter.MP4,
 }
 OUTCOME_MAP = {
-  'State.ERROR': testrun_pb2.ERROR,
-  'State.TIMEOUT': testrun_pb2.ERROR,
-  'State.ABORTED': testrun_pb2.ERROR,
-  'State.FAIL': testrun_pb2.FAIL,
-  'State.PASS': testrun_pb2.PASS,
+  test_record.Outcome.ERROR: testrun_pb2.ERROR,
+  test_record.Outcome.FAIL: testrun_pb2.FAIL,
+  test_record.Outcome.PASS: testrun_pb2.PASS,
+  test_record.Outcome.TIMEOUT: testrun_pb2.ERROR,
 }
 UOM_CODE_MAP = {
   u.GetOptions().Extensions[units_pb2.uom_code]: num
@@ -50,7 +52,7 @@ def _PopulateHeader(record, testrun):
   """Populate header-like info in testrun from record.
 
   Mostly obvious, some stuff comes from metadata, see docstring of
-  TestRunFromTestRecord for details.
+  _TestRunFromTestRecord for details.
   """
   testrun.dut_serial = record.dut_id
   testrun.tester_name = record.station_id
@@ -63,19 +65,15 @@ def _PopulateHeader(record, testrun):
     testrun.test_info.description = record.metadata['test_description']
   if 'test_version' in record.metadata:
     testrun.test_info.version_string = record.metadata['test_version']
-  testrun.test_status = OUTCOME_MAP.get(record.outcome, testrun_pb2.ERROR)
+  testrun.test_status = OUTCOME_MAP[record.outcome]
   testrun.start_time_millis = record.start_time_millis
   testrun.end_time_millis = record.end_time_millis
   if 'run_name' in record.metadata:
     testrun.run_name = record.metadata['run_name']
   for details in record.outcome_details:
     testrun_code = testrun.failure_codes.add()
-    if details.code_type == test_state.TestState.State.ERROR:
-      testrun_code.code = details.code
-      testrun_code.details = details.description
-    else:
-      testrun_code.code = details.code_type
-      testrun_code.details = '%s: %s' % (details.code, details.description)
+    testrun_code.code = details.code
+    testrun_code.details = details.description
 
 
 def _AttachJson(record, testrun):
@@ -85,7 +83,7 @@ def _AttachJson(record, testrun):
   un-mangled fields later if we want.  Remove attachments since those get
   copied over and can potentially be quite large.
   """
-  record_dict = util.convert_to_dict(record, ignore_keys=('attachments',))
+  record_dict = util.ConvertToBaseTypes(record, ignore_keys=('attachments',))
   record_json = json_factory.OutputToJSON(sort_keys=True).encode(record_dict)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
@@ -152,7 +150,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
   for phase in record.phases:
     testrun_phase = testrun.phases.add()
     testrun_phase.name = phase.name
-    testrun_phase.description = phase.code
+    testrun_phase.description = phase.codeinfo.sourcecode
     testrun_phase.timing.start_time_millis = phase.start_time_millis
     testrun_phase.timing.end_time_millis = phase.end_time_millis
 
@@ -164,8 +162,11 @@ def _ExtractParameters(record, testrun, used_parameter_names):
       used_parameter_names.add(tr_name)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
-      testrun_param.status = (
-          testrun_pb2.PASS if measurement.outcome else testrun_pb2.FAIL)
+      if measurement.outcome == measurements.Outcome.PASS:
+        testrun_param.status = testrun_pb2.PASS
+      else:
+        # FAIL or UNSET results in a FAIL in the TestRun output.
+        testrun_param.status = testrun_pb2.FAIL
       if measurement.docstring:
         testrun_param.description = measurement.docstring
       if measurement.units:
@@ -194,6 +195,14 @@ def _ExtractParameters(record, testrun, used_parameter_names):
             testrun_param.description += '\nValidator: ' + str(validator)
       else:
         _MangleMeasurement(name, value, measurement, mangled_parameters)
+      if testrun_param.status == testrun_pb2.FAIL:
+        testrun_code = testrun.failure_codes.add()
+        testrun_code.code = testrun_param.name
+        if measurement.dimensions is None:
+          if testrun_param.numeric_value:
+            testrun_code.details = str(testrun_param.numeric_value)
+          else:
+            testrun_code.details = testrun_param.text_value
   return mangled_parameters
 
 
@@ -232,7 +241,7 @@ def _AddLogLines(record, testrun):
     testrun_log.lineno = log.lineno
 
 
-def TestRunFromTestRecord(record):
+def _TestRunFromTestRecord(record):
   """Create a TestRun proto from an OpenHTF TestRecord.
 
   Most fields are just copied over, some are pulled out of metadata (listed
@@ -259,25 +268,122 @@ def TestRunFromTestRecord(record):
   return testrun
 
 
-def UploadTestRun(testrun, destination, credentials=None):
-  """Uploads the TestRun at a particular file.
+
+class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
+  """Return an output callback that writes mfg-inspector TestRun Protos.
+
+  An example filename_pattern might be:
+    '/data/test_records/%(dut_id)s.%(start_time_millis)s'
+
+  To use this output mechanism:
+    test = openhtf.Test(PhaseOne, PhaseTwo)
+    test.AddOutputCallback(openhtf.OutputToTestRunProto(
+        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
 
   Args:
-    testrun: TestRun proto to upload.
-    credentials: An OAuth2Credentials object to use for authenticated uploads.
+    filename_pattern: A format string specifying the filename to write to,
+      will be formatted with the Test Record as a dictionary.
   """
-  http = httplib2.Http()
-  if credentials:
-    if credentials.access_token_expired:
-      credentials.refresh(http)
-    credentials.authorize(http)
 
-  test_run_envelope = testrun_pb2.TestRunEnvelope()
-  test_run_envelope.payload = zlib.compress(testrun.SerializeToString())
-  test_run_envelope.payload_type = testrun_pb2.COMPRESSED_TEST_RUN
-  serialized_envelope = test_run_envelope.SerializeToString()
+  def __init__(self, filename_pattern):
+    self.filename_pattern = filename_pattern
 
-  _, content = http.request(destination, 'POST', serialized_envelope)
-  if content.split('\n', 1)[0] != 'OK':
-    results = json.loads(content)
-    raise UploadFailedError(results['error'], results)
+  def __call__(self, test_record):  # pylint: disable=invalid-name
+    as_dict = util.ConvertToBaseTypes(test_record)
+    with open(self.filename_pattern % as_dict, 'w') as outfile:
+      outfile.write(_TestRunFromTestRecord(test_record).SerializeToString())
+
+
+class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
+  """Generate a mfg-inspector TestRun proto and upload it.
+
+  Create an output callback to upload to mfg-inspector.com using the given
+  username and authentication key (which should be the key data itself, not a
+  filename or file).
+  """
+
+  TOKEN_URI = 'https://accounts.google.com/o/oauth2/token'
+  SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
+  DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
+                     'uploads/quantum_upload/')
+
+  # pylint: disable=invalid-name,missing-docstring
+  class _MemStorage(oauth2client.client.Storage):
+    """Helper Storage class that keeps credentials in memory."""
+    def __init__(self):
+      self._lock = threading.Lock()
+      self._credentials = None
+
+    def acquire_lock(self):
+      self._lock.acquire(True)
+
+    def release_lock(self):
+      self._lock.release()
+
+    def locked_get(self):
+      return self._credentials
+
+    def locked_put(self, credentials):
+      self._credentials = credentials
+  # pylint: enable=invalid-name,missing-docstring
+
+  def __init__(self, user, keydata, token_uri=TOKEN_URI):
+    self.user = user
+    self.keydata = keydata
+    self.token_uri = token_uri
+
+  @classmethod
+  def from_json(cls, json_data):
+    """Create an uploader given (parsed) JSON data.
+
+    Note that this is a JSON-formatted key file downloaded from Google when
+    the service account key is created, *NOT* a json-encoded
+    oauth2client.client.SignedJwtAssertionCredentials object.
+
+    Args:
+      json_data: Dict containing the loaded JSON key data.
+    """
+    return cls(user=json_data['client_email'],
+               keydata=json_data['private_key'],
+               token_uri=json_data['token_uri'])
+
+  @staticmethod
+  def UploadTestRun(testrun, destination, credentials=None):
+    """Uploads the TestRun at a particular file.
+  
+    Args:
+      testrun: TestRun proto to upload.
+      credentials: An OAuth2Credentials object to use for authenticated uploads.
+    """
+    http = httplib2.Http()
+    if credentials:
+      if credentials.access_token_expired:
+        credentials.refresh(http)
+      credentials.authorize(http)
+  
+    test_run_envelope = testrun_pb2.TestRunEnvelope()
+    test_run_envelope.payload = zlib.compress(testrun.SerializeToString())
+    test_run_envelope.payload_type = testrun_pb2.COMPRESSED_TEST_RUN
+    serialized_envelope = test_run_envelope.SerializeToString()
+  
+    _, content = http.request(destination, 'POST', serialized_envelope)
+    if content.split('\n', 1)[0] != 'OK':
+      results = json.loads(content)
+      raise UploadFailedError(results['error'], results)
+
+  def __call__(self, test_record):  # pylint: disable=invalid-name
+    credentials = oauth2client.client.SignedJwtAssertionCredentials(
+        service_account_name=self.user,
+        private_key=self.keydata,
+        scope=self.SCOPE_CODE_URI,
+        user_agent='OpenHTF Guzzle Upload Client',
+        token_uri=self.token_uri)
+    credentials.set_store(self._MemStorage())
+
+    testrun = _TestRunFromTestRecord(test_record)
+    try:
+      self.UploadTestRun(testrun, self.DESTINATION_URL, credentials)
+    except UploadFailedError:
+      # For now, just log the exception.  Once output is a bit more robust,
+      # we can propagate this up and handle it accordingly.
+      logging.exception('Upload to mfg-inspector failed!')

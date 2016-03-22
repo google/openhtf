@@ -48,7 +48,7 @@ Example usage of the above plug:
   from openhtf import plugs
   from my_custom_plugs_package import example
 
-  @plugs.requires(example=example.ExamplePlug)
+  @plugs.plug(example=example.ExamplePlug)
   def TestPhase(test, example):
     print 'Test phase started!'
     example.DoSomething()
@@ -68,6 +68,8 @@ of doing this is with the conf.InjectPositionalArgs decorator:
 
   from openhtf import plugs
   from openhtf import conf
+
+  conf.Declare('my_config_key', default_value='my_config_value')
 
   class ExamplePlug(plugs.BasePlug):
     '''A plug that requires some configuration.'''
@@ -97,6 +99,7 @@ import openhtf
 
 _LOG = logging.getLogger(__name__)
 
+
 class PlugOverrideError(Exception):
   """Raised when a plug would be overridden by a kwarg."""
 
@@ -117,7 +120,7 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     pass
 
 
-def requires(update_kwargs=True, **plugs):
+def plug(update_kwargs=True, **plugs):
   """Creates a decorator that passes in plugs when invoked.
 
   This function returns a decorator for a function that will replace positional
@@ -159,18 +162,19 @@ def requires(update_kwargs=True, **plugs):
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-    wrapper = openhtf.TestPhaseInfo.WrapOrReturn(func)
+    wrapper = openhtf.PhaseInfo.WrapOrCopy(func)
     duplicates = frozenset(wrapper.plugs) & frozenset(plugs)
     if duplicates:
       raise DuplicatePlugError(
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
-    wrapper.plugs.extend([openhtf.PhasePlug(name, plug, update_kwargs)
-                          for name, plug in plugs.iteritems()])
+    wrapper.plugs.extend([
+        openhtf.PhasePlug(name, plug, update_kwargs=update_kwargs)
+        for name, plug in plugs.iteritems()])
     return wrapper
   return result
 
 
-class PlugManager(mutablerecords.Record('PlugManager', ['plug_map'])):
+class PlugManager(object):
   """Class to manage the lifetimes of plugs.
 
   This class handles instantiation of plugs at test start and calling
@@ -179,15 +183,17 @@ class PlugManager(mutablerecords.Record('PlugManager', ['plug_map'])):
 
   Note this class is not thread-safe.  It should only ever be used by the
   main framework thread anyway.  It should also not be instantiated directly.
-  Instead, an instance should be obtained by calling InitializeFromTypes().
+  Instead, an instance should be obtained by calling InitializeFromTypeMap().
 
   Attributes:
-    plug_map: Dict mapping name to instantiated plug.  Can only be
-  accessed after calling InitializePlugs().
+    plug_map: Dict mapping name to instantiated plug.
   """
 
+  def __init__(self, plug_map):
+    self.plug_map = plug_map
+
   @classmethod
-  def InitializeFromTypes(cls, plug_type_map):
+  def InitializeFromTypeMap(cls, plug_type_map):
     """Instantiate plugs so they can be accessed by test phases.
 
     Plug instances can be accessed via the plugs attribute, which

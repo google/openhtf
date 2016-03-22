@@ -12,29 +12,119 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """Interface to OpenHTF configuration files.
 
-OpenHTF configuration files contain values which are specific to an individual
-station. Any values which apply to all stations of a given type should be
-handled by FLAGS or another mechanism.
+As a matter of convention, OpenHTF configuration files should contain values
+which are specific to an individual station (not station type).  This is
+intended to provide a means to decouple deployment of test code from
+station-specific configuration or calibration.
 
-Config keys must be declared as in the following example:
+Examples of the types of values commonly found in the configuration are
+physical port names, IP addresses, calibrated light/sound levels, etc.
+Configuration values should not be used to determine test flow, or to control
+debug output.
 
-conf.Declare('antimatter_intermix_constant',
-             description='Intermix constant calibrated for our warp core.')
+Config keys must be declared as in the following example, where default_value
+and description are optional:
 
-Declared keys can later be accessed by instantiating a Config object:
+  from openhtf import conf
 
-...
-config = conf.Config()
-warp_core.SetIntermixConstant(config.antimatter_intermix_constant)
+  conf.Declare('antimatter_intermix_constant',
+               default_value=3.14159,
+               description='Intermix constant calibrated for our warp core.')
+
+Declared keys can be accessed directly as attributes of the conf module.  To
+avoid naming conflicts, configuration keys must begin with a lowercase letter.
+They may also be accessed by treating the conf module as a dictionary, but this
+method is discouraged and should only be used in favor of getattr().
+
+  from openhtf import conf
+
+  warp_core.SetIntermixConstant(conf.antimatter_intermix_constant)
+
+  # An example of when you might use dict-like access.
+  for idx in range(5):
+    warp_core.SetDilithiumRatio(idx, conf['dilthium_ratio_%s' % idx])
+
+Another common mechanism for obtaining configuration values is to use the
+conf.InjectPositionalArgs decorator:
+
+  from openhtf import conf
+
+  @conf.InjectPositionalArgs
+  def ModifyThePhaseVariance(antimatter_intermix_constant, phase_variance):
+    return antimatter_intermix_constant * phase_variance
+
+  # antimatter_intermix_constant will be taken from the configuration value.
+  x = ModifyThePhaseVariance(phase_variance=2.71828)
+
+Decorating a function with conf.InjectPositionalArgs forces all other arguments
+to be passed by keyword in order to avoid ambiguity in the values of positional
+args.  Values passed via keyword that also exist in the config will override
+config values and log a warning message.  Keyword args in the function
+declaration will not be overridden (because it would be ambiguous which default
+to use), and any overlap in keyword arg names and config keys will result in a
+warning message.
+
+If the configuration key is declared but no default_value is provided and no
+value has been loaded, then no value will be passed, and a TypeError will be
+raised unless the value is passed via keyword.  Essentially, if `keyword_arg in
+conf` evaluates to True, then that keyword arg will be provded from the
+configuration unless overriden in the kwargs passed to the function.  Otherwise
+keyword_arg must be passed via kwargs at function invokation time.
+
+Incidentally, the conf module supports 'in' checks, where `key in conf` will
+evaluate to True if conf[key] would successfully provide a value.  That is, if
+either a value has been loaded or a default_value was declared.
+
+Configuration values may be loaded directly or from a yaml or json file.  If no
+configuration is loaded, default values will still be accessible.  Loading a
+configuration always overrides default values, but only overrides previously
+loaded values if _override=True (default) for the Load* method used.  Some
+examples of how to load a configuration:
+
+  from openhtf import conf
+
+  conf.Declare('antimatter_intermix_constant')
+  conf.Declare('phase_variance')
+
+  conf.Load(antimatter_intermix_constant=3.14,
+            phase_variance=2.718)
+  conf.LoadFromDict({
+      'antimatter_intermix_constant': 3.14,
+      'phase_variance': 2.718,
+  })
+  conf.LoadFromFile('config.json')
+  conf.LoadFromFile('config.yaml')
+
+Note that any of the Load* methods here accept an _override keyword argument
+that defaults to True, but may be set False to prevent overriding previously
+loaded values.  Regardless of whether _override is True or False, a message
+will be logged indicating how the duplicate value was handled.
+
+conf.LoadFromFile() attempts to parse the filename given as JSON and as YAML,
+if neither succeeds, an exception will be raised.  In either case, the value
+parsed must be a dictionary mapping configuration key to value.  Complex
+configuration values are discouraged; they should be kept to single values or
+lists of values when possible.
+
+Lastly, configuration values may also be provided via the --config-value flag,
+but this is discouraged, and should only be used for debugging purposes.
+
+Configuration values loaded via commandline flags, either --config-file or
+--config-value, are not checked against Declarations.  This allows for using
+configuration files that are supersets of required configuration.  Declarations
+are *always* checked upon configuration value access, however, so you still
+must declare any keys you wish to use.
+
+Loaded configuration values may be purged via the Reset() method, but this
+should only be used for testing purposes.
 """
 
-import copy
 import functools
 import inspect
 import logging
+import sys
 import threading
 import yaml
 
@@ -43,583 +133,396 @@ import mutablerecords
 
 from openhtf.util import threads
 
+# If provided, --config-file will cause the given file to be Load()ed when the
+# conf module is initially imported.
+gflags.DEFINE_string('config-file', None,
+                     'File from which to load configuration values.')
+
+gflags.DEFINE_multistring(
+    'config-value', [], 'Allows specifying a configuration key=value '
+    'on the command line.  The format should be --config-value=key=value. '
+    'This value will override any loaded value, and will be a string.')
 
 FLAGS = gflags.FLAGS
 
-gflags.DEFINE_string('config',
-                     '/usr/local/openhtf_client/config/clientfoo.yaml',
-                     'The OpenHTF configuration file for this tester')
 
-gflags.DEFINE_multistring(
-    'config_value', [], 'Allows specifying a configuration key=value '
-    'on the command line.  The format should be --config_value key=value. '
-    'This value will override any existing config value at config load time '
-    'and will be a string')
+class Configuration(object):  # pylint: disable=too-many-instance-attributes
+  """A singleton class to replace the 'conf' module.
 
-ConfigurationDeclaration = (  # pylint: disable=invalid-name
-    mutablerecords.Record(
-        'ConfigurationDeclaration',
-        ['name'],
-        {'description': None, 'default_value': None, 'optional': True}))
-
-_LOG = logging.getLogger(__name__)
-
-class ConfigurationNotLoadedError(Exception):
-  """Raised if a configuration variable is accessed before it is loaded.
-
-  This helps protect against a class of errors where people try to access the
-  configuration at import time when it hasn't been loaded by the main function
-  yet.
+  This class provides the configuration interface described in the module
+  docstring.  All attribuets/methods must not begin with a lowercase letter so
+  as to avoid naming conflicts with configuration keys.
   """
 
+  class ConfigurationInvalidError(Exception):
+    """Indicates the configuration format was invalid or couldn't be read."""
 
-class ConfigurationMissingError(Exception):
-  """Indicates the configuration file could not be read."""
+  class KeyAlreadyDeclaredError(Exception):
+    """Indicates that a configuration key was already declared."""
 
+  class UndeclaredKeyError(Exception):
+    """Indicates that a key was required but not predeclared."""
 
-class ConfigurationInvalidError(Exception):
-  """Indicates the configuration format was invalid."""
+  class InvalidKeyError(Exception):
+    """Raised when an invalid key is declared or accessed."""
 
+  class UnsetKeyError(Exception):
+    """Raised when a key value is requested but we have no value for it."""
 
-class ConfigurationAlreadyDeclared(Exception):
-  """Indicates that a configuration key was already declared."""
+  # pylint: disable=invalid-name,bad-super-call,too-few-public-methods
+  class Declaration(mutablerecords.Record(
+      'Declaration', ['name'], {
+          'description': None, 'default_value': None, 'has_default': False})):
+    """Record type encapsulating information about a config declaration."""
+    def __init__(self, *args, **kwargs):
+      super(type(self), self).__init__(*args, **kwargs)
+      # Track this separately to allow for None as a default value, override
+      # any value that was passed in explicitly - don't do that.
+      self.has_default = 'default_value' in kwargs
+  # pylint: enable=invalid-name,bad-super-call,too-few-public-methods
 
+  __slots__ = ('_flags', '_logger', '_lock', '_functools', '_modules',
+               '_declarations', '_flag_values', '_loaded_values')
 
-class MissingRequiredConfigurationKeyError(Exception):
-  """Indicates a required configuration key is missing."""
+  def __init__(self, flags, logger, lock, _functools, **kwargs):
+    """Initializes the configuration state.
 
-
-class UndeclaredKeyAccessError(Exception):
-  """Indicates that a key was required but not predeclared."""
-
-
-class ConfigurationValidationError(Exception):
-  """If a configuration value could not be validated as its expected type."""
-
-  def __init__(self, name, declaration, value):
-    super(ConfigurationValidationError, self).__init__(
-        name, declaration, value)
-    self.name = name
-    self.declaration = declaration
-    self.value = value
-
-  def __str__(self):
-    return ('<%s: (Configuration error on key: %s (type: %s, value: %s))>' %
-            (type(self).__name__, self.name, self.declaration.type.name, self.value))
-
-
-class _DeclaredKeys(object):
-  """An object which manages config declarations.
-
-  This object is a helper for Config.  It provides locked access to a map of
-  declarations and processes configuration values against the declaration.  It
-  must be guarded since declarations are updated at import time and if something
-  is lazily imported we could race between updating the declarations map and
-  reading it to check a config value.
-
-  Not thread-safe, requires an external lock!
-  """
-
-  def __init__(self):
-    self._declared = {}
-
-  def Declare(self, name, declaration):
-    """Adds a declared key to this list of Declared Keys.
+    We have to pull everything we need from global scope into here because we
+    will be swapping out the module with this instance and will lose any global
+    references.
 
     Args:
-      name: The name of this value.
-      declaration: A _DeclaredKeys.DECLARATION object.
-
-    Raises:
-      ConfigurationAlreadyDeclared: If a declaration already exists for
-          this key.
+      logger: Logger to use for logging messages within this class.
+      lock: Threading.Lock to use for locking access to config values.
+      _functools: Reference to the functools module so we can use it internally
+          for decorating methods.
+      **kwargs: Modules we need to access within this class.
     """
-    if name in self._declared:
-      raise ConfigurationAlreadyDeclared(name)
-    self._declared[name] = declaration
+    self._flags = flags
+    self._logger = logger
+    self._lock = lock
+    self._functools = _functools
+    self._modules = kwargs
+    self._declarations = {}
 
-  def CheckValueAgainstDeclaration(self, name, value):
-    """Checks that the provided value is valid given its declaration.
+    # Parse just the flags we care about, since this happens at import time.
+    sys.argv = self._ParseSingleFlag(sys.argv, 'config-file')
+    sys.argv = self._ParseSingleFlag(sys.argv, 'config-value')
+
+    # Populate flag_values from flags now.
+    self._flag_values = {}
+    for keyval in flags['config-value'].value:
+      self._flag_values.setdefault(*keyval.split('=', 1))
+
+    # Initialize self._loaded_values and load from --config-file if it's set.
+    self.Reset()
+
+  def _ParseSingleFlag(self, argv, flag_name):
+    """Parse a single gflag from argv.
+
+    This duplicates some of the parsing done in gflags, but we do it here so we
+    can access certain flags at module import time, without forcing the user to
+    have to parse all commandline flags beforehand.  We also don't want to parse
+    all commandline flags as a side effect of loading this module, so we do this
+    bit of hackery to parse just the ones we care about.
 
     Args:
-      name: Name of configuration key.
-      value: Value from configuration.
-
-    Returns:
-      The config value if provided, or the default_value if given.
-
-    Raises:
-      UndeclaredKeyAccessError: If key 'name' is undeclared.
-      MissingRequiredConfigurationKeyError: If key is required and value
-          is None
+      argv: sys.argv to parse, new argv will be returned, like gflags.FLAGS().
+      flag_name: flag name to parse for, will raise if it's not registered.
     """
-    declaration = self._declared.get(name, None)
+    if len(argv) < 2:
+      return argv
 
-    if not declaration:
-      raise UndeclaredKeyAccessError(name)
+    flag = self._flags.FlagDict()[flag_name]
+    indices_to_delete = set()
+    for idx, arg in enumerate(argv[1:], start=1):
+      if arg.startswith('-'):
+        arg = arg.lstrip('-')
+        if '=' in arg:
+          # '--config-file=foo.json' syntax, split on the first '='.
+          name, value = arg.split('=', 1)
+        elif idx + 1 >= len(argv):
+          # If no value is given, skip this token.  gflags actually raises in
+          # this case, but we'll just ignore it and let gflags do the raising
+          # when the arguments are parsed for real.
+          continue
+        else:
+          # '--config-file foo.json' syntax, grab the entire next arg.
+          name, value = arg, argv[idx + 1]
+        # If this flag matches the name we want, set the value.
+        if name == flag_name:
+          flag.Parse(value)
+          indices_to_delete.add(idx)
+          if '=' not in arg:
+            indices_to_delete.add(idx + 1)
 
-    if (value is None
-        and declaration.default_value is None
-        and not declaration.optional):
-      raise MissingRequiredConfigurationKeyError(
-          declaration.name, declaration.description)
+    # If we found at least one value, mark the flag as not using default.
+    flag.using_default_value = False
 
-    if value is None:
-      return declaration.default_value
-    return value
+    # Return a copy of argv, minus any args we parsed.
+    return [v for i, v in enumerate(argv) if i not in indices_to_delete]
 
+  @staticmethod
+  def _IsValidKey(key):
+    """Return True if key is a valid configuration key."""
+    return key and key[0].islower()
+
+  def __setattr__(self, attr, value):
+    """Provide a useful error when attempting to set a value via setattr()."""
+    if self._IsValidKey(attr):
+      raise AttributeError("Can't set conf values by attribute, use Load()")
+    # __slots__ is defined above, so this will raise an AttributeError if the
+    # attribute isn't one we expect; this limits the number of ways to abuse the
+    # conf module singleton instance.  Also note that we can't use super()
+    # normally here because of the sys.modules swap (Configuration is no longer
+    # defined, and evaluates to None if used here).
+    # pylint: disable=bad-super-call
+    super(type(self), self).__setattr__(attr, value)
+
+  # Don't use Synchronized on this one, because __getitem__ handles it.
+  def __getattr__(self, attr):  # pylint: disable=invalid-name
+    """Get a config value via attribute access."""
+    if self._IsValidKey(attr):
+      return self[attr]
+    # Config keys all begin with a lowercase letter, so treat this normally.
+    raise AttributeError("'%s' object has no attribute '%s'" %
+                         (type(self).__name__, attr))
+
+  @threads.Synchronized
+  def __getitem__(self, item):  # pylint: disable=invalid-name
+    """Get a config value via item access.
+
+    Order of precedence is:
+      - Value provided via --config-value flag.
+      - Value loaded via Load*() methods.
+      - Default value as declared with conf.Declare()
+
+    Args:
+      item: Config key name to get.
+    """
+    if item not in self._declarations:
+      raise self.UndeclaredKeyError('Configuration key not declared', item)
+
+    if item in self._flag_values:
+      if item in self._loaded_values:
+        self._logger.warning(
+            'Overriding loaded value for %s (%s) with flag value: %s',
+            item, self._loaded_values[item], self._flag_values[item])
+      return self._flag_values[item]
+    if item in self._loaded_values:
+      return self._loaded_values[item]
+    if self._declarations[item].has_default:
+      return self._declarations[item].default_value
+
+    raise self.UnsetKeyError(
+        'Configuration value not set and has no default', item)
+
+  @threads.Synchronized
   def __contains__(self, name):  # pylint: disable=invalid-name
-    return name in self._declared
+    """True if we have a value for name."""
+    return (name in self._declarations and
+            (self._declarations[name].has_default or
+             name in self._loaded_values or
+             name in self._flag_values))
 
-  def __getitem__(self, name):  # pylint: disable=invalid-name
-    return self._declared[name]
-
-  def __copy__(self):  # pylint: disable=invalid-name
-    self_copy = type(self)()
-    for name, declaration in self._declared.iteritems():
-      self_copy.Declare(name, declaration)
-    return self_copy
-
-
-class ConfigModel(object):
-  """A model that holds the underlying config keys and their values.
-
-  By isolating the underlying model it provides a way to lock access to the
-  dictionary so we can reload it on demand or otherwise poke it.
-  """
-
-  def __init__(self, state=None, declarations=None):
-    """Initializes the model.
+  @threads.Synchronized
+  def Declare(self, name, description=None, **kwargs):
+    """Declare a configuration key with the given name.
 
     Args:
-      state: A dictionary containing configuration key, values.  By default a
-          new one is created.  If one is provided the model is marked as
-          loaded.
-      declarations: An object which tracks declared keys, if not provided
-          a new one is constructed.
+      name: Configuration key to declare, must not have been already declared.
+      description: If provided, use this as the description for this key.
+      **kwargs: Other kwargs to pass to the Declaration, only default_value
+          is currently supported.
     """
-    self._state = state if state is not None else {}
-    self._declarations = declarations or _DeclaredKeys()
-    self._loaded = state is not None
-    self.lock = threading.Lock()
-
-  # pylint: disable=missing-docstring
-  @property
-  @threads.Synchronized
-  def loaded(self):
-    return self._loaded
-
-  @property
-  @threads.Synchronized
-  def state(self):
-    return self._state.copy()
-
-  @property
-  @threads.Synchronized
-  def declarations(self):
-    return copy.copy(self._declarations)
+    if not self._IsValidKey(name):
+      raise self.InvalidKeyError(
+          'Invalid key name, must begin with a lowercase letter', name)
+    if name in self._declarations:
+      raise self.KeyAlreadyDeclaredError(
+          'Configuration key already declared', name)
+    self._declarations[name] = self.Declaration(
+        name, description=description, **kwargs)
 
   @threads.Synchronized
-  def Items(self):
-    return self._state.items()
+  def Reset(self):
+    """Reset the loaded state of the configuration to what it was at import.
 
-  @threads.Synchronized
-  def GetValue(self, name, default=None):
-    value = self._state.get(name, default)
-    return self._declarations.CheckValueAgainstDeclaration(name, value)
+    Note that this does *not* reset values set by commandline flags or loaded
+    from --config-file (in fact, any values loaded from --config-file that have
+    been overridden are reset to their value from --config-file).
+    """
+    # Populate loaded_values with values from --config-file, if it was given.
+    self._loaded_values = {}
+    if self._flags['config-file'].value:
+      self.LoadFromFile(self._flags['config-file'].value,
+                        _allow_undeclared=True)
 
-  @threads.Synchronized
-  def ContainsKey(self, name):
-    return name in self._state
+  def LoadFromFile(self, filename, _override=True, _allow_undeclared=False):
+    """Loads the configuration from a file.
 
-  # pylint: enable=missing-docstring
-
-  @threads.Synchronized
-  def Load(self, config_file=None, force_reload=False,
-           config_loader=lambda fname: open(fname, 'r')):
-    """Loads the configuration file from disk.
+    Parsed contents must be a single dict mapping config key to value.
 
     Args:
       config_file: The file name to load configuration from.
-          Defaults to FLAGS.config.
-      force_reload: If true this method will ignore the loaded state and reload
-          the config from disk.
-      config_loader: A callable which returns a file object when given a
-          filename, defaults to open.
+      See LoadFromDict() for other args' descriptions.
 
-    Returns:
-      True if configuration was loaded, False if already loaded.
     Raises:
-      ConfigurationMissingError: If configuration file could not be read
-      ConfigurationInvalidError: If configuration file is not valid yaml
+      ConfigurationInvalidError: If configuration file can't be read, or can't
+          be parsed as either YAML (or JSON, which is a subset of YAML).
     """
-    if not force_reload and self._loaded:
-      return False
+    self._logger.info('Loading configuration from file: %s', filename)
 
     try:
-      filename = config_file or FLAGS.config
-      _LOG.info('Loading from config: %s', filename)
-
-      with config_loader(filename) as config_file:
-        data = yaml.safe_load(config_file)
-        if not data:
-          raise ConfigurationInvalidError('No data', config_file)
-        self._state.clear()
-        self._state.update(data)
-
-      # Load string values from flags
-      for keyval in FLAGS.config_value:
-        key, val = keyval.split('=')
-        self._state[key] = val
-
-      self._loaded = True
-      _LOG.debug('Configuration loaded: %s', str(self._state))
-    except yaml.YAMLError as exception:
-      _LOG.exception('Failed to load yaml file: %s', filename)
-      raise ConfigurationInvalidError(filename, exception)
+      with open(filename, 'rb') as yaml_file:
+        config_data = yaml_file.read()
     except IOError as exception:
-      _LOG.exception('Configuration failed loaded: %s', filename)
-      raise ConfigurationMissingError(filename, exception)
+      self._logger.exception('Configuration file load failed: %s', filename)
+      raise self.ConfigurationInvalidError(filename, exception)
 
-    return True
+    try:
+      parsed_yaml = self._modules['yaml'].safe_load(config_data)
+    except self._modules['yaml'].YAMLError as exception:
+      raise self.ConfigurationInvalidError(
+          'Failed to load from %s as YAML' % filename, exception)
+
+    if not isinstance(parsed_yaml, dict):
+      # Parsed YAML, but it's not a dict.
+      raise self.ConfigurationInvalidError(
+          'YAML parsed, but wrong type, should be dict', parsed_yaml)
+
+    self._logger.debug('Configuration loaded from file: %s', parsed_yaml)
+    self.LoadFromDict(
+        parsed_yaml, _override=_override, _allow_undeclared=_allow_undeclared)
+
+  def Load(self, _override=True, _allow_undeclared=False, **kwargs):
+    """Load configuration values from kwargs, see LoadFromDict()."""
+    self.LoadFromDict(
+        kwargs, _override=_override, _allow_undeclared=_allow_undeclared)
 
   @threads.Synchronized
-  def LoadFromDict(self, dictionary, force_reload=False):
+  def LoadFromDict(self, dictionary, _override=True, _allow_undeclared=False):
     """Loads the config with values from a dictionary instead of a file.
 
     This is meant for testing and bin purposes and shouldn't be used in most
     applications.
 
     Args:
-      dictionary: The dictionary to update.
-      force_reload: True to force a load if the config is already loaded.
-    Returns:
-      True if successful.
+      dictionary: The dictionary containing config keys/values to update.
+      _override: If True, new values will override previous values.
+      _allow_undeclared: If True, silently load undeclared keys, otherwise
+          warn and ignore the value.  Typically used for loading config
+          files before declarations have been evaluated.
     """
-    if not force_reload and self._loaded:
-      return False
-
-    self._state.clear()
-    self._state.update(dictionary)
-    self._loaded = True
-    return True
-
-  @threads.Synchronized
-  def LoadMissingFromDict(self, config_dict):
-    """Update any missing configurations from the given dictionary.
-
-    This is similar to dict.update, except that instead of the given
-    dictionary's values overriding the already set values, this function doesn't
-    override. This is due to the fact that these configs can only be retrieved
-    after we've already loaded the authoritative values.
-
-    Args:
-      config_dict: Dictionary from which to load configuration keys and values.
-
-    Raises:
-      ConfigurationNotLoadedError: Raised when updating empty config values.
-    """
-    # Can't update only missing when it's all missing.
-    if not self._loaded:
-      raise ConfigurationNotLoadedError(
-          'Load configuration before updating missing keys.')
-
-    for key, value in config_dict.items():
-      if key in self._state:
+    undeclared_keys = []
+    for key, value in dictionary.iteritems():
+      # Warn in this case.  We raise if you try to access a config key that
+      # hasn't been declared, but we don't raise here so that you can use
+      # configuration files that are supersets of required configuration for
+      # any particular test station.
+      if key not in self._declarations and not _allow_undeclared:
+        undeclared_keys.append(key)
         continue
-      self._state[key] = value
+      if key in self._loaded_values:
+        if _override:
+          self._logger.info(
+              'Overriding previously loaded value for %s (%s) with value: %s',
+              key, self._loaded_values[key], value)
+        else:
+          self._logger.info(
+              'Ignoring new value (%s), keeping previous value for %s: %s',
+              value, key, self._loaded_values[key])
+          continue
+      self._loaded_values[key] = value
+    if undeclared_keys:
+      self._logger.warning('Ignoring undeclared configuration keys: %s',
+                           undeclared_keys)
 
   @threads.Synchronized
-  def Reset(self):
-    """Resets the configuration, removing any state, useful for testing.
+  def _asdict(self):
+    """Create a dictionary snapshot of the current config values."""
+    # Start with any default values we have, and override with loaded values,
+    # and then override with flag values.
+    retval = {key: self._declarations[key].default_value for
+              key in self._declarations if self._declarations[key].has_default}
+    retval.update(self._loaded_values)
+    # Only update keys that are declared so we don't allow injecting
+    # un-declared keys via commandline flags.
+    for key, value in self._flag_values.iteritems():
+      if key in self._declarations:
+        retval[key] = value
+    return retval
 
-    Careful calling this, the reason we get away with not locking the dict is
-    because we never call this in practice.  If that changes then we need to
-    guard it with a lock.
-    """
-    self._state.clear()
-    self._loaded = False
+  def InjectPositionalArgs(self, method):
+    """Decorator for injecting positional arguments from the configuration.
 
-  @threads.Synchronized
-  def Declare(self, name, description=None, **kwargs):
-    """Declares the use of a configuration variable.
+    This decorator wraps the given method, so that any positional arguments are
+    passed with corresponding values from the configuration.  The name of the
+    positional argument must match the configuration key.
 
-    Currently all configuration variables must be declared.  If a key is
-    accessed in the config without being declared then chaos will ensue.  If a
-    file wants to access a key another module has declared they are
-    encouraged to use extern.
+    Keyword arguments are *NEVER* modified, even if their names match
+    configuration keys.  Avoid naming keyword args names that are also
+    configuration keys to avoid confusion.
 
-    Args:
-      name: The name of the key.
-      description: Docstring for the key, if any.
-      **kwargs: See ConfigurationDeclaration's fields.
-    """
-    declaration = ConfigurationDeclaration(
-        name, description=description, **kwargs)
-    self._declarations.Declare(name, declaration)
-
-
-class Config(object):
-  """The configuration read from a config file, or populated directly.
-
-  This classes uses the borg design pattern so all instances share the same
-  state.  This is fine since the load only occurs on the main thread and from
-  then on out the class is effectively read only.
-
-  Example Usage:
-    configuration.Load()  # called once early
-
-    # Can be done anyone and in multiple places without worrying about loading
-    config = Config()
-    if config.url:
-      print config.url
-  """
-  model = ConfigModel()
-
-  def __init__(self, model=None):
-    """Initializes the configuration object with its shared state.
+    Additional positional arguments may be used that do not appear in the
+    configuration, but those arguments *MUST* be specified as keyword arguments
+    upon invokation of the method.  This is to avoid ambiguity in which
+    positional arguments are getting which values.
 
     Args:
-      model: The data model to use, defaults to the one shared amonst all config
-          objects.
-    """
-    self.model = model or Config.model
+      method: The method to wrap.
 
-  # pylint: disable=missing-docstring
-  @property
-  def dictionary(self):
-    if not self.loaded:
-      raise ConfigurationNotLoadedError()
-    return self.model.state
-
-  @property
-  def loaded(self):
-    return self.model.loaded
-
-  # pylint: enable=missing-docstring
-
-  def __getattr__(self, name):  # pylint: disable=invalid-name
-    """Searches for the value in our config, returning if its found.
-
-    Args:
-      name: name of attribute
     Returns:
-      None if key not found and is not required, otherwise the value.
-    Raises:
-      MissingRequiredKeyError: If the key was declared required and
-          is not found.
-      UndeclaredKeyAccessError: If the key being accessed was not
-          declared.
-      ConfigurationNotLoadedError: If the config file has not been loaded, this
-          typically means you accessed the config at import time.
+      A wrapper that, when invoked, will call the wrapped method, passing in
+    configuration values for positional arguments.
     """
-    if not self.model.loaded:
-      raise ConfigurationNotLoadedError(name)
-    return self.model.GetValue(name)
+    argspec = self._modules['inspect'].getargspec(method)
 
-  def __contains__(self, name):  # pylint: disable=invalid-name
-    """Provides the ability to quickly check if a config key is declared."""
-    return self.model.ContainsKey(name)
+    # Index in argspec.args of the first keyword argument.  This index is a
+    # negative number if there are any kwargs, or 0 if there are no kwargs.
+    keyword_arg_index = -1 * len(argspec.defaults or [])
+    arg_names = argspec.args[:keyword_arg_index or None]
+    kwarg_names = argspec.args[len(arg_names):]
 
-  def __getitem__(self, key):  # pylint: disable=invalid-name
-    """Allows access to config items via an indexer."""
-    return self.__getattr__(key)
+    # Create the actual method wrapper, all we do is update kwargs.  Note we
+    # don't pass any *args through because there can't be any - we've filled
+    # them all in with values from the configuration.  Any positional args that
+    # are missing from the configuration *must* be explicitly specified as
+    # kwargs.
+    @self._functools.wraps(method)
+    def method_wrapper(**kwargs):
+      """Wrapper that pulls values from openhtf.conf."""
+      # Check for keyword args with names that are in the config so we can warn.
+      for kwarg in kwarg_names:
+        if kwarg in self:
+          self._logger.warning('Keyword arg %s not set from configuration, but '
+                               'is a configuration key', kwarg)
 
-  def __repr__(self):
-    return '<Config (loaded: %s): 0x%x>' % (self.model.loaded, id(self))
+      # Set positional args from configuration values.
+      final_kwargs = {name: self[name] for name in arg_names if name in self}
 
-  def CreateStackedConfig(self, model):
-    """Stacks a new model onto the current model, creating a new config.
+      for overridden in set(kwargs) & set(final_kwargs):
+        self._logger.warning('Overriding configuration value for kwarg %s (%s) '
+                             'with provided kwarg value: %s', overridden,
+                             self[overridden], kwargs[overridden])
 
-    Args:
-      model: A ConfigModel instance or a dict of values that can be converted
-          into a ConfigModel instance. If a dict, the declarations of this
-          object will be used.
-    Returns:
-      A new StackedConfig instance with model superseding the current model.
-    """
-    if not isinstance(model, ConfigModel):
-      model = ConfigModel(state=model, declarations=self.model.declarations)
-    return StackedConfig([self.model, model])
+      final_kwargs.update(kwargs)
+      self._logger.debug('Invoking %s with %s', method.__name__, final_kwargs)
+      return method(**final_kwargs)
 
+    # We have to check for a 'self' parameter explicitly because Python doesn't
+    # pass it as a keyword arg, it passes it as the first positional arg.
+    if argspec.args[0] == 'self':
+      @self._functools.wraps(method)
+      def SelfWrapper(self, **kwargs):  # pylint: disable=invalid-name
+        """Wrapper that pulls values from openhtf.conf."""
+        kwargs['self'] = self
+        return method_wrapper(**kwargs)
+      return SelfWrapper
+    return method_wrapper
 
-class StackedConfig(Config):
-  """Stacked version of Config.
-
-  This is a layered (or stacked) Config that allows users to make one set of
-  config values supersede another set.
-  """
-
-  # pylint: disable=super-init-not-called
-  def __init__(self, models=(Config.model,)):
-    self._models = list(models)
-
-  def CreateStackedConfig(self, model):
-    """Stacks a new model onto the current models, creating a new config.
-
-    Args:
-      model: A ConfigModel instance or a dict of values that can be converted
-          into a ConfigModel instance. If a dict, the declarations of the top of
-          the stack will be used.
-    Returns:
-      A new StackedConfig instance with model superseding the current models.
-    """
-    if not isinstance(model, ConfigModel):
-      model = ConfigModel(
-          state=model, declarations=self._models[0].declarations)
-    return StackedConfig(self._models + [model])
-
-  @property
-  def dictionary(self):
-    if not self.loaded:
-      raise ConfigurationNotLoadedError()
-    results = {}
-    for model in self._models:
-      results.update(model.state)
-    return results
-
-  @property
-  def loaded(self):
-    return any(model.loaded for model in self._models)
-
-  def __getattr__(self, name):
-    if not self.loaded:
-      raise ConfigurationNotLoadedError(name)
-    for model in self._models:
-      if model.ContainsKey(name):
-        return model.GetValue(name)
-    return self._models[-1].GetValue(name)
-
-  def __contains__(self, name):
-    return any(model.ContainsKey(name) for model in self._models)
-
-  def __str__(self):
-    return '<%s: (loaded: %s: 0x%x)>' % (type(self).__name__, self.loaded, id(self))
-  __repr__ = __str__
-
-
-class ConfigValue(object):  # pylint: disable=too-few-public-methods
-  """A thin wrapper which may be used to pass around a config value.
-
-  This is useful when things require a value at import time yet config values
-  are not available until runtime.  By wrapping the key you want in this object,
-  other objects which are aware of it can call it to retrieve the value at a
-  later time (i.e. runtime).  This is not a magic bullet, whatever you'ready
-  calling must be ready for a ConfigValue or similar to provided.
-
-  The value_fn parameter allows a function to be specified at import time which
-  will be performed on the retrieved config value at runtime. This is useful for
-  retrieving an inner-value of a config value, such as indexing into an
-  array/dict config value.
-  """
-
-  def __init__(self, config_key, config=None, value_fn=None):
-    self.config = config or Config()
-    self.config_key = config_key
-    self.value_fn = value_fn
-
-  @property
-  def value(self):
-    """Resolves the value returning the config value."""
-    if self.value_fn is None:
-      return self.config[self.config_key]
-    else:
-      return self.value_fn(self.config[self.config_key])
-
-  def __call__(self):  # pylint: disable=invalid-name
-    """Returns the config value."""
-    return self.value
-
-  def __str__(self):
-    return '<%s: (ConfigKey: %s)' % (type(self).__name__, self.config_key)
-  __repr__ = __str__
-
-
-def Extern(dummy_name):  # pylint: disable=invalid-name
-  """Declares that a module uses a key declared elsewhere.
-
-  This function does nothing but serve as a marker at the top of your file that
-  you're using a config key which improves readability greatly.  You're
-  encouraged to use this.  That said since declaration of keys isn't checked
-  until a key is used and since this function does nothing everything will still
-  work without it.
-
-  Args:
-    unused_name: The name of the key.
-  """
-
-
-def InjectPositionalArgs(method):  # pylint: disable=invalid-name
-  """Decorator for injecting positional arguments from the configuration.
-
-  This decorator wraps the given method, so that any positional arguments are
-  passed with corresponding values from the configuration.  The name of the
-  positional argument must match the configuration key.  Keyword arguments are
-  not modified, but should not be named such that they match configuration keys
-  anyway (this will result in a warning message).
-
-  Additional positional arguments may be used that do not appear in the
-  configuration, but those arguments *must* be specified as keyword arguments
-  upon invokation of the method.  This is to avoid ambiguity in which
-  positional arguments are getting which values.
-
-  Args:
-    method: The method to wrap.
-
-  Returns:
-    A wrapper that, when invoked, will call the wrapped method, passing in
-  configuration values for positional arguments.
-  """
-  argspec = inspect.getargspec(method)
-
-  # Index in argspec.args of the first keyword argument.  This index is a
-  # negative number if there are any kwargs, or 0 if there are no kwargs.
-  keyword_arg_index = -1 * len(argspec.defaults or [])
-  arg_names = argspec.args[:keyword_arg_index or None]
-  kwarg_names = argspec.args[len(arg_names):]
-
-  # Create the actual method wrapper, all we do is update kwargs.  Note we don't
-  # pass any *args through because there can't be any - we've filled them all in
-  # with values from the configuration.  Any positional args that are missing
-  # from the configuration *must* be explicitly specified as kwargs.
-  @functools.wraps(method)
-  def method_wrapper(**kwargs):
-    """Wrapper that pulls values from the Config()."""
-    config = Config()
-
-    # Check for keyword args with names that are in the config so we can warn.
-    for bad_name in set(kwarg_names) & set(config.dictionary.keys()):
-      _LOG.warning('Keyword arg %s not set from configuration, but is a '
-                   'configuration key', bad_name)
-
-    # Set positional args from configuration values.
-    config_args = {name: config[name] for name in arg_names if name in config}
-
-    for overridden in set(kwargs) & set(config_args):
-      _LOG.warning('Overriding provided kwarg %s=%s with value %s from '
-                   'configuration', overridden, kwargs[overridden],
-                   config_args[overridden])
-    kwargs.update(config_args)
-    _LOG.info('Invoking %s with %s', method.__name__, kwargs)
-    return method(**kwargs)
-
-  # We have to check for a 'self' parameter explicitly because Python doesn't
-  # pass it as a keyword arg, it passes it as the first positional arg.
-  if 'self' == argspec.args[0]:
-    @functools.wraps(method)
-    def SelfWrapper(self, **kwargs):  # pylint: disable=invalid-name,missing-docstring
-      kwargs['self'] = self
-      return method_wrapper(**kwargs)
-    return SelfWrapper
-  return method_wrapper
-
-
-# pylint: disable=invalid-name
-Declare = Config().model.Declare
-Load = Config().model.Load
-LoadMissingFromDict = Config().model.LoadMissingFromDict
-LoadFromDict = Config().model.LoadFromDict
-Reset = Config().model.Reset
-
-# Everywhere that uses configuration uses this, so we just declare it here.
-Declare('station_id', 'The name of this tester')
+# Swap out the module for a singleton instance of Configuration so we can
+# provide __getattr__ and __getitem__ functionality at the module level.
+sys.modules[__name__] = Configuration(
+    FLAGS, logging.getLogger(__name__), threading.RLock(), functools,
+    inspect=inspect, yaml=yaml)

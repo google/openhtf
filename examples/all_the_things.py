@@ -15,24 +15,26 @@
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
-python ./hello_world.py --config ./hello_world.yaml
+python all_the_things.py --config=example_config.yaml
 """
 
 import json
-import os.path
-import tempfile
+import os
 import time
 
 import example_plug
 import openhtf
 import openhtf.io.output as output
 
+from openhtf.io.output import json_factory
 from openhtf.names import *
+# Uncomment for mfg-inspector output, requires setup.py build_proto.
+#from openhtf.io.output import mfg_inspector
 
 
-@plug(example=example_plug.Example)
+@plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
-  return example.DoChangingStuff()
+  return example.Increment()
 
 
 @measures(
@@ -42,15 +44,17 @@ def example_monitor(example):
     Measurement(
         'widget_color').Doc('Color of the widget'),
     Measurement('widget_size').InRange(1, 4))
-@plug(example=example_plug.Example)
+@plug(example=example_plug.ExamplePlug)
 def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.DisplayPrompt(
       'What\'s the widget type?', text_input=True)
+  if test.measurements.widget_type == 'raise':
+    raise Exception()
   test.measurements.widget_color = 'Black'
   test.measurements.widget_size = 3
-  test.logger.info('Example says: %s', example.DoStuff())
+  test.logger.info('Plug value: %s', example.Increment())
 
 
 # Timeout if this phase takes longer than 10 seconds.
@@ -79,12 +83,10 @@ def dimensions(test):
   for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):
     test.measurements.lots_of_dims[x, y, z] = x + y + z
 
+
 def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
-  with tempfile.NamedTemporaryFile() as f:
-    f.write('This is a file attachment')
-    f.flush()
-    test.AttachFromFile(f.name)
+  test.AttachFromFile('example_attachment.txt')
 
 
 if __name__ == '__main__':
@@ -93,18 +95,18 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  OutputToJSON = output.json_factory.OutputToJSON
-  test.AddOutputCallback(OutputToJSON(
+
+  test.AddOutputCallback(json_factory.OutputToJSON(
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
-  test.AddOutputCallback(output.OutputToTestRunProto(
-      './%(dut_id)s.%(start_time_millis)s.json'))
+  #test.AddOutputCallback(mfg_inspector.OutputToTestRunProto(
+  #    './%(dut_id)s.%(start_time_millis)s.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
   # 'my_private_key.json'.
-  if os.path.isfile('my_private_key.json'):
-    with open('my_private_key.json', 'r') as json_file:
-      test.AddOutputCallback(output.UploadToMfgInspector.from_json(json.load(
-          json_file)))
+  #if os.path.isfile('my_private_key.json'):
+  #  with open('my_private_key.json', 'r') as json_file:
+  #    test.AddOutputCallback(mfg_inspector.UploadToMfgInspector.from_json(
+  #        json.load(json_file)))
 
   test.Execute(test_start=triggers.PromptForTestStart())

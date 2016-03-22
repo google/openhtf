@@ -2,7 +2,6 @@
 
 from json import JSONEncoder
 
-from openhtf import conf
 from openhtf import util
 from openhtf.exe import test_state
 
@@ -31,23 +30,18 @@ class OutputToJSON(JSONEncoder):
     self.inline_attachments = inline_attachments
 
   def default(self, obj):
-    # Handle a few custom objects that end up in our output.
     if isinstance(obj, BaseException):
       # Just repr exceptions.
       return repr(obj)
-    if isinstance(obj, conf.Config):
-      return obj.dictionary
-    if obj in test_state.TestState.State:
-      return str(obj)
     return super(OutputToJSON, self).default(obj)
 
   # pylint: disable=invalid-name
   def __call__(self, test_record):
     assert self.filename_pattern, 'filename_pattern required'
     if self.inline_attachments:
-      as_dict = util.convert_to_dict(test_record)
+      as_dict = util.ConvertToBaseTypes(test_record)
     else:
-      as_dict = util.convert_to_dict(test_record, ignore_keys='attachments')
+      as_dict = util.ConvertToBaseTypes(test_record, ignore_keys='attachments')
     with open(self.filename_pattern % as_dict, 'w') as f:
       f.write(self.encode(as_dict))
   # pylint: enable=invalid-name

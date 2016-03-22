@@ -13,8 +13,10 @@
 # limitations under the License.
 """Setup script for OpenHTF."""
 
+import errno
 import glob
 import os
+import platform
 import subprocess
 import sys
 
@@ -42,17 +44,29 @@ class CleanCommand(clean):
 
 class BuildProtoCommand(Command):
   """Custom setup command to build protocol buffers."""
-  description = "Builds the proto files into python files."""
+  description = 'Builds the proto files into python files.'
   user_options = [('protoc=', None, 'Path to the protoc compiler.'),
                   ('protodir=', None, 'Path to protobuf install.'),
                   ('indir=', 'i', 'Directory containing input .proto files'),
                   ('outdir=', 'o', 'Where to output .py files.')]
 
   def initialize_options(self):
-    self.protoc = '/usr/bin/protoc'
-    self.protodir = '/usr/include'
-    self.indir = './openhtf/io/proto'
-    self.outdir = './openhtf/io/proto'
+    try:
+      prefix = subprocess.check_output(
+          'pkg-config --variable prefix protobuf'.split()).strip()
+    except subprocess.CalledProcessError:
+      if platform.system() in {'Linux', 'Mac'}:
+        # Default to /usr?
+        prefix = '/usr'
+      else:
+        raise NotImplementedError(
+            'Windows support in-progress. Help us by submitting an issue! '
+            'https://github.com/google/openhtf/issues/new')
+
+    self.protoc = os.path.join(prefix, 'bin', 'protoc')
+    self.protodir = os.path.join(prefix, 'include')
+    self.indir = os.path.join(os.getcwd(), 'openhtf', 'io', 'proto')
+    self.outdir = os.path.join(os.getcwd(), 'openhtf', 'io', 'proto')
 
   def finalize_options(self):
     pass
@@ -61,29 +75,40 @@ class BuildProtoCommand(Command):
     # Build regular proto files.
     protos = glob.glob(os.path.join(self.indir, '*.proto'))
     if protos:
-      print "Attempting to build proto files:\n%s" % '\n'.join(protos)
-      subprocess.check_call([
+      print 'Attempting to build proto files:\n%s' % '\n'.join(protos)
+      cmd = [
           self.protoc,
           '--proto_path', self.indir,
           '--proto_path', self.protodir,
           '--python_out', self.outdir,
-          ] + protos)
+      ] + protos
+      try:
+        subprocess.check_call(cmd)
+      except OSError as e:
+        if e.errno == errno.ENOENT:
+          print 'Could not find the protobuf compiler at %s' % self.protoc
+          print ('On many Linux systems, this is fixed by installing the '
+                 '"protobuf-compiler" and "libprotobuf-dev" packages.')
+        raise
+      except subprocess.CalledProcessError:
+        print 'Could not build proto files.'
+        print ('This could be due to missing helper files. On many Linux '
+               'systems, this is fixed by installing the '
+               '"libprotobuf-dev" package.')
+        raise
     else:
-      print "Found no proto files to build."
+      print 'Found no proto files to build.'
 
 
 # Make building protos part of building overall.
 build.sub_commands.insert(0, ('build_proto', None))
 
 
-install_requires = [  # pylint: disable=invalid-name
+INSTALL_REQUIRES = [
     'contextlib2==0.4.0',
     'enum34==1.1.2',
-    'inotify==0.2.4',
-    'libusb1==1.3.0',
-    'M2Crypto==0.22.3',
     'MarkupSafe==0.23',
-    'mutablerecords==0.2.6',
+    'mutablerecords==0.2.7',
     'oauth2client==1.5.2',
     'protobuf==2.6.1',
     'pyaml==15.3.1',
@@ -105,7 +130,7 @@ class PyTestCommand(test):
       ('pytest-cov=', None, 'Enable coverage. Choose output type: '
        'term, html, xml, annotate, or multiple with comma separation'),
   ]
-  
+
   def initialize_options(self):
     test.initialize_options(self)
     self.pytest_args = 'test'
@@ -131,19 +156,25 @@ class PyTestCommand(test):
 
 setup(
     name='openhtf',
-    version='1.0',
+    version='0.9',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
     author_email='madsci@google.com',
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
-    packages=find_packages(exclude='example'),
+    packages=find_packages(exclude='examples'),
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
         'test': PyTestCommand,
     },
-    install_requires=install_requires,
+    install_requires=INSTALL_REQUIRES,
+    extras_require={
+        'usb_plugs': [
+            'libusb1==1.3.0',
+            'M2Crypto==0.22.3',
+        ],
+    },
     setup_requires=[
         'wheel==0.29.0',
     ],

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """TestExecutor executes tests."""
 
 import logging
@@ -21,18 +20,19 @@ from enum import Enum
 
 import contextlib2 as contextlib
 
+from openhtf import conf
 from openhtf import plugs
-from openhtf.exe import phasemanager
+from openhtf.exe import phase_executor
 from openhtf.exe import test_state
 from openhtf.io import user_input
 from openhtf.util import threads
-
 
 _LOG = logging.getLogger(__name__)
 
 
 class TestStopError(Exception):
   """Test is being stopped."""
+
 
 class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
   """Abstraction for supressing stuff we don't care about."""
@@ -64,20 +64,19 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT','FINISHING'])
 
-  def __init__(self, config, test, test_start, test_stop):
-    super(TestExecutor, self).__init__()
+  def __init__(self, test, test_start, test_stop):
+    super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self.test = test
     self._test_start = test_start
     self._test_stop = test_stop
-    self._config = config
     self._current_exit_stack = None
     self._test_state = None
     self._status = self.FrameworkStatus.CREATED
 
   def _asdict(self):
     """Return a dictionary representation of this executor."""
-    return {'station_id': self._config.station_id,
+    return {'station_id': conf.station_id,
             'prompt': user_input.get_prompt_manager().prompt,
             'status': self._status.name}
 
@@ -121,18 +120,18 @@ class TestExecutor(threads.KillableThread):
     with contextlib.ExitStack() as exit_stack, \
         LogSleepSuppress() as suppressor:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self.test.filename)
+      _LOG.info('Starting test %s', self.test.code_info.name)
 
       # Save exit_stack on self so we can access it when Stop() is called.
       self._current_exit_stack = exit_stack
       exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
 
       plug_manager = self._MakePlugManager(suppressor)
-      phase_executor = self._MakePhaseExecutor()
+      executor = self._MakePhaseExecutor()
 
       self._status = self.FrameworkStatus.EXECUTING
       suppressor.failure_reason = 'Failed to execute test.'
-      self._ExecuteTestPhases(phase_executor)
+      self._ExecuteTestPhases(executor)
       self._status = self.FrameworkStatus.FINISHING
       self.test.OutputTestRecord(self._test_state.GetFinishedRecord())
 
@@ -146,20 +145,18 @@ class TestExecutor(threads.KillableThread):
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
     plug_manager = (
-        plugs.PlugManager.InitializeFromTypes(
-            self.test.plug_type_map))
+        plugs.PlugManager.InitializeFromTypeMap(self.test.plug_type_map))
     self._current_exit_stack.callback(plug_manager.TearDownPlugs)
 
     suppressor.failure_reason = 'Test is invalid.'
     self._test_state = test_state.TestState(
-        self._config, self.test, plug_manager.plug_map, dut_id)
+        self.test, plug_manager.plug_map, dut_id, conf.station_id)
 
     return plug_manager
 
   def _MakePhaseExecutor(self):
-    """Create a phasemanager.PhaseExecutor and set it up."""
-    phase_executor = phasemanager.PhaseExecutor(
-        self._config, self._test_state)
+    """Create a phase_executor.PhaseExecutor and set it up."""
+    executor = phase_executor.PhaseExecutor(self._test_state)
 
     def optionally_stop(exc_type, *dummy):
       """Always called when we stop a test.
@@ -169,11 +166,11 @@ class TestExecutor(threads.KillableThread):
       then we'll just return immediately, otherwise we'll wait for the
       Test Stop mechanism in triggers.py.
       """
-      # Always stop the phase_executor, if the test ended normally then it
+      # Always stop the PhaseExecutor, if the test ended normally then it
       # will already be stopped, but this won't hurt anything.  If the test
       # exited abnormally, we don't want to leave this hanging around in
       # some weird state.
-      phase_executor.Stop()
+      executor.Stop()
 
       # If Stop was called, we don't care about the test stopping completely
       # anymore, nor if ctrl-C was hit.
@@ -183,18 +180,13 @@ class TestExecutor(threads.KillableThread):
         self._test_state = None  # Clear test state after stopping.
 
     self._current_exit_stack.push(optionally_stop)
-    return phase_executor
+    return executor
 
-  def _ExecuteTestPhases(self, phase_executor):
-    """Executes one test's phases from start to finish.
-
-    Raises:
-      InvalidPhaseResultError: Raised when a phase doesn't return
-          phase_data.TestPhaseInfo.TEST_PHASE_RESULT_*
-    """
+  def _ExecuteTestPhases(self, executor):
+    """Executes one test's phases from start to finish."""
     self._test_state.SetStateRunning()
-    for phase_result in phase_executor.ExecutePhases():
-      if self._test_state.SetStateFromPhaseResult(phase_result):
+    for phase_outcome in executor.ExecutePhases():
+      if self._test_state.SetStateFromPhaseOutcome(phase_outcome):
         break
     else:
       self._test_state.SetStateFinished()

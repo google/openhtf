@@ -117,8 +117,8 @@ class HTTPServer(threading.Thread):
       """Reply with a JSON representation of the current framwork and test
       states.
       """
-      result = {'test': util.convert_to_dict(self.executor.GetState()),
-                'framework': util.convert_to_dict(self.executor)}
+      result = {'test': util.ConvertToBaseTypes(self.executor.GetState()),
+                'framework': util.ConvertToBaseTypes(self.executor)}
       self.wfile.write(json.dumps(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
@@ -130,7 +130,8 @@ class HTTPServer(threading.Thread):
 
   def Stop(self):
     """Stop the HTTP server."""
-    self._server.shutdown()
+    if self._server:
+      self._server.shutdown()
 
   def run(self):
     """Start up a raw HTTPServer based on our HTTPHandler definition."""

@@ -35,13 +35,13 @@ class UnittestPlug(plugs.BasePlug):
     print 'Plugs-specific functionality.'
 
 
-@openhtf.TestPhaseOptions()
+@openhtf.PhaseOptions()
 def phase_one(test, test_plug):
   time.sleep(1)
   print 'phase_one completed'
 
 
-@plugs.requires(test_plug=UnittestPlug)
+@plugs.plug(test_plug=UnittestPlug)
 def phase_two(test, test_plug):
   time.sleep(2)
   print 'phase_two completed'
@@ -54,11 +54,7 @@ class TestOpenhtf(unittest.TestCase):
 
   def setUp(self):
     self.test_plug = UnittestPlug()
-    conf.LoadFromDict(
-        {
-            'target_name': 'unittest_openhtf',
-            'test_start': 'frontend_serial',
-        }, True)
+    conf.Load(target_name='unittest_openhtf', test_start='frontend_serial')
 
   def test_plug_type_map(self):
     test = openhtf.Test(phase_one, phase_two)
@@ -71,17 +67,9 @@ class TestOpenhtf(unittest.TestCase):
     mock_starter.Wait()
     mock_starter.Stop()
 
-  @mock.patch.multiple(exe.triggers.AndroidTriggers,
-                       _TryOpen=mock.Mock(return_value=False),
-                       TestStart=mock.Mock(return_value='123456'))
-  def testAndroidTriggers(self):
-    serial = exe.triggers.AndroidTriggers.TestStart()
-    self.assertEqual(serial, '123456')
-    exe.triggers.AndroidTriggers.TestStop()
-
   def testClassString(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
-    phase_thread = exe.phasemanager.PhaseExecutorThread(phase_one, ' ')
+    phase_thread = exe.phase_executor.PhaseExecutorThread(phase_one, ' ')
     name = str(phase_thread)
     found = True
     for item in check_list:

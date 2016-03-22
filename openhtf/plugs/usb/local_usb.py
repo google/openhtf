@@ -22,9 +22,15 @@ should never raise libusb1 errors directly - if it does it is a bug, please fix
 it and wrap the error in an appropriate exception from usb_exceptions.py.
 """
 
-import libusb1
 import logging
-import usb1
+
+try:
+  import libusb1
+  import usb1
+except ImportError:
+  logging.error('Failed to import libusb, did you pip install '
+                'openhtf[usb_plugs]?')
+  raise
 
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.plugs.usb import usb_handle

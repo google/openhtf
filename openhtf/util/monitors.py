@@ -16,7 +16,7 @@
 automatically persisting values in a measurement.
 
 Monitors are implemented similar to phase functions - they are decorated
-with plugs.requires() to pass plugs in.  The return value of a monitor
+with plugs.plug() to pass plugs in.  The return value of a monitor
 function, however, will be used to append a value to a measurement.
 
 Monitors by default poll at a rate of 1 second between invokations of
@@ -28,7 +28,7 @@ the monitor function to be called in a tight loop with no delays.
 
 Example:
 
-@plugs.requires(current_meter=current_meter.CurrentMeter)
+@plugs.plug(current_meter=current_meter.CurrentMeter)
 def CurrentMonitor(test, current_meter):
   return current_meter.GetReading()
 
@@ -83,7 +83,7 @@ class _MonitorThread(threads.KillableThread):
 
 
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
-  monitor = openhtf.TestPhaseInfo.WrapOrReturn(monitor_func)
+  monitor = openhtf.PhaseInfo.WrapOrCopy(monitor_func)
   def Wrapper(phase_func):
     @functools.wraps(phase_func)
     def MonitoredPhaseFunc(phase_data, *args, **kwargs):
@@ -95,15 +95,15 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
         return phase_func(phase_data, *args, **kwargs)
       finally:
         monitor_thread.Kill()
-    phase = openhtf.TestPhaseInfo.WrapOrReturn(phase_func)
+    phase = openhtf.PhaseInfo.WrapOrCopy(phase_func)
 
     # Re-key this dict so we don't have to worry about collisions with
-    # plug.requires() decorators on the phase function.  Since we aren't
+    # plug.plug() decorators on the phase function.  Since we aren't
     # updating kwargs here, we don't have to worry about collisions with
     # kwarg names.
     monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug.cls for
                      idx, plug in enumerate(monitor.plugs, start=1)}
-    plug_decorator = plugs.requires(update_kwargs=False, **monitor_plugs)
+    plug_decorator = plugs.plug(update_kwargs=False, **monitor_plugs)
     measures_decorator = measurements.measures(
         measurements.Measurement(measurement_name).WithUnits(
             units).WithDimensions(uom.UOM['MILLISECOND']))

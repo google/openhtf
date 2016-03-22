@@ -15,10 +15,17 @@
 
 """Common exceptions for USB, ADB and Fastboot."""
 
-import libusb1
 import logging
 
+try:
+  import libusb1
+except ImportError:
+  logging.error('Failed to import libusb, did you pip install '
+                'openhtf[usb_plugs]?')
+  raise
+
 _LOG = logging.getLogger(__name__)
+
 
 class CommonUsbError(Exception):
   """Exception that both looks good and is functional.
