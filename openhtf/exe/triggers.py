@@ -38,14 +38,20 @@ TestStop:
 import logging
 import time
 
+import gflags
+
 from openhtf.io import user_input
 
-_LOG = logging.getLogger(__name__)
+gflags.DEFINE_string('dut_serial', 'UNKNOWN_DUT_ID',
+                     'DUT serial to start the test with. '
+                     'Only use if using the AutoStart trigger.')
 
+FLAGS = gflags.FLAGS
+_LOG = logging.getLogger(__name__)
 
 def AutoStart():  # pylint: disable=invalid-name
   """Start the test immediately with a dummy DUT ID."""
-  return 'UNKNOWN_DUT_ID'
+  return FLAGS.dut_serial
 
 
 def AutoStop(dummy_dut_id):  # pylint: disable=invalid-name
