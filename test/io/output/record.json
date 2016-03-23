@@ -22,7 +22,7 @@
     {
       "attachments": {
         "test_attachment": {
-          "data": "This is test attachment data.", 
+          "data": "VGhpcyBpcyB0ZXN0IGF0dGFjaG1lbnQgZGF0YS4=", 
           "mimetype": null
         }
       }, 
