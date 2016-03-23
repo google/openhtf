@@ -26,27 +26,9 @@ import logging
 import threading
 import uuid
 
-import gflags
-
 from openhtf import util
 from openhtf.io import user_input
 from openhtf.util import multicast
-
-
-FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('http_port',
-                      8888,
-                      "Port on which to serve OpenHTF's HTTP API.")
-gflags.DEFINE_string('multicast_address',
-                     multicast.DEFAULT_ADDRESS,
-                     'Address to use for API port discovery service.')
-gflags.DEFINE_integer('multicast_port',
-                      multicast.DEFAULT_PORT,
-                      "Port on which to serve API port discovery service.")
-gflags.DEFINE_integer('multicast_ttl',
-                      multicast.DEFAULT_TTL,
-                      'TTL for multicast messages.')
-
 
 _LOG = logging.getLogger(__name__)
 
@@ -58,31 +40,32 @@ class Server(object):
   """Frontend API server for openhtf.
 
   Starts up two services as separate threads. An HTTP server that serves
-  detailed information about this intance of openhtf, and a multicast listener
-  that helps frontends find and connect to the HTTP server.
-  
+  detailed information about this intance of openhtf, and a service discovery
+  listener that helps frontends find and connect to the HTTP server.
+
   Args:
     executor: An openhtf.exe.TestExecutor object.
+    discovery_info: A dict to specify options for service discovery.
+        See openhtf.util.multicast.MulticastListener, these are passed in as
+        keyword-arguments unmodified.
   """
   KILL_TIMEOUT_S = 1  # Seconds to wait between service kill attempts.
 
 
-  def __init__(self, executor):
+  def __init__(self, executor, http_port=8888, multicast_info=None):
     super(Server, self).__init__()
 
     def multicast_response(message):
       """Formulate a response to a station discovery ping."""
       if message == PING_STRING:
-        return json.dumps({PING_RESPONSE_KEY: FLAGS.http_port})
+        return json.dumps({PING_RESPONSE_KEY: http_port})
       else:
         _LOG.debug(
             'Received non-openhtf traffic on multicast socket: %s' % message)
 
-    self.servers = [HTTPServer(executor),
-                    multicast.MulticastListener(multicast_response,
-                                                FLAGS.multicast_address,
-                                                FLAGS.multicast_port,
-                                                FLAGS.multicast_ttl)]
+    self.servers = [HTTPServer(executor, http_port),
+                    multicast.MulticastListener(
+                        multicast_response, **(multicast_info or {}))]
 
   def Start(self):
     """Start all service threads."""
@@ -103,10 +86,11 @@ class HTTPServer(threading.Thread):
   Args:
     executor: An openhtf.exe.TestExecutor object.
   """
-  def __init__(self, executor):
+  def __init__(self, executor, http_port):
     super(HTTPServer, self).__init__()
     self._HTTPHandler.executor = executor
     self._server = None
+    self._http_port = http_port
 
   class _HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """Request handler class for OpenHTF's HTTP API."""
@@ -136,5 +120,5 @@ class HTTPServer(threading.Thread):
   def run(self):
     """Start up a raw HTTPServer based on our HTTPHandler definition."""
     self._server = BaseHTTPServer.HTTPServer(
-        ('', FLAGS.http_port), self._HTTPHandler)
+        ('', self._http_port), self._HTTPHandler)
     self._server.serve_forever()

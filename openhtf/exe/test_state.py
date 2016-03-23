@@ -53,6 +53,7 @@ class TestState(object):
     test: openhtf.Test instance describing the test to run.
     plug_map: dict mapping plug name to instances.
     dut_id: DUT identifier, if it's known, otherwise None.
+    station_id: Station identifier.
   """
   State = Enum('State', ['CREATED', 'RUNNING', 'COMPLETED'])
 

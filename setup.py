@@ -150,6 +150,7 @@ class PyTestCommand(test):
                          for output in self.pytest_cov.split(','))
       cov = ' --cov openhtf ' + outputs
 
+    sys.argv = [sys.argv[0]]
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
