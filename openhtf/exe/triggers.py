@@ -61,18 +61,20 @@ def AutoStop(dummy_dut_id):  # pylint: disable=invalid-name
 
 # pylint: disable=invalid-name
 def PromptForTestStart(message='Provide a DUT ID in order to start the test.',
-                       text_input=True):
+                       text_input=False, timeout_s=60*60*24):
   """Make a test start trigger based on prompting the user for input."""
   def trigger():  # pylint: disable=missing-docstring
     prompt_manager = user_input.get_prompt_manager()
-    return prompt_manager.DisplayPrompt(message, text_input=text_input)
+    return prompt_manager.DisplayPrompt(
+        message, text_input=text_input, timeout_s=timeout_s)
   return trigger
 
 
 def PromptForTestStop(message='Hit ENTER to complete the test.',
-                      text_input=False):
+                      text_input=False, timeout_s=60*60*24):
   """Make a test stop trigger based on prompting the user for a response."""
   def trigger(dummy_dut_id):  # pylint: disable=missing-docstring
     prompt_manager = user_input.get_prompt_manager()
-    return prompt_manager.DisplayPrompt(message, text_input=text_input)
+    return prompt_manager.DisplayPrompt(
+        message, text_input=text_input, timeout_s=timeout_s)
   return trigger
