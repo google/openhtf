@@ -71,7 +71,7 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
       skipped.
     - Enum instances are converted to strings via their .name attribute.
     - Other non-None values are converted to strings via str().
-  
+
   This results in the return value containing only dicts, lists, tuples,
   strings, and None.
   """
@@ -117,3 +117,22 @@ def get_version():
     version = 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
 
   return version
+
+
+class NonLocalResult(mutablerecords.Record('NonLocal', {'result': None})):
+  """Holds a single result as a nonlocal variable.
+
+  Comparable to using Python 3's nonlocal keyword, it allows an inner function to
+  set the value in an outer function's namespace:
+
+  def WrappingFunction():
+    x = NonLocalResult()
+    def InnerFunction():
+      # This is what we'd do in Python 3:
+      # nonlocal x
+      # x = 1
+      # In Python 2 we use NonLocalResult instead.
+      x.result = 1
+    InnerFunction()
+    return x.result
+  """
