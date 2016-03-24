@@ -39,6 +39,14 @@ from openhtf.io import test_record
 from openhtf.util import logs
 from openhtf.util import measurements
 
+# All tests require a station_id.  This can be via the --config-file
+# automatically loaded by OpenHTF, provided explicitly to the config with
+# conf.Load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
+# with conf.LoadFromDict({..., 'station_id': 'My_Station'}).  If none of those
+# are provided then we'll fall back to the machine's hostname.
+conf.Declare('station_id', 'The name of this test station',
+             default_value=socket.gethostname())
+
 FLAGS = gflags.FLAGS
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
@@ -112,7 +120,7 @@ class Test(object):
       self.loop = loop
 
     _LOG.info('Executing test: %s', self.code_info.name)
-    executor = exe.TestExecutor(conf.Config(), self, test_start, test_stop)
+    executor = exe.TestExecutor(self, test_start, test_stop)
     server = http_api.Server(executor)
     StopOnSigInt([server.Stop, executor.Stop])
     server.Start()
@@ -162,8 +170,6 @@ def SetupFramework():
     sys.exit(1)
 
   logs.setup_logger()
-  conf.Load()
-  conf.LoadMissingFromDict({'station_id': socket.gethostname()})
 
 
 class PhaseResult(Enum):

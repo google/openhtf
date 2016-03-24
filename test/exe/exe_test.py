@@ -54,11 +54,7 @@ class TestOpenhtf(unittest.TestCase):
 
   def setUp(self):
     self.test_plug = UnittestPlug()
-    conf.LoadFromDict(
-        {
-            'target_name': 'unittest_openhtf',
-            'test_start': 'frontend_serial',
-        }, True)
+    conf.Load(target_name='unittest_openhtf', test_start='frontend_serial')
 
   def test_plug_type_map(self):
     test = openhtf.Test(phase_one, phase_two)

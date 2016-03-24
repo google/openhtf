@@ -1,8 +1,8 @@
 """Module for outputting test record to JSON-formatted files."""
 
+import base64
 from json import JSONEncoder
 
-from openhtf import conf
 from openhtf import util
 from openhtf.exe import test_state
 
@@ -22,7 +22,9 @@ class OutputToJSON(JSONEncoder):
     filename_pattern: A format string specifying the filename to write to,
       will be formatted with the Test Record as a dictionary.
     inline_attachments: Whether attachments should be included inline in the
-      output.  Set to False if you expect to have large binary attachments.
+      output. Set to False if you expect to have large binary attachments. If
+      True (the default), then attachments are base64 encoded to allow for
+      binary data that's not supported by JSON directly.
   """
 
   def __init__(self, filename_pattern=None, inline_attachments=True, **kwargs):
@@ -31,12 +33,9 @@ class OutputToJSON(JSONEncoder):
     self.inline_attachments = inline_attachments
 
   def default(self, obj):
-    # Handle a few custom objects that end up in our output.
     if isinstance(obj, BaseException):
       # Just repr exceptions.
       return repr(obj)
-    if isinstance(obj, conf.Config):
-      return obj.dictionary
     return super(OutputToJSON, self).default(obj)
 
   # pylint: disable=invalid-name
@@ -44,6 +43,9 @@ class OutputToJSON(JSONEncoder):
     assert self.filename_pattern, 'filename_pattern required'
     if self.inline_attachments:
       as_dict = util.ConvertToBaseTypes(test_record)
+      for phase in as_dict['phases']:
+        for value in phase['attachments'].itervalues():
+          value['data'] = base64.standard_b64encode(value['data'])
     else:
       as_dict = util.ConvertToBaseTypes(test_record, ignore_keys='attachments')
     with open(self.filename_pattern % as_dict, 'w') as f:

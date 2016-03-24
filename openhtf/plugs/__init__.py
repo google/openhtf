@@ -69,6 +69,8 @@ of doing this is with the conf.InjectPositionalArgs decorator:
   from openhtf import plugs
   from openhtf import conf
 
+  conf.Declare('my_config_key', default_value='my_config_value')
+
   class ExamplePlug(plugs.BasePlug):
     '''A plug that requires some configuration.'''
 

@@ -77,7 +77,7 @@ class TestOpenhtf(unittest.TestCase):
   def setUpClass(cls):
     tempdir = tempfile.mkdtemp()
     atexit.register(shutil.rmtree, tempdir)
-    conf.LoadFromDict({'station_id': 'unittest_openhtf'}, force_reload=True)
+    conf.LoadFromDict({'station_id': 'unittest_openhtf'})
     test = openhtf.Test(
         dimensions, test_name='TestTest', test_description='Unittest test',
         test_version='1.0.0')
