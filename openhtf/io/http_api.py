@@ -41,9 +41,8 @@ class Server(object):
   """Frontend API server for openhtf.
 
   Starts up two services as separate threads. An HTTP server that serves
-  detailed information about this intance of openhtf, and a service discovery
-  listener that helps frontends find and connect to the HTTP server.
-
+  detailed information about this intance of openhtf, and a multicast station
+  discovery service that helps frontends find and connect to the HTTP server.
   Args:
     executor: An openhtf.exe.TestExecutor object.
     discovery_info: A dict to specify options for service discovery.

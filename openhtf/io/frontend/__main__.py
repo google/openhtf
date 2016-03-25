@@ -38,7 +38,6 @@ import os
 import signal
 import socket
 import sys
-import threading
 
 import gflags
 import mutablerecords
@@ -47,7 +46,6 @@ import tornado.ioloop
 import tornado.web
 
 from openhtf.io.http_api import PING_STRING
-from openhtf.io.http_api import PING_RESPONSE_KEY
 from openhtf.util import logs
 from openhtf.util import multicast
 
@@ -88,7 +86,7 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
     """
 
 
-class StationStore(threading.Thread):
+class StationStore(object):
   """Self-updating store of stations visible on the local network(s).
 
   Station data is stored in the 'stations' attribute, a dictionary mapping
@@ -96,7 +94,6 @@ class StationStore(threading.Thread):
   """
   def __init__(self):
     super(StationStore, self).__init__()
-    self._death_event = threading.Event()
     self.hostname = socket.gethostname()
     self.stations = collections.defaultdict(Station)
 
@@ -138,25 +135,23 @@ class StationStore(threading.Thread):
     conn.close()
     return result
 
-  def _Discover(self):
-    """Use multicast to discover stations on the local network."""
-    responses = multicast.send(PING_STRING,
-                               FLAGS.discovery_address,
-                               FLAGS.discovery_port,
-                               FLAGS.discovery_ttl)
-    for host, response in responses:
+
+  def StartDiscovery(self):
+    """Continuously listen for station advertisements."""
+    def discover(data, sender):
+      """Try to discover stations by parsing multicast messages."""
+      _LOG.debug('Received %s from %s over multicast.', data, sender)
       try:
-        port = json.loads(response)[PING_RESPONSE_KEY]
+        port = json.loads(data)[PING_STRING]
+        host = sender[0]
         self._Track(host, port)
       except (KeyError, ValueError):
-        _LOG.warning('Ignoring unrecognized discovery response from %s: %s' % (
-            host, response))
+        _LOG.warning('Ignoring unrecognized multicast message from %s: %s' % (
+            host, data))
 
-  def run(self):
-    """Continuously scan for new stations and add them to the store."""
-    while not self._death_event.is_set():
-      self._Discover()
-      self._death_event.wait(FLAGS.discovery_interval_s)
+    listener = multicast.MulticastListener(discover)
+    listener.daemon = True
+    listener.start()
 
   def _Track(self, host, port):
     """Start tracking the given station."""
@@ -184,11 +179,6 @@ class StationStore(threading.Thread):
       except KeyError:
         _LOG.warn('Malformed station state response from (%s:%s): %s',
                   host, port, response)
-
-  def Stop(self):
-    """Stop the store."""
-    self._death_event.set()
-    self.join()
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -285,11 +275,10 @@ def main(argv):
     """Handle SIGINT by stopping running executor and handler."""
     _LOG.error('Received SIGINT. Stopping frontend server.')
     tornado.ioloop.IOLoop.instance().stop()
-    store.Stop()
   signal.signal(signal.SIGINT, sigint_handler)
 
   print('Starting openhtf frontend server on http://localhost:%s.' % FLAGS.port)
-  store.start()
+  store.StartDiscovery()
   tornado.ioloop.IOLoop.instance().start()
 
 
