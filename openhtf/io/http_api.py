@@ -114,6 +114,7 @@ class HTTPServer(threading.Thread):
       user_input.get_prompt_manager().Respond(
           uuid.UUID((request['id'])), request['response'])
 
+
   def Stop(self):
     """Stop the HTTP server."""
     if self._server:

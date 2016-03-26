@@ -31,7 +31,6 @@ frontend server.
 
 from __future__ import print_function
 import collections
-import httplib
 import json
 import logging
 import os
@@ -41,6 +40,7 @@ import sys
 
 import gflags
 import mutablerecords
+import requests
 import tornado.escape
 import tornado.ioloop
 import tornado.web
@@ -98,42 +98,36 @@ class StationStore(object):
     self.stations = collections.defaultdict(Station)
 
   @staticmethod
-  def MessageFramework(host, port, method='GET', message=None):
-    """Interact with a running instance of openhtf via its HTTP API.
-
-    The default method, 'GET', returns a JSON representation of station state,
-    while 'POST' can be used to respond to prompts. For example:
-
-      # Get the state of the openhtf instance at 192.168.2.25:10500.
-      station_state = MessageFramework(192.168.2.25, 10500)
-
-      # Respond to a prompt for the DUT's serial number:
-      MessageFramework(192.168.2.25, 10500, method='POST', 'SN-NCC1701D')
+  def QueryFramework(host, port):
+    """Make a GET request to an instance of OpenHTF's HTTP API.
 
     Args:
-      host: The IP address of the host running openhtf.
-      port: The TCP port of openhtf's HTTP API on host.
-      method: 'GET' or 'POST'.
-      message: Prompt response for POSTs. Ignored for GETs.
+      host: The IP address of the host running OpenHTF.
+      port: The TCP port of OpenHTF's HTTP API on host.
     """
-    result = None
-    conn = httplib.HTTPConnection(host, int(port))
-    args = [method, '/']
-    if message and method == 'GET':
-      _LOG.warning("Message provided for 'GET' request will be ignored: %s",
-                   message)
-    if message and method == 'POST':
-      args.append(message)
     try:
-      conn.request(*args)
-      if method == 'GET':
-        response = conn.getresponse()
-        if response.status == 200:
-          result = json.loads(response.read())
-    except socket.error as e:
+      response = requests.get('http://%s:%s' % (host, port))
+      if response.status_code == 200:
+        result = json.loads(response.text)
+    except requests.RequestException as e:
+      _LOG.warning('Failed to query station %s:%s -- %s' % (host, port, e))
       result = None
-    conn.close()
     return result
+
+
+  @staticmethod
+  def PostToFramework(host, port, message):
+    """Send a message to an OpenHTF instance in response to a prompt.
+
+    Args:
+      host: The IP address of the host running OpenHTF.
+      port: The TCP port of OpenHTF's HTTP API on host.
+      message: Prompt response.
+    """
+    try:
+      requests.post('http://%s:%s' % (host, port), data=message)
+    except requests.RequestException:
+      _LOG.warning('Unable to post to %s:%s.' % (host, port))
 
 
   def StartDiscovery(self):
@@ -169,7 +163,7 @@ class StationStore(object):
       _LOG.warning(
           'Store was queried for an unknown station: %s:%s' % (host, port))
       return None
-    response = self.MessageFramework(host, port)
+    response = self.QueryFramework(host, port)
     self.stations[host, port].state = response
     if response is not None:
       try:
@@ -235,7 +229,7 @@ class PromptResponseHandler(tornado.web.RequestHandler):
   def post(self, host, port, prompt_id):
     msg = json.JSONEncoder().encode(
       {'id': prompt_id, 'response': self.request.body})
-    self.store.MessageFramework(host, port, method='POST', message=msg)
+    self.store.PostToFramework(host, port, msg)
     self.write('SENT')
 
 
