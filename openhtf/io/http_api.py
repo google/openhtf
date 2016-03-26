@@ -103,14 +103,16 @@ class HTTPServer(threading.Thread):
       """
       result = {'test': data.ConvertToBaseTypes(self.executor.GetState()),
                 'framework': data.ConvertToBaseTypes(self.executor)}
+      self.send_response(200)
+      self.end_headers()
       self.wfile.write(json.dumps(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
       raw = self.rfile.read()
-      data = json.loads(raw)
+      request = json.loads(raw)
       user_input.get_prompt_manager().Respond(
-          uuid.UUID((data['id'])), data['response'])
+          uuid.UUID((request['id'])), request['response'])
 
   def Stop(self):
     """Stop the HTTP server."""
