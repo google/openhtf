@@ -50,14 +50,16 @@ if they are implemented by a class that has internal state that is not copyable
 by the default copy.deepcopy().
 """
 
+import numbers
 import re
 import sys
 
 
 class Validators(object):
 
-  def __init__(self, re_module):
+  def __init__(self, re_module, numbers_module):
     self.re_module = re_module
+    self.numbers_module = numbers_module
     self._validators = {}
 
   def Register(self, validator, name=None):
@@ -105,9 +107,11 @@ class Validators(object):
       if self.maximum is not None:
         return 'x <= %s' % self.maximum
 
-  @classmethod
-  def Equals(cls, value):
-    return cls.InRange(minimum=value, maximum=value)
+  def Equals(self, value):
+    if isinstance(value, self.numbers_module.Number):
+      return self.InRange(minimum=value, maximum=value)
+    else:
+      return self.MatchesRegex(self.re_module.escape(value))
 
   class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
@@ -132,4 +136,4 @@ class Validators(object):
     return self.RegexMatcher(self.re_module, regex)
 
 
-sys.modules[__name__] = Validators(re)
+sys.modules[__name__] = Validators(re, numbers)
