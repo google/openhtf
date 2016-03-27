@@ -15,6 +15,8 @@
 """TestExecutor executes tests."""
 
 import logging
+import sys
+import threading
 import time
 from enum import Enum
 
@@ -55,6 +57,7 @@ class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
     return False
 
 
+# pylint: disable=too-many-instance-attributes
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
 
@@ -62,7 +65,7 @@ class TestExecutor(threads.KillableThread):
 
   FrameworkStatus = Enum('FrameworkStatus',
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
-                          'STOP_WAIT','FINISHING'])
+                          'STOP_WAIT', 'FINISHING'])
 
   def __init__(self, test, test_start, test_stop):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
@@ -70,8 +73,10 @@ class TestExecutor(threads.KillableThread):
     self.test = test
     self._test_start = test_start
     self._test_stop = test_stop
-    self._current_exit_stack = None
+    self._exit_stack = None
     self._test_state = None
+    self._output_thread = None
+    self._lock = threading.Lock()
     self._status = self.FrameworkStatus.CREATED
 
   def _asdict(self):
@@ -87,17 +92,21 @@ class TestExecutor(threads.KillableThread):
   def Stop(self):
     """Stop this test."""
     _LOG.info('Stopping test executor.')
-    if self._current_exit_stack:
-      # Tell the stack to exit.
-      with self._current_exit_stack.pop_all() as stack:
-        # Supress the error we're about to raise.
-        stack.push(lambda *exc_details: True)
-        raise TestStopError('Stopping.')
+    with self._lock:
+      if self._exit_stack:
+        # If self._exit_stack is not None, it will reset itself back to None
+        # when close()'d.
+        self._exit_stack.close()
+        # Tell the stack to exit.
+        #with self._exit_stack.pop_all() as stack:
+        #  # Supress the error we're about to raise.
+        #  stack.push(lambda *exc_details: True)
+        #  raise TestStopError('Stopping.')
     self.Kill()
 
   def Wait(self):
     """Waits until death."""
-    self.join(365*24*60*60)  # Timeout needed for SIGINT handling, so 1 year.
+    self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
 
   def GetState(self):
     """Return the current TestState object."""
@@ -122,40 +131,113 @@ class TestExecutor(threads.KillableThread):
       # Top level steps required to run a single iteration of the Test.
       _LOG.info('Starting test %s', self.test.code_info.name)
 
-      # Save exit_stack on self so we can access it when Stop() is called.
-      self._current_exit_stack = exit_stack
-      exit_stack.callback(lambda: setattr(self, '_current_exit_stack', None))
+      # Any access to self._exit_stack must be done while holding this lock.
+      with self._lock:
+        # Save exit_stack on self so we can access it if Stop() is called.
+        self._exit_stack = exit_stack
 
-      plug_manager = self._MakePlugManager(suppressor)
-      executor = self._MakePhaseExecutor()
+        # Reset some stateful attributes to None when we're done with all other
+        # teardown.
+        exit_stack.callback(lambda: setattr(self, '_exit_stack', None))
+        exit_stack.callback(lambda: setattr(self, '_test_state', None))
+        exit_stack.callback(lambda: setattr(self, '_output_thread', None))
 
+      # Wait here until the test start trigger returns a DUT ID.  Don't hold
+      # self._lock while we do this, or else calls to Stop() will deadlock.
+      dut_id = self._WaitForTestStart(suppressor)
+
+      with self._lock:
+        if not self._exit_stack:
+          # We shouldn't get here, but just in case something went weird with a
+          # call to Stop() and we ended up resuming execution here but the
+          # exit stack was already cleared, bail.
+          raise TestStopError('Test Stopped.')
+
+        # After teardown of everything else, wait on the output thread before
+        # attempting to start another test.
+        exit_stack.callback(self._MaybeJoinOutputThread)
+
+        # Perform initialization of some top-level stuff we need.  The order of
+        # initialization is important here, don't mess with it unless you know
+        # what you're doing.
+        #
+        # Note that we pass exit_stack explicitly for clarity; that stack is
+        # only valid inside the current context, and we only stash a reference
+        # on self so that Stop() can access it, but otherwise it should be
+        # passed in to minimize the implied state of being in-context when
+        # these are called.
+        plug_manager = self._MakePlugManager(exit_stack, suppressor)
+        self._test_state = self._InitializeTestState(dut_id, plug_manager, suppressor)
+        executor = self._MakePhaseExecutor(exit_stack, suppressor)
+
+      # Everything is set, set status and begin test execution.  Note we don't
+      # protect this with a try: block because the PhaseExecutor handles any
+      # exceptions from test code.  Any exceptions here are caused by the
+      # framework, and we probably want them to interrupt framework state
+      # changes (like the transition to FINISHING).
       self._status = self.FrameworkStatus.EXECUTING
       suppressor.failure_reason = 'Failed to execute test.'
       self._ExecuteTestPhases(executor)
       self._status = self.FrameworkStatus.FINISHING
-      self.test.OutputTestRecord(self._test_state.GetFinishedRecord())
 
-  def _MakePlugManager(self, suppressor):
-    """Perform some initialization and create a PlugManager."""
+      # Output the test record now that we're done executing.  We do this in a
+      # separate thread for a couple reasons:
+      #
+      #  - Isolated error handling, exceptions in the output callbacks
+      #    shouldn't propagate here, as those callbacks originate in the test
+      #    code.  Similar to the PhaseExecutor suppressing exceptions from
+      #    test phases, we want to keep the only exceptions we see here limited
+      #    to framework-originated ones.
+      #
+      #  - Framework teardown can happen without waiting for output to
+      #    complete.  In some cases, output callbacks may take a long time to
+      #    complete, and this causes Plugs to remain in a state of "not in use
+      #    but not torn down," which is bad.
+      #
+      # TODO(madsci): Enchance the output mechanism by making this not just a
+      # plain old thread (we need a way to handle timeouts and fallbacks).  This
+      # lengthy comment can move to a docstring there when that happens, too.
+      self._output_thread = self._MakeAndStartOutputThread()
+
+  def _MakeAndStartOutputThread(self):
+    """Set up a separate thread in which to run output callbacks."""
+    output_thread = threading.Thread(
+        target=self.test.OutputTestRecord,
+        args=(self._test_state.GetFinishedRecord(),))
+    output_thread.start()
+    return output_thread
+
+  def _MaybeJoinOutputThread(self):
+    """If there's an output thread going, join it."""
+    if self._output_thread and self._output_thread.isAlive():
+      self._output_thread.join()
+
+  def _WaitForTestStart(self, suppressor):
+    """Wait for the test start trigger to return a DUT ID."""
     self._status = self.FrameworkStatus.START_WAIT
     suppressor.failure_reason = 'TEST_START failed to complete.'
-    dut_id = self._test_start()
+    return self._test_start()
 
+  def _InitializeTestState(self, dut_id, plug_manager, suppressor):
+    """Create a test_state.TestState for the current test."""
+    suppressor.failure_reason = 'Test is invalid.'
+    return test_state.TestState(
+        self.test, plug_manager.plug_map, dut_id, conf.station_id)
+
+  def _MakePlugManager(self, exit_stack, suppressor):
+    """Perform some initialization and create a PlugManager."""
     self._status = self.FrameworkStatus.INITIALIZING
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
     plug_manager = (
         plugs.PlugManager.InitializeFromTypeMap(self.test.plug_type_map))
-    self._current_exit_stack.callback(plug_manager.TearDownPlugs)
-
-    suppressor.failure_reason = 'Test is invalid.'
-    self._test_state = test_state.TestState(
-        self.test, plug_manager.plug_map, dut_id, conf.station_id)
+    exit_stack.callback(plug_manager.TearDownPlugs)
 
     return plug_manager
 
-  def _MakePhaseExecutor(self):
+  def _MakePhaseExecutor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""
+    suppressor.failure_reason = 'Unable to initialize Executor.'
     executor = phase_executor.PhaseExecutor(self._test_state)
 
     def optionally_stop(exc_type, *dummy):
@@ -177,9 +259,8 @@ class TestExecutor(threads.KillableThread):
       if exc_type not in (TestStopError, KeyboardInterrupt):
         self._status = self.FrameworkStatus.STOP_WAIT
         self._test_stop(self._test_state.record.dut_id)
-        self._test_state = None  # Clear test state after stopping.
 
-    self._current_exit_stack.push(optionally_stop)
+    exit_stack.push(optionally_stop)
     return executor
 
   def _ExecuteTestPhases(self, executor):
