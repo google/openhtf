@@ -119,6 +119,12 @@ class TestExecutor(threads.KillableThread):
     else:
       self._RunTestLoop()
 
+  def _ResetAttributes(self):
+    """Reset local stateful attributes to None."""
+    self._exit_stack = None
+    self._test_state = None
+    self._output_thread = None
+
   @threads.Loop
   def _RunTestLoop(self):
     """Handles one whole test from start to finish.
@@ -133,17 +139,9 @@ class TestExecutor(threads.KillableThread):
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
-        # Save exit_stack on self so we can access it if Stop() is called.
+        # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
-
-        # Reset some stateful attributes to None when we're done with all other
-        # teardown.
-        exit_stack.callback(lambda: setattr(self, '_exit_stack', None))
-        exit_stack.callback(lambda: setattr(self, '_test_state', None))
-        exit_stack.callback(lambda: setattr(self, '_output_thread', None))
-
-        # After teardown of everything else, wait on the output thread before
-        # attempting to start another test.
+        exit_stack.callback(self._ResetAttributes)
         exit_stack.callback(self._MaybeJoinOutputThread)
 
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
@@ -162,19 +160,9 @@ class TestExecutor(threads.KillableThread):
           # best-effort basis.
           plug_manager.TearDownPlugs()
           raise TestStopError('Test Stopped.')
-
-        # Now that we have the lock, we can register this.
         exit_stack.callback(plug_manager.TearDownPlugs)
 
-        # Perform initialization of some top-level stuff we need.  The order of
-        # initialization is important here, don't mess with it unless you know
-        # what you're doing.
-        #
-        # Note that we pass exit_stack explicitly for clarity; that stack is
-        # only valid inside the current context, and we only stash a reference
-        # on self so that Stop() can access it, but otherwise it should be
-        # passed in to minimize the implied state of being in-context when
-        # these are called.
+        # Perform initialization of some top-level stuff we need.
         self._test_state = self._MakeTestState(dut_id, plug_manager, suppressor)
         executor = self._MakePhaseExecutor(exit_stack, suppressor)
 
@@ -188,27 +176,28 @@ class TestExecutor(threads.KillableThread):
       self._ExecuteTestPhases(executor)
       self._status = self.FrameworkStatus.FINISHING
 
-      # Output the test record now that we're done executing.  We do this in a
-      # separate thread for a couple reasons:
-      #
-      #  - Isolated error handling, exceptions in the output callbacks
-      #    shouldn't propagate here, as those callbacks originate in the test
-      #    code.  Similar to the PhaseExecutor suppressing exceptions from
-      #    test phases, we want to keep the only exceptions we see here limited
-      #    to framework-originated ones.
-      #
-      #  - Framework teardown can happen without waiting for output to
-      #    complete.  In some cases, output callbacks may take a long time to
-      #    complete, and this causes Plugs to remain in a state of "not in use
-      #    but not torn down," which is bad.
-      #
-      # TODO(madsci): Enchance the output mechanism by making this not just a
-      # plain old thread (we need a way to handle timeouts and fallbacks).  This
-      # lengthy comment can move to a docstring there when that happens, too.
+      # Output the test record now that we're done executing.
       self._output_thread = self._MakeAndStartOutputThread()
 
   def _MakeAndStartOutputThread(self):
-    """Set up a separate thread in which to run output callbacks."""
+    """Set up a separate thread in which to run output callbacks.
+
+    We do this in a separate thread for a couple reasons:
+
+     - Isolated error handling, exceptions in the output callbacks
+       shouldn't propagate here, as those callbacks originate in the test
+       code.  Similar to the PhaseExecutor suppressing exceptions from
+       test phases, we want to keep the only exceptions we see here limited
+       to framework-originated ones.
+
+     - Framework teardown can happen without waiting for output to
+       complete.  In some cases, output callbacks may take a long time to
+       complete, and this causes Plugs to remain in a state of "not in use
+       but not torn down," which is bad.
+
+    TODO(madsci): Enchance the output mechanism by making this not just a
+    plain old thread (we need a way to handle timeouts and fallbacks).
+    """
     output_thread = threading.Thread(
         target=self.test.OutputTestRecord,
         args=(self._test_state.GetFinishedRecord(),))
