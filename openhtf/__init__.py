@@ -259,8 +259,9 @@ class PhaseInfo(mutablerecords.Record(
     """Send these keyword-arguments to the phase when called."""
     # Make a copy so we can have multiple of the same phase with different args
     # in the same test.
-    new_obj = copy.copy(self)
-    new_obj.extra_kwargs.update(kwargs)
+    new_info = mutablerecords.CopyRecord(self)
+    new_info.extra_kwargs.update(kwargs)
+    new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
     return new_obj
 
   def __call__(self, phase_data):
