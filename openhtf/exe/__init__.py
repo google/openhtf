@@ -171,9 +171,6 @@ class TestExecutor(threads.KillableThread):
       self._ExecuteTestPhases(executor)
       self._status = self.FrameworkStatus.FINISHING
 
-      # Output the test record now that we're done executing.
-      self._output_thread = self._MakeAndStartOutputThread()
-
   def _OutputTestRecord(self):
     """Output the test record by invoking output callbacks."""
     if self._test_state:
