@@ -138,6 +138,19 @@ class Measurement(  # pylint: disable=no-init
     self.validators.append(validator)
     return self
 
+  def WithArgs(self, **kwargs):
+    """Creates a new Measurement, see openhtf.PhaseInfo.WithArgs."""
+    new_meas = mutablerecords.CopyRecord(self)
+    if '{' in new_meas.name:
+      formatter = lambda x: x.format(**kwargs)
+    else:
+      # str % {'a': 1} is harmless if str doesn't use any interpolation.
+      # .format is as well, but % is more likely to be used in other contexts.
+      formatter = lambda x: x % kwargs
+    new_meas.name = formatter(self.name)
+    new_meas.docstring = formatter(self.docstring)
+    return new_meas
+
   def __getattr__(self, attr):
     """Support our default set of validators as direct attributes."""
     # Don't provide a back door to validators.py private stuff accidentally.

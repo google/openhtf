@@ -16,6 +16,7 @@
 """The main OpenHTF entry point."""
 
 import collections
+import copy
 import inspect
 import itertools
 import json
@@ -216,7 +217,8 @@ class PhasePlug(mutablerecords.Record(
 
 class PhaseInfo(mutablerecords.Record(
     'PhaseInfo', ['func', 'code_info'],
-    {'options': PhaseOptions, 'plugs': list, 'measurements': list})):
+    {'options': PhaseOptions, 'plugs': list, 'measurements': list,
+     'extra_kwargs': dict})):
   """Phase function and related information.
 
   Attributes:
@@ -253,15 +255,25 @@ class PhaseInfo(mutablerecords.Record(
   def doc(self):
     return self.func.__doc__
 
+  def WithArgs(self, **kwargs):
+    """Send these keyword-arguments to the phase when called."""
+    # Make a copy so we can have multiple of the same phase with different args
+    # in the same test.
+    new_info = mutablerecords.CopyRecord(self)
+    new_info.extra_kwargs.update(kwargs)
+    new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
+    return new_obj
+
   def __call__(self, phase_data):
-    plug_kwargs = {plug.name: phase_data.plugs[plug.name]
-                   for plug in self.plugs if plug.update_kwargs}
+    kwargs = dict(self.extra_kwargs)
+    kwargs.update({plug.name: phase_data.plugs[plug.name]
+                   for plug in self.plugs if plug.update_kwargs})
     arg_info = inspect.getargspec(self.func)
-    if len(arg_info.args) == len(plug_kwargs) and not arg_info.varargs:
+    if len(arg_info.args) == len(kwargs) and not arg_info.varargs:
       # Underlying function has no room for phase_data as an arg. If it expects
       # it but miscounted arguments, we'll get another error farther down.
-      return self.func(**plug_kwargs)
-    return self.func(phase_data, **plug_kwargs)
+      return self.func(**kwargs)
+    return self.func(phase_data, **kwargs)
 
 
 def StopOnSigInt(callbacks):
