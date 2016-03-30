@@ -30,6 +30,7 @@ from openhtf.io import user_input
 from openhtf.util import data
 from openhtf.util import multicast
 
+
 _LOG = logging.getLogger(__name__)
 
 PING_STRING = 'OPENHTF_PING'

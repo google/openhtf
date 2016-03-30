@@ -38,12 +38,14 @@ MAX_MESSAGE_BYTES = 1024  # Maximum allowable message length in bytes.
 class MulticastListener(threading.Thread):
   """Agent that listens (and responds) to short messages on a multicast socket.
 
+  The listener will force-bind to the multicast port via the SO_REUSEADDR
+  option, so it's possible for multiple listeners to bind to the same port.
+
   Args:
     callback: A callable to invoke upon receipt of a multicast message. Will be
-              called with two arguments -- respectively the text of the message
-              received, and the address of the sender. callback can optionally
-              return a string response, which if present will be transmitted
-              back to the sender.
+              called with one argument -- the text of the message received.
+              callback can optionally return a string response, which will be
+              transmitted back to the sender.
     address: Multicast IP address component of the socket to listen on.
     port: Multicast UDP port component of the socket to listen on.
     ttl: TTL for multicast messages. 1 to keep traffic in-network.
@@ -74,7 +76,6 @@ class MulticastListener(threading.Thread):
   def run(self):
     """Listen for pings until stopped."""
     self._live = True
-    self._sock.bind(('', self.port))
     self._sock.settimeout(self.LISTEN_TIMEOUT_S)
     self._sock.setsockopt(
         socket.IPPROTO_IP,
@@ -85,14 +86,20 @@ class MulticastListener(threading.Thread):
             '!4sL',
             socket.inet_aton(self.address),
             socket.INADDR_ANY))  # Listen on all interfaces.
+    self._sock.setsockopt(socket.SOL_SOCKET,
+                          socket.SO_REUSEADDR,
+                          1)  # Allow multiple listeners to bind.
+    self._sock.bind(('', self.port))
 
     while self._live:
       try:
         data, address = self._sock.recvfrom(MAX_MESSAGE_BYTES)
         _LOG.debug('Received multicast message from %s: %s'% (address, data))
-        response = self._callback(data, address)
+        response = self._callback(data)
         if response is not None:
-          self._sock.sendto(response, address)
+          # Send replies out-of-band instead of with the same multicast socket.
+          tx_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          tx_sock.sendto(response, address)
       except socket.timeout:
         continue
 
@@ -102,12 +109,12 @@ def send(message,
          port=DEFAULT_PORT,
          ttl=DEFAULT_TTL,
          timeout_s=2):
-  """Sends a message on the given multicast socket and returns responses.
+  """Sends a message to the given multicast socket and returns responses.
 
   Args:
     message: The string message to send.
-    address: Multicast IP address component of the socket to send on.
-    port: Multicast UDP port component of the socket to send on.
+    address: Multicast IP address component of the socket to send to.
+    port: Multicast UDP port component of the socket to send to.
     ttl: TTL for multicast messages. 1 to keep traffic in-network.
     timeout_s: Seconds to wait for responses.
 
