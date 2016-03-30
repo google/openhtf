@@ -98,8 +98,8 @@ class MulticastListener(threading.Thread):
         response = self._callback(data)
         if response is not None:
           # Send replies out-of-band instead of with the same multicast socket.
-          tx_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-          tx_sock.sendto(response, address)
+          socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(response,
+                                                                  address)
       except socket.timeout:
         continue
 

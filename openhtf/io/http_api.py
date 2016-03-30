@@ -114,6 +114,9 @@ class HTTPServer(threading.Thread):
       request = json.loads(raw)
       user_input.get_prompt_manager().Respond(
           uuid.UUID((request['id'])), request['response'])
+      self.send_response(200)
+      self.end_headers()
+      self.wfile.write('OK')
 
 
   def Stop(self):

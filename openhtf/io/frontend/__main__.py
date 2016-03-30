@@ -113,7 +113,7 @@ class StationStore(threading.Thread):
       if response.status_code == 200:
         result = json.loads(response.text)
     except requests.RequestException as e:
-      _LOG.warning('Failed to query station %s:%s -- %s' % (host, port, e))
+      _LOG.debug('Failed to query station %s:%s -- %s', host, port, e)
       result = None
     return result
 
@@ -129,8 +129,8 @@ class StationStore(threading.Thread):
     """
     try:
       requests.post('http://%s:%s' % (host, port), data=message)
-    except requests.RequestException:
-      _LOG.warning('Unable to post to %s:%s.' % (host, port))
+    except requests.RequestException as e:
+      _LOG.warning('Unable to post to %s:%s. -- %s', host, port, e)
 
   def _Discover(self):
     """Use multicast to discover stations on the local network."""
