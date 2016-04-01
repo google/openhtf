@@ -262,7 +262,7 @@ class PhaseInfo(mutablerecords.Record(
     new_info = mutablerecords.CopyRecord(self)
     new_info.extra_kwargs.update(kwargs)
     new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
-    return new_obj
+    return new_info
 
   def __call__(self, phase_data):
     kwargs = dict(self.extra_kwargs)
