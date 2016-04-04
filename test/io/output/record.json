@@ -1,14 +1,14 @@
 {
   "dut_id": "UNKNOWN_DUT_ID", 
-  "end_time_millis": "67892", 
+  "end_time_millis": 67892, 
   "log_records": [
     {
-      "level": "10", 
-      "lineno": "123", 
+      "level": 10, 
+      "lineno": 123, 
       "logger_name": "openhtf.test_record", 
       "message": "Finishing test execution with outcome PASS.", 
       "source": "test_state.py", 
-      "timestamp_millis": "12346"
+      "timestamp_millis": 12346
     }
   ], 
   "metadata": {
@@ -31,31 +31,31 @@
         "name": "dimensions", 
         "sourcecode": "@measures(\n    Measurement('measurement'),\n    Measurement('dimensions').WithDimensions(UOM['HERTZ']))\ndef dimensions(test):\n  test.measurements.measurement = 1\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  test.Attach('test_attachment', 'This is test attachment data.')\n"
       }, 
-      "end_time_millis": "67891", 
+      "end_time_millis": 67891, 
       "measured_values": {
         "dimensions": [
           [
-            "0", 
-            "1"
+            0, 
+            1
           ], 
           [
-            "1", 
-            "2"
+            1, 
+            2
           ], 
           [
-            "2", 
-            "4"
+            2, 
+            4
           ], 
           [
-            "3", 
-            "8"
+            3, 
+            8
           ], 
           [
-            "4", 
-            "16"
+            4, 
+            16
           ]
         ], 
-        "measurement": "1"
+        "measurement": 1
       }, 
       "measurements": {
         "dimensions": {
@@ -77,9 +77,9 @@
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": "12345"
+      "start_time_millis": 12345
     }
   ], 
-  "start_time_millis": "12344", 
+  "start_time_millis": 12344, 
   "station_id": "unittest_openhtf"
 }
