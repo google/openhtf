@@ -16,6 +16,7 @@
 """One-off utilities."""
 
 import logging
+import numbers
 import time
 from datetime import datetime
 from enum import Enum
@@ -70,10 +71,11 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
       attribute name to value.  Optional attributes with a value of None are
       skipped.
     - Enum instances are converted to strings via their .name attribute.
+    - Number types are left as such (instances of numbers.Number).
     - Other non-None values are converted to strings via str().
 
   This results in the return value containing only dicts, lists, tuples,
-  strings, and None.
+  strings, Numbers, and None.
   """
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, basestring), 'Pass a real iterable!'
@@ -96,8 +98,8 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
     obj = [ConvertToBaseTypes(value, ignore_keys) for value in obj]
   elif isinstance(obj, tuple):
     obj = tuple(ConvertToBaseTypes(value, ignore_keys) for value in obj)
-  elif obj is not None:
-    # Leave None as None to distinguish it from "None".
+  elif obj is not None and not isinstance(obj, numbers.Number):
+    # Leave None as None to distinguish it from "None", and leave numbers alone.
     obj = str(obj)
 
   return obj
