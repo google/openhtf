@@ -59,7 +59,8 @@ class TestState(object):
   def __init__(self, test, plug_map, dut_id, station_id):
     self._state = self.State.CREATED
     self.record = test_record.TestRecord(
-        dut_id=dut_id, station_id=station_id, code_info=test.code_info)
+        dut_id=dut_id, station_id=station_id, code_info=test.code_info,
+        metadata=test.metadata)
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)
     self.logger.addHandler(self._record_handler)

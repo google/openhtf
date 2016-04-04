@@ -83,7 +83,6 @@ class Test(object):
 
   def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
-    record.metadata.update(self._test_info.metadata)
     for output_cb in self._output_callbacks:
       output_cb(record)
 
