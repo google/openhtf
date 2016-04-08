@@ -352,15 +352,20 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
     return self._values[name].GetValue()
 
 
-def measures(*measurements):
+def measures(*measurements, **kwargs):
   """Decorator-maker used to declare measurements for phases.
 
   See the measurements module docstring for examples of usage.
 
   Args:
-    measurements: List of Measurement objects to declare, or a single
-        Measurement object to attach, or a string name from which to
-        create a Measurement.
+    measurements: Measurement objects to declare, or a string name from which
+        to create a Measurement.
+    kwargs: Keyword arguments to pass to Measurement constructor if we're
+        constructing one.  Note that if kwargs are provided, the length
+        of measurements must be 1, and that value must be a string containing
+        the measurement name.  For valid kwargs, see the definition of the
+        Measurement class.
+
   Returns:
     A decorator that declares the measurement(s) for the decorated phase.
   """
@@ -369,21 +374,24 @@ def measures(*measurements):
     if isinstance(meas, Measurement):
       return meas
     elif isinstance(meas, basestring):
-      return Measurement(meas)
-    raise InvalidType('Invalid measurement type: %s' % meas)
+      return Measurement(meas, **kwargs)
+    raise InvalidType('Expected Measurement or string', meas)
 
-  # If we were passed in an iterable, make sure each element is an
-  # instance of Measurement.
-  if isinstance(measurements, collections.Iterable):
-    measurements = [_maybe_make(meas) for meas in measurements]
-  else:
-    measurements = [_maybe_make(measurements)]
+  # In case we're declaring a measurement inline, we can only declare one.
+  if kwargs and len(measurements) != 1:
+    raise InvalidType('If @measures kwargs are provided, a single measurement '
+                      'name must be provided as a positional arg first.')
 
-  # 'descriptors' is guaranteed to be a list of Measurements here.
+  # Unlikely, but let's make sure we don't allow overriding initial outcome.
+  if 'outcome' in kwargs:
+    raise ValueError('Cannot specify outcome in measurement declaration!')
+
+  measurements = [_maybe_make(meas) for meas in measurements]
+
+  # 'measurements' is guaranteed to be a list of Measurement objets here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
     phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
     phase.measurements.extend(measurements)
     return phase
   return decorate
-
