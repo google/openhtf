@@ -29,6 +29,19 @@ For more complex topics, see the validators.py and dimensions.py examples.
 For a simpler example, see the hello_world.py example.  If the output of this
 test is confusing, start with the hello_world.py output and compare it to this
 test's output.
+
+Some constraints on measurements:
+
+  - Measurement names must be valid python variable names.  This is mostly for
+    sanity, but also ensures you can access them via attribute access in phases.
+    This applies *after* any WithArgs() substitution (not covered in this
+    tutorial, see the phases.py example for more details).
+
+  - You cannot declare the same measurement name multiple times on the same
+    phase.  Technically, you *can* declare the same measurement on multiple
+    phases; measurements are attached to a specific phase in the output.  This
+    isn't recommended, though, because it makes it difficult to flatten a test's
+    measurements, which some output formats require.
 """
 
 # Import this output mechanism as it's the specific one we want to use.
