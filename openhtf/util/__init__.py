@@ -16,10 +16,8 @@
 """One-off utilities."""
 
 import logging
-import numbers
 import time
 from datetime import datetime
-from enum import Enum
 from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords

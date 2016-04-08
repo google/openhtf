@@ -18,6 +18,42 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
+import numbers
+
+import mutablerecords
+
+from enum import Enum
+
+# Fields that are considered 'volatile' for record comparison.
+_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
+
+
+def CompareRecordsNonvolatile(first, second):
+  """Compare two test_record tuples, ignoring any volatile fields.
+
+  'Volatile' fields include any fields that are expected to differ between
+  successive runs of the same test, mainly timestamps.  All other fields
+  are recursively compared.
+
+  Returns:
+    True if the given test_record objects compare equal aside from volatile
+  fields.
+  """
+  if (isinstance(first, mutablerecords.records.RecordClass) and
+      isinstance(second, mutablerecords.records.RecordClass)):
+    for slot in first.__slots__:
+      if slot in _VOLATILE_FIELDS:
+        continue
+
+      if hasattr(second, slot):
+        if not CompareRecordsNonvolatile(
+            getattr(first, slot), getattr(second, slot)):
+          return False
+      else:
+        return False
+    return True
+  return first == second
+
 
 def ConvertToBaseTypes(obj, ignore_keys=tuple()):
   """Recursively convert objects into base types, mostly dicts and strings.
@@ -64,6 +100,3 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
     obj = str(obj)
 
   return obj
-
-
-
