@@ -178,7 +178,7 @@ setup(
         'wheel==0.29.0',
     ],
     tests_require=[
-        'mock==1.3.0',
+        'mock>=2.0.0',
         'pytest==2.8.7',
     ],
 )
