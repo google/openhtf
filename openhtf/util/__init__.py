@@ -121,7 +121,7 @@ def get_version():
   return version
 
 
-class NonLocalResult(mutablerecords.Record('NonLocal', {'result': None})):
+class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
   """Holds a single result as a nonlocal variable.
 
   Comparable to using Python 3's nonlocal keyword, it allows an inner function to
