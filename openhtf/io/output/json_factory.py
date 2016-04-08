@@ -3,8 +3,8 @@
 import base64
 from json import JSONEncoder
 
-from openhtf import util
 from openhtf.exe import test_state
+from openhtf.util import data
 
 
 class OutputToJSON(JSONEncoder):
@@ -42,12 +42,12 @@ class OutputToJSON(JSONEncoder):
   def __call__(self, test_record):
     assert self.filename_pattern, 'filename_pattern required'
     if self.inline_attachments:
-      as_dict = util.ConvertToBaseTypes(test_record)
+      as_dict = data.ConvertToBaseTypes(test_record)
       for phase in as_dict['phases']:
         for value in phase['attachments'].itervalues():
           value['data'] = base64.standard_b64encode(value['data'])
     else:
-      as_dict = util.ConvertToBaseTypes(test_record, ignore_keys='attachments')
+      as_dict = data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
     with open(self.filename_pattern % as_dict, 'w') as f:
       f.write(self.encode(as_dict))
   # pylint: enable=invalid-name

@@ -12,8 +12,8 @@ from openhtf.io.output import json_factory
 from openhtf.io.proto import testrun_pb2
 from openhtf.io.proto import units_pb2
 
-from openhtf import util
 from openhtf.io import test_record
+from openhtf.util import data
 from openhtf.util import measurements
 from openhtf.util import validators
 
@@ -83,7 +83,7 @@ def _AttachJson(record, testrun):
   un-mangled fields later if we want.  Remove attachments since those get
   copied over and can potentially be quite large.
   """
-  record_dict = util.ConvertToBaseTypes(record, ignore_keys=('attachments',))
+  record_dict = data.ConvertToBaseTypes(record, ignore_keys=('attachments',))
   record_json = json_factory.OutputToJSON(sort_keys=True).encode(record_dict)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
@@ -289,7 +289,7 @@ class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
     self.filename_pattern = filename_pattern
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
-    as_dict = util.ConvertToBaseTypes(test_record)
+    as_dict = data.ConvertToBaseTypes(test_record)
     with open(self.filename_pattern % as_dict, 'w') as outfile:
       outfile.write(_TestRunFromTestRecord(test_record).SerializeToString())
 

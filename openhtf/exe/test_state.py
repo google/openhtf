@@ -27,6 +27,7 @@ import openhtf
 from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
+from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import measurements
 
@@ -74,7 +75,7 @@ class TestState(object):
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
-    return json.dumps(util.ConvertToBaseTypes(self))
+    return json.dumps(data.ConvertToBaseTypes(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
