@@ -65,16 +65,8 @@ class InvalidDimensionsError(Exception):
   """Raised when there is a problem with measurement dimensions."""
 
 
-class InvalidType(Exception):
+class InvalidMeasurementType(Exception):
   """Raised when an unexpected measurement type is given."""
-
-
-class StatusError(Exception):
-  """Raised when checking status of a measurement without a status."""
-
-
-class MeasurementError(Exception):
-  """A generic exception for problems with measurements."""
 
 
 class MeasurementNotSetError(Exception):
@@ -87,10 +79,6 @@ class NotAMeasurementError(Exception):
 
 class DuplicateNameError(Exception):
   """An exception which occurs when a measurement name collision occurs."""
-
-
-class MultipleValidatorsException(Exception):
-  """Multiple validators were used when defining a measurement."""
 
 
 Outcome = Enum('Outcome', ['PASS', 'FAIL', 'UNSET'])
@@ -375,12 +363,13 @@ def measures(*measurements, **kwargs):
       return meas
     elif isinstance(meas, basestring):
       return Measurement(meas, **kwargs)
-    raise InvalidType('Expected Measurement or string', meas)
+    raise InvalidMeasurementType('Expected Measurement or string', meas)
 
   # In case we're declaring a measurement inline, we can only declare one.
   if kwargs and len(measurements) != 1:
-    raise InvalidType('If @measures kwargs are provided, a single measurement '
-                      'name must be provided as a positional arg first.')
+    raise InvalidMeasurementType(
+        'If @measures kwargs are provided, a single measurement name must be '
+        'provided as a positional arg first.')
 
   # Unlikely, but let's make sure we don't allow overriding initial outcome.
   if 'outcome' in kwargs:
@@ -392,6 +381,11 @@ def measures(*measurements, **kwargs):
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
     phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
+    duplicate_names = (set(m.name for m in measurements) &
+                       set(m.name for m in phase.measurements))
+    if duplicate_names:
+      raise DuplicateNameError('Measurement names duplicated', duplicate_names)
+
     phase.measurements.extend(measurements)
     return phase
   return decorate
