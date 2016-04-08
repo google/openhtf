@@ -48,7 +48,6 @@ Examples:
 
 
 import collections
-import inspect
 import itertools
 import logging
 
@@ -57,7 +56,6 @@ from enum import Enum
 import mutablerecords
 
 import openhtf
-from openhtf.io import test_record
 from openhtf.util import validators
 
 _LOG = logging.getLogger(__name__)
@@ -119,20 +117,22 @@ class Measurement(  # pylint: disable=no-init
   """
 
   def Doc(self, docstring):
+    """Set this Measurement's docstring, returns self for chaining."""
     self.docstring = docstring
     return self
 
   def WithUnits(self, units):
-    """Declare the units for this Measurement."""
+    """Declare the units for this Measurement, returns self for chaining."""
     self.units = units
     return self
 
   def WithDimensions(self, *dimensions):
-    """Declare dimensions for this Measurement."""
+    """Declare dimensions for this Measurement, returns self for chaining."""
     self.dimensions = dimensions
     return self
 
   def WithValidator(self, validator):
+    """Add a validator callback to this Measurement, chainable."""
     if not callable(validator):
       raise ValueError('Validator must be callable', validator)
     self.validators.append(validator)
@@ -151,7 +151,7 @@ class Measurement(  # pylint: disable=no-init
     new_meas.docstring = formatter(self.docstring)
     return new_meas
 
-  def __getattr__(self, attr):
+  def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Support our default set of validators as direct attributes."""
     # Don't provide a back door to validators.py private stuff accidentally.
     if attr.startswith('_') or not hasattr(validators, attr):
@@ -159,7 +159,7 @@ class Measurement(  # pylint: disable=no-init
           type(self).__name__, attr))
 
     # Create a wrapper to invoke the attribute from within validators.
-    def _WithValidator(*args, **kwargs):
+    def _WithValidator(*args, **kwargs):  # pylint: disable=invalid-name
       return self.WithValidator(getattr(validators, attr)(*args, **kwargs))
     return _WithValidator
 
@@ -180,6 +180,7 @@ class Measurement(  # pylint: disable=no-init
     return self
 
   def _asdict(self):
+    """Convert this measurement to a dict of basic types."""
     retval = {
         'name': self.name,
         'outcome': self.outcome,
@@ -213,7 +214,7 @@ class MeasuredValue(object):
     self.value = None
 
   def __iter__(self):  # pylint: disable=invalid-name
-    if self.num_dimesions:
+    if self.num_dimensions:
       return self.values.iteritems()
     raise InvalidDimensionsError(
         'Cannot iterate over undimensioned measurement.')
@@ -227,6 +228,7 @@ class MeasuredValue(object):
       return cls(measurement.name, 0)
 
   def SetValue(self, value):
+    """Set the value for this measurement, with some sanity checks."""
     if self.num_dimensions:
       raise InvalidDimensionsError(
           'Expected %s-dimensional coordinates, got dimensionless value %s' % (
@@ -274,7 +276,8 @@ class MeasuredValue(object):
       return self.value
 
 
-class Collection(mutablerecords.Record('Collection', ['_measurements'], {'_values': dict})):
+class Collection(mutablerecords.Record('Collection', ['_measurements'],
+                                       {'_values': dict})):
   """Encapsulates a collection of measurements.
 
   This collection can have measurement values retrieved and set via getters and
@@ -322,17 +325,24 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'], {'_value
       raise NotAMeasurementError('Not a measurement', name, self._measurements)
 
   def __iter__(self):  # pylint: disable=invalid-name
-    def _GetMeasurementValue(item):
+    def _GetMeasurementValue(item):  # pylint: disable=invalid-name
+      """Extract a single MeasurementValue's value."""
       return item[0], item[1].GetValue()
     return itertools.imap(_GetMeasurementValue, self._values.iteritems())
 
-  def __setattr__(self, name, value):
+  def __setattr__(self, name, value):  # pylint: disable=invalid-name
+    self[name] = value
+
+  def __getattr__(self, name):  # pylint: disable=invalid-name
+    return self[name]
+
+  def __setitem__(self, name, value):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     record = self._values.setdefault(
         name, MeasuredValue.ForMeasurement(self._measurements[name]))
     record.SetValue(value)
 
-  def __getattr__(self, name):  # pylint: disable=invalid-name
+  def __getitem__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     if self._measurements[name].dimensions:
       return self._values.setdefault(name, MeasuredValue.ForMeasurement(
@@ -340,19 +350,6 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'], {'_value
     if name not in self._values:
       raise MeasurementNotSetError('Measurement not yet set', name)
     return self._values[name].GetValue()
-
-  def __setitem__(self, name, value):  # pylint: disable=invalid-name
-    raise NotImplementedError(
-        'Measurement values can only be set via attributes.')
-
-  def __getitem__(self, name):  # pylint: disable=invalid-name
-    """When accessed as a dictionary, get the actual value(s) stored."""
-    if name in self._values:
-      return self._values[name].GetValue()
-    return None
-
-  def __len__(self):  # pylint: disable=invalid-name
-    return len(self._measurements)
 
 
 def measures(*measurements):
