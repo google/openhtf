@@ -37,6 +37,7 @@ from openhtf import util
 from openhtf.exe import triggers
 from openhtf.io import http_api
 from openhtf.io import test_record
+from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import measurements
 
@@ -161,6 +162,7 @@ class TestData(collections.namedtuple(
     return plug_type_map
 
 
+@functions.RunOnce
 def SetupFramework():
   """Sets up various bits of the framework. Only needs to be called once."""
   try:
