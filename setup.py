@@ -108,7 +108,7 @@ INSTALL_REQUIRES = [
     'contextlib2==0.4.0',
     'enum34==1.1.2',
     'MarkupSafe==0.23',
-    'mutablerecords==0.2.7',
+    'mutablerecords==0.2.8',
     'oauth2client==1.5.2',
     'protobuf==2.6.1',
     'pyaml==15.3.1',
