@@ -107,7 +107,7 @@ class Test(object):
 
   def Execute(self, loop=None,
               test_start=triggers.AutoStart, test_stop=triggers.AutoStop,
-              http_port=8888):
+              http_port=http_api.DEFAULT_HTTP_PORT):
     """Starts the framework and executes the given test.
     Args:
       test_start: Trigger for starting the test, defaults to AutoStart with a
@@ -124,7 +124,7 @@ class Test(object):
 
     _LOG.info('Executing test: %s', self.code_info.name)
     executor = exe.TestExecutor(self, test_start, test_stop)
-    http_server = http_api.Server(executor, http_port=http_port)
+    http_server = http_api.Server(executor, http_port)
     StopOnSigInt([http_server.Stop, executor.Stop])
     http_server.Start()
     executor.Start()

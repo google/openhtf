@@ -34,6 +34,7 @@ _LOG = logging.getLogger(__name__)
 
 PING_STRING = 'OPENHTF_PING'
 PING_RESPONSE_KEY = 'OPENHTF_PING_RESPONSE'
+DEFAULT_HTTP_PORT = 8888
 
 
 class Server(object):
@@ -52,7 +53,7 @@ class Server(object):
   KILL_TIMEOUT_S = 1  # Seconds to wait between service kill attempts.
 
 
-  def __init__(self, executor, http_port=8888, multicast_info=None):
+  def __init__(self, executor, http_port, multicast_info=None):
     super(Server, self).__init__()
 
     def multicast_response(message):
