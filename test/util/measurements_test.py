@@ -19,6 +19,7 @@ import unittest
 
 from pprint import pformat
 
+import openhtf.conf as conf
 import openhtf.util as util
 
 from openhtf.io.output import json_factory
@@ -65,6 +66,7 @@ class TestMeasurements(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    conf.Load(station_id='measurements_test')
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            'measurements_record.pickle'), 'rb') as picklefile:
       cls.record = pickle.load(picklefile)

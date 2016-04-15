@@ -46,7 +46,7 @@ p20
 tp21
 s(S'TestDUT'
 p22
-S'madsci-mbr'
+S'measurements_test'
 p23
 ttRp24
 (dp25
@@ -100,7 +100,7 @@ ttRp45
 (dbttRp46
 (dp47
 g9
-I1460684920672
+I1460688867348
 sg30
 (dp48
 sg31
@@ -150,7 +150,7 @@ Nsg60
 (lp65
 sbssg33
 Nsg12
-I1460684920672
+I1460688867350
 sg34
 ccopy_reg
 _reconstructor
@@ -193,7 +193,7 @@ ttRp77
 (dbttRp78
 (dp79
 g9
-I1460684920672
+I1460688867350
 sg30
 (dp80
 sg31
@@ -225,7 +225,7 @@ Nsg60
 (lp88
 sbssg33
 Nsg12
-I1460684920673
+I1460688867350
 sg34
 g66
 (g67
@@ -257,7 +257,7 @@ ttRp94
 (dbttRp95
 (dp96
 g9
-I1460684920673
+I1460688867350
 sg30
 (dp97
 sg31
@@ -358,7 +358,7 @@ Nsg60
 (lp123
 sbssg33
 Nsg12
-I1460684920674
+I1460688867351
 sg34
 g66
 (g67
@@ -390,7 +390,7 @@ ttRp129
 (dbttRp130
 (dp131
 g9
-I1460684920675
+I1460688867351
 sg30
 (dp132
 sg31
@@ -447,7 +447,7 @@ p149
 I10
 sbasbssg33
 Nsg12
-I1460684920675
+I1460688867351
 sg34
 g66
 (g67
@@ -479,7 +479,7 @@ ttRp155
 (dbttRp156
 (dp157
 g9
-I1460684920675
+I1460688867352
 sg30
 (dp158
 sg31
@@ -556,7 +556,7 @@ Nsg60
 (lp179
 sbssg33
 Nsg12
-I1460684920676
+I1460688867352
 sg34
 g66
 (g67
@@ -564,11 +564,11 @@ g68
 (g71
 ttRp180
 sbasg9
-I1460684920671
+I1460688867348
 sg11
 (lp181
 sg12
-I1460684920676
+I1460688867352
 sg13
 g1
 (g39
@@ -580,7 +580,7 @@ sg18
 g43
 s(S'measurements_test.py'
 p183
-NS"  def testMeasurements(self):\n    result = util.NonLocalResult() \n    def _SaveResult(test_record):\n      result.result = test_record\n    test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,\n                InlinePhase)\n    # Uncomment this line when you need to update the expected output.\n    test.AddOutputCallback(self._PickleRecord)\n    #test.AddOutputCallback(_SaveResult)\n    test.Execute(test_start=lambda: 'TestDUT')\n    if not data.CompareRecordsNonvolatile(self.record, result.result):\n      data.AssertEqualsAndDiff(\n          pformat(data.ConvertToBaseTypes(self.record)),\n          pformat(data.ConvertToBaseTypes(result.result)))\n"
+NS"  def testMeasurements(self):\n    result = util.NonLocalResult() \n    def _SaveResult(test_record):\n      result.result = test_record\n    test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,\n                InlinePhase)\n    # Uncomment this line when you need to update the expected output.\n    test.AddOutputCallback(self._PickleRecord)\n    #test.AddOutputCallback(_SaveResult)\n    test.Execute(test_start=lambda: 'TestDUT')\n"
 p184
 ttRp185
 (dbsg14
@@ -596,7 +596,7 @@ p188
 S'test_state.py'
 p189
 I149
-I1460684920676
+I1460688867352
 VFinishing test execution with outcome FAIL.
 p190
 ttRp191

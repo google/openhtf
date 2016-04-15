@@ -377,7 +377,7 @@ def measures(*measurements, **kwargs):
 
   measurements = [_maybe_make(meas) for meas in measurements]
 
-  # 'measurements' is guaranteed to be a list of Measurement objets here.
+  # 'measurements' is guaranteed to be a list of Measurement objects here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
     phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
