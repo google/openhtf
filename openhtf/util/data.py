@@ -18,41 +18,78 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
+import difflib
+import logging
 import numbers
+
+from itertools import izip
 
 import mutablerecords
 
 from enum import Enum
 
 # Fields that are considered 'volatile' for record comparison.
-_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
+_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
+                    'sourcecode'}
 
 
-def CompareRecordsNonvolatile(first, second):
+def AssertEqualsAndDiff(expected, actual):
+  """Compare two string blobs, log diff and raise if they don't match."""
+  if expected == actual:
+    return
+
+  # Output the diff first.
+  logging.error('***** Data mismatch:*****')
+  for line in difflib.unified_diff(
+      expected.splitlines(), actual.splitlines(),
+      fromfile='expected', tofile='actual', lineterm=''):
+    logging.error(line)
+  logging.error('^^^^^  Data diff  ^^^^^')
+
+  # Then raise the AssertionError as expected.
+  assert expected == actual
+
+
+def AssertRecordsEqualNonvolatile(first, second, indent=0):
   """Compare two test_record tuples, ignoring any volatile fields.
 
   'Volatile' fields include any fields that are expected to differ between
   successive runs of the same test, mainly timestamps.  All other fields
   are recursively compared.
-
-  Returns:
-    True if the given test_record objects compare equal aside from volatile
-  fields.
   """
-  if (isinstance(first, mutablerecords.records.RecordClass) and
-      isinstance(second, mutablerecords.records.RecordClass)):
-    for slot in first.__slots__:
-      if slot in _VOLATILE_FIELDS:
+  if isinstance(first, dict) and isinstance(second, dict):
+    if set(first) != set(second):
+      logging.error('%sMismatching keys:', ' ' * indent)
+      logging.error('%s  %s', ' ' * indent, first.keys())
+      logging.error('%s  %s', ' ' * indent, second.keys())
+      assert set(first) == set(second)
+    for key in first:
+      if key in _VOLATILE_FIELDS:
         continue
-
-      if hasattr(second, slot):
-        if not CompareRecordsNonvolatile(
-            getattr(first, slot), getattr(second, slot)):
-          return False
-      else:
-        return False
-    return True
-  return first == second
+      try:
+         AssertRecordsEqualNonvolatile(first[key], second[key], indent + 2)
+      except AssertionError:
+        logging.error('%sKey: %s ^', ' ' * indent, key)
+        raise
+  elif hasattr(first, '_asdict') and hasattr(second, '_asdict'):
+    # Compare namedtuples as dicts so we get more useful output.
+    AssertRecordsEqualNonvolatile(first._asdict(), second._asdict(), indent)
+  elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
+    for idx, (f, s) in enumerate(izip(first, second)):
+      try:
+        AssertRecordsEqualNonvolatile(f, s, indent + 2)
+      except AssertionError:
+        logging.error('%sIndex: %s ^', ' ' * indent, idx)
+        raise
+  elif (isinstance(first, mutablerecords.records.RecordClass) and
+        isinstance(second, mutablerecords.records.RecordClass)):
+    AssertRecordsEqualNonvolatile(
+        {slot: getattr(first, slot) for slot in first.__slots__},
+        {slot: getattr(second, slot) for slot in second.__slots__},
+        indent)
+  elif first != second:
+    logging.error('%sRaw: "%s" != "%s"', ' ' * indent, first, second)
+    assert first == second
 
 
 def ConvertToBaseTypes(obj, ignore_keys=tuple()):

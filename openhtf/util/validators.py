@@ -107,6 +107,13 @@ class Validators(object):
       if self.maximum is not None:
         return 'x <= %s' % self.maximum
 
+    def __eq__(self, other):
+      return (isinstance(other, type(self)) and
+              self.minimum == other.minimum and self.maximum == other.maximum)
+
+    def __ne__(self, other):
+      return not self == other
+
   def Equals(self, value):
     if isinstance(value, self.numbers_module.Number):
       return self.InRange(minimum=value, maximum=value)
@@ -128,6 +135,12 @@ class Validators(object):
 
     def __str__(self):
       return "'x' matches /%s/" % self.regex
+
+    def __eq__(self, other):
+      return isinstance(other, type(self)) and self.regex == other.regex
+
+    def __ne__(self, other):
+      return not self == other
 
   # We have to use our saved reference to the re module because this module
   # has lost all references by the sys.modules replacement and has been gc'd.

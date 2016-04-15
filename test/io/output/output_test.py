@@ -26,9 +26,10 @@ import google.protobuf.text_format as text_format
 from openhtf.io.output import json_factory
 from openhtf.io.output import mfg_inspector
 from openhtf.io.proto import testrun_pb2
+from openhtf.util import data
 
 
-class TestOpenhtf(unittest.TestCase):
+class TestOutput(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
@@ -45,30 +46,15 @@ class TestOpenhtf(unittest.TestCase):
                            'record.testrun'), 'rb') as testrunfile:
       cls.testrun = testrun_pb2.TestRun.FromString(testrunfile.read())
 
-  def _AssertOutputMatches(self, expected, actual):
-    if expected == actual:
-      return
-
-    # Output the diff first.
-    logging.error('***** TestRun mismatch:*****')
-    for line in difflib.unified_diff(
-        expected.splitlines(), actual.splitlines(),
-        fromfile='expected', tofile='actual', lineterm=''):
-      logging.error(line)
-    logging.error('^^^^^  TestRun diff  ^^^^^')
-
-    # Then raise the AssertionError as expected.
-    assert expected == actual
-
   def testJson(self):
     json_output = StringIO()
     json_factory.OutputToJSON(json_output, sort_keys=True, indent=2)(self.record)
-    self._AssertOutputMatches(self.json, json_output.getvalue())
+    data.AssertEqualsAndDiff(self.json, json_output.getvalue())
 
   def testTestrun(self):
     testrun_output = StringIO()
     mfg_inspector.OutputToTestRunProto(testrun_output)(self.record)
     actual = testrun_pb2.TestRun.FromString(testrun_output.getvalue())
-    self._AssertOutputMatches(
+    data.AssertEqualsAndDiff(
         text_format.MessageToString(self.testrun),
         text_format.MessageToString(actual))
