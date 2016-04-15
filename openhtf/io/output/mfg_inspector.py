@@ -282,7 +282,8 @@ class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
 
   Args:
     filename_pattern: A format string specifying the filename to write to,
-      will be formatted with the Test Record as a dictionary.
+      will be formatted with the Test Record as a dictionary.  May also be a
+      file-like object to write directly to.
   """
 
   def __init__(self, filename_pattern):
@@ -290,8 +291,12 @@ class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
     as_dict = data.ConvertToBaseTypes(test_record)
-    with open(self.filename_pattern % as_dict, 'w') as outfile:
-      outfile.write(_TestRunFromTestRecord(test_record).SerializeToString())
+    serialized = _TestRunFromTestRecord(test_record).SerializeToString()
+    if isinstance(self.filename_pattern, basestring):
+      with open(self.filename_pattern % as_dict, 'w') as outfile:
+        outfile.write(serialized)
+    else:
+      self.filename_pattern.write(serialized)
 
 
 class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods

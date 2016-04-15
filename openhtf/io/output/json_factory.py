@@ -20,7 +20,8 @@ class OutputToJSON(JSONEncoder):
 
   Args:
     filename_pattern: A format string specifying the filename to write to,
-      will be formatted with the Test Record as a dictionary.
+      will be formatted with the Test Record as a dictionary.  May also be a
+      file-like object to write to directly.
     inline_attachments: Whether attachments should be included inline in the
       output. Set to False if you expect to have large binary attachments. If
       True (the default), then attachments are base64 encoded to allow for
@@ -48,6 +49,9 @@ class OutputToJSON(JSONEncoder):
           value['data'] = base64.standard_b64encode(value['data'])
     else:
       as_dict = data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
-    with open(self.filename_pattern % as_dict, 'w') as f:
-      f.write(self.encode(as_dict))
+    if isinstance(self.filename_pattern, basestring):
+      with open(self.filename_pattern % as_dict, 'w') as f:
+        f.write(self.encode(as_dict))
+    else:
+      filename_pattern.write(self.encode(as_dict))
   # pylint: enable=invalid-name
