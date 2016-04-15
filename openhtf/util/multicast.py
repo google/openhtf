@@ -104,15 +104,15 @@ class MulticastListener(threading.Thread):
         continue
 
 
-def send(message,
+def send(query,
          address=DEFAULT_ADDRESS,
          port=DEFAULT_PORT,
          ttl=DEFAULT_TTL,
          timeout_s=2):
-  """Sends a message to the given multicast socket and returns responses.
+  """Sends a query to the given multicast socket and returns responses.
 
   Args:
-    message: The string message to send.
+    query: The string query to send.
     address: Multicast IP address component of the socket to send to.
     port: Multicast UDP port component of the socket to send to.
     ttl: TTL for multicast messages. 1 to keep traffic in-network.
@@ -127,16 +127,16 @@ def send(message,
                   socket.IP_MULTICAST_TTL,
                   ttl)
   sock.settimeout(timeout_s)
-  sock.sendto(message, (address, port))
+  sock.sendto(query, (address, port))
   while True:
     try:
       data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
     except socket.timeout:
       if not result:
-        _LOG.debug('No responses recieved to multicast message "%s".', message)
+        _LOG.debug('No responses recieved to multicast query "%s".', query)
       break
     else:
-      _LOG.debug('Multicast response to message "%s": %s:%s',
-                 message, address[0], data)
+      _LOG.debug('Multicast response to query "%s": %s:%s',
+                 query, address[0], data)
       result.add((address[0], str(data)))
   return result

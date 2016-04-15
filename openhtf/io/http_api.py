@@ -36,6 +36,8 @@ _LOG = logging.getLogger(__name__)
 PING_STRING = 'OPENHTF_PING'
 PING_RESPONSE_KEY = 'OPENHTF_PING_RESPONSE'
 DEFAULT_HTTP_PORT = 8888
+PROMPT_ACK = 'ACK'
+PROMPT_NACK = 'NACK'
 
 
 class Server(object):
@@ -98,6 +100,13 @@ class HTTPServer(threading.Thread):
 
     executor = None
 
+    def log_message(self, msg_format, *args):
+      """Override the built-in log_message to log to our logger."""
+      _LOG.debug("%s - - [%s] %s\n",
+                 self.client_address[0],
+                 self.log_date_time_string(),
+                 msg_format%args)
+
     def do_GET(self):  # pylint: disable=invalid-name
       """Reply with a JSON representation of the current framwork and test
       states.
@@ -110,13 +119,17 @@ class HTTPServer(threading.Thread):
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
-      raw = self.rfile.read()
+      length = int(self.headers.getheader('content-length'))
+      raw = self.rfile.read(length)
       request = json.loads(raw)
-      user_input.get_prompt_manager().Respond(
+      result = user_input.get_prompt_manager().Respond(
           uuid.UUID((request['id'])), request['response'])
       self.send_response(200)
       self.end_headers()
-      self.wfile.write('OK')
+      if result:
+        self.wfile.write(PROMPT_ACK)
+      else:
+        self.wfile.write(PROMPT_NACK)
 
 
   def Stop(self):
