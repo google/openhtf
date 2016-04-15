@@ -116,16 +116,15 @@ class Validators(object):
   class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
 
-    def __init__(self, re_module, regex):
-      self._re_module = re_module
-      self._compiled = re_module.compile(regex)
+    def __init__(self, regex, compiled_regex):
+      self._compiled = compiled_regex
       self.regex = regex
 
     def __call__(self, value):
       return self._compiled.match(str(value)) is not None
 
     def __deepcopy__(self, dummy_memo):
-      return type(self)(self._re_module, self.regex)
+      return type(self)(self.regex, self._compiled)
 
     def __str__(self):
       return "'x' matches /%s/" % self.regex
@@ -133,7 +132,7 @@ class Validators(object):
   # We have to use our saved reference to the re module because this module
   # has lost all references by the sys.modules replacement and has been gc'd.
   def MatchesRegex(self, regex):
-    return self.RegexMatcher(self.re_module, regex)
+    return self.RegexMatcher(regex, self.re_module.compile(regex))
 
 
 sys.modules[__name__] = Validators(re, numbers)
