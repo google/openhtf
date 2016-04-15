@@ -53,5 +53,5 @@ class OutputToJSON(JSONEncoder):
       with open(self.filename_pattern % as_dict, 'w') as f:
         f.write(self.encode(as_dict))
     else:
-      filename_pattern.write(self.encode(as_dict))
+      self.filename_pattern.write(self.encode(as_dict))
   # pylint: enable=invalid-name
