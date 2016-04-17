@@ -48,7 +48,6 @@ Examples:
 
 
 import collections
-import inspect
 import itertools
 import logging
 
@@ -57,7 +56,6 @@ from enum import Enum
 import mutablerecords
 
 import openhtf
-from openhtf.io import test_record
 from openhtf.util import validators
 
 _LOG = logging.getLogger(__name__)
@@ -67,16 +65,8 @@ class InvalidDimensionsError(Exception):
   """Raised when there is a problem with measurement dimensions."""
 
 
-class InvalidType(Exception):
+class InvalidMeasurementType(Exception):
   """Raised when an unexpected measurement type is given."""
-
-
-class StatusError(Exception):
-  """Raised when checking status of a measurement without a status."""
-
-
-class MeasurementError(Exception):
-  """A generic exception for problems with measurements."""
 
 
 class MeasurementNotSetError(Exception):
@@ -89,10 +79,6 @@ class NotAMeasurementError(Exception):
 
 class DuplicateNameError(Exception):
   """An exception which occurs when a measurement name collision occurs."""
-
-
-class MultipleValidatorsException(Exception):
-  """Multiple validators were used when defining a measurement."""
 
 
 Outcome = Enum('Outcome', ['PASS', 'FAIL', 'UNSET'])
@@ -119,20 +105,22 @@ class Measurement(  # pylint: disable=no-init
   """
 
   def Doc(self, docstring):
+    """Set this Measurement's docstring, returns self for chaining."""
     self.docstring = docstring
     return self
 
   def WithUnits(self, units):
-    """Declare the units for this Measurement."""
+    """Declare the units for this Measurement, returns self for chaining."""
     self.units = units
     return self
 
   def WithDimensions(self, *dimensions):
-    """Declare dimensions for this Measurement."""
+    """Declare dimensions for this Measurement, returns self for chaining."""
     self.dimensions = dimensions
     return self
 
   def WithValidator(self, validator):
+    """Add a validator callback to this Measurement, chainable."""
     if not callable(validator):
       raise ValueError('Validator must be callable', validator)
     self.validators.append(validator)
@@ -151,7 +139,7 @@ class Measurement(  # pylint: disable=no-init
     new_meas.docstring = formatter(self.docstring)
     return new_meas
 
-  def __getattr__(self, attr):
+  def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Support our default set of validators as direct attributes."""
     # Don't provide a back door to validators.py private stuff accidentally.
     if attr.startswith('_') or not hasattr(validators, attr):
@@ -159,7 +147,7 @@ class Measurement(  # pylint: disable=no-init
           type(self).__name__, attr))
 
     # Create a wrapper to invoke the attribute from within validators.
-    def _WithValidator(*args, **kwargs):
+    def _WithValidator(*args, **kwargs):  # pylint: disable=invalid-name
       return self.WithValidator(getattr(validators, attr)(*args, **kwargs))
     return _WithValidator
 
@@ -180,6 +168,7 @@ class Measurement(  # pylint: disable=no-init
     return self
 
   def _asdict(self):
+    """Convert this measurement to a dict of basic types."""
     retval = {
         'name': self.name,
         'outcome': self.outcome,
@@ -213,7 +202,7 @@ class MeasuredValue(object):
     self.value = None
 
   def __iter__(self):  # pylint: disable=invalid-name
-    if self.num_dimesions:
+    if self.num_dimensions:
       return self.values.iteritems()
     raise InvalidDimensionsError(
         'Cannot iterate over undimensioned measurement.')
@@ -227,6 +216,7 @@ class MeasuredValue(object):
       return cls(measurement.name, 0)
 
   def SetValue(self, value):
+    """Set the value for this measurement, with some sanity checks."""
     if self.num_dimensions:
       raise InvalidDimensionsError(
           'Expected %s-dimensional coordinates, got dimensionless value %s' % (
@@ -274,7 +264,8 @@ class MeasuredValue(object):
       return self.value
 
 
-class Collection(mutablerecords.Record('Collection', ['_measurements'], {'_values': dict})):
+class Collection(mutablerecords.Record('Collection', ['_measurements'],
+                                       {'_values': dict})):
   """Encapsulates a collection of measurements.
 
   This collection can have measurement values retrieved and set via getters and
@@ -322,17 +313,24 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'], {'_value
       raise NotAMeasurementError('Not a measurement', name, self._measurements)
 
   def __iter__(self):  # pylint: disable=invalid-name
-    def _GetMeasurementValue(item):
+    def _GetMeasurementValue(item):  # pylint: disable=invalid-name
+      """Extract a single MeasurementValue's value."""
       return item[0], item[1].GetValue()
     return itertools.imap(_GetMeasurementValue, self._values.iteritems())
 
-  def __setattr__(self, name, value):
+  def __setattr__(self, name, value):  # pylint: disable=invalid-name
+    self[name] = value
+
+  def __getattr__(self, name):  # pylint: disable=invalid-name
+    return self[name]
+
+  def __setitem__(self, name, value):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     record = self._values.setdefault(
         name, MeasuredValue.ForMeasurement(self._measurements[name]))
     record.SetValue(value)
 
-  def __getattr__(self, name):  # pylint: disable=invalid-name
+  def __getitem__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
     if self._measurements[name].dimensions:
       return self._values.setdefault(name, MeasuredValue.ForMeasurement(
@@ -341,29 +339,21 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'], {'_value
       raise MeasurementNotSetError('Measurement not yet set', name)
     return self._values[name].GetValue()
 
-  def __setitem__(self, name, value):  # pylint: disable=invalid-name
-    raise NotImplementedError(
-        'Measurement values can only be set via attributes.')
 
-  def __getitem__(self, name):  # pylint: disable=invalid-name
-    """When accessed as a dictionary, get the actual value(s) stored."""
-    if name in self._values:
-      return self._values[name].GetValue()
-    return None
-
-  def __len__(self):  # pylint: disable=invalid-name
-    return len(self._measurements)
-
-
-def measures(*measurements):
+def measures(*measurements, **kwargs):
   """Decorator-maker used to declare measurements for phases.
 
   See the measurements module docstring for examples of usage.
 
   Args:
-    measurements: List of Measurement objects to declare, or a single
-        Measurement object to attach, or a string name from which to
-        create a Measurement.
+    measurements: Measurement objects to declare, or a string name from which
+        to create a Measurement.
+    kwargs: Keyword arguments to pass to Measurement constructor if we're
+        constructing one.  Note that if kwargs are provided, the length
+        of measurements must be 1, and that value must be a string containing
+        the measurement name.  For valid kwargs, see the definition of the
+        Measurement class.
+
   Returns:
     A decorator that declares the measurement(s) for the decorated phase.
   """
@@ -372,21 +362,30 @@ def measures(*measurements):
     if isinstance(meas, Measurement):
       return meas
     elif isinstance(meas, basestring):
-      return Measurement(meas)
-    raise InvalidType('Invalid measurement type: %s' % meas)
+      return Measurement(meas, **kwargs)
+    raise InvalidMeasurementType('Expected Measurement or string', meas)
 
-  # If we were passed in an iterable, make sure each element is an
-  # instance of Measurement.
-  if isinstance(measurements, collections.Iterable):
-    measurements = [_maybe_make(meas) for meas in measurements]
-  else:
-    measurements = [_maybe_make(measurements)]
+  # In case we're declaring a measurement inline, we can only declare one.
+  if kwargs and len(measurements) != 1:
+    raise InvalidMeasurementType(
+        'If @measures kwargs are provided, a single measurement name must be '
+        'provided as a positional arg first.')
 
-  # 'descriptors' is guaranteed to be a list of Measurements here.
+  # Unlikely, but let's make sure we don't allow overriding initial outcome.
+  if 'outcome' in kwargs:
+    raise ValueError('Cannot specify outcome in measurement declaration!')
+
+  measurements = [_maybe_make(meas) for meas in measurements]
+
+  # 'measurements' is guaranteed to be a list of Measurement objects here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
     phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
+    duplicate_names = (set(m.name for m in measurements) &
+                       set(m.name for m in phase.measurements))
+    if duplicate_names:
+      raise DuplicateNameError('Measurement names duplicated', duplicate_names)
+
     phase.measurements.extend(measurements)
     return phase
   return decorate
-

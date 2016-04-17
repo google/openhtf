@@ -26,8 +26,8 @@ import logging
 import threading
 import uuid
 
-from openhtf import util
 from openhtf.io import user_input
+from openhtf.util import data
 from openhtf.util import multicast
 
 _LOG = logging.getLogger(__name__)
@@ -102,8 +102,8 @@ class HTTPServer(threading.Thread):
       """Reply with a JSON representation of the current framwork and test
       states.
       """
-      result = {'test': util.ConvertToBaseTypes(self.executor.GetState()),
-                'framework': util.ConvertToBaseTypes(self.executor)}
+      result = {'test': data.ConvertToBaseTypes(self.executor.GetState()),
+                'framework': data.ConvertToBaseTypes(self.executor)}
       self.wfile.write(json.dumps(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
