@@ -21,14 +21,16 @@ def RunOnce(func):
   """Decorate a function to only allow it to be called once."""
   @functools.wraps(func)
   def _Wrapper(*args, **kwargs):
-    if not _Wrapper.has_run:
-      _Wrapper.has_run = True
+    if not _Wrapper.HasRun():
+      _Wrapper.MarkAsRun()
       return func(*args, **kwargs)
 
     # All subsequent calls go here.
     return None
 
   _Wrapper.has_run = False
+  _Wrapper.HasRun = lambda: _Wrapper.has_run
+  _Wrapper.MarkAsRun = lambda: setattr(_Wrapper, 'has_run', True)
   return _Wrapper
 
 

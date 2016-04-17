@@ -113,7 +113,6 @@ INSTALL_REQUIRES = [
     'protobuf==2.6.1',
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
-    'python-gflags==2.0',
     'PyYAML==3.11',
     'singledispatch==3.4.0.3',
     'tornado==4.3',
@@ -150,6 +149,7 @@ class PyTestCommand(test):
                          for output in self.pytest_cov.split(','))
       cov = ' --cov openhtf ' + outputs
 
+    sys.argv = [sys.argv[0]]
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
@@ -172,6 +172,7 @@ setup(
         'usb_plugs': [
             'libusb1==1.3.0',
             'M2Crypto==0.22.3',
+            'python-gflags==2.0',
         ],
     },
     setup_requires=[
