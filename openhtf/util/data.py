@@ -28,10 +28,6 @@ import mutablerecords
 
 from enum import Enum
 
-# Fields that are considered 'volatile' for record comparison.
-_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
-                    'sourcecode'}
-
 
 def AssertEqualsAndDiff(expected, actual):
   """Compare two string blobs, log diff and raise if they don't match."""
@@ -50,7 +46,7 @@ def AssertEqualsAndDiff(expected, actual):
   assert expected == actual
 
 
-def AssertRecordsEqualNonvolatile(first, second, indent=0):
+def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
   """Compare two test_record tuples, ignoring any volatile fields.
 
   'Volatile' fields include any fields that are expected to differ between
@@ -64,20 +60,22 @@ def AssertRecordsEqualNonvolatile(first, second, indent=0):
       logging.error('%s  %s', ' ' * indent, second.keys())
       assert set(first) == set(second)
     for key in first:
-      if key in _VOLATILE_FIELDS:
+      if key in volatile_fields:
         continue
       try:
-         AssertRecordsEqualNonvolatile(first[key], second[key], indent + 2)
+         AssertRecordsEqualNonvolatile(first[key], second[key],
+                                       volatile_fields, indent + 2)
       except AssertionError:
         logging.error('%sKey: %s ^', ' ' * indent, key)
         raise
   elif hasattr(first, '_asdict') and hasattr(second, '_asdict'):
     # Compare namedtuples as dicts so we get more useful output.
-    AssertRecordsEqualNonvolatile(first._asdict(), second._asdict(), indent)
+    AssertRecordsEqualNonvolatile(first._asdict(), second._asdict(),
+                                  volatile_fields, indent)
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
     for idx, (f, s) in enumerate(izip(first, second)):
       try:
-        AssertRecordsEqualNonvolatile(f, s, indent + 2)
+        AssertRecordsEqualNonvolatile(f, s, volatile_fields, indent + 2)
       except AssertionError:
         logging.error('%sIndex: %s ^', ' ' * indent, idx)
         raise
@@ -86,7 +84,7 @@ def AssertRecordsEqualNonvolatile(first, second, indent=0):
     AssertRecordsEqualNonvolatile(
         {slot: getattr(first, slot) for slot in first.__slots__},
         {slot: getattr(second, slot) for slot in second.__slots__},
-        indent)
+        volatile_fields, indent)
   elif first != second:
     logging.error('%sRaw: "%s" != "%s"', ' ' * indent, first, second)
     assert first == second

@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Test various measurements use cases.
+
+Expected output is stored in measurements_record.pickle.  To update this
+expected output, set UPDATE_OUTPUT to True below.  Make sure to set it back
+to False when done (there's a test to make sure you do this).
+"""
+
 import cPickle as pickle
 import difflib
 import os.path
@@ -25,6 +32,18 @@ import openhtf.util as util
 from openhtf.io.output import json_factory
 from openhtf.names import *
 from openhtf.util import data
+
+# Fields that are considered 'volatile' for record comparison.
+_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
+
+def _PickleRecord(record):
+  """Output callback for saving updated output."""
+  with open(_LocalFilename('measurements_record.pickle'), 'wb') as picklefile:
+    pickle.dump(record, picklefile)
+
+def _LocalFilename(filename):
+  """Get an absolute path to filename in the same directory as this module."""
+  return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 
 # Phases copied from the measurements example in examples/, because they
@@ -64,18 +83,13 @@ def InlinePhase(test):
 
 class TestMeasurements(unittest.TestCase):
 
+  UPDATE_OUTPUT = False
+
   @classmethod
   def setUpClass(cls):
     conf.Load(station_id='measurements_test')
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           'measurements_record.pickle'), 'rb') as picklefile:
+    with open(_LocalFilename('measurements_record.pickle'), 'rb') as picklefile:
       cls.record = pickle.load(picklefile)
-
-  @staticmethod
-  def _PickleRecord(record):
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           'measurements_record.pickle'), 'wb') as picklefile:
-      pickle.dump(record, picklefile)
 
   def testMeasurements(self):
     result = util.NonLocalResult() 
@@ -83,8 +97,17 @@ class TestMeasurements(unittest.TestCase):
       result.result = test_record
     test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
                 InlinePhase)
-    # Uncomment this line when you need to update the expected output.
-    #test.AddOutputCallback(self._PickleRecord)
+    if self.UPDATE_OUTPUT:
+      test.AddOutputCallback(_PickleRecord)
     test.AddOutputCallback(_SaveResult)
     test.Execute(test_start=lambda: 'TestDUT')
-    data.AssertRecordsEqualNonvolatile(self.record, result.result)
+    if self.UPDATE_OUTPUT:
+      with open(_LocalFilename('measurements_record.pickle'), 'wb') as pfile:
+        pickle.dump(result.result, pfile, -1)
+    else:
+      data.AssertRecordsEqualNonvolatile(
+          self.record, result.result, _VOLATILE_FIELDS)
+
+  def testUpdateOutput(self):
+    """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
+    assert not self.UPDATE_OUTPUT, 'Change UPDATE_OUTPUT back to False!'
