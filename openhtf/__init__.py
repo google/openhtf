@@ -164,6 +164,7 @@ class TestData(collections.namedtuple(
     return plug_type_map
 
 
+@functions.CallOnce
 def CreateArgParser():
   """Creates an argparse.ArgumentParser for parsing command line flags."""
   parser = argparse.ArgumentParser('OpenHTF-based testing', parents=[
@@ -172,11 +173,10 @@ def CreateArgParser():
   return parser
 
 
-@functions.CallOnce
 def SetupFramework():
   """Sets up various bits of the framework. Only needs to be called once."""
   CreateArgParser().parse_args()
-  logs.setup_logger()
+  logs.SetupLogger()
 
 
 class PhaseResult(Enum):

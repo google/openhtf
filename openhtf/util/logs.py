@@ -59,6 +59,7 @@ from datetime import datetime
 
 from openhtf import util
 from openhtf.util import argv
+from openhtf.util import functions
 from openhtf.io import test_record
 
 
@@ -146,7 +147,8 @@ class RecordHandler(logging.Handler):
     self._test_record.log_records.append(log_record)
 
 
-def setup_logger():
+@functions.CallOnce
+def SetupLogger():
   """Configure logging for OpenHTF."""
   record_logger = logging.getLogger(RECORD_LOGGER)
   record_logger.propagate = False
