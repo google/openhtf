@@ -83,6 +83,12 @@ class Test(object):
     self._test_info = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
     self._stopped = False
+    # Make sure Configure() gets called at least once before Execute().  The
+    # user might call Configure() again to override options, but we don't want
+    # to force them to if they want to use defaults.  For default values, see
+    # the class definition of TestOptions.
+    self.Configure()
+    # TODO(madsci): Fix this to play nice with multiple Test instances.
     signal.signal(signal.SIGINT, self.Stop)
 
   def AddOutputCallback(self, callback):
@@ -126,21 +132,26 @@ class Test(object):
       output_callbacks: List of output callbacks to run, typically it's better
           to use AddOutputCallbacks(), but you can pass [] here to reset them.
     """
+    # These internally ensure they are safe to call multiple times with no weird
+    # side effects.
+    logs.SetupLogger()
+    CreateArgParser(add_help=True).parse_args()
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
   def Stop(self, *_):
+    """Stop test execution as abruptly as we can, only in response to SIGINT."""
     _LOG.error('Received SIGINT.')
     with self._lock:
+      # Once we're stopped for SIGINT, don't try to start anything else.
+      self._stopped = True
       if self._executor:
         # TestState str()'s nicely to a descriptive string, so let's log that
         # just for good measure.
         _LOG.error('Stopping Test due to SIGINT: %s', self._executor.GetState())
         self._executor.Stop()
       else:
-        # Once we're stopped for SIGINT, don't try to start anything else.
         _LOG.error('No Test running, ignoring SIGINT.')
-        self._stopped = True
 
   def Execute(self, test_start=lambda: 'UNKNOWN_DUT_ID', loop=None):
     """Starts the framework and executes the given test.
@@ -156,10 +167,6 @@ class Test(object):
           'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
           'use a while True: loop around Test.Execute() instead.')
 
-    # These internally ensure they are safe to call multiple times with no weird
-    # side effects.
-    logs.SetupLogger()
-    CreateArgParser().parse_args()
 
     # We have to lock this section to ensure we don't call TestExecutor.Stop()
     # in self.Stop() between instantiating it and .Start()'ing it.  We'll check
@@ -225,12 +232,11 @@ class TestData(collections.namedtuple(
     return plug_type_map
 
 
-def CreateArgParser(add_help=True):
+def CreateArgParser(add_help=False):
   """Creates an argparse.ArgumentParser for parsing command line flags."""
-  parser = argparse.ArgumentParser('OpenHTF-based testing', parents=[
+  return argparse.ArgumentParser('OpenHTF-based testing', parents=[
       conf.ARG_PARSER, user_input.ARG_PARSER, phase_executor.ARG_PARSER,
       logs.ARG_PARSER], add_help=add_help)
-  return parser
 
 
 class PhaseResult(Enum):
