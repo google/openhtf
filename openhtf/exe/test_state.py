@@ -87,6 +87,19 @@ class TestState(object):
         'pending_phases': [(phase.func.__name__, phase.func.__doc__)
                            for phase in self.pending_phases]}
 
+  def GetRunningPhaseName(self):
+    """Get the name of the currently running phase, or None.
+
+    Note that this name is not guaranteed to still be accurate by the time this
+    method returns, so this should only be used for log messages/user display
+    and not for programmatic purposes.
+    """
+    if self.running_phase_record:
+      # self.running_phase_record never gets reset *back* to None, so at worst
+      # this might be a little out-of-date, but we don't have to lock at least.
+      return self.running_phase_record.name
+    return None
+
   def SetStateFromPhaseOutcome(self, phase_outcome):
     """Set our internal state based on the given phase outcome.
 
@@ -154,7 +167,8 @@ class TestState(object):
     return self.record
 
   def __str__(self):
-    return '<%s: %s@%s>' % (
-        type(self).__name__, self.record.dut_id, self.record.station_id
+    return '<%s: %s@%s Running Phase: %s>' % (
+        type(self).__name__, self.record.dut_id, self.record.station_id,
+        self.GetRunningPhaseName(),
     )
   __repr__ = __str__

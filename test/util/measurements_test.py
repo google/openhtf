@@ -97,9 +97,11 @@ class TestMeasurements(unittest.TestCase):
       result.result = test_record
     test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
                 InlinePhase)
+    # No need to run the http_api, we just want to generate the test record.
+    test.Configure(http_port=None)
     if self.UPDATE_OUTPUT:
-      test.AddOutputCallback(_PickleRecord)
-    test.AddOutputCallback(_SaveResult)
+      test.AddOutputCallbacks(_PickleRecord)
+    test.AddOutputCallbacks(_SaveResult)
     test.Execute(test_start=lambda: 'TestDUT')
     if self.UPDATE_OUTPUT:
       with open(_LocalFilename('measurements_record.pickle'), 'wb') as pfile:
