@@ -15,18 +15,27 @@
 """Utilities for functions."""
 
 import functools
+import inspect
 
 
-def RunOnce(func):
-  """Decorate a function to only allow it to be called once."""
+def CallOnce(func):
+  """Decorate a function to only allow it to be called once.
+
+  Note that it doesn't make sense to only call a function once if it takes
+  arguments (use @functools.lru_cache for that sort of thing), so this only
+  works on callables that take no args.
+  """
+  argspec = inspect.getargspec(func)
+  if argspec.args or argspec.varargs or argspec.keywords:
+    raise ValueError('Can only decorate functions with no args', func, argspec)
+
   @functools.wraps(func)
-  def _Wrapper(*args, **kwargs):
+  def _Wrapper():
+    # If we haven't been called yet, actually invoke func and save the result.
     if not _Wrapper.HasRun():
       _Wrapper.MarkAsRun()
-      return func(*args, **kwargs)
-
-    # All subsequent calls go here.
-    return None
+      _Wrapper.return_value = func()
+    return _Wrapper.return_value
 
   _Wrapper.has_run = False
   _Wrapper.HasRun = lambda: _Wrapper.has_run

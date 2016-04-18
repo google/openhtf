@@ -172,7 +172,7 @@ def CreateArgParser():
   return parser
 
 
-@functions.RunOnce
+@functions.CallOnce
 def SetupFramework():
   """Sets up various bits of the framework. Only needs to be called once."""
   CreateArgParser().parse_args()
