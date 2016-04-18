@@ -153,10 +153,6 @@ class Measurement(  # pylint: disable=no-init
 
   def Validate(self, value):
     """Validate this measurement and update its 'outcome' field."""
-    # Make sure we don't do anything weird with updating measurement values.
-    if self.outcome != Outcome.UNSET:
-      raise RuntimeError('Validate must only be called once')
-
     # Ignore unset measurements.
     if value is not None:
       # Pass if all our validators return True.
