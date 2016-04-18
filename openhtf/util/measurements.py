@@ -180,6 +180,13 @@ class Measurement(  # pylint: disable=no-init
         retval[attr] = getattr(self, attr)
     return retval
 
+  def MakeUnsetValue(self):
+    """Create an unset MeasuredValue for this measurement."""
+    if self.dimensions:
+      return DimensionedMeasuredValue(self.name, len(self.dimensions))
+    else:
+      return MeasuredValue(self.name)
+
 
 class MeasuredValue(object):
   """Class encapsulating actual values measured.
@@ -189,44 +196,55 @@ class MeasuredValue(object):
   measurement.  This class is the type that Collection actually stores in
   its _values attribute.
 
-  Dimensional MeasuredValues can be converted to dicts, but undimensioned
-  MeasuredValues will raise InvalidDimensionsError if this is attempted.
+  This class stores values for un-dimensioned (single-value) measurements, for
+  dimensioned values, see the DimensionedMeasuredValue.  The interfaces are very
+  similar, but differ slightly; the important part is the GetValue() interface
+  on both of them.
+  """
+
+  def __init__(self, name):
+    self.name = name
+    self.stored_value = None
+    # Track this so we can differentiate between unset and set-to-None.
+    self.value_set = False
+
+  @property
+  def value(self):
+    if not self.value_set:
+      raise MeasurementNotSetError('Measurement not yet set', self.name)
+    return self.stored_value
+
+  @value.setter
+  def value(self, value):
+    """Set the value for this measurement, with some sanity checks."""
+    if self.value_set:
+      # While we want to *allow* re-setting previously set measurements, we'd
+      # rather promote the use of multidimensional measurements instead of
+      # discarding data, so we make this somewhat chatty.
+      _LOG.warning(
+          'Overriding previous measurement %s value of %s with %s, the old '
+          'value will be lost.  Use a dimensioned measurement if you need to '
+          'save multiple values.', self.name, self.stored_value, value)
+    self.stored_value = value
+    self.value_set = True
+
+
+class DimensionedMeasuredValue(object):
+  """Class encapsulating actual values measured.
+
+  See the MeasuredValue class docstring for more info.  This class provides a
+  dict-like interface for indexing into dimensioned measurements.
   """
 
   def __init__(self, name, num_dimensions):
+    assert num_dimensions > 0, 'Must have 1 or more dimensions'
     self.name = name
     self.num_dimensions = num_dimensions
-    # Only one of these will actually be used; if num_dimensions is 0, then
-    # only self.value is used, otherwise only self.values is used.
-    self.values = collections.OrderedDict()
-    self.value = None
+    self.value_dict = collections.OrderedDict()
 
   def __iter__(self):  # pylint: disable=invalid-name
-    if self.num_dimensions:
-      return self.values.iteritems()
-    raise InvalidDimensionsError(
-        'Cannot iterate over undimensioned measurement.')
-
-  @classmethod
-  def ForMeasurement(cls, measurement):
-    """Create an unset MeasuredValue for this measurement."""
-    if measurement.dimensions:
-      return cls(measurement.name, len(measurement.dimensions))
-    else:
-      return cls(measurement.name, 0)
-
-  def SetValue(self, value):
-    """Set the value for this measurement, with some sanity checks."""
-    if self.num_dimensions:
-      raise InvalidDimensionsError(
-          'Expected %s-dimensional coordinates, got dimensionless value %s' % (
-              self.num_dimensions, value))
-
-    if self.value is not None:
-      _LOG.warning(
-          'Overriding previous measurement %s value of %s with %s',
-          self.name, self.value, value)
-    self.value = value
+    """Iterate over items, allows easy conversion to a dict."""
+    return self.value_dict.iteritems()
 
   def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
     coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
@@ -234,34 +252,27 @@ class MeasuredValue(object):
       raise InvalidDimensionsError(
           'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
                                                            coordinates_len))
-    if coordinates in self.values:
+    if coordinates in self.value_dict:
       _LOG.warning(
           'Overriding previous measurement %s[%s] value of %s with %s',
-          self.name, coordinates, self.values[coordinates], value)
-    self.values[coordinates] = value
+          self.name, coordinates, self.value_dict[coordinates], value)
+    self.value_dict[coordinates] = value
 
   def __getitem__(self, coordinates):  # pylint: disable=invalid-name
-    return self.values[coordinates]
+    # Let the AttributeError propagate as that's fairly intuitive to handle.
+    return self.value_dict[coordinates]
 
-  def GetValue(self):
-    """Return the value(s) stored in this record.
+  @property
+  def value(self):
+    """The values stored in this record.
 
-    If this measurement is dimensioned, the return value will be a list of
-    tuples; the last element of each tuple will be the measured value, the
-    other elements will be the assocated coordinates.  Otherwise, the return
-    value will simply be the value that was most recently set for this
-    measurement (or None if it wasn't set).
+    Returns:
+      A list of tuples; the last element of each tuple will be the measured
+    value, the other elements will be the assocated coordinates.  The tuples
+    are output in the order in which they were set.
     """
-    if self.num_dimensions > 1:
-      # We have dimensions, create the tuples to output
-      return [tuple(dimensions) + (value,) for dimensions, value in
-              self.values.iteritems()]
-    elif self.num_dimensions == 1:
-      # With only a single dimension, we don't have to tuple() them.
-      return self.values.items()
-    else:
-      # We have no dimensions, just output our value.
-      return self.value
+    return [tuple(dimensions) + (value,) for dimensions, value in
+            self.value_dict.iteritems()]
 
 
 class Collection(mutablerecords.Record('Collection', ['_measurements'],
@@ -269,20 +280,21 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
   """Encapsulates a collection of measurements.
 
   This collection can have measurement values retrieved and set via getters and
-  setters.
+  setters that provide attribute and dict-like interfaces.
 
   A Collection is created with a list of Measurement objects (defined above).
   Measurements can't be added after initialization, only accessed and set.
 
   MeasuredValue values can be set as attributes (see below).  They can also be
-  read as attributes, but you get a MeasuredValue object back if the measurement
-  accessed is dimensioned (this is how setting of dimensioned measurements
-  works, and so is unavoidable).
+  read as attributes, but you get a DimensioendMeasuredValue object back if the
+  measurement accessed is dimensioned (this is how setting of dimensioned
+  measurements works, and so is unavoidable).
 
   Iterating over a Collection results in (key, value) tuples of only set
   measurements and their values.  As such, a Collection can be converted to
   a dict if you want to see all of a dimensioned measurement's values.
-  Alternatively, MeasuredValue objects can also be converted to dicts.
+  Alternatively, DimensionedMeasuredValue objects can also be converted directly
+  to dicts with dict(), as they also support an __iter__() interface.
 
   This class is intended for use only internally within the OpenHTF framework.
 
@@ -302,7 +314,8 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
     print dict(self.measurements.widget_freq_response)
     # {5: 10, 6: 11}
 
-    # Not recommended, but you can also do this.
+    # Not recommended, but you can also do this.  This is intended only for
+    # framework internal use when generating the output test record.
     print dict(self.measurements)['widget_freq_response']
     # [(5, 10), (6, 11)]
   """
@@ -315,7 +328,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
   def __iter__(self):  # pylint: disable=invalid-name
     def _GetMeasurementValue(item):  # pylint: disable=invalid-name
       """Extract a single MeasurementValue's value."""
-      return item[0], item[1].GetValue()
+      return item[0], item[1].value
     return itertools.imap(_GetMeasurementValue, self._values.iteritems())
 
   def __setattr__(self, name, value):  # pylint: disable=invalid-name
@@ -326,18 +339,25 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
 
   def __setitem__(self, name, value):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
-    record = self._values.setdefault(
-        name, MeasuredValue.ForMeasurement(self._measurements[name]))
-    record.SetValue(value)
+    if self._measurements[name].dimensions:
+      raise InvalidDimensionsError(
+          'Cannot set dimensioned measurement without indices')
+    self._values.setdefault(
+        name, self._measurements[name].MakeUnsetValue()).value = value
 
   def __getitem__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
+
+    # __getitem__ is used to set dimensioned values via __setitem__ on the
+    # DimensionedMeasuredValue object, so we can't do any checking here.
     if self._measurements[name].dimensions:
-      return self._values.setdefault(name, MeasuredValue.ForMeasurement(
-          self._measurements[name]))
+      return self._values.setdefault(
+          name, self._measurements[name].MakeUnsetValue())
+
+    # For regular measurements, however, we can check that it's been set.
     if name not in self._values:
       raise MeasurementNotSetError('Measurement not yet set', name)
-    return self._values[name].GetValue()
+    return self._values[name].value
 
 
 def measures(*measurements, **kwargs):
