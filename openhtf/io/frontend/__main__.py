@@ -77,9 +77,8 @@ UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
 
 
 class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,no-init
-    'Station', [], {'hostport': (None, None),
-                    'station_id': UNKNOWN_STATION_ID,
-                    'state': None})):
+    'Station', ['hostport'], {'station_id': UNKNOWN_STATION_ID,
+                              'state': None})):
   """Represents a station seen on the local network.
 
   Attributes:
@@ -88,18 +87,20 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
       framework: A dictionary representation of a TestExecutor object.
       test: A dictionary representation of a TestState object.
     """
-    
-  def Query(self):
-    """Make a GET request to an instance of OpenHTF's HTTP API."""
+  def Refresh(self):
+    """Update state with a GET request to OpenHTF's HTTP API."""
     try:
       response = requests.get('http://%s:%s' % self.hostport)
       if response.status_code == 200:
-        result = json.loads(response.text)
+        state = json.loads(response.text)
+        self.station_id = state['framework']['station_id']
+        self.state = state
     except requests.RequestException as e:
-      _LOG.debug('Error [%s] while querying station at %s:%s',
-                 e, *self.hostport)
-      result = None
-    return result
+      _LOG.debug('Station (%s) unreachable: %s', self.hostport, e)
+      self.state = None
+    except KeyError:
+      _LOG.warning('Malformed station state response from (%s): %s',
+                self.hostport, response)
 
   def Notify(self, message):
     """Send a message to an OpenHTF instance in response to a prompt.
@@ -108,11 +109,9 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
       message: Prompt response.
     """
     try:
-      print('HACKABEES %s:%s' % self.hostport)
       requests.post('http://%s:%s' % self.hostport, data=message)
     except requests.RequestException as e:
-      _LOG.warning('Error [%s] while posting to station at %s:%s',
-                   e, *self.hostport)
+      _LOG.warning('Error notifying station (%s): %s', self.hostport, e)
 
 
 class StationStore(threading.Thread):
@@ -125,7 +124,15 @@ class StationStore(threading.Thread):
     super(StationStore, self).__init__()
     self._stop_event = threading.Event()
     self.hostname = socket.gethostname()
-    self.stations = collections.defaultdict(Station)
+    self.stations = {}
+
+  def __getitem__(self, hostport):  # pylint:disable=invalid-name
+    """Provide dictionary-like access to the station store."""
+    if hostport not in self.stations:
+      self.stations[hostport] = Station(hostport)
+    station = self.stations[hostport]
+    station.Refresh()
+    return station
 
   def _Discover(self):
     """Use multicast to discover stations on the local network."""
@@ -137,10 +144,10 @@ class StationStore(threading.Thread):
       port = None
       try:
         port = json.loads(response)[PING_RESPONSE_KEY]
+        self._Track(host, port)
       except (KeyError, ValueError):
-        _LOG.warning('Ignoring unrecognized discovery response from %s: %s' % (
+        _LOG.debug('Ignoring unrecognized discovery response from %s: %s' % (
             host, response))
-      self._Track(host, port)
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
@@ -148,34 +155,11 @@ class StationStore(threading.Thread):
       self._Discover()
       self._stop_event.wait(FLAGS.discovery_interval_s)
 
-  def _Track(self, host, port):
+  def _Track(self, *hostport):
     """Start tracking the given station."""
-    station = self.stations[host, port]
+    station = self[hostport]
     if station.station_id == UNKNOWN_STATION_ID:
-      station.hostport = (host, port)
-      self.GetStationState(host, port)
-
-  def GetStationState(self, host, port):
-    """Return the station state for the station at host:port.
-
-    Also updates Station's state and station_id in the process.
-    """
-    port = int(port)
-    if (host, port) not in self.stations:
-      _LOG.warning(
-          'Store was queried for an unknown station: %s:%s' % (host, port))
-      return None
-    self.stations[host, port].Query()
-    response = self.stations[host, port].Query()
-    self.stations[host, port].state = response
-    if response is not None:
-      try:
-        station_id = response['framework']['station_id']
-        self.stations[host, port].station_id = station_id
-        return response
-      except KeyError:
-        _LOG.warn('Malformed station state response from (%s:%s): %s',
-                  host, port, response)
+      station.Refresh()
 
   def Stop(self):
     """Stop the store."""
@@ -199,7 +183,7 @@ class StationStateHandler(tornado.web.RequestHandler):
 
   def get(self, host, port):
     self.render('station.html',
-                state=self.store.GetStationState(host, port),
+                state=self.store[(host, port)].state,
                 host=host,
                 port=port,
                 interval=FLAGS.poll_interval_ms)
@@ -212,7 +196,7 @@ class StationPieceHandler(tornado.web.RequestHandler):
 
   def get(self, host, port, template):
     self.render('%s.html' % template,
-                state=self.store.GetStationState(host, port))
+                state=self.store[(host, port)].state)
 
 
 class PromptHandler(tornado.web.RequestHandler):
@@ -221,7 +205,7 @@ class PromptHandler(tornado.web.RequestHandler):
     self.store = store
 
   def get(self, host, port):
-    state = self.store.GetStationState(host, port)
+    state = self.store[(host, port)].state
     if state is not None:
       prompt = state['framework']['prompt']
       if prompt is not None:
@@ -237,7 +221,7 @@ class PromptResponseHandler(tornado.web.RequestHandler):
   def post(self, host, port, prompt_id):
     msg = json.JSONEncoder().encode(
         {'id': prompt_id, 'response': self.request.body})
-    self.store.stations[(host, int(port))].Notify(msg)
+    self.store[(host, int(port))].Notify(msg)
     self.write('SENT')
 
 
