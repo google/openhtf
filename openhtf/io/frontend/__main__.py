@@ -93,7 +93,12 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
       response = requests.get('http://%s:%s' % self.hostport)
       if response.status_code == 200:
         state = json.loads(response.text)
-        self.station_id = state['framework']['station_id']
+        station_id = state['framework']['station_id']
+        if (self.station_id is not UNKNOWN_STATION_ID) and (
+            station_id != self.station_id):
+          _LOG.warning('Station (%s) underwent an identity change.',
+                       self.hostport)
+        self.station_id = station_id
         self.state = state
     except requests.RequestException as e:
       _LOG.debug('Station (%s) unreachable: %s', self.hostport, e)
@@ -128,9 +133,7 @@ class StationStore(threading.Thread):
 
   def __getitem__(self, hostport):  # pylint:disable=invalid-name
     """Provide dictionary-like access to the station store."""
-    if hostport not in self.stations:
-      self.stations[hostport] = Station(hostport)
-    station = self.stations[hostport]
+    station = self.stations.setdefault(hostport, Station(hostport))
     station.Refresh()
     return station
 
@@ -144,7 +147,7 @@ class StationStore(threading.Thread):
       port = None
       try:
         port = json.loads(response)[PING_RESPONSE_KEY]
-        self._Track(host, port)
+        self._Track(host, int(port))
       except (KeyError, ValueError):
         _LOG.debug('Ignoring unrecognized discovery response from %s: %s' % (
             host, response))
@@ -158,7 +161,7 @@ class StationStore(threading.Thread):
   def _Track(self, *hostport):
     """Start tracking the given station."""
     station = self[hostport]
-    if station.station_id == UNKNOWN_STATION_ID:
+    if station.station_id is UNKNOWN_STATION_ID:
       station.Refresh()
 
   def Stop(self):
@@ -183,7 +186,7 @@ class StationStateHandler(tornado.web.RequestHandler):
 
   def get(self, host, port):
     self.render('station.html',
-                state=self.store[(host, port)].state,
+                state=self.store[host, int(port)].state,
                 host=host,
                 port=port,
                 interval=FLAGS.poll_interval_ms)
@@ -196,7 +199,7 @@ class StationPieceHandler(tornado.web.RequestHandler):
 
   def get(self, host, port, template):
     self.render('%s.html' % template,
-                state=self.store[(host, port)].state)
+                state=self.store[host, int(port)].state)
 
 
 class PromptHandler(tornado.web.RequestHandler):
@@ -205,7 +208,7 @@ class PromptHandler(tornado.web.RequestHandler):
     self.store = store
 
   def get(self, host, port):
-    state = self.store[(host, port)].state
+    state = self.store[host, int(port)].state
     if state is not None:
       prompt = state['framework']['prompt']
       if prompt is not None:
@@ -221,7 +224,7 @@ class PromptResponseHandler(tornado.web.RequestHandler):
   def post(self, host, port, prompt_id):
     msg = json.JSONEncoder().encode(
         {'id': prompt_id, 'response': self.request.body})
-    self.store[(host, int(port))].Notify(msg)
+    self.store[host, port].Notify(msg)
     self.write('SENT')
 
 
