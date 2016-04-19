@@ -87,7 +87,7 @@ class TestState(object):
         'pending_phases': [(phase.func.__name__, phase.func.__doc__)
                            for phase in self.pending_phases]}
 
-  def GetRunningPhaseName(self):
+  def GetLastRunPhaseName(self):
     """Get the name of the currently running phase, or None.
 
     Note that this name is not guaranteed to still be accurate by the time this
@@ -169,6 +169,6 @@ class TestState(object):
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
         type(self).__name__, self.record.dut_id, self.record.station_id,
-        self.GetRunningPhaseName(),
+        self.GetLastRunPhaseName(),
     )
   __repr__ = __str__
