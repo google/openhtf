@@ -45,7 +45,7 @@ def AutoStart(serial='UNKNOWN_DUT_ID'):  # pylint: disable=invalid-name
 
 
 def PromptForTestStart(message='Provide a DUT ID in order to start the test.',
-                       text_input=False, timeout_s=60*60*24):
+                       text_input=True, timeout_s=60*60*24):
   """Make a test start trigger based on prompting the user for input."""
   def trigger():  # pylint: disable=missing-docstring
     prompt_manager = user_input.get_prompt_manager()
