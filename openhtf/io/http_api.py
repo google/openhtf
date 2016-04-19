@@ -30,20 +30,22 @@ from openhtf.io import user_input
 from openhtf.util import data
 from openhtf.util import multicast
 
+
 _LOG = logging.getLogger(__name__)
 
 PING_STRING = 'OPENHTF_PING'
 PING_RESPONSE_KEY = 'OPENHTF_PING_RESPONSE'
 DEFAULT_HTTP_PORT = 8888
+PROMPT_ACK = 'ACK'
+PROMPT_NACK = 'NACK'
 
 
 class Server(object):
   """Frontend API server for openhtf.
 
   Starts up two services as separate threads. An HTTP server that serves
-  detailed information about this intance of openhtf, and a service discovery
-  listener that helps frontends find and connect to the HTTP server.
-
+  detailed information about this intance of openhtf, and a multicast station
+  discovery service that helps frontends find and connect to the HTTP server.
   Args:
     executor: An openhtf.exe.TestExecutor object.
     discovery_info: A dict to specify options for service discovery.
@@ -98,20 +100,37 @@ class HTTPServer(threading.Thread):
 
     executor = None
 
+    def log_message(self, msg_format, *args):
+      """Override the built-in log_message to log to our logger."""
+      _LOG.debug("%s - - [%s] %s\n",
+                 self.client_address[0],
+                 self.log_date_time_string(),
+                 msg_format%args)
+
     def do_GET(self):  # pylint: disable=invalid-name
       """Reply with a JSON representation of the current framwork and test
       states.
       """
       result = {'test': data.ConvertToBaseTypes(self.executor.GetState()),
                 'framework': data.ConvertToBaseTypes(self.executor)}
+      self.send_response(200)
+      self.end_headers()
       self.wfile.write(json.dumps(result))
 
     def do_POST(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
-      raw = self.rfile.read()
-      data = json.loads(raw)
-      user_input.get_prompt_manager().Respond(
-          uuid.UUID((data['id'])), data['response'])
+      length = int(self.headers.getheader('content-length'))
+      raw = self.rfile.read(length)
+      request = json.loads(raw)
+      result = user_input.get_prompt_manager().Respond(
+          uuid.UUID((request['id'])), request['response'])
+      self.send_response(200)
+      self.end_headers()
+      if result:
+        self.wfile.write(PROMPT_ACK)
+      else:
+        self.wfile.write(PROMPT_NACK)
+
 
   def Stop(self):
     """Stop the HTTP server."""

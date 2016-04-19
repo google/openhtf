@@ -105,7 +105,7 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 
 INSTALL_REQUIRES = [
-    'contextlib2==0.4.0',
+    'contextlib2==0.5.1',
     'enum34==1.1.2',
     'MarkupSafe==0.23',
     'mutablerecords==0.2.9',

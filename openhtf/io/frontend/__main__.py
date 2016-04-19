@@ -31,7 +31,6 @@ frontend server.
 
 from __future__ import print_function
 import collections
-import httplib
 import json
 import logging
 import os
@@ -42,6 +41,7 @@ import threading
 
 import gflags
 import mutablerecords
+import requests
 import tornado.escape
 import tornado.ioloop
 import tornado.web
@@ -77,7 +77,8 @@ UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
 
 
 class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,no-init
-    'Station', [], {'station_id': UNKNOWN_STATION_ID, 'state': None})):
+    'Station', ['hostport'], {'station_id': UNKNOWN_STATION_ID,
+                              'state': None})):
   """Represents a station seen on the local network.
 
   Attributes:
@@ -86,6 +87,36 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
       framework: A dictionary representation of a TestExecutor object.
       test: A dictionary representation of a TestState object.
     """
+  def Refresh(self):
+    """Update state with a GET request to OpenHTF's HTTP API."""
+    try:
+      response = requests.get('http://%s:%s' % self.hostport)
+      if response.status_code == 200:
+        state = json.loads(response.text)
+        station_id = state['framework']['station_id']
+        if (self.station_id is not UNKNOWN_STATION_ID) and (
+            station_id != self.station_id):
+          _LOG.warning('Station (%s) underwent an identity change.',
+                       self.hostport)
+        self.station_id = station_id
+        self.state = state
+    except requests.RequestException as e:
+      _LOG.debug('Station (%s) unreachable: %s', self.hostport, e)
+      self.state = None
+    except KeyError:
+      _LOG.warning('Malformed station state response from (%s): %s',
+                self.hostport, response)
+
+  def Notify(self, message):
+    """Send a message to an OpenHTF instance in response to a prompt.
+
+    Args:
+      message: Prompt response.
+    """
+    try:
+      requests.post('http://%s:%s' % self.hostport, data=message)
+    except requests.RequestException as e:
+      _LOG.warning('Error notifying station (%s): %s', self.hostport, e)
 
 
 class StationStore(threading.Thread):
@@ -96,47 +127,15 @@ class StationStore(threading.Thread):
   """
   def __init__(self):
     super(StationStore, self).__init__()
-    self._death_event = threading.Event()
+    self._stop_event = threading.Event()
     self.hostname = socket.gethostname()
-    self.stations = collections.defaultdict(Station)
+    self.stations = {}
 
-  @staticmethod
-  def MessageFramework(host, port, method='GET', message=None):
-    """Interact with a running instance of openhtf via its HTTP API.
-
-    The default method, 'GET', returns a JSON representation of station state,
-    while 'POST' can be used to respond to prompts. For example:
-
-      # Get the state of the openhtf instance at 192.168.2.25:10500.
-      station_state = MessageFramework(192.168.2.25, 10500)
-
-      # Respond to a prompt for the DUT's serial number:
-      MessageFramework(192.168.2.25, 10500, method='POST', 'SN-NCC1701D')
-
-    Args:
-      host: The IP address of the host running openhtf.
-      port: The TCP port of openhtf's HTTP API on host.
-      method: 'GET' or 'POST'.
-      message: Prompt response for POSTs. Ignored for GETs.
-    """
-    result = None
-    conn = httplib.HTTPConnection(host, int(port))
-    args = [method, '/']
-    if message and method == 'GET':
-      _LOG.warning("Message provided for 'GET' request will be ignored: %s",
-                   message)
-    if message and method == 'POST':
-      args.append(message)
-    try:
-      conn.request(*args)
-      if method == 'GET':
-        response = conn.getresponse()
-        if response.status == 200:
-          result = json.loads(response.read())
-    except socket.error as e:
-      result = None
-    conn.close()
-    return result
+  def __getitem__(self, hostport):  # pylint:disable=invalid-name
+    """Provide dictionary-like access to the station store."""
+    station = self.stations.setdefault(hostport, Station(hostport))
+    station.Refresh()
+    return station
 
   def _Discover(self):
     """Use multicast to discover stations on the local network."""
@@ -145,49 +144,29 @@ class StationStore(threading.Thread):
                                FLAGS.discovery_port,
                                FLAGS.discovery_ttl)
     for host, response in responses:
+      port = None
       try:
         port = json.loads(response)[PING_RESPONSE_KEY]
-        self._Track(host, port)
+        self._Track(host, int(port))
       except (KeyError, ValueError):
-        _LOG.warning('Ignoring unrecognized discovery response from %s: %s' % (
+        _LOG.debug('Ignoring unrecognized discovery response from %s: %s' % (
             host, response))
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
-    while not self._death_event.is_set():
+    while not self._stop_event.is_set():
       self._Discover()
-      self._death_event.wait(FLAGS.discovery_interval_s)
+      self._stop_event.wait(FLAGS.discovery_interval_s)
 
-  def _Track(self, host, port):
+  def _Track(self, *hostport):
     """Start tracking the given station."""
-    station = self.stations[host, port]
-    if station.station_id == UNKNOWN_STATION_ID:
-      self.GetStationState(host, port)
-
-  def GetStationState(self, host, port):
-    """Return the station state for the station at host:port.
-
-    Also updates Station's state and station_id in the process.
-    """
-    port = int(port)
-    if (host, port) not in self.stations:
-      _LOG.warning(
-          'Store was queried for an unknown station: %s:%s' % (host, port))
-      return None
-    response = self.MessageFramework(host, port)
-    self.stations[host, port].state = response
-    if response is not None:
-      try:
-        station_id = response['framework']['station_id']
-        self.stations[host, port].station_id = station_id
-        return response
-      except KeyError:
-        _LOG.warn('Malformed station state response from (%s:%s): %s',
-                  host, port, response)
+    station = self[hostport]
+    if station.station_id is UNKNOWN_STATION_ID:
+      station.Refresh()
 
   def Stop(self):
     """Stop the store."""
-    self._death_event.set()
+    self._stop_event.set()
     self.join()
 
 
@@ -207,7 +186,7 @@ class StationStateHandler(tornado.web.RequestHandler):
 
   def get(self, host, port):
     self.render('station.html',
-                state=self.store.GetStationState(host, port),
+                state=self.store[host, int(port)].state,
                 host=host,
                 port=port,
                 interval=FLAGS.poll_interval_ms)
@@ -220,7 +199,7 @@ class StationPieceHandler(tornado.web.RequestHandler):
 
   def get(self, host, port, template):
     self.render('%s.html' % template,
-                state=self.store.GetStationState(host, port))
+                state=self.store[host, int(port)].state)
 
 
 class PromptHandler(tornado.web.RequestHandler):
@@ -229,7 +208,7 @@ class PromptHandler(tornado.web.RequestHandler):
     self.store = store
 
   def get(self, host, port):
-    state = self.store.GetStationState(host, port)
+    state = self.store[host, int(port)].state
     if state is not None:
       prompt = state['framework']['prompt']
       if prompt is not None:
@@ -244,8 +223,8 @@ class PromptResponseHandler(tornado.web.RequestHandler):
 
   def post(self, host, port, prompt_id):
     msg = json.JSONEncoder().encode(
-      {'id': prompt_id, 'response': self.request.body})
-    self.store.MessageFramework(host, port, method='POST', message=msg)
+        {'id': prompt_id, 'response': self.request.body})
+    self.store[host, port].Notify(msg)
     self.write('SENT')
 
 

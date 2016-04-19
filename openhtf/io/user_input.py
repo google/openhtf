@@ -115,6 +115,8 @@ class PromptManager(object):
       if self.prompt is not None and prompt_id == self.prompt.id:
         self._response = response
         self._cond.notifyAll()
+        return True  # The response was used.
+      return False  # The response was not used.
 
 
 # Module-level instance to achieve shared prompt state.
