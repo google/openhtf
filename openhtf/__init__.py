@@ -25,6 +25,7 @@ import logging
 import signal
 import socket
 import sys
+import threading
 
 import mutablerecords
 
@@ -71,21 +72,39 @@ class Test(object):
       # Analyze widget integration status
 
     Test(PhaseOne, PhaseTwo).Execute()
+
+  Note that Test() objects *must* be created in the main thread, but can be
+  .Execute()'d in a separate thread.
   """
 
   def __init__(self, *phases, **metadata):
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
+    self._test_options = TestOptions()
     self._test_info = TestData(phases, metadata=metadata, code_info=code_info)
-    self._output_callbacks = []
-    self.loop = False
+    self._lock = threading.Lock()
+    self._stopped = False
+    # Make sure Configure() gets called at least once before Execute().  The
+    # user might call Configure() again to override options, but we don't want
+    # to force them to if they want to use defaults.  For default values, see
+    # the class definition of TestOptions.
+    self.Configure()
+    # TODO(madsci): Fix this to play nice with multiple Test instances.
+    signal.signal(signal.SIGINT, self.Stop)
 
   def AddOutputCallback(self, callback):
+    """DEPRECATED: Use AddOutputCallbacks() instead."""
+    # TODO(madsci): Remove this before we push to PyPI, here for transitionary
+    # purposes. 
+    raise AttributeError(
+        'DEPRECATED, use AddOutputCallbacks() instead of AddOutputCallback()')
+
+  def AddOutputCallbacks(self, *callbacks):
     """Add the given function as an output module to this test."""
-    self._output_callbacks.append(callback)
+    self._test_options.output_callbacks.extend(callbacks)
 
   def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
-    for output_cb in self._output_callbacks:
+    for output_cb in self._test_options.output_callbacks:
       output_cb(record)
 
   # TODO(fahhem): Cleanup accesses to these attributes and remove these proxies.
@@ -105,31 +124,80 @@ class Test(object):
   def metadata(self):
     return self._test_info.metadata
 
-  def Execute(self, loop=None,
-              test_start=triggers.AutoStart, test_stop=triggers.AutoStop,
-              http_port=http_api.DEFAULT_HTTP_PORT):
-    """Starts the framework and executes the given test.
-    Args:
-      test_start: Trigger for starting the test, defaults to AutoStart with a
-          dummy serial number.
-      test_stop: Trigger for when the test is over, defaults to AutoStop to
-          immediately stop after the phase.
-      output_callbacks: List of callbacks to be called with the results
-          output from this test.
+  def Configure(self, **kwargs):
+    """Update test-wide configuration options.
+
+    Valid kwargs:
+      http_port: Port on which to run the http_api, or None to disable.
+      output_callbacks: List of output callbacks to run, typically it's better
+          to use AddOutputCallbacks(), but you can pass [] here to reset them.
     """
-    SetupFramework()
+    # These internally ensure they are safe to call multiple times with no weird
+    # side effects.
+    logs.SetupLogger()
+    CreateArgParser(add_help=True).parse_args()
+    for key, value in kwargs.iteritems():
+      setattr(self._test_options, key, value)
 
+  def Stop(self, *_):
+    """Stop test execution as abruptly as we can, only in response to SIGINT."""
+    _LOG.error('Received SIGINT.')
+    with self._lock:
+      # Once we're stopped for SIGINT, don't try to start anything else.
+      self._stopped = True
+      if self._executor:
+        # TestState str()'s nicely to a descriptive string, so let's log that
+        # just for good measure.
+        _LOG.error('Stopping Test due to SIGINT: %s', self._executor.GetState())
+        self._executor.Stop()
+      else:
+        _LOG.error('No Test running, ignoring SIGINT.')
+
+  def Execute(self, test_start=lambda: 'UNKNOWN_DUT_ID', loop=None):
+    """Starts the framework and executes the given test.
+
+    Args:
+      test_start: Trigger for starting the test, defaults to a lambda with a
+          dummy serial number.
+      loop: DEPRECATED
+    """
+    # TODO(madsci): Remove this after a transitionary period.
     if loop is not None:
-      self.loop = loop
+      raise ValueError(
+          'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
+          'use a while True: loop around Test.Execute() instead.')
 
-    _LOG.info('Executing test: %s', self.code_info.name)
-    executor = exe.TestExecutor(self, test_start, test_stop)
-    http_server = http_api.Server(executor, http_port)
-    StopOnSigInt([http_server.Stop, executor.Stop])
-    http_server.Start()
-    executor.Start()
-    executor.Wait()
-    http_server.Stop()
+
+    # We have to lock this section to ensure we don't call TestExecutor.Stop()
+    # in self.Stop() between instantiating it and .Start()'ing it.  We'll check
+    # self._stopped to make sure self.Stop() hasn't already been called here.
+    with self._lock:
+      if self._stopped:
+        _LOG.info('Cowardly refusing to execute test after SIGINT: %s',
+                  self.code_info.name)
+        return
+
+      _LOG.info('Executing test: %s', self.code_info.name)
+      self._executor = exe.TestExecutor(self, test_start)
+      http_server = None
+      if self._test_options.http_port:
+        http_server = http_api.Server(
+          self._executor, self._test_options.http_port)
+        http_server.Start()
+      self._executor.Start()
+
+    try:
+      self._executor.Wait()
+    finally:
+      if http_server:
+        http_server.Stop()
+
+
+class TestOptions(mutablerecords.Record('TestOptions', [], {
+    'http_port': http_api.DEFAULT_HTTP_PORT,
+    'output_callbacks': list,
+})):
+  """Class encapsulating various tunable knobs for Tests and their defaults."""
 
 
 class TestData(collections.namedtuple(
@@ -164,19 +232,11 @@ class TestData(collections.namedtuple(
     return plug_type_map
 
 
-def CreateArgParser():
+def CreateArgParser(add_help=False):
   """Creates an argparse.ArgumentParser for parsing command line flags."""
-  parser = argparse.ArgumentParser('OpenHTF-based testing', parents=[
+  return argparse.ArgumentParser('OpenHTF-based testing', parents=[
       conf.ARG_PARSER, user_input.ARG_PARSER, phase_executor.ARG_PARSER,
-      logs.ARG_PARSER])
-  return parser
-
-
-@functions.RunOnce
-def SetupFramework():
-  """Sets up various bits of the framework. Only needs to be called once."""
-  CreateArgParser().parse_args()
-  logs.setup_logger()
+      logs.ARG_PARSER], add_help=add_help)
 
 
 class PhaseResult(Enum):
@@ -280,13 +340,3 @@ class PhaseInfo(mutablerecords.Record(
       # it but miscounted arguments, we'll get another error farther down.
       return self.func(**kwargs)
     return self.func(phase_data, **kwargs)
-
-
-def StopOnSigInt(callbacks):
-  """Handles SigInt by calling the given callbacks."""
-  def _Handler(*_):
-    """Calls the given callbacks."""
-    _LOG.error('Received SIGINT. Stopping everything.')
-    for cb in callbacks:
-      cb()
-  signal.signal(signal.SIGINT, _Handler)

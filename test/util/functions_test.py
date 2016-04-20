@@ -21,13 +21,29 @@ from openhtf.util import functions
 
 class TestFunctions(unittest.TestCase):
 
-  def testRunOnce(self):
+  def testCallOnceFailsWithArgs(self):
+    with self.assertRaises(ValueError):
+      @functions.CallOnce
+      def HasArgs(x):
+        pass
+
+    with self.assertRaises(ValueError):
+      @functions.CallOnce
+      def HasArgs(*args):
+        pass
+
+    with self.assertRaises(ValueError):
+      @functions.CallOnce
+      def HasArgs(**kwargs):
+        pass
+
+  def testCallOnce(self):
     calls = []
-    @functions.RunOnce
-    def CanOnlyRunOnce():
+    @functions.CallOnce
+    def CanOnlyCallOnce():
       calls.append(None)
       return 1
 
-    assert CanOnlyRunOnce() == 1
-    assert CanOnlyRunOnce() == None
+    assert CanOnlyCallOnce() == 1
+    assert CanOnlyCallOnce() == 1
     assert len(calls) == 1

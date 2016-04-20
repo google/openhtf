@@ -95,9 +95,9 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.AddOutputCallback(json_factory.OutputToJSON(
+  test.AddOutputCallbacks(json_factory.OutputToJSON(
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
-  #test.AddOutputCallback(mfg_inspector.OutputToTestRunProto(
+  #test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
   #    './%(dut_id)s.%(start_time_millis)s.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
@@ -105,7 +105,7 @@ if __name__ == '__main__':
   # 'my_private_key.json'.
   #if os.path.isfile('my_private_key.json'):
   #  with open('my_private_key.json', 'r') as json_file:
-  #    test.AddOutputCallback(mfg_inspector.UploadToMfgInspector.from_json(
+  #    test.AddOutputCallbacks(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
 
   test.Execute(test_start=triggers.PromptForTestStart())

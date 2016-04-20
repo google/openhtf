@@ -67,12 +67,11 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT', 'FINISHING'])
 
-  def __init__(self, test, test_start, test_stop):
+  def __init__(self, test, test_start):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self.test = test
     self._test_start = test_start
-    self._test_stop = test_stop
     self._exit_stack = None
     self._test_state = None
     self._output_thread = None
@@ -105,26 +104,14 @@ class TestExecutor(threads.KillableThread):
     """Return the current TestState object."""
     return self._test_state
 
-  def _ThreadProc(self):
-    """Main entry point for this Thread, conditionally loop the test."""
-    if not self.test.loop:
-      self._RunTestLoop.once(self)
-    else:
-      self._RunTestLoop()
-
   def _ResetAttributes(self):
     """Reset local stateful attributes to None."""
     self._exit_stack = None
     self._test_state = None
     self._output_thread = None
 
-  @threads.Loop
-  def _RunTestLoop(self):
-    """Handles one whole test from start to finish.
-
-    By default, this will loop indefinitely.  Call _RunTestLoop.once(self) to
-    run the test only once.
-    """
+  def _ThreadProc(self):
+    """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack, \
         LogSleepSuppress() as suppressor:
       # Top level steps required to run a single iteration of the Test.
@@ -218,7 +205,6 @@ class TestExecutor(threads.KillableThread):
       # anymore, nor if ctrl-C was hit.
       if exc_type not in (TestStopError, KeyboardInterrupt):
         self._status = self.FrameworkStatus.STOP_WAIT
-        self._test_stop(self._test_state.record.dut_id)
 
     exit_stack.push(optionally_stop)
     return executor

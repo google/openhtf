@@ -310,33 +310,26 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     if self._flags.config_file is not None:
       self.LoadFromFile(self._flags.config_file, _allow_undeclared=True)
 
-  def LoadFromFile(self, filename, _override=True, _allow_undeclared=False):
+  def LoadFromFile(self, yamlfile, _override=True, _allow_undeclared=False):
     """Loads the configuration from a file.
 
     Parsed contents must be a single dict mapping config key to value.
 
     Args:
-      config_file: The file name to load configuration from.
+      yamlfile: The opened file object to load configuration from.
       See LoadFromDict() for other args' descriptions.
 
     Raises:
       ConfigurationInvalidError: If configuration file can't be read, or can't
           be parsed as either YAML (or JSON, which is a subset of YAML).
     """
-    self._logger.info('Loading configuration from file: %s', filename)
+    self._logger.info('Loading configuration from file: %s', yamlfile)
 
     try:
-      with open(filename, 'rb') as yaml_file:
-        config_data = yaml_file.read()
-    except IOError as exception:
-      self._logger.exception('Configuration file load failed: %s', filename)
-      raise self.ConfigurationInvalidError(filename, exception)
-
-    try:
-      parsed_yaml = self._modules['yaml'].safe_load(config_data)
+      parsed_yaml = self._modules['yaml'].safe_load(yamlfile.read())
     except self._modules['yaml'].YAMLError as exception:
       raise self.ConfigurationInvalidError(
-          'Failed to load from %s as YAML' % filename, exception)
+          'Failed to load from %s as YAML' % yamlfile, exception)
 
     if not isinstance(parsed_yaml, dict):
       # Parsed YAML, but it's not a dict.
