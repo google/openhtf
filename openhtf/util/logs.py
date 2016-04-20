@@ -49,28 +49,40 @@ Test record logs are by default output to stdout at a debug level.  There is
 no way to change this, if you don't like it redirect stdout to /dev/null.
 """
 
+import argparse
 import logging
 import os
 import re
 import sys
 import traceback
 from datetime import datetime
-from openhtf import util
-import gflags
 
+from openhtf import util
+from openhtf.util import argv
 from openhtf.io import test_record
 
 
-FLAGS = gflags.FLAGS
+DEFAULT_LEVEL = 'warning'
+DEFAULT_LOGFILE_LEVEL = 'warning'
+QUIET = False
+LOGFILE = None
 
-gflags.DEFINE_enum('verbosity',
-                   'warning', ['debug', 'info', 'warning', 'error', 'critical'],
-                   'Console log verbosity level (stderr).')
-gflags.DEFINE_boolean('quiet', False, "If True, don't output logs to stderr.")
-gflags.DEFINE_string('log-file', '', 'Filename to output logs to, if any.')
-gflags.DEFINE_enum('log-file-level', 'warning', ['debug', 'info', 'warning',
-                                                 'error', 'critical'],
-                   'Logging verbosity level for log file output.')
+LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument(
+    '--verbosity', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
+    action=argv.StoreInModule, target='%s.DEFAULT_LEVEL' % __name__,
+    help='Console log verbosity level (stderr).')
+ARG_PARSER.add_argument(
+    '--quiet', action=argv.StoreInModule, target='%s.QUIET' % __name__,
+    proxy=argparse._StoreTrueAction, help="Don't output logs to stderr.")
+ARG_PARSER.add_argument(
+    '--log-file', action=argv.StoreInModule, target='%s.LOGFILE' % __name__,
+    help='Filename to output logs to, if any.')
+ARG_PARSER.add_argument(
+    '--log-file-level', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
+    action=argv.StoreInModule, target='%s.DEFAULT_LOGFILE_LEVEL' % __name__,
+    help='Logging verbosity level for log file output.')
 
 LOGGER_PREFIX = 'openhtf'
 RECORD_LOGGER = '.'.join((LOGGER_PREFIX, 'test_record'))
@@ -135,7 +147,7 @@ class RecordHandler(logging.Handler):
 
 
 def setup_logger():
-  """Configure logging for OpenHTF based on command line flags."""
+  """Configure logging for OpenHTF."""
   record_logger = logging.getLogger(RECORD_LOGGER)
   record_logger.propagate = False
   record_logger.setLevel(logging.DEBUG)
@@ -145,22 +157,21 @@ def setup_logger():
   logger.propagate = False
   logger.setLevel(logging.DEBUG)
   formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-  if FLAGS['log-file'].value:
+  if LOGFILE:
     try:
       cur_time = str(util.TimeMillis())
-      file_handler = logging.FileHandler(
-          '.'.join((FLAGS['log-file'].value, cur_time)))
+      file_handler = logging.FileHandler('%s.%s' % (LOGFILE, cur_time))
       file_handler.setFormatter(formatter)
-      file_handler.setLevel(FLAGS['log-file-level'].value.upper())
+      file_handler.setLevel(DEFAULT_LOGFILE_LEVEL.upper())
       file_handler.addFilter(MAC_FILTER)
       logger.addHandler(file_handler)
     except IOError as exception:
       print ('Failed to set up log file due to error: %s. '
              'Continuing anyway.' % exception)
 
-  if not FLAGS.quiet:
+  if not QUIET:
     console_handler = logging.StreamHandler(stream=sys.stderr)
     console_handler.setFormatter(formatter)
-    console_handler.setLevel(FLAGS.verbosity.upper())
+    console_handler.setLevel(DEFAULT_LEVEL.upper())
     console_handler.addFilter(MAC_FILTER)
     logger.addHandler(console_handler)

@@ -25,7 +25,9 @@
 {% if state['framework']['status'] == 'EXECUTING' %}
 <div class="current_phase">
   <h3>Current Phase: {{ state['test']['running_phase_record']['name'] }}</h3>
-<p>{{ state['test']['running_phase_record']['docstring'] }}</p>
+  {% if 'docstring' in state['test']['running_phase_record'] %}
+    <p>{{ state['test']['running_phase_record']['docstring'] }}</p>
+  {% end %}
 <h4>Measurements</h4>
 <table border=1>
 {% for m in state['test']['running_phase_record']['measurements'] %}

@@ -36,17 +36,19 @@ import collections
 import inspect
 import logging
 
-import gflags
-
 import openhtf
 from openhtf.exe import phase_data
 from openhtf.io import test_record
+from openhtf.util import argv
 from openhtf.util import threads
 
+DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
-FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
-                      'Test phase timeout in ms', lower_bound=0)
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument(
+    '--phase_default_timeout_s', default=DEFAULT_PHASE_TIMEOUT_S,
+    action=argv.StoreInModule, target='%s.DEFAULT_PHASE_TIMEOUT_S' % __name__,
+    help='Test phase timeout in seconds')
 
 _LOG = logging.getLogger(__name__)
 
@@ -129,7 +131,7 @@ class PhaseExecutorThread(threads.KillableThread):
     if self._phase.options.timeout_s is not None:
       self.join(self._phase.options.timeout_s)
     else:
-      self.join(FLAGS.phase_default_timeout_ms / 1000.0)
+      self.join(DEFAULT_PHASE_TIMEOUT_S)
 
     # We got a return value or an exception and handled it.
     if isinstance(self._phase_outcome, PhaseOutcome):

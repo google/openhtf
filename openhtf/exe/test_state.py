@@ -27,6 +27,7 @@ import openhtf
 from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
+from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import measurements
 
@@ -53,13 +54,15 @@ class TestState(object):
     test: openhtf.Test instance describing the test to run.
     plug_map: dict mapping plug name to instances.
     dut_id: DUT identifier, if it's known, otherwise None.
+    station_id: Station identifier.
   """
   State = Enum('State', ['CREATED', 'RUNNING', 'COMPLETED'])
 
   def __init__(self, test, plug_map, dut_id, station_id):
     self._state = self.State.CREATED
     self.record = test_record.TestRecord(
-        dut_id=dut_id, station_id=station_id, code_info=test.code_info)
+        dut_id=dut_id, station_id=station_id, code_info=test.code_info,
+        metadata=test.metadata)
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)
     self.logger.addHandler(self._record_handler)
@@ -72,7 +75,7 @@ class TestState(object):
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
-    return json.dumps(util.ConvertToBaseTypes(self))
+    return json.dumps(data.ConvertToBaseTypes(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""

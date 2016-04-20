@@ -15,7 +15,9 @@
 
 """The main OpenHTF entry point."""
 
+import argparse
 import collections
+import copy
 import inspect
 import itertools
 import json
@@ -24,7 +26,6 @@ import signal
 import socket
 import sys
 
-import gflags
 import mutablerecords
 
 from enum import Enum
@@ -33,9 +34,12 @@ from openhtf import conf
 from openhtf import exe
 from openhtf import plugs
 from openhtf import util
+from openhtf.exe import phase_executor
 from openhtf.exe import triggers
 from openhtf.io import http_api
 from openhtf.io import test_record
+from openhtf.io import user_input
+from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import measurements
 
@@ -47,7 +51,6 @@ from openhtf.util import measurements
 conf.Declare('station_id', 'The name of this test station',
              default_value=socket.gethostname())
 
-FLAGS = gflags.FLAGS
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
 
@@ -82,7 +85,6 @@ class Test(object):
 
   def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
-    record.metadata.update(self._test_info.metadata)
     for output_cb in self._output_callbacks:
       output_cb(record)
 
@@ -104,7 +106,8 @@ class Test(object):
     return self._test_info.metadata
 
   def Execute(self, loop=None,
-              test_start=triggers.AutoStart, test_stop=triggers.AutoStop):
+              test_start=triggers.AutoStart, test_stop=triggers.AutoStop,
+              http_port=http_api.DEFAULT_HTTP_PORT):
     """Starts the framework and executes the given test.
     Args:
       test_start: Trigger for starting the test, defaults to AutoStart with a
@@ -121,12 +124,12 @@ class Test(object):
 
     _LOG.info('Executing test: %s', self.code_info.name)
     executor = exe.TestExecutor(self, test_start, test_stop)
-    server = http_api.Server(executor)
-    StopOnSigInt([server.Stop, executor.Stop])
-    server.Start()
+    http_server = http_api.Server(executor, http_port)
+    StopOnSigInt([http_server.Stop, executor.Stop])
+    http_server.Start()
     executor.Start()
     executor.Wait()
-    server.Stop()
+    http_server.Stop()
 
 
 class TestData(collections.namedtuple(
@@ -161,14 +164,18 @@ class TestData(collections.namedtuple(
     return plug_type_map
 
 
+def CreateArgParser():
+  """Creates an argparse.ArgumentParser for parsing command line flags."""
+  parser = argparse.ArgumentParser('OpenHTF-based testing', parents=[
+      conf.ARG_PARSER, user_input.ARG_PARSER, phase_executor.ARG_PARSER,
+      logs.ARG_PARSER])
+  return parser
+
+
+@functions.RunOnce
 def SetupFramework():
   """Sets up various bits of the framework. Only needs to be called once."""
-  try:
-    sys.argv = FLAGS(sys.argv)  # parse flags
-  except gflags.FlagsError, e:  # pylint: disable=invalid-name
-    print '%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS)
-    sys.exit(1)
-
+  CreateArgParser().parse_args()
   logs.setup_logger()
 
 
@@ -216,7 +223,8 @@ class PhasePlug(mutablerecords.Record(
 
 class PhaseInfo(mutablerecords.Record(
     'PhaseInfo', ['func', 'code_info'],
-    {'options': PhaseOptions, 'plugs': list, 'measurements': list})):
+    {'options': PhaseOptions, 'plugs': list, 'measurements': list,
+     'extra_kwargs': dict})):
   """Phase function and related information.
 
   Attributes:
@@ -253,15 +261,25 @@ class PhaseInfo(mutablerecords.Record(
   def doc(self):
     return self.func.__doc__
 
+  def WithArgs(self, **kwargs):
+    """Send these keyword-arguments to the phase when called."""
+    # Make a copy so we can have multiple of the same phase with different args
+    # in the same test.
+    new_info = mutablerecords.CopyRecord(self)
+    new_info.extra_kwargs.update(kwargs)
+    new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
+    return new_info
+
   def __call__(self, phase_data):
-    plug_kwargs = {plug.name: phase_data.plugs[plug.name]
-                   for plug in self.plugs if plug.update_kwargs}
+    kwargs = dict(self.extra_kwargs)
+    kwargs.update({plug.name: phase_data.plugs[plug.name]
+                   for plug in self.plugs if plug.update_kwargs})
     arg_info = inspect.getargspec(self.func)
-    if len(arg_info.args) == len(plug_kwargs) and not arg_info.varargs:
+    if len(arg_info.args) == len(kwargs) and not arg_info.varargs:
       # Underlying function has no room for phase_data as an arg. If it expects
       # it but miscounted arguments, we'll get another error farther down.
-      return self.func(**plug_kwargs)
-    return self.func(phase_data, **plug_kwargs)
+      return self.func(**kwargs)
+    return self.func(phase_data, **kwargs)
 
 
 def StopOnSigInt(callbacks):
