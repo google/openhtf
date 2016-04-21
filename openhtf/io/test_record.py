@@ -78,6 +78,13 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
   """
 
 
+def _GetSourceSafely(obj):
+  try:
+    return inspect.getsource(obj)
+  except IOError:
+    return ''
+
+
 class CodeInfo(mutablerecords.Record(
     'CodeInfo', ['name', 'docstring', 'sourcecode'])):
   """Information regarding the running tester code."""
@@ -90,10 +97,10 @@ class CodeInfo(mutablerecords.Record(
     #  2+: The function calling 'you' (likely in the framework).
     frame, filename = inspect.stack(context=0)[levels_up][:2]
     module = inspect.getmodule(frame)
-    source = inspect.getsource(frame)
+    source = _GetSourceSafely(frame)
     return cls(os.path.basename(filename), inspect.getdoc(module), source)
 
   @classmethod
   def ForFunction(cls, func):
-    source = inspect.getsource(func)
+    source = _GetSourceSafely(func)
     return cls(func.__name__, inspect.getdoc(func), source)
