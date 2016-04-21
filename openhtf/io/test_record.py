@@ -18,6 +18,7 @@
 
 import collections
 import inspect
+import logging
 import os
 
 import mutablerecords
@@ -25,6 +26,9 @@ import mutablerecords
 from enum import Enum
 
 from openhtf import util
+from openhtf.util import logs
+
+_LOG = logging.getLogger(__name__)
 
 
 class InvalidMeasurementDimensions(Exception):
@@ -32,11 +36,10 @@ class InvalidMeasurementDimensions(Exception):
 
 
 Attachment = collections.namedtuple('Attachment', 'data mimetype')
-LogRecord = collections.namedtuple(
-    'LogRecord', 'level logger_name source lineno timestamp_millis message')
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
 Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT'])
+# LogRecord is in openhtf.util.logs.LogRecord.
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
@@ -82,6 +85,9 @@ def _GetSourceSafely(obj):
   try:
     return inspect.getsource(obj)
   except IOError:
+    logs.LogOnce(
+        _LOG.warning,
+        'Unable to load source code for %s. Only logging this once.', obj)
     return ''
 
 
