@@ -112,23 +112,6 @@ class Test(object):
   def data(self):
     return self._test_data
 
-  # TODO(fahhem): Cleanup accesses to these attributes and remove these proxies.
-  @property
-  def plug_type_map(self):
-    return self._test_data.plug_type_map
-
-  @property
-  def phases(self):
-    return self._test_data.phases
-
-  @property
-  def code_info(self):
-    return self._test_data.code_info
-
-  @property
-  def metadata(self):
-    return self._test_data.metadata
-
   def Configure(self, **kwargs):
     """Update test-wide configuration options.
 
@@ -176,10 +159,10 @@ class Test(object):
     with self._lock:
       if self._stopped:
         _LOG.info('Cowardly refusing to execute test after SIGINT: %s',
-                  self.code_info.name)
+                  self.data.code_info.name)
         return
 
-      _LOG.info('Executing test: %s', self.code_info.name)
+      _LOG.info('Executing test: %s', self.data.code_info.name)
       self._executor.SetTestStart(test_start)
       http_server = None
       if self._test_options.http_port:
