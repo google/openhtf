@@ -80,7 +80,7 @@ class Test(object):
   def __init__(self, *phases, **metadata):
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
     self._test_options = TestOptions()
-    self._test_info = TestData(phases, metadata=metadata, code_info=code_info)
+    self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
     self._executor = exe.TestExecutor(self)
     self._stopped = False
@@ -108,22 +108,26 @@ class Test(object):
     for output_cb in self._test_options.output_callbacks:
       output_cb(record)
 
+  @property
+  def data(self):
+    return self._test_data
+
   # TODO(fahhem): Cleanup accesses to these attributes and remove these proxies.
   @property
   def plug_type_map(self):
-    return self._test_info.plug_type_map
+    return self._test_data.plug_type_map
 
   @property
   def phases(self):
-    return self._test_info.phases
+    return self._test_data.phases
 
   @property
   def code_info(self):
-    return self._test_info.code_info
+    return self._test_data.code_info
 
   @property
   def metadata(self):
-    return self._test_info.metadata
+    return self._test_data.metadata
 
   def Configure(self, **kwargs):
     """Update test-wide configuration options.
