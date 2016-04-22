@@ -67,11 +67,11 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT', 'FINISHING'])
 
-  def __init__(self, test, test_start):
+  def __init__(self, test):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self.test = test
-    self._test_start = test_start
+    self._test_start = None
     self._exit_stack = None
     self._test_state = None
     self._output_thread = None
@@ -83,6 +83,9 @@ class TestExecutor(threads.KillableThread):
     return {'station_id': conf.station_id,
             'prompt': user_input.get_prompt_manager().prompt,
             'status': self._status.name}
+
+  def SetTestStart(self, test_start):
+    self._test_start = test_start
 
   def Start(self):
     """Style-compliant start method."""
@@ -166,6 +169,8 @@ class TestExecutor(threads.KillableThread):
 
   def _WaitForTestStart(self, suppressor):
     """Wait for the test start trigger to return a DUT ID."""
+    if self._test_start is None:
+      return
     self._status = self.FrameworkStatus.START_WAIT
     suppressor.failure_reason = 'TEST_START failed to complete.'
     return self._test_start()
