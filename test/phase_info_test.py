@@ -22,6 +22,10 @@ def PlainFunc():
   pass
 
 
+def NormalTestPhase(test):
+  return 'return value'
+
+
 def ExtraArgFunc(input=None):
   return input
 
@@ -35,6 +39,10 @@ class TestPhaseInfo(unittest.TestCase):
       assert phase.name == 'PlainFunc'
       assert phase.doc == 'Plain Docstring'
       phase(None)
+
+      test_phase = openhtf.PhaseInfo.WrapOrCopy(NormalTestPhase)
+      assert test_phase.name == 'NormalTestPhase'
+      assert test_phase(None) == 'return value'
 
   def testMultiplePhases(self):
       phase = openhtf.PhaseInfo.WrapOrCopy(PlainFunc)
