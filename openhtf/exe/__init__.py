@@ -70,7 +70,7 @@ class TestExecutor(threads.KillableThread):
   def __init__(self, test):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
-    self.test = test
+    self._test = test
     self._test_start = None
     self._exit_stack = None
     self._test_state = None
@@ -118,7 +118,7 @@ class TestExecutor(threads.KillableThread):
     with contextlib.ExitStack() as exit_stack, \
         LogSleepSuppress() as suppressor:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self.test.code_info.name)
+      _LOG.info('Starting test %s', self._test.data.code_info.name)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
@@ -164,7 +164,7 @@ class TestExecutor(threads.KillableThread):
   def _OutputTestRecord(self):
     """Output the test record by invoking output callbacks."""
     if self._test_state:
-      self.test.OutputTestRecord(
+      self._test.OutputTestRecord(
           self._test_state.GetFinishedRecord())
 
   def _WaitForTestStart(self, suppressor):
@@ -179,13 +179,13 @@ class TestExecutor(threads.KillableThread):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
-        self.test, plug_manager.plug_map, dut_id, conf.station_id)
+        self._test.data, plug_manager.plug_map, dut_id, conf.station_id)
 
   def _MakePlugManager(self, suppressor):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
-    return plugs.PlugManager.InitializeFromTypeMap(self.test.plug_type_map)
+    return plugs.PlugManager.InitializeFromTypeMap(self._test.data.plug_type_map)
 
   def _MakePhaseExecutor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""
