@@ -94,7 +94,7 @@ class Test(object):
   def AddOutputCallback(self, callback):
     """DEPRECATED: Use AddOutputCallbacks() instead."""
     # TODO(madsci): Remove this before we push to PyPI, here for transitionary
-    # purposes. 
+    # purposes.
     raise AttributeError(
         'DEPRECATED, use AddOutputCallbacks() instead of AddOutputCallback()')
 
@@ -134,8 +134,8 @@ class Test(object):
     """
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
+    CreateArgParser(add_help=True).parse_known_args()
     logs.SetupLogger()
-    CreateArgParser(add_help=True).parse_args()
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
@@ -233,7 +233,14 @@ class TestData(collections.namedtuple(
 
 
 def CreateArgParser(add_help=False):
-  """Creates an argparse.ArgumentParser for parsing command line flags."""
+  """Creates an argparse.ArgumentParser for parsing command line flags.
+
+  If you want to add arguments, create your own with this as a parent:
+
+  >>> parser = argparse.ArgumentParser(
+          'My args title', parents=[openhtf.CreateArgParser()])
+  >>> parser.parse_args()
+  """
   return argparse.ArgumentParser('OpenHTF-based testing', parents=[
       conf.ARG_PARSER, user_input.ARG_PARSER, phase_executor.ARG_PARSER,
       logs.ARG_PARSER], add_help=add_help)
