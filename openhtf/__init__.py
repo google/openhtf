@@ -82,6 +82,7 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_info = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
+    self._executor = exe.TestExecutor(self)
     self._stopped = False
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
@@ -145,20 +146,17 @@ class Test(object):
     with self._lock:
       # Once we're stopped for SIGINT, don't try to start anything else.
       self._stopped = True
-      if self._executor:
-        # TestState str()'s nicely to a descriptive string, so let's log that
-        # just for good measure.
-        _LOG.error('Stopping Test due to SIGINT: %s', self._executor.GetState())
-        self._executor.Stop()
-      else:
-        _LOG.error('No Test running, ignoring SIGINT.')
+      # TestState str()'s nicely to a descriptive string, so let's log that
+      # just for good measure.
+      _LOG.error('Stopping Test due to SIGINT: %s', self._executor.GetState())
+      self._executor.Stop()
 
-  def Execute(self, test_start=lambda: 'UNKNOWN_DUT_ID', loop=None):
+  def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
 
     Args:
-      test_start: Trigger for starting the test, defaults to a lambda with a
-          dummy serial number.
+      test_start: Trigger for starting the test, defaults to not setting the DUT
+          serial number.
       loop: DEPRECATED
     """
     # TODO(madsci): Remove this after a transitionary period.
@@ -178,7 +176,7 @@ class Test(object):
         return
 
       _LOG.info('Executing test: %s', self.code_info.name)
-      self._executor = exe.TestExecutor(self, test_start)
+      self._executor.SetTestStart(test_start)
       http_server = None
       if self._test_options.http_port:
         http_server = http_api.Server(
