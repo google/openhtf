@@ -34,31 +34,31 @@ class TestPhaseInfo(unittest.TestCase):
 
   def testBasics(self):
       phase = openhtf.PhaseInfo.WrapOrCopy(PlainFunc)
-      assert phase.func is PlainFunc
-      assert len(phase.plugs) == 0
-      assert phase.name == 'PlainFunc'
-      assert phase.doc == 'Plain Docstring'
+      self.assertIs(phase.func, PlainFunc)
+      self.assertEqual(0, len(phase.plugs))
+      self.assertEqual('PlainFunc', phase.name)
+      self.assertEqual('Plain Docstring', phase.doc)
       phase(None)
 
       test_phase = openhtf.PhaseInfo.WrapOrCopy(NormalTestPhase)
-      assert test_phase.name == 'NormalTestPhase'
-      assert test_phase(None) == 'return value'
+      self.assertEqual('NormalTestPhase', test_phase.name)
+      self.assertEqual('return value', test_phase(None))
 
   def testMultiplePhases(self):
       phase = openhtf.PhaseInfo.WrapOrCopy(PlainFunc)
       second_phase = openhtf.PhaseInfo.WrapOrCopy(phase)
       for attr in type(phase).all_attribute_names:
         if attr == 'func': continue
-        assert getattr(phase, attr) is not getattr(second_phase, attr)
+        self.assertIsNot(getattr(phase, attr), getattr(second_phase, attr))
 
   def testWithArgs(self):
       phase = openhtf.PhaseInfo.WrapOrCopy(ExtraArgFunc)
       phase = phase.WithArgs(input='input arg')
       result = phase(None)
-      assert result == 'input arg'
+      self.assertEqual('input arg', result)
 
       second_phase = phase.WithArgs(input='second input')
       first_result = phase(None)
       second_result = second_phase(None)
-      assert first_result == 'input arg'
-      assert second_result == 'second input'
+      self.assertEqual('input arg', first_result)
+      self.assertEqual('second input', second_result)
