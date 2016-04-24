@@ -151,7 +151,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       }
 
       # Validate multi-dimensional measurements now that we have all values.
-      validated_measurements.Update({
+      validated_measurements.update({
           name: measurement.Validate(values[name])
           for name, measurement in measurement_map.iteritems()
           if measurement.outcome is measurements.Outcome.PARTIALLY_SET
