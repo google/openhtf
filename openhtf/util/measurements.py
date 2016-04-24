@@ -31,6 +31,18 @@ are serialized into the 'measurements' field on the PhaseRecord, and the values
 themselves are similarly output in the 'measured_values' field on the
 PhaseRecord.  See test_record.py for more information.
 
+Validation of undimensioned measurements happens when they are set, so that
+users of the HTTP API can see PASS/FAIL outcome on those measurements
+immediately after they are set.  Multidimensional measurements, however,
+don't usually make sense to validate until all data is available, so they
+instead enter a PARTIALLY_SET outcome state until the end of the test phase,
+at which point they are validated and become with PASS or FAIL.  Note that
+validators are only called at the end of the phase if at least one value was
+set in the multidimensional measurement, otherwise it remains UNSET.
+
+See examples/validators.py for some examples on how to define and use custom
+measurement validators.
+
 Examples:
 
   @measurements.measures(
@@ -81,7 +93,10 @@ class DuplicateNameError(Exception):
   """An exception which occurs when a measurement name collision occurs."""
 
 
-Outcome = Enum('Outcome', ['PASS', 'FAIL', 'UNSET'])
+# Only multidimensional measurements can be 'PARTIALLY_SET', and can never be in
+# that state after their respective phase has completed (they must transition to
+# either PASS or FAIL at that point).
+Outcome = Enum('Outcome', ['PASS', 'FAIL', 'UNSET', 'PARTIALLY_SET'])
 
 
 class Measurement(  # pylint: disable=no-init
@@ -153,14 +168,11 @@ class Measurement(  # pylint: disable=no-init
 
   def Validate(self, value):
     """Validate this measurement and update its 'outcome' field."""
-    # Ignore unset measurements.
-    if value is not None:
-      # Pass if all our validators return True.
-      if all(v(value) for v in self.validators):
-        self.outcome = Outcome.PASS
-      else:
-        self.outcome = Outcome.FAIL
-
+    # PASS if all our validators return True, otherwise FAIL.
+    if all(v(value) for v in self.validators):
+      self.outcome = Outcome.PASS
+    else:
+      self.outcome = Outcome.FAIL
     return self
 
   def _asdict(self):
@@ -179,9 +191,9 @@ class Measurement(  # pylint: disable=no-init
   def MakeUnsetValue(self):
     """Create an unset MeasuredValue for this measurement."""
     if self.dimensions:
-      return DimensionedMeasuredValue(self.name, len(self.dimensions))
+      return DimensionedMeasuredValue(self.name, len(self.dimensions), self)
     else:
-      return MeasuredValue(self.name)
+      return MeasuredValue(self.name, self)
 
 
 class MeasuredValue(object):
@@ -198,8 +210,9 @@ class MeasuredValue(object):
   on both of them.
   """
 
-  def __init__(self, name):
+  def __init__(self, name, measurement):
     self.name = name
+    self.measurement = measurement
     self.stored_value = None
     # Track this so we can differentiate between unset and set-to-None.
     self.value_set = False
@@ -223,6 +236,7 @@ class MeasuredValue(object):
           'save multiple values.', self.name, self.stored_value, value)
     self.stored_value = value
     self.value_set = True
+    self.measurement.Validate(self.value)
 
 
 class DimensionedMeasuredValue(object):
@@ -232,10 +246,11 @@ class DimensionedMeasuredValue(object):
   dict-like interface for indexing into dimensioned measurements.
   """
 
-  def __init__(self, name, num_dimensions):
+  def __init__(self, name, num_dimensions, measurement):
     assert num_dimensions > 0, 'Must have 1 or more dimensions'
     self.name = name
     self.num_dimensions = num_dimensions
+    self.measurement = measurement
     self.value_dict = collections.OrderedDict()
 
   def __iter__(self):  # pylint: disable=invalid-name
@@ -253,6 +268,7 @@ class DimensionedMeasuredValue(object):
           'Overriding previous measurement %s[%s] value of %s with %s',
           self.name, coordinates, self.value_dict[coordinates], value)
     self.value_dict[coordinates] = value
+    self.measurement.outcome = Outcome.PARTIALLY_SET
 
   def __getitem__(self, coordinates):  # pylint: disable=invalid-name
     # Let the AttributeError propagate as that's fairly intuitive to handle.

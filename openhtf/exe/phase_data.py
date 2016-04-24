@@ -143,10 +143,20 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     finally:
       # Serialize measurements and measured values, validate as we go.
       values = dict(test_state.phase_data.measurements)
+
+      # Initialize with already-validated and UNSET measurements.
       validated_measurements = {
-          name: measurement.Validate(values.get(name, None))
-          for name, measurement in measurement_map.iteritems()
+          name: measurement for name, measurement in measurement_map.iteritems()
+          if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
       }
+
+      # Validate multi-dimensional measurements now that we have all values.
+      validated_measurements.Update({
+          name: measurement.Validate(values[name])
+          for name, measurement in measurement_map.iteritems()
+          if measurement.outcome is measurements.Outcome.PARTIALLY_SET
+      })
+
       # Fill out and append the PhaseRecord to our test_record.
       test_state.running_phase_record.measured_values = values
       test_state.running_phase_record.measurements = validated_measurements
