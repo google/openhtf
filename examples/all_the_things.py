@@ -38,6 +38,7 @@ def example_monitor(example):
 
 
 @measures(
+    Measurement('unset_meas'),
     Measurement(
         'widget_type').MatchesRegex(r'.*Widget$').Doc(
             '''This measurement tracks the type of widgets.'''),
@@ -74,6 +75,7 @@ def set_measurements(test):
 
 
 @measures(
+    Measurement('unset_dims').WithDimensions(UOM['HERTZ']),
     Measurement('dimensions').WithDimensions(UOM['HERTZ']),
     Measurement('lots_of_dims').WithDimensions(
         UOM['HERTZ'], UOM['SECOND'], UOM['RADIAN']))

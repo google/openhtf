@@ -263,6 +263,12 @@ class DimensionedMeasuredValue(object):
       raise InvalidDimensionsError(
           'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
                                                            coordinates_len))
+
+    # Wrap single dimensions in a tuple so we can assume value_dict keys are
+    # always tuples later.
+    if self.num_dimensions == 1:
+      coordinates = (coordinates,)
+
     if coordinates in self.value_dict:
       _LOG.warning(
           'Overriding previous measurement %s[%s] value of %s with %s',
