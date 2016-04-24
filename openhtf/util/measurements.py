@@ -37,9 +37,12 @@ immediately after they are set.  Multidimensional measurements, however,
 don't usually make sense to validate until all data is available, so they
 instead enter a PARTIALLY_SET outcome state until the end of the test phase,
 at which point they are validated and become with PASS or FAIL.  Note that
-validators are only called at the end of the phase if at least one value was
-set in the multidimensional measurement, otherwise it remains UNSET.
+validators of dimensioned measurements are only called at the end of the phase
+if at least one value was set in the multidimensional measurement, otherwise it
+remains UNSET, so that outcome fields for all measurements may be PASS, FAIL,
+or UNSET.
 
+# TODO(madsci): Make validators.py example.
 See examples/validators.py for some examples on how to define and use custom
 measurement validators.
 
@@ -277,7 +280,10 @@ class DimensionedMeasuredValue(object):
     self.measurement.outcome = Outcome.PARTIALLY_SET
 
   def __getitem__(self, coordinates):  # pylint: disable=invalid-name
-    # Let the AttributeError propagate as that's fairly intuitive to handle.
+    # Wrap single dimensions in a tuple so we can assume value_dict keys are
+    # always tuples later.
+    if self.num_dimensions == 1:
+      coordinates = (coordinates,)
     return self.value_dict[coordinates]
 
   @property
@@ -289,7 +295,7 @@ class DimensionedMeasuredValue(object):
     value, the other elements will be the assocated coordinates.  The tuples
     are output in the order in which they were set.
     """
-    return [tuple(dimensions) + (value,) for dimensions, value in
+    return [dimensions + (value,) for dimensions, value in
             self.value_dict.iteritems()]
 
 
@@ -304,7 +310,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
   Measurements can't be added after initialization, only accessed and set.
 
   MeasuredValue values can be set as attributes (see below).  They can also be
-  read as attributes, but you get a DimensioendMeasuredValue object back if the
+  read as attributes, but you get a DimensionedMeasuredValue object back if the
   measurement accessed is dimensioned (this is how setting of dimensioned
   measurements works, and so is unavoidable).
 
@@ -360,8 +366,9 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
     if self._measurements[name].dimensions:
       raise InvalidDimensionsError(
           'Cannot set dimensioned measurement without indices')
-    self._values.setdefault(
-        name, self._measurements[name].MakeUnsetValue()).value = value
+    if name not in self._values:
+      self._values[name] = self._measurements[name].MakeUnsetValue()
+    self._values[name].value = value
 
   def __getitem__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
@@ -369,8 +376,9 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
     # __getitem__ is used to set dimensioned values via __setitem__ on the
     # DimensionedMeasuredValue object, so we can't do any checking here.
     if self._measurements[name].dimensions:
-      return self._values.setdefault(
-          name, self._measurements[name].MakeUnsetValue())
+      if name not in self._values:
+        self._values[name] = self._measurements[name].MakeUnsetValue()
+      return self._values[name]
 
     # For regular measurements, however, we can check that it's been set.
     if name not in self._values:
