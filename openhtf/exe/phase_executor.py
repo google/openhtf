@@ -182,7 +182,7 @@ class PhaseExecutor(object):
       self.test_state.pending_phases.pop(0)
       return
 
-    _LOG.info('Executing phase %s with plugs %s', phase.name, phase_data.plugs)
+    _LOG.info('Executing phase %s', phase.name)
 
     self.test_state.running_phase_record = test_record.PhaseRecord(
         phase.name, phase.code_info)

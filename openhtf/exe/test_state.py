@@ -52,7 +52,7 @@ class TestState(object):
 
   Args:
     test_data: openhtf.TestData instance describing the test to run.
-    plug_map: dict mapping plug name to instances.
+    plug_map: dict mapping plug type to instance.
     dut_id: DUT identifier, if it's known, otherwise None.
     station_id: Station identifier.
   """

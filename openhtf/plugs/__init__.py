@@ -145,8 +145,7 @@ def plug(update_kwargs=True, **plugs):
   for plug in plugs.itervalues():
     if not issubclass(plug, BasePlug):
       raise InvalidPlugError(
-          'Plug %s is not a subclass of plugs.BasePlug' %
-          plug)
+          'Plug %s is not a subclass of plugs.BasePlug' % plug)
 
   def result(func):
     """Wrap the given function and return the wrapper.
@@ -182,39 +181,21 @@ class PlugManager(object):
   the executor, and should not be instantiated outside the framework itself.
 
   Note this class is not thread-safe.  It should only ever be used by the
-  main framework thread anyway.  It should also not be instantiated directly.
-  Instead, an instance should be obtained by calling InitializeFromTypeMap().
+  main framework thread anyway.
 
   Attributes:
-    plug_map: Dict mapping name to instantiated plug.
+    plug_map: Dict mapping plug type to instantiated plug.
   """
 
-  def __init__(self, plug_map):
-    self.plug_map = plug_map
-
-  @classmethod
-  def InitializeFromTypeMap(cls, plug_type_map):
-    """Instantiate plugs so they can be accessed by test phases.
-
-    Plug instances can be accessed via the plugs attribute, which
-    is a dict mapping plug name to plug instance.
-
-    Args:
-      plug_type_map: Dict mapping plug name to type.
-
-    Returns:
-      An Initialized instance of PlugManager.
-    """
-    plug_map = {}
-    for plug, plug_type in plug_type_map.iteritems():
-      _LOG.info('Instantiating %s for plug %s', plug_type, plug)
-      try:
-        plug_map[plug] = plug_type()
-      except Exception:  # pylint: disable=broad-except
-        _LOG.exception('Exception instantiating %s for plug %s:',
-                       plug_type, plug)
-        raise
-    return cls(plug_map)
+  def __init__(self, plug_types):
+    self.plug_map = {}
+    try:
+      for plug_type in plug_types:
+        self.plug_map[plug_type] = plug_type()
+    except Exception:  # pylint: disable=broad-except
+      _LOG.exception('Exception insantiating plug type %s', plug_type)
+      self.TearDownPlugs()
+      raise
 
   def TearDownPlugs(self):
     """Call TearDown() on all instantiated plugs.

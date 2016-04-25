@@ -203,18 +203,9 @@ class TestData(collections.namedtuple(
     return super(TestData, cls).__new__(cls, phases, code_info, metadata)
 
   @property
-  def plug_type_map(self):
-    """Returns dict mapping name to plug type for all phases."""
-    plug_type_map = {}
-    for plug, plug_type in itertools.chain.from_iterable(
-        ((plug.name, plug.cls) for plug in phase.plugs)
-        for phase in self.phases):
-      if (plug in plug_type_map and
-          plug_type is not plug_type_map[plug]):
-        raise plugs.DuplicatePlugError(
-            'Duplicate plug with different type: %s' % plug)
-      plug_type_map[plug] = plug_type
-    return plug_type_map
+  def plug_types(self):
+    """Returns set of plug types required by this test."""
+    return {plug.cls for phase in self.phases for plug in phase.plugs}
 
 
 def CreateArgParser(add_help=False):
@@ -324,7 +315,7 @@ class PhaseInfo(mutablerecords.Record(
 
   def __call__(self, phase_data):
     kwargs = dict(self.extra_kwargs)
-    kwargs.update({plug.name: phase_data.plugs[plug.name]
+    kwargs.update({plug.name: phase_data.plug_map[plug.cls]
                    for plug in self.plugs if plug.update_kwargs})
     arg_info = inspect.getargspec(self.func)
     if len(arg_info.args) == len(kwargs) and not arg_info.varargs:

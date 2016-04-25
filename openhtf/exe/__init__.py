@@ -185,7 +185,7 @@ class TestExecutor(threads.KillableThread):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
-    return plugs.PlugManager.InitializeFromTypeMap(self._test.data.plug_type_map)
+    return plugs.PlugManager(self._test.data.plug_types)
 
   def _MakePhaseExecutor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""

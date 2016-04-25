@@ -53,12 +53,12 @@ class TestOpenhtf(unittest.TestCase):
     super(TestOpenhtf, self).__init__(unittest_name)
 
   def setUp(self):
-    self.test_plug = UnittestPlug()
+    self.test_plug_type = UnittestPlug
     conf.Load(target_name='unittest_openhtf', test_start='frontend_serial')
 
-  def test_plug_type_map(self):
+  def test_plug_map(self):
     test = openhtf.Test(phase_one, phase_two)
-    self.assertIn(type(self.test_plug), test.data.plug_type_map.itervalues())
+    self.assertIn(self.test_plug_type, test.data.plug_types)
 
   # Mock test execution.
   def testTestExecutor(self):
