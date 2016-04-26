@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ extend google.protobuf.EnumValueOptions {
   optional string uom_suffix = 66336003;
 }
 
+
 message Units {
   /*
     Units that can be used when specifying test parameters.
@@ -38,6 +39,7 @@ message Units {
     it's usually geared towards displaying the unit in the UI.
   */
   enum UnitCode {
+    // Next tag = 82;
     // NONE is the default, and for parameters which have no unit set.
     NONE = 1;
     PERCENT = 2 [(uom_code) = "P1", (uom_suffix) = "%"];
