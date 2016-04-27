@@ -73,6 +73,13 @@ def MeasureSeconds(test):
   test.measurements.validated_measurement = 5
 
 
+@measures(Measurement('dimensioned_measurement').WithDimensions(
+    UOM['SECOND'], UOM['HERTZ']))
+@measures('unset_dimensions', dimensions=(UOM['SECOND'], UOM['HERTZ']))
+def MeasureDimensions(test):
+  test.measurements.dimensioned_measurement[1, 2] = 5
+
+
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
           units=UOM['HERTZ'], validators=[util.validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
@@ -96,7 +103,7 @@ class TestMeasurements(unittest.TestCase):
     def _SaveResult(test_record):
       result.result = test_record
     test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
-                InlinePhase)
+                MeasureDimensions, InlinePhase)
     # No need to run the http_api, we just want to generate the test record.
     test.Configure(http_port=None)
     if self.UPDATE_OUTPUT:
