@@ -53,15 +53,15 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     logger: A python logger that goes to the testrun proto, with functions like
         debug, info, warn, error, and exception.
     state: A dictionary for passing state data along to future phases.
-    plugs: Dict mapping plug names to instances to use in phases.
+    plug_map: Dict mapping plug types to instances to use in phases.
     measurements: A measurements.Collection for setting measurement values.
     context: A contextlib.ExitStack, which simplifies context managers in a
         phase.  This stack is pop'd after each phase.
     test_record: The test_record.TestRecord for the currently running test.
   """
-  def __init__(self, logger, plugs, record):
+  def __init__(self, logger, plug_map, record):
     self.logger = logger
-    self.plugs = plugs
+    self.plug_map = plug_map
     self.test_record = record
     self.state = {}
     self.measurements = None  # Will be populated per-phase.
@@ -73,8 +73,8 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     return {'measurements': self.measurements,
             'attachments': self.attachments.keys(),
             'plugs': {
-                k: v.__module__ + '.' + v.__class__.__name__
-                for k, v in self.plugs.iteritems()}}
+                k.__module__ + '.' + k.__name__: str(v)
+                for k, v in self.plug_map.iteritems()}}
 
   def Attach(self, name, data, mimetype=None):
     """Store the given data as an attachment with the given name.
@@ -143,10 +143,20 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     finally:
       # Serialize measurements and measured values, validate as we go.
       values = dict(test_state.phase_data.measurements)
+
+      # Initialize with already-validated and UNSET measurements.
       validated_measurements = {
-          name: measurement.Validate(values.get(name, None))
-          for name, measurement in measurement_map.iteritems()
+          name: measurement for name, measurement in measurement_map.iteritems()
+          if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
       }
+
+      # Validate multi-dimensional measurements now that we have all values.
+      validated_measurements.update({
+          name: measurement.Validate(values[name])
+          for name, measurement in measurement_map.iteritems()
+          if measurement.outcome is measurements.Outcome.PARTIALLY_SET
+      })
+
       # Fill out and append the PhaseRecord to our test_record.
       test_state.running_phase_record.measured_values = values
       test_state.running_phase_record.measurements = validated_measurements

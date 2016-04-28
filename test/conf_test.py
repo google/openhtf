@@ -14,18 +14,17 @@
 
 import sys
 
+_old_argv = list(sys.argv)
 sys.argv.extend([
     '--config-value=flag_key=flag_value',
     '--config-value', 'other_flag=other_value',
-# You can specify arbitrary keys, but they'll get ignored if they aren't
-# actually declared anywhere (included here to make sure of that).
+    # You can specify arbitrary keys, but they'll get ignored if they aren't
+    # actually declared anywhere (included here to make sure of that).
     '--config_value=undeclared_flag=who_cares',
 ])
 
 import os.path
 import unittest
-
-import gflags
 
 from openhtf import conf
 
@@ -39,6 +38,10 @@ conf.Declare('string_default', default_value='default')
 conf.Declare('no_default')
 
 
+def tearDownModule():
+    sys.argv = _old_argv
+
+
 class TestConf(unittest.TestCase):
 
   YAML_FILENAME = os.path.join(os.path.dirname(__file__), 'test_config.yaml')
@@ -46,12 +49,13 @@ class TestConf(unittest.TestCase):
   NOT_A_DICT = os.path.join(os.path.dirname(__file__), 'bad_config.yaml')
 
   def tearDown(self):
-    gflags.FLAGS.Reset()
+    conf._flags.config_file = None
     conf.Reset()
 
   def testYamlConfig(self):
-    setattr(gflags.FLAGS, 'config-file', self.YAML_FILENAME)
-    conf.Reset()
+    with open(self.YAML_FILENAME, 'rb') as yamlfile:
+      conf._flags.config_file = yamlfile
+      conf.Reset()
     self.assertEquals('yaml_test_value', conf.yaml_test_key)
 
   def testLoadOverride(self):
@@ -117,15 +121,15 @@ class TestConf(unittest.TestCase):
       conf.Declare('Invalid')
 
   def testBadConfigFile(self):
-    setattr(gflags.FLAGS, 'config-file', self.NOT_A_DICT)
-    with self.assertRaises(conf.ConfigurationInvalidError):
-      conf.Reset()
-    setattr(gflags.FLAGS, 'config-file', self.BAD_FORMAT)
-    with self.assertRaises(conf.ConfigurationInvalidError):
-      conf.Reset()
-    setattr(gflags.FLAGS, 'config-file', 'notfound')
-    with self.assertRaises(conf.ConfigurationInvalidError):
-      conf.Reset()
+    with open(self.NOT_A_DICT, 'rb') as yamlfile:
+      conf._flags.config_file = yamlfile
+      with self.assertRaises(conf.ConfigurationInvalidError):
+        conf.Reset()
+
+    with open(self.BAD_FORMAT, 'rb') as yamlfile:
+      conf._flags.config_file = yamlfile
+      with self.assertRaises(conf.ConfigurationInvalidError):
+        conf.Reset()
 
   def testInjectPositionalArgs(self):
     @conf.InjectPositionalArgs

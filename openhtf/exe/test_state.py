@@ -27,6 +27,7 @@ import openhtf
 from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.io import test_record
+from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import measurements
 
@@ -50,29 +51,31 @@ class TestState(object):
   """This class handles tracking the state of the test.
 
   Args:
-    test: openhtf.Test instance describing the test to run.
-    plug_map: dict mapping plug name to instances.
+    test_data: openhtf.TestData instance describing the test to run.
+    plug_map: dict mapping plug type to instance.
     dut_id: DUT identifier, if it's known, otherwise None.
+    station_id: Station identifier.
   """
   State = Enum('State', ['CREATED', 'RUNNING', 'COMPLETED'])
 
-  def __init__(self, test, plug_map, dut_id, station_id):
+  def __init__(self, test_data, plug_map, dut_id, station_id):
     self._state = self.State.CREATED
     self.record = test_record.TestRecord(
-        dut_id=dut_id, station_id=station_id, code_info=test.code_info)
+        dut_id=dut_id, station_id=station_id, code_info=test_data.code_info,
+        metadata=test_data.metadata)
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)
     self.logger.addHandler(self._record_handler)
     self.phase_data = phase_data.PhaseData(self.logger, plug_map, self.record)
     self.running_phase_record = None
-    self.pending_phases = list(test.phases)
+    self.pending_phases = list(test_data.phases)
 
   def __del__(self):
     self.logger.removeHandler(self._record_handler)
 
   def AsJSON(self):
     """Return JSON representation of the test's serialized state."""
-    return json.dumps(util.ConvertToBaseTypes(self))
+    return json.dumps(data.ConvertToBaseTypes(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
@@ -83,6 +86,19 @@ class TestState(object):
         'running_phase_record': self.running_phase_record,
         'pending_phases': [(phase.func.__name__, phase.func.__doc__)
                            for phase in self.pending_phases]}
+
+  def GetLastRunPhaseName(self):
+    """Get the name of the currently running phase, or None.
+
+    Note that this name is not guaranteed to still be accurate by the time this
+    method returns, so this should only be used for log messages/user display
+    and not for programmatic purposes.
+    """
+    if self.running_phase_record:
+      # self.running_phase_record never gets reset *back* to None, so at worst
+      # this might be a little out-of-date, but we don't have to lock at least.
+      return self.running_phase_record.name
+    return None
 
   def SetStateFromPhaseOutcome(self, phase_outcome):
     """Set our internal state based on the given phase outcome.
@@ -151,7 +167,8 @@ class TestState(object):
     return self.record
 
   def __str__(self):
-    return '<%s: %s@%s>' % (
-        type(self).__name__, self.record.dut_id, self.record.station_id
+    return '<%s: %s@%s Running Phase: %s>' % (
+        type(self).__name__, self.record.dut_id, self.record.station_id,
+        self.GetLastRunPhaseName(),
     )
   __repr__ = __str__

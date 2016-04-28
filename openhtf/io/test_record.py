@@ -18,20 +18,17 @@
 
 import collections
 import inspect
+import logging
 import os
 
-import gflags
 import mutablerecords
 
 from enum import Enum
 
 from openhtf import util
+from openhtf.util import logs
 
-gflags.DEFINE_bool(
-    'capture_test_source', True,
-    'If True, inspect test source and save it in the output.')
-
-FLAGS = gflags.FLAGS
+_LOG = logging.getLogger(__name__)
 
 
 class InvalidMeasurementDimensions(Exception):
@@ -39,11 +36,10 @@ class InvalidMeasurementDimensions(Exception):
 
 
 Attachment = collections.namedtuple('Attachment', 'data mimetype')
-LogRecord = collections.namedtuple(
-    'LogRecord', 'level logger_name source lineno timestamp_millis message')
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
 Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT'])
+# LogRecord is in openhtf.util.logs.LogRecord.
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
@@ -85,6 +81,16 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
   """
 
 
+def _GetSourceSafely(obj):
+  try:
+    return inspect.getsource(obj)
+  except IOError:
+    logs.LogOnce(
+        _LOG.warning,
+        'Unable to load source code for %s. Only logging this once.', obj)
+    return ''
+
+
 class CodeInfo(mutablerecords.Record(
     'CodeInfo', ['name', 'docstring', 'sourcecode'])):
   """Information regarding the running tester code."""
@@ -97,10 +103,10 @@ class CodeInfo(mutablerecords.Record(
     #  2+: The function calling 'you' (likely in the framework).
     frame, filename = inspect.stack(context=0)[levels_up][:2]
     module = inspect.getmodule(frame)
-    source = inspect.getsource(frame) if FLAGS.capture_test_source else ''
+    source = _GetSourceSafely(frame)
     return cls(os.path.basename(filename), inspect.getdoc(module), source)
 
   @classmethod
   def ForFunction(cls, func):
-    source = inspect.getsource(func) if FLAGS.capture_test_source else ''
+    source = _GetSourceSafely(func)
     return cls(func.__name__, inspect.getdoc(func), source)

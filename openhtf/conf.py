@@ -121,6 +121,7 @@ Loaded configuration values may be purged via the Reset() method, but this
 should only be used for testing purposes.
 """
 
+import argparse
 import functools
 import inspect
 import logging
@@ -128,22 +129,23 @@ import sys
 import threading
 import yaml
 
-import gflags
 import mutablerecords
 
+from openhtf.util import argv
 from openhtf.util import threads
 
 # If provided, --config-file will cause the given file to be Load()ed when the
 # conf module is initially imported.
-gflags.DEFINE_string('config-file', None,
-                     'File from which to load configuration values.')
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument(
+    '--config-file', type=argparse.FileType('r'),
+    help='File from which to load configuration values.')
 
-gflags.DEFINE_multistring(
-    'config-value', [], 'Allows specifying a configuration key=value '
-    'on the command line.  The format should be --config-value=key=value. '
-    'This value will override any loaded value, and will be a string.')
-
-FLAGS = gflags.FLAGS
+ARG_PARSER.add_argument(
+    '--config-value', action='append', default=[],
+    help='Allows specifying a configuration key=value on the command line. '
+    'The format should be --config-value=key=value. This value will override '
+    'any loaded value, and will be a string.')
 
 
 class Configuration(object):  # pylint: disable=too-many-instance-attributes
@@ -181,10 +183,10 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       self.has_default = 'default_value' in kwargs
   # pylint: enable=invalid-name,bad-super-call,too-few-public-methods
 
-  __slots__ = ('_flags', '_logger', '_lock', '_functools', '_modules',
-               '_declarations', '_flag_values', '_loaded_values')
+  __slots__ = ('_logger', '_lock', '_modules', '_declarations',
+               '_flag_values', '_flags', '_loaded_values', 'ARG_PARSER')
 
-  def __init__(self, flags, logger, lock, _functools, **kwargs):
+  def __init__(self, logger, lock, parser, **kwargs):
     """Initializes the configuration state.
 
     We have to pull everything we need from global scope into here because we
@@ -194,73 +196,24 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     Args:
       logger: Logger to use for logging messages within this class.
       lock: Threading.Lock to use for locking access to config values.
-      _functools: Reference to the functools module so we can use it internally
-          for decorating methods.
       **kwargs: Modules we need to access within this class.
     """
-    self._flags = flags
     self._logger = logger
     self._lock = lock
-    self._functools = _functools
     self._modules = kwargs
     self._declarations = {}
+    self.ARG_PARSER = parser
 
     # Parse just the flags we care about, since this happens at import time.
-    sys.argv = self._ParseSingleFlag(sys.argv, 'config-file')
-    sys.argv = self._ParseSingleFlag(sys.argv, 'config-value')
+    self._flags, _ = parser.parse_known_args()
 
     # Populate flag_values from flags now.
     self._flag_values = {}
-    for keyval in flags['config-value'].value:
+    for keyval in self._flags.config_value:
       self._flag_values.setdefault(*keyval.split('=', 1))
 
     # Initialize self._loaded_values and load from --config-file if it's set.
     self.Reset()
-
-  def _ParseSingleFlag(self, argv, flag_name):
-    """Parse a single gflag from argv.
-
-    This duplicates some of the parsing done in gflags, but we do it here so we
-    can access certain flags at module import time, without forcing the user to
-    have to parse all commandline flags beforehand.  We also don't want to parse
-    all commandline flags as a side effect of loading this module, so we do this
-    bit of hackery to parse just the ones we care about.
-
-    Args:
-      argv: sys.argv to parse, new argv will be returned, like gflags.FLAGS().
-      flag_name: flag name to parse for, will raise if it's not registered.
-    """
-    if len(argv) < 2:
-      return argv
-
-    flag = self._flags.FlagDict()[flag_name]
-    indices_to_delete = set()
-    for idx, arg in enumerate(argv[1:], start=1):
-      if arg.startswith('-'):
-        arg = arg.lstrip('-')
-        if '=' in arg:
-          # '--config-file=foo.json' syntax, split on the first '='.
-          name, value = arg.split('=', 1)
-        elif idx + 1 >= len(argv):
-          # If no value is given, skip this token.  gflags actually raises in
-          # this case, but we'll just ignore it and let gflags do the raising
-          # when the arguments are parsed for real.
-          continue
-        else:
-          # '--config-file foo.json' syntax, grab the entire next arg.
-          name, value = arg, argv[idx + 1]
-        # If this flag matches the name we want, set the value.
-        if name == flag_name:
-          flag.Parse(value)
-          indices_to_delete.add(idx)
-          if '=' not in arg:
-            indices_to_delete.add(idx + 1)
-
-    # If we found at least one value, mark the flag as not using default.
-    flag.using_default_value = False
-
-    # Return a copy of argv, minus any args we parsed.
-    return [v for i, v in enumerate(argv) if i not in indices_to_delete]
 
   @staticmethod
   def _IsValidKey(key):
@@ -354,37 +307,29 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     """
     # Populate loaded_values with values from --config-file, if it was given.
     self._loaded_values = {}
-    if self._flags['config-file'].value:
-      self.LoadFromFile(self._flags['config-file'].value,
-                        _allow_undeclared=True)
+    if self._flags.config_file is not None:
+      self.LoadFromFile(self._flags.config_file, _allow_undeclared=True)
 
-  def LoadFromFile(self, filename, _override=True, _allow_undeclared=False):
+  def LoadFromFile(self, yamlfile, _override=True, _allow_undeclared=False):
     """Loads the configuration from a file.
 
     Parsed contents must be a single dict mapping config key to value.
 
     Args:
-      config_file: The file name to load configuration from.
+      yamlfile: The opened file object to load configuration from.
       See LoadFromDict() for other args' descriptions.
 
     Raises:
       ConfigurationInvalidError: If configuration file can't be read, or can't
           be parsed as either YAML (or JSON, which is a subset of YAML).
     """
-    self._logger.info('Loading configuration from file: %s', filename)
+    self._logger.info('Loading configuration from file: %s', yamlfile)
 
     try:
-      with open(filename, 'rb') as yaml_file:
-        config_data = yaml_file.read()
-    except IOError as exception:
-      self._logger.exception('Configuration file load failed: %s', filename)
-      raise self.ConfigurationInvalidError(filename, exception)
-
-    try:
-      parsed_yaml = self._modules['yaml'].safe_load(config_data)
+      parsed_yaml = self._modules['yaml'].safe_load(yamlfile.read())
     except self._modules['yaml'].YAMLError as exception:
       raise self.ConfigurationInvalidError(
-          'Failed to load from %s as YAML' % filename, exception)
+          'Failed to load from %s as YAML' % yamlfile, exception)
 
     if not isinstance(parsed_yaml, dict):
       # Parsed YAML, but it's not a dict.
@@ -483,13 +428,14 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     keyword_arg_index = -1 * len(argspec.defaults or [])
     arg_names = argspec.args[:keyword_arg_index or None]
     kwarg_names = argspec.args[len(arg_names):]
+    functools = self._modules['functools']
 
     # Create the actual method wrapper, all we do is update kwargs.  Note we
     # don't pass any *args through because there can't be any - we've filled
     # them all in with values from the configuration.  Any positional args that
     # are missing from the configuration *must* be explicitly specified as
     # kwargs.
-    @self._functools.wraps(method)
+    @functools.wraps(method)
     def method_wrapper(**kwargs):
       """Wrapper that pulls values from openhtf.conf."""
       # Check for keyword args with names that are in the config so we can warn.
@@ -513,7 +459,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     # We have to check for a 'self' parameter explicitly because Python doesn't
     # pass it as a keyword arg, it passes it as the first positional arg.
     if argspec.args[0] == 'self':
-      @self._functools.wraps(method)
+      @functools.wraps(method)
       def SelfWrapper(self, **kwargs):  # pylint: disable=invalid-name
         """Wrapper that pulls values from openhtf.conf."""
         kwargs['self'] = self
@@ -524,5 +470,5 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 # Swap out the module for a singleton instance of Configuration so we can
 # provide __getattr__ and __getitem__ functionality at the module level.
 sys.modules[__name__] = Configuration(
-    FLAGS, logging.getLogger(__name__), threading.RLock(), functools,
-    inspect=inspect, yaml=yaml)
+    logging.getLogger(__name__), threading.RLock(), ARG_PARSER,
+    functools=functools, inspect=inspect, yaml=yaml)

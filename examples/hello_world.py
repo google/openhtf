@@ -15,7 +15,16 @@
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
-python hello_world.py
+
+  python hello_world.py
+
+Afterwards, take a look at the hello_world.json output file.  This will
+give you a basic idea of what a minimal test outputs.
+
+For more information on measurements, see the measurements.py example.
+
+TODO(someone): Write an output example.
+For more information on output, see the output.py example.
 """
 
 # Import this output mechanism as it's the specific one we want to use.
@@ -65,8 +74,8 @@ if __name__ == '__main__':
   # mechanisms can be implemented, but for now we'll just keep it simple.
   # This will always output to the same ./hello_world.json file, formatted
   # slightly for human readability.
-  test.AddOutputCallback(
-      json_factory.OutputToJSON('./hello_world.json', indent=4))
+  test.AddOutputCallbacks(
+      json_factory.OutputToJSON('./hello_world.json', indent=2))
 
   # PromptForTestStart prompts the operator for a DUT ID, a unique identifier
   # for the DUT (Device Under Test).  OpenHTF requires that a DUT ID is set
