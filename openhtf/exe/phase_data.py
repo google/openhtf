@@ -110,7 +110,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
         the given name.
       IOError: Raised if the given filename couldn't be opened.
     """
-    with open(filename, 'r') as f:  # pylint: disable=invalid-name
+    with open(filename, 'rb') as f:  # pylint: disable=invalid-name
       self.Attach(
           name if name is not None else filename, f.read(),
           mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
