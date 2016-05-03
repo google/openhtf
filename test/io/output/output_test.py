@@ -41,7 +41,7 @@ import google.protobuf.text_format as text_format
 
 from openhtf.io.output import json_factory
 from openhtf.io.output import mfg_inspector
-from openhtf.io.proto import testrun_pb2
+from openhtf.io.proto import test_runs_pb2
 from openhtf.util import data
 
 
@@ -64,7 +64,7 @@ class TestOutput(unittest.TestCase):
     with open(_LocalFilename('record.json'), 'rb') as jsonfile:
       cls.json = jsonfile.read()
     with open(_LocalFilename('record.testrun'), 'rb') as testrunfile:
-      cls.testrun = testrun_pb2.TestRun.FromString(testrunfile.read())
+      cls.testrun = test_runs_pb2.TestRun.FromString(testrunfile.read())
 
   def testJson(self):
     json_output = StringIO()
@@ -82,7 +82,7 @@ class TestOutput(unittest.TestCase):
       with open(_LocalFilename('record.testrun'), 'wb') as testrunfile:
         testrunfile.write(testrun_output.getvalue())
     else:
-      actual = testrun_pb2.TestRun.FromString(testrun_output.getvalue())
+      actual = test_runs_pb2.TestRun.FromString(testrun_output.getvalue())
       data.AssertEqualsAndDiff(
           text_format.MessageToString(self.testrun),
           text_format.MessageToString(actual))

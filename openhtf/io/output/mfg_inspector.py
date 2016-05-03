@@ -9,7 +9,8 @@ import threading
 import zlib
 
 from openhtf.io.output import json_factory
-from openhtf.io.proto import testrun_pb2
+from openhtf.io.proto import guzzle_pb2
+from openhtf.io.proto import test_runs_pb2
 from openhtf.io.proto import units_pb2
 
 from openhtf.io import test_record
@@ -19,19 +20,20 @@ from openhtf.util import validators
 
 # pylint: disable=no-member
 MIMETYPE_MAP = {
-  'image/jpeg': testrun_pb2.InformationParameter.JPG,
-  'image/png': testrun_pb2.InformationParameter.PNG,
-  'audio/x-wav': testrun_pb2.InformationParameter.WAV,
-  'text/plain': testrun_pb2.InformationParameter.TEXT_UTF8,
-  'image/tiff': testrun_pb2.InformationParameter.TIFF,
-  'video/mp4': testrun_pb2.InformationParameter.MP4,
+  'image/jpeg': test_runs_pb2.JPG,
+  'image/png': test_runs_pb2.PNG,
+  'audio/x-wav': test_runs_pb2.WAV,
+  'text/plain': test_runs_pb2.TEXT_UTF8,
+  'image/tiff': test_runs_pb2.TIFF,
+  'video/mp4': test_runs_pb2.MP4,
 }
 OUTCOME_MAP = {
-  test_record.Outcome.ERROR: testrun_pb2.ERROR,
-  test_record.Outcome.FAIL: testrun_pb2.FAIL,
-  test_record.Outcome.PASS: testrun_pb2.PASS,
-  test_record.Outcome.TIMEOUT: testrun_pb2.ERROR,
+  test_record.Outcome.ERROR: test_runs_pb2.ERROR,
+  test_record.Outcome.FAIL: test_runs_pb2.FAIL,
+  test_record.Outcome.PASS: test_runs_pb2.PASS,
+  test_record.Outcome.TIMEOUT: test_runs_pb2.ERROR,
 }
+
 UOM_CODE_MAP = {
   u.GetOptions().Extensions[units_pb2.uom_code]: num
   for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
@@ -89,7 +91,7 @@ def _AttachJson(record, testrun):
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = record_json
   # pylint: disable=no-member
-  testrun_param.type = testrun_pb2.InformationParameter.TEXT_UTF8
+  testrun_param.type = test_runs_pb2.TEXT_UTF8
   # pylint: enable=no-member
 
 
@@ -106,7 +108,7 @@ def _ExtractAttachments(phase, testrun, used_parameter_names):
       testrun_param.type = MIMETYPE_MAP[mimetype]
     else:
       # pylint: disable=no-member
-      testrun_param.type = testrun_pb2.InformationParameter.BINARY
+      testrun_param.type = test_runs_pb2.BINARY
       # pylint: enable=no-member
 
 
@@ -127,7 +129,7 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters):
     while mangled_name in mangled_parameters:
       logging.warning('Mangled name %s already in use', mangled_name)
       mangled_name += '_'
-    mangled_param = testrun_pb2.TestParameter()
+    mangled_param = test_runs_pb2.TestParameter()
     mangled_param.name = mangled_name
     mangled_param.numeric_value = float(current_value[-1])
     if measurement.units:
@@ -163,17 +165,17 @@ def _ExtractParameters(record, testrun, used_parameter_names):
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
       if measurement.outcome == measurements.Outcome.PASS:
-        testrun_param.status = testrun_pb2.PASS
+        testrun_param.status = test_runs_pb2.PASS
       else:
         # FAIL or UNSET results in a FAIL in the TestRun output.
-        testrun_param.status = testrun_pb2.FAIL
+        testrun_param.status = test_runs_pb2.FAIL
       if measurement.docstring:
         testrun_param.description = measurement.docstring
       if measurement.units:
         testrun_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
 
       if name not in phase.measured_values:
-        testrun_param.status = testrun_pb2.ERROR
+        testrun_param.status = test_runs_pb2.ERROR
         continue
       value = phase.measured_values[name]
       if measurement.dimensions is None:
@@ -195,7 +197,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
             testrun_param.description += '\nValidator: ' + str(validator)
       else:
         _MangleMeasurement(name, value, measurement, mangled_parameters)
-      if testrun_param.status == testrun_pb2.FAIL:
+      if testrun_param.status == test_runs_pb2.FAIL:
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
         if measurement.dimensions is None:
@@ -227,15 +229,15 @@ def _AddLogLines(record, testrun):
     testrun_log.levelno = log.level
     # pylint: disable=no-member
     if log.level <= logging.DEBUG:
-      testrun_log.level = testrun_pb2.TestRunLogMessage.DEBUG
+      testrun_log.level = test_runs_pb2.TestRunLogMessage.DEBUG
     elif log.level <= logging.INFO:
-      testrun_log.level = testrun_pb2.TestRunLogMessage.INFO
+      testrun_log.level = test_runs_pb2.TestRunLogMessage.INFO
     elif log.level <= logging.WARNING:
-      testrun_log.level = testrun_pb2.TestRunLogMessage.WARNING
+      testrun_log.level = test_runs_pb2.TestRunLogMessage.WARNING
     elif log.level <= logging.ERROR:
-      testrun_log.level = testrun_pb2.TestRunLogMessage.ERROR
+      testrun_log.level = test_runs_pb2.TestRunLogMessage.ERROR
     elif log.level <= logging.CRITICAL:
-      testrun_log.level = testrun_pb2.TestRunLogMessage.CRITICAL
+      testrun_log.level = test_runs_pb2.TestRunLogMessage.CRITICAL
     # pylint: enable=no-member
     testrun_log.log_source = log.source
     testrun_log.lineno = log.lineno
@@ -257,7 +259,7 @@ def _TestRunFromTestRecord(record):
 
   Returns:  An instance of the TestRun proto for the given record.
   """
-  testrun = testrun_pb2.TestRun()
+  testrun = test_runs_pb2.TestRun()
   _PopulateHeader(record, testrun)
   _AttachJson(record, testrun)
 
@@ -355,7 +357,7 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
   @staticmethod
   def UploadTestRun(testrun, destination, credentials=None):
     """Uploads the TestRun at a particular file.
-  
+
     Args:
       testrun: TestRun proto to upload.
       credentials: An OAuth2Credentials object to use for authenticated uploads.
@@ -365,12 +367,12 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
       if credentials.access_token_expired:
         credentials.refresh(http)
       credentials.authorize(http)
-  
-    test_run_envelope = testrun_pb2.TestRunEnvelope()
+
+    test_run_envelope = guzzle_pb2.TestRunEnvelope()
     test_run_envelope.payload = zlib.compress(testrun.SerializeToString())
-    test_run_envelope.payload_type = testrun_pb2.COMPRESSED_TEST_RUN
+    test_run_envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
     serialized_envelope = test_run_envelope.SerializeToString()
-  
+
     _, content = http.request(destination, 'POST', serialized_envelope)
     if content.split('\n', 1)[0] != 'OK':
       results = json.loads(content)
