@@ -321,8 +321,8 @@ class PhaseInfo(mutablerecords.Record(
 
   def __call__(self, phase_data):
     kwargs = dict(self.extra_kwargs)
-    kwargs.update({plug.name: phase_data.plug_map[plug.cls]
-                   for plug in self.plugs if plug.update_kwargs})
+    kwargs.update(phase_data.plug_manager.ProvidePlugs(
+        (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
     if len(arg_info.args) == len(kwargs) and not arg_info.varargs:
       # Underlying function has no room for phase_data as an arg. If it expects

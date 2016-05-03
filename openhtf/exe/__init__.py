@@ -166,7 +166,7 @@ class TestExecutor(threads.KillableThread):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
-        self._test_data, self._plug_mgr.plug_map, dut_id, conf.station_id)
+        self._test_data, self._plug_mgr, dut_id, conf.station_id)
 
   def _InitializePlugs(self, suppressor):
     """Perform some initialization and create a PlugManager."""
