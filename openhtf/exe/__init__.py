@@ -23,7 +23,6 @@ from enum import Enum
 import contextlib2 as contextlib
 
 from openhtf import conf
-from openhtf import plugs
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
 from openhtf.io import user_input
@@ -67,10 +66,11 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT', 'FINISHING'])
 
-  def __init__(self, test_data):
+  def __init__(self, test_data, plug_manager):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self._test_data = test_data
+    self._plug_mgr = plug_manager
     self._test_start = None
     self._lock = threading.Lock()
     self._status = self.FrameworkStatus.CREATED
@@ -126,7 +126,7 @@ class TestExecutor(threads.KillableThread):
       # we don't want to hold self._lock while we wait.
       dut_id = self._WaitForTestStart(suppressor)
       self._status = self.FrameworkStatus.INITIALIZING
-      plug_manager = self._MakePlugManager(suppressor)
+      self._InitializePlugs(suppressor)
 
       with self._lock:
         if not self._exit_stack:
@@ -134,14 +134,14 @@ class TestExecutor(threads.KillableThread):
           # call to Stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          plug_manager.TearDownPlugs()
+          self._plug_mgr.TearDownPlugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(plug_manager.TearDownPlugs)
+        exit_stack.callback(self._plug_mgr.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
-        self._test_state = self._MakeTestState(dut_id, plug_manager, suppressor)
+        self._test_state = self._MakeTestState(dut_id, suppressor)
         executor = self._MakePhaseExecutor(exit_stack, suppressor)
 
       # Everything is set, set status and begin test execution.  Note we don't
@@ -162,17 +162,17 @@ class TestExecutor(threads.KillableThread):
     suppressor.failure_reason = 'TEST_START failed to complete.'
     return self._test_start()
 
-  def _MakeTestState(self, dut_id, plug_manager, suppressor):
+  def _MakeTestState(self, dut_id, suppressor):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
-        self._test_data, plug_manager.plug_map, dut_id, conf.station_id)
+        self._test_data, self._plug_mgr.plug_map, dut_id, conf.station_id)
 
-  def _MakePlugManager(self, suppressor):
+  def _InitializePlugs(self, suppressor):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
-    return plugs.PlugManager(self._test_data.plug_types)
+    self._plug_mgr.InitializePlugs(self._test_data.plug_types)
 
   def _MakePhaseExecutor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""

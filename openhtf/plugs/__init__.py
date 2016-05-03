@@ -90,6 +90,7 @@ This will result in the ExamplePlug being constructed with
 self._my_config having a value of 'my_config_value'.
 """
 
+import collections
 import functools
 import logging
 
@@ -187,7 +188,7 @@ class PlugManager(object):
     plug_map: Dict mapping plug type to instantiated plug.
   """
 
-  def __init__(self, plug_types):
+  def InitializePlugs(self, plug_types):
     self.plug_map = {}
     try:
       for plug_type in plug_types:

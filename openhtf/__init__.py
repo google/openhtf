@@ -82,7 +82,7 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
-    self._executor = exe.TestExecutor(self._test_data)
+    self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager())
     self._stopped = False
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
