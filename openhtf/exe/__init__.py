@@ -67,14 +67,11 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT', 'FINISHING'])
 
-  def __init__(self, test):
+  def __init__(self, test_data):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
-    self._test = test
+    self._test_data = test_data
     self._test_start = None
-    self._exit_stack = None
-    self._test_state = None
-    self._output_thread = None
     self._lock = threading.Lock()
     self._status = self.FrameworkStatus.CREATED
 
@@ -107,24 +104,21 @@ class TestExecutor(threads.KillableThread):
     """Return the current TestState object."""
     return self._test_state
 
-  def _ResetAttributes(self):
-    """Reset local stateful attributes to None."""
+  def _ThreadProc(self):
+    """Handles one whole test from start to finish."""
     self._exit_stack = None
     self._test_state = None
     self._output_thread = None
 
-  def _ThreadProc(self):
-    """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack, \
         LogSleepSuppress() as suppressor:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self._test.data.code_info.name)
+      _LOG.info('Starting test %s', self._test_data.code_info.name)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
         # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
-        exit_stack.callback(self._ResetAttributes)
 
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
       # self._lock while we do this, or else calls to Stop() will deadlock.
@@ -144,7 +138,6 @@ class TestExecutor(threads.KillableThread):
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self._OutputTestRecord)
         exit_stack.callback(plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
@@ -161,12 +154,6 @@ class TestExecutor(threads.KillableThread):
       self._ExecuteTestPhases(executor)
       self._status = self.FrameworkStatus.FINISHING
 
-  def _OutputTestRecord(self):
-    """Output the test record by invoking output callbacks."""
-    if self._test_state:
-      self._test.OutputTestRecord(
-          self._test_state.GetFinishedRecord())
-
   def _WaitForTestStart(self, suppressor):
     """Wait for the test start trigger to return a DUT ID."""
     if self._test_start is None:
@@ -179,13 +166,13 @@ class TestExecutor(threads.KillableThread):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
-        self._test.data, plug_manager.plug_map, dut_id, conf.station_id)
+        self._test_data, plug_manager.plug_map, dut_id, conf.station_id)
 
   def _MakePlugManager(self, suppressor):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
-    return plugs.PlugManager(self._test.data.plug_types)
+    return plugs.PlugManager(self._test_data.plug_types)
 
   def _MakePhaseExecutor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""

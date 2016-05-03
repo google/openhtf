@@ -82,7 +82,7 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
-    self._executor = exe.TestExecutor(self)
+    self._executor = exe.TestExecutor(self._test_data)
     self._stopped = False
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
@@ -103,8 +103,13 @@ class Test(object):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def OutputTestRecord(self, record):
+  def OutputTestRecord(self):
     """Feed the record of this test to all output modules."""
+    test_state = self._executor.GetState()
+    if not test_state:
+      return
+
+    record = test_state.GetFinishedRecord()
     for output_cb in self._test_options.output_callbacks:
       output_cb(record)
 
@@ -174,6 +179,7 @@ class Test(object):
     try:
       self._executor.Wait()
     finally:
+      self.OutputTestRecord()
       if http_server:
         http_server.Stop()
 
