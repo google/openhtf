@@ -70,7 +70,7 @@ class TestExecutor(threads.KillableThread):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self._test_data = test_data
-    self._plug_mgr = plug_manager
+    self._plug_manager = plug_manager
     self._test_start = None
     self._lock = threading.Lock()
     self._status = self.FrameworkStatus.CREATED
@@ -134,11 +134,11 @@ class TestExecutor(threads.KillableThread):
           # call to Stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          self._plug_mgr.TearDownPlugs()
+          self._plug_manager.TearDownPlugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self._plug_mgr.TearDownPlugs)
+        exit_stack.callback(self._plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
         self._test_state = self._MakeTestState(dut_id, suppressor)
@@ -166,13 +166,13 @@ class TestExecutor(threads.KillableThread):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
-        self._test_data, self._plug_mgr, dut_id, conf.station_id)
+        self._test_data, self._plug_manager, dut_id, conf.station_id)
 
   def _InitializePlugs(self, suppressor):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
-    self._plug_mgr.InitializePlugs(self._test_data.plug_types)
+    self._plug_manager.InitializePlugs(self._test_data.plug_types)
 
   def _MakePhaseExecutor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""

@@ -14,7 +14,10 @@
 
 import unittest
 
+import mock
+
 import openhtf
+from openhtf import plugs
 
 
 def PlainFunc():
@@ -32,17 +35,20 @@ def ExtraArgFunc(input=None):
 
 class TestPhaseInfo(unittest.TestCase):
 
+  def setUp(self):
+      self._phase_data = mock.Mock(plug_manager=plugs.PlugManager())
+
   def testBasics(self):
       phase = openhtf.PhaseInfo.WrapOrCopy(PlainFunc)
       self.assertIs(phase.func, PlainFunc)
       self.assertEqual(0, len(phase.plugs))
       self.assertEqual('PlainFunc', phase.name)
       self.assertEqual('Plain Docstring', phase.doc)
-      phase(None)
+      phase(self._phase_data)
 
       test_phase = openhtf.PhaseInfo.WrapOrCopy(NormalTestPhase)
       self.assertEqual('NormalTestPhase', test_phase.name)
-      self.assertEqual('return value', test_phase(None))
+      self.assertEqual('return value', test_phase(self._phase_data))
 
   def testMultiplePhases(self):
       phase = openhtf.PhaseInfo.WrapOrCopy(PlainFunc)
@@ -54,11 +60,11 @@ class TestPhaseInfo(unittest.TestCase):
   def testWithArgs(self):
       phase = openhtf.PhaseInfo.WrapOrCopy(ExtraArgFunc)
       phase = phase.WithArgs(input='input arg')
-      result = phase(None)
+      result = phase(self._phase_data)
       self.assertEqual('input arg', result)
 
       second_phase = phase.WithArgs(input='second input')
-      first_result = phase(None)
-      second_result = second_phase(None)
+      first_result = phase(self._phase_data)
+      second_result = second_phase(self._phase_data)
       self.assertEqual('input arg', first_result)
       self.assertEqual('second input', second_result)

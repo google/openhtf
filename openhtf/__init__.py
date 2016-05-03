@@ -103,15 +103,14 @@ class Test(object):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def OutputTestRecord(self):
+  def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
-    test_state = self._executor.GetState()
-    if not test_state:
-      return
-
-    record = test_state.GetFinishedRecord()
     for output_cb in self._test_options.output_callbacks:
-      output_cb(record)
+      try:
+        output_cb(record)
+      except Exception:
+        _LOG.exception(
+            'Output callback %s errored out; continuing anyway', output_cb)
 
   @property
   def data(self):
@@ -179,7 +178,8 @@ class Test(object):
     try:
       self._executor.Wait()
     finally:
-      self.OutputTestRecord()
+      record = self._executor.GetState().GetFinishedRecord()
+      self.OutputTestRecord(record)
       if http_server:
         http_server.Stop()
 
