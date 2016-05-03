@@ -398,6 +398,67 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
         retval[key] = value
     return retval
 
+  def SaveAndRestore(self, _func=None, **config_values):
+    """Decorator for saving conf state and restoring it after a function.
+
+    This decorator is primarily for use in tests, where conf keys may be updated
+    for individual test cases, but those values need to be reverted after the
+    test case is done.
+
+    Examples:
+
+      conf.Declare('my_conf_key')
+
+      @conf.SaveAndRestore
+      def MyTestFunc():
+        conf.Load(my_conf_key='baz')
+        SomeFuncUnderTestThatUsesMyConfKey()
+
+      conf.Load(my_conf_key='foo')
+      MyTestFunc()
+      print conf.my_conf_key  # Prints 'foo', *NOT* 'baz'
+
+      # Without the SaveAndRestore decorator, MyTestFunc() would have had the
+      # side effect of altering the conf value of 'my_conf_key' to 'baz'.
+
+      # Config keys can also be initialized for the context inline at decoration
+      # time.  This is the same as setting them at the beginning of the
+      # function, but is a little clearer syntax if you know ahead of time what
+      # config keys and values you need to set.
+
+      @conf.SaveAndRestore(my_conf_key='baz')
+      def MyOtherTestFunc():
+        print conf.my_conf_key  # Prints 'baz'
+
+      MyOtherTestFunc()
+      print conf.my_conf_key  # Prints 'foo' again, for the same reason.
+
+
+    Args:
+      _func: The function to wrap.  The returned wrapper will invoke the
+          function and restore the config to the state it was in at invokation.
+      **config_values: Config keys can be set inline at decoration time, see
+          examples.  Note that config keys can't begin with underscore, so
+          there can be no name collision with _func.
+
+    Returns:
+      Wrapper to replace _func, as per Python decorator semantics.
+    """
+    functools = self._modules['functools']
+
+    if not _func:
+      return functools.partial(self.SaveAndRestore, **config_values)
+
+    @functools.wraps(_func)
+    def _SavingWrapper(*args, **kwargs):
+      saved_config = dict(self._loaded_values)
+      try:
+        self.LoadFromDict(config_values)
+        return _func(*args, **kwargs)
+      finally:
+        self._loaded_values = saved_config
+    return _SavingWrapper
+
   def InjectPositionalArgs(self, method):
     """Decorator for injecting positional arguments from the configuration.
 

@@ -131,6 +131,25 @@ class TestConf(unittest.TestCase):
       with self.assertRaises(conf.ConfigurationInvalidError):
         conf.Reset()
 
+  def testSaveAndRestore(self):
+    @conf.SaveAndRestore
+    def ModifiesConf():
+      conf.Load(string_default='modified')
+      self.assertEquals('modified', conf.string_default)
+
+    self.assertEquals('default', conf.string_default)
+    ModifiesConf()
+    self.assertEquals('default', conf.string_default)
+
+  def testSaveAndRestoreKwargs(self):
+    @conf.SaveAndRestore(string_default='modified')
+    def ModifiesConf():
+      self.assertEquals('modified', conf.string_default)
+
+    self.assertEquals('default', conf.string_default)
+    ModifiesConf()
+    self.assertEquals('default', conf.string_default)
+
   def testInjectPositionalArgs(self):
     @conf.InjectPositionalArgs
     def TestFunction(string_default, no_default, not_declared):
