@@ -82,7 +82,7 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
-    self._executor = exe.TestExecutor(self)
+    self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager())
     self._stopped = False
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
@@ -106,7 +106,11 @@ class Test(object):
   def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
     for output_cb in self._test_options.output_callbacks:
-      output_cb(record)
+      try:
+        output_cb(record)
+      except Exception:
+        _LOG.exception(
+            'Output callback %s errored out; continuing anyway', output_cb)
 
   @property
   def data(self):
@@ -174,6 +178,8 @@ class Test(object):
     try:
       self._executor.Wait()
     finally:
+      record = self._executor.GetState().GetFinishedRecord()
+      self.OutputTestRecord(record)
       if http_server:
         http_server.Stop()
 
@@ -315,8 +321,8 @@ class PhaseInfo(mutablerecords.Record(
 
   def __call__(self, phase_data):
     kwargs = dict(self.extra_kwargs)
-    kwargs.update({plug.name: phase_data.plug_map[plug.cls]
-                   for plug in self.plugs if plug.update_kwargs})
+    kwargs.update(phase_data.plug_manager.ProvidePlugs(
+        (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
     if len(arg_info.args) == len(kwargs) and not arg_info.varargs:
       # Underlying function has no room for phase_data as an arg. If it expects

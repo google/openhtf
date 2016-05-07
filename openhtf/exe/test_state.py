@@ -52,13 +52,13 @@ class TestState(object):
 
   Args:
     test_data: openhtf.TestData instance describing the test to run.
-    plug_map: dict mapping plug type to instance.
+    plug_manager: A plugs.PlugManager instance.
     dut_id: DUT identifier, if it's known, otherwise None.
     station_id: Station identifier.
   """
   State = Enum('State', ['CREATED', 'RUNNING', 'COMPLETED'])
 
-  def __init__(self, test_data, plug_map, dut_id, station_id):
+  def __init__(self, test_data, plug_manager, dut_id, station_id):
     self._state = self.State.CREATED
     self.record = test_record.TestRecord(
         dut_id=dut_id, station_id=station_id, code_info=test_data.code_info,
@@ -66,7 +66,7 @@ class TestState(object):
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)
     self.logger.addHandler(self._record_handler)
-    self.phase_data = phase_data.PhaseData(self.logger, plug_map, self.record)
+    self.phase_data = phase_data.PhaseData(self.logger, plug_manager, self.record)
     self.running_phase_record = None
     self.pending_phases = list(test_data.phases)
 
