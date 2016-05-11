@@ -63,7 +63,6 @@ Examples:
 
 
 import collections
-import itertools
 import logging
 
 from enum import Enum
@@ -350,10 +349,8 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
       raise NotAMeasurementError('Not a measurement', name, self._measurements)
 
   def __iter__(self):  # pylint: disable=invalid-name
-    def _GetMeasurementValue(item):  # pylint: disable=invalid-name
-      """Extract a single MeasurementValue's value."""
-      return item[0], item[1].value
-    return itertools.imap(_GetMeasurementValue, self._values.iteritems())
+    """Extract each MeasurementValue's value."""
+    return ((key, val.value) for key, val in self._values.iteritems())
 
   def __setattr__(self, name, value):  # pylint: disable=invalid-name
     self[name] = value
