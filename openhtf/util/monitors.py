@@ -109,7 +109,7 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
     @measurements.measures(
         measurements.Measurement(measurement_name).WithUnits(
             units).WithDimensions(uom.UOM['MILLISECOND']))
-    @functools.wraps(phase_func)
+    @functools.wraps(phase.func)
     def MonitoredPhaseFunc(phase_data, *args, **kwargs):
       # Start monitor thread, it will call monitor.func(phase_data) periodically
       monitor_thread = _MonitorThread(
