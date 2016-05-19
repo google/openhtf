@@ -2,19 +2,19 @@
   padding: 10px 0px 0px 0px;
 }
 
-#served_tag {
-  display: table-cell;
-  font-size: 8pt;
-  text-align: right;
-  width: auto;
-}
-
 .served_message {
   font-weight: 300;
 }
 
 .served_stats {
   font-weight: 500;
+}
+
+#served_tag {
+  display: table-cell;
+  font-size: 8pt;
+  text-align: right;
+  width: auto;
 }
 
 #title {

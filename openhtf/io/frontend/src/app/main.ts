@@ -14,17 +14,18 @@
 
 
 import {Component, OnInit} from 'angular2/core';
-import {bootstrap}         from 'angular2/platform/browser';
-import {RouteConfig,
-        Router,
-        RouterLink,
-        RouterOutlet,
-        ROUTER_PROVIDERS}  from 'angular2/router';
-import {HTTP_PROVIDERS}    from 'angular2/http';
+import {HTTP_PROVIDERS} from 'angular2/http';
+import {bootstrap} from 'angular2/platform/browser';
+import {
+  RouteConfig,
+  Router,
+  RouterLink,
+  RouterOutlet,
+  ROUTER_PROVIDERS
+} from 'angular2/router';
 
 import {Dashboard} from './dashboard';
-import {Station}   from './station';
-
+import {Station} from './station';
 import 'file?name=/index.html!./index.html';
 import 'file?name=/styles.css!./styles.css';
 

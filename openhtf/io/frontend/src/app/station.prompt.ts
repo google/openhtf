@@ -15,15 +15,13 @@
 
 declare var $: any;  // Global provided by the jquery package.
 
-import {Component, Input}    from 'angular2/core';
-import {Router, RouteParams} from 'angular2/router';
-
+import {Component, Input} from 'angular2/core';
+import {RouteParams, Router} from 'angular2/router';
 import {Observable} from 'rxjs/Observable';
 
 import {StationService} from './station.service';
-
-import 'file?name=/templates/station.prompt.html!./station.prompt.html';
 import 'file?name=/styles/station.prompt.css!./station.prompt.css';
+import 'file?name=/templates/station.prompt.html!./station.prompt.html';
 
 
 /** Prompt view component. **/
@@ -47,10 +45,11 @@ export class Prompt {
   /**
    * Send the response to the given prompt through the StationService.
    */
-  sendResponse(response, id) {
+  sendResponse(input: HTMLInputElement, id) {
     let ip = this.routeParams.get('ip');
     let port = this.routeParams.get('port');
+    let response = input.value || '';
     this.stationService.respondToPrompt(ip, port, id, response);
-    $('#response_field').val('');
+    input.value = null;
   }
 }

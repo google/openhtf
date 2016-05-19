@@ -14,12 +14,10 @@
 
 
 import {Component, Input} from 'angular2/core';
-import {NumberPipe}       from 'angular2/common';
 
 import {Countdown} from './utils';
-
-import 'file?name=/templates/station.header.html!./station.header.html';
 import 'file?name=/styles/station.header.css!./station.header.css';
+import 'file?name=/templates/station.header.html!./station.header.html';
 
 @Component({
   selector: 'station-header',

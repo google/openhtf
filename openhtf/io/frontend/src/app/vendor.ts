@@ -16,11 +16,11 @@
 // Angular2 polyfills
 import 'es6-shim';
 import 'es6-promise';
-import 'zone.js/dist/zone';
 import 'reflect-metadata';
+import 'zone.js/dist/zone';
 
 // Other dependencies
-import 'script!jquery/dist/jquery.min.js';
-import 'script!materialize-css/bin/materialize.js';
 import 'materialize-css/bin/materialize.css';
 import 'material-design-icons/iconfont/material-icons.css';
+import 'script!jquery/dist/jquery.min.js';
+import 'script!materialize-css/bin/materialize.js';

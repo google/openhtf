@@ -138,17 +138,10 @@ The OpenHTF codebase is set up to use pip/virtualenv to manage dependencies.
 [virtualenv](https://virtualenv.pypa.io) is a tool to isolate Python
 environments. You'll need both in order to work with the OpenHTF codebase.
 
-<<<<<<< 04c6e78e302466afa3348463797fc6a834c59e45
 Pip installs dependencies from [PyPI](https://pypi.python.org/) (the Python
 package index), but it can also install local packages in development mode
 (using the -e flag). This causes pip to install the dependency using symlinks
 from the filesystem so changes made to those files are instantly reflected.
-=======
-Pip installs dependencies from pypi (the python package index), but it can also
-install local packages in development mode (using the -e flag). This causes pip
-to install the dependency using symlinks from the filesystem so changes made to
-those files are instantly reflected.
->>>>>>> Overhaul the included web frontend.
 
 Neither virtualenv nor OpenHTF's Python dependencies are included in the
 repository. The following steps set up a new virtualenv environment and install

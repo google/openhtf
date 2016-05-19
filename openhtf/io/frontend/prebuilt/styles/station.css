@@ -1,5 +1,9 @@
-.wait {
-  margin: 0px 24px 0px 24px;
+#toast-container {
+  width: 70%;
+  bottom: 0%;
+  top: 80%;
+  right: 0%;
+  left: 15%;
 }
 
 .toast {
@@ -7,10 +11,6 @@
   width: 100%;
 }
 
-#toast-container {
-  width: 70%;
-  bottom: 0%;
-  top: 80%;
-  right: 0%;
-  left: 15%;
+.wait {
+  margin: 0px 24px 0px 24px;
 }

@@ -15,17 +15,17 @@
 
 declare var $: any;  // Global provided by the jquery package.
 
-import {Component, Input}               from 'angular2/core';
-import {OnInit}                         from 'angular2/core';
+import {Component, Input, OnInit} from 'angular2/core';
 
-import {Phase}            from './test';
-import {StatusToColor,
-        ColorToDark,
-        ColorToSuperDark,
-        OutcomeToColor}   from './utils';
-
-import 'file?name=/templates/station.phases.html!./station.phases.html';
+import {Phase} from './test';
+import {
+  ColorToDark,
+  ColorToSuperDark,
+  OutcomeToColor,
+  StatusToColor
+} from './utils';
 import 'file?name=/styles/station.phases.css!./station.phases.css';
+import 'file?name=/templates/station.phases.html!./station.phases.html';
 
 
 /** The PhaseListing view component. **/

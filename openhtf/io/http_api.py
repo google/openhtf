@@ -111,7 +111,8 @@ class HTTPServer(threading.Thread):
       """Reply with a JSON representation of the current framwork and test
       states.
       """
-      result = {'test': data.ConvertToBaseTypes(self.executor.GetState()),
+      result = {'test': data.ConvertToBaseTypes(self.executor.GetState(),
+                                                ignore_keys=('plug_manager',)),
                 'framework': data.ConvertToBaseTypes(self.executor)}
       self.send_response(200)
       self.end_headers()

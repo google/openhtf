@@ -1,8 +1,9 @@
+<div *ngIf="phases.length == 0" class="center-align grey-text">
+  <h5>Phase list is currently empty or uninitialized.</h5>
+</div>
 <div>
 <ul class="collapsible popout" data-collapsible="accordion">
-
-<!-- Completed phases. -->
-  <li *ngFor="#phase of completedPhases">
+  <li *ngFor="#phase of phases">
     <div class="collapsible-header
                 {{phase.status | statusToColor}}
                 waves-effect waves-light">
@@ -11,7 +12,7 @@
           {{phase.name}}
         </div>
         <div class="cycle-time">
-          {{phase.secondsTaken}}s
+          {{(phase.endTime - phase.startTime) / 1000}}s
         </div>
         <div class="status">
           {{phase.status}}
@@ -34,50 +35,6 @@
           </tr>
         </table>
       </div>
-    </div>
-  </li>
-  
-  <!-- Current phase. -->
-  <li *ngIf="currentPhase">
-    <div class="collapsible-header
-                {{'RUNNING' | statusToColor}}
-                waves-effect waves-light">
-      <div class="phase-header-text">
-        <div class="name">
-          {{currentPhase.name}}
-        </div>
-        <div class="status">
-          {{'RUNNING'}}
-        </div>
-      </div>
-    </div>
-    <div class="collapsible-body
-                {{'RUNNING' | statusToColor | colorToDark}}">
-      <p *ngIf="phase.docstring" class="docstring">
-        {{currentPhase.docstring}}
-      </p>
-      <p>Detailed phase content here.</p>
-    </div>
-  </li>
-  
-  <!-- Pending phases. -->
-  <li *ngFor="#phase of pendingPhases">
-    <div class="collapsible-header
-                {{'PENDING' | statusToColor}}
-                waves-effect waves-light">
-      <div class="phase-header-text">
-        <div class="name">
-          {{phase.name}}
-        </div>
-        <div class="status">
-          {{'PENDING'}}
-        </div>
-      </div>
-    </div>
-    <div class="collapsible-body
-                {{'PENDING' | statusToColor | colorToDark}}">
-      <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
-      <p>Detailed phase content here.</p>
     </div>
   </li>
 </ul>

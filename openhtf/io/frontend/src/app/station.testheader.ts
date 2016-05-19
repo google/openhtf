@@ -15,16 +15,16 @@
 
 declare var $: any;  // Global provided by the jquery package.
 
-import {NumberPipe}   from 'angular2/common';
-import {Component,
-        Input,
-        OnChanges,
-        SimpleChange} from 'angular2/core';
+import {
+  Component,
+  Input,
+  OnChanges,
+  SimpleChange
+} from 'angular2/core';
 
-import {MillisUTCToLocalStr, StatusToColor} from './utils';
-
-import 'file?name=/templates/station.testheader.html!./station.testheader.html';
+import {StatusToColor} from './utils';
 import 'file?name=/styles/station.testheader.css!./station.testheader.css';
+import 'file?name=/templates/station.testheader.html!./station.testheader.html';
 
 
 /** The TestHeader view component. **/
@@ -32,7 +32,7 @@ import 'file?name=/styles/station.testheader.css!./station.testheader.css';
   selector: 'test-header',
   templateUrl: 'templates/station.testheader.html',
   styleUrls: ['styles/station.testheader.css'],
-  pipes: [MillisUTCToLocalStr, StatusToColor]
+  pipes: [StatusToColor]
 })
 export class TestHeader implements OnChanges {
   @Input() dutID: string;

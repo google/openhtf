@@ -16,14 +16,10 @@
 declare var $;  // Global provided by the jquery package.
 
 import {Component, Input} from 'angular2/core';
-import {RouterLink}       from 'angular2/router';
+import {RouterLink} from 'angular2/router';
 
-import {DashboardService,
-        Listing}          from './dashboard.service';
-import {Countdown}        from './utils'
-
-import {StatusToColor} from './utils';
-
+import {DashboardService, Listing} from './dashboard.service';
+import {Countdown, StatusToColor} from './utils';
 import 'file?name=/styles/dashboard.css!./dashboard.css';
 
 

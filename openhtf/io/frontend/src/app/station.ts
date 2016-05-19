@@ -16,19 +16,18 @@
 declare var $;  // Global provided by the jquery package.
 
 import {Component, OnDestroy} from 'angular2/core';
-import {RouteParams}          from 'angular2/router';
+import {RouteParams} from 'angular2/router';
 
-import {Countdown}      from './utils';
-import {Logs}           from './station.logs';
-import {PhaseListing}   from './station.phases';
-import {Prompt}         from './station.prompt';
-import {StationHeader}  from './station.header';
+import {Logs} from './station.logs';
+import {StationHeader} from './station.header';
+import {PhaseListing} from './station.phases';
+import {Prompt} from './station.prompt';
 import {StationService} from './station.service';
-import {Test}           from './test';
-import {TestHeader}     from './station.testheader';
-
-import 'file?name=/templates/station.html!./station.html';
+import {TestHeader} from './station.testheader';
+import {Test} from './test';
+import {Countdown} from './utils';
 import 'file?name=/styles/station.css!./station.css';
+import 'file?name=/templates/station.html!./station.html';
 
 
 /** Station view component. **/

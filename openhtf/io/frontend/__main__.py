@@ -78,7 +78,6 @@ class Station(object):
 
     Returns: True iff refresh was successful, otherwise False.
     """
-    result = False
     try:
       response = requests.get('http://%s:%s' % self.hostport)
       if response.status_code == 200:
@@ -90,14 +89,14 @@ class Station(object):
                        self.hostport)
         self.station_id = station_id
         self.state = state
-        result = True
+        return True
     except requests.RequestException as e:
       _LOG.debug('Station (%s) unreachable: %s', self.hostport, e)
       self.state = None
     except KeyError:
       _LOG.warning('Malformed station state response from (%s): %s',
                    self.hostport, response)
-    return result
+    return False
 
   def Notify(self, message):
     """Send a message to an OpenHTF instance in response to a prompt.
@@ -214,7 +213,6 @@ class PromptHandler(tornado.web.RequestHandler):
     msg = json.JSONEncoder().encode(
         {'id': prompt_id, 'response': self.request.body})
     self.store[host, port].Notify(msg)
-    self.write('')
 
 
 def main(argv):
@@ -240,7 +238,7 @@ def main(argv):
                       help='Start in development mode.')
   args = parser.parse_args()
 
-  logs.setup_logger()
+  logs.SetupLogger()
 
   path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
   

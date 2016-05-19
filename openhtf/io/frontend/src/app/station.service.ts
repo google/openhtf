@@ -13,12 +13,13 @@
 // limitations under the License.
 
 
-import {Injectable}     from 'angular2/core';
-import {Headers,
-        Http,
-        Response,
-        RequestOptions} from 'angular2/http';
-
+import {Injectable} from 'angular2/core';
+import {
+  Headers,
+  Http,
+  Response,
+  RequestOptions
+} from 'angular2/http';
 import {Observable} from 'rxjs/Observable';
 
 

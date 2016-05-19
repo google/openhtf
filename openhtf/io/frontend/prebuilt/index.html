@@ -1,17 +1,16 @@
+<!-- Main template. Provides OpenHTF header and a div for the client app. -->
 <html>
   <head>
     <title>OpenHTF</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">    
-    <link rel="stylesheet" href="styles.css">
-    <script src="scripts/vendor.bundle.js"></script>
-    <script defer src="scripts/app.bundle.js"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/scripts/vendor.bundle.js"></script>
+    <script defer src="/scripts/app.bundle.js"></script>
     <script>
       var FRONTEND_SERVER = '{{host}}:{{port}}';
     </script>
   </head>
   <base href="/">
-
-  <!-- 3. Display the application -->
   <body>
     <div class="nav-wrapper blue lighten-1 white-text">
       <div id="title_bar">

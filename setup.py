@@ -161,7 +161,7 @@ setup(
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
     packages=find_packages(exclude='examples'),
-    package_data={'openhtf': ['io/frontend/prebuilt/*']},
+    package_data={'openhtf': ['io/frontend/prebuilt/**/*.*']},
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,

@@ -13,10 +13,9 @@
 // limitations under the License.
 
 
-import {Component, Input}     from 'angular2/core';
+import {Component, Input} from 'angular2/core';
 
-import {MillisUTCToLocalStr, LoggingLevelToColor} from './utils';
-
+import {LoggingLevelToColor} from './utils';
 import 'file?name=/styles/station.logs.css!./station.logs.css';
 
 
@@ -31,14 +30,14 @@ import 'file?name=/styles/station.logs.css!./station.logs.css';
       <div *ngFor="let entry of logEntries"
             class="log-entry {{entry.level | loggingLevelToColor}}">
         <span class='timestamp'>
-          {{entry.timestampMillis | millisUTCToLocalStr}}
+          {{entry.timestampMillis | date:'short'}}
         </span>
         {{entry.message}}
       </div>
     </div>
   `,
   styleUrls: ['styles/station.logs.css'],
-  pipes: [MillisUTCToLocalStr, LoggingLevelToColor]
+  pipes: [LoggingLevelToColor]
 })
 export class Logs {
   @Input() logEntries: any[];

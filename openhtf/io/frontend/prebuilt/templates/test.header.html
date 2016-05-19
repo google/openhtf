@@ -1,19 +1,17 @@
 <div class="card-panel {{status | statusToColor}} test-header">
-  <div *ngIf="dutID">
+  <div>
     <div class='test-vitals'>
-      <div *ngIf="dutID">
         <div class="dutID">
-          {{dutID}}
+          {{dutID || '---'}}
         </div>
         <div>
           <span class="label">start time: </span>
-          {{start | millisUTCToLocalStr}}
+          {{startTime && (startTime | millisUTCToLocalStr) || '---'}}
         </div>
         <div>
           <span class="label">end time: </span>
-          {{end | millisUTCToLocalStr}}
+          {{endTime && (endTime | millisUTCToLocalStr) || '---'}}
         </div>
-      </div>
     </div>
     <div class="test-header-nav">
       <ul class="tabs">
@@ -38,7 +36,7 @@
     <div class="test-status-tag">
       {{status}}
         <div class="duration">
-          {{duration}}s
+          {{(duration / 1000 | number:['2.2-2']) + 's'}}
         </div>
     </div>
   </div>

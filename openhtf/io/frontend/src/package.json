@@ -28,12 +28,12 @@
     "es6-promise": "^3.0.2",
     "es6-shim": "^0.35.0",
     "reflect-metadata": "0.1.2",
-    "rxjs": "5.0.0-beta.6",
     "zone.js": "^0.6.6",
     "jquery": "~2.2.3",
     "materialize-css": "~0.97.6",
     "velocity-animate": "~1.2.3",
     "material-icons": "~0.1.0",
-    "material-design-icons": "~2.2.3"
+    "material-design-icons": "~2.2.3",
+    "fast-json-patch": "~0.5.7"
   }
 }
