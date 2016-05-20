@@ -373,10 +373,13 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     test_run_envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
     serialized_envelope = test_run_envelope.SerializeToString()
 
-    _, content = http.request(destination, 'POST', serialized_envelope)
-    if content.split('\n', 1)[0] != 'OK':
-      results = json.loads(content)
-      raise UploadFailedError(results['error'], results)
+    resp, content = http.request(destination, 'POST', serialized_envelope)
+    if resp.status != 200:
+      try:
+        results = json.loads(content)
+        raise UploadFailedError(results['error'], results)
+      except Exception:
+        raise UploadFailedError(resp, content)
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
     credentials = oauth2client.client.SignedJwtAssertionCredentials(
