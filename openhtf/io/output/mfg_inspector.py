@@ -1,4 +1,31 @@
-"""Output or upload a TestRun proto for mfg-inspector.com"""
+"""Output or upload a TestRun proto for mfg-inspector.com
+
+MULTIDIM_JSON schema:
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Multi-dimensional test parameter",
+  "type": "object",
+  "properties": {
+    "outcome": {"enum": ["PASS", "FAIL", "ERROR"]},
+    "name": {"type": "string"},
+    "dimensions": {
+      "type": array,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "uom_code": {"type": "string"},
+          "uom_suffix": {"type": "string"}
+        }
+      }
+    },
+    "values": {
+      "type": "array",
+      "items": {}
+    }
+  }
+}
+"""
 
 import httplib2
 import json
@@ -212,6 +239,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
         dims = [{
             'uom_suffix': d.uom_suffix.encode('utf8'), 'uom_code': d.uom_code}
             for d in measurement.dimensions]
+        # Refer to the module docstring for the expected schema.
         attachment.value_binary = json.dumps({
             'outcome': str(testrun_param.status), 'name': name,
             'dimensions': dims, 'value': value}, sort_keys=True)
