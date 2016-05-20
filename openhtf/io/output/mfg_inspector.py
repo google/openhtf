@@ -112,7 +112,8 @@ def _ExtractAttachments(phase, testrun, used_parameter_names):
       # pylint: enable=no-member
 
 
-def _MangleMeasurement(name, value, measurement, mangled_parameters):
+def _MangleMeasurement(name, value, measurement, mangled_parameters,
+                       attachment_name):
   """Flatten parameters for backwards compatibility, watch for collisions.
 
   We generate these by doing some name mangling, using some sane limits for
@@ -131,6 +132,7 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters):
       mangled_name += '_'
     mangled_param = test_runs_pb2.TestParameter()
     mangled_param.name = mangled_name
+    mangled_param.associated_attachment = attachment_name
     mangled_param.description = (
         'Mangled parameter from measurement %s with dimensions %s' % (
         name, tuple(d.uom_suffix for d in measurement.dimensions)))
@@ -203,7 +205,17 @@ def _ExtractParameters(record, testrun, used_parameter_names):
           else:
             testrun_param.description += '\nValidator: ' + str(validator)
       else:
-        _MangleMeasurement(name, value, measurement, mangled_parameters)
+        attachment = testrun.info_parameters.add()
+        attachment.name = 'multidim_%s' % name
+        dims = [{
+            'uom_suffix': d.uom_suffix.encode('utf8'), 'uom_code': d.uom_code}
+            for d in measurement.dimensions]
+        attachment.value_binary = json.dumps({
+            'outcome': str(testrun_param.status), 'name': name,
+            'dimensions': dims, 'value': value}, sort_keys=True)
+        attachment.type = test_runs_pb2.MULTIDIM_JSON
+        _MangleMeasurement(
+            name, value, measurement, mangled_parameters, attachment.name)
       if testrun_param.status == test_runs_pb2.FAIL:
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
