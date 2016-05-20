@@ -116,7 +116,6 @@ INSTALL_REQUIRES = [
     'PyYAML==3.11',
     'singledispatch==3.4.0.3',
     'tornado==4.3',
-    'Werkzeug==0.10.4',
 ]
 
 
