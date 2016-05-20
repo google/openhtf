@@ -76,6 +76,13 @@ def _PopulateHeader(record, testrun):
     testrun_code.details = details.description
 
 
+def _EnsureUniqueParameterName(name, used_parameter_names):
+  while name in used_parameter_names:
+    name += '_'  # Hack to avoid collisions between phases.
+  used_parameter_names.add(name)
+  return name
+
+
 def _AttachJson(record, testrun):
   """Attach a copy of the JSON-ified record as an info parameter.
 
@@ -96,9 +103,7 @@ def _AttachJson(record, testrun):
 def _ExtractAttachments(phase, testrun, used_parameter_names):
   """Extract attachments, just copy them over."""
   for name, (data, mimetype) in sorted(phase.attachments.items()):
-    while name in used_parameter_names:
-      name += '_'  # Hack to avoid collisions between phases.
-    used_parameter_names.add(name)
+    name = _EnsureUniqueParameterName(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
     testrun_param.value_binary = data
@@ -163,10 +168,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
 
     _ExtractAttachments(phase, testrun, used_parameter_names)
     for name, measurement in sorted(phase.measurements.items()):
-      tr_name = name
-      while tr_name in used_parameter_names:
-        tr_name += '_'
-      used_parameter_names.add(tr_name)
+      tr_name = _EnsureUniqueParameterName(name, used_parameter_names)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
       if measurement.outcome == measurements.Outcome.PASS:
@@ -216,10 +218,9 @@ def _ExtractParameters(record, testrun, used_parameter_names):
 def _AddMangledParameters(testrun, mangled_parameters, used_parameter_names):
   """Add any mangled parameters we generated from multidim measurements."""
   for mangled_name, mangled_param in sorted(mangled_parameters.items()):
-    while mangled_name in used_parameter_names:
+    if mangled_name != _EnsureUniqueParameterName(mangled_name, used_parameter_names):
       logging.warning('Mangled name %s in use by non-mangled parameter',
                       mangled_name)
-      mangled_name += '_'
     testrun_param = testrun.test_parameters.add()
     testrun_param.CopyFrom(mangled_param)
 
