@@ -129,14 +129,21 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters):
       mangled_name += '_'
     mangled_param = testrun_pb2.TestParameter()
     mangled_param.name = mangled_name
-    mangled_param.numeric_value = float(current_value[-1])
-    if measurement.units:
-      mangled_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
     mangled_param.description = (
         'Mangled parameter from measurement %s with dimensions %s' % (
         name, tuple(d.uom_suffix for d in measurement.dimensions)))
+
+    value = current_value[-1]
+    if isinstance(value, numbers.Number):
+      mangled_param.numeric_value = float(value)
+    else:
+      mangled_param.text_value = str(value)
+    # Check for validators we know how to translate.
     for validator in measurement.validators:
       mangled_param.description += '\nValidator: ' + str(validator)
+
+    if measurement.units:
+      mangled_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
     mangled_parameters[mangled_name] = mangled_param
 
 
