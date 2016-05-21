@@ -16,7 +16,6 @@
 """Example plug for OpenHTF."""
 
 
-import logging
 import time
 
 import openhtf.conf as conf
@@ -77,7 +76,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
 
   def TearDown(self):
     """Tear down the plug instance."""
-    logging.info('Tearing down %s', self)
+    self.logger.info('Tearing down %s', self)
 
   def Increment(self):
     """Increment our value, return the new value."""
