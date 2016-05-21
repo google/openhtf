@@ -157,7 +157,7 @@ class ConsolePrompt(threading.Thread):
         print self._message
 
         # Before reading, clear any lingering buffered terminal input.
-        termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+        termios.tcflush(sys.stdin, termios.TCIFLUSH)
 
         while not self._stopped:
           inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
