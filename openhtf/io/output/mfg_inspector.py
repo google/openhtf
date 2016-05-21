@@ -1,4 +1,31 @@
-"""Output or upload a TestRun proto for mfg-inspector.com"""
+"""Output or upload a TestRun proto for mfg-inspector.com
+
+MULTIDIM_JSON schema:
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Multi-dimensional test parameter",
+  "type": "object",
+  "properties": {
+    "outcome": {"enum": ["PASS", "FAIL", "ERROR"]},
+    "name": {"type": "string"},
+    "dimensions": {
+      "type": array,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "uom_code": {"type": "string"},
+          "uom_suffix": {"type": "string"}
+        }
+      }
+    },
+    "values": {
+      "type": "array",
+      "items": {}
+    }
+  }
+}
+"""
 
 import httplib2
 import json
@@ -78,6 +105,13 @@ def _PopulateHeader(record, testrun):
     testrun_code.details = details.description
 
 
+def _EnsureUniqueParameterName(name, used_parameter_names):
+  while name in used_parameter_names:
+    name += '_'  # Hack to avoid collisions between phases.
+  used_parameter_names.add(name)
+  return name
+
+
 def _AttachJson(record, testrun):
   """Attach a copy of the JSON-ified record as an info parameter.
 
@@ -98,9 +132,7 @@ def _AttachJson(record, testrun):
 def _ExtractAttachments(phase, testrun, used_parameter_names):
   """Extract attachments, just copy them over."""
   for name, (data, mimetype) in sorted(phase.attachments.items()):
-    while name in used_parameter_names:
-      name += '_'  # Hack to avoid collisions between phases.
-    used_parameter_names.add(name)
+    name = _EnsureUniqueParameterName(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
     testrun_param.value_binary = data
@@ -112,7 +144,8 @@ def _ExtractAttachments(phase, testrun, used_parameter_names):
       # pylint: enable=no-member
 
 
-def _MangleMeasurement(name, value, measurement, mangled_parameters):
+def _MangleMeasurement(name, value, measurement, mangled_parameters,
+                       attachment_name):
   """Flatten parameters for backwards compatibility, watch for collisions.
 
   We generate these by doing some name mangling, using some sane limits for
@@ -131,6 +164,7 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters):
       mangled_name += '_'
     mangled_param = test_runs_pb2.TestParameter()
     mangled_param.name = mangled_name
+    mangled_param.associated_attachment = attachment_name
     mangled_param.description = (
         'Mangled parameter from measurement %s with dimensions %s' % (
         name, tuple(d.uom_suffix for d in measurement.dimensions)))
@@ -165,10 +199,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
 
     _ExtractAttachments(phase, testrun, used_parameter_names)
     for name, measurement in sorted(phase.measurements.items()):
-      tr_name = name
-      while tr_name in used_parameter_names:
-        tr_name += '_'
-      used_parameter_names.add(tr_name)
+      tr_name = _EnsureUniqueParameterName(name, used_parameter_names)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
       if measurement.outcome == measurements.Outcome.PASS:
@@ -203,7 +234,18 @@ def _ExtractParameters(record, testrun, used_parameter_names):
           else:
             testrun_param.description += '\nValidator: ' + str(validator)
       else:
-        _MangleMeasurement(name, value, measurement, mangled_parameters)
+        attachment = testrun.info_parameters.add()
+        attachment.name = 'multidim_%s' % name
+        dims = [{
+            'uom_suffix': d.uom_suffix.encode('utf8'), 'uom_code': d.uom_code}
+            for d in measurement.dimensions]
+        # Refer to the module docstring for the expected schema.
+        attachment.value_binary = json.dumps({
+            'outcome': str(testrun_param.status), 'name': name,
+            'dimensions': dims, 'value': value}, sort_keys=True)
+        attachment.type = test_runs_pb2.MULTIDIM_JSON
+        _MangleMeasurement(
+            name, value, measurement, mangled_parameters, attachment.name)
       if testrun_param.status == test_runs_pb2.FAIL:
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
@@ -218,10 +260,9 @@ def _ExtractParameters(record, testrun, used_parameter_names):
 def _AddMangledParameters(testrun, mangled_parameters, used_parameter_names):
   """Add any mangled parameters we generated from multidim measurements."""
   for mangled_name, mangled_param in sorted(mangled_parameters.items()):
-    while mangled_name in used_parameter_names:
+    if mangled_name != _EnsureUniqueParameterName(mangled_name, used_parameter_names):
       logging.warning('Mangled name %s in use by non-mangled parameter',
                       mangled_name)
-      mangled_name += '_'
     testrun_param = testrun.test_parameters.add()
     testrun_param.CopyFrom(mangled_param)
 
