@@ -96,6 +96,8 @@ import logging
 import mutablerecords
 
 import openhtf
+from openhtf.util import logs
+
 
 _LOG = logging.getLogger(__name__)
 
@@ -114,6 +116,11 @@ class InvalidPlugError(Exception):
 
 class BasePlug(object): # pylint: disable=too-few-public-methods
   """All plug types must subclass this type."""
+
+  @property
+  def logger(self):
+    return logging.getLogger(
+        '.'.join((logs.RECORD_LOGGER, 'plugs', type(self).__name__)))
 
   def TearDown(self):
     """This is the only method the framework itself will explicitly call."""
