@@ -22,6 +22,7 @@ from enum import Enum
 
 import contextlib2 as contextlib
 
+import openhtf
 from openhtf import conf
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
@@ -35,7 +36,7 @@ class TestStopError(Exception):
   """Test is being stopped."""
 
 
-class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
+class LogSleepSuppress(object): # pylint: disable=too-few-public-methods
   """Abstraction for supressing stuff we don't care about."""
 
   def __init__(self):
@@ -66,8 +67,11 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT', 'FINISHING'])
 
-  def __init__(self, test_data, plug_manager):
+  def __init__(self, test_data, plug_manager, teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
+
+    self._teardown_function = (teardown_function and
+                               openhtf.PhaseInfo.WrapOrCopy(teardown_function))
 
     self._test_data = test_data
     self._plug_manager = plug_manager
@@ -209,3 +213,6 @@ class TestExecutor(threads.KillableThread):
         break
     else:
       self._test_state.SetStateFinished()
+    # Run teardown function.
+    if self._teardown_function:
+      executor._ExecuteOnePhase(self._teardown_function)

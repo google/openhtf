@@ -90,6 +90,8 @@ def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
   test.AttachFromFile('example_attachment.txt')
 
+def teardown(test):
+  test.logger.info('Running teardown')
 
 if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
@@ -109,5 +111,5 @@ if __name__ == '__main__':
   #  with open('my_private_key.json', 'r') as json_file:
   #    test.AddOutputCallbacks(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
-
+  test.Configure(http_port=None, teardown_function=teardown)
   test.Execute(test_start=triggers.PromptForTestStart())
