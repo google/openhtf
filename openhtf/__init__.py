@@ -178,8 +178,11 @@ class Test(object):
     try:
       self._executor.Wait()
     finally:
-      record = self._executor.GetState().GetFinishedRecord()
-      self.OutputTestRecord(record)
+      # If the framework doesn't transition from INITIALIZING to EXECUTING
+      # then test state isn't set and there's no record to output.
+      if self._executor.GetState():
+        record = self._executor.GetState().GetFinishedRecord()
+        self.OutputTestRecord(record)
       if http_server:
         http_server.Stop()
 
