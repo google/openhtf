@@ -82,8 +82,8 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
-    self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager())
     self._stopped = False
+    self._executor = None
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
     # to force them to if they want to use defaults.  For default values, see
@@ -139,8 +139,11 @@ class Test(object):
       self._stopped = True
       # TestState str()'s nicely to a descriptive string, so let's log that
       # just for good measure.
-      _LOG.error('Stopping Test due to SIGINT: %s', self._executor.GetState())
-      self._executor.Stop()
+      _LOG.error('Stopping Test due to SIGINT')
+      if self._executor:
+        _LOG.error('Test state: %s', self._executor.GetState())
+        self._executor.Stop()
+        self._executor = None
 
   def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
@@ -166,6 +169,7 @@ class Test(object):
                   self.data.code_info.name)
         return
 
+      self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager())
       _LOG.info('Executing test: %s', self.data.code_info.name)
       self._executor.SetTestStart(test_start)
       http_server = None
@@ -173,6 +177,7 @@ class Test(object):
         http_server = http_api.Server(
           self._executor, self._test_options.http_port)
         http_server.Start()
+
       self._executor.Start()
 
     try:
@@ -185,6 +190,7 @@ class Test(object):
         self.OutputTestRecord(record)
       if http_server:
         http_server.Stop()
+      self._executor = None
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
