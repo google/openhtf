@@ -205,7 +205,6 @@ class PlugManager(object):
       self.TearDownPlugs()
       raise
 
-  @property
   def _asdict(self):
     return {'%s.%s' % (k.__module__, k.__name__): str(v)
             for k, v in self._plug_map.iteritems()}
