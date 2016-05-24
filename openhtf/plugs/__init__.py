@@ -90,12 +90,15 @@ This will result in the ExamplePlug being constructed with
 self._my_config having a value of 'my_config_value'.
 """
 
+import collections
 import functools
 import logging
 
 import mutablerecords
 
 import openhtf
+from openhtf.util import logs
+
 
 _LOG = logging.getLogger(__name__)
 
@@ -114,6 +117,11 @@ class InvalidPlugError(Exception):
 
 class BasePlug(object): # pylint: disable=too-few-public-methods
   """All plug types must subclass this type."""
+
+  @property
+  def logger(self):
+    return logging.getLogger(
+        '.'.join((logs.RECORD_LOGGER, 'plugs', type(self).__name__)))
 
   def TearDown(self):
     """This is the only method the framework itself will explicitly call."""
@@ -184,18 +192,27 @@ class PlugManager(object):
   main framework thread anyway.
 
   Attributes:
-    plug_map: Dict mapping plug type to instantiated plug.
+    _plug_map: Dict mapping plug type to instantiated plug.
   """
 
-  def __init__(self, plug_types):
-    self.plug_map = {}
+  def InitializePlugs(self, plug_types):
+    self._plug_map = {}
     try:
       for plug_type in plug_types:
-        self.plug_map[plug_type] = plug_type()
+        self._plug_map[plug_type] = plug_type()
     except Exception:  # pylint: disable=broad-except
       _LOG.exception('Exception insantiating plug type %s', plug_type)
       self.TearDownPlugs()
       raise
+
+  def _asdict(self):
+    return {'%s.%s' % (k.__module__, k.__name__): str(v)
+            for k, v in self._plug_map.iteritems()}
+
+  def ProvidePlugs(self, plug_name_map):
+    """Provide the requested plugs [(name, type),] as {name: plug instance}."""
+    return {name: self._plug_map[cls]
+            for name, cls in plug_name_map}
 
   def TearDownPlugs(self):
     """Call TearDown() on all instantiated plugs.
@@ -207,9 +224,9 @@ class PlugManager(object):
     Any exceptions in TearDown() methods are logged, but do not get raised
     by this method.
     """
-    for plug in self.plug_map.itervalues():
+    for plug in self._plug_map.itervalues():
       try:
         plug.TearDown()
       except Exception:  # pylint: disable=broad-except
         _LOG.warning('Exception calling TearDown on %s:', plug, exc_info=True)
-    self.plug_map.clear()
+    self._plug_map.clear()

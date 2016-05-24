@@ -50,16 +50,14 @@ if they are implemented by a class that has internal state that is not copyable
 by the default copy.deepcopy().
 """
 
-import numbers
-import re
 import sys
 
 
 class Validators(object):
+  """Validators class."""
 
-  def __init__(self, re_module, numbers_module):
-    self.re_module = re_module
-    self.numbers_module = numbers_module
+  def __init__(self, modules):
+    self.modules = modules
     self._validators = {}
 
   def Register(self, validator, name=None):
@@ -87,6 +85,11 @@ class Validators(object):
       self.maximum = maximum
 
     def __call__(self, value):
+      # pylint: disable=g-import-not-at-top
+      import math
+      # Check for nan
+      if math.isnan(value):
+        return False
       # Check for equal bounds first so we can use with non-numeric values.
       if self.minimum == self.maximum and value != self.minimum:
         return False
@@ -115,10 +118,10 @@ class Validators(object):
       return not self == other
 
   def Equals(self, value):
-    if isinstance(value, self.numbers_module.Number):
+    if isinstance(value, self.modules['numbers'].Number):
       return self.InRange(minimum=value, maximum=value)
     else:
-      return self.MatchesRegex(self.re_module.escape(value))
+      return self.MatchesRegex(self.modules['re'].escape(value))
 
   class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
@@ -145,7 +148,6 @@ class Validators(object):
   # We have to use our saved reference to the re module because this module
   # has lost all references by the sys.modules replacement and has been gc'd.
   def MatchesRegex(self, regex):
-    return self.RegexMatcher(regex, self.re_module.compile(regex))
+    return self.RegexMatcher(regex, self.modules['re'].compile(regex))
 
-
-sys.modules[__name__] = Validators(re, numbers)
+sys.modules[__name__] = Validators(sys.modules)

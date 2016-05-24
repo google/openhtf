@@ -82,8 +82,8 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
-    self._executor = exe.TestExecutor(self)
     self._stopped = False
+    self._executor = None
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
     # to force them to if they want to use defaults.  For default values, see
@@ -106,7 +106,11 @@ class Test(object):
   def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
     for output_cb in self._test_options.output_callbacks:
-      output_cb(record)
+      try:
+        output_cb(record)
+      except Exception:
+        _LOG.exception(
+            'Output callback %s errored out; continuing anyway', output_cb)
 
   @property
   def data(self):
@@ -135,8 +139,11 @@ class Test(object):
       self._stopped = True
       # TestState str()'s nicely to a descriptive string, so let's log that
       # just for good measure.
-      _LOG.error('Stopping Test due to SIGINT: %s', self._executor.GetState())
-      self._executor.Stop()
+      _LOG.error('Stopping Test due to SIGINT')
+      if self._executor:
+        _LOG.error('Test state: %s', self._executor.GetState())
+        self._executor.Stop()
+        self._executor = None
 
   def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
@@ -162,6 +169,7 @@ class Test(object):
                   self.data.code_info.name)
         return
 
+      self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager())
       _LOG.info('Executing test: %s', self.data.code_info.name)
       self._executor.SetTestStart(test_start)
       http_server = None
@@ -169,13 +177,20 @@ class Test(object):
         http_server = http_api.Server(
           self._executor, self._test_options.http_port)
         http_server.Start()
+
       self._executor.Start()
 
     try:
       self._executor.Wait()
     finally:
+      # If the framework doesn't transition from INITIALIZING to EXECUTING
+      # then test state isn't set and there's no record to output.
+      if self._executor.GetState():
+        record = self._executor.GetState().GetFinishedRecord()
+        self.OutputTestRecord(record)
       if http_server:
         http_server.Stop()
+      self._executor = None
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
@@ -315,8 +330,8 @@ class PhaseInfo(mutablerecords.Record(
 
   def __call__(self, phase_data):
     kwargs = dict(self.extra_kwargs)
-    kwargs.update({plug.name: phase_data.plug_map[plug.cls]
-                   for plug in self.plugs if plug.update_kwargs})
+    kwargs.update(phase_data.plug_manager.ProvidePlugs(
+        (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
     if len(arg_info.args) == len(kwargs) and not arg_info.varargs:
       # Underlying function has no room for phase_data as an arg. If it expects
