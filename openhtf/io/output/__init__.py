@@ -16,6 +16,7 @@
 
 import openhtf.io.output.json_factory
 import openhtf.io.output.mfg_inspector
+import openhtf.io.output.console_summary
 
 # pylint: disable=invalid-name
 
@@ -23,3 +24,4 @@ import openhtf.io.output.mfg_inspector
 OutputToJSON = json_factory.OutputToJSON
 UploadToMfgInspector = mfg_inspector.UploadToMfgInspector
 OutputToTestRunProto = mfg_inspector.OutputToTestRunProto
+ConsoleSummary = console_summary.ConsoleSummary
