@@ -5,6 +5,7 @@ import json
 import logging
 import numbers
 import oauth2client.client
+import sys
 import threading
 import zlib
 
@@ -334,11 +335,14 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     def locked_put(self, credentials):
       self._credentials = credentials
   # pylint: enable=invalid-name,missing-docstring
-
-  def __init__(self, user, keydata, token_uri=TOKEN_URI):
+  
+  def __init__(self, user, keydata, token_uri=TOKEN_URI,
+               error_message=None, filename_pattern_fail=None):
     self.user = user
     self.keydata = keydata
     self.token_uri = token_uri
+    self._error_message = error_message
+    self._filename_pattern_fail=filename_pattern_fail
 
   @classmethod
   def from_json(cls, json_data):
@@ -380,18 +384,31 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
       raise UploadFailedError(results['error'], results)
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
-    credentials = oauth2client.client.SignedJwtAssertionCredentials(
-        service_account_name=self.user,
-        private_key=self.keydata,
-        scope=self.SCOPE_CODE_URI,
-        user_agent='OpenHTF Guzzle Upload Client',
-        token_uri=self.token_uri)
-    credentials.set_store(self._MemStorage())
-
     testrun = _TestRunFromTestRecord(test_record)
+
     try:
+      credentials = oauth2client.client.SignedJwtAssertionCredentials(
+          service_account_name=self.user,
+          private_key=self.keydata,
+          scope=self.SCOPE_CODE_URI,
+          user_agent='OpenHTF Guzzle Upload Client',
+          token_uri=self.token_uri)
+      credentials.set_store(self._MemStorage())
       self.UploadTestRun(testrun, self.DESTINATION_URL, credentials)
-    except UploadFailedError:
+    except:
       # For now, just log the exception.  Once output is a bit more robust,
       # we can propagate this up and handle it accordingly.
+      if self._error_message:
+        sys.stdout.write(''.join([self._error_message, '\n']))
+      if self._filename_pattern_fail:
+        serialized = _TestRunFromTestRecord(test_record).SerializeToString()
+        as_dict = data.ConvertToBaseTypes(test_record)
+        if isinstance(self._filename_pattern_fail, basestring):
+          filename = self._filename_pattern_fail % as_dict
+          sys.stdout.write('Saving local pb file: %s\n' % filename)
+          with open(filename, 'w') as outfile:
+            outfile.write(serialized)
+        else:
+          sys.stdout.write('Saving local pb file: %s\n' % self._filename_pattern_fail)
+          self._filename_pattern_fail.write(testrun)
       logging.exception('Upload to mfg-inspector failed!')
