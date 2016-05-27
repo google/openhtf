@@ -87,7 +87,7 @@ class ConsoleSummary():
           phase_result = phase.result.phase_result
           if 'CONTINUE' not in phase_result:
             text = ''.join(('raised_exception phase: ',
-                            phase_name,
+                            phase.name,
                             ' [time taken(s): ',
                             phase_time,
                             ']'))
