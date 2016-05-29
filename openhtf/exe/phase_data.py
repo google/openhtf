@@ -115,8 +115,20 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
               filename)[0])
 
   @contextlib2.contextmanager
-  def RecordPhaseTiming(self, phase, test_state):
-    """Context manager for the execution of a single phase."""
+  def RecordPhaseTiming(self, phase, running_phase_record):
+    """Context manager for the execution of a single phase.
+
+    This method performs some pre-phase setup on self (for measurements), and
+    records the start and end time based on when the context is entered/exited.
+
+    Args:
+      phase: openhtf.PhaseInfo object that is to be executed.
+      running_phase_record: PhaseRecord object tracking the phase execution.
+
+    Yields:
+      An OutcomeWrapper, the outcome of the phase should be passed to its
+    SetOutcome() method.
+    """
 
     # Check for measurement descriptors and track them in the PhaseRecord.
     measurement_map = {
@@ -124,23 +136,21 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
         for measurement in phase.measurements
     }
 
-    # Populate dummy declaration list for frontend API.
-    test_state.running_phase_record.measurements = {
+    # Populate dummy measurement declaration list for frontend API.
+    running_phase_record.measurements = {
         measurement.name: measurement._asdict()
         for measurement in measurement_map.itervalues()
     }
-    test_state.phase_data.measurements = (
-        measurements.Collection(measurement_map))
-    test_state.phase_data.attachments = {}
-    test_state.running_phase_record.start_time_millis = util.TimeMillis()
-
+    self.measurements = measurements.Collection(measurement_map)
+    self.attachments = {}
     outcome_wrapper = OutcomeWrapper()
+    running_phase_record.start_time_millis = util.TimeMillis()
 
     try:
       yield outcome_wrapper
     finally:
       # Serialize measurements and measured values, validate as we go.
-      values = dict(test_state.phase_data.measurements)
+      values = dict(self.measurements)
 
       # Initialize with already-validated and UNSET measurements.
       validated_measurements = {
@@ -156,14 +166,12 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       })
 
       # Fill out and append the PhaseRecord to our test_record.
-      test_state.running_phase_record.measured_values = values
-      test_state.running_phase_record.measurements = validated_measurements
-      test_state.running_phase_record.end_time_millis = util.TimeMillis()
-      test_state.running_phase_record.result = outcome_wrapper.outcome
-      test_state.running_phase_record.attachments.update(self.attachments)
-      self.test_record.phases.append(test_state.running_phase_record)
+      running_phase_record.measured_values = values
+      running_phase_record.measurements = validated_measurements
+      running_phase_record.end_time_millis = util.TimeMillis()
+      running_phase_record.result = outcome_wrapper.outcome
+      running_phase_record.attachments.update(self.attachments)
 
       # Clear these between uses for the frontend API.
-      test_state.phase_data.measurements = None
-      test_state.phase_data.attachments = {}
-      test_state.running_phase_record = None
+      self.measurements = None
+      self.attachments = {}

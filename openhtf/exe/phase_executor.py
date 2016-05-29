@@ -188,11 +188,16 @@ class PhaseExecutor(object):
     self.test_state.running_phase_record = test_record.PhaseRecord(
         phase.name, phase.code_info)
 
-    with phase_data.RecordPhaseTiming(phase, self.test_state) as outcome_wrapper:
+    with phase_data.RecordPhaseTiming(
+        phase, self.test_state.running_phase_record) as outcome_wrapper:
       phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
       self._current_phase_thread = phase_thread
       outcome_wrapper.SetOutcome(phase_thread.JoinOrDie())
+
+    self.test_state.record.phases.append(
+        self.test_state.running_phase_record)
+    self.test_state.running_phase_record = None
 
     if outcome_wrapper.outcome.phase_result == openhtf.PhaseResult.CONTINUE:
       if self.test_state.pending_phases:
