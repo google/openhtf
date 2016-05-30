@@ -123,6 +123,8 @@ class Test(object):
       http_port: Port on which to run the http_api, or None to disable.
       output_callbacks: List of output callbacks to run, typically it's better
           to use AddOutputCallbacks(), but you can pass [] here to reset them.
+      teardown_function: Function to run at teardown.  We pass the same
+          arguments to it as a phase.
     """
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
@@ -153,12 +155,15 @@ class Test(object):
           serial number.
       loop: DEPRECATED
     """
+    self._executor = exe.TestExecutor(
+        self._test_data, plugs.PlugManager(),
+        self._test_options.teardown_function)
+
     # TODO(madsci): Remove this after a transitionary period.
     if loop is not None:
       raise ValueError(
           'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
           'use a while True: loop around Test.Execute() instead.')
-
 
     # We have to lock this section to ensure we don't call TestExecutor.Stop()
     # in self.Stop() between instantiating it and .Start()'ing it.  We'll check
@@ -175,7 +180,7 @@ class Test(object):
       http_server = None
       if self._test_options.http_port:
         http_server = http_api.Server(
-          self._executor, self._test_options.http_port)
+            self._executor, self._test_options.http_port)
         http_server.Start()
 
       self._executor.Start()
@@ -196,6 +201,7 @@ class Test(object):
 class TestOptions(mutablerecords.Record('TestOptions', [], {
     'http_port': http_api.DEFAULT_HTTP_PORT,
     'output_callbacks': list,
+    'teardown_function': None,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults."""
 
