@@ -58,6 +58,7 @@ from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.exe import phase_executor
 from openhtf.io import test_record
+from openhtf.util import measurements
 
 
 class InvalidTestError(Exception):
@@ -197,4 +198,23 @@ def patch_plugs(**mock_plugs):
 
 
 class TestCase(unittest.TestCase):
-  pass
+
+  def assertNotMeasured(self, phase_record, measurement):
+    self.assertNotIn(measurement, phase_record.measured_values)
+    self.assertIs(measurements.Outcome.UNSET,
+                  phase_record.measurements[measurement].outcome)
+
+  def assertMeasured(self, phase_record, measurement, value=mock.ANY):
+    self.assertIn(measurement, phase_record.measured_values)
+    if value is not mock.ANY:
+      self.assertEquals(value, phase_record.measured_values[measurement])
+
+  def assertMeasurementPassed(self, phase_record, measurement):
+    self.assertMeasured(phase_record, measurement)
+    self.assertIs(measurements.Outcome.PASS,
+                  phase_record.measurements[measurement].outcome)
+
+  def assertMeasurementFailed(self, phase_record, measurement):
+    self.assertMeasured(phase_record, measurement)
+    self.assertIs(measurements.Outcome.FAIL,
+                  phase_record.measurements[measurement].outcome)
