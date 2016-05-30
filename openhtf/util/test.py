@@ -199,6 +199,15 @@ def patch_plugs(**mock_plugs):
 
 class TestCase(unittest.TestCase):
 
+  def assertPhaseContinue(self, phase_record):
+    self.assertIs(openhtf.PhaseResult.CONTINUE, phase_record.result)
+
+  def assertPhaseRepeat(self, phase_record):
+    self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result)
+
+  def assertPhaseStop(self, phase_record):
+    self.assertIs(openhtf.PhaseResult.STOP, phase_record.result)
+
   def assertNotMeasured(self, phase_record, measurement):
     self.assertNotIn(measurement, phase_record.measured_values)
     self.assertIs(measurements.Outcome.UNSET,

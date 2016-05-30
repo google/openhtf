@@ -20,14 +20,14 @@ options. Each option is taken into account when executing a phase, such as
 checking options.run_if as soon as possible and timing out at the appropriate
 time.
 
-A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or FAIL.
+A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or STOP.
 A phase may also return None, or have no return statement, which is the same as
 returning openhtf.PhaseResult.CONTINUE.  These results are then acted upon
 accordingly and a new test run status is returned.
 
 Phases are always run in order and not allowed to loop back, though a phase may
-choose to repeat itself by returning REPEAT. Returning FAIL will cause a test to
-fail early, allowing a test to detect a bad state and not waste any further
+choose to repeat itself by returning REPEAT. Returning STOP will cause a test to
+stop early, allowing a test to detect a bad state and not waste any further
 time. A phase should not return TIMEOUT or ABORT, those are handled by the
 framework.
 """

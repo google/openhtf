@@ -237,17 +237,13 @@ def CreateArgParser(add_help=False):
       logs.ARG_PARSER], add_help=add_help)
 
 
-class PhaseResult(Enum):
-  """Result of a phase.
-
-  These values can be returned by a test phase to control what the framework
-  does after the phase.  CONTINUE causes the framework to execute the next
-  phase, REPEAT causes the framework to execute that same phase again, and FAIL
-  causes the framework to stop executing and mark the test as failed.
-  """
-  CONTINUE = 'PHASE_CONTINUE'
-  REPEAT = 'PHASE_REPEAT'
-  FAIL = 'PHASE_FAIL'
+# Result of a phase.
+#
+# These values can be returned by a test phase to control what the framework
+# does after the phase.  CONTINUE causes the framework to execute the next
+# phase, REPEAT causes the framework to execute that same phase again, and STOP
+# causes the framework to stop executing.
+PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
 
 
 class PhaseOptions(mutablerecords.Record(
