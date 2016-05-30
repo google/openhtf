@@ -23,3 +23,4 @@ import openhtf.io.output.mfg_inspector
 OutputToJSON = json_factory.OutputToJSON
 UploadToMfgInspector = mfg_inspector.UploadToMfgInspector
 OutputToTestRunProto = mfg_inspector.OutputToTestRunProto
+UploadOrOutput = mfg_inspector.UploadOrOutput
