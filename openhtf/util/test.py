@@ -178,7 +178,7 @@ def patch_plugs(**mock_plugs):
       plug_module, plug_typename = plug_typename.rsplit('.', 1)
       try:
         plug_type = getattr(sys.modules[plug_module], plug_typename)
-      except:
+      except Exception:
         logging.error("Invalid plug type specification %s='%s.%s'",
                       plug_arg_name, plug_module, plug_typename)
         raise
