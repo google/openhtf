@@ -110,6 +110,7 @@ class PhaseOrTestIterator(collections.Iterator):
       except Exception as exc:
         logging.exception('Exception executing phase %s', phase.name)
         phase_record.result = phase_executor.PhaseOutcome(exc)
+
     return phase_record
  
   def _handle_test(self, test):
@@ -200,13 +201,17 @@ def patch_plugs(**mock_plugs):
 class TestCase(unittest.TestCase):
 
   def assertPhaseContinue(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.CONTINUE, phase_record.result)
+    if phase_record.result.phase_result is not None:
+      self.assertIs(openhtf.PhaseResult.CONTINUE,
+                    phase_record.result.phase_result)
 
   def assertPhaseRepeat(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result)
+    self.assertIs(openhtf.PhaseResult.REPEAT,
+                  phase_record.result.phase_result)
 
   def assertPhaseStop(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.STOP, phase_record.result)
+    self.assertIs(openhtf.PhaseResult.STOP,
+                  phase_record.result.phase_result)
 
   def assertNotMeasured(self, phase_record, measurement):
     self.assertNotIn(measurement, phase_record.measured_values)

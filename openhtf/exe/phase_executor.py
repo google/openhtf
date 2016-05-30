@@ -185,26 +185,27 @@ class PhaseExecutor(object):
 
     _LOG.info('Executing phase %s', phase.name)
 
-    self.test_state.running_phase_record = test_record.PhaseRecord(
-        phase.name, phase.code_info)
+    phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
+    self.test_state.running_phase_record = phase_record
 
-    with phase_data.RecordPhaseTiming(
-        phase, self.test_state.running_phase_record) as outcome_wrapper:
+    with phase_data.RecordPhaseTiming(phase, phase_record):
       phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      outcome_wrapper.SetOutcome(phase_thread.JoinOrDie())
+      phase_outcome = phase_thread.JoinOrDie()
 
-    self.test_state.record.phases.append(
-        self.test_state.running_phase_record)
+    # Save the outcome of the phase and do some cleanup.
+    phase_record.result = phase_outcome
+    self.test_state.record.phases.append(phase_record)
     self.test_state.running_phase_record = None
 
-    if outcome_wrapper.outcome.phase_result == openhtf.PhaseResult.CONTINUE:
-      if self.test_state.pending_phases:
-        self.test_state.pending_phases.pop(0)
+    # We're done with this phase, pop it from the pending phases.
+    if (phase_outcome.phase_result is openhtf.PhaseResult.CONTINUE and
+        self.test_state.pending_phases):
+      self.test_state.pending_phases.pop(0)
 
-    _LOG.debug('Phase finished with outcome %s', outcome_wrapper.outcome)
-    return outcome_wrapper.outcome
+    _LOG.debug('Phase finished with outcome %s', phase_outcome)
+    return phase_outcome
 
   def Stop(self):
     """Stops the current phase."""

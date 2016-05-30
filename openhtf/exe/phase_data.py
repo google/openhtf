@@ -39,13 +39,6 @@ class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
 
-class OutcomeWrapper(mutablerecords.Record(
-    'OutcomeWrapper', [], {'outcome': None})):
-  """Wrapper so yielded object can receive an outcome."""
-  def SetOutcome(self, outcome):
-    self.outcome = outcome
-
-
 class PhaseData(object):  # pylint: disable=too-many-instance-attributes
   """The phase data object passed to test phases as the first argument.
 
@@ -143,11 +136,10 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     }
     self.measurements = measurements.Collection(measurement_map)
     self.attachments = {}
-    outcome_wrapper = OutcomeWrapper()
     running_phase_record.start_time_millis = util.TimeMillis()
 
     try:
-      yield outcome_wrapper
+      yield
     finally:
       # Serialize measurements and measured values, validate as we go.
       values = dict(self.measurements)
@@ -169,7 +161,6 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       running_phase_record.measured_values = values
       running_phase_record.measurements = validated_measurements
       running_phase_record.end_time_millis = util.TimeMillis()
-      running_phase_record.result = outcome_wrapper.outcome
       running_phase_record.attachments.update(self.attachments)
 
       # Clear these between uses for the frontend API.

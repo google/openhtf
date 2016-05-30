@@ -14,6 +14,8 @@
 
 import unittest
 
+import openhtf
+
 from openhtf import plugs
 from openhtf.util import measurements
 from openhtf.util import test
@@ -40,7 +42,22 @@ def test_phase(phase_data, my_plug):
   phase_data.measurements.fails = 20
 
 
+def phase_retval(retval):
+  def phase(phase_data):
+    return retval
+  return phase
+
+
 class TestTest(test.TestCase):
+
+  @test.patch_plugs()
+  def test_phase_retvals(self):
+    phase_record = yield phase_retval(openhtf.PhaseResult.CONTINUE)
+    self.assertPhaseContinue(phase_record)
+    phase_record = yield phase_retval(openhtf.PhaseResult.REPEAT)
+    self.assertPhaseRepeat(phase_record)
+    phase_record = yield phase_retval(openhtf.PhaseResult.STOP)
+    self.assertPhaseStop(phase_record)
 
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
   def test_patch_plugs(self, mock_plug):
@@ -49,6 +66,7 @@ class TestTest(test.TestCase):
     phase_record = yield test_phase
 
     mock_plug.do_stuff.assert_called_with('stuff_args')
+    self.assertPhaseContinue(phase_record)
     self.assertEquals('test_phase', phase_record.name)
     self.assertMeasured(phase_record, 'test_measurement', 0xBEEF)
     self.assertMeasured(phase_record, 'othr_measurement', 0xDEAD)
