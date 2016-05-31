@@ -32,6 +32,7 @@ import json
 import logging
 import numbers
 import oauth2client.client
+import os
 import sys
 import threading
 import zlib
@@ -75,6 +76,10 @@ MAX_PARAMS_PER_MEASUREMENT = 100
 
 class UploadFailedError(Exception):
   """Raised when an upload to mfg-inspector fails."""
+
+
+class InvalidTestRunError(Exception):
+  """Raised if test run is invalid."""
 
 
 # pylint: disable=invalid-name
@@ -389,10 +394,19 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
       self._credentials = credentials
   # pylint: enable=invalid-name,missing-docstring
 
-  def __init__(self, user, keydata, token_uri=TOKEN_URI):
+  def __init__(self, user, keydata,
+               token_uri=TOKEN_URI, destination_url=DESTINATION_URL):
     self.user = user
     self.keydata = keydata
     self.token_uri = token_uri
+    self.destination_url = destination_url
+    self.credentials = oauth2client.client.SignedJwtAssertionCredentials(
+        service_account_name=self.user,
+        private_key=self.keydata,
+        scope=self.SCOPE_CODE_URI,
+        user_agent='OpenHTF Guzzle Upload Client',
+        token_uri=self.token_uri)
+    self.credentials.set_store(self._MemStorage())
 
   @classmethod
   def from_json(cls, json_data):
@@ -409,26 +423,31 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
                keydata=json_data['private_key'],
                token_uri=json_data['token_uri'])
 
-  @staticmethod
-  def UploadTestRun(testrun, destination, credentials=None):
+  def UploadTestRun(self, testrun):
     """Uploads the TestRun at a particular file.
 
     Args:
-      testrun: TestRun proto to upload.
-      credentials: An OAuth2Credentials object to use for authenticated uploads.
+      testrun: TestRun proto or filepath.
     """
     http = httplib2.Http()
-    if credentials:
-      if credentials.access_token_expired:
-        credentials.refresh(http)
-      credentials.authorize(http)
+    if self.credentials.access_token_expired:
+      self.credentials.refresh(http)
+    self.credentials.authorize(http)
+
+    if isinstance(testrun, test_runs_pb2.TestRun):
+      data = testrun.SerializeToString()
+    elif os.path.isfile(testrun):
+      with open(testrun) as f:
+        data = f.read()
+    else:
+      InvalidTestRunError('Invalid test run data')
 
     test_run_envelope = guzzle_pb2.TestRunEnvelope()
-    test_run_envelope.payload = zlib.compress(testrun.SerializeToString())
+    test_run_envelope.payload = zlib.compress(data)
     test_run_envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
     serialized_envelope = test_run_envelope.SerializeToString()
 
-    resp, content = http.request(destination, 'POST', serialized_envelope)
+    resp, content = http.request(self.destination_url, 'POST', serialized_envelope)
     if resp.status != 200:
       try:
         results = json.loads(content)
@@ -436,17 +455,14 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
       except Exception:
         raise UploadFailedError(resp, content)
 
+    # Return True if successful
+    return True
+
   def __call__(self, test_record):  # pylint: disable=invalid-name
-    credentials = oauth2client.client.SignedJwtAssertionCredentials(
-        service_account_name=self.user,
-        private_key=self.keydata,
-        scope=self.SCOPE_CODE_URI,
-        user_agent='OpenHTF Guzzle Upload Client',
-        token_uri=self.token_uri)
-    credentials.set_store(self._MemStorage())
 
     testrun = _TestRunFromTestRecord(test_record)
-    self.UploadTestRun(testrun, self.DESTINATION_URL, credentials)
+    self.UploadTestRun(testrun)
+
 
 class UploadOrOutput(object):
   """Attempt to upload to inspector, output to local if fail.
