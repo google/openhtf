@@ -339,8 +339,11 @@ class PhaseInfo(mutablerecords.Record(
     kwargs.update(phase_data.plug_manager.ProvidePlugs(
         (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
-    if len(arg_info.args) == len(kwargs) and not arg_info.varargs:
-      # Underlying function has no room for phase_data as an arg. If it expects
-      # it but miscounted arguments, we'll get another error farther down.
-      return self.func(**kwargs)
-    return self.func(phase_data, **kwargs)
+    # Pass in phase_data if it takes *args, or **kwargs with at least 1
+    # positional, or more positional args than we have keyword args.
+    if arg_info.varargs or (arg_info.keywords and len(arg_info.args) >= 1) or (
+        len(arg_info.args) > len(kwargs)):
+      # Underyling function has room for phase_data as an arg. If it doesn't
+      # expect it but we miscounted args, we'll get another error farther down.
+      return self.func(phase_data, **kwargs)
+    return self.func(**kwargs)
