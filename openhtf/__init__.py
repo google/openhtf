@@ -155,10 +155,6 @@ class Test(object):
           serial number.
       loop: DEPRECATED
     """
-    self._executor = exe.TestExecutor(
-        self._test_data, plugs.PlugManager(),
-        self._test_options.teardown_function)
-
     # TODO(madsci): Remove this after a transitionary period.
     if loop is not None:
       raise ValueError(
@@ -174,7 +170,8 @@ class Test(object):
                   self.data.code_info.name)
         return
 
-      self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager())
+      self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager(),
+                                        self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.data.code_info.name)
       self._executor.SetTestStart(test_start)
       http_server = None
