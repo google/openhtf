@@ -209,7 +209,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
         if measurement.dimensions is None:
-          if testrun_param.numeric_value:
+          if isinstance(testrun_param.numeric_value, float):
             testrun_code.details = str(testrun_param.numeric_value)
           else:
             testrun_code.details = testrun_param.text_value
