@@ -146,6 +146,7 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.GetState())
         self._executor.Stop()
         self._executor = None
+      sys.exit()
 
   def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
