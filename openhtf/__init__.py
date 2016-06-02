@@ -90,7 +90,7 @@ class Test(object):
     # the class definition of TestOptions.
     self.Configure()
     # TODO(madsci): Fix this to play nice with multiple Test instances.
-    signal.signal(signal.SIGINT, self.Stop)
+    signal.signal(signal.SIGINT, self.StopFromSigInt)
 
   def AddOutputCallback(self, callback):
     """DEPRECATED: Use AddOutputCallbacks() instead."""
@@ -133,7 +133,7 @@ class Test(object):
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
-  def Stop(self, *_):
+  def StopFromSigInt(self, *_):
     """Stop test execution as abruptly as we can, only in response to SIGINT."""
     _LOG.error('Received SIGINT.')
     with self._lock:
@@ -146,6 +146,7 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.GetState())
         self._executor.Stop()
         self._executor = None
+    raise KeyboardInterrupt
 
   def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
@@ -161,9 +162,10 @@ class Test(object):
           'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
           'use a while True: loop around Test.Execute() instead.')
 
-    # We have to lock this section to ensure we don't call TestExecutor.Stop()
-    # in self.Stop() between instantiating it and .Start()'ing it.  We'll check
-    # self._stopped to make sure self.Stop() hasn't already been called here.
+    # We have to lock this section to ensure we don't call
+    # TestExecutor.StopFromSigInt() in self.Stop() between instantiating it and
+    # .Start()'ing it.  We'll check self._stopped to make sure self.Stop()
+    # hasn't already been called here.
     with self._lock:
       if self._stopped:
         _LOG.info('Cowardly refusing to execute test after SIGINT: %s',
