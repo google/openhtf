@@ -146,7 +146,10 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.GetState())
         self._executor.Stop()
         self._executor = None
-    raise KeyboardInterrupt
+    # The default SIGINT handler does this. If we don't, then nobody above
+    # us is notified of the event. This will raise this exception in the main
+    # thread.
+    raise KeyboardInterrupt()
 
   def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
