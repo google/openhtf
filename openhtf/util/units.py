@@ -24,64 +24,48 @@ from openhtf.utils.units import UOM
 UOM['BYTE'].uom_code        # 'AD'
 UOM['MILLIAMP'].uom_suffix  # 'mA'
 """
-
-
 import collections
-
 
 Unit = collections.namedtuple('Unit', 'uom_code uom_suffix')
 
 UOM = {}
-
-UOM['NONE'] = Unit(None, None)
+UOM['NONE'] = Unit('', '')
 UOM['PERCENT'] = Unit('P1', '%')
-
-# NO_DIMENSION means that there are units set, but they cannot be expressed
-# by a known dimension (such as a ratio)
-UOM['NO_DIMENSION'] = Unit('NDL', None)
-
+UOM['NO_DIMENSION'] = Unit('NDL', '')
 UOM['PIXEL'] = Unit('PX', 'px')
-UOM['PIXEL_LEVEL'] = Unit('PXL', None)
-
+UOM['PIXEL_LEVEL'] = Unit('PXL', '')
 UOM['ROTATIONS_PER_MINUTE'] = Unit('RPM', 'rpm')
-
+UOM['DEGREE'] = Unit('DD', '°')
+UOM['RADIAN'] = Unit('C81', 'rad')
+UOM['DEGREE_PER_SECOND'] = Unit('E96', '°/s')
 UOM['SECOND'] = Unit('SEC', 's')
-UOM['MILLISECOND'] = Unit('C26', 'ms')
-UOM['MICROSECOND'] = Unit('B98', r'µs')
 UOM['MHZ'] = Unit('MHZ', 'MHz')
 UOM['HERTZ'] = Unit('HTZ', 'Hz')
-
+UOM['MICROSECOND'] = Unit('B98', 'µs')
 UOM['MILLIMETER'] = Unit('MMT', 'mm')
 UOM['CENTIMETER'] = Unit('LC', 'cm')
 UOM['METER'] = Unit('MTR', 'm')
 UOM['PER_METER'] = Unit('M0R', 'm⁻¹')
+UOM['GRAVITY'] = Unit('K40', 'g')
 UOM['MILLILITER'] = Unit('MLT', 'mL')
-UOM['CUBIC_FOOT'] = Unit('MTQ', 'Ft³')
-
+UOM['CUBIC_FOOT'] = Unit('FTQ', 'Ft³')
+UOM['CUBIC_METER'] = Unit('MTQ', 'm³')
 UOM['DECIBEL'] = Unit('2N', 'dB')
 UOM['DECIBEL_MW'] = Unit('2N', 'dBmW')
-
 UOM['MICROAMP'] = Unit('B84', 'µA')
 UOM['MILLIAMP'] = Unit('4K', 'mA')
+UOM['AMPERE'] = Unit('AMP', 'A')
 UOM['MICROVOLT'] = Unit('D82', 'µV')
+UOM['MILLIVOLT'] = Unit('2Z', 'mV')
 UOM['VOLT'] = Unit('VLT', 'V')
 UOM['PICOFARAD'] = Unit('4T', 'pF')
-UOM['COULOMB'] = Unit('COU', None)
-UOM['MILLIVOLT'] = Unit('2Z', 'mV')
+UOM['COULOMB'] = Unit('COU', 'C')
 UOM['WATT'] = Unit('WTT', 'W')
-UOM['AMPERE'] = Unit('AMP', 'A')
-
 UOM['DEGREE_CELSIUS'] = Unit('CEL', '°C')
 UOM['KELVIN'] = Unit('KEL', 'K')
-
-UOM['BYTE'] = Unit('AD', None)
-UOM['MEGA_BYTES_PER_SECOND'] = Unit('MBPS', 'MB/s')
-
-UOM['DEGREE'] = Unit('DD', '°')
-UOM['RADIAN'] = Unit('C81', 'rad')
-
+UOM['BYTE'] = Unit('AD', 'B')
+UOM['MEGA_BYTES_PER_SECOND'] = Unit('P95', 'MB/s')
 UOM['NEWTON'] = Unit('NEW', 'N')
-
 UOM['CUBIC_CENTIMETER_PER_SEC'] = Unit('2J', 'cm³/s')
 UOM['MILLIBAR'] = Unit('MBR', 'mbar')
-UOM['LUX'] = Unit('LX', 'lx')
+UOM['MICROTESLA'] = Unit('D81', 'µT')
