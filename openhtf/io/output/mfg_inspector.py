@@ -109,6 +109,11 @@ def _PopulateHeader(record, testrun):
     testrun_code = testrun.failure_codes.add()
     testrun_code.code = details.code
     testrun_code.details = details.description
+  for phase in record.phases:
+    testrun_phase = testrun.phases.add()
+    testrun_phase.name = phase.name
+    testrun_phase.timing.start_time_millis = phase.start_time_millis 
+    testrun_phase.timing.end_time_millis = phase.end_time_millis 
 
 
 def _EnsureUniqueParameterName(name, used_parameter_names):
