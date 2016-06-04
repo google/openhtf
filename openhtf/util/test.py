@@ -13,33 +13,65 @@
 # limitations under the License.
 
 
-"""Unit test class for OpenHTF.
+"""Unit test helpers for OpenHTF tests and phases.
 
-  Provides ability to test for outcomes, exceptions and measurement values.
-  Provides ability to pass DUT serial number into unit test.
+This module provides some utility for unit testing OpenHTF test phases and
+whole tests.  Primarily, otherwise difficult to mock mechanisms are mocked
+for you, and there are a handful of convenience assertions that may be used
+to write more readable (and less fragile against output format change) tests.
 
-  Example:
+The primary class in this module is the TestCase class, which is a subclass
+of unittest.TestCase that provides some extra utility.  Use it the same way
+you would use unittest.TestCase.  See below for examples.
 
-  import unittest
-  import mock
-  import example_plug
-  import example_phase
+OpenHTF plugs are somewhat difficult to mock (because references are grabbed
+at import time, you end up having to poke at framework internals to do this),
+so there's a utility decorator for doing just this, @patch_plugs.  See below
+for examples of how to use it.
+
+Lastly, while not implemented here, it's common to need to temporarily alter
+configuration values for individual tests.  This can be accomplished with the
+@conf.SaveAndRestore decorator (see docs in conf.py, examples below).
+
+A few isolated examples, also see test/util/test_test.py for some usage:
+
   from openhtf.util import test
 
-  class Test(test.TestCase):
-    def setUp(self):
-      self.plug = example_plug.ExamplePlug
-      self.mock_plug = mock.Mock()
+  import mytest  # Contains phases under test.
 
-    def testExamplePhase(self):
-      self.mock_plug.return_value.GetReading.return_value = 1.0
-      self.RunPhasee(examle_phase.ExamplePhase, [self.plug], [self.mock_plug])
-      self.assertEqual(self.outcome, self.PASS)
-      self.assertAlmostEqual(self.values['foo'], 1.0)
-      self.assertEqual(self.exception, None)
+  class PhasesTest(test.TestCase)
 
-  if __name__ == '__main__':
-    unittest.main()
+    @test.yields_phases
+    def test_first_phase(self):
+      phase_record = yield mytest.first_phase
+      self.assertMeasured(phase_record, 'my_measurement', 'value')
+
+    @test.patch_plugs(mock_my_plug='my_plug.MyPlug')
+    def test_second_phase(self, mock_my_plug):  # arg must match keyword above.
+      # mock_my_plug is a MagicMock, and will be passed to yielded test phases
+      # in place of an instance of my_plug.MyPlug.  You can access it here to
+      # configure return values (and later to assert calls to plug methods).
+      mock_my_plug.measure_voltage.return_value = 5.0
+
+      # Trigger a phase (or openhtf.Test instance) to run by yielding it.  The
+      # resulting PhaseRecord is yielded back (or TestRecord if you yielded an
+      # openhtf.Test instance instead of a phase).
+      phase_record = yield mytest.second_phase  # uses my_plug.MyPlug
+
+      # Apply assertions to the output, probably using utility methods on self,
+      # see below for an exhaustive list of such utility assertions.
+      self.assertPhaseContinue(phase_record)
+      
+      # You can apply any assertions on the mocked plug here.
+      mock_my_plug.measure_voltage.assert_called_once_with()
+
+      # You can yield multiple phases/Test instances, but it's generally
+      # cleaner and more readable to limit to a single yield per test case. 
+
+List of assertions that can be used with PhaseRecord results:
+
+List of assertions that can be used with TestRecord results:
+
 """
 
 import collections
@@ -127,6 +159,11 @@ class PhaseOrTestIterator(collections.Iterator):
     self.last_result = self._handle_phase(
       openhtf.PhaseInfo.WrapOrCopy(phase_or_test))
     return phase_or_test, self.last_result
+
+
+def yields_phases(func):
+  """Alias for patch_plugs with no plugs patched."""
+  return patch_plugs()(func)
 
 
 def patch_plugs(**mock_plugs):
