@@ -236,6 +236,8 @@ class MeasuredValue(object):
           'Overriding previous measurement %s value of %s with %s, the old '
           'value will be lost.  Use a dimensioned measurement if you need to '
           'save multiple values.', self.name, self.stored_value, value)
+    if value is None:
+      _LOG.warning('Measurement %s is set to None', self.name)
     self.stored_value = value
     self.value_set = True
     self.measurement.Validate(self.value)
