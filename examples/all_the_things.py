@@ -24,6 +24,7 @@ import time
 
 import example_plug
 import openhtf
+import openhtf.conf as conf
 import openhtf.io.output as output
 
 from openhtf.io.output import json_factory
@@ -32,9 +33,15 @@ from openhtf.names import *
 #from openhtf.io.output import mfg_inspector
 
 
+conf.Declare('foo', default_value='bar',
+             description='Example of conf value.')
+
+
 @plug(example=example_plug.ExamplePlug)
-def example_monitor(example):
-  return example.Increment()
+def example_monitor(self, example):
+  increment = example.Increment()
+  self.logger.info('Plug increment: %s', increment)
+  return increment
 
 
 @measures(
@@ -56,6 +63,7 @@ def hello_world(test, example):
   test.measurements.widget_color = 'Black'
   test.measurements.widget_size = 3
   test.logger.info('Plug value: %s', example.Increment())
+  test.logger.info('foo config value : %s', conf.foo)
 
 
 # Timeout if this phase takes longer than 10 seconds.
