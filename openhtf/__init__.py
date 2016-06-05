@@ -82,7 +82,6 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._lock = threading.Lock()
-    self._stopped = False
     self._executor = None
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
@@ -90,7 +89,7 @@ class Test(object):
     # the class definition of TestOptions.
     self.Configure()
     # TODO(madsci): Fix this to play nice with multiple Test instances.
-    signal.signal(signal.SIGINT, self.Stop)
+    signal.signal(signal.SIGINT, self.StopFromSigInt)
 
   def AddOutputCallback(self, callback):
     """DEPRECATED: Use AddOutputCallbacks() instead."""
@@ -133,19 +132,21 @@ class Test(object):
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
-  def Stop(self, *_):
+  def StopFromSigInt(self, *_):
     """Stop test execution as abruptly as we can, only in response to SIGINT."""
     _LOG.error('Received SIGINT.')
     with self._lock:
-      # Once we're stopped for SIGINT, don't try to start anything else.
-      self._stopped = True
-      # TestState str()'s nicely to a descriptive string, so let's log that
-      # just for good measure.
       _LOG.error('Stopping Test due to SIGINT')
       if self._executor:
+        # TestState str()'s nicely to a descriptive string, so let's log that
+        # just for good measure.
         _LOG.error('Test state: %s', self._executor.GetState())
         self._executor.Stop()
         self._executor = None
+    # The default SIGINT handler does this. If we don't, then nobody above
+    # us is notified of the event. This will raise this exception in the main
+    # thread.
+    raise KeyboardInterrupt()
 
   def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
@@ -161,15 +162,10 @@ class Test(object):
           'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
           'use a while True: loop around Test.Execute() instead.')
 
-    # We have to lock this section to ensure we don't call TestExecutor.Stop()
-    # in self.Stop() between instantiating it and .Start()'ing it.  We'll check
-    # self._stopped to make sure self.Stop() hasn't already been called here.
+    # We have to lock this section to ensure we don't call
+    # TestExecutor.StopFromSigInt() in self.Stop() between instantiating it and
+    # .Start()'ing it.
     with self._lock:
-      if self._stopped:
-        _LOG.info('Cowardly refusing to execute test after SIGINT: %s',
-                  self.data.code_info.name)
-        return
-
       self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager(),
                                         self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.data.code_info.name)
