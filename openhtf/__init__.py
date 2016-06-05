@@ -81,6 +81,7 @@ class Test(object):
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
+    self._test_data.metadata['config'] = conf._asdict()
     self._lock = threading.Lock()
     self._executor = None
     # Make sure Configure() gets called at least once before Execute().  The
