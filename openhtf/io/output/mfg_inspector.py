@@ -114,6 +114,10 @@ def _PopulateHeader(record, testrun):
     testrun_phase.name = phase.name
     testrun_phase.timing.start_time_millis = phase.start_time_millis 
     testrun_phase.timing.end_time_millis = phase.end_time_millis 
+  if 'config' in record.metadata:
+    attachment = testrun.info_parameters.add()
+    attachment.name = 'config'
+    attachment.value_binary = str(record.metadata['config'])
 
 
 def _EnsureUniqueParameterName(name, used_parameter_names):
