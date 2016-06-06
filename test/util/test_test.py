@@ -39,6 +39,7 @@ class MyPlug(plugs.BasePlug):
 @measurements.measures('test_measurement', 'othr_measurement')
 @measurements.measures('passes', validators=[validators.InRange(1, 10)])
 @measurements.measures('fails', validators=[validators.InRange(1, 10)])
+@measurements.measures('unset_measurement')
 def test_phase(phase_data, my_plug):
   phase_data.logger.error('in phase_data %s', id(phase_data))
   phase_data.logger.error('in measurements %s', id(phase_data.measurements))
@@ -46,6 +47,7 @@ def test_phase(phase_data, my_plug):
   phase_data.measurements.othr_measurement = 0xDEAD
   phase_data.measurements.passes = 5
   phase_data.measurements.fails = 20
+  phase_data.test_record.AddOutcomeDetails(0xBED)
 
 
 def raising_phase(phase_data):
@@ -92,6 +94,8 @@ class TestTest(test.TestCase):
     mock_plug.do_stuff.assert_called_with('stuff_args')
     # The test fails because the 'fails' measurement fails.
     self.assertTestFail(test_record)
+    self.assertTestOutcomeCode(test_record, 0xBED)
+    self.assertNotMeasured(test_record, 'unset_measurement')
     self.assertMeasured(test_record, 'test_measurement', 0xBEEF)
     self.assertMeasured(test_record, 'othr_measurement', 0xDEAD)
     self.assertMeasurementPass(test_record, 'passes')
@@ -110,6 +114,38 @@ class TestTest(test.TestCase):
     test_record = yield openhtf.Test(raising_phase)
     self.assertTestError(test_record, DummyException)
 
+  def test_bad_assert(self):
+    with self.assertRaises(test.InvalidTestError):
+      self.assertMeasured(None)
+
+  def test_doesnt_yield(self):
+    def doesnt_yield(inner_self):
+      pass
+    with self.assertRaises(test.InvalidTestError):
+      test.yields_phases(doesnt_yield)(self)
+
+  def test_bad_mock_plug_args(self):
+    # Stub test* method that one might wrap with test.patch_plugs().
+    def stub_test_method(self, plug_one, plug_two):
+      pass
+
+    # Test that we catch weird extra test method args.
+    with self.assertRaises(test.InvalidTestError):
+      test.patch_plugs(plug_one='unused')(stub_test_method)
+
+    # Test that we catch mocks that aren't expected.
+    with self.assertRaises(test.InvalidTestError):
+      test.patch_plugs(plug_one='unused', plug_two='unused',
+                       plug_three='unused')(stub_test_method)
+
+    # Test that we catch weird plug specifications.
+    with self.assertRaises(ValueError):
+      test.patch_plugs(plug_one='bad_spec_no_dots',
+                       plug_two='unused')(stub_test_method)
+    with self.assertRaises(KeyError):
+      test.patch_plugs(plug_one='bad.spec.invalid.module',
+                       plug_two='also.bad')(stub_test_method)
+      
   def test_bad_yield(self):
     def bad_test(self):
       yield None

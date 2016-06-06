@@ -246,13 +246,13 @@ def patch_plugs(**mock_plugs):
     # Make MagicMock instances for the plugs.
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
-    for plug_arg_name, plug_typename in mock_plugs.iteritems():
-      plug_module, plug_typename = plug_typename.rsplit('.', 1)
+    for plug_arg_name, plug_fullname in mock_plugs.iteritems():
       try:
+        plug_module, plug_typename = plug_fullname.rsplit('.', 1)
         plug_type = getattr(sys.modules[plug_module], plug_typename)
       except Exception:
-        logging.error("Invalid plug type specification %s='%s.%s'",
-                      plug_arg_name, plug_module, plug_typename)
+        logging.error("Invalid plug type specification %s='%s'",
+                      plug_arg_name, plug_fullname)
         raise
       plug_mock = mock.create_autospec(plug_type, spec_set=True, instance=True)
       plug_typemap[plug_type] = plug_mock
@@ -335,8 +335,7 @@ class TestCase(unittest.TestCase):
   @_AssertPhaseOrTestRecord
   def assertNotMeasured(self, phase_record, measurement):
     self.assertNotIn(measurement, phase_record.measured_values,
-                     'Measurement %s unexpectedly set to: %s' %
-                     (measurement, phase_record.measured_values[measurement]))
+                     'Measurement %s unexpectedly set' % measurement)
     self.assertIs(measurements.Outcome.UNSET,
                   phase_record.measurements[measurement].outcome)
 
