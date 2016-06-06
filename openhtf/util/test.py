@@ -72,17 +72,33 @@ A few isolated examples, also see test/util/test_test.py for some usage:
       # Apply assertions to the output, probably using utility methods on self,
       # see below for an exhaustive list of such utility assertions.
       self.assertPhaseContinue(phase_record)
-      
+
       # You can apply any assertions on the mocked plug here.
       mock_my_plug.measure_voltage.assert_called_once_with()
 
       # You can yield multiple phases/Test instances, but it's generally
-      # cleaner and more readable to limit to a single yield per test case. 
+      # cleaner and more readable to limit to a single yield per test case.
 
 List of assertions that can be used with PhaseRecord results:
 
+  assertPhaseContinue(phase_record)
+  assertPhaseRepeat(phase_record)
+  assertPhaseStop(phase_record)
+  assertPhaseError(phase_record, exc_type=None)
+
 List of assertions that can be used with TestRecord results:
 
+  assertTestPass(test_rec)
+  assertTestFail(test_rec)
+  assertTestError(test_rec, exc_type=None)
+  assertTestOutcomeCode(test_rec, code)
+
+List of assertions that can be used with either PhaseRecords or TestRecords:
+
+  assertMeasured(phase_or_test_rec, measurement, value=mock.ANY)
+  assertNotMeasured(phase_or_test_rec, measurement)
+  assertMeasurementPass(phase_or_test_rec, measurement)
+  assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
 import collections
@@ -99,7 +115,6 @@ import mutablerecords
 import openhtf
 
 from openhtf import plugs
-from openhtf import util
 from openhtf.exe import phase_data
 from openhtf.exe import phase_executor
 from openhtf.io import test_record
@@ -161,7 +176,7 @@ class PhaseOrTestIterator(collections.Iterator):
         phase_record.result = phase_executor.PhaseOutcome(exc)
 
     return phase_record
- 
+
   def _handle_test(self, test):
     # Make sure we inject our mock plug instances.
     for plug_type, plug_value in self.mock_plugs.iteritems():
@@ -305,8 +320,8 @@ class TestCase(unittest.TestCase):
 
   def assertTestOutcomeCode(self, test_rec, code):
     """Assert that the given code is in some OutcomeDetails in the record."""
-    self.assertTrue(any(
-        details.code == code for details in test_rec.outcome_details),
+    self.assertTrue(
+        any(details.code == code for details in test_rec.outcome_details),
         'No OutcomeDetails had code %s' % code)
 
   ##### PhaseRecord Assertions #####

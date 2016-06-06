@@ -145,7 +145,7 @@ class TestTest(test.TestCase):
     with self.assertRaises(KeyError):
       test.patch_plugs(plug_one='bad.spec.invalid.module',
                        plug_two='also.bad')(stub_test_method)
-      
+
   def test_bad_yield(self):
     def bad_test(self):
       yield None
