@@ -27,7 +27,11 @@ you would use unittest.TestCase.  See below for examples.
 OpenHTF plugs are somewhat difficult to mock (because references are grabbed
 at import time, you end up having to poke at framework internals to do this),
 so there's a utility decorator for doing just this, @patch_plugs.  See below
-for examples of how to use it.
+for examples of how to use it.  Note that plugs are initialized once and torn
+down once for a single method decorated with @patch_plugs (regardless of how
+many phases or Test objects are yielded).  If you need new plug instances,
+separate your test into separate decorated test* methods in your test case
+(this is good practice anyway).
 
 Lastly, while not implemented here, it's common to need to temporarily alter
 configuration values for individual tests.  This can be accomplished with the
@@ -35,16 +39,23 @@ configuration values for individual tests.  This can be accomplished with the
 
 A few isolated examples, also see test/util/test_test.py for some usage:
 
+  from openhtf import conf
   from openhtf.util import test
 
   import mytest  # Contains phases under test.
 
   class PhasesTest(test.TestCase)
 
+    # Decorate the test* method with this to be able to yield a phase to run it.
     @test.yields_phases
+    # Decorate with conf.SaveAndRestore to temporarily set conf values.
+    @conf.SaveAndRestore(phase_variance='test_phase_variance')
     def test_first_phase(self):
       phase_record = yield mytest.first_phase
+      # Check a measurement value.
       self.assertMeasured(phase_record, 'my_measurement', 'value')
+      # Check that the measurement outcome was PASS.
+      self.assertMeasurementPass(phase_record, 'my_measurement')
 
     @test.patch_plugs(mock_my_plug='my_plug.MyPlug')
     def test_second_phase(self, mock_my_plug):  # arg must match keyword above.
@@ -83,8 +94,10 @@ import types
 import unittest
 
 import mock
+import mutablerecords
 
 import openhtf
+
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_data
@@ -95,6 +108,9 @@ from openhtf.util import measurements
 
 class InvalidTestError(Exception):
   """Raised when there's something invalid about a test."""
+
+
+RecordSaver = mutablerecords.Record('RecordSaver', (), {'record': None})
 
 
 class PhaseOrTestIterator(collections.Iterator):
@@ -109,8 +125,8 @@ class PhaseOrTestIterator(collections.Iterator):
     """
     if not isinstance(iterator, types.GeneratorType):
       raise InvalidTestError(
-          'methods decorated with patch_plugs must yield a test phase',
-          iterator)
+          'Methods decorated with patch_plugs or yields_phases must yield '
+          'test phases or openhtf.Test objects.', iterator)
 
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
@@ -136,6 +152,7 @@ class PhaseOrTestIterator(collections.Iterator):
                                      test_record.TestRecord(None, None))
     phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
 
+    # Actually execute the phase, saving the result in our return value.
     with phasedata.RecordPhaseTiming(phase, phase_record):
       try:
         phase_record.result = phase_executor.PhaseOutcome(phase(phasedata))
@@ -146,7 +163,23 @@ class PhaseOrTestIterator(collections.Iterator):
     return phase_record
  
   def _handle_test(self, test):
-    pass
+    # Make sure we inject our mock plug instances.
+    for plug_type, plug_value in self.mock_plugs.iteritems():
+      self.plug_manager.OverridePlug(plug_type, plug_value)
+
+    # We'll need a place to stash the resulting TestRecord.
+    record_saver = RecordSaver()
+    test.AddOutputCallbacks(
+        lambda record: setattr(record_saver, 'record', record))
+
+    # Disable the station_api for unit tests.
+    test.Configure(http_port=None)
+
+    # Mock the PlugManager to use ours instead, and execute the test.
+    with mock.patch('openhtf.plugs.PlugManager', new=lambda: self.plug_manager):
+      test.Execute(test_start=lambda: 'TestDutId')
+
+    return record_saver.record
 
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
@@ -156,8 +189,9 @@ class PhaseOrTestIterator(collections.Iterator):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
-    self.last_result = self._handle_phase(
-      openhtf.PhaseInfo.WrapOrCopy(phase_or_test))
+    else:
+      self.last_result = self._handle_phase(
+          openhtf.PhaseInfo.WrapOrCopy(phase_or_test))
     return phase_or_test, self.last_result
 
 
@@ -237,35 +271,93 @@ def patch_plugs(**mock_plugs):
 
 class TestCase(unittest.TestCase):
 
+  def _AssertPhaseOrTestRecord(func):
+    """Decorator for automatically invoking self.assertTestPhases when needed.
+
+    This allows assertions to apply to a single phase or "any phase in the test"
+    without having to handle the type check themselves.  Note that the record,
+    either PhaseRecord or TestRecord, must be the first argument to the
+    wrapped assertion method.
+    """
+    @functools.wraps(func)
+    def assertion_wrapper(self, phase_or_test_record, *args):
+      if isinstance(phase_or_test_record, test_record.TestRecord):
+        for phase_record in phase_or_test_record.phases:
+          func(self, phase_record, *args)
+      elif isinstance(phase_or_test_record, test_record.PhaseRecord):
+        func(self, phase_or_test_record, *args)
+      else:
+        raise InvalidTestError('Expected either a PhaseRecord or TestRecord')
+    return assertion_wrapper
+
+  ##### TestRecord Assertions #####
+
+  def assertTestPass(self, test_rec):
+    self.assertEquals(test_record.Outcome.PASS, test_rec.outcome)
+
+  def assertTestFail(self, test_rec):
+    self.assertEquals(test_record.Outcome.FAIL, test_rec.outcome)
+
+  def assertTestError(self, test_rec, exc_type=None):
+    self.assertEquals(test_record.Outcome.ERROR, test_rec.outcome)
+    if exc_type:
+      self.assertPhaseError(test_rec.phases[-1], exc_type)
+
+  def assertTestOutcomeCode(self, test_rec, code):
+    """Assert that the given code is in some OutcomeDetails in the record."""
+    self.assertTrue(any(
+        details.code == code for details in test_rec.outcome_details),
+        'No OutcomeDetails had code %s' % code)
+
+  ##### PhaseRecord Assertions #####
+
   def assertPhaseContinue(self, phase_record):
     if phase_record.result.phase_result is not None:
       self.assertIs(openhtf.PhaseResult.CONTINUE,
                     phase_record.result.phase_result)
 
   def assertPhaseRepeat(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.REPEAT,
-                  phase_record.result.phase_result)
+    self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
 
   def assertPhaseStop(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.STOP,
-                  phase_record.result.phase_result)
+    self.assertIs(openhtf.PhaseResult.STOP, phase_record.result.phase_result)
 
+  def assertPhaseError(self, phase_record, exc_type=None):
+    self.assertTrue(phase_record.result.raised_exception,
+                    'Phase did not raise an exception')
+    if exc_type:
+      self.assertIsInstance(phase_record.result.phase_result, exc_type,
+                            'Raised exception %r is not a subclass of %r' %
+                            (phase_record.result.phase_result, exc_type))
+
+  ##### Measurement Assertions #####
+
+  @_AssertPhaseOrTestRecord
   def assertNotMeasured(self, phase_record, measurement):
-    self.assertNotIn(measurement, phase_record.measured_values)
+    self.assertNotIn(measurement, phase_record.measured_values,
+                     'Measurement %s unexpectedly set to: %s' %
+                     (measurement, phase_record.measured_values[measurement]))
     self.assertIs(measurements.Outcome.UNSET,
                   phase_record.measurements[measurement].outcome)
 
+  @_AssertPhaseOrTestRecord
   def assertMeasured(self, phase_record, measurement, value=mock.ANY):
-    self.assertIn(measurement, phase_record.measured_values)
+    self.assertIn(measurement, phase_record.measured_values,
+                  'Measurement %s not set' % measurement)
     if value is not mock.ANY:
-      self.assertEquals(value, phase_record.measured_values[measurement])
+      self.assertEquals(
+          value, phase_record.measured_values[measurement],
+          'Measurement %s has wrong value: expected %s, got %s' %
+          (measurement, value, phase_record.measured_values[measurement]))
 
-  def assertMeasurementPassed(self, phase_record, measurement):
+  @_AssertPhaseOrTestRecord
+  def assertMeasurementPass(self, phase_record, measurement):
     self.assertMeasured(phase_record, measurement)
     self.assertIs(measurements.Outcome.PASS,
                   phase_record.measurements[measurement].outcome)
 
-  def assertMeasurementFailed(self, phase_record, measurement):
+  @_AssertPhaseOrTestRecord
+  def assertMeasurementFail(self, phase_record, measurement):
     self.assertMeasured(phase_record, measurement)
     self.assertIs(measurements.Outcome.FAIL,
                   phase_record.measurements[measurement].outcome)

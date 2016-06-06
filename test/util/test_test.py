@@ -22,9 +22,15 @@ from openhtf.util import test
 from openhtf.util import validators
 
 
+class DummyException(Exception):
+  """Raised for testing phases that raise."""
+
+
 class MyPlug(plugs.BasePlug):
+  """Stub plug for ensuring plugs get mocked correctly."""
   def __init__(self):
     raise NotImplementedError('MyPlug not mocked correctly')
+
   def do_stuff(self, unused):
     raise NotImplementedError('MyPlug not mocked correctly')
 
@@ -42,7 +48,12 @@ def test_phase(phase_data, my_plug):
   phase_data.measurements.fails = 20
 
 
+def raising_phase(phase_data):
+  raise DummyException('This Phase raises!')
+
+
 def phase_retval(retval):
+  """Helper function to generate a phase that returns the given retval."""
   def phase(phase_data):
     return retval
   return phase
@@ -50,7 +61,7 @@ def phase_retval(retval):
 
 class TestTest(test.TestCase):
 
-  @test.patch_plugs()
+  @test.yields_phases
   def test_phase_retvals(self):
     phase_record = yield phase_retval(openhtf.PhaseResult.CONTINUE)
     self.assertPhaseContinue(phase_record)
@@ -60,7 +71,7 @@ class TestTest(test.TestCase):
     self.assertPhaseStop(phase_record)
 
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
-  def test_patch_plugs(self, mock_plug):
+  def test_patch_plugs_phase(self, mock_plug):
     mock_plug.do_stuff.return_value = 0xBEEF
 
     phase_record = yield test_phase
@@ -70,5 +81,42 @@ class TestTest(test.TestCase):
     self.assertEquals('test_phase', phase_record.name)
     self.assertMeasured(phase_record, 'test_measurement', 0xBEEF)
     self.assertMeasured(phase_record, 'othr_measurement', 0xDEAD)
-    self.assertMeasurementPassed(phase_record, 'passes')
-    self.assertMeasurementFailed(phase_record, 'fails')
+    self.assertMeasurementPass(phase_record, 'passes')
+    self.assertMeasurementFail(phase_record, 'fails')
+
+  @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
+  def test_patch_plugs_test(self, mock_plug):
+    mock_plug.do_stuff.return_value = 0xBEEF
+
+    test_record = yield openhtf.Test(test_phase)
+    mock_plug.do_stuff.assert_called_with('stuff_args')
+    # The test fails because the 'fails' measurement fails.
+    self.assertTestFail(test_record)
+    self.assertMeasured(test_record, 'test_measurement', 0xBEEF)
+    self.assertMeasured(test_record, 'othr_measurement', 0xDEAD)
+    self.assertMeasurementPass(test_record, 'passes')
+    self.assertMeasurementFail(test_record, 'fails')
+
+  @test.yields_phases
+  def test_passing_test(self):
+    test_record = yield openhtf.Test(phase_retval(None))
+    self.assertTestPass(test_record)
+
+  @test.yields_phases
+  def test_errors(self):
+    phase_record = yield raising_phase
+    self.assertPhaseError(phase_record, DummyException)
+
+    test_record = yield openhtf.Test(raising_phase)
+    self.assertTestError(test_record, DummyException)
+
+  def test_bad_yield(self):
+    def bad_test(self):
+      yield None
+
+    # The InvalidTestError gets raised upon initial invokation of the test
+    # method, so we need to do the wrapping inside the assertRaises context
+    # rather than using the decorator on this test method itself and only
+    # wrapping the yield statement in the assertRaises context.
+    with self.assertRaises(test.InvalidTestError):
+      test.yields_phases(bad_test)(self)
