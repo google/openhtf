@@ -44,7 +44,7 @@ A few isolated examples, also see test/util/test_test.py for some usage:
 
   import mytest  # Contains phases under test.
 
-  class PhasesTest(test.TestCase)
+  class PhasesTest(test.TestCase):
 
     # Decorate the test* method with this to be able to yield a phase to run it.
     @test.yields_phases
@@ -78,6 +78,16 @@ A few isolated examples, also see test/util/test_test.py for some usage:
 
       # You can yield multiple phases/Test instances, but it's generally
       # cleaner and more readable to limit to a single yield per test case.
+
+    @test.patch_plugs(mock_my_plug='my_plug.MyPlug')
+    def test_multiple(self, mock_my_plug):
+      # You can also yield an entire openhtf.Test() object.  If you do, you get
+      # a TestRecord yielded back instead of a PhaseRecord.
+      test_rec = yield openhtf.Test(mytest.first_phase, mytest.second_phase)
+
+      # Some utility assertions are provided for operating on test records (see
+      # below for a full list).
+      self.assertTestPass(test_rec)
 
 List of assertions that can be used with PhaseRecord results:
 
