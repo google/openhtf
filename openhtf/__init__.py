@@ -337,7 +337,7 @@ class PhaseInfo(mutablerecords.Record(
     # positional, or more positional args than we have keyword args.
     if arg_info.varargs or (arg_info.keywords and len(arg_info.args) >= 1) or (
         len(arg_info.args) > len(kwargs)):
-      # Underyling function has room for phase_data as an arg. If it doesn't
+      # Underlying function has room for phase_data as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
       return self.func(phase_data, **kwargs)
     return self.func(**kwargs)
