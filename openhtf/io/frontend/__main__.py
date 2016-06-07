@@ -15,12 +15,27 @@
 
 """A basic frontend server for OpenHTF using the HTTP frontend API.
 
-This server relies on openhtf's multicast station discovery service for
-knowledge of which stations exist. A client (usually just a normal web browser)
-can be on any host that can make HTTP requests to the server (including
-localhost).
+This server has two ways of knowing which stations to track:
+  
+  (1) Discovery pings sent using OpenHTF's multicast station discovery service.
+      These pings can be disabled via the '--disable-multicast' flag if desired.
+  
+  (2) A list of stations provided via the server's config yaml file (specified
+      via the '--config-file' flag). This list will be sought under the config
+      key 'stations', which should contain a list of station entries:
 
-To start this frontend server, invoke python with the -m flag in a python
+        stations:
+          - id: <station_id 1>
+            host: <ip address 1>
+            port: <port number 1>
+          - id: <station_id 2>
+            host: <ip address 2>
+            port: <port number 2>
+          - id: <station_id 3>
+            host: <ip address 3>
+            port: <port number 3>
+
+To start the frontend server, invoke python with the -m flag in a python
 environment where openhtf is installed:
 
 $ python -m openhtf.io.frontend
@@ -44,6 +59,7 @@ import tornado.escape
 import tornado.ioloop
 import tornado.web
 
+from openhtf import conf
 from openhtf.io.http_api import PING_STRING
 from openhtf.io.http_api import PING_RESPONSE_KEY
 from openhtf.util import logs
@@ -56,9 +72,16 @@ UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
 BUILD_PATH = os.path.join(os.path.dirname(__file__), 'src', 'dist')
 PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
 
+conf.Declare('stations',
+             default_value=[],
+             description='List of manually declared stations.')
+
 
 class Station(object):
   """Represents a station seen on the local network.
+
+  Args:
+    hostport: A tuple of (<ip address>, <port>).
 
   Attributes:
     station_id: Station's ID string.
@@ -85,8 +108,8 @@ class Station(object):
         station_id = state['framework']['station_id']
         if (self.station_id is not UNKNOWN_STATION_ID) and (
             station_id != self.station_id):
-          _LOG.warning('Station (%s) underwent an identity change.',
-                       self.hostport)
+          _LOG.warning('Station (%s) underwent an identity change from "%s" to'
+                       ' "%s"' % (self.hostport, self.station_id, station_id))
         self.station_id = station_id
         self.state = state
         return True
@@ -121,15 +144,21 @@ class StationStore(threading.Thread):
   tuples of (host_ip, port) to Station records.
   """
   def __init__(self, discovery_address, discovery_port, discovery_ttl,
-               discovery_interval_s):
+               discovery_interval_s, disable_discovery):
     super(StationStore, self).__init__()
     self.discovery_address = discovery_address
     self.discovery_port = discovery_port
     self.discovery_ttl = discovery_ttl
     self.discovery_interval_s = discovery_interval_s
+    self.disable_discovery = disable_discovery
     self._stop_event = threading.Event()
     self.hostname = socket.gethostname()
     self.stations = {}
+
+    for station in conf.stations:
+      hostport = (station['host'], int(station['port']))
+      self.stations[hostport] = Station(hostport, station['id'])
+
 
   def __getitem__(self, hostport):  # pylint:disable=invalid-name
     """Provide dictionary-like access to the station store."""
@@ -154,6 +183,9 @@ class StationStore(threading.Thread):
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
+    if self.disable_discovery:
+      _LOG.debug('Station discovery is disabled; StationStore won\'t update.')
+      return
     while not self._stop_event.is_set():
       self._Discover()
       self._stop_event.wait(self.discovery_interval_s)
@@ -218,6 +250,7 @@ class PromptHandler(tornado.web.RequestHandler):
 def main(argv):
   """Start the frontend."""
   parser = argparse.ArgumentParser(description='OpenHTF web frontend server.',
+                                   parents=[conf.ARG_PARSER],
                                    prog='python -m openhtf.io.frontend')
   parser.add_argument('--port', type=int, default=12000,
                       help='Port on which to serve the frontend.')
@@ -234,6 +267,8 @@ def main(argv):
   parser.add_argument('--discovery_ttl', type=int,
                       default=multicast.DEFAULT_TTL,
                       help='TTL for station discovery pings.')
+  parser.add_argument('--disable_discovery', action='store_true',
+                      help='Disable multicast-based station discovery.')
   parser.add_argument('--dev', action='store_true',
                       help='Start in development mode.')
   args = parser.parse_args()
@@ -251,7 +286,8 @@ def main(argv):
   store = StationStore(args.discovery_address,
                        args.discovery_port,
                        args.discovery_ttl,
-                       args.discovery_interval_s)
+                       args.discovery_interval_s,
+                       args.disable_discovery)
 
   routes = [
       (r'/', MainHandler, dict(port=args.port)),

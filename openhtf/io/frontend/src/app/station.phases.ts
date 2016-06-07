@@ -17,10 +17,12 @@ declare var $: any;  // Global provided by the jquery package.
 
 import {Component, Input, OnInit} from 'angular2/core';
 
-import {Phase} from './test';
 import {
   ColorToDark,
   ColorToSuperDark,
+  FirstEltOrBlank,
+  MeasToPassFail,
+  ObjectToArray,
   OutcomeToColor,
   StatusToColor
 } from './utils';
@@ -30,13 +32,20 @@ import 'file?name=/templates/station.phases.html!./station.phases.html';
 
 /** The PhaseListing view component. **/
 @Component({
-  selector: 'phases',
+  selector: 'phase-listing',
   templateUrl: 'templates/station.phases.html',
   styleUrls: ['styles/station.phases.css'],
-  pipes: [StatusToColor, ColorToDark, ColorToSuperDark, OutcomeToColor]
+  pipes: [ColorToDark,
+          ColorToSuperDark,
+          FirstEltOrBlank,
+          MeasToPassFail,
+          ObjectToArray,
+          OutcomeToColor,
+          StatusToColor,]
 })
 export class PhaseListing implements OnInit {
-  @Input() phases: Phase[];
+  @Input() state;
+  @Input() currentMillis;
 
   /**
    * Set up the view component.

@@ -23,7 +23,7 @@ export class MapPipe implements PipeTransform {
   /**
    * Return the mapped string for the given input string.
    */
-  transform(input: string) : string {
+  transform(input: string): string {
     return this.map[input];
   }
 }
@@ -95,6 +95,49 @@ export class LoggingLevelToColor extends MapPipe {
     40: 'red-text text-lighten-1',    // ERROR
     50: 'red-text text-lighten-1'     // CRITICAL
   };
+}
+
+
+/** A pipe for turning an Object into something Angular2 can loop over. **/
+@Pipe({name: 'objectToArray'})
+export class ObjectToArray implements PipeTransform {
+  transform(input: any): any {
+    let keys = Object.keys(input),
+        result = [];
+
+    keys.forEach(key => { result.push(input[key]); });
+    return result;
+  }
+}
+
+
+/** A pipe for reducing a collection of measurements to a pass/fail result. **/
+@Pipe({name: 'measToPassFail'})
+export class MeasToPassFail implements PipeTransform {
+  transform(measurements: any): string {
+    let result = 'PASS'
+    Object.keys(measurements).forEach(key => {
+      if (measurements[key].outcome != 'PASS') {
+        result = 'FAIL';
+      }
+    })
+    return result;
+  }
+}
+
+
+/** A pipe for getting the first element of an array that only might exist. **/
+@Pipe({name: 'firstEltOrBlank'})
+export class FirstEltOrBlank implements PipeTransform {
+  /**
+   * Return the first element of the array if possible, or the empty string.
+   */
+  transform(input: any): string {
+    if (input && input.length > 0) {
+      return input[0];
+    }
+    return '';
+  }
 }
 
 

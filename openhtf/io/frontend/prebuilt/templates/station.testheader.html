@@ -36,8 +36,8 @@
     </div>
     <div class="test-status-tag">
       {{status}}
-        <div class="duration">
-          {{(duration / 1000 | number:['2.2-2']) + 's'}}
+        <div class="duration" *ngIf="startTime">
+          {{(((endTime || currentMillis) - startTime) / 1000 | number:['2.2-2'])}}s
         </div>
     </div>
   </div>

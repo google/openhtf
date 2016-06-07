@@ -14,6 +14,7 @@
 
 
 declare var $;  // Global provided by the jquery package.
+declare var jsonpatch; // Global provided by the fast-json-patch package.
 
 import {Component, OnDestroy} from 'angular2/core';
 import {RouteParams} from 'angular2/router';
@@ -24,7 +25,6 @@ import {PhaseListing} from './station.phases';
 import {Prompt} from './station.prompt';
 import {StationService} from './station.service';
 import {TestHeader} from './station.testheader';
-import {Test} from './test';
 import {Countdown} from './utils';
 import 'file?name=/styles/station.css!./station.css';
 import 'file?name=/templates/station.html!./station.html';
@@ -39,12 +39,10 @@ import 'file?name=/templates/station.html!./station.html';
   providers: [StationService]
 })
 export class Station implements OnDestroy {
-  private framework: any = {};
-  private test: Test;
-  private stationState: any;
-  private lastUpdateTime: number;
   private ip: string;
   private port: string;
+  private stationState: any;
+  private currentMillis: number;
   private countdown: Countdown;
   private paused: boolean;
   private pollingJob: number;
@@ -56,7 +54,6 @@ export class Station implements OnDestroy {
               private stationService: StationService) {
     this.paused = false;
     this.stationState = {};
-    this.test = new Test();
   }
 
   /**
@@ -89,6 +86,7 @@ export class Station implements OnDestroy {
    * Make a request to the frontend server for this station's state.
    */
   pollStationService() {
+    this.currentMillis = Date.now();
     // TODO(jethier): Fat arrow syntax below used to make __this unecessary.
     //                Not sure when or why it broke. Investigation needed.
     let __this = this;
@@ -101,30 +99,18 @@ export class Station implements OnDestroy {
   /**
    * Use the given station state to update the view component.
    */
-  updateState(state) {
+  updateState(newState) {
     // TODO(jethier): Detect when a new test is being started, display the
     //                previous test, and pause for a countdown.
-    if (state && state.framework) {
-      this.framework = state.framework;
-      if (state.test) { 
-        this.test.update(state.test.record);
 
-        // Update the running phase.
-        let n = state.test.record.phases.length;
-        this.test.updatePhase(n, state.test.running_phase_record);
-
-        // Update pending phases using dummy phase records.
-        for (var i = 1; i < state.test.pending_phases.length; i++) {
-          this.test.updatePhase(n + i, {
-            'name': state.test.pending_phases[i][0],
-            'codeinfo': { 'docstring': state.test.pending_phases[i][1] },
-            'measurements': []
-          });
-        }
-      }
-      else if (this.test.dutID) { this.test = new Test(); }
-      this.stationState = state;
-      this.lastUpdateTime = Date.now();
+    // The conditional is necessary because it's possble to get 'undefined'
+    // responses when a station shuts down.
+    if (newState) {
+      let diff = jsonpatch.compare(this.stationState, newState);
+      jsonpatch.apply(this.stationState, diff);
+    }
+    else {
+      this.stationState = {};
     }
   }
 

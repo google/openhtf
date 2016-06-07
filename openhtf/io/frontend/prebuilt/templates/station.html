@@ -6,19 +6,20 @@
                   [port]="port">
   </station-header>
   <div class="currentTab">
-    <div *ngIf="!stationState?.framework?.status">
-        <h5 class="center-align">station offline</h5>
-    </div>
     <test-header
       [dutID]="stationState?.test?.record?.dut_id"
       [startTime]="stationState?.test?.record?.start_time_millis"
       [endTime]="stationState?.test?.record?.end_time_millis"
-      [duration]="test?.duration"
-      [status]="stationState?.test?.record?.outcome || framework.status">
+      [currentMillis]="currentMillis"
+      [status]="stationState?.test?.record?.outcome
+                || stationState?.framework?.status || 'OFFLINE'">
     </test-header>
-    <prompt [framework]="framework"></prompt>
-    <phases id="phases" [phases]="test.phases"></phases>
-    <logs id="logs" [logEntries]="test.logEntries"></logs>
+    <prompt [framework]="stationState?.framework"></prompt>
+    <phase-listing id="phases" [state]="stationState"
+                               [currentMillis]="currentMillis">
+    </phase-listing>
+    <logs id="logs" [test]="stationState?.test">
+    </logs>
   </div>
   <!-- TODO(jethier): Iterate over included station-level plugins and display
                       them here. Also need to wire them to tabs. -->

@@ -24,13 +24,14 @@ import 'file?name=/styles/station.logs.css!./station.logs.css';
   selector: 'logs',
   template: `
     <div class="log-listing">
-      <div *ngIf="logEntries.length == 0" class="center-align grey-text">
+      <div *ngIf="!test?.record?.log_records?.length > 0"
+           class="center-align grey-text">
         <h5>Log is currently empty.</h5>
       </div>
-      <div *ngFor="let entry of logEntries"
+      <div *ngFor="let entry of test?.record?.log_records"
             class="log-entry {{entry.level | loggingLevelToColor}}">
         <span class='timestamp'>
-          {{entry.timestampMillis | date:'short'}}
+          {{entry.timestamp_millis | date:'short'}}
         </span>
         {{entry.message}}
       </div>
@@ -40,5 +41,5 @@ import 'file?name=/styles/station.logs.css!./station.logs.css';
   pipes: [LoggingLevelToColor]
 })
 export class Logs {
-  @Input() logEntries: any[];
+  @Input() test: any[];
 }

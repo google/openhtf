@@ -51,14 +51,17 @@ p {
 .phase-header-text .cycle-time {
   font-size: 12px;
   font-weight: 400;
+  text-align: right;
 }
 
 .phase-header-text .name {
   display: table-cell;
   text-align: left;
+  width: 70%;
 }
 
 .phase-header-text .status {
   display: table-cell;
   text-align: right;
+  width: 20%;
 }

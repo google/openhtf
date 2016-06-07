@@ -38,7 +38,7 @@ export class TestHeader implements OnChanges {
   @Input() dutID: string;
   @Input() startTime: number;
   @Input() endTime: number;
-  @Input() duration: number;
+  @Input() currentMillis: number;
   @Input() status: string;
   indicatorPipe: StatusToColor; // See ngOnChanges.
 

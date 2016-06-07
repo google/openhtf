@@ -1,41 +1,93 @@
 <!-- Template for the PhaseListing component. -->
-<div *ngIf="phases.length == 0" class="center-align grey-text">
+<div *ngIf="!state?.test?.record?.phases" class="center-align grey-text">
   <h5>Phase list is currently empty or uninitialized.</h5>
 </div>
 <div>
+<!-- It might have been cleaner to have a "phase" component to build these
+     lists from, but not possible with the current architecture; 
+     materialize-css's collapsible popout lists don't allow for extra nesting
+     layers between its own layers. Thus Angular2's component wrapping layer
+     would break the popout list. -->
 <ul class="collapsible popout" data-collapsible="accordion">
-  <li *ngFor="let phase of phases">
-    <div class="collapsible-header
-                {{phase.status | statusToColor}}
-                waves-effect waves-light">
+  <!-- Completed phases from records. -->
+  <li *ngFor="let phase of state?.test?.record?.phases">
+    <div class="collapsible-header {{phase.measurements | measToPassFail | statusToColor}} waves-effect waves-light">
       <div class="phase-header-text">
         <div class="name">
           {{phase.name}}
         </div>
         <div class="cycle-time">
-          {{(phase.endTime - phase.startTime) / 1000}}s
+          {{((phase.end_time_millis - phase.start_time_millis) / 1000) | number:['2.2-2']}}s
         </div>
         <div class="status">
-          {{phase.status}}
+          {{phase.measurements | measToPassFail}}
         </div>
       </div>
     </div>
-    <div class="collapsible-body
-                {{phase.status | statusToColor | colorToDark}}">
+    <div class="collapsible-body {{phase.measurements | measToPassFail | statusToColor | colorToDark}}">
       <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
       <div class="measurement-container">
         <table class="measurement-listing white-text">
-          <tr *ngFor="let meas of phase.measurements"
-              class="measurement
-                     {{phase.status | statusToColor | colorToSuperDark}}">
+          <tr *ngFor="let meas of phase.measurements | objectToArray" class="measurement {{phase.measurements | measToPassFail | statusToColor | colorToSuperDark}}">
             <td class="name">{{meas.name}}</td>
-            <td class="validator">{{meas.validator}}</td>
-            <td class="value">{{meas.value}}</td>
-            <td class="outcome
-                       {{meas.outcome | outcomeToColor}}">{{meas.outcome}}</td>
+            <td class="validator">{{meas.validators | firstEltOrBlank}}</td>
+            <td class="value">{{phase?.measured_values[meas.name] || ''}}</td>
+            <td class="outcome {{meas.outcome | outcomeToColor}}">{{meas.outcome}}</td>
           </tr>
         </table>
       </div>
+    </div>
+  </li>
+  <!-- Running phase from its record. -->
+  <li *ngIf="state?.test?.running_phase_record">
+    <div class="collapsible-header
+                {{'RUNNING' | statusToColor}}
+                waves-effect waves-light">
+      <div class="phase-header-text">
+        <div class="name">
+          {{state.test.running_phase_record.name}}
+        </div>
+        <div class="cycle-time">
+          {{((currentMillis - state.test.running_phase_record.start_time_millis) / 1000) | number:['2.2-2']}}s
+        </div>
+        <div class="status">
+          RUNNING
+        </div>
+      </div>
+    </div>
+    <div class="collapsible-body {{'RUNNING' | statusToColor | colorToDark}}">
+      <p *ngIf="state.test.running_phase_record.docstring" class="docstring">{{state.test.running_phase_record.docstring}}</p>
+      <div class="measurement-container">
+        <table class="measurement-listing white-text">
+          <tr *ngFor="let meas of state.test.running_phase_record.measurements | objectToArray" class="measurement {{'RUNNING' | statusToColor | colorToSuperDark}}">
+            <td class="name">{{meas.name}}</td>
+            <td class="validator">{{meas.validators | firstEltOrBlank}}</td>
+            <td class="value">
+              <span *ngIf="state?.test?.running_phase_record?.measured_values">   {{state.test.running_phase_record?.measured_values[meas.name] || ''}}
+              </span>
+            </td>
+            <td class="outcome {{meas.outcome | outcomeToColor}}">{{meas.outcome}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </li>
+  <!-- Pending phases from their list. -->
+  <li *ngFor="let phase of state?.test?.pending_phases">
+      <div class="collapsible-header {{'PENDING' | statusToColor}} waves-effect waves-light">
+      <div class="phase-header-text">
+        <div class="name">
+          {{phase[0]}}
+        </div>
+        <div class="cycle-time">
+        </div>
+        <div class="status">
+          PENDING
+        </div>
+      </div>
+    </div>
+    <div class="collapsible-body {{'PENDING' | statusToColor | colorToDark}}">
+      <p *ngIf="phase.docstring" class="docstring">{{phase[1]}}</p>
     </div>
   </li>
 </ul>

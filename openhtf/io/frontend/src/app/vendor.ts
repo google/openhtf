@@ -24,3 +24,4 @@ import 'materialize-css/bin/materialize.css';
 import 'material-design-icons/iconfont/material-icons.css';
 import 'script!jquery/dist/jquery.min.js';
 import 'script!materialize-css/bin/materialize.js';
+import 'script!fast-json-patch/src/json-patch-duplex.js';

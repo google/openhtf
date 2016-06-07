@@ -1,7 +1,7 @@
 <!-- Template for the Prompt component. -->
-<div *ngIf="framework.prompt"
+<div *ngIf="framework?.prompt"
      class="prompt-box card grey lighten-2">
-  <div *ngIf="framework.prompt.text_input" class="input-field">
+  <div *ngIf="framework?.prompt.text_input" class="input-field">
     <label for="response_field">
       {{framework?.prompt?.message}}
     </label>
