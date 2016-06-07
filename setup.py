@@ -55,9 +55,12 @@ class BuildProtoCommand(Command):
       prefix = subprocess.check_output(
           'pkg-config --variable prefix protobuf'.split()).strip()
     except subprocess.CalledProcessError:
-      if platform.system() in {'Linux', 'Mac'}:
+      if platform.system() == 'Linux':
         # Default to /usr?
         prefix = '/usr'
+      elif platform.system() == 'Mac':
+        # Default to /usr/local for Homebrew
+        prefix = '/usr/local'
       else:
         raise NotImplementedError(
             'Windows support in-progress. Help us by submitting an issue! '
