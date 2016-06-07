@@ -54,7 +54,7 @@ class BuildProtoCommand(Command):
     try:
       prefix = subprocess.check_output(
           'pkg-config --variable prefix protobuf'.split()).strip()
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, OSError):
       if platform.system() == 'Linux':
         # Default to /usr?
         prefix = '/usr'
