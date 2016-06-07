@@ -460,9 +460,10 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     if resp.status != 200:
       try:
         results = json.loads(content)
-        raise UploadFailedError(results['error'], results)
       except Exception:
         raise UploadFailedError(resp, content)
+      else:
+        raise UploadFailedError(results['error'], results)
 
     # Return True if successful
     return True
