@@ -74,7 +74,7 @@ if __name__ == '__main__':
   # mechanisms can be implemented, but for now we'll just keep it simple.
   # This will always output to the same ./hello_world.json file, formatted
   # slightly for human readability.
-  test.AddOutputCallback(
+  test.AddOutputCallbacks(
       json_factory.OutputToJSON('./hello_world.json', indent=2))
 
   # PromptForTestStart prompts the operator for a DUT ID, a unique identifier

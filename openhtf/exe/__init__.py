@@ -22,8 +22,8 @@ from enum import Enum
 
 import contextlib2 as contextlib
 
+import openhtf
 from openhtf import conf
-from openhtf import plugs
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
 from openhtf.io import user_input
@@ -36,7 +36,7 @@ class TestStopError(Exception):
   """Test is being stopped."""
 
 
-class LogSleepSuppress(object): #pylint: disable=too-few-public-methods
+class LogSleepSuppress(object): # pylint: disable=too-few-public-methods
   """Abstraction for supressing stuff we don't care about."""
 
   def __init__(self):
@@ -67,15 +67,15 @@ class TestExecutor(threads.KillableThread):
                          ['CREATED', 'START_WAIT', 'INITIALIZING', 'EXECUTING',
                           'STOP_WAIT', 'FINISHING'])
 
-  def __init__(self, test, test_start, test_stop):
+  def __init__(self, test_data, plug_manager, teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
-    self.test = test
-    self._test_start = test_start
-    self._test_stop = test_stop
-    self._exit_stack = None
-    self._test_state = None
-    self._output_thread = None
+    self._teardown_function = (teardown_function and
+                               openhtf.PhaseInfo.WrapOrCopy(teardown_function))
+
+    self._test_data = test_data
+    self._plug_manager = plug_manager
+    self._test_start = None
     self._lock = threading.Lock()
     self._status = self.FrameworkStatus.CREATED
 
@@ -84,6 +84,9 @@ class TestExecutor(threads.KillableThread):
     return {'station_id': conf.station_id,
             'prompt': user_input.get_prompt_manager().prompt,
             'status': self._status.name}
+
+  def SetTestStart(self, test_start):
+    self._test_start = test_start
 
   def Start(self):
     """Style-compliant start method."""
@@ -106,35 +109,20 @@ class TestExecutor(threads.KillableThread):
     return self._test_state
 
   def _ThreadProc(self):
-    """Main entry point for this Thread, conditionally loop the test."""
-    if not self.test.loop:
-      self._RunTestLoop.once(self)
-    else:
-      self._RunTestLoop()
-
-  def _ResetAttributes(self):
-    """Reset local stateful attributes to None."""
+    """Handles one whole test from start to finish."""
     self._exit_stack = None
     self._test_state = None
     self._output_thread = None
 
-  @threads.Loop
-  def _RunTestLoop(self):
-    """Handles one whole test from start to finish.
-
-    By default, this will loop indefinitely.  Call _RunTestLoop.once(self) to
-    run the test only once.
-    """
     with contextlib.ExitStack() as exit_stack, \
         LogSleepSuppress() as suppressor:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self.test.code_info.name)
+      _LOG.info('Starting test %s', self._test_data.code_info.name)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
         # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
-        exit_stack.callback(self._ResetAttributes)
 
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
       # self._lock while we do this, or else calls to Stop() will deadlock.
@@ -142,7 +130,7 @@ class TestExecutor(threads.KillableThread):
       # we don't want to hold self._lock while we wait.
       dut_id = self._WaitForTestStart(suppressor)
       self._status = self.FrameworkStatus.INITIALIZING
-      plug_manager = self._MakePlugManager(suppressor)
+      self._InitializePlugs(suppressor)
 
       with self._lock:
         if not self._exit_stack:
@@ -150,15 +138,14 @@ class TestExecutor(threads.KillableThread):
           # call to Stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          plug_manager.TearDownPlugs()
+          self._plug_manager.TearDownPlugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self._OutputTestRecord)
-        exit_stack.callback(plug_manager.TearDownPlugs)
+        exit_stack.callback(self._plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
-        self._test_state = self._MakeTestState(dut_id, plug_manager, suppressor)
+        self._test_state = self._MakeTestState(dut_id, suppressor)
         executor = self._MakePhaseExecutor(exit_stack, suppressor)
 
       # Everything is set, set status and begin test execution.  Note we don't
@@ -171,29 +158,25 @@ class TestExecutor(threads.KillableThread):
       self._ExecuteTestPhases(executor)
       self._status = self.FrameworkStatus.FINISHING
 
-  def _OutputTestRecord(self):
-    """Output the test record by invoking output callbacks."""
-    if self._test_state:
-      self.test.OutputTestRecord(
-          self._test_state.GetFinishedRecord())
-
   def _WaitForTestStart(self, suppressor):
     """Wait for the test start trigger to return a DUT ID."""
+    if self._test_start is None:
+      return
     self._status = self.FrameworkStatus.START_WAIT
     suppressor.failure_reason = 'TEST_START failed to complete.'
     return self._test_start()
 
-  def _MakeTestState(self, dut_id, plug_manager, suppressor):
+  def _MakeTestState(self, dut_id, suppressor):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
-        self.test, plug_manager.plug_map, dut_id, conf.station_id)
+        self._test_data, self._plug_manager, dut_id, conf.station_id)
 
-  def _MakePlugManager(self, suppressor):
+  def _InitializePlugs(self, suppressor):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
-    return plugs.PlugManager.InitializeFromTypeMap(self.test.plug_type_map)
+    self._plug_manager.InitializePlugs(self._test_data.plug_types)
 
   def _MakePhaseExecutor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""
@@ -218,7 +201,6 @@ class TestExecutor(threads.KillableThread):
       # anymore, nor if ctrl-C was hit.
       if exc_type not in (TestStopError, KeyboardInterrupt):
         self._status = self.FrameworkStatus.STOP_WAIT
-        self._test_stop(self._test_state.record.dut_id)
 
     exit_stack.push(optionally_stop)
     return executor
@@ -231,3 +213,6 @@ class TestExecutor(threads.KillableThread):
         break
     else:
       self._test_state.SetStateFinished()
+    # Run teardown function.
+    if self._teardown_function:
+      executor._ExecuteOnePhase(self._teardown_function)

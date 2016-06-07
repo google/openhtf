@@ -50,6 +50,8 @@ no way to change this, if you don't like it redirect stdout to /dev/null.
 """
 
 import argparse
+import collections
+import functools
 import logging
 import os
 import re
@@ -59,7 +61,7 @@ from datetime import datetime
 
 from openhtf import util
 from openhtf.util import argv
-from openhtf.io import test_record
+from openhtf.util import functions
 
 
 DEFAULT_LEVEL = 'warning'
@@ -86,6 +88,20 @@ ARG_PARSER.add_argument(
 
 LOGGER_PREFIX = 'openhtf'
 RECORD_LOGGER = '.'.join((LOGGER_PREFIX, 'test_record'))
+
+_LOGONCE_SEEN = set()
+
+LogRecord = collections.namedtuple(
+    'LogRecord', 'level logger_name source lineno timestamp_millis message')
+
+
+def LogOnce(log_func, msg, *args, **kwargs):
+  """"Logs a message only once."""
+  if msg not in _LOGONCE_SEEN:
+    log_func(msg, *args, **kwargs)
+    # Only check the message since it's likely from the source code so lifespan
+    # is long and no copies are made.
+    _LOGONCE_SEEN.add(msg)
 
 
 class MacAddressLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
@@ -139,14 +155,15 @@ class RecordHandler(logging.Handler):
           *record.exc_info))
     message = message.decode('utf8', 'replace')
 
-    log_record = test_record.LogRecord(
+    log_record = LogRecord(
         record.levelno, record.name, os.path.basename(record.pathname),
         record.lineno, int(record.created * 1000), message
     )
     self._test_record.log_records.append(log_record)
 
 
-def setup_logger():
+@functions.CallOnce
+def SetupLogger():
   """Configure logging for OpenHTF."""
   record_logger = logging.getLogger(RECORD_LOGGER)
   record_logger.propagate = False

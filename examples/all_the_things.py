@@ -38,6 +38,7 @@ def example_monitor(example):
 
 
 @measures(
+    Measurement('unset_meas'),
     Measurement(
         'widget_type').MatchesRegex(r'.*Widget$').Doc(
             '''This measurement tracks the type of widgets.'''),
@@ -74,6 +75,7 @@ def set_measurements(test):
 
 
 @measures(
+    Measurement('unset_dims').WithDimensions(UOM['HERTZ']),
     Measurement('dimensions').WithDimensions(UOM['HERTZ']),
     Measurement('lots_of_dims').WithDimensions(
         UOM['HERTZ'], UOM['SECOND'], UOM['RADIAN']))
@@ -88,6 +90,8 @@ def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
   test.AttachFromFile('example_attachment.txt')
 
+def teardown(test):
+  test.logger.info('Running teardown')
 
 if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
@@ -95,10 +99,14 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
+<<<<<<< HEAD
 
   test.AddOutputCallback(json_factory.OutputToJSON(
+=======
+  test.AddOutputCallbacks(output.OutputToJSON(
+>>>>>>> 844b0c08a3b54d529ff79cd33838a432e09d78cf
       './%(dut_id)s.%(start_time_millis)s.json', indent=4))
-  #test.AddOutputCallback(mfg_inspector.OutputToTestRunProto(
+  #test.AddOutputCallbacks(output.OutputToTestRunProto(
   #    './%(dut_id)s.%(start_time_millis)s.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
@@ -106,7 +114,7 @@ if __name__ == '__main__':
   # 'my_private_key.json'.
   #if os.path.isfile('my_private_key.json'):
   #  with open('my_private_key.json', 'r') as json_file:
-  #    test.AddOutputCallback(mfg_inspector.UploadToMfgInspector.from_json(
+  #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
-
+  test.Configure(http_port=None, teardown_function=teardown)
   test.Execute(test_start=triggers.PromptForTestStart())

@@ -128,7 +128,7 @@ if __name__ == '__main__':
   # mechanisms can be implemented, but for now we'll just keep it simple.
   # This will always output to the same ./measurements.json file, formatted
   # slightly for human readability.
-  test.AddOutputCallback(
+  test.AddOutputCallbacks(
       json_factory.OutputToJSON('./measurements.json', indent=2))
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just

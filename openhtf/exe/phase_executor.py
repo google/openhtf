@@ -179,10 +179,11 @@ class PhaseExecutor(object):
     # Check this as early as possible.
     if phase.options.run_if and not phase.options.run_if(phase_data):
       _LOG.info('Phase %s skipped due to run_if returning falsey.', phase.name)
-      self.test_state.pending_phases.pop(0)
+      if self.test_state.pending_phases:
+        self.test_state.pending_phases.pop(0)
       return
 
-    _LOG.info('Executing phase %s with plugs %s', phase.name, phase_data.plugs)
+    _LOG.info('Executing phase %s', phase.name)
 
     self.test_state.running_phase_record = test_record.PhaseRecord(
         phase.name, phase.code_info)
@@ -194,7 +195,8 @@ class PhaseExecutor(object):
       outcome_wrapper.SetOutcome(phase_thread.JoinOrDie())
 
     if outcome_wrapper.outcome.phase_result == openhtf.PhaseResult.CONTINUE:
-      self.test_state.pending_phases.pop(0)
+      if self.test_state.pending_phases:
+        self.test_state.pending_phases.pop(0)
 
     _LOG.debug('Phase finished with outcome %s', outcome_wrapper.outcome)
     return outcome_wrapper.outcome

@@ -53,8 +53,9 @@ class TestConf(unittest.TestCase):
     conf.Reset()
 
   def testYamlConfig(self):
-    conf._flags.config_file = self.YAML_FILENAME
-    conf.Reset()
+    with open(self.YAML_FILENAME, 'rb') as yamlfile:
+      conf._flags.config_file = yamlfile
+      conf.Reset()
     self.assertEquals('yaml_test_value', conf.yaml_test_key)
 
   def testLoadOverride(self):
@@ -120,15 +121,34 @@ class TestConf(unittest.TestCase):
       conf.Declare('Invalid')
 
   def testBadConfigFile(self):
-    conf._flags.config_file = self.NOT_A_DICT
-    with self.assertRaises(conf.ConfigurationInvalidError):
-      conf.Reset()
-    conf._flags.config_file = self.BAD_FORMAT
-    with self.assertRaises(conf.ConfigurationInvalidError):
-      conf.Reset()
-    conf._flags.config_file = 'notfound'
-    with self.assertRaises(conf.ConfigurationInvalidError):
-      conf.Reset()
+    with open(self.NOT_A_DICT, 'rb') as yamlfile:
+      conf._flags.config_file = yamlfile
+      with self.assertRaises(conf.ConfigurationInvalidError):
+        conf.Reset()
+
+    with open(self.BAD_FORMAT, 'rb') as yamlfile:
+      conf._flags.config_file = yamlfile
+      with self.assertRaises(conf.ConfigurationInvalidError):
+        conf.Reset()
+
+  def testSaveAndRestore(self):
+    @conf.SaveAndRestore
+    def ModifiesConf():
+      conf.Load(string_default='modified')
+      self.assertEquals('modified', conf.string_default)
+
+    self.assertEquals('default', conf.string_default)
+    ModifiesConf()
+    self.assertEquals('default', conf.string_default)
+
+  def testSaveAndRestoreKwargs(self):
+    @conf.SaveAndRestore(string_default='modified')
+    def ModifiesConf():
+      self.assertEquals('modified', conf.string_default)
+
+    self.assertEquals('default', conf.string_default)
+    ModifiesConf()
+    self.assertEquals('default', conf.string_default)
 
   def testInjectPositionalArgs(self):
     @conf.InjectPositionalArgs
