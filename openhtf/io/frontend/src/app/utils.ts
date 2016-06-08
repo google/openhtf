@@ -24,8 +24,22 @@ export class MapPipe implements PipeTransform {
    * Return the mapped string for the given input string.
    */
   transform(input: string): string {
-    return this.map[input];
+    if (this.map[input]) {
+      return this.map[input];
+    }
+    return input;
   }
+}
+
+
+/** A Pipe for condensing status codes down to a simpler set.**/
+@Pipe({ name: 'simplifyStatus' })
+export class SimplifyStatus extends MapPipe {
+  map = {
+    'EXECUTING': 'RUNNING',
+    'START_WAIT': 'WAITING',
+    'STOP_WAIT': 'WAITING',
+  };
 }
 
 
@@ -34,14 +48,12 @@ export class MapPipe implements PipeTransform {
 export class StatusToColor extends MapPipe {
   map = {
     'RUNNING': 'blue lighten-1 white-text',
-    'EXECUTING': 'blue lighten-1 white-text',
     'ONLINE':  'blue lighten-1 white-text',
     'PASS':    'green lighten-1 white-text',
     'FAIL':    'red lighten-1 white-text',
     'ERROR':   'yellow darken-3 white-text',
     'PENDING': 'blue-grey lighten-3 white-text',
-    'START_WAIT': 'blue-grey lighten-3 white-text',
-    'STOP_WAIT': 'blue-grey lighten-3 white-text',
+    'WAITING': 'blue-grey lighten-3 white-text',
     'OFFLINE': 'blue-grey lighten-3 white-text',
   };
 }

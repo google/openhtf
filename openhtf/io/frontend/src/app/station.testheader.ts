@@ -22,7 +22,7 @@ import {
   SimpleChange
 } from 'angular2/core';
 
-import {StatusToColor} from './utils';
+import {SimplifyStatus, StatusToColor} from './utils';
 import 'file?name=/styles/station.testheader.css!./station.testheader.css';
 import 'file?name=/templates/station.testheader.html!./station.testheader.html';
 
@@ -32,7 +32,7 @@ import 'file?name=/templates/station.testheader.html!./station.testheader.html';
   selector: 'test-header',
   templateUrl: 'templates/station.testheader.html',
   styleUrls: ['styles/station.testheader.css'],
-  pipes: [StatusToColor]
+  pipes: [SimplifyStatus, StatusToColor]
 })
 export class TestHeader implements OnChanges {
   @Input() dutID: string;
@@ -40,10 +40,12 @@ export class TestHeader implements OnChanges {
   @Input() endTime: number;
   @Input() currentMillis: number;
   @Input() status: string;
-  indicatorPipe: StatusToColor; // See ngOnChanges.
+  indicatorColorPipe: StatusToColor; // See ngOnChanges.
+  indicatorStatusPipe: SimplifyStatus; // See ngOnChanges.
 
   constructor() {
-    this.indicatorPipe = new StatusToColor();
+    this.indicatorColorPipe = new StatusToColor();
+    this.indicatorStatusPipe = new SimplifyStatus();
   }
 
   /**
@@ -56,10 +58,14 @@ export class TestHeader implements OnChanges {
     // to tags. The indicator div is not in TestHeader's template, so we find
     // it and apply the right classes to it manually on changes.
     if (changes['status']) {
+      let oldStatus = this.indicatorStatusPipe.transform(
+          changes['status'].previousValue);
+      let newStatus = this.indicatorStatusPipe.transform(
+          changes['status'].currentValue);
       $('.test-header-nav .indicator').removeClass(
-          this.indicatorPipe.transform(changes['status'].previousValue));
+          this.indicatorColorPipe.transform(oldStatus));
       $('.test-header-nav .indicator').addClass(
-        this.indicatorPipe.transform(changes['status'].currentValue));
+        this.indicatorColorPipe.transform(newStatus));
     }
   }
 }
