@@ -303,12 +303,24 @@ class TestCase(unittest.TestCase):
     without having to handle the type check themselves.  Note that the record,
     either PhaseRecord or TestRecord, must be the first argument to the
     wrapped assertion method.
+
+    In the case of a TestRecord, the assertion will pass if *any* PhaseRecord in
+    the TestRecord passes, otherwise the *last* exception raised will be
+    re-raised.
     """
     @functools.wraps(func)
     def assertion_wrapper(self, phase_or_test_record, *args):
       if isinstance(phase_or_test_record, test_record.TestRecord):
+        exc_info = None
         for phase_record in phase_or_test_record.phases:
-          func(self, phase_record, *args)
+          try:
+            func(self, phase_record, *args)
+            break
+          except Exception:
+            exc_info = sys.exc_info()
+        else:
+          if exc_info:
+            raise exc_info[0], exc_info[1], exc_info[2]
       elif isinstance(phase_or_test_record, test_record.PhaseRecord):
         func(self, phase_or_test_record, *args)
       else:
@@ -357,12 +369,20 @@ class TestCase(unittest.TestCase):
 
   ##### Measurement Assertions #####
 
-  @_AssertPhaseOrTestRecord
-  def assertNotMeasured(self, phase_record, measurement):
-    self.assertNotIn(measurement, phase_record.measured_values,
-                     'Measurement %s unexpectedly set' % measurement)
-    self.assertIs(measurements.Outcome.UNSET,
-                  phase_record.measurements[measurement].outcome)
+  def assertNotMeasured(self, phase_or_test_record, measurement):
+    def _check_phase(phase_record):
+      self.assertNotIn(measurement, phase_record.measured_values,
+                       'Measurement %s unexpectedly set' % measurement)
+      if measurement in phase_record.measurements:
+        self.assertIs(measurements.Outcome.UNSET,
+                      phase_record.measurements[measurement].outcome)
+
+    if isinstance(phase_or_test_record, test_record.PhaseRecord):
+      _check_phase(phase_or_test_record)
+    else:
+      # Check *all* phases (not *any* like _AssertPhaseOrTestRecord).
+      for phase_record in phase_or_test_record.phases:
+        _check_phase(phase_record)
 
   @_AssertPhaseOrTestRecord
   def assertMeasured(self, phase_record, measurement, value=mock.ANY):

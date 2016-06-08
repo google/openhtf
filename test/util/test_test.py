@@ -90,7 +90,7 @@ class TestTest(test.TestCase):
   def test_patch_plugs_test(self, mock_plug):
     mock_plug.do_stuff.return_value = 0xBEEF
 
-    test_record = yield openhtf.Test(test_phase)
+    test_record = yield openhtf.Test(phase_retval(None), test_phase)
     mock_plug.do_stuff.assert_called_with('stuff_args')
     # The test fails because the 'fails' measurement fails.
     self.assertTestFail(test_record)
