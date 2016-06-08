@@ -34,7 +34,7 @@ export class DashboardService {
    */
   constructor(private http: Http) {
     this.listings = []; // Because ngFor only takes lists.
-    this.dashMap = {}; // Because we want persistant records.
+    this.dashMap = {}; // Because we want persistent records.
     this.start();
   }
 

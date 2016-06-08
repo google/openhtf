@@ -102,10 +102,13 @@ export class LoggingLevelToColor extends MapPipe {
 @Pipe({name: 'objectToArray'})
 export class ObjectToArray implements PipeTransform {
   transform(input: any): any {
+    if (input == undefined || input == null) {
+      return []
+    }
     let keys = Object.keys(input),
         result = [];
 
-    keys.forEach(key => { result.push(input[key]); });
+    keys.forEach(key => { result.push({ 'key': key, 'value': input[key] }); });
     return result;
   }
 }

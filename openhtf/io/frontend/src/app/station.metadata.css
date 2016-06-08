@@ -1,0 +1,15 @@
+.meta-entry {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.25em;
+  padding: 0px 0px .5em 2em;
+  text-indent: -2em;
+}
+
+.meta-listing {
+  margin: 0px 24px 0px 24px;
+}
+
+.key {
+  font-weight: 600;
+}

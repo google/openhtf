@@ -29,10 +29,10 @@
       <div class="measurement-container">
         <table class="measurement-listing white-text">
           <tr *ngFor="let meas of phase.measurements | objectToArray" class="measurement {{phase.measurements | measToPassFail | statusToColor | colorToSuperDark}}">
-            <td class="name">{{meas.name}}</td>
-            <td class="validator">{{meas.validators | firstEltOrBlank}}</td>
-            <td class="value">{{phase?.measured_values[meas.name] || ''}}</td>
-            <td class="outcome {{meas.outcome | outcomeToColor}}">{{meas.outcome}}</td>
+            <td class="name">{{meas.keu}}</td>
+            <td class="validator">{{meas.value.validators | firstEltOrBlank}}</td>
+            <td class="value">{{phase?.measured_values[meas.key] || ''}}</td>
+            <td class="outcome {{meas.value.outcome | outcomeToColor}}">{{meas.value.outcome}}</td>
           </tr>
         </table>
       </div>
@@ -60,13 +60,13 @@
       <div class="measurement-container">
         <table class="measurement-listing white-text">
           <tr *ngFor="let meas of state.test.running_phase_record.measurements | objectToArray" class="measurement {{'RUNNING' | statusToColor | colorToSuperDark}}">
-            <td class="name">{{meas.name}}</td>
-            <td class="validator">{{meas.validators | firstEltOrBlank}}</td>
+            <td class="name">{{meas.key}}</td>
+            <td class="validator">{{meas.value.validators | firstEltOrBlank}}</td>
             <td class="value">
-              <span *ngIf="state?.test?.running_phase_record?.measured_values">   {{state.test.running_phase_record?.measured_values[meas.name] || ''}}
+              <span *ngIf="state?.test?.running_phase_record?.measured_values">   {{state.test.running_phase_record?.measured_values[meas.key] || ''}}
               </span>
             </td>
-            <td class="outcome {{meas.outcome | outcomeToColor}}">{{meas.outcome}}</td>
+            <td class="outcome {{meas.value.outcome | outcomeToColor}}">{{meas.value.outcome}}</td>
           </tr>
         </table>
       </div>

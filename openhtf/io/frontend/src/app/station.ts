@@ -21,6 +21,7 @@ import {RouteParams} from 'angular2/router';
 
 import {Logs} from './station.logs';
 import {StationHeader} from './station.header';
+import {Metadata} from './station.metadata';
 import {PhaseListing} from './station.phases';
 import {Prompt} from './station.prompt';
 import {StationService} from './station.service';
@@ -35,7 +36,7 @@ import 'file?name=/templates/station.html!./station.html';
   selector: 'station',
   templateUrl: 'templates/station.html',
   styleUrls: ['styles/station.css'],
-  directives: [StationHeader, Prompt, TestHeader, PhaseListing, Logs],
+  directives: [StationHeader, Prompt, TestHeader, PhaseListing, Logs, Metadata],
   providers: [StationService]
 })
 export class Station implements OnDestroy {
