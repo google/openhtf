@@ -33,7 +33,6 @@ framework.
 """
 
 import collections
-import inspect
 import logging
 
 import openhtf
@@ -167,12 +166,7 @@ class PhaseExecutor(object):
       PhaseOutcome instance that wraps the phase return value (or exception).
     """
     while self.test_state.pending_phases:
-      # First pending phase becaomes the running phase.
-      phase = self.test_state.pending_phases.pop(0)
-      self.test_state.running_phase_record = test_record.PhaseRecord(
-          phase.name, phase.code_info)
-
-      result = self._ExecuteOnePhase(phase)
+      result = self._ExecuteOnePhase(self.test_state.pending_phases[0])
       if not result:
         continue
       yield result
@@ -184,12 +178,16 @@ class PhaseExecutor(object):
     # Check this as early as possible.
     if phase.options.run_if and not phase.options.run_if(phase_data):
       _LOG.info('Phase %s skipped due to run_if returning falsey.', phase.name)
+      if self.test_state.pending_phases:
+        self.test_state.pending_phases.pop(0)
       return
 
     _LOG.info('Executing phase %s', phase.name)
 
+    phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
+    self.test_state.running_phase_record = phase_record
+
     with phase_data.RecordPhaseTiming(phase, phase_record):
-        phase, self.test_state) as outcome_wrapper:
       phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
       self._current_phase_thread = phase_thread
@@ -199,6 +197,11 @@ class PhaseExecutor(object):
     phase_record.result = phase_outcome
     self.test_state.record.phases.append(phase_record)
     self.test_state.running_phase_record = None
+
+    # We're done with this phase, pop it from the pending phases.
+    if (phase_outcome.phase_result is openhtf.PhaseResult.CONTINUE and
+        self.test_state.pending_phases):
+      self.test_state.pending_phases.pop(0)
 
     _LOG.debug('Phase finished with outcome %s', phase_outcome)
     return phase_outcome
