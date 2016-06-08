@@ -146,13 +146,12 @@ class StationStore(threading.Thread):
   def __init__(self, discovery_address, discovery_port, discovery_ttl,
                discovery_interval_s, disable_discovery):
     super(StationStore, self).__init__()
-    self.discovery_address = discovery_address
-    self.discovery_port = discovery_port
-    self.discovery_ttl = discovery_ttl
-    self.discovery_interval_s = discovery_interval_s
-    self.disable_discovery = disable_discovery
+    self._discovery_address = discovery_address
+    self._discovery_port = discovery_port
+    self._discovery_ttl = discovery_ttl
+    self._discovery_interval_s = discovery_interval_s
+    self._disable_discovery = disable_discovery
     self._stop_event = threading.Event()
-    self.hostname = socket.gethostname()
     self.stations = {}
 
     for station in conf.stations:
@@ -169,9 +168,9 @@ class StationStore(threading.Thread):
   def _Discover(self):
     """Use multicast to discover stations on the local network."""
     responses = multicast.send(PING_STRING,
-                               self.discovery_address,
-                               self.discovery_port,
-                               self.discovery_ttl)
+                               self._discovery_address,
+                               self._discovery_port,
+                               self._discovery_ttl)
     for host, response in responses:
       port = None
       try:
@@ -183,12 +182,12 @@ class StationStore(threading.Thread):
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
-    if self.disable_discovery:
+    if self._disable_discovery:
       _LOG.debug('Station discovery is disabled; StationStore won\'t update.')
       return
     while not self._stop_event.is_set():
       self._Discover()
-      self._stop_event.wait(self.discovery_interval_s)
+      self._stop_event.wait(self._discovery_interval_s)
 
   def _Track(self, *hostport):
     """Start tracking the given station."""
