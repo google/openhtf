@@ -1,5 +1,5 @@
 <!-- Template for the TestHeader component. -->
-<div class="card-panel {{status | statusToColor}} test-header">
+<div class="card-panel {{status | simplifyStatus | statusToColor}} test-header">
   <div>
     <div class='test-vitals'>
         <div class="dutID">
@@ -32,10 +32,18 @@
             </div>
           </a>
         </li>
+        <li class="tab">
+          <a href="#metadata">
+            <div class="nav-button">
+              <i class="material-icons">info</i>
+              <div class="nav-label">META</div>
+            </div>
+          </a>
+        </li>
       </ul>
     </div>
     <div class="test-status-tag">
-      {{status}}
+      {{status | simplifyStatus}}
         <div class="duration" *ngIf="startTime">
           {{(((endTime || currentMillis) - startTime) / 1000 | number:['2.2-2'])}}s
         </div>
