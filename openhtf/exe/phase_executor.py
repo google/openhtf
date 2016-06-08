@@ -166,26 +166,32 @@ class PhaseExecutor(object):
       PhaseOutcome instance that wraps the phase return value (or exception).
     """
     while self.test_state.pending_phases:
-      result = self._ExecuteOnePhase(self.test_state.pending_phases[0])
+      phase = self.test_state.pending_phases.pop(0)
+      result = self._ExecuteOnePhase(phase)
+      
+      repeats = 0
+      while result == openhtf.PhaseResult.REPEAT:
+        _LOG.debug('Repeat #%s of phase %s.' % (repeats, phase))
+        result = self._ExecuteOnePhase(phase)
+
       if not result:
         continue
       yield result
 
-  def _ExecuteOnePhase(self, phase):
+  def _ExecuteOnePhase(self, phase, skip_record=False):
     """Executes the given phase, returning a PhaseOutcome."""
     phase_data = self.test_state.phase_data
 
     # Check this as early as possible.
     if phase.options.run_if and not phase.options.run_if(phase_data):
       _LOG.info('Phase %s skipped due to run_if returning falsey.', phase.name)
-      if self.test_state.pending_phases:
-        self.test_state.pending_phases.pop(0)
       return
 
     _LOG.info('Executing phase %s', phase.name)
 
     phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
-    self.test_state.running_phase_record = phase_record
+    if not skip_record:
+      self.test_state.running_phase_record = phase_record
 
     with phase_data.RecordPhaseTiming(phase, phase_record):
       phase_thread = PhaseExecutorThread(phase, phase_data)
@@ -195,13 +201,9 @@ class PhaseExecutor(object):
 
     # Save the outcome of the phase and do some cleanup.
     phase_record.result = phase_outcome
-    self.test_state.record.phases.append(phase_record)
-    self.test_state.running_phase_record = None
-
-    # We're done with this phase, pop it from the pending phases.
-    if (phase_outcome.phase_result is openhtf.PhaseResult.CONTINUE and
-        self.test_state.pending_phases):
-      self.test_state.pending_phases.pop(0)
+    if not skip_record:
+      self.test_state.record.phases.append(phase_record)
+      self.test_state.running_phase_record = None
 
     _LOG.debug('Phase finished with outcome %s', phase_outcome)
     return phase_outcome

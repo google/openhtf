@@ -215,4 +215,4 @@ class TestExecutor(threads.KillableThread):
       self._test_state.SetStateFinished()
     # Run teardown function.
     if self._teardown_function:
-      executor._ExecuteOnePhase(self._teardown_function)
+      executor._ExecuteOnePhase(self._teardown_function, skip_record=True)
