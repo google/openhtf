@@ -118,7 +118,8 @@ class TestState(object):
     elif phase_outcome.is_timeout:
       self.record.outcome = test_record.Outcome.TIMEOUT
       self._state = self.State.COMPLETED
-    elif phase_outcome.phase_result == openhtf.PhaseResult.FAIL:
+    elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
+      # TODO(madsci): Decouple flow control from pass/fail.
       self.record.outcome = test_record.Outcome.FAIL
       self._state = self.State.COMPLETED
 

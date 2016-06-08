@@ -73,9 +73,9 @@ conf` evaluates to True, then that keyword arg will be provded from the
 configuration unless overriden in the kwargs passed to the function.  Otherwise
 keyword_arg must be passed via kwargs at function invokation time.
 
-Incidentally, the conf module supports 'in' checks, where `key in conf` will
-evaluate to True if conf[key] would successfully provide a value.  That is, if
-either a value has been loaded or a default_value was declared.
+The conf module supports 'in' checks, where `key in conf` will evaluate to True
+if conf[key] would successfully provide a value.  That is, if either a value
+has been loaded or a default_value was declared.
 
 Configuration values may be loaded directly or from a yaml or json file.  If no
 configuration is loaded, default values will still be accessible.  Loading a
@@ -118,7 +118,42 @@ are *always* checked upon configuration value access, however, so you still
 must declare any keys you wish to use.
 
 Loaded configuration values may be purged via the Reset() method, but this
-should only be used for testing purposes.
+should only be used for testing purposes.  This will reset the configuration
+state to what it was before any Load* methods were called (defaults loaded
+and flag values used, either directly or from --config-file).
+
+A recommended alternative to using Reset() is the @SaveAndRestore decorator,
+which allows you to decorate a function or method so that during execution
+of the decorated callable, configuration values are altered (and restored
+after execution of that callable).  For example:
+
+  conf.Load(foo='foo')
+
+  @conf.SaveAndRestore(foo='bar')
+  def do_stuff():
+    print 'foo has value: ', conf.foo
+
+  print 'foo before call: ', conf.foo
+  do_stuff()
+  print 'foo after call: ', conf.foo
+
+This example prints:
+
+  foo before call: foo
+  foo has value: bar
+  foo after call: foo
+
+This is useful primarily for unittest methods (see util/test.py for specific
+examples of unittest usages).  Note that config overrides may be specified at
+decoration time, but do not have to be:
+
+  @conf.SaveAndRestore
+  def do_stuff():
+    conf.foo = 'bar'
+
+This is also valid.  The entire configuration is restored to the state it had
+upon excution of the decorated callable, regardless of which keys are updated
+in the decorator or in the decorated callable.
 """
 
 import argparse

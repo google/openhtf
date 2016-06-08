@@ -20,14 +20,14 @@ options. Each option is taken into account when executing a phase, such as
 checking options.run_if as soon as possible and timing out at the appropriate
 time.
 
-A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or FAIL.
+A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or STOP.
 A phase may also return None, or have no return statement, which is the same as
 returning openhtf.PhaseResult.CONTINUE.  These results are then acted upon
 accordingly and a new test run status is returned.
 
 Phases are always run in order and not allowed to loop back, though a phase may
-choose to repeat itself by returning REPEAT. Returning FAIL will cause a test to
-fail early, allowing a test to detect a bad state and not waste any further
+choose to repeat itself by returning REPEAT. Returning STOP will cause a test to
+stop early, allowing a test to detect a bad state and not waste any further
 time. A phase should not return TIMEOUT or ABORT, those are handled by the
 framework.
 """
@@ -185,21 +185,27 @@ class PhaseExecutor(object):
 
     _LOG.info('Executing phase %s', phase.name)
 
-    self.test_state.running_phase_record = test_record.PhaseRecord(
-        phase.name, phase.code_info)
+    phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
+    self.test_state.running_phase_record = phase_record
 
-    with phase_data.RecordPhaseTiming(phase, self.test_state) as outcome_wrapper:
+    with phase_data.RecordPhaseTiming(phase, phase_record):
       phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      outcome_wrapper.SetOutcome(phase_thread.JoinOrDie())
+      phase_outcome = phase_thread.JoinOrDie()
 
-    if outcome_wrapper.outcome.phase_result == openhtf.PhaseResult.CONTINUE:
-      if self.test_state.pending_phases:
-        self.test_state.pending_phases.pop(0)
+    # Save the outcome of the phase and do some cleanup.
+    phase_record.result = phase_outcome
+    self.test_state.record.phases.append(phase_record)
+    self.test_state.running_phase_record = None
 
-    _LOG.debug('Phase finished with outcome %s', outcome_wrapper.outcome)
-    return outcome_wrapper.outcome
+    # We're done with this phase, pop it from the pending phases.
+    if (phase_outcome.phase_result is openhtf.PhaseResult.CONTINUE and
+        self.test_state.pending_phases):
+      self.test_state.pending_phases.pop(0)
+
+    _LOG.debug('Phase finished with outcome %s', phase_outcome)
+    return phase_outcome
 
   def Stop(self):
     """Stops the current phase."""
