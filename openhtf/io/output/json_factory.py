@@ -10,13 +10,14 @@ from openhtf.util import data
 class OutputToJSON(JSONEncoder):
   """Return an output callback that writes JSON Test Records.
 
-  An example filename_pattern might be:
+  Example filename_patterns might be:
+    '/data/test_records/{dut_id}.{metadata[test_name]}.json', indent=4)) or
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
 
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
     test.AddOutputCallback(openhtf.OutputToJson(
-        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
+        '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
 
   Args:
     filename_pattern: A format string specifying the filename to write to,
@@ -50,7 +51,11 @@ class OutputToJSON(JSONEncoder):
     else:
       as_dict = data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
     if isinstance(self.filename_pattern, basestring):
-      with open(self.filename_pattern % as_dict, 'w') as f:
+      if '{' in self.filename_pattern: 
+        filename = self.filename_pattern.format(**as_dict)
+      else:
+        filename = self.filename_pattern % as_dict
+      with open(filename, 'w') as f:
         f.write(self.encode(as_dict))
     else:
       self.filename_pattern.write(self.encode(as_dict))
