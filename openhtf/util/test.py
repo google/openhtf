@@ -370,15 +370,17 @@ class TestCase(unittest.TestCase):
   ##### Measurement Assertions #####
 
   def assertNotMeasured(self, phase_or_test_record, measurement):
-    def _check_phase(phase_record):
+    def _check_phase(phase_record, strict=False):
       self.assertNotIn(measurement, phase_record.measured_values,
                        'Measurement %s unexpectedly set' % measurement)
+      if strict:
+        self.assertIn(measurement, phase_record.measurements)
       if measurement in phase_record.measurements:
         self.assertIs(measurements.Outcome.UNSET,
                       phase_record.measurements[measurement].outcome)
 
     if isinstance(phase_or_test_record, test_record.PhaseRecord):
-      _check_phase(phase_or_test_record)
+      _check_phase(phase_or_test_record, True)
     else:
       # Check *all* phases (not *any* like _AssertPhaseOrTestRecord).
       for phase_record in phase_or_test_record.phases:

@@ -96,10 +96,23 @@ class TestTest(test.TestCase):
     self.assertTestFail(test_record)
     self.assertTestOutcomeCode(test_record, 0xBED)
     self.assertNotMeasured(test_record, 'unset_measurement')
+    self.assertNotMeasured(test_record.phases[-1], 'unset_measurement')
     self.assertMeasured(test_record, 'test_measurement', 0xBEEF)
     self.assertMeasured(test_record, 'othr_measurement', 0xDEAD)
     self.assertMeasurementPass(test_record, 'passes')
     self.assertMeasurementFail(test_record, 'fails')
+
+  @unittest.expectedFailure
+  @test.yields_phases
+  def test_strict_measurement(self):
+    phase_record = yield phase_retval(None)
+    self.assertNotMeasured(phase_record, 'unset_measurement')
+
+  @unittest.expectedFailure
+  @test.yields_phases
+  def test_wrong_measured_value(self):
+    test_rec = yield openhtf.Test(phase_retval(None))
+    self.assertMeasured(test_rec, 'test_measurement', 0xBAD)
 
   @test.yields_phases
   def test_passing_test(self):
