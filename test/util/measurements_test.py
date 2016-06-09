@@ -104,8 +104,6 @@ class TestMeasurements(unittest.TestCase):
       result.result = test_record
     test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
                 MeasureDimensions, InlinePhase)
-    # No need to run the http_api, we just want to generate the test record.
-    test.Configure(http_port=None)
     if self.UPDATE_OUTPUT:
       test.AddOutputCallbacks(_PickleRecord)
     test.AddOutputCallbacks(_SaveResult)
