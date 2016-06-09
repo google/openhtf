@@ -38,7 +38,6 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
 from openhtf.exe import triggers
-from openhtf.io import http_api
 from openhtf.io import test_record
 from openhtf.io import user_input
 from openhtf.util import data
@@ -138,7 +137,6 @@ class Test(object):
     """Update test-wide configuration options.
 
     Valid kwargs:
-      http_port: Port on which to run the http_api, or None to disable.
       output_callbacks: List of output callbacks to run, typically it's better
           to use AddOutputCallbacks(), but you can pass [] here to reset them.
       teardown_function: Function to run at teardown.  We pass the same
