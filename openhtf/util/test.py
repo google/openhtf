@@ -197,9 +197,6 @@ class PhaseOrTestIterator(collections.Iterator):
     test.AddOutputCallbacks(
         lambda record: setattr(record_saver, 'record', record))
 
-    # Disable the station_api for unit tests.
-    test.Configure(http_port=None)
-
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch('openhtf.plugs.PlugManager', new=lambda: self.plug_manager):
       test.Execute(test_start=lambda: 'TestDutId')

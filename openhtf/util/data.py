@@ -80,8 +80,8 @@ def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
       except AssertionError:
         logging.error('%sIndex: %s ^', ' ' * indent, idx)
         raise
-  elif (isinstance(first, RecordClass) and
-        isinstance(second, RecordClass)):
+  elif (isinstance(first, records.RecordClass) and
+        isinstance(second, records.RecordClass)):
     AssertRecordsEqualNonvolatile(
         {slot: getattr(first, slot) for slot in first.__slots__},
         {slot: getattr(second, slot) for slot in second.__slots__},
@@ -116,7 +116,7 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
 
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
-  elif isinstance(obj, RecordClass):
+  elif isinstance(obj, records.RecordClass):
     obj = {attr: getattr(obj, attr)
            for attr in type(obj).all_attribute_names
            if (getattr(obj, attr) is not None or

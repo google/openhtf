@@ -33,6 +33,7 @@ from enum import Enum
 
 from openhtf import conf
 from openhtf import exe
+from openhtf import history
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
@@ -40,6 +41,7 @@ from openhtf.exe import triggers
 from openhtf.io import http_api
 from openhtf.io import test_record
 from openhtf.io import user_input
+from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import measurements
@@ -60,6 +62,10 @@ class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
 
+class InvalidTestStateError(Exception):
+  """Raised when an operation is attempted in an invalid state."""
+
+
 class Test(object):
   """An object that represents an OpenHTF test.
 
@@ -77,11 +83,22 @@ class Test(object):
   .Execute()'d in a separate thread.
   """
 
+  # Registry of all Test instances that get created.
+  _registry = {}
+
   def __init__(self, *phases, **metadata):
+    # Some sanity checks on special metadata keys we automatically fill in.
+    if 'test_name' in metadata:
+      raise KeyError(
+          'Invalid metadata key "test_name", use '
+          'Test.Configure(name="My Test") instead.')
+    if 'config' in metadata:
+      raise KeyError(
+          'Invalid metadata key "config", it will be automatically populated.')
+
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
-    self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
-    self._test_data.metadata['config'] = conf._asdict()
+    self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
     # Make sure Configure() gets called at least once before Execute().  The
@@ -89,6 +106,7 @@ class Test(object):
     # to force them to if they want to use defaults.  For default values, see
     # the class definition of TestOptions.
     self.Configure()
+    history.register_test(self)
     # TODO(madsci): Fix this to play nice with multiple Test instances.
     signal.signal(signal.SIGINT, self.StopFromSigInt)
 
@@ -143,7 +161,6 @@ class Test(object):
         # just for good measure.
         _LOG.error('Test state: %s', self._executor.GetState())
         self._executor.Stop()
-        self._executor = None
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.
@@ -163,37 +180,38 @@ class Test(object):
           'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
           'use a while True: loop around Test.Execute() instead.')
 
-    # We have to lock this section to ensure we don't call
-    # TestExecutor.StopFromSigInt() in self.Stop() between instantiating it and
-    # .Start()'ing it.
-    with self._lock:
-      self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager(),
-                                        self._test_options.teardown_function)
-      _LOG.info('Executing test: %s', self.data.code_info.name)
-      self._executor.SetTestStart(test_start)
-      http_server = None
-      if self._test_options.http_port:
-        http_server = http_api.Server(
-            self._executor, self._test_options.http_port)
-        http_server.Start()
+    # Sanity check to make sure someone isn't doing something weird like trying
+    # to Execute() the same test twice in two separate threads.
+    if self._executor:
+      raise InvalidTestStateError('Test already running', self)
 
+    # Snapshot some things we care about and store them in metadata.
+    self._test_data.metadata['test_name'] = self._test_options.name
+    self._test_data.metadata['config'] = conf._asdict()
+
+    # Lock this section so we don't .Stop() the executor between instantiating
+    # it and .Start()'ing it, doing so does weird things to the executor state.
+    with self._lock:
+      self._executor = exe.TestExecutor(
+          self._test_data, test_start, self._test_options.teardown_function)
+      _LOG.info('Executing test: %s', self.data.code_info.name)
       self._executor.Start()
+
+    # Notify the history that we're executing.
+    history.test_executing(self)
 
     try:
       self._executor.Wait()
     finally:
-      # If the framework doesn't transition from INITIALIZING to EXECUTING
-      # then test state isn't set and there's no record to output.
-      if self._executor and self._executor.GetState():
-        record = self._executor.GetState().GetFinishedRecord()
-        self.OutputTestRecord(record)
-      if http_server:
-        http_server.Stop()
-      self._executor = None
+      with self._lock:
+        if self._executor.GetState():
+          record = self._executor.GetState().GetFinishedRecord()
+          self.OutputTestRecord(record)
+        self._executor = None
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
-    'http_port': http_api.DEFAULT_HTTP_PORT,
+    'name': 'OpenHTF Test',
     'output_callbacks': list,
     'teardown_function': None,
 })):

@@ -42,13 +42,12 @@ class FrameworkError(Exception):
   """Raised when we end up in an invalid internal state somehow."""
 
 
-
 class TestRecordAlreadyFinishedError(Exception):
   """Raised when trying to finalize a test record that is already finished."""
 
 
 class TestState(object):
-  """This class handles tracking the state of the test.
+  """This class handles tracking the state of a running Test.
 
   Args:
     test_data: openhtf.TestData instance describing the test to run.
