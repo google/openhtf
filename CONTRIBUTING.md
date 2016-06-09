@@ -57,7 +57,7 @@ comments in the actual code. If your code is doing something that isn't
 immediately intuitive, consider adding clarifying comments.
 
 In addition to inline documentation, adding example scripts to the `examples/`
-directory is a great way to express the indended usage of OpenHTF features.
+directory is a great way to express the intended usage of OpenHTF features.
 
 
 #### Limit Complexity
@@ -70,11 +70,9 @@ for a deeper look at code complexity.
 
 
 #### Consider OpenHTF's Goals
-OpenHTF is designed to abstract away nearly all boiler plate of hardware test
+OpenHTF is designed to abstract away nearly all boilerplate of hardware test
 setup and execution, so test engineers can focus entirely on writing actual
-test logic. It aspires to do so a lightweight and minimalistic fashion. OpenHTF
-should remain general enough to be useful in a variety of hardware testing 
-scenarios, from the lab bench to the manufacturing floor.
+test logic. It aspires to do so in a lightweight and minimalistic fashion. OpenHTF should remain general enough to be useful in a variety of hardware testing scenarios, from the lab bench to the manufacturing floor.
 
 Try to keep these goals in mind when authoring your contributions.
 

@@ -12,7 +12,7 @@ The open-source hardware testing framework.
 
 ## Overview
 OpenHTF is a python library that provides a set of convenient abstractions
-designed to remove nearly all boiler plate of hardware test setup and
+designed to remove nearly all boilerplate of hardware test setup and
 execution, so test engineers can focus entirely on writing actual test logic.
 It aspires to do so in a lightweight and minimalistic fashion. It is general
 enough to be useful in a variety of hardware testing scenarios, from the lab
