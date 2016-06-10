@@ -21,6 +21,7 @@ goals of OpenHTF.
 
 ### Process Overview
 Our code review process generally follows a predictable flow:
+
 1. Fork the OpenHTF repository on github.
 2. Make commits to your fork.
 3. Run unit tests and lint and ensure they still pass.

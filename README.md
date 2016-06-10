@@ -27,14 +27,6 @@ a isolated Python environments for your projects, so as to protect system-wide
 Python packages the OS depends upon.
 
 
-### From PyPI
-Install the current official release from [PyPI](https://pypi.python.org/)
-via [pip](https://pip.pypa.io):
-```bash
-pip install openhtf
-```
-
-### From Source
 Once you've downloaded [the source code](https://github.com/google/openhtf)
 via [git](https://git-scm.com/) or other means:
 ```bash
