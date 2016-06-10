@@ -20,15 +20,15 @@ manufacturing floor.
 
 
 ## Installing OpenHTF
-There are two ways to install OpenHTF into your Python environment.
-
 **NOTE:** We recommend using [virtualenv](https://virtualenv.pypa.io) to create
 a isolated Python environments for your projects, so as to protect system-wide
-Python packages the OS depends upon.
+Python packages the OS depends upon. The installation instructions assume you've
+_already_ created a virtualenv and activated it if you wish to do so.
 
 
 Once you've downloaded [the source code](https://github.com/google/openhtf)
-via [git](https://git-scm.com/) or other means:
+via [git](https://git-scm.com/) or other means, install it into your Python
+environment using the standard `setup.py` script.
 ```bash
 python setup.py install
 ```
