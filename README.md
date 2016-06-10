@@ -11,12 +11,35 @@ The open-source hardware testing framework.
 
 
 ## Overview
-OpenHTF is a python library that provides a set of convenient abstractions
-designed to remove nearly all boilerplate of hardware test setup and
-execution, so test engineers can focus entirely on writing actual test logic.
-It aspires to do so in a lightweight and minimalistic fashion. It is general
-enough to be useful in a variety of hardware testing scenarios, from the lab
-bench to the manufacturing floor.
+OpenHTF is a Python library that provides a set of convenient abstractions
+designed to remove as much boilerplate as possible from hardware test setup and
+execution, so test engineers can focus primarily on test logic. It aspires to
+do so in a lightweight and minimalistic fashion. It is general enough to be
+useful in a variety of hardware testing scenarios, from the lab bench to the
+manufacturing floor.
+
+
+## Installing OpenHTF
+There are two ways to install OpenHTF into your Python environment.
+
+**NOTE:** We recommend using [virtualenv](https://virtualenv.pypa.io) to create
+a isolated Python environments for your projects, so as to protect system-wide
+Python packages the OS depends upon.
+
+
+### From PyPI
+Install the current official release from [PyPI](https://pypi.python.org/)
+via [pip](https://pip.pypa.io):
+```bash
+pip install openhtf
+```
+
+### From Source
+Once you've downloaded [the source code](https://github.com/google/openhtf)
+via [git](https://git-scm.com/) or other means:
+```bash
+python setup.py install
+```
 
 
 ## Using OpenHTF
@@ -39,11 +62,11 @@ tested.
 The top-level abstraction that OpenHTF deals with is the test. A test is just
 a series of steps performed on/with a DUT, usually along with some
 data-gathering or measurement steps. In the OpenHTF paradigm, tests are
-expressed as regular python programs (.py files) that import and instantiate the
+expressed as regular Python programs (.py files) that import and instantiate the
 'Test' class from the openhtf module. That way test code is as straightforward
 as possible to read and write. This also provides for the flexibility to do
-anything in a test that can normally be done in python. Superficially, what
-distinguishes an OpenHTF test from any other python program is that the OpenHTF
+anything in a test that can normally be done in Python. Superficially, what
+distinguishes an OpenHTF test from any other Python program is that the OpenHTF
 test imports the openhtf package, instantiates the ```Test``` class, and calls
 its ```Execute()``` function. From there, OpenHTF manages the setup, execution,
 and teardown of the test, keeps track of anything gathered, and provides a
@@ -70,7 +93,7 @@ stations.
 
 ### Phase
 OpenHTF tests are broken down into logical blocks called phases. Phases are no
-more than normal python callables (usually functions) combined with the needed
+more than normal Python callables (usually functions) combined with the needed
 metadata. Writing an OpenHTF test is just a matter of writing a bunch of phase
 functions and specifying the order in which they should be executed.
 
