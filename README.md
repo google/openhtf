@@ -1,89 +1,43 @@
 **DISCLAIMER:** This is not an official Google product.
 
 # OpenHTF
+The open-source hardware testing framework.
+
 [![Build Status](https://travis-ci.org/google/openhtf.svg?branch=master)](https://travis-ci.org/google/openhtf)
 [![Coverage Status](https://coveralls.io/repos/google/openhtf/badge.svg?branch=master&service=github)](https://coveralls.io/github/google/openhtf?branch=master)
 
 [![Issue Stats](http://issuestats.com/github/google/openhtf/badge/pr)](http://issuestats.com/github/google/openhtf)
 [![Issue Stats](http://issuestats.com/github/google/openhtf/badge/issue)](http://issuestats.com/github/google/openhtf)
 
-The open-source hardware testing framework.
+
+## Overview
+OpenHTF is a Python library that provides a set of convenient abstractions
+designed to remove as much boilerplate as possible from hardware test setup and
+execution, so test engineers can focus primarily on test logic. It aspires to
+do so in a lightweight and minimalistic fashion. It is general enough to be
+useful in a variety of hardware testing scenarios, from the lab bench to the
+manufacturing floor.
 
 
-## Design Philosophy
-OpenHTF is designed to abstract away nearly all boiler plate of hardware test
-setup and execution, so test engineers can focus entirely on writing actual
-tests. It aspires to do so in the most lightweight and minimalistic way
-possible. It is general enough to be useful in a variety of hardware testing
-scenarios, from the lab bench to the manufacturing floor.
+## Installing OpenHTF
+**NOTE:** We recommend using [virtualenv](https://virtualenv.pypa.io) to create
+a isolated Python environments for your projects, so as to protect system-wide
+Python packages the OS depends upon. The installation instructions assume you've
+_already_ created a virtualenv and activated it if you wish to do so.
 
 
-## Duties of a Hardware Testing Framework
-OpenHTF attempts to distill the core duties any hardware testing framework must
-perform, handle each one in a clean, sensible fashion, and avoid any additional
-fluff. Those duties are (with example tasks):
-
-  * Manage configuration for each test.
-    * e.g. Load calibration data from a configuration file.
-    * e.g. Use a configuration file to point testers to networked test
-      equipment.
-  * Provide consistent testrun I/O.
-    * e.g. Output records in the same format across all test stations in a
-      manufacturing line, making it easier to write systems to ingest and
-      analyze test results.
-    * e.g. Have a uniform frontend across test stations for intuitive operator
-      interactions.
-    * e.g. Monitor all stations from a central frontend.
-  * Manage test start and execution.
-    * e.g. Plug in a DUT and have a test start automatically.
-    * e.g. Ensure every instance of a test runs the same logic in the same
-      order.
-  * Provide hardware interface tools.
-    * e.g. Provide shared hardware interfaces wrappers for things like USB,
-      UART, GPIO, etc.
-    * e.g. Allow user-written hardware interface wrappers at higher layers of
-      abstraction, like Android ADB.
-
-The package/module structure of OpenHTF is designed to reflect its core duties
-in a clear, obvious fashion.
-
+Once you've downloaded [the source code](https://github.com/google/openhtf)
+via [git](https://git-scm.com/) or other means, install it into your Python
+environment using the standard `setup.py` script.
+```bash
+python setup.py install
 ```
-  .-----------------.
-  |     openhtf     |
-  |-----------------|
-  | Python package. |
-  '-----------------'
-          |
-          |    .---------------------------------.
-          |    |              conf               |
-          |--->|---------------------------------|
-          |    | Reads and stores configuration. |
-          |    '---------------------------------'
-          |
-          |    .-------------------------.
-          |    |           exe           |
-          |--->|-------------------------|
-          |    | Manages test execution. |
-          |    '-------------------------'
-          |
-          |    .----------------------------------------.
-          |    |                   io                   |
-          |--->|----------------------------------------|
-          |    | Manages UI, logging, and test records. |
-          |    '----------------------------------------'
-          |
-          |    .---------------------------------------------------.
-          |    |                       plugs                       |
-          |--->|---------------------------------------------------|
-          |    | Extensions for interfacing with various hardware. |
-          |    '---------------------------------------------------'
-          |
-          |    .-----------------------------------.
-          |    |               util                |
-          '--->|-----------------------------------|
-               | Utility functions and misc tools. |
-               '-----------------------------------'
-```
+
+
+## Using OpenHTF
+The fastest way to get started is to take a look in the `examples/` directory,
+where you'll find sample test scripts and plugs. In addition, many of OpenHTF's
+modules are fairly well documented inline through the use of docstrings.
 
 
 ## Nomenclature
@@ -100,11 +54,11 @@ tested.
 The top-level abstraction that OpenHTF deals with is the test. A test is just
 a series of steps performed on/with a DUT, usually along with some
 data-gathering or measurement steps. In the OpenHTF paradigm, tests are
-expressed as regular python programs (.py files) that import and instantiate the
+expressed as regular Python programs (.py files) that import and instantiate the
 'Test' class from the openhtf module. That way test code is as straightforward
 as possible to read and write. This also provides for the flexibility to do
-anything in a test that can normally be done in python. Superficially, what
-distinguishes an OpenHTF test from any other python program is that the OpenHTF
+anything in a test that can normally be done in Python. Superficially, what
+distinguishes an OpenHTF test from any other Python program is that the OpenHTF
 test imports the openhtf package, instantiates the ```Test``` class, and calls
 its ```Execute()``` function. From there, OpenHTF manages the setup, execution,
 and teardown of the test, keeps track of anything gathered, and provides a
@@ -115,7 +69,7 @@ of the word _test_. In such scenarios we use the following more precise terms:
   
   * **test run** - A single start-to-finish execution of a specific test.
   * **test recipe** - A test definition that may be executed multiple times,
-                      each time as a distinct test run.
+    each time as a distinct test run.
   * **test script** - A .py file that contains a test recipe.
 
 
@@ -131,7 +85,7 @@ stations.
 
 ### Phase
 OpenHTF tests are broken down into logical blocks called phases. Phases are no
-more than normal python callables (usually functions) combined with the needed
+more than normal Python callables (usually functions) combined with the needed
 metadata. Writing an OpenHTF test is just a matter of writing a bunch of phase
 functions and specifying the order in which they should be executed.
 
@@ -159,9 +113,3 @@ code written to enable OpenHTF to interact with a particular type of hardware,
 whether that be a DUT itself or a piece of test equipment. OpenHTF comes
 packaged with a growing collection of useful plugs, but supports the
 creation of custom plugs as well.
-
-
-## Using OpenHTF
-The fastest way to get started is to take a look in the `examples/` directory,
-where you'll find sample test scripts and plugs. In addition, many of OpenHTF's
-modules are fairly well documented inline through the use of docstrings.
