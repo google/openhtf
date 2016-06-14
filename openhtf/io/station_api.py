@@ -17,16 +17,55 @@
 This module provides both server and client side libraries to allow for a
 client to use a programmatic interface and ignore the underlying xmlrpc
 implementation.
+
+This API is based around the following hierarchy of abstractions:
+
++----------------------------------------------------------+
+|  Station: A single Python process running OpenHTF Tests  |
++----------------------------------------------------------+
+     |
++-------------------------------------+
+| +-------------------------------------+
++-| +-------------------------------------+
+  +-| Test: An instance of OpenHTF.Test() |
+    +-------------------------------------+
+        |    |
+        |  +---------------------------------------------------+
+        |  | History: List of TestRecords from completed tests |
+        |  +---------------------------------------------------+
+      +--------------------------------------------+
+      | State: Details of currently executing test |
+      +--------------------------------------------+
+
+A station discovery mechanism is implemented to provide multicast-based
+discovery of OpenHTF Stations possible.  To discover stations, use the
+Station.discover_stations() method:
+
+  for station in Station.discover_stations():
+    print 'Found station:', station
+
+This iterator yields StationInfo namedtuples, which contain the necessary
+information to connect to the station via XMLRPC to obtain more details:    
+
+  for station in Station.discover_stations():
+    print 'Found station "%s", with tests:' % station.station_id
+    for test in Station(station).list_tests():
+      print '  %s' % test.test_name  # test is a TestInfo tuple.
 """
 
 import collections
 import json
 import logging
+import os
 import SimpleXMLRPCServer
 import threading
+import time
 import xmlrpclib
 
 from openhtf import conf
+from openhtf import history
+from openhtf import util
+from openhtf.util import data
 from openhtf.util import multicast
 
 _LOG = logging.getLogger(__name__)
@@ -47,61 +86,69 @@ conf.Declare('station_discovery_ttl')
 
 StationInfo = collections.namedtuple('StationInfo', [
     'host', 'station_id', 'station_api_bind_address', 'station_api_port',
-    'last_activity_timestamp'])
+    'last_activity_time_millis'])
 
 
-TestInstance = collections.namedtuple('TestInstance', [
-    'test_id',  # Unique identifier for this TestInstance, generated.
-    'created_timestamp', 'last_run_timestamp',
+TestInfo = collections.namedtuple('TestInfo', [
+    # Unique identifier for this TestInfo, generated automatically.
+    'test_uid',
+    # Test name, optionally passed at construction time.
+    'test_name',
+    # Timestamps (in milliseconds) that we care about.
+    'created_time_millis', 'last_run_time_millis'
 ])
     
 
-def multicast_kwargs():
-  """Build multicast kwargs based on conf, otherwise use defaults."""
-  return {
-      attr: conf['station_discovery_%s' % attr]
-      for attr in ('address', 'port', 'ttl')
-      if 'station_discovery_%s' % attr in conf
-  }
+# Build multicast kwargs based on conf, otherwise use defaults.
+MULTICAST_KWARGS = lambda: {
+    attr: conf['station_discovery_%s' % attr]
+    for attr in ('address', 'port', 'ttl')
+    if 'station_discovery_%s' % attr in conf
+}
 
 
 class StationApi(object):
 
-  @property
-  def last_activity_timestamp(self):
-    """Timestamp (in seconds) when last we had new information."""
-    pass
+  UID = '%s:%s' % (os.getpid(), util.TimeMillis())
 
   def list_tests(self):
     """List currently known test types.
 
     A new 'test type' is created each time openhtf.Test is instantiated, and
-    lasts until that test type has had at least one execution, but no longer
-    has any test records in the history.
+    lasts as long as there are any external references to it (ie, outside the
+    internal tracking structures within OpenHTF).
 
-    This means creating large numbers of openhtf.Test instances and never
-    running them can cause a lot of memory consumption, don't do that.
+    This means creating large numbers of openhtf.Test instances and keeping
+    references to them around can cause memory usage to grow rapidly and 
+    station_api performance to degrade; don't do that.
 
     Returns:
-      List of TestInstance tuples.
+      List of TestInfo tuple values (as a dict).
     """
-    return rec_test(1)
+    return [{
+        'test_uid': test.uid,
+        'test_name': test.GetOption('name'),
+        'created_time_millis': test.created_time_millis,
+        'last_run_time_millis': test.last_run_time_millis,
+    } for test in openhtf.Test.TEST_INSTANCES]
 
-  def GetTestRecordsAfter(self, test_id, timestamp_s=0):
-    return tup_test(1, 2)
+  def get_test_records_after(self, test_uid, start_time_millis):
+    return [data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
+            for test_record in history.for_test_uid(test_uid)
+            if test_record.start_time_millis > start_time_millis]
 
-  def AbortTest(self, test_id):
-    pass
 
-class Client(object):
+class Station(object):
 
-  #xmlrpclib.ServerProxy):
-  def __init__(self, hostname, port):
-    super(Client, self).__init__('http://%s:%s' % (hostname, port))
+  def __init__(self, station_info):
+    self._station_info = station_info
+    self._server_proxy = xmlrpclib.ServerProxy(
+        'http://%s:%s' % (station_info.host, station_info.station_api_port))
 
-  def discover_stations(self, timeout_s=3):
-    for host, response in multicast.send(**multicast_kwargs(),
-                                         timeout_s=timeout_s):
+  @classmethod
+  def discover_stations(cls, timeout_s=3):
+    for host, response in multicast.send(timeout_s=timeout_s,
+                                         **MULTICAST_KWARGS()):
       try:
         yield StationInfo(host, **json.loads(response))
       except ValueError:
@@ -110,37 +157,36 @@ class Client(object):
         _LOG.debug('Received invalid discovery response from %s: %s',
                    host, response, exc_info=True)
     
-  def list_tests(self, station_info):
-    """List known Test instances on the given station.
+  def list_tests(self):
+    """List known Test instances on this station."""
+    for test_dict in self._server_proxy.list_tests():
+      yield TestInfo(**test_dict)
 
-    Args:
-      station_info: A StationInfo object as returned by discover_stations.
-    """
+  def get_test_records_after(self, start_time_millis=0)
     
-
 
 class Server(threading.Thread):
 
   daemon = True
 
-  def __init__(self, station_api, enable_discovery=True):
+  def __init__(self, enable_discovery=True):
     super(Server, self).__init__()
 
-    self.station_api = station_api
     self.station_api_server = None
     self.multicast_listener = None
     self.last_activity_timestamp = 0
 
     if conf.station_api_port:
       self.station_api_server = SimpleXMLRPCServer.SimpleXMLRPCServer((
-          conf.station_api_bind_address, conf.station_api_port))
-      self.station_api.server.register_instance(station_api)
-      self.station_api.server.register_introspection_functions()
-      self.station_api.server.register_multicall_functions()
+          conf.station_api_bind_address, conf.station_api_port),
+          allow_none=True)
+      self.station_api_server.register_instance(STATION_API)
+      self.station_api_server.register_introspection_functions()
+      self.station_api_server.register_multicall_functions()
 
     if enable_discovery:
       self.multicast_listener = multicast.MulticastListener(
-          self.multicast_response,  **multicast_kwargs())
+          self.multicast_response,  **MULTICAST_KWARGS())
 
   def multicast_response(self, message):
     if message != conf.station_discovery_string:
@@ -164,3 +210,7 @@ class Server(threading.Thread):
     except Exception:
       _LOG.debug(
           'Exception shutting down %s', type(self), exc_info=True)
+
+
+# Singleton instances.
+STATION_API = StationApi()

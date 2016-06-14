@@ -33,7 +33,6 @@ from enum import Enum
 
 from openhtf import conf
 from openhtf import exe
-from openhtf import history
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
@@ -82,32 +81,49 @@ class Test(object):
   .Execute()'d in a separate thread.
   """
 
-  # Registry of all Test instances that get created.
-  _registry = {}
+  TEST_INSTANCES = set()
 
   def __init__(self, *phases, **metadata):
     # Some sanity checks on special metadata keys we automatically fill in.
-    if 'test_name' in metadata:
-      raise KeyError(
-          'Invalid metadata key "test_name", use '
-          'Test.Configure(name="My Test") instead.')
     if 'config' in metadata:
       raise KeyError(
           'Invalid metadata key "config", it will be automatically populated.')
 
+    self.created_time_millis = util.TimeMillis()
+    self.last_run_time_millis = None
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
+
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
     # to force them to if they want to use defaults.  For default values, see
     # the class definition of TestOptions.
-    self.Configure()
-    history.register_test(self)
-    # TODO(madsci): Fix this to play nice with multiple Test instances.
-    signal.signal(signal.SIGINT, self.StopFromSigInt)
+    if 'test_name' in metadata:
+      # Allow legacy metadata key for specifying test name.
+      self.Configure(name=metadata['test_name'])
+    else:
+      self.Configure()
+    self.RegisterTest(self)
+
+  @property
+  def uid(self):
+    """Return a unique identifier for this Test instance.
+
+    Note that this identifier must be unique across Python invokations, so the
+    station_api UID is used as a prefix to guarantee that.  Test UID's need not
+    be unique across different hosts.
+    """
+    return '%s:%s' % (station_api.STATION_API.UID, id(self))
+
+  @classmethod
+  def RegisterTest(cls, test):
+    # Filter out any Test instances with no more external references.
+    cls.TEST_INSTANCES = {old_test for old_test in cls.TEST_INSTANCES
+                          if sys.getrefcount(old_test) > 3}
+    cls.TEST_INSTANCES.add(test)
 
   def AddOutputCallback(self, callback):
     """DEPRECATED: Use AddOutputCallbacks() instead."""
@@ -133,6 +149,9 @@ class Test(object):
   def data(self):
     return self._test_data
 
+  def GetOption(self, option):
+    return getattr(self._test_options, option)
+
   def Configure(self, **kwargs):
     """Update test-wide configuration options.
 
@@ -149,20 +168,25 @@ class Test(object):
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
-  def StopFromSigInt(self, *_):
+  @classmethod
+  def HandleSigInt(cls, *_):
+    _LOG.error('Received SIGINT, stopping all tests.')
+    for test in cls.TEST_INSTANCES:
+      test.StopFromSigInt()
+    # The default SIGINT handler does this. If we don't, then nobody above
+    # us is notified of the event. This will raise this exception in the main
+    # thread.
+    raise KeyboardInterrupt()
+
+  def StopFromSigInt(self):
     """Stop test execution as abruptly as we can, only in response to SIGINT."""
-    _LOG.error('Received SIGINT.')
     with self._lock:
-      _LOG.error('Stopping Test due to SIGINT')
+      _LOG.error('Stopping %s due to SIGINT', self)
       if self._executor:
         # TestState str()'s nicely to a descriptive string, so let's log that
         # just for good measure.
         _LOG.error('Test state: %s', self._executor.GetState())
         self._executor.Stop()
-    # The default SIGINT handler does this. If we don't, then nobody above
-    # us is notified of the event. This will raise this exception in the main
-    # thread.
-    raise KeyboardInterrupt()
 
   def Execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
@@ -178,34 +202,36 @@ class Test(object):
           'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
           'use a while True: loop around Test.Execute() instead.')
 
-    # Sanity check to make sure someone isn't doing something weird like trying
-    # to Execute() the same test twice in two separate threads.
-    if self._executor:
-      raise InvalidTestStateError('Test already running', self)
-
-    # Snapshot some things we care about and store them in metadata.
-    self._test_data.metadata['test_name'] = self._test_options.name
-    self._test_data.metadata['config'] = conf._asdict()
-
     # Lock this section so we don't .Stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
+      # Sanity check to make sure someone isn't doing something weird like
+      # trying to Execute() the same test twice in two separate threads.  We
+      # hold the lock between here and Start()'ing the executor to guarantee
+      # that only one thread is successfully executing the test.
+      if self._executor:
+        raise InvalidTestStateError('Test already running', self._executor)
+
+      # Snapshot some things we care about and store them.
+      self._test_data.metadata['test_name'] = self._test_options.name
+      self._test_data.metadata['config'] = conf._asdict()
+      self.last_run_time_millis = util.TimeMillis()
+
       self._executor = exe.TestExecutor(
           self._test_data, test_start, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.data.code_info.name)
       self._executor.Start()
 
-    # Notify the history that we're executing.
-    history.test_executing(self)
-
     try:
       self._executor.Wait()
     finally:
       with self._lock:
-        if self._executor.GetState():
-          record = self._executor.GetState().GetFinishedRecord()
-          self.OutputTestRecord(record)
-        self._executor = None
+        try:
+          if self._executor.GetState():
+            record = self._executor.GetState().GetFinishedRecord()
+            self.OutputTestRecord(record)
+        finally:
+          self._executor = None
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
@@ -353,3 +379,7 @@ class PhaseInfo(mutablerecords.Record(
       # expect it but we miscounted args, we'll get another error farther down.
       return self.func(phase_data, **kwargs)
     return self.func(**kwargs)
+
+
+# Register signal handler to stop all tests on SIGINT.
+signal.signal(signal.SIGINT, Test.HandleSigInt)

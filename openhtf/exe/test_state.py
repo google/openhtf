@@ -62,6 +62,7 @@ class TestState(object):
     self.record = test_record.TestRecord(
         dut_id=dut_id, station_id=station_id, code_info=test_data.code_info,
         metadata=test_data.metadata)
+    # TODO(madsci): Make RECORD_LOGGER work with multiple Test instances.
     self.logger = logging.getLogger(logs.RECORD_LOGGER)
     self._record_handler = logs.RecordHandler(self.record)
     self.logger.addHandler(self._record_handler)
