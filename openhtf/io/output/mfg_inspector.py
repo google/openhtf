@@ -37,6 +37,7 @@ import sys
 import threading
 import zlib
 
+import output_to_file
 from openhtf.io.output import json_factory
 from openhtf.io.proto import guzzle_pb2
 from openhtf.io.proto import test_runs_pb2
@@ -334,7 +335,7 @@ def _TestRunFromTestRecord(record):
   return testrun
 
 
-class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
+class OutputToTestRunProto(output_to_file.OutputToFile):  # pylint: disable=too-few-public-methods
   """Return an output callback that writes mfg-inspector TestRun Protos.
 
   Example filename_patterns might be:
@@ -357,21 +358,13 @@ class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
 
   def __init__(self, filename_pattern):
     self.filename_pattern = filename_pattern
+t
+  def GetData(self):
+    self.data = _TestRunFromTestRecord(test_record).SerializeToString()
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
-    as_dict = data.ConvertToBaseTypes(test_record)
-    serialized = _TestRunFromTestRecord(test_record).SerializeToString()
-    if isinstance(self.filename_pattern, basestring):
-      if '{' in self.filename_pattern:
-        filename = self.filename_pattern.format(**as_dict)
-      else:
-        filename = self.filename_pattern % as_dict
-      with open(filename, 'w') as outfile:
-        outfile.write(serialized)
-    else:
-      filename = self.filename_pattern
-      self.filename_pattern.write(serialized)
-    return filename
+    self.
+    self.Save()
 
 
 class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods

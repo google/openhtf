@@ -1,13 +1,13 @@
 """Module for outputting test record to JSON-formatted files."""
 
 import base64
+import output_to_file
 from json import JSONEncoder
-
 from openhtf.exe import test_state
 from openhtf.util import data
 
 
-class OutputToJSON(JSONEncoder):
+class OutputToJSON(JSONEncoder, output_to_file.OutputToFile):
   """Return an output callback that writes JSON Test Records.
 
   Example filename_patterns might be:
@@ -40,23 +40,18 @@ class OutputToJSON(JSONEncoder):
       return repr(obj)
     return super(OutputToJSON, self).default(obj)
 
+  def GetData(self):
+    self.data = self.encode(self.test_record_dict)
+
   # pylint: disable=invalid-name
   def __call__(self, test_record):
+    self.test_record = test_record
     assert self.filename_pattern, 'filename_pattern required'
     if self.inline_attachments:
-      as_dict = data.ConvertToBaseTypes(test_record)
-      for phase in as_dict['phases']:
+      self.test_record_dict = data.ConvertToBaseTypes(test_record)
+      for phase in self.test_record_dict['phases']:
         for value in phase['attachments'].itervalues():
           value['data'] = base64.standard_b64encode(value['data'])
     else:
-      as_dict = data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
-    if isinstance(self.filename_pattern, basestring):
-      if '{' in self.filename_pattern: 
-        filename = self.filename_pattern.format(**as_dict)
-      else:
-        filename = self.filename_pattern % as_dict
-      with open(filename, 'w') as f:
-        f.write(self.encode(as_dict))
-    else:
-      self.filename_pattern.write(self.encode(as_dict))
-  # pylint: enable=invalid-name
+      self.test_record_dict = data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
+    self.Save()
