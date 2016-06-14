@@ -151,6 +151,8 @@ def _ExtractAttachments(phase, testrun, used_parameter_names):
     name = _EnsureUniqueParameterName(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
+    if isinstance(data, unicode):
+      data = data.encode('utf8')
     testrun_param.value_binary = data
     if mimetype in MIMETYPE_MAP:
       testrun_param.type = MIMETYPE_MAP[mimetype]
