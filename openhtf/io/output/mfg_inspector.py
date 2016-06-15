@@ -151,6 +151,8 @@ def _ExtractAttachments(phase, testrun, used_parameter_names):
     name = _EnsureUniqueParameterName(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
+    if isinstance(data, unicode):
+      data = data.encode('utf8')
     testrun_param.value_binary = data
     if mimetype in MIMETYPE_MAP:
       testrun_param.type = MIMETYPE_MAP[mimetype]
@@ -337,13 +339,14 @@ def _TestRunFromTestRecord(record):
 class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
   """Return an output callback that writes mfg-inspector TestRun Protos.
 
-  An example filename_pattern might be:
+  Example filename_patterns might be:
+    '/data/test_records/{dut_id}.{metadata[test_name]}.pb' or
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
 
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
     test.AddOutputCallback(openhtf.OutputToTestRunProto(
-        '/data/test_records/%(dut_id)s.%(start_time_millis)s'))
+        '/data/test_records/{dut_id}.{metadata[test_name]}.pb'))
 
   Args:
     filename_pattern: A format string specifying the filename to write to,
@@ -361,7 +364,10 @@ class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
     as_dict = data.ConvertToBaseTypes(test_record)
     serialized = _TestRunFromTestRecord(test_record).SerializeToString()
     if isinstance(self.filename_pattern, basestring):
-      filename = self.filename_pattern % as_dict
+      if '{' in self.filename_pattern:
+        filename = self.filename_pattern.format(**as_dict)
+      else:
+        filename = self.filename_pattern % as_dict
       with open(filename, 'w') as outfile:
         outfile.write(serialized)
     else:

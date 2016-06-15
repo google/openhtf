@@ -2,34 +2,42 @@
   "code_info": {
     "docstring": "Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py --config=example_config.yaml", 
     "name": "all_the_things.py", 
-    "sourcecode": "# Copyright 2014 Google Inc. All Rights Reserved.\n\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n\n#     http://www.apache.org/licenses/LICENSE-2.0\n\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n\"\"\"Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py --config=example_config.yaml\n\"\"\"\n\nimport json\nimport os\nimport time\n\nimport example_plug\nimport openhtf\nimport openhtf.io.output as output\n\nfrom openhtf.io.output import json_factory\nfrom openhtf.names import *\n# Uncomment for mfg-inspector output, requires setup.py build_proto.\n#from openhtf.io.output import mfg_inspector\n\n\n@plug(example=example_plug.ExamplePlug)\ndef example_monitor(example):\n  return example.Increment()\n"
+    "sourcecode": "# Copyright 2014 Google Inc. All Rights Reserved.\n\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n\n#     http://www.apache.org/licenses/LICENSE-2.0\n\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n\"\"\"Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py --config=example_config.yaml\n\"\"\"\nimport cPickle as pickle\nimport json\nimport os\nimport time\n\nimport example_plug\nimport openhtf\nimport openhtf.io.output as output\n\nfrom openhtf.io.output import json_factory\nfrom openhtf.names import *\n# Uncomment for mfg-inspector output, requires setup.py build_proto.\n#from openhtf.io.output import mfg_inspector\n\n\n@plug(example=example_plug.ExamplePlug)\ndef example_monitor(example):\n  return example.Increment()\n"
   }, 
   "dut_id": "TestDUT", 
-  "end_time_millis": 1460680666690, 
+  "end_time_millis": 1464646492860, 
   "log_records": [
     {
       "level": 20, 
-      "lineno": 50, 
+      "lineno": 51, 
       "logger_name": "openhtf.test_record", 
       "message": "Hello World!", 
       "source": "all_the_things.py", 
-      "timestamp_millis": 1460680661372
+      "timestamp_millis": 1464646487770
     }, 
     {
       "level": 20, 
-      "lineno": 57, 
+      "lineno": 58, 
       "logger_name": "openhtf.test_record", 
       "message": "Plug value: 1", 
       "source": "all_the_things.py", 
-      "timestamp_millis": 1460680663661
+      "timestamp_millis": 1464646489780
+    }, 
+    {
+      "level": 20, 
+      "lineno": 79, 
+      "logger_name": "openhtf.test_record.plugs.ExamplePlug", 
+      "message": "Tearing down <ExamplePlug: 5>", 
+      "source": "example_plug.py", 
+      "timestamp_millis": 1464646492849
     }, 
     {
       "level": 10, 
-      "lineno": 149, 
+      "lineno": 164, 
       "logger_name": "openhtf.test_record", 
-      "message": "Finishing test execution with outcome PASS.", 
+      "message": "Finishing test execution with outcome FAIL.", 
       "source": "test_state.py", 
-      "timestamp_millis": 1460680666689
+      "timestamp_millis": 1464646492860
     }
   ], 
   "metadata": {
@@ -37,7 +45,7 @@
     "test_name": "MyTest", 
     "test_version": "1.0.0"
   }, 
-  "outcome": "PASS", 
+  "outcome": "FAIL", 
   "outcome_details": [], 
   "phases": [
     {
@@ -45,15 +53,20 @@
       "codeinfo": {
         "docstring": "A hello world test phase.", 
         "name": "hello_world", 
-        "sourcecode": "@measures(\n    Measurement(\n        'widget_type').MatchesRegex(r'.*Widget$').Doc(\n            '''This measurement tracks the type of widgets.'''),\n    Measurement(\n        'widget_color').Doc('Color of the widget'),\n    Measurement('widget_size').InRange(1, 4))\n@plug(example=example_plug.ExamplePlug)\ndef hello_world(test, example):\n  \"\"\"A hello world test phase.\"\"\"\n  test.logger.info('Hello World!')\n  test.measurements.widget_type = prompts.DisplayPrompt(\n      'What\\'s the widget type?', text_input=True)\n  if test.measurements.widget_type == 'raise':\n    raise Exception()\n  test.measurements.widget_color = 'Black'\n  test.measurements.widget_size = 3\n  test.logger.info('Plug value: %s', example.Increment())\n"
+        "sourcecode": "@measures(\n    Measurement('unset_meas'),\n    Measurement(\n        'widget_type').MatchesRegex(r'.*Widget$').Doc(\n            '''This measurement tracks the type of widgets.'''),\n    Measurement(\n        'widget_color').Doc('Color of the widget'),\n    Measurement('widget_size').InRange(1, 4))\n@plug(example=example_plug.ExamplePlug)\ndef hello_world(test, example):\n  \"\"\"A hello world test phase.\"\"\"\n  test.logger.info('Hello World!')\n  test.measurements.widget_type = prompts.DisplayPrompt(\n      'What\\'s the widget type?', text_input=True)\n  if test.measurements.widget_type == 'raise':\n    raise Exception()\n  test.measurements.widget_color = 'Black'\n  test.measurements.widget_size = 3\n  test.logger.info('Plug value: %s', example.Increment())\n"
       }, 
-      "end_time_millis": 1460680663668, 
+      "end_time_millis": 1464646489816, 
       "measured_values": {
         "widget_color": "Black", 
         "widget_size": 3, 
         "widget_type": "FooWidget"
       }, 
       "measurements": {
+        "unset_meas": {
+          "name": "unset_meas", 
+          "outcome": "UNSET", 
+          "validators": []
+        }, 
         "widget_color": {
           "docstring": "Color of the widget", 
           "name": "widget_color", 
@@ -80,16 +93,16 @@
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1460680661372
+      "start_time_millis": 1464646487770
     }, 
     {
       "attachments": {}, 
       "codeinfo": {
         "docstring": "Test phase that sets a measurement.", 
         "name": "set_measurements", 
-        "sourcecode": "@TestPhase(timeout_s=10)\n@measures(\n    *(Measurement(\n        'level_%s' % i) for i in ['none', 'some', 'all']))\n@monitors('monitor_measurement', example_monitor)\ndef set_measurements(test):\n  \"\"\"Test phase that sets a measurement.\"\"\"\n  test.measurements.level_none = 0\n  time.sleep(1)\n  test.measurements.level_some = 8\n  time.sleep(1)\n  test.measurements.level_all = 9\n  time.sleep(1)\n"
+        "sourcecode": "    @plugs.plug(update_kwargs=False, **monitor_plugs)\n    @measurements.measures(\n        measurements.Measurement(measurement_name).WithUnits(\n            units).WithDimensions(uom.UOM['MILLISECOND']))\n    @functools.wraps(phase.func)\n    def MonitoredPhaseFunc(phase_data, *args, **kwargs):\n      # Start monitor thread, it will call monitor.func(phase_data) periodically\n      monitor_thread = _MonitorThread(\n          measurement_name, monitor, phase.extra_kwargs, phase_data,\n          poll_interval_ms)\n      monitor_thread.start()\n      try:\n        return phase(phase_data, *args, **kwargs)\n      finally:\n        monitor_thread.Kill()\n"
       }, 
-      "end_time_millis": 1460680666678, 
+      "end_time_millis": 1464646492838, 
       "measured_values": {
         "level_all": 9, 
         "level_none": 0, 
@@ -100,12 +113,16 @@
             2
           ], 
           [
-            1000.6470680236816, 
+            1001.1370182037354, 
             3
           ], 
           [
-            2001.9559860229492, 
+            2002.1238327026367, 
             4
+          ], 
+          [
+            3003.264904022217, 
+            5
           ]
         ]
       }, 
@@ -141,16 +158,16 @@
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1460680663668
+      "start_time_millis": 1464646489817
     }, 
     {
       "attachments": {}, 
       "codeinfo": {
         "docstring": null, 
         "name": "dimensions", 
-        "sourcecode": "@measures(\n    Measurement('dimensions').WithDimensions(UOM['HERTZ']),\n    Measurement('lots_of_dims').WithDimensions(\n        UOM['HERTZ'], UOM['SECOND'], UOM['RADIAN']))\ndef dimensions(test):\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):\n    test.measurements.lots_of_dims[x, y, z] = x + y + z\n"
+        "sourcecode": "@measures(\n    Measurement('unset_dims').WithDimensions(UOM['HERTZ']),\n    Measurement('dimensions').WithDimensions(UOM['HERTZ']),\n    Measurement('lots_of_dims').WithDimensions(\n        UOM['HERTZ'], UOM['SECOND'], UOM['RADIAN']))\ndef dimensions(test):\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):\n    test.measurements.lots_of_dims[x, y, z] = x + y + z\n"
       }, 
-      "end_time_millis": 1460680666680, 
+      "end_time_millis": 1464646492840, 
       "measured_values": {
         "dimensions": [
           [
@@ -231,13 +248,24 @@
           "name": "lots_of_dims", 
           "outcome": "PASS", 
           "validators": []
+        }, 
+        "unset_dims": {
+          "dimensions": [
+            {
+              "uom_code": "HTZ", 
+              "uom_suffix": "Hz"
+            }
+          ], 
+          "name": "unset_dims", 
+          "outcome": "UNSET", 
+          "validators": []
         }
       }, 
       "name": "dimensions", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1460680666679
+      "start_time_millis": 1464646492839
     }, 
     {
       "attachments": {
@@ -255,16 +283,16 @@
         "name": "attachments", 
         "sourcecode": "def attachments(test):\n  test.Attach('test_attachment', 'This is test attachment data.')\n  test.AttachFromFile('example_attachment.txt')\n"
       }, 
-      "end_time_millis": 1460680666689, 
+      "end_time_millis": 1464646492849, 
       "measured_values": {}, 
       "measurements": {}, 
       "name": "attachments", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1460680666681
+      "start_time_millis": 1464646492840
     }
   ], 
-  "start_time_millis": 1460680661371, 
+  "start_time_millis": 1464646487769, 
   "station_id": "madsci-mbr"
 }

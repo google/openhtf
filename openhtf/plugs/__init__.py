@@ -195,15 +195,24 @@ class PlugManager(object):
     _plug_map: Dict mapping plug type to instantiated plug.
   """
 
-  def InitializePlugs(self, plug_types):
+  def __init__(self):
     self._plug_map = {}
-    try:
-      for plug_type in plug_types:
+
+  def InitializePlugs(self, plug_types):
+    for plug_type in plug_types:
+      if plug_type in self._plug_map:
+        continue
+      try:
         self._plug_map[plug_type] = plug_type()
-    except Exception:  # pylint: disable=broad-except
-      _LOG.exception('Exception insantiating plug type %s', plug_type)
-      self.TearDownPlugs()
-      raise
+      except Exception:  # pylint: disable=broad-except
+        _LOG.error('Exception insantiating plug type %s', plug_type)
+        self.TearDownPlugs()
+        raise
+
+  def OverridePlug(self, plug_type, plug_value):
+    if plug_type in self._plug_map:
+      self._plug_map[plug_type].TearDown()
+    self._plug_map[plug_type] = plug_value
 
   def _asdict(self):
     return {'%s.%s' % (k.__module__, k.__name__): str(v)

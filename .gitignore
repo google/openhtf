@@ -23,6 +23,9 @@ var/
 .installed.cfg
 *.egg
 
+# Coverage output
+htmlcov/
+
 # virtualenv
 env/
 venv/

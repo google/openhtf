@@ -99,15 +99,12 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-<<<<<<< HEAD
-
-  test.AddOutputCallback(json_factory.OutputToJSON(
-=======
-  test.AddOutputCallbacks(output.OutputToJSON(
->>>>>>> 844b0c08a3b54d529ff79cd33838a432e09d78cf
-      './%(dut_id)s.%(start_time_millis)s.json', indent=4))
-  #test.AddOutputCallbacks(output.OutputToTestRunProto(
-  #    './%(dut_id)s.%(start_time_millis)s.pb'))
+  test.AddOutputCallbacks(
+      json_factory.OutputToJSON(
+          './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
+          indent=4))
+  test.AddOutputCallbacks(output.OutputToTestRunProto(
+      './%(dut_id)s.%(start_time_millis)s.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
