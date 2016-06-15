@@ -79,3 +79,7 @@
   font-size: 12px;
   font-weight: 400;
 }
+
+:host >>> .indicator {
+  height: 5px;
+}

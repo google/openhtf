@@ -17,7 +17,7 @@
           {{phase.name}}
         </div>
         <div class="cycle-time">
-          {{((phase.end_time_millis - phase.start_time_millis) / 1000) | number:['2.2-2']}}s
+          {{((phase.end_time_millis - phase.start_time_millis) / 1000) | number:['1.2-2']}}s
         </div>
         <div class="status">
           {{phase.measurements | measToPassFail}}
@@ -28,8 +28,14 @@
       <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
       <div class="measurement-container">
         <table class="measurement-listing white-text">
+          <tr class="header-row">
+            <td>measurement name</td>
+            <td>validator(s)</td>
+            <td>value</td>
+            <td class="outcome">outcome</td>
+          </tr>
           <tr *ngFor="let meas of phase.measurements | objectToArray" class="measurement {{phase.measurements | measToPassFail | statusToColor | colorToSuperDark}}">
-            <td class="name">{{meas.keu}}</td>
+            <td class="name">{{meas.key}}</td>
             <td class="validator">{{meas.value.validators | firstEltOrBlank}}</td>
             <td class="value">{{phase?.measured_values[meas.key] || ''}}</td>
             <td class="outcome {{meas.value.outcome | outcomeToColor}}">{{meas.value.outcome}}</td>
@@ -48,7 +54,7 @@
           {{state.test.running_phase_record.name}}
         </div>
         <div class="cycle-time">
-          {{((currentMillis - state.test.running_phase_record.start_time_millis) / 1000) | number:['2.2-2']}}s
+          {{((currentMillis - state.test.running_phase_record.start_time_millis) / 1000) | number:['1.2-2']}}s
         </div>
         <div class="status">
           RUNNING
@@ -59,6 +65,12 @@
       <p *ngIf="state.test.running_phase_record.docstring" class="docstring">{{state.test.running_phase_record.docstring}}</p>
       <div class="measurement-container">
         <table class="measurement-listing white-text">
+          <tr class="header-row">
+            <td>measurement name</td>
+            <td>validator(s)</td>
+            <td>value</td>
+            <td class="outcome">outcome</td>
+          </tr>
           <tr *ngFor="let meas of state.test.running_phase_record.measurements | objectToArray" class="measurement {{'RUNNING' | statusToColor | colorToSuperDark}}">
             <td class="name">{{meas.key}}</td>
             <td class="validator">{{meas.value.validators | firstEltOrBlank}}</td>

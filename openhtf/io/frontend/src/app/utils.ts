@@ -39,6 +39,7 @@ export class SimplifyStatus extends MapPipe {
     'EXECUTING': 'RUNNING',
     'START_WAIT': 'WAITING',
     'STOP_WAIT': 'WAITING',
+    'TIMEOUT': 'ERROR',
   };
 }
 
@@ -122,6 +123,31 @@ export class ObjectToArray implements PipeTransform {
 
     keys.forEach(key => { result.push({ 'key': key, 'value': input[key] }); });
     return result;
+  }
+}
+
+
+/** A pipe to recurisely stringify objects into html <ul> elements. **/
+@Pipe({name: 'objectToUl'})
+export class ObjectToUl implements PipeTransform {
+  ulify(object: Object): string {
+    let result = '<ul>';
+    Object.keys(object).forEach(key => {
+      result += `<li><span class="key">${key}:&nbsp</span><span class="value">`;
+      if (typeof object[key] == 'object') {
+        result += this.ulify(object[key]);
+      }
+      else {
+        result += object[key];
+      }
+      result += '</span></li>';
+    })
+    result += '</ul>';
+    return result;
+  }
+
+  transform(object: any): string {
+    return this.ulify(object);
   }
 }
 

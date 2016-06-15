@@ -2,6 +2,16 @@
   font-weight: 300;
 }
 
+.header-row td {
+  font-size: 12px;
+  font-weight: 300;
+  padding: .3em 1em .5em 1em;
+}
+
+.header-row .outcome {
+  text-align: right;
+}
+
 .measurement .name {
   border-bottom-left-radius: .3em;
   border-top-left-radius: .3em;

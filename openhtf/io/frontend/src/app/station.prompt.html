@@ -1,15 +1,17 @@
 <!-- Template for the Prompt component. -->
 <div *ngIf="framework?.prompt"
      class="prompt-box card grey lighten-2">
-  <div *ngIf="framework?.prompt.text_input" class="input-field">
-    <label for="response_field">
-      {{framework?.prompt?.message}}
-    </label>
-    <input id="response_field" #response_field
-           type="text"
-           class="black-text"
-           (keyup.enter)="sendResponse(response_field,
-                                       framework.prompt.id)">
+  <div *ngIf="framework?.prompt.text_input">
+    <div class="input-field">
+      <input id="response_field" #response_field
+             type="text"
+             placeholder="(enter text here)" 
+             (keyup.enter)="sendResponse(response_field,
+                                         framework.prompt.id)">
+      <label for="response_field" class="active">
+        {{framework?.prompt?.message}}
+      </label>
+    </div>
     <a class="waves-effect waves-light btn amber darken-4"
        (click)="sendResponse(response_field, framework.prompt.id)">
       SUBMIT

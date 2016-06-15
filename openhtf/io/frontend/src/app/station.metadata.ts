@@ -15,7 +15,7 @@
 
 import {Component, Input} from 'angular2/core';
 
-import {LoggingLevelToColor, ObjectToArray} from './utils';
+import {LoggingLevelToColor, ObjectToUl} from './utils';
 import 'file?name=/styles/station.metadata.css!./station.metadata.css';
 
 
@@ -28,17 +28,14 @@ import 'file?name=/styles/station.metadata.css!./station.metadata.css';
            class="center-align grey-text">
         <h5>Test metadata is currently unpopulated.</h5>
       </div>
-      <div *ngFor="let entry of (test?.record?.metadata | objectToArray)"
-            class="meta-entry {{20 | loggingLevelToColor}}">
-        <span class='key'>
-          {{entry.key + ': '}}
-        </span>
-        {{entry.value}}
+      <div *ngIf="test?.record?.metadata"
+           class="{{20 | loggingLevelToColor}}"
+           [innerHTML]="test.record.metadata | objectToUl">
       </div>
     </div>
   `,
   styleUrls: ['styles/station.metadata.css'],
-  pipes: [LoggingLevelToColor, ObjectToArray]
+  pipes: [LoggingLevelToColor, ObjectToUl]
 })
 export class Metadata {
   @Input() test: any;

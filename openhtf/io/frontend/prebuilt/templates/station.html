@@ -6,6 +6,7 @@
                   [port]="port">
   </station-header>
   <div class="currentTab">
+    <prompt [framework]="stationState?.framework"></prompt>
     <test-header
       [dutID]="stationState?.test?.record?.dut_id"
       [startTime]="stationState?.test?.record?.start_time_millis"
@@ -14,7 +15,6 @@
       [status]="stationState?.test?.record?.outcome
                 || stationState?.framework?.status || 'OFFLINE'">
     </test-header>
-    <prompt [framework]="stationState?.framework"></prompt>
     <phase-listing id="phases" [state]="stationState"
                                [currentMillis]="currentMillis">
     </phase-listing>
