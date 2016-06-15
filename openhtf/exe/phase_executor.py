@@ -171,7 +171,7 @@ class PhaseExecutor(object):
       
       repeats = 0
       while result == openhtf.PhaseResult.REPEAT:
-        _LOG.debug('Repeat #%s of phase %s.' % (repeats, phase))
+        _LOG.debug('Repeat #%s of phase %s.', repeats, phase)
         result = self._ExecuteOnePhase(phase)
 
       if not result:

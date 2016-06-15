@@ -49,10 +49,10 @@ export class SimplifyStatus extends MapPipe {
 export class StatusToColor extends MapPipe {
   map = {
     'RUNNING': 'blue lighten-1 white-text',
-    'ONLINE':  'blue lighten-1 white-text',
-    'PASS':    'green lighten-1 white-text',
-    'FAIL':    'red lighten-1 white-text',
-    'ERROR':   'yellow darken-3 white-text',
+    'ONLINE': 'blue lighten-1 white-text',
+    'PASS': 'green lighten-1 white-text',
+    'FAIL': 'red lighten-1 white-text',
+    'ERROR': 'yellow darken-3 white-text',
     'PENDING': 'blue-grey lighten-3 white-text',
     'WAITING': 'blue-grey lighten-3 white-text',
     'OFFLINE': 'blue-grey lighten-3 white-text',
@@ -61,27 +61,33 @@ export class StatusToColor extends MapPipe {
 
 
 /** A Pipe for darkening status colors. **/
-@Pipe({name: 'colorToDark'})
-export class ColorToDark extends MapPipe {
+@Pipe({name: 'statusToDark'})
+export class StatusToDark extends MapPipe {
   map = {
-    'blue lighten-1 white-text':      'blue darken-2 white-text',
-    'green lighten-1 white-text':     'green darken-2 white-text',
-    'red lighten-1 white-text':       'red darken-2 white-text',
-    'yellow darken-3 white-text':     'yellow darken-4 white-text',
-    'blue-grey lighten-3 white-text': 'blue-grey lighten-2 white-text'
+    'RUNNING': 'blue darken-2 white-text',
+    'ONLINE': 'blue darken-2 white-text',
+    'PASS': 'green darken-2 white-text',
+    'FAIL': 'red darken-2 white-text',
+    'ERROR': 'yellow darken-4 white-text',
+    'PENDING': 'blue-grey lighten-2 white-text',
+    'WAITING': 'blue-grey lighten-2 white-text',
+    'OFFLINE': 'blue-grey lighten-2 white-text',
   };
 }
 
 
 /** A Pipe for darkening status colors even more. **/
-@Pipe({ name: 'colorToSuperDark' })
-export class ColorToSuperDark extends MapPipe {
+@Pipe({ name: 'statusToSuperDark' })
+export class StatusToSuperDark extends MapPipe {
   map = {
-    'blue lighten-1 white-text': 'blue darken-4 white-text',
-    'green lighten-1 white-text': 'green darken-4 white-text',
-    'red lighten-1 white-text': 'red darken-4 white-text',
-    'yellow darken-3 white-text': 'yellow darken-5 white-text',
-    'blue-grey lighten-3 white-text': 'blue-grey lighten-1 white-text'
+    'RUNNING': 'blue darken-4 white-text',
+    'ONLINE': 'blue darken-4 white-text',
+    'PASS': 'green darken-4 white-text',
+    'FAIL': 'red darken-4 white-text',
+    'ERROR': 'yellow darken-5 white-text',
+    'PENDING': 'blue-grey lighten-1 white-text',
+    'WAITING': 'blue-grey lighten-1 white-text',
+    'OFFLINE': 'blue-grey lighten-1 white-text',
   };
 }
 
@@ -196,6 +202,7 @@ export class Countdown {
   constructor(seconds: number) {
     this.lengthSeconds = seconds;
     this.onDone = function() { };
+    this.reset();
   }
 
   /**

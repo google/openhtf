@@ -18,8 +18,8 @@ declare var $: any;  // Global provided by the jquery package.
 import {Component, Input, OnInit} from 'angular2/core';
 
 import {
-  ColorToDark,
-  ColorToSuperDark,
+  StatusToDark,
+  StatusToSuperDark,
   FirstEltOrBlank,
   MeasToPassFail,
   ObjectToArray,
@@ -35,8 +35,8 @@ import 'file?name=/templates/station.phases.html!./station.phases.html';
   selector: 'phase-listing',
   templateUrl: 'templates/station.phases.html',
   styleUrls: ['styles/station.phases.css'],
-  pipes: [ColorToDark,
-          ColorToSuperDark,
+  pipes: [StatusToDark,
+          StatusToSuperDark,
           FirstEltOrBlank,
           MeasToPassFail,
           ObjectToArray,

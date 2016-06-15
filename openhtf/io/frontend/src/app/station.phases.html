@@ -24,7 +24,7 @@
         </div>
       </div>
     </div>
-    <div class="collapsible-body {{phase.measurements | measToPassFail | statusToColor | colorToDark}}">
+    <div class="collapsible-body {{phase.measurements | measToPassFail | statusToDark}}">
       <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
       <div class="measurement-container">
         <table class="measurement-listing white-text">
@@ -34,7 +34,7 @@
             <td>value</td>
             <td class="outcome">outcome</td>
           </tr>
-          <tr *ngFor="let meas of phase.measurements | objectToArray" class="measurement {{phase.measurements | measToPassFail | statusToColor | colorToSuperDark}}">
+          <tr *ngFor="let meas of phase.measurements | objectToArray" class="measurement {{phase.measurements | measToPassFail | statusToSuperDark}}">
             <td class="name">{{meas.key}}</td>
             <td class="validator">{{meas.value.validators | firstEltOrBlank}}</td>
             <td class="value">{{phase?.measured_values[meas.key] || ''}}</td>
@@ -61,7 +61,7 @@
         </div>
       </div>
     </div>
-    <div class="collapsible-body {{'RUNNING' | statusToColor | colorToDark}}">
+    <div class="collapsible-body {{'RUNNING' | statusToDark}}">
       <p *ngIf="state.test.running_phase_record.docstring" class="docstring">{{state.test.running_phase_record.docstring}}</p>
       <div class="measurement-container">
         <table class="measurement-listing white-text">
@@ -71,7 +71,7 @@
             <td>value</td>
             <td class="outcome">outcome</td>
           </tr>
-          <tr *ngFor="let meas of state.test.running_phase_record.measurements | objectToArray" class="measurement {{'RUNNING' | statusToColor | colorToSuperDark}}">
+          <tr *ngFor="let meas of state.test.running_phase_record.measurements | objectToArray" class="measurement {{'RUNNING' | statusToSuperDark}}">
             <td class="name">{{meas.key}}</td>
             <td class="validator">{{meas.value.validators | firstEltOrBlank}}</td>
             <td class="value">
@@ -98,7 +98,7 @@
         </div>
       </div>
     </div>
-    <div class="collapsible-body {{'PENDING' | statusToColor | colorToDark}}">
+    <div class="collapsible-body {{'PENDING' | statusToDark}}">
       <p *ngIf="phase.docstring" class="docstring">{{phase[1]}}</p>
     </div>
   </li>
