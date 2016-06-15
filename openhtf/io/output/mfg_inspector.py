@@ -1,4 +1,5 @@
 """Output or upload a TestRun proto for mfg-inspector.com
+
 MULTIDIM_JSON schema:
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
@@ -85,6 +86,7 @@ class InvalidTestRunError(Exception):
 # pylint: disable=invalid-name
 def _PopulateHeader(record, testrun):
   """Populate header-like info in testrun from record.
+
   Mostly obvious, some stuff comes from metadata, see docstring of
   _TestRunFromTestRecord for details.
   """
@@ -128,13 +130,14 @@ def _EnsureUniqueParameterName(name, used_parameter_names):
 
 def _AttachJson(record, testrun):
   """Attach a copy of the JSON-ified record as an info parameter.
+
   Save a copy of the JSON-ified record in an attachment so we can access
   un-mangled fields later if we want.  Remove attachments since those get
   copied over and can potentially be quite large.
   """
   record_dict = data.ConvertToBaseTypes(record, ignore_keys=('attachments',))
-  record_json = json_factory.OutputToJSON(
-      sort_keys=True, indent=2).json_encoder.encode(record_dict)
+  record_json = json_factory.OutputToJSON(inline_attachments=False,
+      sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = record_json
@@ -161,6 +164,7 @@ def _ExtractAttachments(phase, testrun, used_parameter_names):
 def _MangleMeasurement(name, value, measurement, mangled_parameters,
                        attachment_name):
   """Flatten parameters for backwards compatibility, watch for collisions.
+
   We generate these by doing some name mangling, using some sane limits for
   very large multidimensional measurements.
   """
@@ -198,6 +202,7 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters,
 
 def _ExtractParameters(record, testrun, used_parameter_names):
   """Extract parameters from phases.
+
   Generate mangled parameters afterwards so we give real measurements priority
   getting names.
   """
@@ -305,14 +310,18 @@ def _AddLogLines(record, testrun):
 
 def _TestRunFromTestRecord(record):
   """Create a TestRun proto from an OpenHTF TestRecord.
+
   Most fields are just copied over, some are pulled out of metadata (listed
   below), and measurements are munged a bit for backwards compatibility.
+
   Metadata fields:
     'test_description': TestInfo's description field.
     'test_version': TestInfo's version_string field.
     'test_name': TestInfo's name field.
     'run_name': TestRun's run_name field.
     'operator_name': TestRun's operator_name field.
+
+
   Returns:  An instance of the TestRun proto for the given record.
   """
   testrun = test_runs_pb2.TestRun()
@@ -328,9 +337,11 @@ def _TestRunFromTestRecord(record):
 
 class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-public-methods
   """Return an output callback that writes mfg-inspector TestRun Protos.
+
   Example filename_patterns might be:
     '/data/test_records/{dut_id}.{metadata[test_name]}.pb' or
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
+
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
     test.AddOutputCallback(openhtf.OutputToTestRunProto(
@@ -340,6 +351,7 @@ class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-publ
     filename_pattern: A format string specifying the filename to write to,
       will be formatted with the Test Record as a dictionary.  May also be a
       file-like object to write directly to.
+
   Returns:
     filename of local file.
   """
@@ -348,12 +360,13 @@ class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-publ
     super(OutputToTestRunProto, self).__init__(filename_pattern)
 
   @staticmethod
-  def SerializeTestRecord(test_record):
+  def serialize_test_record(test_record):
     return _TestRunFromTestRecord(test_record).SerializeToString()
 
 
 class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
   """Generate a mfg-inspector TestRun proto and upload it.
+
   Create an output callback to upload to mfg-inspector.com using the given
   username and authentication key (which should be the key data itself, not a
   filename or file).
@@ -401,6 +414,7 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
   @classmethod
   def from_json(cls, json_data):
     """Create an uploader given (parsed) JSON data.
+
     Note that this is a JSON-formatted key file downloaded from Google when
     the service account key is created, *NOT* a json-encoded
     oauth2client.client.SignedJwtAssertionCredentials object.
@@ -449,6 +463,7 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     return True
 
   def __call__(self, test_record):  # pylint: disable=invalid-name
+
     testrun = _TestRunFromTestRecord(test_record)
     self.UploadTestRun(testrun)
 

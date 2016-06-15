@@ -15,6 +15,7 @@ class OutputToJSON(output.OutputToFile):
     test = openhtf.Test(PhaseOne, PhaseTwo)
     test.AddOutputCallback(openhtf.OutputToJson(
         '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
+
   Args:
     filename_pattern: A format string specifying the filename to write to,
       will be formatted with the Test Record as a dictionary.  May also be a
@@ -30,15 +31,15 @@ class OutputToJSON(output.OutputToFile):
     self.inline_attachments = inline_attachments
     self.json_encoder = JSONEncoder(**kwargs)
  
-  def SerializeTestRecord(self, test_record):
-    return self.json_encoder.encode(self.ConvertToDict(test_record))
+  def serialize_test_record(self, test_record):
+    return self.json_encoder.encode(self.convert_to_dict(test_record))
   
-  def ConvertToDict(self, test_record):
+  def convert_to_dict(self, test_record):
     if self.inline_attachments:
       as_dict = data.ConvertToBaseTypes(test_record)
       for phase in as_dict['phases']:
         for value in phase['attachments'].itervalues():
           value['data'] = base64.standard_b64encode(value['data'])
     else:
-      as_dict = data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
+      as_dict = data.ConvertToBaseTypes(test_record, ignore_keys=('attachments',))
     return as_dict
