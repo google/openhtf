@@ -116,11 +116,6 @@ INSTALL_REQUIRES = [
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
     'tornado==4.3',
-<<<<<<< HEAD
-    'Werkzeug==0.10.4',
-    'requests == 2.2.1',
-=======
->>>>>>> 844b0c08a3b54d529ff79cd33838a432e09d78cf
 ]
 
 
