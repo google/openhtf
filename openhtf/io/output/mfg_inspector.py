@@ -37,6 +37,7 @@ import sys
 import threading
 import zlib
 
+from openhtf.io import output
 from openhtf.io.output import json_factory
 from openhtf.io.proto import guzzle_pb2
 from openhtf.io.proto import test_runs_pb2
@@ -135,8 +136,8 @@ def _AttachJson(record, testrun):
   copied over and can potentially be quite large.
   """
   record_dict = data.ConvertToBaseTypes(record, ignore_keys=('attachments',))
-  record_json = json_factory.OutputToJSON(
-      sort_keys=True, indent=2).encode(record_dict)
+  record_json = json_factory.OutputToJSON(inline_attachments=False,
+      sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = record_json
@@ -336,7 +337,7 @@ def _TestRunFromTestRecord(record):
   return testrun
 
 
-class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
+class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-public-methods
   """Return an output callback that writes mfg-inspector TestRun Protos.
 
   Example filename_patterns might be:
@@ -358,22 +359,11 @@ class OutputToTestRunProto(object):  # pylint: disable=too-few-public-methods
   """
 
   def __init__(self, filename_pattern):
-    self.filename_pattern = filename_pattern
+    super(OutputToTestRunProto, self).__init__(filename_pattern)
 
-  def __call__(self, test_record):  # pylint: disable=invalid-name
-    as_dict = data.ConvertToBaseTypes(test_record)
-    serialized = _TestRunFromTestRecord(test_record).SerializeToString()
-    if isinstance(self.filename_pattern, basestring):
-      if '{' in self.filename_pattern:
-        filename = self.filename_pattern.format(**as_dict)
-      else:
-        filename = self.filename_pattern % as_dict
-      with open(filename, 'w') as outfile:
-        outfile.write(serialized)
-    else:
-      filename = self.filename_pattern
-      self.filename_pattern.write(serialized)
-    return filename
+  @staticmethod
+  def serialize_test_record(test_record):
+    return _TestRunFromTestRecord(test_record).SerializeToString()
 
 
 class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
