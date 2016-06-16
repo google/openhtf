@@ -128,6 +128,13 @@ def _EnsureUniqueParameterName(name, used_parameter_names):
   return name
 
 
+def _EnsureUniqueParameterName(name, used_parameter_names):
+  while name in used_parameter_names:
+    name += '_'  # Hack to avoid collisions between phases.
+  used_parameter_names.add(name)
+  return name
+
+
 def _AttachJson(record, testrun):
   """Attach a copy of the JSON-ified record as an info parameter.
 
@@ -398,8 +405,8 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     def locked_put(self, credentials):
       self._credentials = credentials
   # pylint: enable=invalid-name,missing-docstring
-
-  def __init__(self, user, keydata,
+  
+   def __init__(self, user, keydata,
                token_uri=TOKEN_URI, destination_url=DESTINATION_URL):
     self.user = user
     self.keydata = keydata
