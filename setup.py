@@ -54,10 +54,13 @@ class BuildProtoCommand(Command):
     try:
       prefix = subprocess.check_output(
           'pkg-config --variable prefix protobuf'.split()).strip()
-    except subprocess.CalledProcessError:
-      if platform.system() in {'Linux', 'Mac'}:
+    except (subprocess.CalledProcessError, OSError):
+      if platform.system() == 'Linux':
         # Default to /usr?
         prefix = '/usr'
+      elif platform.system() == 'Mac':
+        # Default to /usr/local for Homebrew
+        prefix = '/usr/local'
       else:
         raise NotImplementedError(
             'Windows support in-progress. Help us by submitting an issue! '
@@ -105,20 +108,14 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 
 INSTALL_REQUIRES = [
-    'contextlib2==0.4.0',
+    'contextlib2==0.5.1',
     'enum34==1.1.2',
-    'MarkupSafe==0.23',
-    'mutablerecords==0.2.7',
+    'mutablerecords==0.2.9',
     'oauth2client==1.5.2',
     'protobuf==2.6.1',
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
-    'python-gflags==2.0',
-    'PyYAML==3.11',
-    'singledispatch==3.4.0.3',
     'tornado==4.3',
-    'Werkzeug==0.10.4',
-    'requests == 2.2.1',
 ]
 
 
@@ -151,6 +148,7 @@ class PyTestCommand(test):
                          for output in self.pytest_cov.split(','))
       cov = ' --cov openhtf ' + outputs
 
+    sys.argv = [sys.argv[0]]
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
@@ -173,13 +171,14 @@ setup(
         'usb_plugs': [
             'libusb1==1.3.0',
             'M2Crypto==0.22.3',
+            'python-gflags==2.0',
         ],
     },
     setup_requires=[
         'wheel==0.29.0',
     ],
     tests_require=[
-        'mock==1.3.0',
+        'mock>=2.0.0',
         'pytest==2.8.7',
     ],
 )

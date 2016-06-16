@@ -90,6 +90,7 @@ This will result in the ExamplePlug being constructed with
 self._my_config having a value of 'my_config_value'.
 """
 
+import collections
 import functools
 import logging
 
@@ -152,8 +153,7 @@ def plug(update_kwargs=True, **plugs):
   for plug in plugs.itervalues():
     if not issubclass(plug, BasePlug):
       raise InvalidPlugError(
-          'Plug %s is not a subclass of plugs.BasePlug' %
-          plug)
+          'Plug %s is not a subclass of plugs.BasePlug' % plug)
 
   def result(func):
     """Wrap the given function and return the wrapper.
@@ -189,39 +189,39 @@ class PlugManager(object):
   the executor, and should not be instantiated outside the framework itself.
 
   Note this class is not thread-safe.  It should only ever be used by the
-  main framework thread anyway.  It should also not be instantiated directly.
-  Instead, an instance should be obtained by calling InitializeFromTypeMap().
+  main framework thread anyway.
 
   Attributes:
-    plug_map: Dict mapping name to instantiated plug.
+    _plug_map: Dict mapping plug type to instantiated plug.
   """
 
-  def __init__(self, plug_map):
-    self.plug_map = plug_map
+  def __init__(self):
+    self._plug_map = {}
 
-  @classmethod
-  def InitializeFromTypeMap(cls, plug_type_map):
-    """Instantiate plugs so they can be accessed by test phases.
-
-    Plug instances can be accessed via the plugs attribute, which
-    is a dict mapping plug name to plug instance.
-
-    Args:
-      plug_type_map: Dict mapping plug name to type.
-
-    Returns:
-      An Initialized instance of PlugManager.
-    """
-    plug_map = {}
-    for plug, plug_type in plug_type_map.iteritems():
-      _LOG.info('Instantiating %s for plug %s', plug_type, plug)
+  def InitializePlugs(self, plug_types):
+    for plug_type in plug_types:
+      if plug_type in self._plug_map:
+        continue
       try:
-        plug_map[plug] = plug_type()
+        self._plug_map[plug_type] = plug_type()
       except Exception:  # pylint: disable=broad-except
-        _LOG.exception('Exception instantiating %s for plug %s:',
-                       plug_type, plug)
+        _LOG.error('Exception insantiating plug type %s', plug_type)
+        self.TearDownPlugs()
         raise
-    return cls(plug_map)
+
+  def OverridePlug(self, plug_type, plug_value):
+    if plug_type in self._plug_map:
+      self._plug_map[plug_type].TearDown()
+    self._plug_map[plug_type] = plug_value
+
+  def _asdict(self):
+    return {'%s.%s' % (k.__module__, k.__name__): str(v)
+            for k, v in self._plug_map.iteritems()}
+
+  def ProvidePlugs(self, plug_name_map):
+    """Provide the requested plugs [(name, type),] as {name: plug instance}."""
+    return {name: self._plug_map[cls]
+            for name, cls in plug_name_map}
 
   def TearDownPlugs(self):
     """Call TearDown() on all instantiated plugs.
@@ -233,9 +233,9 @@ class PlugManager(object):
     Any exceptions in TearDown() methods are logged, but do not get raised
     by this method.
     """
-    for plug in self.plug_map.itervalues():
+    for plug in self._plug_map.itervalues():
       try:
         plug.TearDown()
       except Exception:  # pylint: disable=broad-except
         _LOG.warning('Exception calling TearDown on %s:', plug, exc_info=True)
-    self.plug_map.clear()
+    self._plug_map.clear()

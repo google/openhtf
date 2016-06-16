@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All Rights Reserved.
+# Copyright 2016 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Openhtf output modules."""
+import unittest
+import time
+import mock
 
-import openhtf.io.output.json_factory
-import openhtf.io.output.mfg_inspector
 
-# pylint: disable=invalid-name
+from openhtf.util import logs
 
-# Classes used for output
-OutputToJSON = json_factory.OutputToJSON
-UploadToMfgInspector = mfg_inspector.UploadToMfgInspector
-OutputToTestRunProto = mfg_inspector.OutputToTestRunProto
-UploadOrOutput = mfg_inspector.UploadOrOutput
+class TestLogs(unittest.TestCase):
+
+  def testLogOnce(self):
+    mock_log = mock.Mock()
+    for _ in xrange(10):
+      logs.LogOnce(mock_log, 'Message 1', 'arg1')
+
+    assert mock_log.call_count == 1

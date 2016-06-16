@@ -50,14 +50,14 @@ if they are implemented by a class that has internal state that is not copyable
 by the default copy.deepcopy().
 """
 
-import re
 import sys
 
 
 class Validators(object):
+  """Validators class."""
 
-  def __init__(self, re_module):
-    self.re_module = re_module
+  def __init__(self, modules):
+    self.modules = modules
     self._validators = {}
 
   def Register(self, validator, name=None):
@@ -85,6 +85,11 @@ class Validators(object):
       self.maximum = maximum
 
     def __call__(self, value):
+      # pylint: disable=g-import-not-at-top
+      import math
+      # Check for nan
+      if math.isnan(value):
+        return False
       # Check for equal bounds first so we can use with non-numeric values.
       if self.minimum == self.maximum and value != self.minimum:
         return False
@@ -105,31 +110,44 @@ class Validators(object):
       if self.maximum is not None:
         return 'x <= %s' % self.maximum
 
-  @classmethod
-  def Equals(cls, value):
-    return cls.InRange(minimum=value, maximum=value)
+    def __eq__(self, other):
+      return (isinstance(other, type(self)) and
+              self.minimum == other.minimum and self.maximum == other.maximum)
+
+    def __ne__(self, other):
+      return not self == other
+
+  def Equals(self, value):
+    if isinstance(value, self.modules['numbers'].Number):
+      return self.InRange(minimum=value, maximum=value)
+    else:
+      return self.MatchesRegex(self.modules['re'].escape(value))
 
   class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
 
-    def __init__(self, re_module, regex):
-      self._re_module = re_module
-      self._compiled = re_module.compile(regex)
+    def __init__(self, regex, compiled_regex):
+      self._compiled = compiled_regex
       self.regex = regex
 
     def __call__(self, value):
       return self._compiled.match(str(value)) is not None
 
     def __deepcopy__(self, dummy_memo):
-      return type(self)(self._re_module, self.regex)
+      return type(self)(self.regex, self._compiled)
 
     def __str__(self):
       return "'x' matches /%s/" % self.regex
 
+    def __eq__(self, other):
+      return isinstance(other, type(self)) and self.regex == other.regex
+
+    def __ne__(self, other):
+      return not self == other
+
   # We have to use our saved reference to the re module because this module
   # has lost all references by the sys.modules replacement and has been gc'd.
   def MatchesRegex(self, regex):
-    return self.RegexMatcher(self.re_module, regex)
+    return self.RegexMatcher(regex, self.modules['re'].compile(regex))
 
-
-sys.modules[__name__] = Validators(re)
+sys.modules[__name__] = Validators(sys.modules)

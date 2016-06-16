@@ -13,10 +13,7 @@
 # limitations under the License.
 
 import subprocess
-from openhtf import conf
 from openhtf.plugs.usb import local_usb
-
-conf.Declare('ethersync', 'ethersync configuration')
 
 class EtherSync(object):
   """EtherSync object for the access of usb device connected to
@@ -33,24 +30,13 @@ class EtherSync(object):
         '8':'213',
   }
 
-  def __init__(self):
+  def __init__(self, mac_addr):
     """Construct a EtherSync object.
 
       Args:
         mac_addr: mac address of the Cambrionix unit for EtherSync.
     """
-    self._addr = None
-
-  def _set_addr(self):
-    device = conf.Config().ethersync
-    print device
-    try:
-      mac_addr = device['mac_addr']
-      port = device['plug_port']
-    except (KeyError,TypeError):
-      raise ValueError('Ethersync needs mac_addr and plug_port to be set')
-    else:
-      addr_info=mac_addr.lower().split(':')
+    addr_info=mac_addr.lower().split(':')
     if (len(addr_info) < 6):
       raise ValueError('Invalid mac address')
 
@@ -66,8 +52,6 @@ class EtherSync(object):
     Return:
       usb device serial number
     """
-    if not self._addr:
-      self._set_addr()
 
     port=self.port_map[str(port_num)]
     arg=''.join(['DEVICE INFO,', self._addr, '.', port])
@@ -97,27 +81,3 @@ class EtherSync(object):
     """
     serial = self.GetUSBSerial(port_num)
     return local_usb.LibUsbHandle.Open(serial_number=serial)
-  
-  def UsePort(self, action, port_num):
-    """Turn on a port on Cambrionix unit
-
-    Args:
-      port_num: port number on the Cambrionix unit
-      action:  on or off
-
-    Return:
-      OK/FAILED
-    """
-    if not self._addr:
-      self._set_addr()
-
-    port=self.port_map[str(port_num)]
-    switch = 'USE,'
-    if action.upper() == 'OFF':
-      switch = 'STOP USING,'
-
-    arg=''.join([switch, self._addr, '.', port])
-    cmd = (['esuit64', '-t', arg])
-  
-    return subprocess.check_output(cmd,stderr=subprocess.STDOUT)
-    

@@ -20,14 +20,14 @@ options. Each option is taken into account when executing a phase, such as
 checking options.run_if as soon as possible and timing out at the appropriate
 time.
 
-A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or FAIL.
+A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or STOP.
 A phase may also return None, or have no return statement, which is the same as
 returning openhtf.PhaseResult.CONTINUE.  These results are then acted upon
 accordingly and a new test run status is returned.
 
 Phases are always run in order and not allowed to loop back, though a phase may
-choose to repeat itself by returning REPEAT. Returning FAIL will cause a test to
-fail early, allowing a test to detect a bad state and not waste any further
+choose to repeat itself by returning REPEAT. Returning STOP will cause a test to
+stop early, allowing a test to detect a bad state and not waste any further
 time. A phase should not return TIMEOUT or ABORT, those are handled by the
 framework.
 """
@@ -36,17 +36,19 @@ import collections
 import inspect
 import logging
 
-import gflags
-
 import openhtf
 from openhtf.exe import phase_data
 from openhtf.io import test_record
+from openhtf.util import argv
 from openhtf.util import threads
 
+DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
-FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('phase_default_timeout_ms', 3 * 60 * 1000,
-                      'Test phase timeout in ms', lower_bound=0)
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument(
+    '--phase_default_timeout_s', default=DEFAULT_PHASE_TIMEOUT_S,
+    action=argv.StoreInModule, target='%s.DEFAULT_PHASE_TIMEOUT_S' % __name__,
+    help='Test phase timeout in seconds')
 
 _LOG = logging.getLogger(__name__)
 
@@ -129,7 +131,7 @@ class PhaseExecutorThread(threads.KillableThread):
     if self._phase.options.timeout_s is not None:
       self.join(self._phase.options.timeout_s)
     else:
-      self.join(FLAGS.phase_default_timeout_ms / 1000.0)
+      self.join(DEFAULT_PHASE_TIMEOUT_S)
 
     # We got a return value or an exception and handled it.
     if isinstance(self._phase_outcome, PhaseOutcome):
@@ -177,25 +179,33 @@ class PhaseExecutor(object):
     # Check this as early as possible.
     if phase.options.run_if and not phase.options.run_if(phase_data):
       _LOG.info('Phase %s skipped due to run_if returning falsey.', phase.name)
-      self.test_state.pending_phases.pop(0)
+      if self.test_state.pending_phases:
+        self.test_state.pending_phases.pop(0)
       return
 
-    _LOG.info('Executing phase %s with plugs %s', phase.name, phase_data.plugs)
+    _LOG.info('Executing phase %s', phase.name)
 
-    self.test_state.running_phase_record = test_record.PhaseRecord(
-        phase.name, phase.code_info)
+    phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
+    self.test_state.running_phase_record = phase_record
 
-    with phase_data.RecordPhaseTiming(phase, self.test_state) as outcome_wrapper:
+    with phase_data.RecordPhaseTiming(phase, phase_record):
       phase_thread = PhaseExecutorThread(phase, phase_data)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      outcome_wrapper.SetOutcome(phase_thread.JoinOrDie())
+      phase_outcome = phase_thread.JoinOrDie()
 
-    if outcome_wrapper.outcome.phase_result == openhtf.PhaseResult.CONTINUE:
+    # Save the outcome of the phase and do some cleanup.
+    phase_record.result = phase_outcome
+    self.test_state.record.phases.append(phase_record)
+    self.test_state.running_phase_record = None
+
+    # We're done with this phase, pop it from the pending phases.
+    if (phase_outcome.phase_result is openhtf.PhaseResult.CONTINUE and
+        self.test_state.pending_phases):
       self.test_state.pending_phases.pop(0)
 
-    _LOG.debug('Phase finished with outcome %s', outcome_wrapper.outcome)
-    return outcome_wrapper.outcome
+    _LOG.debug('Phase finished with outcome %s', phase_outcome)
+    return phase_outcome
 
   def Stop(self):
     """Stops the current phase."""

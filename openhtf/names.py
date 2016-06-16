@@ -39,6 +39,7 @@ import openhtf.plugs
 import openhtf.util.measurements
 import openhtf.util.monitors
 import openhtf.util.units
+import openhtf.util.validators
 
 
 # pylint: disable=invalid-name
@@ -46,13 +47,13 @@ import openhtf.util.units
 # Pseudomodules.
 prompts = openhtf.io.user_input.get_prompt_manager()
 triggers = openhtf.exe.triggers
-
+validators = openhtf.util.validators
+output = openhtf.io.output
 
 # Functions used in writing test scripts.
 measures = openhtf.util.measurements.measures
 monitors = openhtf.util.monitors.monitors
 plug = openhtf.plugs.plug
-
 
 # Classes used in writing test scripts.
 Measurement = openhtf.util.measurements.Measurement

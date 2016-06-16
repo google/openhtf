@@ -21,7 +21,6 @@ frontends alike. Any other part of the framework that needs to access shared
 prompt state should use the openhtf.prompts pseudomodule.
 """
 
-
 import collections
 import functools
 import logging
@@ -31,17 +30,20 @@ import sys
 import threading
 import uuid
 
-import gflags
+from openhtf.util import argv
+
 
 if platform.system() != 'Windows':
   import termios
 
 _LOG = logging.getLogger(__name__)
 
-FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('prompt_timeout_s',
-                       None,
-                      'User prompt timeout in seconds.')
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument(
+    '--prompt_timeout_s', type=int, action=argv.StoreInModule,
+    target='%s.DEFAULT_TIMEOUT_S' % __name__,
+    help='User prompt timeout in seconds.')
+DEFAULT_TIMEOUT_S = None
 
 
 class PromptInputError(Exception):
@@ -69,8 +71,7 @@ class PromptManager(object):
     self._response = None
     self._cond = threading.Condition()
 
-  def DisplayPrompt(self, message, text_input=False,
-                    timeout_s=None):
+  def DisplayPrompt(self, message, text_input=False, timeout_s=None):
     """Prompt for a user response by showing the message.
 
     Args:
@@ -79,6 +80,7 @@ class PromptManager(object):
     Returns:
       The string input by the user.
     """
+    timeout_s = timeout_s or DEFAULT_TIMEOUT_S
     with self._cond:
       if self.prompt is not None:
         self.prompt = None
@@ -94,7 +96,7 @@ class PromptManager(object):
       console_prompt = ConsolePrompt(
           message, functools.partial(self.Respond, self.prompt.id))
       console_prompt.start()
-      self._cond.wait(timeout_s or FLAGS.prompt_timeout_s)
+      self._cond.wait(timeout_s)
       console_prompt.Stop()
       self.prompt = None
       if self._response is None:
@@ -113,6 +115,8 @@ class PromptManager(object):
       if self.prompt is not None and prompt_id == self.prompt.id:
         self._response = response
         self._cond.notifyAll()
+        return True  # The response was used.
+      return False  # The response was not used.
 
 
 # Module-level instance to achieve shared prompt state.
