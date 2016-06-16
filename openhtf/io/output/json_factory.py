@@ -2,18 +2,15 @@
 
 import base64
 from json import JSONEncoder
-
 from openhtf.exe import test_state
+from openhtf.io import output
 from openhtf.util import data
 
-
-class OutputToJSON(JSONEncoder):
+class OutputToJSON(output.OutputToFile):
   """Return an output callback that writes JSON Test Records.
-
   Example filename_patterns might be:
     '/data/test_records/{dut_id}.{metadata[test_name]}.json', indent=4)) or
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
-
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
     test.AddOutputCallback(openhtf.OutputToJson(
@@ -30,33 +27,19 @@ class OutputToJSON(JSONEncoder):
   """
 
   def __init__(self, filename_pattern=None, inline_attachments=True, **kwargs):
-    super(OutputToJSON, self).__init__(**kwargs)
-    self.filename_pattern = filename_pattern
+    super(OutputToJSON, self).__init__(filename_pattern)
     self.inline_attachments = inline_attachments
-
-  def default(self, obj):
-    if isinstance(obj, BaseException):
-      # Just repr exceptions.
-      return repr(obj)
-    return super(OutputToJSON, self).default(obj)
-
-  # pylint: disable=invalid-name
-  def __call__(self, test_record):
-    assert self.filename_pattern, 'filename_pattern required'
+    self.json_encoder = JSONEncoder(**kwargs)
+ 
+  def serialize_test_record(self, test_record):
+    return self.json_encoder.encode(self.convert_to_dict(test_record))
+  
+  def convert_to_dict(self, test_record):
     if self.inline_attachments:
       as_dict = data.ConvertToBaseTypes(test_record)
       for phase in as_dict['phases']:
         for value in phase['attachments'].itervalues():
           value['data'] = base64.standard_b64encode(value['data'])
     else:
-      as_dict = data.ConvertToBaseTypes(test_record, ignore_keys='attachments')
-    if isinstance(self.filename_pattern, basestring):
-      if '{' in self.filename_pattern: 
-        filename = self.filename_pattern.format(**as_dict)
-      else:
-        filename = self.filename_pattern % as_dict
-      with open(filename, 'w') as f:
-        f.write(self.encode(as_dict))
-    else:
-      self.filename_pattern.write(self.encode(as_dict))
-  # pylint: enable=invalid-name
+      as_dict = data.ConvertToBaseTypes(test_record, ignore_keys=('attachments',))
+    return as_dict
