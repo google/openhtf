@@ -104,6 +104,7 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
       skipped.
     - Enum instances are converted to strings via their .name attribute.
     - Number types are left as such (instances of numbers.Number).
+    - Byte and unicode strings are left alone (instances of basestring).
     - Other non-None values are converted to strings via str().
 
   This results in the return value containing only dicts, lists, tuples,
@@ -130,8 +131,10 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
     obj = [ConvertToBaseTypes(value, ignore_keys) for value in obj]
   elif isinstance(obj, tuple):
     obj = tuple(ConvertToBaseTypes(value, ignore_keys) for value in obj)
-  elif obj is not None and not isinstance(obj, numbers.Number):
-    # Leave None as None to distinguish it from "None", and leave numbers alone.
+  elif obj is not None and (
+      not isinstance(obj, numbers.Number) and not isinstance(obj, basestring)):
+    # Leave None as None to distinguish it from "None", as well as numbers and
+    # strings, converting anything unknown to strings.
     obj = str(obj)
 
   return obj
