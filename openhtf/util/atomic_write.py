@@ -15,7 +15,10 @@
 """Utilities for automic_write a new file."""
 
 import os
+<<<<<<< HEAD
 import tempfile
+=======
+>>>>>>> b39595b... add atomic_write function
 from contextlib import contextmanager
 
 @contextmanager
@@ -26,16 +29,29 @@ def atomic_write(filename, filesync=False):
   filesync: flush the file to disk
   """
 
+<<<<<<< HEAD
   tmpf = tempfile.NamedTemporaryFile(delete=False)
   try:
     with open(tmpf.name, 'w') as curfile:
+=======
+  tmpfile = filename + '~'
+  try:
+    with open(tmpfile, 'w') as curfile:
+>>>>>>> b39595b... add atomic_write function
       yield curfile
       if filesync:
         curfile.flush()
         os.fsync(curfile.fileno())
+<<<<<<< HEAD
     os.rename(tmpf.name, filename)
   finally:
     try:
       os.remove(tmpf.name)
+=======
+    os.rename(tmpfile, filename)
+  finally:
+    try:
+      os.remove(tmpfile)
+>>>>>>> b39595b... add atomic_write function
     except (IOError, OSError):
       pass
