@@ -37,6 +37,7 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
 from openhtf.exe import triggers
+from openhtf.io import station_api
 from openhtf.io import test_record
 from openhtf.io import user_input
 from openhtf.util import data
@@ -124,6 +125,8 @@ class Test(object):
     cls.TEST_INSTANCES = {old_test for old_test in cls.TEST_INSTANCES
                           if sys.getrefcount(old_test) > 3}
     cls.TEST_INSTANCES.add(test)
+    # This is a noop if the server is already running, otherwise start it.
+    station_api.start_server()
 
   def AddOutputCallback(self, callback):
     """DEPRECATED: Use AddOutputCallbacks() instead."""
