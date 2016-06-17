@@ -50,7 +50,7 @@ class MulticastListener(threading.Thread):
     port: Multicast UDP port component of the socket to listen on.
     ttl: TTL for multicast messages. 1 to keep traffic in-network.
   """
-  LISTEN_TIMEOUT_S = 3  # Seconds to listen before retrying.
+  LISTEN_TIMEOUT_S = 60  # Seconds to listen before retrying.
   daemon = True
 
   def __init__(self,
@@ -100,12 +100,15 @@ class MulticastListener(threading.Thread):
         _LOG.debug('Received multicast message from %s: %s'% (address, data))
         response = self._callback(data)
         if response is not None:
+          _LOG.debug('Sending multicast response with %s bytes', len(response))
           # Send replies out-of-band instead of with the same multicast socket
           # so that multiple processes on the same host can listen for
           # requests and reply (if they all try to use the multicast socket
           # to reply, they conflict and this sendto fails).
           socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(response,
                                                                   address)
+      except socket.timeout:
+        pass
       except socket.error:
         _LOG.debug('Error receiving multicast message', exc_info=True)
 
