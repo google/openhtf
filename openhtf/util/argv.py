@@ -17,6 +17,7 @@ StoreInModule:
 """
 
 import argparse
+import sys
 
 
 def ModuleParser():
@@ -41,4 +42,3 @@ class StoreInModule(argparse.Action):
         else:
           module = __import__(self._tgt_mod)
         setattr(module, self._tgt_attr, values)
-
