@@ -82,7 +82,7 @@ ARG_PARSER.add_argument(
     '--log-file', action=argv.StoreInModule, target='%s.LOGFILE' % __name__,
     help='Filename to output logs to, if any.')
 ARG_PARSER.add_argument(
-    '--log-file-level', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
+    '--log-file-level', default=DEFAULT_LOGFILE_LEVEL, choices=LEVEL_CHOICES,
     action=argv.StoreInModule, target='%s.DEFAULT_LOGFILE_LEVEL' % __name__,
     help='Logging verbosity level for log file output.')
 
