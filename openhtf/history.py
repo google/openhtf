@@ -21,17 +21,11 @@ intelligence around Test object metadata and eviction policies.
 import collections
 import threading
 
-from openhtf.util import argv
+from openhtf import conf
 from openhtf.util import data
 from openhtf.util import threads
 
-MAX_HISTORY_SIZE_MB = 256  # 256 MiB approximate limit.
-
-_ARG_PARSER = argv.ModuleParser()
-_ARG_PARSER.add_argument(
-    '--max-history-size-mb', action=argv.StoreInModule,
-    target='%s.MAX_HISTORY_SIZE_MB' % __name__,
-    help='Maximum size of test history, in megabytes.')
+conf.Declare('max_history_size_mb', default_value=256)
 
 
 class HistorySyncError(Exception):
@@ -61,6 +55,11 @@ class TestHistory(object):
   @property
   def size_mb(self):
     return (self.record_bytes + sys.getsizeof(self.records)) / 1024.0 / 1024.0
+
+  @property
+  def last_start_time(self):
+    """start_time_millis of most recent record, or 0 if no records."""
+    return self.records[0].start_time_millis if self.records else 0
 
   def pop(self):
     """Pop the oldest record and return the test_uid it was associated with."""
@@ -95,14 +94,14 @@ class History(object):
 
   def _maybe_evict(self):
     size_mb = self.size_mb
-    if size_mb < MAX_HISTORY_SIZE_MB:
+    if size_mb < conf.max_history_size_mb:
       return
 
     _LOG.debug('History (%.2f MB) over max size (%.2f MB), evicting...',
-               size_mb, MAX_HISTORY_SIZE_MB)
+               size_mb, conf.max_history_size_mb)
 
     # We're over size, evict the oldest records, down to 80% capacity.
-    while self.all_test_records and size_mb > MAX_HISTORY_SIZE_MB * .8:
+    while self.all_test_records and size_mb > conf.max_history_size_mb * .8:
       test_uid = self.all_test_records.pop()
       if test_uid != self.per_test_records[test_uid].pop():
         raise HistorySyncError('Per-test history had invalid Test uid')
@@ -133,12 +132,29 @@ class History(object):
     self.all_test_records.append(test_uid, record)
 
   @threads.Synchronized
-  def for_test_uid(self, test_uid):
+  def for_test_uid(self, test_uid, start_after_millis=0):
     """Copy history for the given test UID."""
-    return list(self.per_test_records[test_uid])
+    return list(rec for rec in self.per_test_records[test_uid]
+                if rec.start_time_millis > start_after_millis)
+
+  @threads.Synchronized
+  def last_start_time(self, test_uid):
+    """Get the most recent start time for the given test UID.
+
+    This is used to identify how up-to-date the history is, we know that all
+    records in the history started before or at the return value of this
+    method, so we can limit RPC traffic based on this knowledge.
+
+    Defaults to returning 0 if there are no records for the given test_uid.
+    """
+    return self.per_test_records[test_uid].last_start_time
 
 
-# Create a singleton instance and bind module-level names to its methods.
+# Create a singleton instance and bind module-level names to its methods.  For
+# OpenHTF itself, this singleton instance will be used.  The frontend server
+# will need to create multiple instances itself, however, since it tracks
+# multiple stations at once.
 HISTORY = History()
 append_record = HISTORY.append_record
 for_test_uid = HISTORY.for_test_uid
+last_start_time = HISTORY.last_start_time
