@@ -141,6 +141,10 @@ class Test(object):
 
   def OutputTestRecord(self, record):
     """Feed the record of this test to all output modules."""
+    _LOG.debug('Test completed for %s, saving to history and outputting.',
+               self._test_options.name)
+    # Add the record to the history first, then to each output callback.
+    history.append_record(self.uid, record)
     for output_cb in self._test_options.output_callbacks:
       try:
         output_cb(record)
