@@ -35,6 +35,12 @@ logging.basicConfig(level=logging.INFO)
 from openhtf.io import station_api
 
 
+def fmt_time(time_millis=None):
+  if time_millis:
+    time_millis /= 1000.0
+  return time.strftime('%H:%M:%S', time.localtime(time_millis))
+
+
 def clear_terminal():
   os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -47,15 +53,28 @@ def print_station(station):
 
 
 def print_test(remote_test):
-  print(' |')
   print(' |-- %s' % (remote_test,))
   for test_record in remote_test.history:
-    print(' |    |-- %s' % test_record)
+    print(' |    |-- DUT: %s, Ran %s Phases, %s -> %s (%.2f sec), Outcome: %s' % (
+        test_record.dut_id, len(test_record.phases),
+        fmt_time(test_record.start_time_millis),
+        fmt_time(test_record.end_time_millis),
+        (test_record.end_time_millis - test_record.start_time_millis) / 1000.0,
+        test_record.outcome))
+    for phase in test_record.phases:
+      print(' |    |    |-- Phase: %s, %s -> %s (%.3f sec), Result: %s' % (
+          phase.name, fmt_time(phase.start_time_millis),
+          fmt_time(phase.end_time_millis),
+          (phase.end_time_millis - phase.start_time_millis) / 1000.0,
+          phase.result.phase_result if phase.result.raised_exception else
+          phase.result.phase_result.name))
+    print (' |    |')
+  print(' |')
 
 
 if __name__ == '__main__':
   while True:
     clear_terminal()
-    print('Polled @%s\n' % time.strftime('%H:%M:%S', time.localtime()))
-    for station in station_api.Station.discover_stations(timeout_s=10):
+    print('Polled @%s\n' % fmt_time())
+    for station in station_api.Station.discover_stations(timeout_s=2):
       print_station(station)
