@@ -19,11 +19,15 @@ intelligence around Test object metadata and eviction policies.
 """
 
 import collections
+import logging
+import sys
 import threading
 
 from openhtf import conf
 from openhtf.util import data
 from openhtf.util import threads
+
+_LOG = logging.getLogger(__name__)
 
 conf.Declare('max_history_size_mb', default_value=256)
 
@@ -78,19 +82,18 @@ class History(object):
 
   def __init__(self):
     # Track history on a per-Test basis.
-    self.per_test_records = collections.defaultdict(TestHistory)
+    self.per_test_history = collections.defaultdict(TestHistory)
     # Track a history of all records (completed tests).
-    self.all_test_records = TestHistory()
+    self.all_tests_history = TestHistory()
     self._lock = threading.Lock()
 
   @property
   def size_mb(self):
-    with self._lock:
-      return ((
-          (self.all_test_records.size_mb * 1024.0 * 1024.0) +
-          sys.getsizeof(self.per_test_records) +
-          sum(sys.getsizeof(test) for test in self.per_test_records)) /
-          (1024.0 * 1024.0))
+    return ((
+        (self.all_tests_history.size_mb * 1024.0 * 1024.0) +
+        sys.getsizeof(self.per_test_history) +
+        sum(sys.getsizeof(test) for test in self.per_test_history)) /
+        (1024.0 * 1024.0))
 
   def _maybe_evict(self):
     size_mb = self.size_mb
@@ -101,15 +104,15 @@ class History(object):
                size_mb, conf.max_history_size_mb)
 
     # We're over size, evict the oldest records, down to 80% capacity.
-    while self.all_test_records and size_mb > conf.max_history_size_mb * .8:
-      test_uid = self.all_test_records.pop()
-      if test_uid != self.per_test_records[test_uid].pop():
+    while self.all_tests_history and size_mb > conf.max_history_size_mb * .8:
+      test_uid = self.all_tests_history.pop()
+      if test_uid != self.per_test_history[test_uid].pop():
         raise HistorySyncError('Per-test history had invalid Test uid')
 
       # If we have no more history entries for this test_uid, delete the key
-      # from the per_test_records dictionary.
-      if not self.per_test_records[test_uid]:
-        del self.per_test_records[test_uid]
+      # from the per_test_history dictionary.
+      if not self.per_test_history[test_uid]:
+        del self.per_test_history[test_uid]
 
       # Re-calculate our total size.
       size_mb = self.size_mb
@@ -125,17 +128,19 @@ class History(object):
           openhtf.Test instance via the 'UID' attribute.
       record: The test_record.TestRecord instance to append.
     """
+    _LOG.debug('Appending record at start_time_millis %s for %s',
+               record.start_time_millis, test_uid)
     # For now, check history size on every append.  If this proves to have a
     # performance impact, we can reduce the frequency of this check.
     self._maybe_evict()
-    self.per_test_records[test_uid].append(test_uid, record)
-    self.all_test_records.append(test_uid, record)
+    self.per_test_history[test_uid].append(test_uid, record)
+    self.all_tests_history.append(test_uid, record)
 
   @threads.Synchronized
   def for_test_uid(self, test_uid, start_after_millis=0):
     """Copy history for the given test UID."""
-    return list(rec for rec in self.per_test_records[test_uid]
-                if rec.start_time_millis > start_after_millis)
+    return list(entry.record for entry in self.per_test_history[test_uid]
+                if entry.record.start_time_millis > start_after_millis)
 
   @threads.Synchronized
   def last_start_time(self, test_uid):
@@ -147,7 +152,7 @@ class History(object):
 
     Defaults to returning 0 if there are no records for the given test_uid.
     """
-    return self.per_test_records[test_uid].last_start_time
+    return self.per_test_history[test_uid].last_start_time
 
 
 # Create a singleton instance and bind module-level names to its methods.  For
