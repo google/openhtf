@@ -29,26 +29,26 @@ import os
 import sys
 import time
 
-logging.basicConfig(level=logging.DEBUG)
+# TODO(madsci): Set log level from flags.
+logging.basicConfig(level=logging.INFO)
 
 from openhtf.io import station_api
 
 
 def clear_terminal():
-  pass
-  #os.system('cls' if os.name == 'nt' else 'clear')
+  os.system('cls' if os.name == 'nt' else 'clear')
 
 
 def print_station(station):
   print(station)
   for remote_test in station.list_tests():
     print_test(remote_test)
-  print()
+  print
 
 
 def print_test(remote_test):
   print(' |')
-  print(' |-- %s' % remote_test)
+  print(' |-- %s' % (remote_test,))
   for test_record in remote_test.history:
     print(' |    |-- %s' % test_record)
 
