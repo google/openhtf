@@ -45,7 +45,7 @@ Station.discover_stations() method:
     print 'Found station:', station
 
 This iterator yields Station instances, which contain the necessary
-information to connect to the station via XMLRPC to obtain more details:    
+information to connect to the station via XMLRPC to obtain more details:
 
   for station in Station.discover_stations():
     print 'Found station "%s", with tests:' % station.station_id
@@ -54,6 +54,7 @@ information to connect to the station via XMLRPC to obtain more details:
 """
 
 import collections
+import cPickle as pickle
 import json
 import logging
 import os
@@ -81,7 +82,7 @@ _LOG = logging.getLogger(__name__)
 DEFAULT_DISCOVERY_STRING = 'OPENHTF_DISCOVERY'
 
 conf.Declare('enable_station_discovery', default_value=True)
-conf.Declare('station_api_bind_address', default_value='localhost')
+conf.Declare('station_api_bind_address', default_value='0.0.0.0')
 conf.Declare('station_api_port', default_value=8888)
 conf.Declare('station_discovery_string', default_value=DEFAULT_DISCOVERY_STRING)
 
@@ -94,6 +95,13 @@ conf.Declare('station_discovery_ttl')
 StationInfo = collections.namedtuple('StationInfo', [
     'host', 'station_id', 'station_api_bind_address', 'station_api_port',
     'last_activity_time_millis'])
+
+# Build multicast kwargs based on conf, otherwise use defaults.
+MULTICAST_KWARGS = lambda: {
+    attr: conf['station_discovery_%s' % attr]
+    for attr in ('address', 'port', 'ttl')
+    if 'station_discovery_%s' % attr in conf
+}
 
 
 class RemoteTest(collections.namedtuple('RemoteTest', [
@@ -121,55 +129,17 @@ class RemoteTest(collections.namedtuple('RemoteTest', [
     reference to the return value and reusing it will not trigger an update
     from the remote end.
     """
-    with self._server_proxy._lock:
+    with self.server_proxy._lock:
+      last_start_time = self.local_history.last_start_time(self.test_uid)
       new_history = self.server_proxy.get_records_after(
-          self.test_uid, self.local_history.last_start_time)
+          self.test_uid, last_start_time)
+      _LOG.debug('Requested history update for %s after %s, got %s results.',
+                 self.test_uid, last_start_time, len(new_history))
 
     for pickled_record in new_history:
       self.local_history.append_record(
           self.test_uid, pickle.loads(pickled_record))
-    return self.local_history
-
-
-# Build multicast kwargs based on conf, otherwise use defaults.
-MULTICAST_KWARGS = lambda: {
-    attr: conf['station_discovery_%s' % attr]
-    for attr in ('address', 'port', 'ttl')
-    if 'station_discovery_%s' % attr in conf
-}
-
-
-class StationApi(object):
-
-  UID = '%s:%s' % (os.getpid(), util.TimeMillis())
-
-  def list_tests(self):
-    """List currently known test types.
-
-    A new 'test type' is created each time openhtf.Test is instantiated, and
-    lasts as long as there are any external references to it (ie, outside the
-    internal tracking structures within OpenHTF).
-
-    This means creating large numbers of openhtf.Test instances and keeping
-    references to them around can cause memory usage to grow rapidly and 
-    station_api performance to degrade; don't do that.
-
-    Returns:
-      List of RemoteTest tuple values (as a dict).
-    """
-    return [{
-        'test_uid': test.uid,
-        'test_name': test.GetOption('name'),
-        'created_time_millis': long(test.created_time_millis),
-        'last_run_time_millis': long(test.last_run_time_millis),
-    } for test in openhtf.Test.TEST_INSTANCES]
-
-  def get_records_after(self, test_uid, start_time_millis):
-    """Get a list of pickled TestRecords for test_uid."""
-    # TODO(madsci): We really should pull attachments out of band here.
-    return [pickle.dumps(test_record)
-            for test_record in history.for_test_uid(
-                test_uid, start_after_millis=start_time_millis)]
+    return self.local_history.for_test_uid(self.test_uid)
 
 
 class Station(object):
@@ -205,7 +175,7 @@ class Station(object):
       except TypeError:
         _LOG.debug('Received invalid discovery response from %s: %s',
                    host, response, exc_info=True)
-    
+
   def list_tests(self):
     """List known Test instances on this station."""
     with self._server_proxy._lock:
@@ -213,6 +183,42 @@ class Station(object):
 
     for test_dict in tests:
       yield RemoteTest(self._server_proxy, self._history, **test_dict)
+
+
+### Server-side objects below here. ###
+
+
+class StationApi(object):
+
+  UID = '%s:%s' % (os.getpid(), util.TimeMillis())
+
+  def list_tests(self):
+    """List currently known test types.
+
+    A new 'test type' is created each time openhtf.Test is instantiated, and
+    lasts as long as there are any external references to it (ie, outside the
+    internal tracking structures within OpenHTF).
+
+    This means creating large numbers of openhtf.Test instances and keeping
+    references to them around can cause memory usage to grow rapidly and
+    station_api performance to degrade; don't do that.
+
+    Returns:
+      List of RemoteTest tuple values (as a dict).
+    """
+    return [{
+        'test_uid': test.uid,
+        'test_name': test.GetOption('name'),
+        'created_time_millis': long(test.created_time_millis),
+        'last_run_time_millis': long(test.last_run_time_millis),
+    } for test in openhtf.Test.TEST_INSTANCES]
+
+  def get_records_after(self, test_uid, start_time_millis):
+    """Get a list of pickled TestRecords for test_uid."""
+    # TODO(madsci): We really should pull attachments out of band here.
+    return [pickle.dumps(test_record)
+            for test_record in history.for_test_uid(
+                test_uid, start_after_millis=start_time_millis)]
 
 
 class Server(threading.Thread):
@@ -239,9 +245,10 @@ class Server(threading.Thread):
 
   def run(self):
     if int(conf.station_api_port):
-      self.station_api_server = SimpleXMLRPCServer.SimpleXMLRPCServer((
-          conf.station_api_bind_address, int(conf.station_api_port)),
-          allow_none=True)
+      self.station_api_server = SimpleXMLRPCServer.SimpleXMLRPCServer(
+          (conf.station_api_bind_address, int(conf.station_api_port)),
+          allow_none=True,
+          logRequests=logging.getLogger().level <= logging.DEBUG)
       self.station_api_server.register_instance(STATION_API)
       self.station_api_server.register_introspection_functions()
       self.station_api_server.register_multicall_functions()
@@ -268,7 +275,7 @@ class Server(threading.Thread):
   def stop(self):
     try:
       try:
-        if self.multicast_listener: 
+        if self.multicast_listener:
           self.multicast_listener.Stop()
       finally:
         if self.station_api_server:
