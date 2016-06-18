@@ -22,6 +22,7 @@ function that is used to send one-shot messages to a multicast socket.
 
 
 import logging
+import Queue
 import socket
 import struct
 import threading
@@ -130,22 +131,32 @@ def send(query,
   Returns: A set of all responses that arrived before the timeout expired.
            Responses are tuples of (sender_address, message).
   """
-  result = set()
+  # Set up the socket as a UDP Multicast socket with the given timeout.
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  sock.setsockopt(socket.IPPROTO_IP,
-                  socket.IP_MULTICAST_TTL,
-                  ttl)
+  sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
   sock.settimeout(timeout_s)
   sock.sendto(query, (address, port))
-  while True:
-    try:
-      data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
-    except socket.timeout:
-      if not result:
-        _LOG.debug('No responses recieved to multicast query "%s".', query)
+
+  # Set up our thread-safe Queue for handling responses.
+  recv_queue = Queue.Queue()
+  def _HandleResponses():
+    while True:
+      try:
+        data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
+      except socket.timeout:
+        recv_queue.put(None)
+        break
+      else:
+        _LOG.debug('Multicast response to query "%s": %s:%s',
+                   query, address[0], data)
+        recv_queue.put((address[0], str(data)))
+
+  # Yield responses as they come in, giving up once timeout expires.
+  response_thread = threading.Thread(target=_HandleResponses)
+  response_thread.start() 
+  while response_thread.is_alive():
+    recv_tuple = recv_queue.get()
+    if not recv_tuple:
       break
-    else:
-      _LOG.debug('Multicast response to query "%s": %s:%s',
-                 query, address[0], data)
-      result.add((address[0], str(data)))
-  return result
+    yield recv_tuple
+  response_thread.join()
