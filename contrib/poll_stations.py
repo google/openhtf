@@ -1,11 +1,11 @@
 # Copyright 2016 Google Inc. All Rights Reserved.
-
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +21,26 @@ form only).
 This is handy for getting an at-a-glance picture of OpenHTF stations running on
 a network without having to spin up a frontend server.
 
+# TODO(madsci): Implement flags for verbosity control, logs, poll interval.
+
 Example:
+  python poll_stations.py
+
+Outputs something like, which updates regularly:
+
+Polled @05:12:44
+
+<Station madsci-mbr@192.168.1.127:8888, listening on 0.0.0.0>
+ |-- <RemoteTest MyTest(7165:1466251736061:4567501648) created 18.Sat@05:08:56, last run 18.Sat@05:08:56>
+ |    |-- DUT: asdf, Ran 5 Phases, 05:08:57 -> 05:08:57 (0.61 sec), Outcome: Outcome.FAIL
+ |    |    |-- Phase: hello_world, 05:08:57 -> 05:08:57 (0.573 sec), Result: CONTINUE
+ |    |    |-- Phase: set_measurements, 05:08:57 -> 05:08:57 (0.002 sec), Result: CONTINUE
+ |    |    |-- Phase: dimensions, 05:08:57 -> 05:08:57 (0.001 sec), Result: CONTINUE
+ |    |    |-- Phase: attachments, 05:08:57 -> 05:08:57 (0.009 sec), Result: CONTINUE
+ |    |    |-- Phase: teardown, 05:08:57 -> 05:08:57 (0.002 sec), Result: CONTINUE
+ |    |
+ |
+
 """
 
 import logging
@@ -76,5 +95,5 @@ if __name__ == '__main__':
   while True:
     clear_terminal()
     print('Polled @%s\n' % fmt_time())
-    for station in station_api.Station.discover_stations(timeout_s=2):
+    for station in station_api.Station.discover_stations(timeout_s=5):
       print_station(station)
