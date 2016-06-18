@@ -54,15 +54,16 @@ COLUMN_NAMES = ['Name',
 START_DELIMITER = '######## BEGIN_UNITS ########'
 END_DELIMITER = '######## END_UNITS ########'
 
-SHEET_NAME = 'Annex I'
-REPLACEMENTS = {' ': '_',
-                '[': '',
-                ']': '',
-                '(': '',
-                ')': '',
-                ',': '.',
-                u'°': 'DEG_',
-               }
+SHEET_NAME = 'Annex II & Annex III'
+UNIT_KEY_REPLACEMENTS = {' ': '_',
+                         '[': '',
+                         ']': '',
+                         '(': '',
+                         ')': '',
+                         ',': '.',
+                         "'": '',
+                         u'°': 'DEG_',
+                        }
 
 
 def main():
@@ -75,18 +76,21 @@ def main():
                       help='Where to put the generated .py file.')
   args = parser.parse_args()
 
-  code = code_generator(
-      xlrd.open_workbook(args.infile).sheet_by_name(SHEET_NAME))
+  unit_defs = unit_defs_from_sheet(
+      xlrd.open_workbook(args.infile).sheet_by_name(SHEET_NAME),
+      COLUMN_NAMES)
 
-  insert_into_file(args.outfile, code, START_DELIMITER, END_DELIMITER)
+  insert_into_file(args.outfile, unit_defs, START_DELIMITER, END_DELIMITER)
 
 
-def code_generator(sheet):
+def unit_defs_from_sheet(sheet, column_names):
   """A generator that parses a worksheet containing UNECE code definitions.
 
   Args:
     sheet: An xldr.sheet object representing a UNECE code worksheet.
-  Yields: An iterable of lines of Python source code defining OpenHTF Units.
+    column_names: A list/tuple with the expected column names corresponding to
+                  the unit name, code and suffix in that order.
+  Yields: Lines of Python source code that define OpenHTF Unit objects.
   """
   seen = set()
   try:
@@ -95,21 +99,23 @@ def code_generator(sheet):
     
     # Find the indices for the columns we care about.
     for idx, cell in enumerate(rows.next()):
-      if cell.value in COLUMN_NAMES:
+      if cell.value in column_names:
         col_indices[cell.value] = idx
 
     # loop over all remaining rows and pull out units.
     for row in rows:
-      name = row[col_indices[COLUMN_NAMES[0]]].value
-      code = row[col_indices[COLUMN_NAMES[1]]].value
-      suffix = multi_replace(row[col_indices[COLUMN_NAMES[2]]].value,
-                             {"'": "\\\'", '"': '\\\"'})
+      name = row[col_indices[column_names[0]]].value
+      code = row[col_indices[column_names[1]]].value
+      suffix = row[col_indices[column_names[2]]].value.replace("'", "\\\'")
       if name in seen:
         continue
       seen.add(name)
 
-      yield 'UNITS[\'%s\'] = Unit(\'%s\', \'%s\', \'%s\')\n' % (
-          multi_replace(name.upper(), REPLACEMENTS), name, code, suffix)
+      yield "UNITS['%s'] = Unit('%s', '''%s''')\n" % (
+          multi_replace(name.upper(),
+                        UNIT_KEY_REPLACEMENTS),
+                        code,
+                        suffix)
 
   except xlrd.XLRDError:
     sys.stdout.write('Unable to process the .xls file.')
@@ -135,7 +141,7 @@ def insert_into_file(filepath, code, start, end):
     start: The contents of the line below which to replace text.
     end: The contents of the line after which to leave contents intact.
   """
-  tmp_handle, tmp_path = mkstemp()
+  _, tmp_path = mkstemp()
   skipping = False
 
   with open(filepath) as old_file, open(tmp_path, 'w') as new_file:

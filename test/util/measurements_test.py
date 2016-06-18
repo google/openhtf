@@ -68,20 +68,20 @@ def LotsOfMeasurements(test):
 
 
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
-    'This measurement is validated.').WithUnits(UOM['SECOND']))
+    'This measurement is validated.').WithUnits(UNITS['SECOND']))
 def MeasureSeconds(test):
   test.measurements.validated_measurement = 5
 
 
 @measures(Measurement('dimensioned_measurement').WithDimensions(
-    UOM['SECOND'], UOM['HERTZ']))
-@measures('unset_dimensions', dimensions=(UOM['SECOND'], UOM['HERTZ']))
+    UNITS['SECOND'], UNITS['HERTZ']))
+@measures('unset_dimensions', dimensions=(UNITS['SECOND'], UNITS['HERTZ']))
 def MeasureDimensions(test):
   test.measurements.dimensioned_measurement[1, 2] = 5
 
 
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
-          units=UOM['HERTZ'], validators=[util.validators.InRange(0, 10)])
+          units=UNITS['HERTZ'], validators=[util.validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
 def InlinePhase(test):
   test.measurements.inline_kwargs = 15

@@ -60,4 +60,4 @@ Measurement = openhtf.util.measurements.Measurement
 TestPhase = openhtf.PhaseOptions
 PhaseResult = openhtf.PhaseResult
 Test = openhtf.Test
-UOM = openhtf.util.units.UOM
+UNITS = openhtf.util.units.UNITS
