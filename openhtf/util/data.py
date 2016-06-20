@@ -150,7 +150,6 @@ def TotalSize(obj):
       # A rough approximation of the size cost of an additional reference.
       return struct.calcsize('P')
     seen.add(id(current_obj))
-    current_size = sys.getsizeof(current_obj)
     size = sys.getsizeof(current_obj)
 
     if isinstance(current_obj, dict):
