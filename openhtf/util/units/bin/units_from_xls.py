@@ -207,7 +207,7 @@ def unit_defs_from_sheet(sheet, column_names):
       name = row[col_indices[column_names[0]]].value.replace("'", r'\'')
       code = row[col_indices[column_names[1]]].value
       suffix = row[col_indices[column_names[2]]].value.replace("'", r'\'')
-      key = unit_key_from_name(name, UNIT_KEY_REPLACEMENTS)
+      key = unit_key_from_name(name)
       if key in seen:
         continue
       seen.add(key)
@@ -219,12 +219,11 @@ def unit_defs_from_sheet(sheet, column_names):
     sys.stdout.write('Unable to process the .xls file.')
 
 
-def unit_key_from_name(name, replacements=None):
+def unit_key_from_name(name):
   """Return a legal python name for the given name for use as a unit key."""
-  replacements = replacements or {}
-  result = name[:]
+  result = name
 
-  for old, new in replacements.iteritems():
+  for old, new in UNIT_KEY_REPLACEMENTS.iteritems():
     result = result.replace(old, new)
 
   # Collapse redundant underscores and convert to uppercase.
