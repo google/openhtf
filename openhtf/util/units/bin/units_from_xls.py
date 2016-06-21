@@ -101,7 +101,6 @@ ALL_UNITS = []
 # by a known dimension (such as a ratio)
 NO_DIMENSION = UnitInfo('No dimension', 'NDL', None)
 ALL_UNITS.append(NO_DIMENSION)
-
 NONE = UnitInfo('None', None, None)
 ALL_UNITS.append(NONE)
 '''
@@ -109,24 +108,24 @@ ALL_UNITS.append(NONE)
 POST = '''
 # Convenience aliases.
 MINUTE = MINUTE_UNIT_OF_TIME
-ALL_UNITS.append(MINUTE)
-
 SECOND = SECOND_UNIT_OF_TIME
-ALL_UNITS.append(SECOND)
 
 
 class UnitLookup(object):
   """Facilitates user-friendly access to units."""
   def __init__(self, lookup):
-    self.lookup = lookup
+    self._lookup = lookup
 
-  def __call__(self, description_or_suffix):
+  def __call__(self, name_or_suffix):
     """Provides instantiation-like access for units module."""
-    return self.lookup[description_or_suffix]
+    return self._lookup[name_or_suffix]
 
 
 UNITS_BY_NAME = {u.name: u for u in ALL_UNITS}
 UNITS_BY_SUFFIX = {u.suffix: u for u in ALL_UNITS}
+
+del ALL_UNITS
+
 UNITS_BY_ALL = {}
 UNITS_BY_ALL.update(UNITS_BY_NAME)
 UNITS_BY_ALL.update(UNITS_BY_SUFFIX)
