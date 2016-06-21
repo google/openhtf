@@ -25,12 +25,25 @@ import contextlib2 as contextlib
 import openhtf
 from openhtf import conf
 from openhtf import plugs
+from openhtf import util
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
 from openhtf.io import user_input
 from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
+
+
+class MissingOutcomeError(Exception):
+  """Raised when a test is Finalized but there is no outcome set."""
+
+
+class BlankDutIdError(Exception):
+  """DUT serial cannot be blank at the end of a test."""
+
+
+class AlreadyFinalizedError(Exception):
+  """Raised when trying to finalize a test that is already finished."""
 
 
 class TestStopError(Exception):
@@ -51,7 +64,7 @@ class LogSleepSuppress(object): # pylint: disable=too-few-public-methods
       # Only log if there is a failure.
       _LOG.exception(self.failure_reason)
       time.sleep(1.0)
-    if exc_type is test_state.BlankDutIdError:
+    if exc_type is BlankDutIdError:
       # Suppress BlankDutIdError, it's likely transient.
       return True
     # Raise all other exceptions, we probably care about them.
@@ -88,6 +101,43 @@ class TestExecutor(threads.KillableThread):
         self._exit_stack.close()
     self.Kill()
 
+  def Finalize(self, output_callbacks):
+    """Finalize test execution and output resulting record to callbacks.
+
+    Should only be called once at the conclusion of a test run, and will raise
+    an exception if end_time_millis is already set.
+
+    Raises: TestAlreadyFinalized if end_time_millis already set.
+    """
+    if not self._test_state:
+      raise TestStopError('Test Stopped.')
+
+    if self._test_state.test_record.end_time_millis:
+      raise AlreadyFinalizedError(
+          'Already finalized', self._test_state.test_record.end_time_millis)
+
+    if not self._test_state.test_record.dut_id:
+      raise BlankDutIdError(
+          'Blank or missing DUT ID, HTF requires a non-blank ID.')
+
+    if not self._test_state.test_record.outcome:
+      raise MissingOutcomeError(
+          'Test outcome unset, was the test cancelled?')
+
+    self._test_state.test_record.end_time_millis = util.TimeMillis()
+    _LOG.debug('Test completed for %s, saving to history and outputting.',
+               self._test_state.test_record.metadata['test_name'])
+
+    for output_cb in output_callbacks:
+      try:
+        output_cb(self._test_state.test_record)
+      except Exception:
+        _LOG.exception(
+            'Output callback %s errored out; continuing anyway', output_cb)
+
+    # TODO(madsci): Figure out what to do about loggers.
+    #self.logger.removeHandler(self._record_handler)
+
   def Wait(self):
     """Waits until death."""
     self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
@@ -98,7 +148,8 @@ class TestExecutor(threads.KillableThread):
 
   def _ThreadProc(self):
     """Handles one whole test from start to finish."""
-    self._exit_stack = None
+    with self._lock:
+      self._exit_stack = None
     self._test_state = None
     self._output_thread = None
 
@@ -154,7 +205,7 @@ class TestExecutor(threads.KillableThread):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
-        self._test_data, self._plug_manager, dut_id, conf.station_id)
+        self._test_data, self._plug_manager, dut_id)
 
   def _InitializePlugs(self, suppressor):
     """Perform some initialization and create a PlugManager."""
@@ -172,7 +223,7 @@ class TestExecutor(threads.KillableThread):
   def _ExecuteTestPhases(self, executor):
     """Executes one test's phases from start to finish."""
     self._test_state.SetStateRunning()
-    for phase_outcome in executor.ExecutePhases():
+    for phase_outcome in executor.ExecutePhases(self._test_data.phases):
       if self._test_state.SetStateFromPhaseOutcome(phase_outcome):
         break
     else:
