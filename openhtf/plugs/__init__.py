@@ -120,8 +120,15 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
 
   @property
   def logger(self):
+    # TODO(madsci): Fix this so logging works with multiple Tests.
     return logging.getLogger(
         '.'.join((logs.RECORD_LOGGER, 'plugs', type(self).__name__)))
+
+  def _asdict(self):
+    """Return a dictionary representation of this plug's state."""
+    # TODO(madsci): Figure out how to configure max polling interval of this
+    # method, it could be a costly operation.
+    return {}
 
   def TearDown(self):
     """This is the only method the framework itself will explicitly call."""
