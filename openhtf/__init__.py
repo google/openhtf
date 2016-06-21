@@ -18,6 +18,7 @@
 import argparse
 import collections
 import copy
+import functools
 import inspect
 import itertools
 import json
@@ -26,6 +27,7 @@ import signal
 import socket
 import sys
 import threading
+import weakref
 
 import mutablerecords
 
@@ -82,7 +84,7 @@ class Test(object):
   .Execute()'d in a separate thread.
   """
 
-  TEST_INSTANCES = set()
+  TEST_INSTANCES = weakref.WeakSet()
 
   def __init__(self, *phases, **metadata):
     # Some sanity checks on special metadata keys we automatically fill in.
@@ -121,11 +123,9 @@ class Test(object):
 
   @classmethod
   def RegisterTest(cls, test):
-    # Filter out any Test instances with no more external references.
-    cls.TEST_INSTANCES = {old_test for old_test in cls.TEST_INSTANCES
-                          if sys.getrefcount(old_test) > 3}
     cls.TEST_INSTANCES.add(test)
-    # This is a noop if the server is already running, otherwise start it.
+    # This is a noop if the server is already running, otherwise start it now
+    # that we have at least one Test instance.
     station_api.start_server()
 
   def AddOutputCallback(self, callback):
@@ -139,22 +139,17 @@ class Test(object):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def OutputTestRecord(self, record):
-    """Feed the record of this test to all output modules."""
-    _LOG.debug('Test completed for %s, saving to history and outputting.',
-               self._test_options.name)
-    # Add the record to the history first, then to each output callback.
-    history.append_record(self.uid, record)
-    for output_cb in self._test_options.output_callbacks:
-      try:
-        output_cb(record)
-      except Exception:
-        _LOG.exception(
-            'Output callback %s errored out; continuing anyway', output_cb)
-
   @property
   def data(self):
+    """Static data about this test, does not change across Execute() calls."""
     return self._test_data
+
+  @property
+  def state(self):
+    """Transient state info about the currently executing test, or None."""
+    with self._lock:
+      if self._executor:
+        return self._executor.GetState()
 
   def GetOption(self, option):
     return getattr(self._test_options, option)
@@ -234,9 +229,9 @@ class Test(object):
     finally:
       with self._lock:
         try:
-          if self._executor.GetState():
-            record = self._executor.GetState().GetFinishedRecord()
-            self.OutputTestRecord(record)
+          self._executor.Finalize(
+              self._test_options.output_callbacks +
+              [functools.partial(history.append_record, self.uid)])
         finally:
           self._executor = None
 

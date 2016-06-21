@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""XMLRPC API for communicating with running OpenHTF instances.
+"""XML-RPC API for communicating with running OpenHTF instances.
 
 This module provides both server and client side libraries to allow for a
-client to use a programmatic interface and ignore the underlying xmlrpc
+client to use a programmatic interface and ignore the underlying xmlrpclib
 implementation.
 
 This API is based around the following hierarchy of abstractions:
@@ -45,12 +45,20 @@ Station.discover_stations() method:
     print 'Found station:', station
 
 This iterator yields Station instances, which contain the necessary
-information to connect to the station via XMLRPC to obtain more details:
+information to connect to the station via XML-RPC to obtain more details:
 
   for station in Station.discover_stations():
     print 'Found station "%s", with tests:' % station.station_id
     for test in station.list_tests():
       print '  %s' % test.test_name  # test is a RemoteTest object.
+
+Each RemoteTest returned by Station.list_tests() has an associated history,
+and it can be accessed via the 'history' attribute.  Note that accessing
+this attribute triggers an RPC call to check for history updates, so for
+back-to-back operations, it's better to save a reference to the history.
+
+See contrib/poll_stations.py for an example of how to use the API defined
+in this module.
 """
 
 import collections
@@ -72,6 +80,7 @@ import openhtf
 from openhtf import conf
 from openhtf import history
 from openhtf import util
+from openhtf.exe import test_state
 from openhtf.util import data
 from openhtf.util import multicast
 
@@ -92,9 +101,14 @@ conf.Declare('station_discovery_port')
 conf.Declare('station_discovery_ttl')
 
 
+# Information about a remote station (single Python process with one or more
+# instances of openhtf.Test created).
 StationInfo = collections.namedtuple('StationInfo', [
     'host', 'station_id', 'station_api_bind_address', 'station_api_port',
     'last_activity_time_millis'])
+
+
+
 
 # Build multicast kwargs based on conf, otherwise use defaults.
 MULTICAST_KWARGS = lambda: {
@@ -109,12 +123,24 @@ class RemoteTest(collections.namedtuple('RemoteTest', [
     'server_proxy', 'local_history',
     # Identifiers for this test (API and more user-friendly),
     'test_uid', 'test_name',
+    # Remote state information.
+    'status', 'test_record', 'running_phase_record',
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'])):
 
+  @classmethod
+  def from_response(cls, server_proxy, history, response):
+    response['status'] = test_state.TestState.State[response['status']]
+    if response['test_record']:
+      response['test_record'] = pickle.loads(response['test_record'])
+    if response['running_phase_record']:
+      response['running_phase_record'] = pickle.loads(
+          response['running_phase_record'])
+    return cls(server_proxy, history, **response)
+
   def __str__(self):
     return '<RemoteTest %s(%s) created %s, last run %s>' % (
-        self.test_name, self.test_uid,
+        self.test_name, self.status.name,
         time.strftime(
             '%d.%a@%H:%M:%S', time.localtime(self.created_time_millis / 1000)),
         time.strftime(
@@ -182,7 +208,8 @@ class Station(object):
       tests = self._server_proxy.list_tests()
 
     for test_dict in tests:
-      yield RemoteTest(self._server_proxy, self._history, **test_dict)
+      yield RemoteTest.from_response(
+          self._server_proxy, self._history, test_dict)
 
 
 ### Server-side objects below here. ###
@@ -206,12 +233,21 @@ class StationApi(object):
     Returns:
       List of RemoteTest tuple values (as a dict).
     """
-    return [{
-        'test_uid': test.uid,
-        'test_name': test.GetOption('name'),
-        'created_time_millis': long(test.created_time_millis),
-        'last_run_time_millis': long(test.last_run_time_millis),
-    } for test in openhtf.Test.TEST_INSTANCES]
+    retval = []
+    for test in openhtf.Test.TEST_INSTANCES:
+      test_dict = {
+          'test_uid': test.uid,
+          'test_name': test.GetOption('name'),
+          'status': test_state.TestState.State.CREATED.name,
+          'test_record': None,
+          'running_phase_record': None,
+          'created_time_millis': long(test.created_time_millis),
+          'last_run_time_millis': long(test.last_run_time_millis),
+      }
+      if test.state:
+        test_dict.update(test.state._asdict())
+      retval.append(test_dict)
+    return retval
 
   def get_records_after(self, test_uid, start_time_millis):
     """Get a list of pickled TestRecords for test_uid."""
