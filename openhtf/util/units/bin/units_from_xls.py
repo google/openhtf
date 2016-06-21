@@ -232,35 +232,5 @@ def unit_key_from_name(name):
   return result
 
 
-def insert_into_file(filepath, code, start, end):
-  """Replace the contents of the file between the start and end markers.
-
-  Args:
-    file: A file-like object whose contents to modify.
-    code: An iterable of lines of code to replace part of the file with.
-    start: The contents of the line below which to replace text.
-    end: The contents of the line after which to leave contents intact.
-  """
-  _, tmp_path = mkstemp()
-  skipping = False
-
-  with open(filepath) as old_file, open(tmp_path, 'w') as new_file:
-    for old_line in old_file:
-      if old_line.find(start) == 0:
-        new_file.write(old_line)
-        new_file.writelines(
-            [line.encode('utf8', 'replace') for line in code])
-        skipping = True
-      elif old_line.find(end) == 0:
-        new_file.write(old_line)
-        skipping = False
-      elif not skipping:
-        new_file.write(old_line)
-    new_file.flush()
-
-    os.remove(filepath)
-    shutil.move(tmp_path, filepath)
-
-
 if __name__ == '__main__':
   main()
