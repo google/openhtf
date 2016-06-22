@@ -84,7 +84,7 @@ class Test(object):
   .Execute()'d in a separate thread.
   """
 
-  TEST_INSTANCES = weakref.WeakSet()
+  TEST_INSTANCES = weakref.WeakValueDictionary()
 
   def __init__(self, *phases, **metadata):
     # Some sanity checks on special metadata keys we automatically fill in.
@@ -123,7 +123,7 @@ class Test(object):
 
   @classmethod
   def RegisterTest(cls, test):
-    cls.TEST_INSTANCES.add(test)
+    cls.TEST_INSTANCES[test.uid] = test
     # This is a noop if the server is already running, otherwise start it now
     # that we have at least one Test instance.
     station_api.start_server()
@@ -173,7 +173,7 @@ class Test(object):
   @classmethod
   def HandleSigInt(cls, *_):
     _LOG.error('Received SIGINT, stopping all tests.')
-    for test in cls.TEST_INSTANCES:
+    for test in cls.TEST_INSTANCES.values():
       test.StopFromSigInt()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main

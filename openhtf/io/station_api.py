@@ -71,6 +71,8 @@ import threading
 import time
 import xmlrpclib
 
+from xml.sax import saxutils
+
 # Fix for xmlrpclib to use <i8> for longs instead of <int>, because our
 # timestamps are in millis, which are too big for 4-byte ints.
 xmlrpclib.Marshaller.dispatch[long] = (
@@ -101,13 +103,10 @@ conf.Declare('station_discovery_port')
 conf.Declare('station_discovery_ttl')
 
 
-# Information about a remote station (single Python process with one or more
-# instances of openhtf.Test created).
+# Information about a remote station.
 StationInfo = collections.namedtuple('StationInfo', [
     'host', 'station_id', 'station_api_bind_address', 'station_api_port',
     'last_activity_time_millis'])
-
-
 
 
 # Build multicast kwargs based on conf, otherwise use defaults.
@@ -118,33 +117,44 @@ MULTICAST_KWARGS = lambda: {
 }
 
 
+class RemoteState(collections.namedtuple('RemoteState', [
+    'status', 'test_record', 'running_phase_record'])):
+
+  def __str__(self):
+    return '<RemoteState %s, Running Phase: %s>' % (
+        self.status.name,
+        self.running_phase_record and self.running_phase_record.name)
+
+  def __new__(cls, status, test_record, running_phase_record):
+    # TODO(madsci): Maybe use something other than pickle and do
+    # incremental updates to the running test record rather than
+    # sending the whole thing every time.
+    return super(RemoteState, cls).__new__(
+        cls, test_state.TestState.State[status],
+        pickle.loads(saxutils.unescape(test_record)),
+        pickle.loads(saxutils.unescape(running_phase_record)))
+
+
 class RemoteTest(collections.namedtuple('RemoteTest', [
     # Internal references for providing a more programmatic interface.
     'server_proxy', 'local_history',
     # Identifiers for this test (API and more user-friendly),
     'test_uid', 'test_name',
-    # Remote state information.
-    'status', 'test_record', 'running_phase_record',
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'])):
 
-  @classmethod
-  def from_response(cls, server_proxy, history, response):
-    response['status'] = test_state.TestState.State[response['status']]
-    if response['test_record']:
-      response['test_record'] = pickle.loads(response['test_record'])
-    if response['running_phase_record']:
-      response['running_phase_record'] = pickle.loads(
-          response['running_phase_record'])
-    return cls(server_proxy, history, **response)
-
   def __str__(self):
     return '<RemoteTest %s(%s) created %s, last run %s>' % (
-        self.test_name, self.status.name,
+        self.test_name, self.state and self.state.status.name,
         time.strftime(
             '%d.%a@%H:%M:%S', time.localtime(self.created_time_millis / 1000)),
         time.strftime(
             '%d.%a@%H:%M:%S', time.localtime(self.created_time_millis / 1000)))
+
+  @property
+  def state(self):
+    remote_state_dict = self.server_proxy.get_test_state(self.test_uid)
+    return remote_state_dict and RemoteState(**remote_state_dict)
 
   @property
   def history(self):
@@ -164,7 +174,7 @@ class RemoteTest(collections.namedtuple('RemoteTest', [
 
     for pickled_record in new_history:
       self.local_history.append_record(
-          self.test_uid, pickle.loads(pickled_record))
+          self.test_uid, pickle.loads(saxutils.unescape(pickled_record)))
     return self.local_history.for_test_uid(self.test_uid)
 
 
@@ -208,8 +218,7 @@ class Station(object):
       tests = self._server_proxy.list_tests()
 
     for test_dict in tests:
-      yield RemoteTest.from_response(
-          self._server_proxy, self._history, test_dict)
+      yield RemoteTest(self._server_proxy, self._history, **test_dict)
 
 
 ### Server-side objects below here. ###
@@ -233,26 +242,27 @@ class StationApi(object):
     Returns:
       List of RemoteTest tuple values (as a dict).
     """
-    retval = []
-    for test in openhtf.Test.TEST_INSTANCES:
-      test_dict = {
-          'test_uid': test.uid,
-          'test_name': test.GetOption('name'),
-          'status': test_state.TestState.State.CREATED.name,
-          'test_record': None,
-          'running_phase_record': None,
-          'created_time_millis': long(test.created_time_millis),
-          'last_run_time_millis': long(test.last_run_time_millis),
-      }
-      if test.state:
-        test_dict.update(test.state._asdict())
-      retval.append(test_dict)
-    return retval
+    return [{
+        'test_uid': test.uid,
+        'test_name': test.GetOption('name'),
+        'created_time_millis': long(test.created_time_millis),
+        'last_run_time_millis': long(test.last_run_time_millis),
+    } for test in openhtf.Test.TEST_INSTANCES.values()]
+
+  def get_test_state(self, test_uid):
+    test = openhtf.Test.TEST_INSTANCES.get(test_uid)
+    if not test or not test.state:
+      return None
+    state = test.state._asdict()
+    state['test_record'] = saxutils.escape(pickle.dumps(state['test_record']))
+    state['running_phase_record'] = saxutils.escape(
+        pickle.dumps(state['running_phase_record']))
+    return state
 
   def get_records_after(self, test_uid, start_time_millis):
     """Get a list of pickled TestRecords for test_uid."""
     # TODO(madsci): We really should pull attachments out of band here.
-    return [pickle.dumps(test_record)
+    return [saxutils.escape(pickle.dumps(test_record))
             for test_record in history.for_test_uid(
                 test_uid, start_after_millis=start_time_millis)]
 
