@@ -19,7 +19,6 @@ Test timing, failures, and the UI are handled by this module.
 """
 
 import copy
-import cPickle as pickle
 import json
 import logging
 
@@ -79,8 +78,8 @@ class TestState(object):
     """Return a dict representation of the test's state."""
     return {
         'status': self._state.name,
-        'test_record': pickle.dumps(self.test_record, -1),
-        'running_phase_record': pickle.dumps(self.running_phase_record, -1),
+        'test_record': self.test_record,
+        'running_phase_record': self.running_phase_record,
     }
 
   def GetLastRunPhaseName(self):
