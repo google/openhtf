@@ -73,21 +73,23 @@ def print_station(station):
 
 def print_test(remote_test):
   print(' |-- %s' % (remote_test,))
+  remote_state = remote_test.state
+  if remote_state:
+    print(' |    |-- %s' % (remote_test.state,))
+  print(' |    |-- History:')
   for test_record in remote_test.history:
-    print(' |    |-- DUT: %s, Ran %s Phases, %s -> %s (%.2f sec), Outcome: %s' % (
+    print(' |        |-- DUT: %s, Ran %s Phases in %.2f sec, Outcome: %s' % (
         test_record.dut_id, len(test_record.phases),
-        fmt_time(test_record.start_time_millis),
-        fmt_time(test_record.end_time_millis),
         (test_record.end_time_millis - test_record.start_time_millis) / 1000.0,
         test_record.outcome))
     for phase in test_record.phases:
-      print(' |    |    |-- Phase: %s, %s -> %s (%.3f sec), Result: %s' % (
+      print(' |        |    |-- Phase: %s, %s -> %s (%.3f sec), Result: %s' % (
           phase.name, fmt_time(phase.start_time_millis),
           fmt_time(phase.end_time_millis),
           (phase.end_time_millis - phase.start_time_millis) / 1000.0,
           phase.result.phase_result if phase.result.raised_exception else
-          phase.result.phase_result.name))
-    print (' |    |')
+          phase.result.phase_result and phase.result.phase_result.name))
+    print (' |        |')
   print(' |')
 
 
