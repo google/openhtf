@@ -256,7 +256,8 @@ def _ExtractParameters(record, testrun, used_parameter_names):
         attachment = testrun.info_parameters.add()
         attachment.name = 'multidim_%s' % name
         dims = [{
-            'uom_suffix': d.uom_suffix.encode('utf8'), 'uom_code': d.uom_code}
+            'uom_suffix': d.uom_suffix and d.uom_suffix.encode('utf8'),
+            'uom_code': d.uom_code}
             for d in measurement.dimensions]
         # Refer to the module docstring for the expected schema.
         attachment.value_binary = json.dumps({
