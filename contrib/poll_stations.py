@@ -66,16 +66,26 @@ def clear_terminal():
 
 def print_station(station):
   print(station)
-  for remote_test in station.list_tests():
+  for remote_test in station.tests:
     print_test(remote_test)
   print
+
+
+def phase_to_str(phase):
+  return 'Phase: %s, %s -> %s (%.3f sec), Result: %s' % (
+      phase.name, fmt_time(phase.start_time_millis),
+      fmt_time(phase.end_time_millis),
+      (phase.end_time_millis - phase.start_time_millis) / 1000.0,
+      phase.result.phase_result if phase.result.raised_exception else
+      phase.result.phase_result and phase.result.phase_result.name)
 
 
 def print_test(remote_test):
   print(' |-- %s' % (remote_test,))
   remote_state = remote_test.state
   if remote_state:
-    print(' |    |-- %s' % (remote_test.state,))
+    print(' |    |-- RemoteTest State:')
+    print_state(remote_state)
   print(' |    |-- History:')
   for test_record in remote_test.history:
     print(' |        |-- DUT: %s, Ran %s Phases in %.2f sec, Outcome: %s' % (
@@ -83,14 +93,18 @@ def print_test(remote_test):
         (test_record.end_time_millis - test_record.start_time_millis) / 1000.0,
         test_record.outcome))
     for phase in test_record.phases:
-      print(' |        |    |-- Phase: %s, %s -> %s (%.3f sec), Result: %s' % (
-          phase.name, fmt_time(phase.start_time_millis),
-          fmt_time(phase.end_time_millis),
-          (phase.end_time_millis - phase.start_time_millis) / 1000.0,
-          phase.result.phase_result if phase.result.raised_exception else
-          phase.result.phase_result and phase.result.phase_result.name))
+      print(' |        |    |-- %s' % phase_to_str(phase))
     print (' |        |')
   print(' |')
+
+
+def print_state(remote_state):
+  prefix = ' |    |    |'
+  print('%s-- Current Phase: %s' % (
+        prefix, remote_state.running_phase_record.name))
+  print('%s-- Completed Phases:' % prefix)
+  for phase in remote_state.test_record.phases:
+    print('%s    |-- %s' % (prefix, phase_to_str(phase)))
 
 
 if __name__ == '__main__':
