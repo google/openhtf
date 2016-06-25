@@ -28,19 +28,6 @@ Example:
 
 Outputs something like, which updates regularly:
 
-Polled @05:12:44
-
-<Station madsci-mbr@192.168.1.127:8888, listening on 0.0.0.0>
- |-- <RemoteTest MyTest(7165:1466251736061:4567501648) created 18.Sat@05:08:56, last run 18.Sat@05:08:56>
- |    |-- DUT: asdf, Ran 5 Phases, 05:08:57 -> 05:08:57 (0.61 sec), Outcome: Outcome.FAIL
- |    |    |-- Phase: hello_world, 05:08:57 -> 05:08:57 (0.573 sec), Result: CONTINUE
- |    |    |-- Phase: set_measurements, 05:08:57 -> 05:08:57 (0.002 sec), Result: CONTINUE
- |    |    |-- Phase: dimensions, 05:08:57 -> 05:08:57 (0.001 sec), Result: CONTINUE
- |    |    |-- Phase: attachments, 05:08:57 -> 05:08:57 (0.009 sec), Result: CONTINUE
- |    |    |-- Phase: teardown, 05:08:57 -> 05:08:57 (0.002 sec), Result: CONTINUE
- |    |
- |
-
 """
 
 import logging
@@ -88,23 +75,27 @@ def print_test(remote_test):
     print_state(remote_state)
   print(' |    |-- History:')
   for test_record in remote_test.history:
-    print(' |        |-- DUT: %s, Ran %s Phases in %.2f sec, Outcome: %s' % (
+    print(' |         |-- DUT: "%s", Ran %s Phases in %.2f sec, Outcome: %s' % (
         test_record.dut_id, len(test_record.phases),
         (test_record.end_time_millis - test_record.start_time_millis) / 1000.0,
         test_record.outcome))
     for phase in test_record.phases:
-      print(' |        |    |-- %s' % phase_to_str(phase))
-    print (' |        |')
+      print(' |         |    |-- %s' % phase_to_str(phase))
+    print(' |         |')
   print(' |')
 
 
 def print_state(remote_state):
   prefix = ' |    |    |'
-  print('%s-- Current Phase: %s' % (
-        prefix, remote_state.running_phase_record.name))
+  if remote_state.running_phase_record:
+    print('%s-- Running Phase: %s' % (
+          prefix, remote_state.running_phase_record.name))
+  else:
+    print('%s-- No Phase Currently Running' % prefix)
   print('%s-- Completed Phases:' % prefix)
   for phase in remote_state.test_record.phases:
-    print('%s    |-- %s' % (prefix, phase_to_str(phase)))
+    print(' |    |         |-- %s' % phase_to_str(phase))
+  print(' |    |')
 
 
 if __name__ == '__main__':

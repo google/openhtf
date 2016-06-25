@@ -38,14 +38,14 @@ class InvalidMeasurementDimensions(Exception):
 Attachment = collections.namedtuple('Attachment', 'data mimetype')
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
-Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT'])
+Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])
 # LogRecord is in openhtf.util.logs.LogRecord.
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
-        {'start_time_millis': util.TimeMillis, 'end_time_millis': None,
+        {'start_time_millis': None, 'end_time_millis': None,
          'outcome': None, 'outcome_details': list,
          'code_info': None,
          'metadata': dict,
