@@ -117,10 +117,6 @@ MULTICAST_KWARGS = lambda: {
 }
 
 
-class CacheStaleError(Exception):
-  """Raised when a RemoteState cache is stale and needs to be refreshed."""
-
-
 class RemoteState(collections.namedtuple('RemoteState', [
     'status', 'test_record', 'running_phase_record'])):
 
@@ -133,23 +129,17 @@ class RemoteState(collections.namedtuple('RemoteState', [
               test_record, running_phase_record):
     test_record = pickle.loads(saxutils.unescape(test_record))
 
-    # If we have saved phases/logs for the SAME test (identified by the
+    # If we have saved phases/logs for the same test (identified by the
     # start_time_millis of the test), then prepend them to the ones we
-    # received from the remote end.
+    # received from the remote end.  If these timestamps don't match, then
+    # the remote side will have already sent us all phases and logs, so
+    # there's no need to re-request them.  We'll update our local cache later.
     if start_time_millis == test_record.start_time_millis:
       test_record.phases = saved_phases + test_record.phases
       test_record.log_records = saved_logs + test_record.log_records
-    elif saved_phases or saved_logs:
-      # We tried to use cached phases/logs, but we have a stale timestamp,
-      # so, the cache is invalid.
-      _LOG.debug('RemoteState stale, expected start_time_millis %s, got %s, '
-                 'discarding %s phases and %s logs.', start_time_millis,
-                 test_record.start_time_millis, len(saved_phases),
-                 len(saved_logs))
-      raise CacheStaleError()
-      
+     
     return super(RemoteState, cls).__new__(
-        cls, test_state.TestState.State[status], test_record,
+        cls, test_state.TestState.Status[status], test_record,
         pickle.loads(saxutils.unescape(running_phase_record)))
 
 
@@ -164,7 +154,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     'start_time_millis': 0, 'saved_phases': list, 'saved_logs': list})):
 
   def __str__(self):
-    return 'RemoteTest %s(%s), Created: %s, Last run: %s' % (
+    return 'RemoteTest "%s" Status: %s, Created: %s, Last run: %s' % (
         self.test_name, self.state and self.state.status.name,
         time.strftime(
             '%a@%H:%M:%S', time.localtime(self.created_time_millis / 1000)),
@@ -172,31 +162,29 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
             '%a@%H:%M:%S', time.localtime(self.last_run_time_millis / 1000)))
 
   def wait_for_update(self, timeout_s=1):
-    """Wait for a """
+    """Block until there's new state data available, or timeout."""
     pass
 
   def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
     with self.shared_proxy._lock:
       return self.shared_proxy.get_test_state(
-          self.test_uid, long(self.start_time_millis), skip_phases, skip_logs)
+          self.test_uid,
+          self.start_time_millis and long(self.start_time_millis),
+          skip_phases, skip_logs)
 
   @property
   def state(self):
     remote_state_dict = self.get_remote_state_dict(
         len(self.saved_phases), len(self.saved_logs))
     if remote_state_dict:
-      try:
-        retval = RemoteState(
-            self.start_time_millis, self.saved_phases, self.saved_logs,
-            **remote_state_dict)
-      except CacheStaleError:
-        # This indicates we applied saved_phases or saved_logs incorrectly,
-        # based on start_time_millis not matching, so we need to re-fetch
-        # the remote state ignoring those cached phases and/or logs.
-        retval = RemoteState(0, [], [], self.get_remote_state_dict())
+      retval = RemoteState(
+          self.start_time_millis, self.saved_phases, self.saved_logs,
+          **remote_state_dict)
         
       # By this point, we're sure retval matches the remote TestRecord, so grab
-      # these values for our local cache.
+      # these values for our local cache.  This is where we reset saved_phases
+      # and saved_logs if the timestamps didn't match and we received the full
+      # phase and log lists back.
       self.start_time_millis = retval.test_record.start_time_millis
       self.saved_phases = retval.test_record.phases
       self.saved_logs = retval.test_record.log_records
@@ -245,7 +233,8 @@ class Station(object):
   def proxy(self):
     """Make a new ServerProxy for this station."""
     proxy = xmlrpclib.ServerProxy(
-        'http://%s:%s' % (self.host, self.station_api_port))
+        'http://%s:%s' % (self.host, self.station_api_port),
+        allow_none=True)
     proxy._lock = threading.Lock()
     return proxy
 
@@ -330,7 +319,6 @@ class StationApi(object):
     test = openhtf.Test.TEST_INSTANCES.get(test_uid)
     if not test or not test.state:
       return None
-
 
     state = test.state._asdict()
     if start_time_millis == state['test_record'].start_time_millis:
