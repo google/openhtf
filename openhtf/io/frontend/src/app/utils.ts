@@ -118,17 +118,20 @@ export class LoggingLevelToColor extends MapPipe {
 
 
 /** A pipe for turning an Object into something Angular2 can loop over. **/
-@Pipe({name: 'objectToArray'})
+@Pipe({name: 'objectToArray', pure: false})
 export class ObjectToArray implements PipeTransform {
-  transform(input: any): any {
-    if (input == undefined || input == null) {
-      return []
-    }
-    let keys = Object.keys(input),
-        result = [];
+  result: any[];
 
-    keys.forEach(key => { result.push({ 'key': key, 'value': input[key] }); });
-    return result;
+  transform(input: any): any {
+    this.result = [];
+    if (input == undefined || input == null) {
+      return this.result
+    }
+    let keys = Object.keys(input);
+    keys.forEach(key => {
+      this.result.push({ 'key': key, 'value': input[key] });
+    });
+    return this.result;
   }
 }
 
@@ -136,7 +139,10 @@ export class ObjectToArray implements PipeTransform {
 /** A pipe to recurisely stringify objects into html <ul> elements. **/
 @Pipe({name: 'objectToUl'})
 export class ObjectToUl implements PipeTransform {
-  ulify(object: Object): string {
+  ulify(object: any): string {
+    if (object == undefined || object == null) {
+      return '';
+    }
     let result = '<ul>';
     Object.keys(object).forEach(key => {
       result += `<li><span class="key">${key}:&nbsp</span><span class="value">`;
