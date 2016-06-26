@@ -88,12 +88,17 @@ class TestConf(unittest.TestCase):
   def testAsDict(self):
     conf.Load(station_id='station_id')
     self.assertEquals({
-      'station_id': 'station_id',
-      'string_default': 'default',
-      'none_default': None,
-      'flag_key': 'flag_value',
-      'other_flag': 'other_value',
-    }, conf._asdict())
+        'flag_key': 'flag_value',
+        'enable_station_discovery': True,
+        'station_api_port': 8888,
+        'allow_unset_measurements': False,
+        'station_discovery_string': 'OPENHTF_DISCOVERY',
+        'station_api_bind_address': '0.0.0.0',
+        'station_id': 'station_id',
+        'other_flag': 'other_value',
+        'string_default': 'default',
+        'none_default': None,
+        'max_history_size_mb': 256}, conf._asdict())
 
   def testUndeclared(self):
     with self.assertRaises(conf.UndeclaredKeyError):
