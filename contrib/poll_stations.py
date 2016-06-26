@@ -59,7 +59,7 @@ def print_station(station):
 
 
 def phase_to_str(phase):
-  return 'Phase: %s, %s -> %s (%.3f sec), Result: %s' % (
+  return 'Phase: "%s", %s -> %s (%.3f sec), Result: %s' % (
       phase.name, fmt_time(phase.start_time_millis),
       fmt_time(phase.end_time_millis),
       (phase.end_time_millis - phase.start_time_millis) / 1000.0,
