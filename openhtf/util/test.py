@@ -124,6 +124,7 @@ import mutablerecords
 
 import openhtf
 
+from openhtf import conf
 from openhtf import plugs
 from openhtf.exe import phase_data
 from openhtf.exe import phase_executor
@@ -292,6 +293,16 @@ def patch_plugs(**mock_plugs):
 
 
 class TestCase(unittest.TestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    """Disable station_api for tests by default, restore it when done."""
+    cls.saved_station_api_port = conf.station_api_port
+    conf.Load(station_api_port=None)
+
+  @classmethod
+  def tearDownClass(cls):
+    conf.Load(station_api_port=cls.saved_station_api_port)
 
   def _AssertPhaseOrTestRecord(func):
     """Decorator for automatically invoking self.assertTestPhases when needed.
