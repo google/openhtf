@@ -29,15 +29,29 @@ passed to test phases:
 
 In order to facilitate adding logs to the test record output from places
 outside the test phase (without forcing the author to pass the logger object
-around), a user can directly use the 'openhtf.test_record' logger.  As a
-convenience, this is exposed as a constant in this module, RECORD_LOGGER.
-This enables test authors to add log lines to the test record output via:
+around), a user can directly use a logger instance assocated with the Test's
+output TestRecord.  This is accessible via the GetRecordLoggerFor function
+in this module, which take's a Test's UID and returns a Python Logger:
 
   import logging
   from openhtf.util import logs
 
-  def MyRandomMethod():
-    logging.getLogger(logs.RECORD_LOGGER).info('My log line')
+  class MyHelperClass(object):
+    def __init__(self)
+      self.test_uid = ''
+
+    def MyRandomMethod(self):
+      logs.GetRecordLoggerFor(self.test_uid).info(
+          'Log this to currently running test.')
+
+  def MyPhase(test, helper):
+    helper.MyRandomMethod()
+
+  if __name__ == '__main__':
+    helper = MyHelperClass()
+    my_test = openhtf.Test(MyPhase.WithArgs(helper=helper))
+    helper.test_uid = my_test.uid
+    my_test.Excute()
 
 Framework logs are by default output only to stderr at a warning level.  They
 can be additionally logged to a file (with a different level) via the
@@ -93,6 +107,21 @@ _LOGONCE_SEEN = set()
 
 LogRecord = collections.namedtuple(
     'LogRecord', 'level logger_name source lineno timestamp_millis message')
+
+
+def GetRecordLoggerFor(test_uid):
+  return logging.getLogger('.'.join((RECORD_LOGGER, test_uid)))
+
+
+def InitializeRecordLogger(test_uid, test_record):
+  logger = GetRecordLoggerFor(test_uid)
+  # All record loggers have a shared parent that's separately configured, so
+  # we want to propagate to that logger.
+  logger.propagate = True
+  logger.setLevel(logging.DEBUG)
+  # Just in case, make sure we don't have any extra handlers hanging around.
+  logger.handlers = [RecordHandler(test_record)]
+  return logger
 
 
 def LogOnce(log_func, msg, *args, **kwargs):
