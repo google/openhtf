@@ -40,6 +40,10 @@ conf.Declare('allow_unset_measurements', default_value=False, description=
 _LOG = logging.getLogger(__name__)
 
 
+class BlankDutIdError(Exception):
+  """DUT serial cannot be blank at the end of a test."""
+
+
 class TestState(object):
   """This class handles tracking the state of a running Test.
 
@@ -68,18 +72,11 @@ class TestState(object):
         dut_id=None, station_id=conf.station_id, code_info=test_data.code_info,
         # Copy metadata so we don't modify test_data.
         metadata=copy.deepcopy(test_data.metadata))
-
-    # TODO(madsci): Make RECORD_LOGGER work with multiple Test instances.
-    self.logger = logging.getLogger(logs.RECORD_LOGGER)
-    self._record_handler = logs.RecordHandler(self.test_record)
-    self.logger.addHandler(self._record_handler)
-
+    self.logger = logs.InitializeRecordLogger(test_data.uid, self.test_record)
+    # TODO(madsci): pull phase data out of TestState and clean up the API.
     self.phase_data = phase_data.PhaseData(
         self.logger, plug_manager, self.test_record)
     self.running_phase_record = None
-
-  def __del__(self):
-    self.logger.removeHandler(self._record_handler)
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
@@ -88,6 +85,10 @@ class TestState(object):
         'test_record': self.test_record,
         'running_phase_record': self.running_phase_record,
     }
+
+  @property
+  def is_finalized(self):
+    return self._status == self.Status.COMPLETED
 
   def GetLastRunPhaseName(self):
     """Get the name of the currently running phase, or None.
@@ -106,29 +107,26 @@ class TestState(object):
 
     Returns: True if the test has finished prematurely (failed).
     """
-    assert self._status != self.Status.COMPLETED, 'Test already completed!'
+    assert not self.is_finalized, 'Test already completed!'
     # Handle a few cases where the test is ending prematurely.
     if phase_outcome.raised_exception:
       self.logger.debug('Finishing test execution early due to phase '
                         'exception, outcome ERROR.')
-      self.test_record.outcome = test_record.Outcome.ERROR
       code = str(type(phase_outcome.phase_result).__name__)
       description = str(phase_outcome.phase_result).decode('utf8', 'replace')
       self.test_record.AddOutcomeDetails(code, description)
-      self._status = self.Status.COMPLETED
+      self.Finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:
       self.logger.debug('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
-      self.test_record.outcome = test_record.Outcome.TIMEOUT
-      self._status = self.Status.COMPLETED
+      self.Finalize(test_record.Outcome.TIMEOUT)
     elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.debug('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
       # TODO(madsci): Decouple flow control from pass/fail.
-      self.test_record.outcome = test_record.Outcome.FAIL
-      self._status = self.Status.COMPLETED
+      self.Finalize(test_record.Outcome.ABORTED)
 
-    return self._status == self.Status.COMPLETED
+    return self.is_finalized
 
   def TestStarted(self, dut_id):
     """Set the TestRecord's dut_id and start_time_millis fields."""
@@ -142,34 +140,50 @@ class TestState(object):
     assert self._status == self.Status.WAITING_FOR_TEST_START
     self._status = self.Status.RUNNING
 
-  def Finalize(self, test_aborted=False):
+  def Finalize(self, test_outcome=None):
     """Mark the state as finished.
 
-    This is only called if the test exits normally, or is aborted by the user.
-    Test stop due to phase error, timeout, or PhaseResult.STOP return is
-    handled in SetStatusFromPhaseOutcome.
+    This method is called with no arguments on normal test completion, or
+    with an argument if the test stopped under some other condition, where
+    the test_outcome argument specifies what the Test's outcome was.
+
+    When a Test completes normally, the outcome will be either PASS or FAIL,
+    depending on measurements' PASS/FAIL status.  Any UNSET measurements will
+    cause the Test to FAIL unless conf.allow_unset_measurements is set True.
 
     Args:
-      test_aborted: If True, then the test was aborted by the user.
+      test_outcome: If specified, use this as the Test outcome.
     """
-    assert self._status != self.Status.COMPLETED, 'Test already completed!'
+    assert not self.is_finalized, 'Test already completed!'
 
-    allowed_outcomes = {measurements.Outcome.PASS}
-    if conf.allow_unset_measurements:
-      allowed_outcomes.add(measurements.Outcome.UNSET)
-
-    if test_aborted:
-      self.test_record.outcome = test_record.Outcome.ABORTED
-    elif any(meas.outcome not in allowed_outcomes
-           for phase in self.test_record.phases
-           for meas in phase.measurements.itervalues()):
-      self.test_record.outcome = test_record.Outcome.FAIL
+    if test_outcome:
+      # Override measurement-based PASS/FAIL with a specific test outcome.
+      self.test_record.outcome = test_outcome
     else:
-      self.test_record.outcome = test_record.Outcome.PASS
+      allowed_outcomes = {measurements.Outcome.PASS}
+      if conf.allow_unset_measurements:
+        allowed_outcomes.add(measurements.Outcome.UNSET)
 
+      if any(meas.outcome not in allowed_outcomes
+             for phase in self.test_record.phases
+             for meas in phase.measurements.itervalues()):
+        self.test_record.outcome = test_record.Outcome.FAIL
+      else:
+        self.test_record.outcome = test_record.Outcome.PASS
+      # A message has already been logged if we were called with test_outcome
+      # set, but if we're finishing normally, log it here.
+      self.logger.debug('Finishing test execution normally with outcome %s.',
+                        self.test_record.outcome.name)
+
+    # Sanity check to make sure we have a DUT ID by the end of the test.
+    if not self.test_record.dut_id:
+      raise BlankDutIdError(
+          'Blank or missing DUT ID, HTF requires a non-blank ID.')
+
+    # The test is done at this point, no further updates to test_record.
+    self.logger.handlers = []
+    self.test_record.end_time_millis = util.TimeMillis()
     self._status = self.Status.COMPLETED
-    self.logger.debug('Finishing test execution normally with outcome %s.',
-                      self.test_record.outcome.name)
 
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (

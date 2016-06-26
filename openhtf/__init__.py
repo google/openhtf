@@ -95,7 +95,7 @@ class Test(object):
     self.created_time_millis = util.TimeMillis()
     self.last_run_time_millis = None
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
-    self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
+    self._test_data = TestData(self.uid, phases, metadata=metadata, code_info=code_info)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
@@ -109,7 +109,11 @@ class Test(object):
       self.Configure(name=metadata['test_name'])
     else:
       self.Configure()
-    self.RegisterTest(self)
+
+    self.TEST_INSTANCES[self.uid] = self
+    # This is a noop if the server is already running, otherwise start it now
+    # that we have at least one Test instance.
+    station_api.start_server()
 
   @property
   def uid(self):
@@ -120,13 +124,6 @@ class Test(object):
     be unique across different hosts.
     """
     return '%s:%s' % (station_api.STATION_API.UID, id(self))
-
-  @classmethod
-  def RegisterTest(cls, test):
-    cls.TEST_INSTANCES[test.uid] = test
-    # This is a noop if the server is already running, otherwise start it now
-    # that we have at least one Test instance.
-    station_api.start_server()
 
   def AddOutputCallback(self, callback):
     """DEPRECATED: Use AddOutputCallbacks() instead."""
@@ -245,21 +242,22 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
 
 
 class TestData(collections.namedtuple(
-    'TestData', ['phases', 'code_info', 'metadata'])):
+    'TestData', ['uid', 'phases', 'code_info', 'metadata'])):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
   by the framework along the way.
 
   Attributes:
-    phases: The phases to execute for this test.
+    uid: Test UID for this Test.
+    phases: The phases to execute for this Test.
     metadata: Any metadata that should be associated with test records.
-    code_info: Information about the module that created the test.
+    code_info: Information about the module that created the Test.
   """
 
-  def __new__(cls, phases, code_info, metadata):
+  def __new__(cls, uid, phases, code_info, metadata):
     phases = [PhaseInfo.WrapOrCopy(phase) for phase in phases]
-    return super(TestData, cls).__new__(cls, phases, code_info, metadata)
+    return super(TestData, cls).__new__(cls, uid, phases, code_info, metadata)
 
   @property
   def plug_types(self):

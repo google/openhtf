@@ -28,47 +28,19 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
+from openhtf.io import test_record
 from openhtf.io import user_input
 from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
 
-class MissingOutcomeError(Exception):
-  """Raised when a test is Finalized but there is no outcome set."""
-
-
-class BlankDutIdError(Exception):
-  """DUT serial cannot be blank at the end of a test."""
-
-
-class AlreadyFinalizedError(Exception):
-  """Raised when trying to finalize a test that is already finished."""
-
-
 class TestStopError(Exception):
   """Test is being stopped."""
 
 
-class LogSleepSuppress(object): # pylint: disable=too-few-public-methods
-  """Abstraction for supressing stuff we don't care about."""
-
-  def __init__(self):
-    self.failure_reason = ''
-
-  def __enter__(self):  # pylint: disable=invalid-name
-    return self
-
-  def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
-    if exc_type is not None and exc_type is not threads.ThreadTerminationError:
-      # Only log if there is a failure.
-      _LOG.exception(self.failure_reason)
-      time.sleep(1.0)
-    if exc_type is BlankDutIdError:
-      # Suppress BlankDutIdError, it's likely transient.
-      return True
-    # Raise all other exceptions, we probably care about them.
-    return False
+class UnfinalizedTestError(Exception):
+  """A Test wasn't finalized, likely we missed an abort condition."""
 
 
 # pylint: disable=too-many-instance-attributes
@@ -112,19 +84,10 @@ class TestExecutor(threads.KillableThread):
     if not self._test_state:
       raise TestStopError('Test Stopped.')
 
-    if self._test_state.test_record.end_time_millis:
-      raise AlreadyFinalizedError(
-          'Already finalized', self._test_state.test_record.end_time_millis)
+    if not self._test_state.is_finalized:
+      self._test_state.logger.info('Finishing test with outcome ABORTED.')
+      self._test_state.Finalize(test_record.Outcome.ABORTED)
 
-    if not self._test_state.test_record.dut_id:
-      raise BlankDutIdError(
-          'Blank or missing DUT ID, HTF requires a non-blank ID.')
-
-    if not self._test_state.test_record.outcome:
-      raise MissingOutcomeError(
-          'Test outcome unset, was the test cancelled?')
-
-    self._test_state.test_record.end_time_millis = util.TimeMillis()
     _LOG.debug('Test completed for %s, saving to history and outputting.',
                self._test_state.test_record.metadata['test_name'])
 
@@ -135,12 +98,15 @@ class TestExecutor(threads.KillableThread):
         _LOG.exception(
             'Output callback %s errored out; continuing anyway', output_cb)
 
-    # TODO(madsci): Figure out what to do about loggers.
-    #self.logger.removeHandler(self._record_handler)
-
   def Wait(self):
     """Waits until death."""
-    self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
+    try:
+      self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
+    except KeyboardInterrupt:
+      self._test_state.logger.info(
+          'KeyboardInterrupt caught, finishing test with outcome ABORTED.')
+      self._test_state.Finalize(test_record.Outcome.ABORTED)
+      raise
 
   def GetState(self):
     """Return the current TestState object."""
@@ -153,8 +119,7 @@ class TestExecutor(threads.KillableThread):
     self._test_state = None
     self._output_thread = None
 
-    with contextlib.ExitStack() as exit_stack, \
-        LogSleepSuppress() as suppressor:
+    with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
       _LOG.info('Starting test %s', self._test_data.code_info.name)
 
@@ -169,8 +134,8 @@ class TestExecutor(threads.KillableThread):
       # self._lock while we do this, or else calls to Stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
-      self._test_state.TestStarted(self._WaitForTestStart(suppressor))
-      self._InitializePlugs(suppressor)
+      self._test_state.TestStarted(self._WaitForTestStart())
+      self._InitializePlugs()
 
       with self._lock:
         if not self._exit_stack:
@@ -185,32 +150,28 @@ class TestExecutor(threads.KillableThread):
         exit_stack.callback(self._plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
-        executor = self._MakePhaseExecutor(exit_stack, suppressor)
+        executor = self._MakePhaseExecutor(exit_stack)
 
       # Everything is set, set status and begin test execution.  Note we don't
       # protect this with a try: block because the PhaseExecutor handles any
       # exceptions from test code.  Any exceptions here are caused by the
       # framework, and we probably want them to interrupt framework state
       # changes (like the transition to FINISHING).
-      suppressor.failure_reason = 'Failed to execute test.'
       self._ExecuteTestPhases(executor)
 
-  def _WaitForTestStart(self, suppressor):
+  def _WaitForTestStart(self):
     """Wait for the test start trigger to return a DUT ID."""
     if self._test_start is None:
       return
-    suppressor.failure_reason = 'TEST_START failed to complete.'
     return self._test_start()
 
-  def _InitializePlugs(self, suppressor):
+  def _InitializePlugs(self):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
-    suppressor.failure_reason = 'Unable to initialize plugs.'
     self._plug_manager.InitializePlugs(self._test_data.plug_types)
 
-  def _MakePhaseExecutor(self, exit_stack, suppressor):
+  def _MakePhaseExecutor(self, exit_stack):
     """Create a phase_executor.PhaseExecutor and set it up."""
-    suppressor.failure_reason = 'Unable to initialize Executor.'
     executor = phase_executor.PhaseExecutor(self._test_state)
     exit_stack.callback(executor.Stop)
     return executor
@@ -226,11 +187,12 @@ class TestExecutor(threads.KillableThread):
       else:
         self._test_state.Finalize()
     except KeyboardInterrupt:
-      _LOG.info('KeyboardInterrupt caught, finalizing ABORTED test.')
-      # TODO(madsci): Audit places where text execution can be aborted.
-      self._test_state.Finalize(True)
+      self._test_state.logger.info(
+          'KeyboardInterrupt caught, finishing test with outcome ABORTED.')
+      self._test_state.Finalize(test_record.Outcome.ABORTED)
       raise
 
-    # Run teardown function. TODO(madsci): Rethink this.
+    # Run teardown function. TODO(madsci): Rethink this, it has to happen
+    # before the TestState is Finalize()'d.
     if self._teardown_function:
       executor._ExecuteOnePhase(self._teardown_function, skip_record=True)
