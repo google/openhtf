@@ -99,8 +99,10 @@ class TestMeasurements(unittest.TestCase):
     result = util.NonLocalResult() 
     def _SaveResult(test_record):
       result.result = test_record
+    Test.uid = 'UNITTEST:MOCK:UID'
     test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
                 MeasureDimensions, InlinePhase)
+
     if self.UPDATE_OUTPUT:
       test.AddOutputCallbacks(output.OutputToFile(RECORD_FILENAME))
     else:
