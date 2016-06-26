@@ -94,7 +94,7 @@ class TestMeasurements(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    conf.Load(station_id='measurements_test')
+    conf.Load(station_id='measurements_test', station_api_port=None)
     with open(_LocalFilename('measurements_record.pickle'), 'rb') as picklefile:
       cls.record = pickle.load(picklefile)
 
