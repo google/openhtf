@@ -21,6 +21,8 @@ Test timing, failures, and the UI are handled by this module.
 import copy
 import json
 import logging
+import threading
+import weakref
 
 from enum import Enum
 
@@ -33,6 +35,7 @@ from openhtf.io import test_record
 from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import measurements
+from openhtf.util import threads
 
 conf.Declare('allow_unset_measurements', default_value=False, description=
     'If True, unset measurements do not cause Tests to FAIL.')
@@ -77,6 +80,8 @@ class TestState(object):
     self.phase_data = phase_data.PhaseData(
         self.logger, plug_manager, self.test_record)
     self.running_phase_record = None
+    self._lock = threading.Lock()
+    self._update_events = weakref.WeakSet()
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
@@ -86,11 +91,32 @@ class TestState(object):
         'running_phase_record': self.running_phase_record,
     }
 
+  @threads.Synchronized
+  def as_dict_with_event(self):
+    """Get a dict representation of this test's state and an update event.
+
+    The event returned is guaranteed to be set if an update has been triggered
+    since the returned dict was generated.
+
+    Returns: dict-representation, update-event
+    """
+    event = threading.Event()
+    self._update_events.add(event)
+    return self._asdict(), event
+
+  @threads.Synchronized
+  def notify_update(self):
+    """Notify any update events that there was an update."""
+    for event in self._update_events:
+      event.set()
+    self._update_events.clear()
+
   @property
   def is_finalized(self):
     return self._status == self.Status.COMPLETED
 
-  def GetLastRunPhaseName(self):
+  @property
+  def last_run_phase_name(self):
     """Get the name of the currently running phase, or None.
 
     Note that this name is not guaranteed to still be accurate by the time this
@@ -188,5 +214,5 @@ class TestState(object):
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
         type(self).__name__, self.test_record.dut_id,
-        self.test_record.station_id, self.GetLastRunPhaseName(),
+        self.test_record.station_id, self.last_run_phase_name,
     )
