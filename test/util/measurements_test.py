@@ -86,7 +86,7 @@ class TestMeasurements(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    conf.Load(station_id='measurements_test')
+    conf.Load(station_id='measurements_test', station_api_port=None)
     if not cls.UPDATE_OUTPUT:
       with open(RECORD_FILENAME, 'rb') as picklefile:
         cls.record = pickle.load(picklefile)
