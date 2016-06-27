@@ -205,7 +205,7 @@ class PhaseExecutor(object):
     # Save the outcome of the phase and do some cleanup.
     phase_record.result = phase_outcome
     if not skip_record:
-      self.test_state.record.phases.append(phase_record)
+      self.test_state.test_record.phases.append(phase_record)
       self.test_state.running_phase_record = None
 
     _LOG.debug('Phase finished with outcome %s', phase_outcome)
