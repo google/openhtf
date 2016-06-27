@@ -47,35 +47,35 @@ class TestHistory(object):
   """
 
   def __init__(self):
-    self.records = collections.deque()
-    self.record_bytes = 0
+    self.entries = collections.deque()
+    self.entry_bytes = 0
 
   def __len__(self):
-    return len(self.records)
+    return len(self.entries)
 
   def __iter__(self):
-    return iter(self.records)
+    return iter(self.entries)
 
   @property
   def size_mb(self):
-    return (self.record_bytes + sys.getsizeof(self.records)) / 1024.0 / 1024.0
+    return (self.entry_bytes + sys.getsizeof(self.entries)) / 1024.0 / 1024.0
 
   @property
   def last_start_time(self):
-    """start_time_millis of most recent record, or 0 if no records."""
-    return self.records[0].start_time_millis if self.records else 0
+    """start_time_millis of most recent record, or 0 if no entries."""
+    return self.entries[0].record.start_time_millis if self.entries else 0
 
   def pop(self):
     """Pop the oldest record and return the test_uid it was associated with."""
-    popped_entry = self.records.pop()
-    self.record_bytes -= data.TotalSize(popped_entry)
+    popped_entry = self.entries.pop()
+    self.entry_bytes -= data.TotalSize(popped_entry)
     return popped_entry.test_uid
 
   def append(self, test_uid, record):
     """Append a new record associated with the given test uid."""
     entry = HistoryEntry(test_uid, record)
-    self.records.appendleft(entry)
-    self.record_bytes += data.TotalSize(entry)
+    self.entries.appendleft(entry)
+    self.entry_bytes += data.TotalSize(entry)
 
 
 class History(object):
