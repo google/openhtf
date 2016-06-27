@@ -64,6 +64,7 @@ class TestState(object):
     dut_id: DUT identifier, if it's known, otherwise None.
 
   Attributes:
+    # TODO(madsci): Finish docstring
     
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])
