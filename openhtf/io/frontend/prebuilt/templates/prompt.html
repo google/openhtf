@@ -1,0 +1,22 @@
+<div *ngIf="framework.prompt"
+     class="prompt-box card grey lighten-2">
+  <div *ngIf="framework.prompt.text_input" class="input-field">
+    <label for="response_field">
+      {{framework?.prompt?.message}}
+    </label>
+    <input id="response_field" #response_field
+           type="text"
+           class="black-text"
+           (keyup.enter)="sendResponse(response_field.value,
+                                       framework.prompt.id)">
+    <a class="waves-effect waves-light btn amber darken-4"
+       (click)="sendResponse(response_field.value, framework.prompt.id)">
+      SUBMIT
+    </a>
+  </div>
+  <div *ngIf="!framework.prompt.text_input" class="input-field">
+    <div class="message">{{framework?.prompt?.message}}</div>
+    <a class="waves-effect waves-light btn amber darken-4"
+       (click)="sendResponse('', framework.prompt.id)">OK</a>
+  </div>
+</div>

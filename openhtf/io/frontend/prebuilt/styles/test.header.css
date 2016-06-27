@@ -1,0 +1,96 @@
+.test-header {
+  margin: 0.5rem 24px 1.25rem 24px;
+  padding: 0px;
+}
+
+.test-vitals {
+  display: table-cell;
+  font-size: 14px;
+  font-weight: 300;
+  width: 45%;
+}
+
+
+.test-vitals .dutID {
+  font-size: 17pt;
+  font-weight: 500;
+}
+
+
+.test-vitals .label {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+
+.test-header-nav {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: center;
+}
+
+
+.test-header-nav .tabs {
+  background: transparent;
+  height: 130%;
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+
+.test-header-nav .tabs .tab {
+  height: 100%;
+}
+
+
+.test-header-nav .tabs .tab a {
+  color: white;
+  position: relative;
+}
+
+
+.test-header-nav .nav-button {
+  position: absolute;
+  top: 50%;
+  height: 5em;
+  margin-top: -2.5em;
+  width: 100%;
+}
+
+
+.test-header-nav .nav-button .nav-label {
+  font-size: 12px;
+  line-height: 1rem;
+}
+
+
+.test-header-nav i {
+  font-size: 48px;
+}
+
+
+.test-header-nav .tabs .indicator {
+}
+
+
+.test-header > div {
+  display: table;
+  padding: 5px 8px 5px 8px;
+  width: 100%;
+}
+
+
+.test-status-tag {
+  display: table-cell;
+  font-size: 30pt;
+  font-weight: 600;
+  text-align: right;
+  vertical-align: middle;
+  width: 30%;
+}
+
+
+.test-status-tag .duration {
+  font-size: 12px;
+  font-weight: 400;
+}

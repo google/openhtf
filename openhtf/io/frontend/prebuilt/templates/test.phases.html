@@ -1,0 +1,41 @@
+<div *ngIf="phases.length == 0" class="center-align grey-text">
+  <h5>Phase list is currently empty or uninitialized.</h5>
+</div>
+<div>
+<ul class="collapsible popout" data-collapsible="accordion">
+  <li *ngFor="#phase of phases">
+    <div class="collapsible-header
+                {{phase.status | statusToColor}}
+                waves-effect waves-light">
+      <div class="phase-header-text">
+        <div class="name">
+          {{phase.name}}
+        </div>
+        <div class="cycle-time">
+          {{(phase.endTime - phase.startTime) / 1000}}s
+        </div>
+        <div class="status">
+          {{phase.status}}
+        </div>
+      </div>
+    </div>
+    <div class="collapsible-body
+                {{phase.status | statusToColor | colorToDark}}">
+      <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
+      <div class="measurement-container">
+        <table class="measurement-listing white-text">
+          <tr *ngFor="#meas of phase.measurements"
+              class="measurement
+                     {{phase.status | statusToColor | colorToSuperDark}}">
+            <td class="name">{{meas.name}}</td>
+            <td class="validator"></td>
+            <td class="value">{{meas.value}}</td>
+            <td class="outcome
+                       {{meas.outcome | outcomeToColor}}">{{meas.outcome}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </li>
+</ul>
+</div>

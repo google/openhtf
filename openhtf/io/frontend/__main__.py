@@ -15,12 +15,27 @@
 
 """A basic frontend server for OpenHTF using the HTTP frontend API.
 
-This server relies on openhtf's multicast station discovery service for
-knowledge of which stations exist. A client (usually just a normal web browser)
-can be on any host that can make HTTP requests to the server (including
-localhost).
+This server has two ways of knowing which stations to track:
+  
+  (1) Discovery pings sent using OpenHTF's multicast station discovery service.
+      These pings can be disabled via the '--disable-multicast' flag if desired.
+  
+  (2) A list of stations provided via the server's config yaml file (specified
+      via the '--config-file' flag). This list will be sought under the config
+      key 'stations', which should contain a list of station entries:
 
-To start this frontend server, invoke python with the -m flag in a python
+        stations:
+          - id: <station_id 1>
+            host: <ip address 1>
+            port: <port number 1>
+          - id: <station_id 2>
+            host: <ip address 2>
+            port: <port number 2>
+          - id: <station_id 3>
+            host: <ip address 3>
+            port: <port number 3>
+
+To start the frontend server, invoke python with the -m flag in a python
 environment where openhtf is installed:
 
 $ python -m openhtf.io.frontend
@@ -30,7 +45,7 @@ frontend server.
 """
 
 from __future__ import print_function
-import collections
+import argparse
 import json
 import logging
 import os
@@ -39,47 +54,34 @@ import socket
 import sys
 import threading
 
-import gflags
-import mutablerecords
 import requests
 import tornado.escape
 import tornado.ioloop
 import tornado.web
 
+from openhtf import conf
 from openhtf.io.http_api import PING_STRING
 from openhtf.io.http_api import PING_RESPONSE_KEY
 from openhtf.util import logs
 from openhtf.util import multicast
 
 
-FLAGS = gflags.FLAGS
-
-gflags.DEFINE_integer('port', 12000,
-                      'The port on which to serve the frontend.')
-gflags.DEFINE_integer('poll_interval_ms', 3000,
-                      'Desired time between frontend polls in milliseconds.')
-gflags.DEFINE_integer('discovery_interval_s', 5,
-                      'Seconds to wait between station discovery attempts.')
-gflags.DEFINE_string('discovery_address',
-                     multicast.DEFAULT_ADDRESS,
-                     'Multicast address to ping for station discovery.')
-gflags.DEFINE_integer('discovery_port',
-                      multicast.DEFAULT_PORT,
-                      'Multicast port to use for station discovery.')
-gflags.DEFINE_integer('discovery_ttl',
-                      multicast.DEFAULT_TTL,
-                      'TTL for station discovery pings.')
-
-
 _LOG = logging.getLogger(__name__)
 
 UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
+BUILD_PATH = os.path.join(os.path.dirname(__file__), 'src', 'dist')
+PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
+
+conf.Declare('stations',
+             default_value=[],
+             description='List of manually declared stations.')
 
 
-class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,no-init
-    'Station', ['hostport'], {'station_id': UNKNOWN_STATION_ID,
-                              'state': None})):
+class Station(object):
   """Represents a station seen on the local network.
+
+  Args:
+    hostport: A tuple of (<ip address>, <port>).
 
   Attributes:
     station_id: Station's ID string.
@@ -87,8 +89,18 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
       framework: A dictionary representation of a TestExecutor object.
       test: A dictionary representation of a TestState object.
     """
+  def __init__(self, hostport, station_id=UNKNOWN_STATION_ID):
+    self.history = []
+    self.hostport = hostport
+    self.station_id = station_id
+    self.state = None
+
+
   def Refresh(self):
-    """Update state with a GET request to OpenHTF's HTTP API."""
+    """Update state with a GET request to OpenHTF's HTTP API.
+
+    Returns: True iff refresh was successful, otherwise False.
+    """
     try:
       response = requests.get('http://%s:%s' % self.hostport)
       if response.status_code == 200:
@@ -96,16 +108,18 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
         station_id = state['framework']['station_id']
         if (self.station_id is not UNKNOWN_STATION_ID) and (
             station_id != self.station_id):
-          _LOG.warning('Station (%s) underwent an identity change.',
-                       self.hostport)
+          _LOG.warning('Station (%s) underwent an identity change from "%s" to'
+                       ' "%s"' % (self.hostport, self.station_id, station_id))
         self.station_id = station_id
         self.state = state
+        return True
     except requests.RequestException as e:
       _LOG.debug('Station (%s) unreachable: %s', self.hostport, e)
       self.state = None
     except KeyError:
       _LOG.warning('Malformed station state response from (%s): %s',
-                self.hostport, response)
+                   self.hostport, response)
+    return False
 
   def Notify(self, message):
     """Send a message to an OpenHTF instance in response to a prompt.
@@ -118,6 +132,10 @@ class Station(mutablerecords.Record(  # pylint: disable=too-few-public-methods,n
     except requests.RequestException as e:
       _LOG.warning('Error notifying station (%s): %s', self.hostport, e)
 
+  def AddToHistory(self, json_record):
+    """Add a test record to the history for this station."""
+    self.history.append(json_record)
+
 
 class StationStore(threading.Thread):
   """Self-updating store of stations visible on the local network(s).
@@ -125,11 +143,21 @@ class StationStore(threading.Thread):
   Station data is stored in the 'stations' attribute, a dictionary mapping
   tuples of (host_ip, port) to Station records.
   """
-  def __init__(self):
+  def __init__(self, discovery_address, discovery_port, discovery_ttl,
+               discovery_interval_s, disable_discovery):
     super(StationStore, self).__init__()
+    self._discovery_address = discovery_address
+    self._discovery_port = discovery_port
+    self._discovery_ttl = discovery_ttl
+    self._discovery_interval_s = discovery_interval_s
+    self._disable_discovery = disable_discovery
     self._stop_event = threading.Event()
-    self.hostname = socket.gethostname()
     self.stations = {}
+
+    for station in conf.stations:
+      hostport = (station['host'], int(station['port']))
+      self.stations[hostport] = Station(hostport, station['id'])
+
 
   def __getitem__(self, hostport):  # pylint:disable=invalid-name
     """Provide dictionary-like access to the station store."""
@@ -140,9 +168,9 @@ class StationStore(threading.Thread):
   def _Discover(self):
     """Use multicast to discover stations on the local network."""
     responses = multicast.send(PING_STRING,
-                               FLAGS.discovery_address,
-                               FLAGS.discovery_port,
-                               FLAGS.discovery_ttl)
+                               self._discovery_address,
+                               self._discovery_port,
+                               self._discovery_ttl)
     for host, response in responses:
       port = None
       try:
@@ -154,9 +182,12 @@ class StationStore(threading.Thread):
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
+    if self._disable_discovery:
+      _LOG.debug('Station discovery is disabled; StationStore won\'t update.')
+      return
     while not self._stop_event.is_set():
       self._Discover()
-      self._stop_event.wait(FLAGS.discovery_interval_s)
+      self._stop_event.wait(self._discovery_interval_s)
 
   def _Track(self, *hostport):
     """Start tracking the given station."""
@@ -171,52 +202,40 @@ class StationStore(threading.Thread):
 
 
 class MainHandler(tornado.web.RequestHandler):
-  """Main openhtf front page: a list of known stations."""
+  """Main handler for OpenHTF frontend app."""
+  def initialize(self, port):
+    self.port = port
+
+  def get(self):
+    self.render('index.html', host=socket.gethostname(), port=self.port)
+
+
+class DashboardHandler(tornado.web.RequestHandler):
+  """Handles requests from the DashListService."""
   def initialize(self, store):
     self.store = store
 
-  def get(self, _):
-    self.render('station_list.html', stations=self.store.stations)
+  def get(self):
+    result = {}
+    for key, station in self.store.stations.items():
+      status = 'ONLINE' if station.Refresh() else 'OFFLINE'
+      result['%s:%s' % key] = {
+          'station_id': station.station_id,
+          'hostport': station.hostport,
+          'status': status}
+    self.write(json.JSONEncoder().encode(result))
 
 
-class StationStateHandler(tornado.web.RequestHandler):
+class StationHandler(tornado.web.RequestHandler):
   """Handles requests for station state."""
   def initialize(self, store):
     self.store = store
 
   def get(self, host, port):
-    self.render('station.html',
-                state=self.store[host, int(port)].state,
-                host=host,
-                port=port,
-                interval=FLAGS.poll_interval_ms)
-
-
-class StationPieceHandler(tornado.web.RequestHandler):
-  """Handles requests for individual pieces of station pages."""
-  def initialize(self, store):
-    self.store = store
-
-  def get(self, host, port, template):
-    self.render('%s.html' % template,
-                state=self.store[host, int(port)].state)
+    self.write(json.JSONEncoder().encode(self.store[host, int(port)].state))
 
 
 class PromptHandler(tornado.web.RequestHandler):
-  """Handles requests for a station's current prompt ID."""
-  def initialize(self, store):
-    self.store = store
-
-  def get(self, host, port):
-    state = self.store[host, int(port)].state
-    if state is not None:
-      prompt = state['framework']['prompt']
-      if prompt is not None:
-        self.write(prompt['id'])
-    self.write('')
-
-
-class PromptResponseHandler(tornado.web.RequestHandler):
   """Handles POST requests that repond to prompts."""
   def initialize(self, store):
     self.store = store
@@ -225,40 +244,68 @@ class PromptResponseHandler(tornado.web.RequestHandler):
     msg = json.JSONEncoder().encode(
         {'id': prompt_id, 'response': self.request.body})
     self.store[host, port].Notify(msg)
-    self.write('SENT')
 
 
 def main(argv):
   """Start the frontend."""
-  try:
-    argv = FLAGS(argv)  # parse flags
-  except gflags.FlagsError, e:
-    print('%s\nUsage: %s ARGS\n%s' % (e, sys.argv[0], FLAGS))
-    sys.exit(1)
+  parser = argparse.ArgumentParser(description='OpenHTF web frontend server.',
+                                   parents=[conf.ARG_PARSER],
+                                   prog='python -m openhtf.io.frontend')
+  parser.add_argument('--port', type=int, default=12000,
+                      help='Port on which to serve the frontend.')
+  parser.add_argument('--poll_interval_ms', type=int, default=3000,
+                      help='Time between frontend polls in milliseconds.')
+  parser.add_argument('--discovery_interval_s', type=int, default=5,
+                      help='Seconds between station discovery attempts.')
+  parser.add_argument('--discovery_address', type=str,
+                      default=multicast.DEFAULT_ADDRESS,
+                      help='Multicast address to ping for station discovery.')
+  parser.add_argument('--discovery_port', type=int,
+                      default=multicast.DEFAULT_PORT,
+                      help='Multicast port to use for station discovery.')
+  parser.add_argument('--discovery_ttl', type=int,
+                      default=multicast.DEFAULT_TTL,
+                      help='TTL for station discovery pings.')
+  parser.add_argument('--disable_discovery', action='store_true',
+                      help='Disable multicast-based station discovery.')
+  parser.add_argument('--dev', action='store_true',
+                      help='Start in development mode.')
+  args = parser.parse_args()
 
-  logs.setup_logger()
+  logs.SetupLogger()
 
-  store = StationStore()
+  path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
+  
+  settings = {
+      'template_path': path,
+      'static_path': path,
+      'debug': args.dev
+  }
+
+  store = StationStore(args.discovery_address,
+                       args.discovery_port,
+                       args.discovery_ttl,
+                       args.discovery_interval_s,
+                       args.disable_discovery)
 
   routes = [
-      (r'/(stations/)?',
-       MainHandler, dict(store=store)),
-      (r'/stations/((?:[0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]{1,5})/',
-       StationStateHandler, dict(store=store)),
-      (r'/stations/((?:[0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]{1,5})/'
-       'template/([a-z]*)/',
-       StationPieceHandler, dict(store=store)),
-      (r'/stations/((?:[0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]{1,5})/prompt/',
+      (r'/', MainHandler, dict(port=args.port)),
+      (r'/raw/dashboard(?:/*)', DashboardHandler, dict(store=store)),
+      (r'/raw/station/((?:[0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]{1,5})(?:/*)',
+       StationHandler, dict(store=store)),
+      (r'/station/(?:(?:[0-9]{1,3}\.){3}[0-9]{1,3})/(?:[0-9]{1,5})(?:/*)',
+       MainHandler, dict(port=args.port)),
+      (r'/station/((?:[0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]{1,5})/'
+       r'prompt/(.*)(?:/*)',
        PromptHandler, dict(store=store)),
-      (r'/stations/((?:[0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]{1,5})/prompt/(.*)/',
-       PromptResponseHandler, dict(store=store)),
+      (r"/(.*\..*)", tornado.web.StaticFileHandler,
+       dict(path=settings['static_path'])),
+      (r"/(styles\.css)", tornado.web.StaticFileHandler,
+       dict(path=settings['static_path'])),
   ]
 
-  frontend_server = tornado.web.Application(
-      routes,
-      template_path=os.path.join(os.path.dirname(__file__), "templates"),
-      static_path=os.path.join(os.path.dirname(__file__), "static"))
-  frontend_server.listen(FLAGS.port)
+  frontend_server = tornado.web.Application(routes, **settings)
+  frontend_server.listen(args.port)
 
   def sigint_handler(*dummy):
     """Handle SIGINT by stopping running executor and handler."""
@@ -267,7 +314,7 @@ def main(argv):
     store.Stop()
   signal.signal(signal.SIGINT, sigint_handler)
 
-  print('Starting openhtf frontend server on http://localhost:%s.' % FLAGS.port)
+  print('Starting openhtf frontend server on http://localhost:%s.' % args.port)
   store.start()
   tornado.ioloop.IOLoop.instance().start()
 

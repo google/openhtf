@@ -1,0 +1,23 @@
+.prompt-box {
+  font-weight: 600;
+  margin: 12px;
+  padding: 14px;
+}
+
+#response_field {
+  borderv-bottom: 1px solid #616161;
+}
+
+#response_field:focus {
+  border-bottom: 1px solid #ef6c00;
+  box-shadow: 0 1px 0 0 #ef6c00;
+}
+
+.input-field label {
+  color: #616161;
+}
+
+.message {
+  color: #ef6c00;
+  margin-bottom: 1em;
+}

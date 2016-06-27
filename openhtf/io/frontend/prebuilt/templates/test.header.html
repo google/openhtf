@@ -1,0 +1,44 @@
+<div class="card-panel {{status | statusToColor}} test-header">
+  <div>
+    <div class='test-vitals'>
+        <div class="dutID">
+          {{dutID || '---'}}
+        </div>
+        <div>
+          <span class="label">start time: </span>
+          {{startTime && (startTime | millisUTCToLocalStr) || '---'}}
+        </div>
+        <div>
+          <span class="label">end time: </span>
+          {{endTime && (endTime | millisUTCToLocalStr) || '---'}}
+        </div>
+    </div>
+    <div class="test-header-nav">
+      <ul class="tabs">
+        <li class="tab">
+          <a href="#phases">
+            <div class="nav-button">
+              <i class="material-icons">view_stream</i>
+              <div class="nav-label">PHASES</div>
+            </div>
+          </a>
+        </li>
+        <li class="tab">
+          <a href="#logs">
+            <div class="nav-button">
+              <i class="material-icons">assignment</i>
+              <div class="nav-label">LOGS</div>
+            </div>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div class="test-status-tag">
+      {{status}}
+        <div class="duration">
+          {{(duration / 1000 | number:['2.2-2']) + 's'}}
+        </div>
+    </div>
+  </div>
+</div>
+

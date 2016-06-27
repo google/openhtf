@@ -1,0 +1,34 @@
+#content {
+  padding: 10px 0px 0px 0px;
+}
+
+.served_message {
+  font-weight: 300;
+}
+
+.served_stats {
+  font-weight: 500;
+}
+
+#served_tag {
+  display: table-cell;
+  font-size: 8pt;
+  text-align: right;
+  width: auto;
+}
+
+#title {
+  display: table-cell;
+  font-size: 14pt;
+  font-weight: 300;
+}
+
+#title_bar {
+  padding: 3px;
+  position: relative;
+}
+
+#title_bar>div {
+  display: table;
+  width: 100%;
+}

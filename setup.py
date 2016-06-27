@@ -115,6 +115,7 @@ INSTALL_REQUIRES = [
     'protobuf==2.6.1',
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
+    'requests==2.9.1',
     'tornado==4.3',
 ]
 
@@ -161,6 +162,7 @@ setup(
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
     packages=find_packages(exclude='examples'),
+    package_data={'openhtf': ['io/frontend/prebuilt/**/*.*']},
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,

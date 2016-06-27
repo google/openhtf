@@ -1,0 +1,26 @@
+.meta-entry {
+  
+}
+
+.meta-listing {
+  margin: 0px 24px 0px 24px;
+}
+
+:host >>> .key {
+  font-weight: 600;
+}
+
+:host >>> .meta-listing > div > ul {
+  margin-left: 0em;
+}
+
+:host >>> ul {
+  margin-left: 2em;
+}
+
+:host >>> li {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.75em;
+  margin-left: 0em;
+}

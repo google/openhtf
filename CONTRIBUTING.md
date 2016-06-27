@@ -152,6 +152,7 @@ OpenHTF's dependencies into it using pip.
 These install instructions assume Bash as the shell environment. If you're using
 a shell that's very different from Bash you may need to modify some steps
 accordingly.
+
 ```bash
 # Clone into the repo.
 git clone git@github.com:google/openhtf.git

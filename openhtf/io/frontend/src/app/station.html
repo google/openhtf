@@ -1,0 +1,28 @@
+<!-- Template for the Station component; top level of the Station view. -->
+<div>
+  <station-header [countdown]="countdown"
+                  [state]="stationState"
+                  [ip]="ip"
+                  [port]="port">
+  </station-header>
+  <div class="currentTab">
+    <prompt [framework]="stationState?.framework"></prompt>
+    <test-header
+      [dutID]="stationState?.test?.record?.dut_id"
+      [startTime]="stationState?.test?.record?.start_time_millis"
+      [endTime]="stationState?.test?.record?.end_time_millis"
+      [currentMillis]="currentMillis"
+      [status]="stationState?.test?.record?.outcome
+                || stationState?.framework?.status || 'OFFLINE'">
+    </test-header>
+    <phase-listing id="phases" [state]="stationState"
+                               [currentMillis]="currentMillis">
+    </phase-listing>
+    <logs id="logs" [test]="stationState?.test">
+    </logs>
+    <metadata id="metadata" [test]="stationState?.test">
+    </metadata>
+  </div>
+  <!-- TODO(jethier): Iterate over included station-level plugins and display
+                      them here. Also need to wire them to tabs. -->
+</div>

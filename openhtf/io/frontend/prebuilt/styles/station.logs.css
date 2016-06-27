@@ -1,0 +1,16 @@
+.log-entry {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.25em;
+  padding: 0px 0px .5em 2em;
+  text-indent: -2em;
+}
+
+.log-listing {
+  margin: 0px 24px 0px 24px;
+}
+
+.timestamp {
+  font-weight: 600;
+  margin-right: .5em;
+}

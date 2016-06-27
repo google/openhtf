@@ -1,0 +1,52 @@
+.cardholder {
+  display: table-cell;
+}
+
+.countdown {
+  display: table-cell;
+  background: #303030;
+  border-radius: 5px;
+  color: #e0e0e0;
+  padding: 0px 5px 0px 5px;
+  font-size: 21px;
+  font-weight: 600;
+}
+
+.left {
+  display: table;
+}
+
+.navbar i {
+  font-size: 30px;
+}
+
+.navbar > div {
+  display: inline-block;
+  font-size: 8pt;
+  padding: 3px 10px 3px 10px;
+  text-align: center;
+}
+
+.right {
+  display: table;
+  text-align: right;
+}
+
+.station-header {
+  margin: 0px 24px 0px 24px;
+  overflow: hidden;
+}
+
+.station-id-area {
+  display: table-cell;
+  padding: 3px 0px 0px 8px;
+  vertical-align: top;
+}
+
+.station-id-area .station-id-label {
+  font-size: 18pt;
+}
+
+.station-id-area .socket-label {
+  font-size: 8pt;
+}
