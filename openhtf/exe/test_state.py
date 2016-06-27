@@ -86,13 +86,13 @@ class TestState(object):
   def _asdict(self):
     """Return a dict representation of the test's state."""
     return {
-        'status': self._status.name,
+        'status': self._status,
         'test_record': self.test_record,
         'running_phase_record': self.running_phase_record,
     }
 
   @threads.Synchronized
-  def as_dict_with_event(self):
+  def asdict_with_event(self):
     """Get a dict representation of this test's state and an update event.
 
     The event returned is guaranteed to be set if an update has been triggered
