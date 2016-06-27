@@ -25,6 +25,7 @@ import logging
 import Queue
 import socket
 import struct
+import sys
 import threading
 
 
@@ -90,24 +91,30 @@ class MulticastListener(threading.Thread):
             '!4sL',
             socket.inet_aton(self.address),
             socket.INADDR_ANY))  # Listen on all interfaces.
-    self._sock.setsockopt(socket.SOL_SOCKET,
-                          socket.SO_REUSEADDR,
-                          1)  # Allow multiple listeners to bind.
+    if sys.platform == 'darwin':
+      self._sock.setsockopt(socket.SOL_SOCKET,
+                            socket.SO_REUSEPORT,
+                            1)  # Allow multiple listeners to bind.
+    else:
+      self._sock.setsockopt(socket.SOL_SOCKET,
+                            socket.SO_REUSEADDR,
+                            1)  # Allow multiple listeners to bind.
     self._sock.bind(('', self.port))
 
     while self._live:
       try:
         data, address = self._sock.recvfrom(MAX_MESSAGE_BYTES)
-        _LOG.debug('Received multicast message from %s: %s'% (address, data))
+        log_line = 'Received multicast message from %s: %s' % (address, data)
         response = self._callback(data)
         if response is not None:
-          _LOG.debug('Sending multicast response with %s bytes', len(response))
+          log_line += ', responding with %s bytes' % len(response)
           # Send replies out-of-band instead of with the same multicast socket
           # so that multiple processes on the same host can listen for
           # requests and reply (if they all try to use the multicast socket
           # to reply, they conflict and this sendto fails).
-          socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(response,
-                                                                  address)
+          socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(
+              response, address)
+        _LOG.debug(log_line)
       except socket.timeout:
         pass
       except socket.error:
