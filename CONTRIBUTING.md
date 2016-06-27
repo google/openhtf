@@ -179,35 +179,38 @@ virtualenv venv
 # Install openhtf into the virtualenv in dev mode.
 python setup.py develop
 ```
-### MacOS
 
-Install Xcode and Homebrew Mac. Once that is done: 
+### MacOS
+We will use [Homebrew](http://brew.sh/) to install our dependencies and Pip to set up the virtualenv. We recommend installing [Xcode](https://developer.apple.com/xcode/) first as the GCC compiler will be needed for both; however, other GCC compilers not associated with Xcode may work just as well. 
 
 ```bash
-#Install dependent packages
+# Install dependencies.
 brew install pkg-config libffi
 brew install protobuf
 
-#Clone into the repo
+# Clone into the repo.
 git clone https://github.com/google/openhtf.git
 
-#Install pip
+# Install pip.
 sudo easy_install pip
 
-#Make sure pip is up to date
+# Make sure pip is up to date.
 sudo pip install --upgrade pip
 
-#Install virtualenv via pip
+# Install virtualenv via pip.
 sudo pip install virtualenv
 
-#Change to the openhtf directory 
+# Change to the openhtf directory.
 cd openhtf
 
-#Create a new virtualenv
+# Create a new virtualenv.
 virtualenv venv
 
-#Activate the new virtualenv
+# Activate the new virtualenv.
 . venv/bin/activate
+
+# Install openhtf into the virtualenv in dev mode.
+python setup.py develop
 ```
 
 ## Web Frontend Development
