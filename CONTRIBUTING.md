@@ -179,7 +179,36 @@ virtualenv venv
 # Install openhtf into the virtualenv in dev mode.
 python setup.py develop
 ```
+### MacOS
 
+Install Xcode and Homebrew Mac. Once that is done: 
+
+```bash
+#Install dependent packages
+brew install pkg-config libffi
+brew install protobuf
+
+#Clone into the repo
+git clone https://github.com/google/openhtf.git
+
+#Install pip
+sudo easy_install pip
+
+#Make sure pip is up to date
+sudo pip install --upgrade pip
+
+#Install virtualenv via pip
+sudo pip install virtualenv
+
+#Change to the openhtf directory 
+cd openhtf
+
+#Create a new virtualenv
+virtualenv venv
+
+#Activate the new virtualenv
+. venv/bin/activate
+```
 
 ## Web Frontend Development
 OpenHTF ships with a built-in web gui found in the `openhtf.io.frontend` module.
@@ -245,34 +274,3 @@ npm run update_prebuilt
 
 That last step is easy to forget, so try to make it a habit whenever you're
 prepping a PR that includes frontend work.
-
-### MacOS
-
-Install Xcode and Homebrew Mac. Once that is done: 
-
-```bash
-#Install dependent packages
-brew install pkg-config libffi
-brew install protobuf
-
-#Clone into the repo
-git clone https://github.com/google/openhtf.git
-
-#Install pip
-sudo easy_install pip
-
-#Make sure pip is up to date
-sudo pip install --upgrade pip
-
-#Install virtualenv via pip
-sudo pip install virtualenv
-
-#Change to the openhtf directory 
-cd openhtf
-
-#Create a new virtualenv
-virtualenv venv
-
-#Activate the new virtualenv
-. venv/bin/activate
-```
