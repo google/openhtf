@@ -172,6 +172,7 @@ class Test(object):
     _LOG.error('Received SIGINT, stopping all tests.')
     for test in cls.TEST_INSTANCES.values():
       test.StopFromSigInt()
+    station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.
