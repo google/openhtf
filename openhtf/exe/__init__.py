@@ -58,6 +58,7 @@ class TestExecutor(threads.KillableThread):
     self._lock = threading.Lock()
 
   def _asdict(self):
+    # TODO(madsci): Remove this.
     """Return a dictionary representation of this executor."""
     return {'station_id': conf.station_id}
 
