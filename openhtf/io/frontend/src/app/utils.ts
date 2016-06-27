@@ -137,7 +137,7 @@ export class ObjectToArray implements PipeTransform {
 
 
 /** A pipe to recurisely stringify objects into html <ul> elements. **/
-@Pipe({name: 'objectToUl'})
+@Pipe({name: 'objectToUl', pure: false})
 export class ObjectToUl implements PipeTransform {
   ulify(object: any): string {
     if (object == undefined || object == null) {
@@ -145,7 +145,7 @@ export class ObjectToUl implements PipeTransform {
     }
     let result = '<ul>';
     Object.keys(object).forEach(key => {
-      result += `<li><span class="key">${key}:&nbsp</span><span class="value">`;
+      result += `<li><span class="key">${key}:&nbsp;</span><span class="value">`;
       if (typeof object[key] == 'object') {
         result += this.ulify(object[key]);
       }
