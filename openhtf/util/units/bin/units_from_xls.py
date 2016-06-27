@@ -28,8 +28,11 @@ code set into a sub-module inside OpenHTF.
 
 Typical usage of this generation script looks like:
 
-python ./bin/units_from_xls.py --infile ~/rec20_Rev9e_2014.xls \
---outfile ./__init__.py
+python units_from_xls.py ~/Downloads/rec20_Rev9e_2014.xls
+
+If this file is run from its home in the OpenHTF source tree, the default
+behavior will be to overwrite the units submodule in the same source tree. The
+output path can be overridden if desired (see command help for details).
 
 Legal python names are generated for the UnitInfo objects from the "Name" field
 on the spreadsheet, generally by removing special characters, turning spaces
@@ -92,7 +95,7 @@ docstring at the top of openhtf/util/units/bin/units_from_xls.py.
 import collections
 
 
-UnitInfo = collections.namedtuple('Unit', 'name code suffix')
+UnitInfo = collections.namedtuple('UnitInfo', 'name code suffix')
 
 ALL_UNITS = []
 
@@ -156,18 +159,30 @@ UNIT_KEY_REPLACEMENTS = {' ': '_',
                         }
 
 
-def main():
+def main(argv):
   """Main entry point for UNECE code .xls parsing."""
-  parser = argparse.ArgumentParser(description='Units From XLS',
-                                   prog='python units_from_xls.py')
-  parser.add_argument('--infile', type=str,
-                      help='A .xls file to parse.')
-  parser.add_argument('--outfile', type=str, default='__init__.py',
-                      help='Where to put the generated .py file.')
+  parser = argparse.ArgumentParser(
+      description='Reads in a .xls file and generates a units module for '
+                  'OpenHTF.',
+      prog='python units_from_xls.py')
+  parser.add_argument('xlsfile', type=str,
+                      help='the .xls file to parse')
+  parser.add_argument(
+      '--outfile',
+      type=str,
+      default=os.path.join(os.path.dirname(__file__), os.path.pardir, 'util',
+                           'units.py'),
+      help='where to put the generated .py file.')
   args = parser.parse_args()
 
+  if not os.path.exists(args.xlsfile):
+    print 'Unable to locate the file "%s".' % args.xlsfile
+    parser.print_help()
+    print 'HACKABEES', args.outfile
+    sys.exit()
+
   unit_defs = unit_defs_from_sheet(
-      xlrd.open_workbook(args.infile).sheet_by_name(SHEET_NAME),
+      xlrd.open_workbook(args.xlsfile).sheet_by_name(SHEET_NAME),
       COLUMN_NAMES)
 
   _, tmp_path = mkstemp()
@@ -232,4 +247,4 @@ def unit_key_from_name(name):
 
 
 if __name__ == '__main__':
-  main()
+  main(sys.argv)
