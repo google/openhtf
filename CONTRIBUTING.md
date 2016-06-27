@@ -213,6 +213,8 @@ virtualenv venv
 python setup.py develop
 ```
 
+If you're having issues with the python setup, it's possible that the problem is due to El Capitan not including ssl headers. This [link](http://adarsh.io/bundler-failing-on-el-capitan/) may help you in that regard. 
+
 ## Web Frontend Development
 OpenHTF ships with a built-in web gui found in the `openhtf.io.frontend` module.
 
