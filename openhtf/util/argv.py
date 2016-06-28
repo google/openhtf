@@ -1,6 +1,7 @@
 """Utilities for handling command line arguments."""
 
 import argparse
+import sys
 
 
 def ModuleParser():
@@ -19,5 +20,5 @@ class StoreInModule(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if hasattr(self, '_proxy'):
             values = self._proxy(parser, namespace, values)
-        setattr(__import__(self._tgt_mod), self._tgt_attr, values)
+        setattr(sys.modules[self._tgt_mod], self._tgt_attr, values)
 

@@ -18,13 +18,14 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
-import difflib
+import collections
+import itertools
 import logging
 import numbers
+import struct
+import sys
 
-from itertools import izip
-
-import mutablerecords
+from mutablerecords import records
 
 from enum import Enum
 
@@ -73,14 +74,14 @@ def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
     AssertRecordsEqualNonvolatile(first._asdict(), second._asdict(),
                                   volatile_fields, indent)
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
-    for idx, (f, s) in enumerate(izip(first, second)):
+    for idx, (f, s) in enumerate(itertools.izip(first, second)):
       try:
         AssertRecordsEqualNonvolatile(f, s, volatile_fields, indent + 2)
       except AssertionError:
         logging.error('%sIndex: %s ^', ' ' * indent, idx)
         raise
-  elif (isinstance(first, mutablerecords.records.RecordClass) and
-        isinstance(second, mutablerecords.records.RecordClass)):
+  elif (isinstance(first, records.RecordClass) and
+        isinstance(second, records.RecordClass)):
     AssertRecordsEqualNonvolatile(
         {slot: getattr(first, slot) for slot in first.__slots__},
         {slot: getattr(second, slot) for slot in second.__slots__},
@@ -115,7 +116,7 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
 
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
-  elif isinstance(obj, mutablerecords.records.RecordClass):
+  elif isinstance(obj, records.RecordClass):
     obj = {attr: getattr(obj, attr)
            for attr in type(obj).all_attribute_names
            if (getattr(obj, attr) is not None or
@@ -138,3 +139,30 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
     obj = str(obj)
 
   return obj
+
+
+def TotalSize(obj):
+  """Returns the approximate total memory footprint an object."""
+  seen = set()
+  def sizeof(current_obj):
+    """Do a depth-first acyclic traversal of all reachable objects."""
+    if id(current_obj) in seen:
+      # A rough approximation of the size cost of an additional reference.
+      return struct.calcsize('P')
+    seen.add(id(current_obj))
+    size = sys.getsizeof(current_obj)
+
+    if isinstance(current_obj, dict):
+      size += sum(map(sizeof, itertools.chain.from_iterable(
+          current_obj.iteritems())))
+    elif (isinstance(current_obj, collections.Iterable) and
+          not isinstance(current_obj, basestring)):
+      size += sum(map(sizeof, iter(current_obj)))
+    elif isinstance(current_obj, records.RecordClass):
+      size += sizeof(current_obj.__slots__)
+      size += sum(map(sizeof, current_obj.optional_attributes.itervalues()))
+      size += sum(map(sizeof, (getattr(current_obj, attr)
+                               for attr in current_obj.__slots__)))
+    return size
+
+  return sizeof(obj)

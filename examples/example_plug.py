@@ -72,7 +72,6 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
 
   def __str__(self):
     return '<%s: %s>' % (type(self).__name__, self.value)
-  __repr__ = __str__
 
   def TearDown(self):
     """Tear down the plug instance."""

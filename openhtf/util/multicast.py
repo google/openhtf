@@ -22,8 +22,10 @@ function that is used to send one-shot messages to a multicast socket.
 
 
 import logging
+import Queue
 import socket
 import struct
+import sys
 import threading
 
 
@@ -50,7 +52,8 @@ class MulticastListener(threading.Thread):
     port: Multicast UDP port component of the socket to listen on.
     ttl: TTL for multicast messages. 1 to keep traffic in-network.
   """
-  LISTEN_TIMEOUT_S = 3  # Seconds to listen before retrying.
+  LISTEN_TIMEOUT_S = 60  # Seconds to listen before retrying.
+  daemon = True
 
   def __init__(self,
                callback,
@@ -71,6 +74,8 @@ class MulticastListener(threading.Thread):
   def Stop(self):
     """Stop listening for messages."""
     self._live = False
+    self._sock.shutdown(socket.SHUT_RDWR)
+    self._sock.close()
     self.join()
 
   def run(self):
@@ -86,22 +91,34 @@ class MulticastListener(threading.Thread):
             '!4sL',
             socket.inet_aton(self.address),
             socket.INADDR_ANY))  # Listen on all interfaces.
-    self._sock.setsockopt(socket.SOL_SOCKET,
-                          socket.SO_REUSEADDR,
-                          1)  # Allow multiple listeners to bind.
+    if sys.platform == 'darwin':
+      self._sock.setsockopt(socket.SOL_SOCKET,
+                            socket.SO_REUSEPORT,
+                            1)  # Allow multiple listeners to bind.
+    else:
+      self._sock.setsockopt(socket.SOL_SOCKET,
+                            socket.SO_REUSEADDR,
+                            1)  # Allow multiple listeners to bind.
     self._sock.bind(('', self.port))
 
     while self._live:
       try:
         data, address = self._sock.recvfrom(MAX_MESSAGE_BYTES)
-        _LOG.debug('Received multicast message from %s: %s'% (address, data))
+        log_line = 'Received multicast message from %s: %s' % (address, data)
         response = self._callback(data)
         if response is not None:
-          # Send replies out-of-band instead of with the same multicast socket.
-          socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(response,
-                                                                  address)
+          log_line += ', responding with %s bytes' % len(response)
+          # Send replies out-of-band instead of with the same multicast socket
+          # so that multiple processes on the same host can listen for
+          # requests and reply (if they all try to use the multicast socket
+          # to reply, they conflict and this sendto fails).
+          socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(
+              response, address)
+        _LOG.debug(log_line)
       except socket.timeout:
-        continue
+        pass
+      except socket.error:
+        _LOG.debug('Error receiving multicast message', exc_info=True)
 
 
 def send(query,
@@ -121,22 +138,32 @@ def send(query,
   Returns: A set of all responses that arrived before the timeout expired.
            Responses are tuples of (sender_address, message).
   """
-  result = set()
+  # Set up the socket as a UDP Multicast socket with the given timeout.
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  sock.setsockopt(socket.IPPROTO_IP,
-                  socket.IP_MULTICAST_TTL,
-                  ttl)
+  sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
   sock.settimeout(timeout_s)
   sock.sendto(query, (address, port))
-  while True:
-    try:
-      data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
-    except socket.timeout:
-      if not result:
-        _LOG.debug('No responses recieved to multicast query "%s".', query)
+
+  # Set up our thread-safe Queue for handling responses.
+  recv_queue = Queue.Queue()
+  def _HandleResponses():
+    while True:
+      try:
+        data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
+      except socket.timeout:
+        recv_queue.put(None)
+        break
+      else:
+        _LOG.debug('Multicast response to query "%s": %s:%s',
+                   query, address[0], data)
+        recv_queue.put((address[0], str(data)))
+
+  # Yield responses as they come in, giving up once timeout expires.
+  response_thread = threading.Thread(target=_HandleResponses)
+  response_thread.start() 
+  while response_thread.is_alive():
+    recv_tuple = recv_queue.get()
+    if not recv_tuple:
       break
-    else:
-      _LOG.debug('Multicast response to query "%s": %s:%s',
-                 query, address[0], data)
-      result.add((address[0], str(data)))
-  return result
+    yield recv_tuple
+  response_thread.join()
