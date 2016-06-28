@@ -15,10 +15,10 @@
 
 """PhaseExecutor module for handling the phases of a test.
 
-Each phase is an instance of phase_data.PhaseInfo and therefore has relevant
-options. Each option is taken into account when executing a phase, such as
-checking options.run_if as soon as possible and timing out at the appropriate
-time.
+Each phase is an instance of phase_data.PhaseDescriptor and therefore has
+relevant options. Each option is taken into account when executing a phase,
+such as checking options.run_if as soon as possible and timing out at the
+appropriate time.
 
 A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or STOP.
 A phase may also return None, or have no return statement, which is the same as
@@ -36,7 +36,6 @@ import collections
 import logging
 
 import openhtf
-from openhtf.exe import phase_data
 from openhtf.io import test_record
 from openhtf.util import argv
 from openhtf.util import threads
@@ -113,9 +112,6 @@ class PhaseExecutorThread(threads.KillableThread):
     phase_return = self._phase(self._phase_data)
     if phase_return is None:
       phase_return = openhtf.PhaseResult.CONTINUE
-
-    # Pop any things out of the exit stack and close them.
-    self._phase_data.context.pop_all().close()
 
     # If phase_return is invalid, this will raise, and _phase_outcome will get
     # set to the InvalidPhaseResultError in _ThreadException instead.

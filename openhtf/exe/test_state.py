@@ -13,9 +13,15 @@
 # limitations under the License.
 
 
-"""TestState module for handling the lifetime of a test.
+"""Module for handling transient state of a running test.
 
-Test timing, failures, and the UI are handled by this module.
+Classes implemented in this module encapsulate state information about a
+running test, including test-wide state and currently executing phase
+state.  
+
+These classes also implement various logic and audit mechanisms for state
+transitions during the course of the lifetime of a single Execute()
+invokation of an openhtf.Test instance.
 """
 
 import copy
@@ -77,6 +83,7 @@ class TestState(object):
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
     self.logger = logs.InitializeRecordLogger(test_desc.uid, self.test_record)
+    self.user_defined_state = {}
     # TODO(madsci): pull phase data out of TestState and clean up the API.
     self.phase_data = phase_data.PhaseData(
         self.logger, plug_manager, self.test_record)
@@ -217,3 +224,6 @@ class TestState(object):
         type(self).__name__, self.test_record.dut_id,
         self.test_record.station_id, self.last_run_phase_name,
     )
+
+class PhaseState(mutablerecords.Record('PhaseState', [
+    'measurements', ], {'attachments': dict})):
