@@ -95,7 +95,8 @@ class Test(object):
     self.created_time_millis = util.TimeMillis()
     self.last_run_time_millis = None
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
-    self._test_data = TestData(self.uid, phases, metadata=metadata, code_info=code_info)
+    self._test_data = TestDescriptor(
+        self.uid, phases, metadata=metadata, code_info=code_info)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
@@ -242,8 +243,8 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
   """Class encapsulating various tunable knobs for Tests and their defaults."""
 
 
-class TestData(collections.namedtuple(
-    'TestData', ['uid', 'phases', 'code_info', 'metadata'])):
+class TestDescriptor(collections.namedtuple(
+    'TestDescriptor', ['uid', 'phases', 'code_info', 'metadata'])):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
@@ -258,7 +259,8 @@ class TestData(collections.namedtuple(
 
   def __new__(cls, uid, phases, code_info, metadata):
     phases = [PhaseInfo.WrapOrCopy(phase) for phase in phases]
-    return super(TestData, cls).__new__(cls, uid, phases, code_info, metadata)
+    return super(TestDescriptor, cls).__new__(
+        cls, uid, phases, code_info, metadata)
 
   @property
   def plug_types(self):

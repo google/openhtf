@@ -51,13 +51,13 @@ class TestState(object):
   """This class handles tracking the state of a running Test.
 
   This class encapsulates all the interesting transient bits of a running Test,
-  as opposed to the openhtf.TestData class, which encapsulates static data
-  associated with a Test (that is, it remains the same across invokations of
-  Test.Execute()).
+  as opposed to the openhtf.TestDescriptor class, which encapsulates static
+  data associated with a Test (that is, it remains the same across invokations
+  of Test.Execute()).
 
   Init Args:
-    test_data: openhtf.TestData instance describing the test to run, used to
-        initialize some values here, but it is not modified.
+    test_desc: openhtf.TestDescriptor instance describing the test to run,
+        used to initialize some values here, but it is not modified.
     plug_manager: A plugs.PlugManager instance.  Plug state is completely
         torn down and reset upon each call to Test.Execute(), so plug state
         is considered transient.
@@ -69,14 +69,14 @@ class TestState(object):
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])
 
-  def __init__(self, test_data, plug_manager):
+  def __init__(self, test_desc, plug_manager):
     self._status = self.Status.WAITING_FOR_TEST_START
 
     self.test_record = test_record.TestRecord(
-        dut_id=None, station_id=conf.station_id, code_info=test_data.code_info,
-        # Copy metadata so we don't modify test_data.
-        metadata=copy.deepcopy(test_data.metadata))
-    self.logger = logs.InitializeRecordLogger(test_data.uid, self.test_record)
+        dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
+        # Copy metadata so we don't modify test_desc.
+        metadata=copy.deepcopy(test_desc.metadata))
+    self.logger = logs.InitializeRecordLogger(test_desc.uid, self.test_record)
     # TODO(madsci): pull phase data out of TestState and clean up the API.
     self.phase_data = phase_data.PhaseData(
         self.logger, plug_manager, self.test_record)
