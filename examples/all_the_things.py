@@ -27,10 +27,11 @@ import openhtf
 import openhtf.io.output as output
 
 from openhtf.io.output import json_factory
-from openhtf.io.output import mfg_inspector 
+from openhtf.io.output import mfg_inspector
 from openhtf.names import *
 # Uncomment for mfg-inspector output, requires setup.py build_proto.
 #from openhtf.io.output import mfg_inspector
+from openhtf.util import units
 
 
 @plug(example=example_plug.ExamplePlug)
@@ -76,10 +77,10 @@ def set_measurements(test):
 
 
 @measures(
-    Measurement('unset_dims').WithDimensions(UOM['HERTZ']),
-    Measurement('dimensions').WithDimensions(UOM['HERTZ']),
+    Measurement('unset_dims').WithDimensions(units.HERTZ),
+    Measurement('dimensions').WithDimensions(units.HERTZ),
     Measurement('lots_of_dims').WithDimensions(
-        UOM['HERTZ'], UOM['SECOND'], UOM['RADIAN']))
+        units.HERTZ, units.SECOND, units.RADIAN))
 def dimensions(test):
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim
@@ -100,12 +101,21 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.AddOutputCallbacks(
-      json_factory.OutputToJSON(
-          './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
-          indent=4))
-  test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
-      './{dut_id}.{start_time_millis}.pb'))
+  # test.AddOutputCallbacks(
+  #     json_factory.OutputToJSON(
+  #         './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
+  #         indent=4))
+  # test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
+  #     './{dut_id}.{start_time_millis}.pb'))
+
+  import cPickle as pickle
+
+  def _pickle(test_record):
+    with open('./record.pickle', 'wb') as picklefile:
+      pickle.dump(test_record, picklefile)
+
+  test.AddOutputCallbacks(_pickle)
+
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
