@@ -258,7 +258,7 @@ class TestDescriptor(collections.namedtuple(
   """
 
   def __new__(cls, uid, phases, code_info, metadata):
-    phases = [PhaseInfo.WrapOrCopy(phase) for phase in phases]
+    phases = [PhaseDescriptor.WrapOrCopy(phase) for phase in phases]
     return super(TestDescriptor, cls).__new__(
         cls, uid, phases, code_info, metadata)
 
@@ -307,7 +307,7 @@ class PhaseOptions(mutablerecords.Record(
   """
 
   def __call__(self, phase_func):
-    phase = PhaseInfo.WrapOrCopy(phase_func)
+    phase = PhaseDescriptor.WrapOrCopy(phase_func)
     for attr in self.__slots__:
       value = getattr(self, attr)
       if value is not None:
@@ -320,8 +320,8 @@ class PhasePlug(mutablerecords.Record(
   """Information about the use of a plug in a phase."""
 
 
-class PhaseInfo(mutablerecords.Record(
-    'PhaseInfo', ['func', 'code_info'],
+class PhaseDescriptor(mutablerecords.Record(
+    'PhaseDescriptor', ['func', 'code_info'],
     {'options': PhaseOptions, 'plugs': list, 'measurements': list,
      'extra_kwargs': dict})):
   """Phase function and related information.
@@ -336,16 +336,16 @@ class PhaseInfo(mutablerecords.Record(
 
   @classmethod
   def WrapOrCopy(cls, func):
-    """Return a new PhaseInfo from the given function or instance.
+    """Return a new PhaseDescriptor from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different
     options, plugs, measurements, etc.
 
     Args:
-      func: A phase function or PhaseInfo instance.
+      func: A phase function or PhaseDescriptor instance.
 
     Returns:
-      A new PhaseInfo object.
+      A new PhaseDescriptor object.
     """
     if not isinstance(func, cls):
       func = cls(func, test_record.CodeInfo.ForFunction(func))

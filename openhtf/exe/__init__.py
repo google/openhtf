@@ -51,7 +51,8 @@ class TestExecutor(threads.KillableThread):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self._teardown_function = (
-        teardown_function and openhtf.PhaseInfo.WrapOrCopy(teardown_function))
+        teardown_function
+        and openhtf.PhaseDescriptor.WrapOrCopy(teardown_function))
     self._test_data = test_data
     self._plug_manager = plugs.PlugManager()
     self._test_start = test_start

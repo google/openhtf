@@ -16,7 +16,7 @@
 """Module encapsulating test phase data.
 
 HTF tests are comprised of a series of test phases.  These test phases are
-wrapped in openhtf.PhaseInfo objects to keep track of some necessary
+wrapped in openhtf.PhaseDescriptor objects to keep track of some necessary
 state. This wrapping happens by decorating a method with any of various
 supported decorators.
 """
@@ -48,8 +48,6 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     state: A dictionary for passing state data along to future phases.
     plug_manager: A plugs.PlugManager instance.
     measurements: A measurements.Collection for setting measurement values.
-    context: A contextlib.ExitStack, which simplifies context managers in a
-        phase.  This stack is pop'd after each phase.
     test_record: The test_record.TestRecord for the currently running test.
   """
   def __init__(self, logger, plug_manager, record):
@@ -59,7 +57,6 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     self.state = {}
     self.measurements = None  # Will be populated per-phase.
     self.attachments = {}
-    self.context = contextlib2.ExitStack()
 
   def _asdict(self):
     """Return a dict of this PhaseData's public data."""
@@ -115,7 +112,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     records the start and end time based on when the context is entered/exited.
 
     Args:
-      phase: openhtf.PhaseInfo object that is to be executed.
+      phase: openhtf.PhaseDescriptor object that is to be executed.
       running_phase_record: PhaseRecord object tracking the phase execution.
 
     Yields:
