@@ -40,7 +40,7 @@ _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
 def _PickleRecord(record):
   """Output callback for saving updated output."""
   with open(_LocalFilename('measurements_record.pickle'), 'wb') as picklefile:
-    pickle.dump(record, picklefile)
+    pickle.dump(record, picklefile, -1)
 
 def _LocalFilename(filename):
   """Get an absolute path to filename in the same directory as this module."""
@@ -96,8 +96,10 @@ class TestMeasurements(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     conf.Load(station_id='measurements_test')
-    with open(_LocalFilename('measurements_record.pickle'), 'rb') as picklefile:
-      cls.record = pickle.load(picklefile)
+    if not cls.UPDATE_OUTPUT:
+      with open(
+          _LocalFilename('measurements_record.pickle'), 'rb') as picklefile:
+        cls.record = pickle.load(picklefile)
 
   def testMeasurements(self):
     result = util.NonLocalResult() 
@@ -109,12 +111,10 @@ class TestMeasurements(unittest.TestCase):
     test.Configure(http_port=None)
     if self.UPDATE_OUTPUT:
       test.AddOutputCallbacks(_PickleRecord)
-    test.AddOutputCallbacks(_SaveResult)
-    test.Execute(test_start=lambda: 'TestDUT')
-    if self.UPDATE_OUTPUT:
-      with open(_LocalFilename('measurements_record.pickle'), 'wb') as pfile:
-        pickle.dump(result.result, pfile, -1)
     else:
+      test.AddOutputCallbacks(_SaveResult)
+    test.Execute(test_start=lambda: 'TestDUT')
+    if not self.UPDATE_OUTPUT:
       data.AssertRecordsEqualNonvolatile(
           self.record, result.result, _VOLATILE_FIELDS)
 

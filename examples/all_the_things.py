@@ -101,20 +101,12 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  # test.AddOutputCallbacks(
-  #     json_factory.OutputToJSON(
-  #         './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
-  #         indent=4))
-  # test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
-  #     './{dut_id}.{start_time_millis}.pb'))
-
-  import cPickle as pickle
-
-  def _pickle(test_record):
-    with open('./record.pickle', 'wb') as picklefile:
-      pickle.dump(test_record, picklefile)
-
-  test.AddOutputCallbacks(_pickle)
+  test.AddOutputCallbacks(
+      json_factory.OutputToJSON(
+          './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
+          indent=4))
+  test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
+      './{dut_id}.{start_time_millis}.pb'))
 
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
