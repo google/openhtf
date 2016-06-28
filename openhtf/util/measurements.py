@@ -144,7 +144,7 @@ class Measurement(  # pylint: disable=no-init
     return self
 
   def WithArgs(self, **kwargs):
-    """Creates a new Measurement, see openhtf.PhaseInfo.WithArgs."""
+    """Creates a new Measurement, see openhtf.PhaseDescriptor.WithArgs."""
     new_meas = mutablerecords.CopyRecord(self)
     if '{' in new_meas.name:
       formatter = lambda x: x.format(**kwargs) if x else x
@@ -425,7 +425,7 @@ def measures(*measurements, **kwargs):
   # 'measurements' is guaranteed to be a list of Measurement objects here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
-    phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
+    phase = openhtf.PhaseDescriptor.WrapOrCopy(wrapped_phase)
     duplicate_names = (set(m.name for m in measurements) &
                        set(m.name for m in phase.measurements))
     if duplicate_names:

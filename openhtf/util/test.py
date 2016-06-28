@@ -214,7 +214,7 @@ class PhaseOrTestIterator(collections.Iterator):
           'individual test phases', phase_or_test)
     else:
       self.last_result = self._handle_phase(
-          openhtf.PhaseInfo.WrapOrCopy(phase_or_test))
+          openhtf.PhaseDescriptor.WrapOrCopy(phase_or_test))
     return phase_or_test, self.last_result
 
 
