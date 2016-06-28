@@ -37,7 +37,7 @@ docstring at the top of openhtf/util/units/bin/units_from_xls.py.
 import collections
 
 
-UnitInfo = collections.namedtuple('Unit', 'name code suffix')
+UnitInfo = collections.namedtuple('UnitInfo', 'name code suffix')
 
 ALL_UNITS = []
 

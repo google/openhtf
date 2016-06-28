@@ -32,6 +32,7 @@ import openhtf.util as util
 from openhtf.io.output import json_factory
 from openhtf.names import *
 from openhtf.util import data
+from openhtf.util import units
 
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
@@ -68,20 +69,20 @@ def LotsOfMeasurements(test):
 
 
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
-    'This measurement is validated.').WithUnits(UNITS['SECOND']))
+    'This measurement is validated.').WithUnits(units.SECOND))
 def MeasureSeconds(test):
   test.measurements.validated_measurement = 5
 
 
 @measures(Measurement('dimensioned_measurement').WithDimensions(
-    UNITS['SECOND'], UNITS['HERTZ']))
-@measures('unset_dimensions', dimensions=(UNITS['SECOND'], UNITS['HERTZ']))
+    units.SECOND, units.HERTZ))
+@measures('unset_dimensions', dimensions=(units.SECOND, units.HERTZ))
 def MeasureDimensions(test):
   test.measurements.dimensioned_measurement[1, 2] = 5
 
 
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
-          units=UNITS['HERTZ'], validators=[util.validators.InRange(0, 10)])
+          units=units.HERTZ, validators=[util.validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
 def InlinePhase(test):
   test.measurements.inline_kwargs = 15

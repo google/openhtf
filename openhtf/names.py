@@ -38,7 +38,6 @@ import openhtf.io.user_input
 import openhtf.plugs
 import openhtf.util.measurements
 import openhtf.util.monitors
-import openhtf.util.units
 import openhtf.util.validators
 
 
@@ -60,4 +59,3 @@ Measurement = openhtf.util.measurements.Measurement
 TestPhase = openhtf.PhaseOptions
 PhaseResult = openhtf.PhaseResult
 Test = openhtf.Test
-UNITS = openhtf.util.units.UNITS
