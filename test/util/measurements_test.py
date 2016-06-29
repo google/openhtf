@@ -100,7 +100,6 @@ class TestMeasurements(unittest.TestCase):
     # No need to run the http_api, we just want to generate the test record.
     test.Configure(http_port=None)
     if self.UPDATE_OUTPUT:
-      print 'HACKABEES', RECORD_FILENAME
       test.AddOutputCallbacks(output.OutputToFile(RECORD_FILENAME))
     else:
       test.AddOutputCallbacks(_SaveResult)
