@@ -241,6 +241,14 @@ class MeasuredValue(object):
     # Track this so we can differentiate between unset and set-to-None.
     self.is_value_set = False
 
+  def __eq__(self, other):
+    return (type(self) == type(other) and self.name == other.name and
+            self.is_value_set == other.is_value_set and
+            self.stored_value == other.stored_value)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
   @property
   def value(self):
     if not self.is_value_set:

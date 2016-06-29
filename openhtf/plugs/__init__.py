@@ -202,7 +202,7 @@ class PlugManager(object):
   """
 
   def __init__(self, plug_types=None):
-    self._plug_types = plug_types
+    self._plug_types = plug_types or set()
     self._plug_map = {}
 
   def InitializePlugs(self, plug_types=None):
@@ -213,7 +213,7 @@ class PlugManager(object):
     rather than passed into the constructor (this is used primarily for unit
     testing phases).
     """
-    for plug_type in set(plug_types or ()) | set(self._plug_types or ()):
+    for plug_type in set(plug_types or ()) | self._plug_types:
       if plug_type in self._plug_map:
         continue
       try:
@@ -230,6 +230,7 @@ class PlugManager(object):
     for use in phase unittests, this feature isn't used under normal test
     execution.
     """
+    self._plug_types.add(plug_type)
     if plug_type in self._plug_map:
       self._plug_map[plug_type].TearDown()
     self._plug_map[plug_type] = plug_value
@@ -240,6 +241,7 @@ class PlugManager(object):
 
   def ProvidePlugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
+    plug_name_map = list(plug_name_map)
     return {name: self._plug_map[cls]
             for name, cls in plug_name_map}
 
