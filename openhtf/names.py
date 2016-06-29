@@ -39,6 +39,7 @@ import openhtf.plugs
 import openhtf.util.measurements
 import openhtf.util.monitors
 import openhtf.util.validators
+import openhtf.util.units
 
 
 # pylint: disable=invalid-name
@@ -48,6 +49,7 @@ prompts = openhtf.io.user_input.get_prompt_manager()
 triggers = openhtf.exe.triggers
 validators = openhtf.util.validators
 output = openhtf.io.output
+units = openhtf.util.units
 
 # Functions used in writing test scripts.
 measures = openhtf.util.measurements.measures

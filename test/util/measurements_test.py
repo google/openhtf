@@ -20,16 +20,13 @@ to False when done (there's a test to make sure you do this).
 """
 
 import cPickle as pickle
-import difflib
 import os.path
 import unittest
-
-from pprint import pformat
 
 import openhtf.conf as conf
 import openhtf.util as util
 
-from openhtf.io.output import json_factory
+from openhtf.io import output
 from openhtf.names import *
 from openhtf.util import data
 from openhtf.util import units
@@ -37,14 +34,8 @@ from openhtf.util import units
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
 
-def _PickleRecord(record):
-  """Output callback for saving updated output."""
-  with open(_LocalFilename('measurements_record.pickle'), 'wb') as picklefile:
-    pickle.dump(record, picklefile, -1)
-
-def _LocalFilename(filename):
-  """Get an absolute path to filename in the same directory as this module."""
-  return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+RECORD_FILENAME = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'measurements_record.pickle')
 
 
 # Phases copied from the measurements example in examples/, because they
@@ -97,8 +88,7 @@ class TestMeasurements(unittest.TestCase):
   def setUpClass(cls):
     conf.Load(station_id='measurements_test')
     if not cls.UPDATE_OUTPUT:
-      with open(
-          _LocalFilename('measurements_record.pickle'), 'rb') as picklefile:
+      with open(RECORD_FILENAME, 'rb') as picklefile:
         cls.record = pickle.load(picklefile)
 
   def testMeasurements(self):
@@ -110,7 +100,8 @@ class TestMeasurements(unittest.TestCase):
     # No need to run the http_api, we just want to generate the test record.
     test.Configure(http_port=None)
     if self.UPDATE_OUTPUT:
-      test.AddOutputCallbacks(_PickleRecord)
+      print 'HACKABEES', RECORD_FILENAME
+      test.AddOutputCallbacks(output.OutputToFile(RECORD_FILENAME))
     else:
       test.AddOutputCallbacks(_SaveResult)
     test.Execute(test_start=lambda: 'TestDUT')

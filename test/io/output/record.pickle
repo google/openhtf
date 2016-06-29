@@ -102,7 +102,7 @@ ttRp46
 (dbttRp47
 (dp48
 g9
-I1467152721689
+I1467227266909
 sg30
 (dp49
 sg31
@@ -257,7 +257,7 @@ p99
 I4
 sbasbssg33
 Nsg12
-I1467152724110
+I1467227269479
 sg34
 g71
 (copenhtf.exe.phase_executor
@@ -299,7 +299,7 @@ ttRp110
 (dbttRp111
 (dp112
 g9
-I1467152724111
+I1467227269480
 sg30
 (dp113
 sg31
@@ -310,13 +310,13 @@ p115
 (I0
 I2
 tp117
-a(F1001.0471343994141
+a(F1001.0621547698975
 I3
 tp118
-a(F2002.140998840332
+a(F2002.108097076416
 I4
 tp119
-a(F3003.1991004943848
+a(F3003.1321048736572
 I5
 tp120
 asS'level_all'
@@ -349,7 +349,7 @@ sg33
 Nsg63
 (g71
 (copenhtf.util.units
-UnitInfo
+UnitDescriptor
 p128
 g101
 (S'millisecond'
@@ -424,7 +424,7 @@ Nsg64
 (lp149
 sbssg33
 Nsg12
-I1467152727132
+I1467227272501
 sg34
 g71
 (g100
@@ -455,7 +455,7 @@ ttRp154
 (dbttRp155
 (dp156
 g9
-I1467152727133
+I1467227272502
 sg30
 (dp157
 sg31
@@ -608,7 +608,7 @@ sg64
 (lp200
 sbssg33
 Nsg12
-I1467152727134
+I1467227272503
 sg34
 g71
 (g100
@@ -639,7 +639,7 @@ ttRp205
 (dbttRp206
 (dp207
 g9
-I1467152727134
+I1467227272503
 sg30
 (dp208
 S'test_attachment'
@@ -668,7 +668,7 @@ sg32
 (dp218
 sg33
 Nsg12
-I1467152727143
+I1467227272507
 sg34
 g71
 (g100
@@ -676,11 +676,11 @@ g101
 (g103
 ttRp219
 sbasg9
-I1467152721688
+I1467227266909
 sg11
 (lp220
 sg12
-I1467152727152
+I1467227272520
 sg13
 g1
 (g39
@@ -710,7 +710,7 @@ p228
 S'all_the_things.py'
 p229
 I53
-I1467152721690
+I1467227266909
 VHello World!
 p230
 ttRp231
@@ -721,7 +721,7 @@ g101
 g228
 g229
 I60
-I1467152724104
+I1467227269429
 VPlug value: 1
 p232
 ttRp233
@@ -733,7 +733,7 @@ g228
 S'all_the_things.py'
 p234
 I96
-I1467152727143
+I1467227272507
 VRunning teardown
 p235
 ttRp236
@@ -746,7 +746,7 @@ p237
 S'example_plug.py'
 p238
 I79
-I1467152727145
+I1467227272508
 VTearing down <ExamplePlug: 5>
 p239
 ttRp240
@@ -758,7 +758,7 @@ g228
 S'test_state.py'
 p241
 I164
-I1467152727152
+I1467227272520
 VFinishing test execution with outcome FAIL.
 p242
 ttRp243
