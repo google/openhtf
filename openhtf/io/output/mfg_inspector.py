@@ -387,7 +387,7 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
   class _MemStorage(oauth2client.client.Storage):
     """Helper Storage class that keeps credentials in memory."""
     def __init__(self):
-      self._lock = threading.Lock()
+      self._lock = threading.lock()
       self._credentials = None
 
     def acquire_lock(self):

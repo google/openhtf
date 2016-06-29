@@ -33,11 +33,11 @@ until they are closed explicitly.  This means there's no point in keeping a
 stream around ShellService, we need to keep an AdbConnection around instead.
 
 Some examples of how to use this service:
-  adb_cnxn = adb_protocol.AdbConnection.Connect(my_transport)
+  adb_cnxn = adb_protocol.AdbConnection.connect(my_transport)
   shell = shell_service.ShellService(adb_cnxn)
 
   # Run a simple command.
-  output = shell.Command('echo foo')
+  output = shell.command('echo foo')
   # output == 'foo\r\n'
 
   # Run a command that outputs binary data, like recording a minute of audio.
@@ -45,16 +45,16 @@ Some examples of how to use this service:
 
   # Run a command in the background, do some other stuff, then read the
   # command's output, waiting on it to complete.
-  cmd = shell.AsyncCommand('echo foo; sleep 10')
-  bar = shell.Command('echo bar')
+  cmd = shell.async_command('echo foo; sleep 10')
+  bar = shell.command('echo bar')
   foo = cmd.Wait()
-  baz = shell.Command('echo baz')
+  baz = shell.command('echo baz')
 
   # A version using a with context to do the same thing:
-  with shell.AsyncCommand('echo foo; sleep 10') as c:
-    bar = shell.Command('echo bar')
+  with shell.async_command('echo foo; sleep 10') as c:
+    bar = shell.command('echo bar')
     foo = c.Wait()
-  baz = shell.Command('echo baz')
+  baz = shell.command('echo baz')
 
   # Run a command in the background while we do some other stuff, save the
   # output to a StringIO buffer so we can access it later.  Use a context to
@@ -78,7 +78,7 @@ from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
 
 
-class AsyncCommandHandle(object):
+class async_commandHandle(object):
   """This class is used for interacting with an asynchronous command.
 
   This handle is used to close a command or to wait on it to complete. Data is
@@ -95,7 +95,7 @@ class AsyncCommandHandle(object):
   """
 
   def __init__(self, stream, stdin, stdout, timeout, is_raw):  #pylint: disable=too-many-arguments
-    """Create a handle to use for interfacing with an AsyncCommand.
+    """Create a handle to use for interfacing with an async_command.
 
     Args:
       stream: Stream to use for communicating with the running command.
@@ -138,12 +138,12 @@ class AsyncCommandHandle(object):
     # operations to raise.  Since we're in a separate thread, it'll just get
     # ignored, which is what we want.
     reader = self.stdin.read if is_raw else self.stdin.readline
-    while not self.stream.IsClosed():
-      self.stream.Write(reader(adb_protocol.MAX_ADB_DATA))
+    while not self.stream.is_closed():
+      self.stream.write(reader(adb_protocol.MAX_ADB_DATA))
 
   def _ReaderThread(self):
     """Read until the stream is closed."""
-    for data in self.stream.ReadUntilClose():
+    for data in self.stream.read_until_close():
       if self.stdout is not None:
         self.stdout.write(data)
 
@@ -163,7 +163,7 @@ class AsyncCommandHandle(object):
 
   def IsDone(self):
     """Return True if this command has completed."""
-    return self.stream.IsClosed()
+    return self.stream.is_closed()
 
   def Wait(self, timeout_ms=None):
     """Block until this command has completed.
@@ -180,7 +180,7 @@ class AsyncCommandHandle(object):
     """
     closed = timeouts.LoopUntilTimeoutOrTrue(
         timeouts.PolledTimeout.FromMillis(timeout_ms),
-        self.stream.IsClosed, .1)
+        self.stream.is_closed, .1)
     if closed:
       if hasattr(self.stdout, 'getvalue'):
         return self.stdout.getvalue()
@@ -219,18 +219,18 @@ class ShellService(object):
             '0 0x3 0x1c 0x7f 0x15 0x4 0xff '  # Control characters
             '&>/dev/null;%s' % command)
 
-  def Command(self, command, raw=False, timeout_ms=None):
+  def command(self, command, raw=False, timeout_ms=None):
     """Run the given command and return the output."""
-    return ''.join(self.StreamingCommand(command, raw, timeout_ms))
+    return ''.join(self.streaming_command(command, raw, timeout_ms))
 
-  def StreamingCommand(self, command, raw=False, timeout_ms=None):
+  def streaming_command(self, command, raw=False, timeout_ms=None):
     """Run the given command and yield the output as we receive it."""
     if raw:
       command = self._ToRawCommand(command)
-    return self.adb_connection.StreamingCommand('shell', command, timeout_ms)
+    return self.adb_connection.streaming_command('shell', command, timeout_ms)
 
   # pylint: disable=too-many-arguments
-  def AsyncCommand(self, command, stdin=None, stdout=None, raw=False,
+  def async_command(self, command, stdin=None, stdout=None, raw=False,
                    timeout_ms=None):
     """Run the given command on the device asynchronously.
 
@@ -251,7 +251,7 @@ class ShellService(object):
       timeout_ms: Timeout for the command, in milliseconds.
 
     Returns:
-      An AsyncCommandHandle instance that can be used to send/receive data to
+      An async_commandHandle instance that can be used to send/receive data to
     and from the command or wait on the command to finish.
 
     Raises:
@@ -261,7 +261,7 @@ class ShellService(object):
     timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
     if raw:
       command = self._ToRawCommand(command)
-    stream = self.adb_connection.OpenStream('shell:%s' % command, timeout)
+    stream = self.adb_connection.open_stream('shell:%s' % command, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
           '%s does not support service: shell', self)
@@ -269,7 +269,7 @@ class ShellService(object):
       # Short delay to make sure the ioctl to set raw mode happens before we do
       # any writes to the stream, if we don't do this bad things happen...
       time.sleep(.1)
-    return AsyncCommandHandle(stream, stdin, stdout, timeout, raw)
+    return async_commandHandle(stream, stdin, stdout, timeout, raw)
   # pylint: enable=too-many-arguments
 
   @classmethod

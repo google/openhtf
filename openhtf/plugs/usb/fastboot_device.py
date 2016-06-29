@@ -42,11 +42,11 @@ class FastbootDevice(object):
     """Return our USB handle."""
     return self._protocol.usb_handle
 
-  def SetBootconfig(self, name, value):
+  def set_boot_config(self, name, value):
     """Set the boot configuration."""
-    self.Oem('bootconfig %s %s' % (name, value))
+    self.oem('bootconfig %s %s' % (name, value))
 
-  def GetBootconfig(self, name, info_cb=None):
+  def get_boot_config(self, name, info_cb=None):
     """Get bootconfig, either as full dict or specific value for key."""
     result = {}
     def default_info_cb(msg):
@@ -56,15 +56,15 @@ class FastbootDevice(object):
       key, value = msg.message.split(':', 1)
       result[key.strip()] = value.strip()
     info_cb = info_cb or default_info_cb
-    final_result = self.Oem('bootconfig %s' % name, info_cb=info_cb)
+    final_result = self.oem('bootconfig %s' % name, info_cb=info_cb)
     # Return INFO messages before the final OKAY message.
     if name in result:
       return result[name]
     return final_result
 
-  def Lock(self):
+  def lock(self):
     """Lock the device."""
-    self.Oem('lock', timeout_ms=1000)
+    self.oem('lock', timeout_ms=1000)
 
   def Close(self):
     """Close the device."""
@@ -96,7 +96,7 @@ class FastbootDevice(object):
     return val
 
   @classmethod
-  def Connect(cls, usb_handle, **kwargs):
+  def connect(cls, usb_handle, **kwargs):
     """Connect to the device.
 
     Args:

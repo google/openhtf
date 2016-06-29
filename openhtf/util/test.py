@@ -167,8 +167,7 @@ class PhaseOrTestIterator(collections.Iterator):
     self.plug_manager.InitializePlugs(plug_cls for plug_cls in plug_types if
                                       plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.UpdatePlug(plug_type, plug_value)
-
+      self.plug_manager.update_plug(plug_type, plug_value)
 
   @conf.SaveAndRestore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
@@ -197,11 +196,11 @@ class PhaseOrTestIterator(collections.Iterator):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.UpdatePlug(plug_type, plug_value)
+      self.plug_manager.update_plug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
     record_saver = util.NonLocalResult()
-    test.AddOutputCallbacks(
+    test.add_output_callbacks(
         lambda record: setattr(record_saver, 'result', record))
 
     # Mock the PlugManager to use ours instead, and execute the test.

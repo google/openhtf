@@ -19,7 +19,7 @@ This protocol is build on top of ADB streams, see adb_protocol.py for a high
 level overview of this ADB protocol implementation. Note that we only implement
 the host side of the protocol here, not the device side.
 
-adb_cnxn = adb_protocol.AdbConnection.Connect(usb_transport)
+adb_cnxn = adb_protocol.AdbConnection.connect(usb_transport)
 filesync = filesync_service.FilesyncService.UsingConnection(adb_cnxn)
 stat = filesync.Stat('/bin/sh')
 print 'Stat: ', stat
@@ -173,7 +173,7 @@ class FilesyncService(object):
     """Return device file stat."""
     transport = StatFilesyncTransport(self.stream)
     transport.WriteData('STAT', filename, timeout)
-    stat_msg = transport.ReadMessage(timeout)
+    stat_msg = transport.read_message(timeout)
     stat_msg.AssertCommandIs('STAT')
     return DeviceFileStat(filename, stat_msg.mode, stat_msg.size, stat_msg.time)
 
@@ -217,7 +217,7 @@ class FilesyncService(object):
       AdbRemoteError: If a 'FAIL' is read, otherwise raises exc_info.
     """
     try:
-      transport.ReadMessage(timeout)
+      transport.read_message(timeout)
     except usb_exceptions.CommonUsbError:
       # If we got a remote error, raise that exception.
       if sys.exc_info()[0] is usb_exceptions.AdbRemoteError:
@@ -252,7 +252,7 @@ class FilesyncService(object):
         transport.WriteData('DATA', data, timeout)
 
       mtime = mtime or int(time.time())
-      transport.WriteMessage(
+      transport.write_message(
           FilesyncMessageTypes.DoneMessage('DONE', mtime), timeout)
     except usb_exceptions.AdbStreamClosedError:
       # Try to do one last read to see if we can get any more information,
@@ -260,7 +260,7 @@ class FilesyncService(object):
       # raises, either a new AdbRemoteError, or the AdbStreamClosedError.
       self._CheckForFailMessage(transport, sys.exc_info(), timeout)
 
-    data_msg = transport.ReadMessage(timeout)
+    data_msg = transport.read_message(timeout)
     data_msg.AssertCommandIs('OKAY')
 
   # pylint: enable=too-many-arguments
@@ -268,7 +268,7 @@ class FilesyncService(object):
   @classmethod
   def UsingConnection(cls, connection, timeout=None):
     """Create a new FilesyncService using the given AdbConnection."""
-    return cls(connection.OpenStream('sync:', timeout))
+    return cls(connection.open_stream('sync:', timeout))
 
 
 class AbstractFilesyncTransport(object):
@@ -360,10 +360,10 @@ class AbstractFilesyncTransport(object):
 
   def WriteData(self, command, data, timeout=None):
     """Shortcut for writing specifically a DataMessage."""
-    self.WriteMessage(FilesyncMessageTypes.DataMessage(command, data), timeout)
+    self.write_message(FilesyncMessageTypes.DataMessage(command, data), timeout)
 
   # pylint: disable=protected-access
-  def WriteMessage(self, msg, timeout=None):
+  def write_message(self, msg, timeout=None):
     """Write an arbitrary message (of one of the types above).
 
     For the host side implementation, this will only ever be a DataMessage, but
@@ -380,10 +380,10 @@ class AbstractFilesyncTransport(object):
       data = msg[-1]
       replace_dict[msg._fields[-1]] = len(data)
 
-    self.stream.Write(struct.pack(msg.struct_format,
+    self.stream.write(struct.pack(msg.struct_format,
                                   *msg._replace(**replace_dict)), timeout)
     if msg.has_data:
-      self.stream.Write(data, timeout)
+      self.stream.write(data, timeout)
 
   # pylint: enable=protected-access
 
@@ -399,19 +399,19 @@ class AbstractFilesyncTransport(object):
       timeout: The timeouts.PolledTimeout to use for this operation.
 
     Yields:
-      Messages read, of type self.RECV_MSG_TYPE, see ReadMessage().
+      Messages read, of type self.RECV_MSG_TYPE, see read_message().
 
     Raises:
       AdbProtocolError: If an unexpected command is read.
       AdbRemoteError: If a 'FAIL' message is read.
     """
-    message = self.ReadMessage(timeout)
+    message = self.read_message(timeout)
     while message.command != 'DONE':
       message.AssertCommandIs(command)
       yield message
-      message = self.ReadMessage(timeout)
+      message = self.read_message(timeout)
 
-  def ReadMessage(self, timeout=None):
+  def read_message(self, timeout=None):
     """Read a message from this transport and return it.
 
     Reads a message of RECV_MSG_TYPE and returns it.  Note that this method
@@ -428,7 +428,7 @@ class AbstractFilesyncTransport(object):
       AdbProtocolError: If an invalid response is received.
       AdbRemoteError: If a FAIL response is received.
     """
-    raw_data = self.stream.Read(
+    raw_data = self.stream.read(
         struct.calcsize(self.RECV_MSG_TYPE.struct_format), timeout)
     try:
       raw_message = struct.unpack(self.RECV_MSG_TYPE.struct_format, raw_data)
@@ -449,7 +449,7 @@ class AbstractFilesyncTransport(object):
       # in the struct.  We do another read and swap out that length for the
       # actual data read before we create the namedtuple to return.
       data_len = raw_message[-1]
-      raw_message = raw_message[:-1] + (self.stream.Read(data_len, timeout),)
+      raw_message = raw_message[:-1] + (self.stream.read(data_len, timeout),)
 
     if raw_message[0] not in self.VALID_RESPONSES:
       raise usb_exceptions.AdbProtocolError(

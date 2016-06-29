@@ -155,10 +155,10 @@ class Test(object):
       if self._executor:
         return self._executor.test_state
 
-  def GetOption(self, option):
+  def get_option(self, option):
     return getattr(self._test_options, option)
 
-  def AddOutputCallbacks(self, *callbacks):
+  def add_output_callbacks(self, *callbacks):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
@@ -167,7 +167,7 @@ class Test(object):
 
     Valid kwargs:
       output_callbacks: List of output callbacks to run, typically it's better
-          to use AddOutputCallbacks(), but you can pass [] here to reset them.
+          to use add_output_callbacks(), but you can pass [] here to reset them.
       teardown_function: Function to run at teardown.  We pass the same
           arguments to it as a phase.
     """
@@ -412,7 +412,7 @@ class PhaseDescriptor(mutablerecords.Record(
       The return value from calling the underlying function.
     """
     kwargs = dict(self.extra_kwargs)
-    kwargs.update(test_state.plug_manager.ProvidePlugs(
+    kwargs.update(test_state.plug_manager.provide_plugs(
         (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
     # Pass in test_api if the phase takes *args, or **kwargs with at least 1

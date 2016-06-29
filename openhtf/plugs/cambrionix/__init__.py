@@ -43,7 +43,7 @@ class EtherSync(object):
     addr_info[2] = 'EtherSync'
     self._addr=''.join(addr_info[2:])
 
-  def GetUSBSerial(self, port_num):
+  def get_usb_serial(self, port_num):
     """Get the device serial number
 
     Args:
@@ -70,7 +70,7 @@ class EtherSync(object):
       raise ValueError('No USB device detected')
     return serial
 
-  def OpenUSBHandle(self, port_num):
+  def open_usb_handle(self, port_num):
     """open usb port
 
     Args:
@@ -79,5 +79,5 @@ class EtherSync(object):
     Return:
       usb handle
     """
-    serial = self.GetUSBSerial(port_num)
+    serial = self.get_usb_serial(port_num)
     return local_usb.LibUsbHandle.Open(serial_number=serial)

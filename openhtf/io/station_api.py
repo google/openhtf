@@ -553,7 +553,7 @@ class StationApi(object):
     """
     retval = [{
         'test_uid': test.uid,
-        'test_name': test.GetOption('name'),
+        'test_name': test.get_option('name'),
         'created_time_millis': long(test.created_time_millis),
         'last_run_time_millis':
             test.last_run_time_millis and long(test.last_run_time_millis),

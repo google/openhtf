@@ -1,3 +1,4 @@
+
 # Copyright 2014 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,7 +77,7 @@ def _open_usb_handle(**kwargs):
         raise ValueError('Ethersync needs mac_addr and plug_port to be set')
       else:
         ethersync = cambrionix.EtherSync(mac_addr)
-        serial = ethersync.GetUSBSerial(port)
+        serial = ethersync.get_usb_serial(port)
 
   return local_usb.LibUsbHandle.Open(serial_number=serial, **kwargs)
 
@@ -86,12 +87,12 @@ class FastbootPlug(plugs.BasePlug):
   """Plug that provides fastboot."""
 
   def __new__(cls):
-    device = fastboot_device.FastbootDevice.Connect(
+    device = fastboot_device.FastbootDevice.connect(
         _open_usb_handle(
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
             interface_protocol=fastboot_device.PROTOCOL))
-    device.TearDown = device.Close  # pylint: disable=invalid-name
+    device.tear_down = device.Close  # pylint: disable=invalid-name
     return device
 
 
@@ -103,13 +104,13 @@ class AdbPlug(plugs.BasePlug):
     if conf.libusb_rsa_key:
       kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
 
-    device = adb_device.AdbDevice.Connect(
+    device = adb_device.AdbDevice.connect(
         _open_usb_handle(
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),
         **kwargs)
-    device.TearDown = device.Close  # pylint: disable=invalid-name
+    device.tear_down = device.Close  # pylint: disable=invalid-name
     return device
 
 

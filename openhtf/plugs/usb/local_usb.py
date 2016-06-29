@@ -104,7 +104,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
     self._handle = handle
     self._interface_number = iface_number
 
-  def IsClosed(self):
+  def is_closed(self):
     return self._handle is None
 
   @staticmethod
@@ -120,7 +120,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
     return self._DeviceToSysfsPath(self._device)
 
   @usb_handle.RequiresOpenHandle
-  def Read(self, length, timeout_ms=None):
+  def read(self, length, timeout_ms=None):
     try:
       return self._handle.bulkRead(
           self._read_endpoint, length,
@@ -131,7 +131,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
           self._TimeoutOrDefault(timeout_ms))
 
   @usb_handle.RequiresOpenHandle
-  def Write(self, data, timeout_ms=None):
+  def write(self, data, timeout_ms=None):
     try:
       return self._handle.bulkWrite(
           self._write_endpoint, data,
@@ -142,7 +142,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
           self._TimeoutOrDefault(timeout_ms))
 
   def Close(self):
-    if self.IsClosed():
+    if self.is_closed():
       return
 
     try:

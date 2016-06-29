@@ -21,7 +21,7 @@ teardown of the objects.
 
 Test phases can be decorated as using Plug objects, which then get passed
 into the test via parameters.  Plugs are all instantiated at the
-beginning of a test, and all plugs' TearDown() methods are called at the
+beginning of a test, and all plugs' tear_down() methods are called at the
 end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 
@@ -46,7 +46,7 @@ Example implementation of a plug:
     def DoSomething(self):
       print '%s doing something!' % type(self).__name__
 
-    def TearDown(self):
+    def tear_down(self):
       # This method is optional.  If implemented, it will be called at the end
       # of the test.
       print 'Tearing down %s!' % type(self).__name__
@@ -156,7 +156,7 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     """
     return {}
 
-  def TearDown(self):
+  def tear_down(self):
     """This method is called automatically at the end of each Test execution."""
     pass
 
@@ -293,7 +293,7 @@ class PlugManager(object):
   """Class to manage the lifetimes of plugs.
 
   This class handles instantiation of plugs at test start and calling
-  TearDown() on all plugs when the test completes.  It is used by
+  tear_down() on all plugs when the test completes.  It is used by
   the executor, and should not be instantiated outside the framework itself.
 
   Note this class is not thread-safe.  It should only ever be used by the
@@ -318,7 +318,7 @@ class PlugManager(object):
             'xmlrpc_port': self._xmlrpc_server and
                            self._xmlrpc_server.socket.getsockname()[1]}
 
-  def _InitializeRpcServer(self):
+  def _initialize_rpc_server(self):
     """Initialize and start an XMLRPC server for current plug types.
 
     If any plugs we currently know about have enable_remote set True, then
@@ -355,7 +355,7 @@ class PlugManager(object):
       server_thread.start()
       self._xmlrpc_server = server
 
-  def InitializePlugs(self, plug_types=None):
+  def initialize_plugs(self, plug_types=None):
     """Instantiate required plugs.
 
     Instantiates known plug types and saves the instances in self._plugs_by_type
@@ -381,12 +381,12 @@ class PlugManager(object):
           setattr(plug_instance, 'logger', self._logger)
       except Exception:  # pylint: disable=broad-except
         _LOG.error('Exception insantiating plug type %s', plug_type)
-        self.TearDownPlugs()
+        self.tear_down_plugs()
         raise
-      self.UpdatePlug(plug_type, plug_instance)
+      self.update_plug(plug_type, plug_instance)
     self._InitializeRpcServer()
 
-  def UpdatePlug(self, plug_type, plug_value):
+  def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.
 
     Safely tears down the old instance if one was already created, but that's
@@ -404,18 +404,18 @@ class PlugManager(object):
     self._plugs_by_name[
         '.'.join((plug_type.__module__, plug_type.__name__))] = plug_value
 
-  def ProvidePlugs(self, plug_name_map):
+  def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
     return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}
 
-  def TearDownPlugs(self):
-    """Call TearDown() on all instantiated plugs.
+  def tear_down_plugs(self):
+    """Call tear_down() on all instantiated plugs.
 
-    Note that InitializePlugs must have been called before calling
-    this method, and InitializePlugs must be called again after calling
+    Note that initialize_plugs must have been called before calling
+    this method, and initialize_plugs must be called again after calling
     this method if you want to access the plugs attribute again.
 
-    Any exceptions in TearDown() methods are logged, but do not get raised
+    Any exceptions in tear_down() methods are logged, but do not get raised
     by this method.
     """
     if self._xmlrpc_server:
@@ -426,7 +426,7 @@ class PlugManager(object):
     _LOG.debug('Tearing down all plugs.')
     for plug in self._plugs_by_type.itervalues():
       try:
-        plug.TearDown()
+        plug.tear_down()
       except Exception:  # pylint: disable=broad-except
         _LOG.warning('Exception calling TearDown on %s:', plug, exc_info=True)
     self._plugs_by_type.clear()

@@ -128,11 +128,11 @@ class TestExecutor(threads.KillableThread):
           # call to stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          self.test_state.plug_manager.TearDownPlugs()
+          self.test_state.plug_manager.tear_down_plugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self.test_state.plug_manager.TearDownPlugs)
+        exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
 
         # Perform initialization of some top-level stuff we need.
         executor = self._make_phase_executor(exit_stack)
