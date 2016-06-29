@@ -180,6 +180,40 @@ virtualenv venv
 python setup.py develop
 ```
 
+### MacOS
+We will use [Homebrew](http://brew.sh/) to install our dependencies and Pip to set up the virtualenv. We recommend installing [Xcode](https://developer.apple.com/xcode/) first as the GCC compiler will be needed for both; however, other GCC compilers not associated with Xcode may work just as well. 
+
+```bash
+# Install dependencies.
+brew install pkg-config libffi
+brew install protobuf
+
+# Clone into the repo.
+git clone https://github.com/google/openhtf.git
+
+# Install pip.
+sudo easy_install pip
+
+# Make sure pip is up to date.
+sudo pip install --upgrade pip
+
+# Install virtualenv via pip.
+sudo pip install virtualenv
+
+# Change to the openhtf directory.
+cd openhtf
+
+# Create a new virtualenv.
+virtualenv venv
+
+# Activate the new virtualenv.
+. venv/bin/activate
+
+# Install openhtf into the virtualenv in dev mode.
+python setup.py develop
+```
+
+If you're having issues with the python setup, it's possible that the problem is due to El Capitan not including ssl headers. This [link](http://adarsh.io/bundler-failing-on-el-capitan/) may help you in that regard. 
 
 ## Web Frontend Development
 OpenHTF ships with a built-in web gui found in the `openhtf.io.frontend` module.
