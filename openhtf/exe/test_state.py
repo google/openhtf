@@ -73,7 +73,7 @@ class TestState(object):
   def __del__(self):
     self.logger.removeHandler(self._record_handler)
 
-  def AsJSON(self):
+  def as_json(self):
     """Return JSON representation of the test's serialized state."""
     return json.dumps(data.ConvertToBaseTypes(self))
 
@@ -87,7 +87,7 @@ class TestState(object):
         'pending_phases': [(phase.func.__name__, phase.func.__doc__)
                            for phase in self.pending_phases]}
 
-  def GetLastRunPhaseName(self):
+  def get_last_run_phase_name(self):
     """Get the name of the currently running phase, or None.
 
     Note that this name is not guaranteed to still be accurate by the time this
@@ -100,7 +100,7 @@ class TestState(object):
       return self.running_phase_record.name
     return None
 
-  def SetStateFromPhaseOutcome(self, phase_outcome):
+  def set_state_from_phase_outcome(self, phase_outcome):
     """Set our internal state based on the given phase outcome.
 
     Args:
@@ -125,11 +125,11 @@ class TestState(object):
 
     return self._state == self.State.COMPLETED
 
-  def SetStateRunning(self):
+  def set_state_running(self):
     """Mark the test as actually running (as opposed to CREATED)."""
     self._state = self.State.RUNNING
 
-  def SetStateFinished(self):
+  def set_state_finished(self):
     """Mark the state as finished, only called if the test ended normally."""
     if any(meas.outcome != measurements.Outcome.PASS
            for phase in self.record.phases
@@ -138,7 +138,7 @@ class TestState(object):
     else:
       self.record.outcome = test_record.Outcome.PASS
 
-  def GetFinishedRecord(self):
+  def get_finished_record(self):
     """Get a test_record.TestRecord for the finished test.
 
     Should only be called once at the conclusion of a test run, and will raise
@@ -170,6 +170,6 @@ class TestState(object):
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
         type(self).__name__, self.record.dut_id, self.record.station_id,
-        self.GetLastRunPhaseName(),
+        self.get_last_run_phase_name(),
     )
   __repr__ = __str__

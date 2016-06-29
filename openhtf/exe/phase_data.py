@@ -86,7 +86,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
                    mimetype, name)
     self.attachments[name] = test_record.Attachment(data, mimetype)
 
-  def AttachFromFile(self, filename, name=None, mimetype=None):
+  def attach_from_file(self, filename, name=None, mimetype=None):
     """Store the contents of the given filename as an attachment.
 
     Args:
@@ -108,7 +108,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
               filename)[0])
 
   @contextlib2.contextmanager
-  def RecordPhaseTiming(self, phase, running_phase_record):
+  def record_phase_timing(self, phase, running_phase_record):
     """Context manager for the execution of a single phase.
 
     This method performs some pre-phase setup on self (for measurements), and

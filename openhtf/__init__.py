@@ -141,7 +141,7 @@ class Test(object):
       if self._executor:
         # TestState str()'s nicely to a descriptive string, so let's log that
         # just for good measure.
-        _LOG.error('Test state: %s', self._executor.GetState())
+        _LOG.error('Test state: %s', self._executor.get_state())
         self._executor.Stop()
         self._executor = None
     # The default SIGINT handler does this. If we don't, then nobody above
@@ -170,7 +170,7 @@ class Test(object):
       self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager(),
                                         self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.data.code_info.name)
-      self._executor.SetTestStart(test_start)
+      self._executor.set_test_start(test_start)
       http_server = None
       if self._test_options.http_port:
         http_server = http_api.Server(
@@ -184,8 +184,8 @@ class Test(object):
     finally:
       # If the framework doesn't transition from INITIALIZING to EXECUTING
       # then test state isn't set and there's no record to output.
-      if self._executor and self._executor.GetState():
-        record = self._executor.GetState().GetFinishedRecord()
+      if self._executor and self._executor.get_state():
+        record = self._executor.get_state().get_finished_record()
         self.OutputTestRecord(record)
       if http_server:
         http_server.Stop()

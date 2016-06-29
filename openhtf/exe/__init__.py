@@ -85,7 +85,7 @@ class TestExecutor(threads.KillableThread):
             'prompt': user_input.get_prompt_manager().prompt,
             'status': self._status.name}
 
-  def SetTestStart(self, test_start):
+  def set_test_start(self, test_start):
     self._test_start = test_start
 
   def Start(self):
@@ -104,11 +104,11 @@ class TestExecutor(threads.KillableThread):
     """Waits until death."""
     self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
 
-  def GetState(self):
+  def get_state(self):
     """Return the current TestState object."""
     return self._test_state
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     """Handles one whole test from start to finish."""
     self._exit_stack = None
     self._test_state = None
@@ -128,9 +128,9 @@ class TestExecutor(threads.KillableThread):
       # self._lock while we do this, or else calls to Stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
-      dut_id = self._WaitForTestStart(suppressor)
+      dut_id = self._wait_for_test_start(suppressor)
       self._status = self.FrameworkStatus.INITIALIZING
-      self._InitializePlugs(suppressor)
+      self._initialize_plugs(suppressor)
 
       with self._lock:
         if not self._exit_stack:
@@ -145,8 +145,8 @@ class TestExecutor(threads.KillableThread):
         exit_stack.callback(self._plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
-        self._test_state = self._MakeTestState(dut_id, suppressor)
-        executor = self._MakePhaseExecutor(exit_stack, suppressor)
+        self._test_state = self._make_test_state(dut_id, suppressor)
+        executor = self._make_phase_executor(exit_stack, suppressor)
 
       # Everything is set, set status and begin test execution.  Note we don't
       # protect this with a try: block because the PhaseExecutor handles any
@@ -155,10 +155,10 @@ class TestExecutor(threads.KillableThread):
       # changes (like the transition to FINISHING).
       self._status = self.FrameworkStatus.EXECUTING
       suppressor.failure_reason = 'Failed to execute test.'
-      self._ExecuteTestPhases(executor)
+      self._execute_test_phases(executor)
       self._status = self.FrameworkStatus.FINISHING
 
-  def _WaitForTestStart(self, suppressor):
+  def _wait_for_test_start(self, suppressor):
     """Wait for the test start trigger to return a DUT ID."""
     if self._test_start is None:
       return
@@ -166,19 +166,19 @@ class TestExecutor(threads.KillableThread):
     suppressor.failure_reason = 'TEST_START failed to complete.'
     return self._test_start()
 
-  def _MakeTestState(self, dut_id, suppressor):
+  def _make_test_state(self, dut_id, suppressor):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
     return test_state.TestState(
         self._test_data, self._plug_manager, dut_id, conf.station_id)
 
-  def _InitializePlugs(self, suppressor):
+  def _initialize_plugs(self, suppressor):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
     self._plug_manager.InitializePlugs(self._test_data.plug_types)
 
-  def _MakePhaseExecutor(self, exit_stack, suppressor):
+  def _make_phase_executor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""
     suppressor.failure_reason = 'Unable to initialize Executor.'
     executor = phase_executor.PhaseExecutor(self._test_state)
@@ -205,14 +205,14 @@ class TestExecutor(threads.KillableThread):
     exit_stack.push(optionally_stop)
     return executor
 
-  def _ExecuteTestPhases(self, executor):
+  def _execute_test_phases(self, executor):
     """Executes one test's phases from start to finish."""
-    self._test_state.SetStateRunning()
-    for phase_outcome in executor.ExecutePhases():
-      if self._test_state.SetStateFromPhaseOutcome(phase_outcome):
+    self._test_state.set_state_running()
+    for phase_outcome in executor.execute_phases():
+      if self._test_state.set_state_from_phase_outcome(phase_outcome):
         break
     else:
-      self._test_state.SetStateFinished()
+      self._test_state.set_state_finished()
     # Run teardown function.
     if self._teardown_function:
-      executor._ExecuteOnePhase(self._teardown_function, skip_record=True)
+      executor._execute_one_phase(self._teardown_function, skip_record=True)

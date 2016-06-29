@@ -35,16 +35,16 @@ from openhtf.io import user_input
 _LOG = logging.getLogger(__name__)
 
 
-def AutoStart(serial='UNKNOWN_DUT_ID'):  # pylint: disable=invalid-name
+def auto_start(serial='UNKNOWN_DUT_ID'):  # pylint: disable=invalid-name
   """DEPRECATED, use a lambda instead."""
   # TODO(madsci): Remove this after transitionary period.  Note it was broken
   # before (it should have returned lambda: serial), so I doubt anyone is
   # actually using it, but just to be safe.
   raise AttributeError(
-      'DEPRECATED, use lambda: "foo" instead of AutoStart("Foo")')
+      'DEPRECATED, use lambda: "foo" instead of auto_start("Foo")')
 
 
-def PromptForTestStart(message='Provide a DUT ID in order to start the test.',
+def prompt_for_test_start(message='Provide a DUT ID in order to start the test.',
                        text_input=True, timeout_s=60*60*24):
   """Make a test start trigger based on prompting the user for input."""
   def trigger():  # pylint: disable=missing-docstring

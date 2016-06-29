@@ -77,7 +77,7 @@ class _MonitorThread(threads.KillableThread):
               if arg in arg_info.args}
     return self.monitor_phase.WithArgs(**args)(self.phase_data)
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     measurement = getattr(self.phase_data.measurements, self.measurement_name)
     start_time = time.time()
     last_poll_time = start_time

@@ -89,7 +89,7 @@ def dimensions(test):
 
 def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
-  test.AttachFromFile('example_attachment.txt')
+  test.attach_from_file('example_attachment.txt')
 
 def teardown(test):
   test.logger.info('Running teardown')
@@ -115,4 +115,4 @@ if __name__ == '__main__':
   #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
   test.Configure(http_port=None, teardown_function=teardown)
-  test.Execute(test_start=triggers.PromptForTestStart())
+  test.Execute(test_start=triggers.prompt_for_test_start())

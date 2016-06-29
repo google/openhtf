@@ -178,7 +178,7 @@ class PhaseOrTestIterator(collections.Iterator):
     phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
 
     # Actually execute the phase, saving the result in our return value.
-    with phasedata.RecordPhaseTiming(phase, phase_record):
+    with phasedata.record_phase_timing(phase, phase_record):
       try:
         phase_record.result = phase_executor.PhaseOutcome(phase(phasedata))
       except Exception as exc:
