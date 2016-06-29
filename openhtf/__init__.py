@@ -297,8 +297,7 @@ class PhaseOptions(mutablerecords.Record(
 
   Attributes:
     timeout_s: Timeout to use for the phase, in seconds.
-    run_if: Callback that decides whether to run the phase or not.  The
-      callback will be passed the phase_data the phase would be run with.
+    run_if: Callback that decides whether to run the phase or not.
 
   Example Usage:
     @PhaseOptions(timeout_s=1)
@@ -327,7 +326,7 @@ class PhaseDescriptor(mutablerecords.Record(
   """Phase function and related information.
 
   Attributes:
-    func: Function to be called (with phase_data as first argument).
+    func: Function to be called (with test_api as first argument).
     code_info: Info about the source code of func.
     options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
@@ -348,7 +347,7 @@ class PhaseDescriptor(mutablerecords.Record(
       A new PhaseDescriptor object.
     """
     if not isinstance(func, cls):
-      func = cls(func, test_record.CodeInfo.ForFunction(func))
+      return cls(func, test_record.CodeInfo.ForFunction(func))
     # We want to copy so that a phase can be reused with different options, etc.
     return mutablerecords.CopyRecord(func)
 
@@ -369,19 +368,75 @@ class PhaseDescriptor(mutablerecords.Record(
     new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
     return new_info
 
-  def __call__(self, phase_data):
+  def __call__(self, test_state):
     kwargs = dict(self.extra_kwargs)
-    kwargs.update(phase_data.plug_manager.ProvidePlugs(
+    kwargs.update(test_state.plug_manager.ProvidePlugs(
         (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
-    # Pass in phase_data if it takes *args, or **kwargs with at least 1
+    # Pass in test_api if the phase takes *args, or **kwargs with at least 1
     # positional, or more positional args than we have keyword args.
     if arg_info.varargs or (arg_info.keywords and len(arg_info.args) >= 1) or (
         len(arg_info.args) > len(kwargs)):
-      # Underlying function has room for phase_data as an arg. If it doesn't
+      # Underlying function has room for test_api as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
-      return self.func(phase_data, **kwargs)
+      return self.func(test_state.test_api, **kwargs)
     return self.func(**kwargs)
+
+
+class TestApi(collections.namedtuple('TestApi', [
+    'logger', 'state', 'test_record', 'measurements', 'attachments',
+    'Attach', 'AttachFromFile'])):
+  """Class passed to test phases as the first argument.
+
+  Attributes:
+    attachments: Dict mapping attachment name to test_record.Attachment
+        instance containing the data that was attached (and the MIME type
+        that was assumed based on extension, if any).  Only attachments
+        that have been attached in the current phase show up here, and this
+        attribute should not be modified directly, use TestApi.Attach() or
+        TestApi.AttachFromFile() instead.
+
+    dut_id: This attribute provides getter and setter access to the DUT ID
+        of the device under test by the currently running openhtf.Test.  A
+        non-empty DUT ID *must* be set by the end of a test, or no output
+        will be produced.  It may be set via return value from a callable
+        test_start argument to openhtf.Test.Execute(), or may be set in a
+        test phase via this attribute.
+
+    logger: A Python Logger instance that can be used to log to the resulting
+        TestRecord.  This object supports all the usual log levels, and
+        outputs to stdout (configurable) and the frontend via the Station
+        API, if it's enabled, in addition to the 'log_records' attribute
+        of the final TestRecord output by the running test.
+
+    measurements: A measurements.Collection object used to get/set
+        measurement values.  See util/measurements.py for more implementation
+        details, but in the simple case, set measurements directly as
+        attributes on this object (see examples/measurements.py for examples).
+
+    state: A dict (initially empty) that is persisted across test phases (but
+        resets for every invokation of Execute() on an openhtf.Test).  This
+        can be used for any test-wide state you need to persist across phases.
+        Use this with caution, however, as it is not persisted in the output
+        TestRecord or displayed on the web frontend in any way.     
+
+    test_record: A reference to the output TestRecord for the currently
+        running openhtf.Test.  Direct access to this attribute is *strongly*
+        discouraged, but provided as a catch-all for interfaces not otherwise
+        provided by TestApi.  If you find yourself using this, please file a
+        feature request for an alternative at:
+          https://github.com/google/openhtf/issues/new    
+  """
+  @property
+  def dut_id(self):
+    return self.test_record.dut_id
+
+  @dut_id.setter
+  def dut_id(self, dut_id):
+    if self.test_record.dut_id:
+      self.logger.warning('Overriding previous DUT ID "%s" with "%s".',
+                          self.test_record.dut_id, dut_id)
+    self.test_record.dut_id = dut_id
 
 
 # Register signal handler to stop all tests on SIGINT.

@@ -35,10 +35,6 @@ from openhtf.util import measurements
 _LOG = logging.getLogger(__name__)
 
 
-class DuplicateAttachmentError(Exception):
-  """Raised when two attachments are attached with the same name."""
-
-
 class PhaseData(object):  # pylint: disable=too-many-instance-attributes
   """The phase data object passed to test phases as the first argument.
 

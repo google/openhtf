@@ -140,22 +140,19 @@ def plug(update_kwargs=True, **plugs):
 
   This function returns a decorator for a function that will replace positional
   arguments to that function with the plugs specified.  See the module
-  docstring for details and examples.  Note that the decorator returned can
-  only be used on test phases because it expects the first positional argument
-  to the underyling function to be a phase_data.PhaseData object.
+  docstring for details and examples.
 
   Note this decorator does not work with class or bound methods, but does work
   with @staticmethod.
 
   Args:
-    **plugs: Dict mapping name to Pl.ug type.
+    **plugs: Dict mapping name to Plug type.
 
   Returns:
-    A decorator that wraps a test Phase.
+    A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
 
   Raises:
-    InvalidPlugError: If a type is provided that is not a subclass of
-        BasePlug.
+    InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
   for plug in plugs.itervalues():
     if not issubclass(plug, BasePlug):
@@ -169,22 +166,22 @@ def plug(update_kwargs=True, **plugs):
       func: The function to wrap.
 
     Returns:
-      The wrapper to call.  When called, it will invoke the wrapped function,
+      A PhaseDescriptor that, when called will invoke the wrapped function,
         passing plugs as keyword args.
 
     Raises:
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-    wrapper = openhtf.PhaseDescriptor.WrapOrCopy(func)
-    duplicates = frozenset(wrapper.plugs) & frozenset(plugs)
+    phase_desc = openhtf.PhaseDescriptor.WrapOrCopy(func)
+    duplicates = frozenset(phase_desc.plugs) & frozenset(plugs)
     if duplicates:
       raise DuplicatePlugError(
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
-    wrapper.plugs.extend([
+    phase_desc.plugs.extend([
         openhtf.PhasePlug(name, plug, update_kwargs=update_kwargs)
         for name, plug in plugs.iteritems()])
-    return wrapper
+    return phase_desc
   return result
 
 
@@ -199,14 +196,24 @@ class PlugManager(object):
   main framework thread anyway.
 
   Attributes:
+    _plug_types: Initial set of plug types, additional plug types may be
+        passed into calls to InitializePlugs().
     _plug_map: Dict mapping plug type to instantiated plug.
   """
 
-  def __init__(self):
+  def __init__(self, plug_types=None):
+    self._plug_types = plug_types
     self._plug_map = {}
 
-  def InitializePlugs(self, plug_types):
-    for plug_type in plug_types:
+  def InitializePlugs(self, plug_types=None):
+    """Instantiate required plugs.
+
+    Instantiates known plug types and saves the instances in self._plug_map
+    for use in ProvidePlugs().  Additional plug types may be specified here
+    rather than passed into the constructor (this is used primarily for unit
+    testing phases).
+    """
+    for plug_type in set(plug_types or ()) | set(self._plug_types or ()):
       if plug_type in self._plug_map:
         continue
       try:
@@ -217,6 +224,12 @@ class PlugManager(object):
         raise
 
   def OverridePlug(self, plug_type, plug_value):
+    """Allow overriding a plug once it's been Initialized already.
+ 
+    Safely tears down the old instance if one was already created, primarily
+    for use in phase unittests, this feature isn't used under normal test
+    execution.
+    """
     if plug_type in self._plug_map:
       self._plug_map[plug_type].TearDown()
     self._plug_map[plug_type] = plug_value
@@ -240,6 +253,7 @@ class PlugManager(object):
     Any exceptions in TearDown() methods are logged, but do not get raised
     by this method.
     """
+    _LOG.debug('Tearing down all plugs.')
     for plug in self._plug_map.itervalues():
       try:
         plug.TearDown()
