@@ -95,8 +95,7 @@ class Test(object):
     self.created_time_millis = util.TimeMillis()
     self.last_run_time_millis = None
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
-    self._test_data = TestDescriptor(
-        self.uid, phases, metadata=metadata, code_info=code_info)
+    self._test_data = TestDescriptor(self.uid, phases, code_info, metadata)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
@@ -291,13 +290,17 @@ def CreateArgParser(add_help=False):
 PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
 
 
-class PhaseOptions(mutablerecords.Record(
-    'PhaseOptions', [], {'timeout_s': None, 'run_if': None})):
+class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
+    'timeout_s': None, 'run_if': None, 'requires_state': None})):
   """Options used to override default test phase behaviors.
 
   Attributes:
     timeout_s: Timeout to use for the phase, in seconds.
     run_if: Callback that decides whether to run the phase or not.
+    requires_state: If True, pass the whole TestState into the first argument,
+        otherwise only the TestApi will be passed in.  This is useful if a
+        phase needs to wrap another phase for some reason, as
+        PhaseDescriptors can only be invoked with a TestState instance.
 
   Example Usage:
     @PhaseOptions(timeout_s=1)
@@ -326,7 +329,7 @@ class PhaseDescriptor(mutablerecords.Record(
   """Phase function and related information.
 
   Attributes:
-    func: Function to be called (with test_api as first argument).
+    func: Function to be called (with TestApi as first argument).
     code_info: Info about the source code of func.
     options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
@@ -379,7 +382,9 @@ class PhaseDescriptor(mutablerecords.Record(
         len(arg_info.args) > len(kwargs)):
       # Underlying function has room for test_api as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
-      return self.func(test_state.test_api, **kwargs)
+      return self.func(
+          test_state if self.options.requires_state else test_state.test_api,
+          **kwargs)
     return self.func(**kwargs)
 
 
