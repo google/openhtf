@@ -126,6 +126,7 @@ import openhtf
 
 from openhtf import conf
 from openhtf import plugs
+from openhtf import util
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
 from openhtf.io import test_record
@@ -134,9 +135,6 @@ from openhtf.util import measurements
 
 class InvalidTestError(Exception):
   """Raised when there's something invalid about a test."""
-
-
-RecordSaver = mutablerecords.Record('RecordSaver', (), {'record': None})
 
 
 class PhaseOrTestIterator(collections.Iterator):
@@ -202,16 +200,16 @@ class PhaseOrTestIterator(collections.Iterator):
       self.plug_manager.OverridePlug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
-    record_saver = RecordSaver()
+    record_saver = util.NonLocalResult()
     test.AddOutputCallbacks(
-        lambda record: setattr(record_saver, 'record', record))
+        lambda record: setattr(record_saver, 'result', record))
 
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch(
           'openhtf.plugs.PlugManager', new=lambda _: self.plug_manager):
       test.Execute(test_start=lambda: 'TestDutId')
 
-    return record_saver.record
+    return record_saver.result
 
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
