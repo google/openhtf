@@ -59,7 +59,7 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
          'phases': list, 'log_records': list})):
   """The record of a single run of a test."""
 
-  def AddOutcomeDetails(self, code, description=''):
+  def add_outcome_details(self, code, description=''):
     """Adds a code with optional description to this record's outcome_details.
 
     Args:
@@ -92,7 +92,7 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
     return cls(phase_desc.name, phase_desc.code_info)
 
 
-def _GetSourceSafely(obj):
+def _get_source_safely(obj):
   try:
     return inspect.getsource(obj)
   except Exception:
@@ -107,17 +107,17 @@ class CodeInfo(mutablerecords.Record(
   """Information regarding the running tester code."""
 
   @classmethod
-  def ForModuleFromStack(cls, levels_up=1):
+  def for_module_from_stack(cls, levels_up=1):
     # levels_up is how many frames up to go:
     #  0: This function (useless).
     #  1: The function calling this (likely).
     #  2+: The function calling 'you' (likely in the framework).
     frame, filename = inspect.stack(context=0)[levels_up][:2]
     module = inspect.getmodule(frame)
-    source = _GetSourceSafely(frame)
+    source = _get_source_safely(frame)
     return cls(os.path.basename(filename), inspect.getdoc(module), source)
 
   @classmethod
-  def ForFunction(cls, func):
-    source = _GetSourceSafely(func)
+  def for_function(cls, func):
+    source = _get_source_safely(func)
     return cls(func.__name__, inspect.getdoc(func), source)

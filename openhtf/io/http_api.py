@@ -107,7 +107,7 @@ class HTTPServer(threading.Thread):
                  self.log_date_time_string(),
                  msg_format%args)
 
-    def do_GET(self):  # pylint: disable=invalid-name
+    def do_get(self):  # pylint: disable=invalid-name
       """Reply with a JSON representation of the current framwork and test
       states.
       """
@@ -119,12 +119,12 @@ class HTTPServer(threading.Thread):
       self.wfile.write(json.dumps(result))
       command, path, version = self.requestline.split()
 
-    def do_POST(self):  # pylint: disable=invalid-name
+    def do_post(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
       length = int(self.headers.getheader('content-length'))
       raw = self.rfile.read(length)
       request = json.loads(raw)
-      result = user_input.get_prompt_manager().Respond(
+      result = user_input.get_prompt_manager().respond(
           uuid.UUID((request['id'])), request['response'])
       self.send_response(200)
       self.end_headers()
