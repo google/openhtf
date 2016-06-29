@@ -165,10 +165,10 @@ class PhaseOrTestIterator(collections.Iterator):
     """Handle execution of a single test phase."""
     # Make sure we initialize any plugs, this will ignore any that have already
     # been initialized.
-    self.plug_manager.InitializePlugs(plug.cls for plug in phase.plugs if
+    self.plug_manager.initialize_plugs(plug.cls for plug in phase.plugs if
                                       plug.cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.OverridePlug(plug_type, plug_value)
+      self.plug_manager.override_plug(plug_type, plug_value)
 
     # Cobble together a fake phase data to pass to the test phase.  We use the
     # root logger as a logger, our stub plug manager, and a dummy test record
@@ -190,7 +190,7 @@ class PhaseOrTestIterator(collections.Iterator):
   def _handle_test(self, test):
     # Make sure we inject our mock plug instances.
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.OverridePlug(plug_type, plug_value)
+      self.plug_manager.override_plug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
     record_saver = RecordSaver()

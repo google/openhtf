@@ -21,7 +21,7 @@ teardown of the objects.
 
 Test phases can be decorated as using Plug objects, which then get passed
 into the test via parameters.  Plugs are all instantiated at the
-beginning of a test, and all plugs' TearDown() methods are called at the
+beginning of a test, and all plugs' tear_down() methods are called at the
 end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 
@@ -38,7 +38,7 @@ Example implementation of a plug:
     def DoSomething(self):
       print '%s doing something!' % type(self).__name__
 
-    def TearDown(self):
+    def tear_down(self):
       # This method is optional.  If implemented, it will be called at the end
       # of the test.
       print 'Tearing down %s!' % type(self).__name__
@@ -123,7 +123,7 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     return logging.getLogger(
         '.'.join((logs.RECORD_LOGGER, 'plugs', type(self).__name__)))
 
-  def TearDown(self):
+  def tear_down(self):
     """This is the only method the framework itself will explicitly call."""
     pass
 
@@ -185,7 +185,7 @@ class PlugManager(object):
   """Class to manage the lifetimes of plugs.
 
   This class handles instantiation of plugs at test start and calling
-  TearDown() on all plugs when the test completes.  It is used by
+  tear_down() on all plugs when the test completes.  It is used by
   the executor, and should not be instantiated outside the framework itself.
 
   Note this class is not thread-safe.  It should only ever be used by the
@@ -198,7 +198,7 @@ class PlugManager(object):
   def __init__(self):
     self._plug_map = {}
 
-  def InitializePlugs(self, plug_types):
+  def initialize_plugs(self, plug_types):
     for plug_type in plug_types:
       if plug_type in self._plug_map:
         continue
@@ -206,36 +206,36 @@ class PlugManager(object):
         self._plug_map[plug_type] = plug_type()
       except Exception:  # pylint: disable=broad-except
         _LOG.error('Exception insantiating plug type %s', plug_type)
-        self.TearDownPlugs()
+        self.tear_down_plugs()
         raise
 
-  def OverridePlug(self, plug_type, plug_value):
+  def override_plug(self, plug_type, plug_value):
     if plug_type in self._plug_map:
-      self._plug_map[plug_type].TearDown()
+      self._plug_map[plug_type].tear_down()
     self._plug_map[plug_type] = plug_value
 
   def _asdict(self):
     return {'%s.%s' % (k.__module__, k.__name__): str(v)
             for k, v in self._plug_map.iteritems()}
 
-  def ProvidePlugs(self, plug_name_map):
+  def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
     return {name: self._plug_map[cls]
             for name, cls in plug_name_map}
 
-  def TearDownPlugs(self):
-    """Call TearDown() on all instantiated plugs.
+  def tear_down_plugs(self):
+    """Call tear_down() on all instantiated plugs.
 
-    Note that InitializePlugs must have been called before calling
-    this method, and InitializePlugs must be called again after calling
+    Note that initialize_plugs must have been called before calling
+    this method, and initialize_plugs must be called again after calling
     this method if you want to access the plugs attribute again.
 
-    Any exceptions in TearDown() methods are logged, but do not get raised
+    Any exceptions in tear_down() methods are logged, but do not get raised
     by this method.
     """
     for plug in self._plug_map.itervalues():
       try:
-        plug.TearDown()
+        plug.tear_down()
       except Exception:  # pylint: disable=broad-except
-        _LOG.warning('Exception calling TearDown on %s:', plug, exc_info=True)
+        _LOG.warning('Exception calling tear_down on %s:', plug, exc_info=True)
     self._plug_map.clear()

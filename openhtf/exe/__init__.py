@@ -76,7 +76,7 @@ class TestExecutor(threads.KillableThread):
     self._test_data = test_data
     self._plug_manager = plug_manager
     self._test_start = None
-    self._lock = threading.Lock()
+    self._lock = threading.lock()
     self._status = self.FrameworkStatus.CREATED
 
   def _asdict(self):
@@ -176,7 +176,7 @@ class TestExecutor(threads.KillableThread):
     """Perform some initialization and create a PlugManager."""
     _LOG.info('Initializing plugs.')
     suppressor.failure_reason = 'Unable to initialize plugs.'
-    self._plug_manager.InitializePlugs(self._test_data.plug_types)
+    self._plug_manager.initialize_plugs(self._test_data.plug_types)
 
   def _make_phase_executor(self, exit_stack, suppressor):
     """Create a phase_executor.PhaseExecutor and set it up."""

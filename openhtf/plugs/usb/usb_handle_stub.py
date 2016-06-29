@@ -37,7 +37,7 @@ class StubUsbHandle(usb_handle.UsbHandle):
     """Add dots."""
     return ''.join(char if char in cls.PRINTABLE_DATA else '.' for char in data)
 
-  def Write(self, data, dummy=None):
+  def write(self, data, dummy=None):
     """Stub Write method."""
     assert not self.closed
     if self.expected_write_data is None:
@@ -49,7 +49,7 @@ class StubUsbHandle(usb_handle.UsbHandle):
           self._Dotify(expected_data), binascii.hexlify(data),
           self._Dotify(data)))
 
-  def Read(self, length, dummy=None):
+  def read(self, length, dummy=None):
     """Stub Read method."""
     assert not self.closed
     data = self.expected_read_data.pop(0)
@@ -63,8 +63,8 @@ class StubUsbHandle(usb_handle.UsbHandle):
     """Stub Close method."""
     self.closed = True
 
-  def IsClosed(self):
-    """Stub IsClosed method."""
+  def is_closed(self):
+    """Stub is_closed method."""
     return self.closed
 
   def ExpectWrite(self, data):

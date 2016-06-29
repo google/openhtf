@@ -63,10 +63,10 @@ class M2CryptoSigner(adb_protocol.AuthSigner):
 
     self.rsa_key = RSA.load_key(rsa_key_path)
 
-  def Sign(self, data):
+  def sign(self, data):
     return self.rsa_key.sign(data, 'sha1')
 
-  def GetPublicKey(self):
+  def get_public_key(self):
     """Return the public key."""
     return self.public_key
 
@@ -95,11 +95,11 @@ class AdbDevice(object):
                                 self._adb_connection.transport)
   __repr__ = __str__
 
-  def GetSystemType(self):
+  def get_system_type(self):
     """Return the system type."""
     return self._adb_connection.systemtype
 
-  def GetSerial(self):
+  def get_serial(self):
     """Return the device serial."""
     return self._adb_connection.serial
 
@@ -108,7 +108,7 @@ class AdbDevice(object):
     self.filesync_service.Close()
     self._adb_connection.Close()
 
-  def Install(self, apk_path, destination_dir=None, timeout_ms=None):
+  def install(self, apk_path, destination_dir=None, timeout_ms=None):
     """Install apk to device.
 
     Doesn't support verifier file, instead allows destination directory to be
@@ -127,11 +127,11 @@ class AdbDevice(object):
       destination_dir = '/data/local/tmp/'
     basename = os.path.basename(apk_path)
     destination_path = destination_dir + basename
-    self.Push(apk_path, destination_path, timeout_ms=timeout_ms)
+    self.push(apk_path, destination_path, timeout_ms=timeout_ms)
     return self.Shell('pm install -r "%s"' % destination_path,
                       timeout_ms=timeout_ms)
 
-  def Push(self, source_file, device_filename, timeout_ms=None):
+  def push(self, source_file, device_filename, timeout_ms=None):
     """Push source_file to file on device.
 
     Arguments:
@@ -150,7 +150,7 @@ class AdbDevice(object):
         source_file, device_filename, mtime=mtime,
         timeout=timeouts.PolledTimeout.FromMillis(timeout_ms))
 
-  def Pull(self, device_filename, dest_file=None, timeout_ms=None):
+  def pull(self, device_filename, dest_file=None, timeout_ms=None):
     """Pull file from device.
 
     Arguments:
@@ -177,17 +177,17 @@ class AdbDevice(object):
     return self.filesync_service.List(
         device_path, timeouts.PolledTimeout.FromMillis(timeout_ms))
 
-  def Command(self, command, raw=False, timeout_ms=None):
+  def command(self, command, raw=False, timeout_ms=None):
     """Run command on the device, returning the output."""
-    return self.shell_service.Command(command, raw=raw, timeout_ms=timeout_ms)
-  Shell = Command  #pylint: disable=invalid-name
+    return self.shell_service.command(command, raw=raw, timeout_ms=timeout_ms)
+  Shell = command  #pylint: disable=invalid-name
 
-  def AsyncCommand(self, command, raw=False, timeout_ms=None):
-    """See shell_service.ShellService.AsyncCommand()."""
-    return self.shell_service.AsyncCommand(command, raw=raw,
+  def async_command(self, command, raw=False, timeout_ms=None):
+    """See shell_service.ShellService.async_command()."""
+    return self.shell_service.async_command(command, raw=raw,
                                            timeout_ms=timeout_ms)
 
-  def _CheckRemoteCommand(self, destination, timeout_ms, success_msgs=None):
+  def _check_remote_command(self, destination, timeout_ms, success_msgs=None):
     """Open a stream to destination, check for remote errors.
 
     Used for reboot, remount, and root services.  If this method returns, the
@@ -206,12 +206,12 @@ class AdbDevice(object):
       AdbStreamUnavailableError: The service requested isn't supported.
     """
     timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
-    stream = self._adb_connection.OpenStream(destination, timeout)
+    stream = self._adb_connection.open_stream(destination, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
           'Service %s not supported', destination)
     try:
-      message = stream.Read(timeout_ms=timeout)
+      message = stream.read(timeout_ms=timeout)
       # Some commands report success messages, ignore them.
       if any([m in message for m in success_msgs]):
         return
@@ -222,31 +222,31 @@ class AdbDevice(object):
       raise
     raise usb_exceptions.AdbRemoteError('Device message: %s', message)
 
-  def Reboot(self, destination='', timeout_ms=None):
+  def reboot(self, destination='', timeout_ms=None):
     """Reboot device, specify 'bootloader' for fastboot."""
-    self._CheckRemoteCommand('reboot:%s' % destination, timeout_ms)
+    self._check_remote_command('reboot:%s' % destination, timeout_ms)
 
-  def Remount(self, timeout_ms=None):
+  def remount(self, timeout_ms=None):
     """Remount / as read-write."""
-    self._CheckRemoteCommand('remount:', timeout_ms, ['remount succeeded'])
+    self._check_remote_command('remount:', timeout_ms, ['remount succeeded'])
 
   def Root(self, timeout_ms=None):
     """Restart adbd as root on device."""
-    self._CheckRemoteCommand('root:', timeout_ms,
+    self._check_remote_command('root:', timeout_ms,
                              ['already running as root',
                               'restarting adbd as root'])
 
   @classmethod
-  def Connect(cls, usb_handle, **kwargs):
+  def connect(cls, usb_handle, **kwargs):
     """Connect to the device.
 
     Args:
       usb_handle: UsbHandle instance to use.
-      **kwargs: See AdbConnection.Connect for kwargs. Includes rsa_keys, and
+      **kwargs: See AdbConnection.connect for kwargs. Includes rsa_keys, and
         auth_timeout_ms.
 
     Returns:
       An instance of this class if the device connected successfully.
     """
-    adb_connection = adb_protocol.AdbConnection.Connect(usb_handle, **kwargs)
+    adb_connection = adb_protocol.AdbConnection.connect(usb_handle, **kwargs)
     return cls(adb_connection)

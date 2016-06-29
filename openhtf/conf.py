@@ -230,7 +230,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 
     Args:
       logger: Logger to use for logging messages within this class.
-      lock: Threading.Lock to use for locking access to config values.
+      lock: Threading.lock to use for locking access to config values.
       **kwargs: Modules we need to access within this class.
     """
     self._logger = logger

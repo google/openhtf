@@ -82,7 +82,7 @@ class Test(object):
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._test_data.metadata['config'] = conf._asdict()
-    self._lock = threading.Lock()
+    self._lock = threading.lock()
     self._executor = None
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
@@ -326,7 +326,7 @@ class PhaseInfo(mutablerecords.Record(
 
   def __call__(self, phase_data):
     kwargs = dict(self.extra_kwargs)
-    kwargs.update(phase_data.plug_manager.ProvidePlugs(
+    kwargs.update(phase_data.plug_manager.provide_plugs(
         (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
     # Pass in phase_data if it takes *args, or **kwargs with at least 1
