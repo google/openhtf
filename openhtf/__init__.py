@@ -95,7 +95,7 @@ class Test(object):
     self.created_time_millis = util.TimeMillis()
     self.last_run_time_millis = None
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
-    self._test_data = TestDescriptor(self.uid, phases, code_info, metadata)
+    self._test_desc = TestDescriptor(self.uid, phases, code_info, metadata)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
@@ -137,9 +137,9 @@ class Test(object):
     self._test_options.output_callbacks.extend(callbacks)
 
   @property
-  def data(self):
+  def descriptor(self):
     """Static data about this test, does not change across Execute() calls."""
-    return self._test_data
+    return self._test_desc
 
   @property
   def state(self):
@@ -213,13 +213,13 @@ class Test(object):
         raise InvalidTestStateError('Test already running', self._executor)
 
       # Snapshot some things we care about and store them.
-      self._test_data.metadata['test_name'] = self._test_options.name
-      self._test_data.metadata['config'] = conf._asdict()
+      self._test_desc.metadata['test_name'] = self._test_options.name
+      self._test_desc.metadata['config'] = conf._asdict()
       self.last_run_time_millis = util.TimeMillis()
 
       self._executor = exe.TestExecutor(
-          self._test_data, test_start, self._test_options.teardown_function)
-      _LOG.info('Executing test: %s', self.data.code_info.name)
+          self._test_desc, test_start, self._test_options.teardown_function)
+      _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self._executor.Start()
 
     try:
