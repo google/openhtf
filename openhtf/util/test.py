@@ -174,6 +174,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # Cobble together a fake phase data to pass to the test phase.  We use the
     # root logger as a logger, our stub plug manager, and a dummy test record
     # that has None for dut_id and station_id.
+    # TODO(madsci): Swap this out
     phasedata = phase_data.PhaseData(logging.getLogger(), self.plug_manager,
                                      test_record.TestRecord(None, None))
     phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
