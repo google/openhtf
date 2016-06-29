@@ -80,4 +80,4 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
   def Increment(self):
     """Increment our value, return the new value."""
     self.value += self.increment
-    return self.value
+    return self.value - self.increment
