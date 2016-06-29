@@ -15,7 +15,7 @@
 
 """PhaseExecutor module for handling the phases of a test.
 
-Each phase is an instance of phase_data.PhaseDescriptor and therefore has
+Each phase is an instance of openhtf.PhaseDescriptor and therefore has
 relevant options. Each option is taken into account when executing a phase,
 such as checking options.run_if as soon as possible and timing out at the
 appropriate time.
@@ -76,7 +76,8 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   """
   def __init__(self, phase_result):
     if (phase_result is not None and
-        not isinstance(phase_result, (Exception, openhtf.PhaseResult))):
+        not isinstance(phase_result, (openhtf.PhaseResult, Exception)) and
+        not isinstance(phase_result, threads.ThreadTerminationError)):
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
     super(PhaseOutcome, self).__init__(phase_result)
 
@@ -88,7 +89,8 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   @property
   def raised_exception(self):
     """True if the phase in question raised an exception."""
-    return isinstance(self.phase_result, Exception)
+    return isinstance(self.phase_result, (
+        Exception, threads.ThreadTerminationError))
 
 
 class PhaseExecutorThread(threads.KillableThread):
@@ -99,17 +101,16 @@ class PhaseExecutorThread(threads.KillableThread):
   instance.
   """
 
-  def __init__(self, phase, phase_data):
-    self._phase = phase
-    self._phase_data = phase_data
+  def __init__(self, phase_desc, test_state):
+    super(PhaseExecutorThread, self).__init__()
+    self._phase_desc = phase_desc
+    self._test_state = test_state
     self._phase_outcome = None
-    super(PhaseExecutorThread, self).__init__(
-        name='PhaseThread: %s' % self.name)
 
   def _ThreadProc(self):
     """Execute the encompassed phase and save the result."""
     # Call the phase, save the return value, or default it to CONTINUE.
-    phase_return = self._phase(self._phase_data)
+    phase_return = self._phase_desc(self._test_state)
     if phase_return is None:
       phase_return = openhtf.PhaseResult.CONTINUE
 
@@ -119,12 +120,12 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def _ThreadException(self, exc):
     self._phase_outcome = PhaseOutcome(exc)
-    self._phase_data.logger.exception('Phase %s raised an exception', self.name)
+    self._test_state.logger.exception('Phase %s raised an exception', self.name)
 
   def JoinOrDie(self):
     """Wait for thread to finish, return a PhaseOutcome with its response."""
-    if self._phase.options.timeout_s is not None:
-      self.join(self._phase.options.timeout_s)
+    if self._phase_desc.options.timeout_s is not None:
+      self.join(self._phase_desc.options.timeout_s)
     else:
       self.join(DEFAULT_PHASE_TIMEOUT_S)
 
@@ -142,15 +143,15 @@ class PhaseExecutorThread(threads.KillableThread):
 
   @property
   def name(self):
-    return self._phase.name
+    return str(self)
 
   def __str__(self):
-    return '<%s: (%s)>' % (type(self).__name__, self.name)
-  __repr__ = __str__
+    return '<%s: (%s)>' % (type(self).__name__, self._phase_desc.name)
 
 
 class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
+
   def __init__(self, test_state):
     self.test_state = test_state
     self._current_phase_thread = None
@@ -170,6 +171,10 @@ class PhaseExecutor(object):
         if outcome:
           yield outcome
 
+          # If there was an error, stop executing now.
+          if outcome.raised_exception:
+            return
+
           # If we're done with this phase, skip to the next one.
           if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
             break
@@ -177,37 +182,30 @@ class PhaseExecutor(object):
           # run_if was falsey, just skip this phase.
           break
 
-  def _ExecuteOnePhase(self, phase, skip_record=False):
+  def _ExecuteOnePhase(self, phase_desc, skip_record=False):
     """Executes the given phase, returning a PhaseOutcome."""
-    phase_data = self.test_state.phase_data
-
-    # Check this as early as possible.
-    if phase.options.run_if and not phase.options.run_if(phase_data):
-      _LOG.info('Phase %s skipped due to run_if returning falsey.', phase.name)
+    # Check this before we create a PhaseState and PhaseRecord.
+    if phase_desc.options.run_if and not phase.options.run_if():
+      _LOG.info('Phase %s skipped due to run_if returning falsey.',
+                phase_desc.name)
       return
 
-    _LOG.info('Executing phase %s', phase.name)
-
-    phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
-    if not skip_record:
-      self.test_state.running_phase_record = phase_record
-
-    with phase_data.RecordPhaseTiming(phase, phase_record):
-      phase_thread = PhaseExecutorThread(phase, phase_data)
+    with self.test_state.RunningPhaseContext(phase_desc) as phase_state:
+      _LOG.info('Executing phase %s', phase_desc.name)
+      phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      phase_outcome = phase_thread.JoinOrDie()
+      phase_state.result = phase_thread.JoinOrDie()
 
-    # Save the outcome of the phase and do some cleanup.
-    phase_record.result = phase_outcome
-    if not skip_record:
-      self.test_state.test_record.phases.append(phase_record)
-      self.test_state.running_phase_record = None
-
-    _LOG.debug('Phase finished with outcome %s', phase_outcome)
-    return phase_outcome
+    _LOG.debug('Phase finished with result %s', phase_state.result)
+    return phase_state.result
 
   def Stop(self):
-    """Stops the current phase."""
-    if self._current_phase_thread:
-      self._current_phase_thread.Kill()
+    """Stops execution of the current phase, if any.
+
+    It will raise a ThreadTerminationError, which will cause the test to stop
+    executing and terminate with an ERROR state.
+    """
+    current_phase_thread = self._current_phase_thread
+    if current_phase_thread:
+      current_phase_thread.Kill()

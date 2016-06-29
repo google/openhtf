@@ -63,6 +63,7 @@ OUTCOME_MAP = {
   test_record.Outcome.FAIL: test_runs_pb2.FAIL,
   test_record.Outcome.PASS: test_runs_pb2.PASS,
   test_record.Outcome.TIMEOUT: test_runs_pb2.ERROR,
+  test_record.Outcome.ABORTED: test_runs_pb2.ERROR,
 }
 
 UOM_CODE_MAP = {

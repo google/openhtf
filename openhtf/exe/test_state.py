@@ -24,6 +24,7 @@ transitions during the course of the lifetime of a single Execute()
 invokation of an openhtf.Test instance.
 """
 
+import contextlib
 import copy
 import json
 import logging
@@ -32,11 +33,14 @@ import weakref
 
 from enum import Enum
 
+import mimetypes
+import mutablerecords
+
 import openhtf
 
 from openhtf import conf
+from openhtf import plugs
 from openhtf import util
-from openhtf.exe import phase_data
 from openhtf.io import test_record
 from openhtf.util import data
 from openhtf.util import logs
@@ -53,6 +57,10 @@ class BlankDutIdError(Exception):
   """DUT serial cannot be blank at the end of a test."""
 
 
+class DuplicateAttachmentError(Exception):
+  """Raised when two attachments are attached with the same name."""
+
+
 class TestState(object):
   """This class handles tracking the state of a running Test.
 
@@ -64,18 +72,22 @@ class TestState(object):
   Init Args:
     test_desc: openhtf.TestDescriptor instance describing the test to run,
         used to initialize some values here, but it is not modified.
-    plug_manager: A plugs.PlugManager instance.  Plug state is completely
-        torn down and reset upon each call to Test.Execute(), so plug state
-        is considered transient.
-    dut_id: DUT identifier, if it's known, otherwise None.
 
   Attributes:
-    # TODO(madsci): Finish docstring
-    
+    test_record: TestRecord instance for the currently running test.
+    logger: Logger that logs to test_record's log_records attribute.
+    running_phase_state: PhaseState object for the currently running phase,
+        if any, otherwise None.
+    user_defined_state: Dictionary for users to persist state across phase
+        invokations.  It's passed to the user via test_api.
+    test_api: An openhtf.TestApi instance for passing to test phases,
+        providing test authors access to necessary state information, while
+        protecting internal-only structures from being accidentally modified.
+        Note that if there is no running phase, test_api is also None.
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])
 
-  def __init__(self, test_desc, plug_manager):
+  def __init__(self, test_desc):
     self._status = self.Status.WAITING_FOR_TEST_START
 
     self.test_record = test_record.TestRecord(
@@ -83,20 +95,58 @@ class TestState(object):
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
     self.logger = logs.InitializeRecordLogger(test_desc.uid, self.test_record)
+    self.plug_manager = plugs.PlugManager(test_desc.plug_types)
+    self.running_phase_state = None
     self.user_defined_state = {}
-    # TODO(madsci): pull phase data out of TestState and clean up the API.
-    self.phase_data = phase_data.PhaseData(
-        self.logger, plug_manager, self.test_record)
-    self.running_phase_record = None
     self._lock = threading.Lock()
     self._update_events = weakref.WeakSet()
+
+  @property
+  def test_api(self):
+    """Create a TestApi for access to this TestState.
+
+    The returned TestApi should be passed as the first argument to test
+    phases.  Note that the return value is none if there is no
+    self.running_phase_state set.  As such, this attribute should only
+    be accessed within a RunningPhaseContext().
+    """
+    running_phase_state = self.running_phase_state
+    return (running_phase_state and 
+            openhtf.TestApi(
+        self.logger, self.user_defined_state, self.test_record,
+        measurements.Collection(running_phase_state.measurements),
+        running_phase_state.attachments,
+        running_phase_state.Attach, running_phase_state.AttachFromFile))
+
+  @contextlib.contextmanager
+  def RunningPhaseContext(self, phase_desc):
+    """Create a context within which a single phase is running.
+
+    Yields a PhaseState object for tracking transient state during the
+    execution of the phase, including the output PhaseRecord.  That PhaseState
+    provides the TestApi to be passed into the test phase.
+
+    Within this context, the Station API will report the given phase as the
+    currently running phase.
+    """
+    assert not self.running_phase_state, 'Phase already running!'
+    self.running_phase_state = PhaseState.FromDescriptor(phase_desc)
+    try:
+      with self.running_phase_state.record_timing_context:
+        yield self.running_phase_state
+    finally:
+      self.test_record.phases.append(self.running_phase_state.phase_record)
+      self.running_phase_state = None
+      self.notify_update()
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
     return {
         'status': self._status,
         'test_record': self.test_record,
-        'running_phase_record': self.running_phase_record,
+        # TODO(madsci)
+        'running_phase_record': (self.running_phase_state and
+                                 self.running_phase_state.phase_record),
     }
 
   @threads.Synchronized
@@ -225,5 +275,112 @@ class TestState(object):
         self.test_record.station_id, self.last_run_phase_name,
     )
 
+
 class PhaseState(mutablerecords.Record('PhaseState', [
-    'measurements', ], {'attachments': dict})):
+    'phase_record', 'measurements'])):
+  """Data type encapsulating interesting information about a running phase.
+
+  Attributes:
+    phase_record: A test_record.PhaseRecord for the running phase.
+    attachments: Convenience accessor for phase_record.attachments.
+    measurements: A dict mapping measurement name to it's declaration; this
+        dict can be passed to measurements.Collection to initialize a user-
+        facing Collection for setting measurements.
+    result: Convenience getter/setter for phase_record.result.
+  """
+
+  @classmethod
+  def FromDescriptor(cls, phase_desc):
+    return cls( 
+        test_record.PhaseRecord.FromDescriptor(phase_desc),
+        {measurement.name: copy.deepcopy(measurement)
+         for measurement in phase_desc.measurements})
+
+  @property
+  def result(self):
+    return self.phase_record.result
+
+  @result.setter
+  def result(self, result):
+    self.phase_record.result = result
+
+  @property
+  def attachments(self):
+    return self.phase_record.attachments
+
+  def Attach(self, name, data, mimetype=None):
+    """Store the given data as an attachment with the given name.
+
+    Args:
+      name: Attachment name under which to store this data.
+      data: Data to attach.
+      mimetype: If provided, will be saved in the attachment.
+
+    Raises:
+      DuplicateAttachmentError: Raised if there is already an attachment with
+        the given name.
+    """
+    if name in self.phase_record.attachments:
+      raise DuplicateAttachmentError('Duplicate attachment for %s' % name)
+    if mimetype and not mimetypes.guess_extension(mimetype):
+      _LOG.warning('Unrecognized MIME type: "%s" for attachment "%s"',
+                   mimetype, name)
+    self.phase_record.attachments[name] = test_record.Attachment(data, mimetype)
+
+  def AttachFromFile(self, filename, name=None, mimetype=None):
+    """Store the contents of the given filename as an attachment.
+
+    Args:
+      filename: The file to read data from to attach.
+      name: If provided, override the attachment name, otherwise it will
+        default to the filename.
+      mimetype: If provided, override the attachment mime type, otherwise the
+        mime type will be guessed based on the file extension.
+
+    Raises:
+      DuplicateAttachmentError: Raised if there is already an attachment with
+        the given name.
+      IOError: Raised if the given filename couldn't be opened.
+    """
+    with open(filename, 'rb') as f:  # pylint: disable=invalid-name
+      self.Attach(
+          name if name is not None else filename, f.read(),
+          mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
+              filename)[0])
+
+  @property
+  @contextlib.contextmanager
+  def record_timing_context(self):
+    """Context manager for the execution of a single phase.
+
+    This method performs some pre-phase setup on self (for measurements), and
+    records the start and end time based on when the context is entered/exited.
+    """
+    # TODO(madsci): investigate this, remove?
+    # Populate dummy measurement declaration list for frontend API.
+    self.phase_record.measurements = {
+        measurement.name: measurement._asdict()
+        for measurement in self.measurements.itervalues()
+    }
+    self.phase_record.start_time_millis = util.TimeMillis()
+
+    try:
+      yield
+    finally:
+      # Initialize with already-validated and UNSET measurements.
+      validated_measurements = {
+          name: measurement
+          for name, measurement in self.measurements.iteritems()
+          if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
+      }
+
+      # Validate multi-dimensional measurements now that we have all values.
+      validated_measurements.update({
+          name: measurement.Validate()
+          for name, measurement in self.measurements.iteritems()
+          if measurement.outcome is measurements.Outcome.PARTIALLY_SET
+      })
+
+      # Fill out final values for the PhaseRecord.
+      self.phase_record.measurements = validated_measurements
+      self.phase_record.end_time_millis = util.TimeMillis()

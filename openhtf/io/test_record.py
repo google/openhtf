@@ -80,6 +80,10 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
   See measurements.Record.GetValues() for more information.
   """
 
+  @classmethod
+  def FromDescriptor(cls, phase_desc):
+    return cls(phase_desc.name, phase_desc.code_info)
+
 
 def _GetSourceSafely(obj):
   try:

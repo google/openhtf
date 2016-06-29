@@ -53,8 +53,7 @@ class TestExecutor(threads.KillableThread):
     self._teardown_function = (
         teardown_function
         and openhtf.PhaseDescriptor.WrapOrCopy(teardown_function))
-    self._test_data = test_data
-    self._plug_manager = plugs.PlugManager()
+    self._test_desc = test_data
     self._test_start = test_start
     self._lock = threading.Lock()
 
@@ -123,21 +122,20 @@ class TestExecutor(threads.KillableThread):
 
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self._test_data.code_info.name)
+      _LOG.info('Starting test %s', self._test_desc.code_info.name)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
         # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
 
-      self._test_state = test_state.TestState(
-          self._test_data, self._plug_manager)
+      self._test_state = test_state.TestState(self._test_desc)
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
       # self._lock while we do this, or else calls to Stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
       self._test_state.TestStarted(self._WaitForTestStart())
-      self._InitializePlugs()
+      self._test_state.plug_manager.InitializePlugs()
 
       with self._lock:
         if not self._exit_stack:
@@ -145,11 +143,11 @@ class TestExecutor(threads.KillableThread):
           # call to Stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          self._plug_manager.TearDownPlugs()
+          self._test_state.plug_manager.TearDownPlugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self._plug_manager.TearDownPlugs)
+        exit_stack.callback(self._test_state.plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
         executor = self._MakePhaseExecutor(exit_stack)
@@ -167,11 +165,6 @@ class TestExecutor(threads.KillableThread):
       return
     return self._test_start()
 
-  def _InitializePlugs(self):
-    """Perform some initialization and create a PlugManager."""
-    _LOG.info('Initializing plugs.')
-    self._plug_manager.InitializePlugs(self._test_data.plug_types)
-
   def _MakePhaseExecutor(self, exit_stack):
     """Create a phase_executor.PhaseExecutor and set it up."""
     executor = phase_executor.PhaseExecutor(self._test_state)
@@ -183,7 +176,7 @@ class TestExecutor(threads.KillableThread):
     self._test_state.SetStatusRunning()
 
     try:
-      for phase_outcome in executor.ExecutePhases(self._test_data.phases):
+      for phase_outcome in executor.ExecutePhases(self._test_desc.phases):
         if self._test_state.SetStatusFromPhaseOutcome(phase_outcome):
           break
       else:
