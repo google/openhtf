@@ -84,8 +84,8 @@ class TestOutput(unittest.TestCase):
     else:
       actual = test_runs_pb2.TestRun.FromString(testrun_output.getvalue())
       data.AssertEqualsAndDiff(
-          text_format.MessageToString(self.testrun),
-          text_format.MessageToString(actual))
+          text_format.MessageToString(self.testrun, use_index_order=True),
+          text_format.MessageToString(actual, use_index_order=True))
 
   def testUpdateOutput(self):
     """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
