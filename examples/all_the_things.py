@@ -35,6 +35,7 @@ from openhtf.names import *
 
 @plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
+  time.sleep(.2)
   return example.Increment()
 
 
@@ -64,7 +65,7 @@ def hello_world(test, example):
 @measures(
     *(Measurement(
         'level_%s' % i) for i in ['none', 'some', 'all']))
-#@monitors('monitor_measurement', example_monitor)
+@monitors('monitor_measurement', example_monitor)
 def set_measurements(test):
   """Test phase that sets a measurement."""
   test.measurements.level_none = 0
@@ -91,8 +92,10 @@ def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
   test.AttachFromFile('example_attachment.txt')
 
+
 def teardown(test):
   test.logger.info('Running teardown')
+
 
 if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
