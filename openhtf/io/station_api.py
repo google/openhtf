@@ -517,7 +517,7 @@ class ApiServer(threading.Thread):
       })
 
   def run(self):
-    if int(conf.station_api_port):
+    if conf.station_api_port:
       self.station_api_server = SimpleThreadedXMLRPCServer(
           (conf.station_api_bind_address, int(conf.station_api_port)),
           allow_none=True,
