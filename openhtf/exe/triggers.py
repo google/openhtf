@@ -49,6 +49,6 @@ def prompt_for_test_start(message='Provide a DUT ID in order to start the test.'
   """Make a test start trigger based on prompting the user for input."""
   def trigger():  # pylint: disable=missing-docstring
     prompt_manager = user_input.get_prompt_manager()
-    return prompt_manager.DisplayPrompt(
+    return prompt_manager.display_prompt(
         message, text_input=text_input, timeout_s=timeout_s)
   return trigger

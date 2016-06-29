@@ -78,7 +78,7 @@ class Test(object):
   """
 
   def __init__(self, *phases, **metadata):
-    code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
+    code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
     self._test_options = TestOptions()
     self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
     self._test_data.metadata['config'] = conf._asdict()
@@ -303,7 +303,7 @@ class PhaseInfo(mutablerecords.Record(
       A new PhaseInfo object.
     """
     if not isinstance(func, cls):
-      func = cls(func, test_record.CodeInfo.ForFunction(func))
+      func = cls(func, test_record.CodeInfo.for_function(func))
     # We want to copy so that a phase can be reused with different options, etc.
     return mutablerecords.CopyRecord(func)
 

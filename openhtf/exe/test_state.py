@@ -113,7 +113,7 @@ class TestState(object):
       self.record.outcome = test_record.Outcome.ERROR
       code = str(type(phase_outcome.phase_result).__name__)
       description = str(phase_outcome.phase_result).decode('utf8', 'replace')
-      self.record.AddOutcomeDetails(code, description)
+      self.record.add_outcome_details(code, description)
       self._state = self.State.COMPLETED
     elif phase_outcome.is_timeout:
       self.record.outcome = test_record.Outcome.TIMEOUT

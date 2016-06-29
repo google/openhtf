@@ -96,7 +96,7 @@ class Station(object):
     self.state = None
 
 
-  def Refresh(self):
+  def refresh(self):
     """Update state with a GET request to OpenHTF's HTTP API.
 
     Returns: True iff refresh was successful, otherwise False.
@@ -132,7 +132,7 @@ class Station(object):
     except requests.RequestException as e:
       _LOG.warning('Error notifying station (%s): %s', self.hostport, e)
 
-  def AddToHistory(self, json_record):
+  def add_to_history(self, json_record):
     """Add a test record to the history for this station."""
     self.history.append(json_record)
 
@@ -162,10 +162,10 @@ class StationStore(threading.Thread):
   def __getitem__(self, hostport):  # pylint:disable=invalid-name
     """Provide dictionary-like access to the station store."""
     station = self.stations.setdefault(hostport, Station(hostport))
-    station.Refresh()
+    station.refresh()
     return station
 
-  def _Discover(self):
+  def _discover(self):
     """Use multicast to discover stations on the local network."""
     responses = multicast.send(PING_STRING,
                                self._discovery_address,
@@ -175,7 +175,7 @@ class StationStore(threading.Thread):
       port = None
       try:
         port = json.loads(response)[PING_RESPONSE_KEY]
-        self._Track(host, int(port))
+        self._track(host, int(port))
       except (KeyError, ValueError):
         _LOG.debug('Ignoring unrecognized discovery response from %s: %s' % (
             host, response))
@@ -186,14 +186,14 @@ class StationStore(threading.Thread):
       _LOG.debug('Station discovery is disabled; StationStore won\'t update.')
       return
     while not self._stop_event.is_set():
-      self._Discover()
+      self._discover()
       self._stop_event.wait(self._discovery_interval_s)
 
-  def _Track(self, *hostport):
+  def _track(self, *hostport):
     """Start tracking the given station."""
     station = self[hostport]
     if station.station_id is UNKNOWN_STATION_ID:
-      station.Refresh()
+      station.refresh()
 
   def Stop(self):
     """Stop the store."""
@@ -218,7 +218,7 @@ class DashboardHandler(tornado.web.RequestHandler):
   def get(self):
     result = {}
     for key, station in self.store.stations.items():
-      status = 'ONLINE' if station.Refresh() else 'OFFLINE'
+      status = 'ONLINE' if station.refresh() else 'OFFLINE'
       result['%s:%s' % key] = {
           'station_id': station.station_id,
           'hostport': station.hostport,
