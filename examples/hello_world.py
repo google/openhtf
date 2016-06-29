@@ -78,7 +78,7 @@ if __name__ == '__main__':
   test.AddOutputCallbacks(
       json_factory.OutputToJSON('./{dut_id}.hello_world.json', indent=2))
 
-  # PromptForTestStart prompts the operator for a DUT ID, a unique identifier
+  # prompt_for_test_start prompts the operator for a DUT ID, a unique identifier
   # for the DUT (Device Under Test).  OpenHTF requires that a DUT ID is set
   # each time a test is executed.  It may be set programmatically, but the
   # simplest way to get one is to prompt the user for it.  If test_start is

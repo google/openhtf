@@ -56,23 +56,23 @@ class ExceptionSafeThread(threading.Thread):
 
   def run(self):
     try:
-      self._ThreadProc()
+      self._thread_proc()
     except Exception as exception:
-      if not self._ThreadException(exception):
+      if not self._thread_exception(exception):
         logging.exception('Thread raised an exception: %s', self.name)
         raise
     finally:
       self._ThreadFinished()
       _LOG.debug('Thread finished: %s', self.name)
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     """The method called when executing the thread."""
 
   def _ThreadFinished(self):
-    """The method called once _ThreadProc has finished."""
+    """The method called once _thread_proc has finished."""
 
-  def _ThreadException(self, exception):
-    """The method called if _ThreadProc raises an exception.
+  def _thread_exception(self, exception):
+    """The method called if _thread_proc raises an exception.
 
     To suppress the exception, return True from this method.
     """
@@ -101,7 +101,7 @@ class KillableThread(ExceptionSafeThread):
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
       raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
 
-  def _ThreadException(self, exception):
+  def _thread_exception(self, exception):
     """Suppress the exception when we're Kill()'d."""
     return isinstance(exception, ThreadTerminationError)
 

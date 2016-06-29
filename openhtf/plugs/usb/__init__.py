@@ -146,7 +146,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
   @classmethod
   def TestStartFrontend(cls):
     """Start when frontend event comes, but get serial from USB."""
-    PromptForTestStart('Connect Android device and press ENTER.',
+    prompt_for_test_start('Connect Android device and press ENTER.',
                        text_input=False)()
     return cls.TestStart()
 

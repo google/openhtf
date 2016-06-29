@@ -95,7 +95,6 @@ def attachments(test):
   test.attach('test_attachment', 'This is test attachment data.')
   test.attach_from_file('example_attachment.txt')
 
-
 def teardown(test):
   test.logger.info('Running teardown')
 

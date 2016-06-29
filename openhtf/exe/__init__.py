@@ -90,7 +90,6 @@ class TestExecutor(threads.KillableThread):
     """
     if not self.test_state:
       raise TestStopError('Test Stopped.')
-
     if not self.test_state.is_finalized:
       self.test_state.logger.info('Finishing test with outcome ABORTED.')
       self.test_state.finalize(test_record.Outcome.ABORTED)
@@ -105,7 +104,7 @@ class TestExecutor(threads.KillableThread):
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
