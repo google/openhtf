@@ -126,8 +126,8 @@ import openhtf
 
 from openhtf import conf
 from openhtf import plugs
-from openhtf.exe import phase_data
 from openhtf.exe import phase_executor
+from openhtf.exe import test_state
 from openhtf.io import test_record
 from openhtf.util import measurements
 
@@ -162,34 +162,41 @@ class PhaseOrTestIterator(collections.Iterator):
     self.mock_plugs = mock_plugs
     self.last_result = None
 
-  def _handle_phase(self, phase):
-    """Handle execution of a single test phase."""
+  def _initialize_plugs(self, plug_types):
     # Make sure we initialize any plugs, this will ignore any that have already
     # been initialized.
-    self.plug_manager.InitializePlugs(plug.cls for plug in phase.plugs if
-                                      plug.cls not in self.mock_plugs)
+    plug_types = list(plug_types)
+    self.plug_manager.InitializePlugs(plug_cls for plug_cls in plug_types if
+                                      plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
       self.plug_manager.OverridePlug(plug_type, plug_value)
 
-    # Cobble together a fake phase data to pass to the test phase.  We use the
-    # root logger as a logger, our stub plug manager, and a dummy test record
-    # that has None for dut_id and station_id.
-    # TODO(madsci): Swap this out
-    phasedata = phase_data.PhaseData(logging.getLogger(), self.plug_manager,
-                                     test_record.TestRecord(None, None))
-    phase_record = test_record.PhaseRecord(phase.name, phase.code_info)
+
+  @conf.SaveAndRestore(station_api_port=None)
+  def _handle_phase(self, phase_desc):
+    """Handle execution of a single test phase."""
+    self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
+
+    # Cobble together a fake TestState to pass to the test phase.
+    with mock.patch(
+          'openhtf.plugs.PlugManager', new=lambda _: self.plug_manager):
+      test_state_ = test_state.TestState(openhtf.TestDescriptor(
+          'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
 
     # Actually execute the phase, saving the result in our return value.
-    with phasedata.RecordPhaseTiming(phase, phase_record):
+    with test_state_.RunningPhaseContext(phase_desc) as phase_state:
       try:
-        phase_record.result = phase_executor.PhaseOutcome(phase(phasedata))
+        phase_state.result = phase_executor.PhaseOutcome(
+            phase_desc(test_state_))
       except Exception as exc:
-        logging.exception('Exception executing phase %s', phase.name)
-        phase_record.result = phase_executor.PhaseOutcome(exc)
+        logging.exception('Exception executing phase %s', phase_desc.name)
+        phase_state.result = phase_executor.PhaseOutcome(exc)
 
-    return phase_record
+    return phase_state.phase_record
 
+  @conf.SaveAndRestore(station_api_port=None)
   def _handle_test(self, test):
+    self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
     for plug_type, plug_value in self.mock_plugs.iteritems():
       self.plug_manager.OverridePlug(plug_type, plug_value)
@@ -200,7 +207,8 @@ class PhaseOrTestIterator(collections.Iterator):
         lambda record: setattr(record_saver, 'record', record))
 
     # Mock the PlugManager to use ours instead, and execute the test.
-    with mock.patch('openhtf.plugs.PlugManager', new=lambda: self.plug_manager):
+    with mock.patch(
+          'openhtf.plugs.PlugManager', new=lambda _: self.plug_manager):
       test.Execute(test_start=lambda: 'TestDutId')
 
     return record_saver.record
@@ -298,12 +306,13 @@ class TestCase(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     """Disable station_api for tests by default, restore it when done."""
-    cls.saved_station_api_port = conf.station_api_port
-    conf.Load(station_api_port=None)
+    #cls.saved_station_api_port = conf.station_api_port
+    #conf.Load(station_api_port=None)
 
   @classmethod
   def tearDownClass(cls):
-    conf.Load(station_api_port=cls.saved_station_api_port)
+    pass
+    #conf.Load(station_api_port=cls.saved_station_api_port)
 
   def _AssertPhaseOrTestRecord(func):
     """Decorator for automatically invoking self.assertTestPhases when needed.
@@ -380,11 +389,12 @@ class TestCase(unittest.TestCase):
 
   def assertNotMeasured(self, phase_or_test_record, measurement):
     def _check_phase(phase_record, strict=False):
-      self.assertNotIn(measurement, phase_record.measured_values,
-                       'Measurement %s unexpectedly set' % measurement)
       if strict:
         self.assertIn(measurement, phase_record.measurements)
       if measurement in phase_record.measurements:
+        self.assertFalse(
+            phase_record.measurements[measurement].value.is_value_set,
+            'Measurement %s unexpectedly set' % measurement)
         self.assertIs(measurements.Outcome.UNSET,
                       phase_record.measurements[measurement].outcome)
 
@@ -397,13 +407,14 @@ class TestCase(unittest.TestCase):
 
   @_AssertPhaseOrTestRecord
   def assertMeasured(self, phase_record, measurement, value=mock.ANY):
-    self.assertIn(measurement, phase_record.measured_values,
-                  'Measurement %s not set' % measurement)
+    self.assertTrue(phase_record.measurements[measurement].value.is_value_set,
+                    'Measurement %s not set' % measurement)
     if value is not mock.ANY:
       self.assertEquals(
-          value, phase_record.measured_values[measurement],
+          value, phase_record.measurements[measurement].value.value,
           'Measurement %s has wrong value: expected %s, got %s' %
-          (measurement, value, phase_record.measured_values[measurement]))
+          (measurement, value,
+           phase_record.measurements[measurement].value.value))
 
   @_AssertPhaseOrTestRecord
   def assertMeasurementPass(self, phase_record, measurement):

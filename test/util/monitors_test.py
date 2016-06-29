@@ -27,11 +27,11 @@ class EmptyPlug(plugs.BasePlug):
 class TestMonitors(unittest.TestCase):
 
   def setUp(self):
-    self.phase_data = mock.MagicMock()
+    self.test_state = mock.MagicMock()
 
     def ProvidePlugs(plugs):
       return {name: cls() for name, cls in plugs}
-    self.phase_data.plug_manager.ProvidePlugs = ProvidePlugs
+    self.test_state.plug_manager.ProvidePlugs = ProvidePlugs
 
   def testBasics(self):
 
@@ -40,12 +40,20 @@ class TestMonitors(unittest.TestCase):
 
     @monitors.monitors('meas', monitor_func, poll_interval_ms=10)
     def phase(test):
-      time.sleep(0.01)
+      time.sleep(0.1)
 
-    phase(self.phase_data)
-    _, first_meas, _ = self.phase_data.measurements.meas.__setitem__.mock_calls[0]
-    assert first_meas[0] == 0, 'At time 0, there should be a call made.'
-    assert first_meas[1] == 1, "And it should be the monitor func's return val"
+    phase(self.test_state)
+
+    _, first_meas, _ = (
+        self.test_state.test_api.measurements.meas.__setitem__.mock_calls[0])
+
+    # Measurement time is at the end of the monitor func, which can take
+    # upwards of 10 milliseconds on a bad day, so we only check that this is
+    # within 10ms of 0.
+    self.assertAlmostEqual(0, first_meas[0], places=-1,
+                           msg='At time 0, there should be a call made.')
+    self.assertEqual(1, first_meas[1],
+                     msg="And it should be the monitor func's return val")
 
   def testPlugs(self):
 
@@ -55,11 +63,18 @@ class TestMonitors(unittest.TestCase):
 
     @monitors.monitors('meas', monitor, poll_interval_ms=10)
     def phase(test):
-      time.sleep(0.01)
+      time.sleep(0.1)
 
-    phase(self.phase_data)
-    _, first_meas, _ = self.phase_data.measurements.meas.__setitem__.mock_calls[0]
-    assert first_meas[0] == 0, 'At time 0, there should be a call made.'
-    assert first_meas[1] == 2, "And it should be the monitor func's return val"
+    phase(self.test_state)
+    _, first_meas, _ = (
+        self.test_state.test_api.measurements.meas.__setitem__.mock_calls[0])
+
+    # Measurement time is at the end of the monitor func, which can take
+    # upwards of 10 milliseconds on a bad day, so we only check that this is
+    # within 10ms of 0.
+    self.assertAlmostEqual(0, first_meas[0], places=-1,
+                           msg='At time 0, there should be a call made.')
+    self.assertEqual(2, first_meas[1],
+                     msg="And it should be the monitor func's return val")
 
 
