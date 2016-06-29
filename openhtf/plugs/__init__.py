@@ -125,7 +125,12 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
         '.'.join((logs.RECORD_LOGGER, 'plugs', type(self).__name__)))
 
   def _asdict(self):
-    """Return a dictionary representation of this plug's state."""
+    """Return a dictionary representation of this plug's state.
+
+    This is called periodically during phase execution on any plugs that are
+    in use by that phase.  The result is reported via the Station API by the
+    PlugManager.
+    """
     # TODO(madsci): Figure out how to configure max polling interval of this
     # method, it could be a costly operation.
     return {}
@@ -236,8 +241,8 @@ class PlugManager(object):
     self._plug_map[plug_type] = plug_value
 
   def _asdict(self):
-    return {'%s.%s' % (k.__module__, k.__name__): str(v)
-            for k, v in self._plug_map.iteritems()}
+    return {'%s.%s' % (plug_type.__module__, plug_type.__name__): plug
+            for plug_type, plug in self._plug_map.iteritems()}
 
   def ProvidePlugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
