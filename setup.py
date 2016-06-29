@@ -150,6 +150,7 @@ class PyTestCommand(test):
       cov = ' --cov openhtf ' + outputs
 
     sys.argv = [sys.argv[0]]
+    print('invoking pytest.main with %s' % (self.pytest_args + cov))
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
@@ -182,5 +183,6 @@ setup(
     tests_require=[
         'mock>=2.0.0',
         'pytest==2.8.7',
+        'pytest-cov==2.2.1',
     ],
 )
