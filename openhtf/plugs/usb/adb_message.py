@@ -125,10 +125,10 @@ class AdbTransportAdapter(object):
       # we always at least try to send the data (with a minimum of 10ms timeout)
       # because we don't want the remote end to get out of sync because we sent
       # a header but no data.
-      if timeout.HasExpired():
+      if timeout.has_expired():
         _LOG.warning('Timed out between AdbMessage header and data, sending '
                      'data anyway with 10ms timeout')
-        timeout = timeouts.PolledTimeout.FromMillis(10)
+        timeout = timeouts.PolledTimeout.from_millis(10)
       self._transport.write(message.data, timeout.remaining_ms)
 
   def read_message(self, timeout):
@@ -164,10 +164,10 @@ class AdbTransportAdapter(object):
             AdbMessage.HEADER_STRUCT_FORMAT, raw_header, exception)
 
       if raw_message.data_length > 0:
-        if timeout.HasExpired():
+        if timeout.has_expired():
           _LOG.warning('Timed out between AdbMessage header and data, reading '
                        'data anyway with 10ms timeout')
-          timeout = timeouts.PolledTimeout.FromMillis(10)
+          timeout = timeouts.PolledTimeout.from_millis(10)
         data = self._transport.read(raw_message.data_length,
                                     timeout.remaining_ms)
       else:
@@ -196,7 +196,7 @@ class AdbTransportAdapter(object):
       AdbProtocolError: If timeout expires between reads, this can happen
         if we are getting spammed with unexpected commands.
     """
-    msg = timeouts.LoopUntilTimeoutOrValid(
+    msg = timeouts.loop_until_timeout_or_valid(
         timeout, lambda: self.read_message(timeout),
         lambda m: m.command in expected_commands, 0)
     if msg.command not in expected_commands:

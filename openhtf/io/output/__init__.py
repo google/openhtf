@@ -75,7 +75,7 @@ class OutputToFile(object):
   def open_output_file(self, test_record):
     """Open file based on pattern."""
     output_file = None
-    record_dict = data.ConvertToBaseTypes(test_record)
+    record_dict = data.convert_to_base_types(test_record)
     if isinstance(self.filename_pattern, basestring):
       if '{' in self.filename_pattern:
         output_file = self.open_file(

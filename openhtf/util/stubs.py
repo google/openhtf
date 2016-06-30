@@ -19,7 +19,7 @@
 from openhtf.exe import phase_data
 
 
-def CreateStubTest(phases=None):  # pylint: disable=invalid-name
+def create_stub_test(phases=None):  # pylint: disable=invalid-name
   """Create and return a stub test."""
   test_metadata = phase_data.TestMetadata('foo')
   return phase_data.phase_data(test_metadata, phases or [])

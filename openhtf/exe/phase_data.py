@@ -136,7 +136,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
     }
     self.measurements = measurements.Collection(measurement_map)
     self.attachments = {}
-    running_phase_record.start_time_millis = util.TimeMillis()
+    running_phase_record.start_time_millis = util.time_millis()
 
     try:
       yield
@@ -152,7 +152,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
 
       # Validate multi-dimensional measurements now that we have all values.
       validated_measurements.update({
-          name: measurement.Validate(values[name])
+          name: measurement.validate(values[name])
           for name, measurement in measurement_map.iteritems()
           if measurement.outcome is measurements.Outcome.PARTIALLY_SET
       })
@@ -160,7 +160,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       # Fill out and append the PhaseRecord to our test_record.
       running_phase_record.measured_values = values
       running_phase_record.measurements = validated_measurements
-      running_phase_record.end_time_millis = util.TimeMillis()
+      running_phase_record.end_time_millis = util.time_millis()
       running_phase_record.attachments.update(self.attachments)
 
       # Clear these between uses for the frontend API.

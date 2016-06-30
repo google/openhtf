@@ -29,7 +29,7 @@ import mutablerecords
 from enum import Enum
 
 
-def AssertEqualsAndDiff(expected, actual):
+def assert_equals_and_diff(expected, actual):
   """Compare two string blobs, log diff and raise if they don't match."""
   if expected == actual:
     return
@@ -46,7 +46,7 @@ def AssertEqualsAndDiff(expected, actual):
   assert expected == actual
 
 
-def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
+def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
   """Compare two test_record tuples, ignoring any volatile fields.
 
   'Volatile' fields include any fields that are expected to differ between
@@ -63,25 +63,25 @@ def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
       if key in volatile_fields:
         continue
       try:
-         AssertRecordsEqualNonvolatile(first[key], second[key],
+         assert_records_equal_nonvolatile(first[key], second[key],
                                        volatile_fields, indent + 2)
       except AssertionError:
         logging.error('%sKey: %s ^', ' ' * indent, key)
         raise
   elif hasattr(first, '_asdict') and hasattr(second, '_asdict'):
     # Compare namedtuples as dicts so we get more useful output.
-    AssertRecordsEqualNonvolatile(first._asdict(), second._asdict(),
+    assert_records_equal_nonvolatile(first._asdict(), second._asdict(),
                                   volatile_fields, indent)
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
     for idx, (f, s) in enumerate(izip(first, second)):
       try:
-        AssertRecordsEqualNonvolatile(f, s, volatile_fields, indent + 2)
+        assert_records_equal_nonvolatile(f, s, volatile_fields, indent + 2)
       except AssertionError:
         logging.error('%sIndex: %s ^', ' ' * indent, idx)
         raise
   elif (isinstance(first, mutablerecords.records.RecordClass) and
         isinstance(second, mutablerecords.records.RecordClass)):
-    AssertRecordsEqualNonvolatile(
+    assert_records_equal_nonvolatile(
         {slot: getattr(first, slot) for slot in first.__slots__},
         {slot: getattr(second, slot) for slot in second.__slots__},
         volatile_fields, indent)
@@ -90,7 +90,7 @@ def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
     assert first == second
 
 
-def ConvertToBaseTypes(obj, ignore_keys=tuple()):
+def convert_to_base_types(obj, ignore_keys=tuple()):
   """Recursively convert objects into base types, mostly dicts and strings.
 
   This is used to convert some special types of objects used internally into
@@ -125,12 +125,12 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    obj = {k: ConvertToBaseTypes(v, ignore_keys) for k, v in obj.iteritems()
+    obj = {k: convert_to_base_types(v, ignore_keys) for k, v in obj.iteritems()
            if k not in ignore_keys}
   elif isinstance(obj, list):
-    obj = [ConvertToBaseTypes(value, ignore_keys) for value in obj]
+    obj = [convert_to_base_types(value, ignore_keys) for value in obj]
   elif isinstance(obj, tuple):
-    obj = tuple(ConvertToBaseTypes(value, ignore_keys) for value in obj)
+    obj = tuple(convert_to_base_types(value, ignore_keys) for value in obj)
   elif obj is not None and (
       not isinstance(obj, numbers.Number) and not isinstance(obj, basestring)):
     # Leave None as None to distinguish it from "None", as well as numbers and

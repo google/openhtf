@@ -75,7 +75,7 @@ class TestState(object):
 
   def as_json(self):
     """Return JSON representation of the test's serialized state."""
-    return json.dumps(data.ConvertToBaseTypes(self))
+    return json.dumps(data.convert_to_base_types(self))
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
@@ -163,7 +163,7 @@ class TestState(object):
     self.logger.debug('Finishing test execution with outcome %s.',
                       self.record.outcome.name)
 
-    self.record.end_time_millis = util.TimeMillis()
+    self.record.end_time_millis = util.time_millis()
     self.logger.removeHandler(self._record_handler)
     return self.record
 

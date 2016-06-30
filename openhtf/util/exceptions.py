@@ -19,14 +19,14 @@ import inspect
 import sys
 
 
-def Reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid-name
-  """Reraises an exception for exception translation.
+def reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid-name
+  """reraises an exception for exception translation.
 
   This is primarily used for when you immediately reraise an exception that is
   thrown in a library, so that your client will not have to depend on various
   exceptions defined in the library implementation that is being abstracted. The
   advantage of this helper function is somewhat preserve traceback information
-  although it is polluted by the Reraise frame.
+  although it is polluted by the reraise frame.
 
   Example Code:
     def A():
@@ -35,14 +35,14 @@ def Reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid
       try:
         A()
       except Exception as e:
-        exceptions.Reraise(ValueError)
+        exceptions.reraise(ValueError)
     main()
 
   Traceback (most recent call last):
     File "exception.py", line 53, in <module>
       main()
     File "exception.py", line 49, in main
-      Reraise(ValueError)
+      reraise(ValueError)
     File "exception.py", line 47, in main
       A()
     File "exception.py", line 42, in A
@@ -51,7 +51,7 @@ def Reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid
 
   When this code is run, the additional stack frames for calling A() and raising
   within A() are printed out in exception, whereas a bare exception translation
-  would lose this information. As long as you ignore the Reraise stack frame,
+  would lose this information. As long as you ignore the reraise stack frame,
   the stack trace is okay looking.
 
   Generally this can be fixed by hacking on CPython to allow modification of

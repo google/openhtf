@@ -43,7 +43,7 @@ from openhtf.util import threads
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
     '--phase_default_timeout_s', default=DEFAULT_PHASE_TIMEOUT_S,
     action=argv.StoreInModule, target='%s.DEFAULT_PHASE_TIMEOUT_S' % __name__,
@@ -138,7 +138,7 @@ class PhaseExecutorThread(threads.KillableThread):
 
     # Check for timeout, indicated by None for PhaseOutcome.phase_result.
     if self.is_alive():
-      self.Kill()
+      self.kill()
       return PhaseOutcome(None)
 
     # Phase was killed.
@@ -211,4 +211,4 @@ class PhaseExecutor(object):
   def Stop(self):
     """Stops the current phase."""
     if self._current_phase_thread:
-      self._current_phase_thread.Kill()
+      self._current_phase_thread.kill()

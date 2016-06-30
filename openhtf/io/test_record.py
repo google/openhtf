@@ -45,7 +45,7 @@ Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT'])
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
-        {'start_time_millis': util.TimeMillis, 'end_time_millis': None,
+        {'start_time_millis': util.time_millis, 'end_time_millis': None,
          'outcome': None, 'outcome_details': list,
          'code_info': None,
          'metadata': dict,
@@ -85,7 +85,7 @@ def _get_source_safely(obj):
   try:
     return inspect.getsource(obj)
   except Exception:
-    logs.LogOnce(
+    logs.log_once(
         _LOG.warning,
         'Unable to load source code for %s. Only logging this once.', obj)
     return ''

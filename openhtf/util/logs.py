@@ -70,7 +70,7 @@ QUIET = False
 LOGFILE = None
 
 LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
     '--verbosity', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
     action=argv.StoreInModule, target='%s.DEFAULT_LEVEL' % __name__,
@@ -95,7 +95,7 @@ LogRecord = collections.namedtuple(
     'LogRecord', 'level logger_name source lineno timestamp_millis message')
 
 
-def LogOnce(log_func, msg, *args, **kwargs):
+def log_once(log_func, msg, *args, **kwargs):
   """"Logs a message only once."""
   if msg not in _LOGONCE_SEEN:
     log_func(msg, *args, **kwargs)
@@ -162,8 +162,8 @@ class RecordHandler(logging.Handler):
     self._test_record.log_records.append(log_record)
 
 
-@functions.CallOnce
-def SetupLogger():
+@functions.call_once
+def setup_logger():
   """Configure logging for OpenHTF."""
   record_logger = logging.getLogger(RECORD_LOGGER)
   record_logger.propagate = False
@@ -176,7 +176,7 @@ def SetupLogger():
   formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
   if LOGFILE:
     try:
-      cur_time = str(util.TimeMillis())
+      cur_time = str(util.time_millis())
       file_handler = logging.FileHandler('%s.%s' % (LOGFILE, cur_time))
       file_handler.setFormatter(formatter)
       file_handler.setLevel(DEFAULT_LOGFILE_LEVEL.upper())

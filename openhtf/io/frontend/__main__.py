@@ -272,7 +272,7 @@ def main(argv):
                       help='Start in development mode.')
   args = parser.parse_args()
 
-  logs.SetupLogger()
+  logs.setup_logger()
 
   path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
   

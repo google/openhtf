@@ -148,7 +148,7 @@ class AdbDevice(object):
 
     self.filesync_service.Send(
         source_file, device_filename, mtime=mtime,
-        timeout=timeouts.PolledTimeout.FromMillis(timeout_ms))
+        timeout=timeouts.PolledTimeout.from_millis(timeout_ms))
 
   def pull(self, device_filename, dest_file=None, timeout_ms=None):
     """Pull file from device.
@@ -166,7 +166,7 @@ class AdbDevice(object):
     elif not dest_file:
       dest_file = cStringIO.StringIO()
     self.filesync_service.recv(device_filename, dest_file,
-                               timeouts.PolledTimeout.FromMillis(timeout_ms))
+                               timeouts.PolledTimeout.from_millis(timeout_ms))
     # An empty call to cStringIO.StringIO returns an instance of
     # cStringIO.OutputType.
     if isinstance(dest_file, cStringIO.OutputType):
@@ -175,7 +175,7 @@ class AdbDevice(object):
   def List(self, device_path, timeout_ms=None):
     """Yield filesync_service.DeviceFileStat objects for directory contents."""
     return self.filesync_service.List(
-        device_path, timeouts.PolledTimeout.FromMillis(timeout_ms))
+        device_path, timeouts.PolledTimeout.from_millis(timeout_ms))
 
   def command(self, command, raw=False, timeout_ms=None):
     """Run command on the device, returning the output."""
@@ -205,7 +205,7 @@ class AdbDevice(object):
         got back from the device.
       AdbStreamUnavailableError: The service requested isn't supported.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     stream = self._adb_connection.open_stream(destination, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(

@@ -135,7 +135,7 @@ def _attach_json(record, testrun):
   un-mangled fields later if we want.  Remove attachments since those get
   copied over and can potentially be quite large.
   """
-  record_dict = data.ConvertToBaseTypes(record, ignore_keys=('attachments',))
+  record_dict = data.convert_to_base_types(record, ignore_keys=('attachments',))
   record_json = json_factory.OutputToJSON(inline_attachments=False,
       sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()

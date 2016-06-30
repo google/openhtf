@@ -50,7 +50,7 @@ Examples:
 
   @measurements.measures(
       measurements.Measurement(
-          'number_widgets').InRange(5, 10).Doc(
+          'number_widgets').InRange(5, 10).doc(
           '''This phase parameter tracks the number of widgets.'''))
   @measurements.measures(
       *(measurements.Measurement('level_%s' % lvl)
@@ -121,30 +121,30 @@ class Measurement(  # pylint: disable=no-init
     outcome: One of the Outcome() enumeration values, starting at UNSET.
   """
 
-  def Doc(self, docstring):
+  def doc(self, docstring):
     """Set this Measurement's docstring, returns self for chaining."""
     self.docstring = docstring
     return self
 
-  def WithUnits(self, units):
+  def with_units(self, units):
     """Declare the units for this Measurement, returns self for chaining."""
     self.units = units
     return self
 
-  def WithDimensions(self, *dimensions):
+  def with_dimensions(self, *dimensions):
     """Declare dimensions for this Measurement, returns self for chaining."""
     self.dimensions = dimensions
     return self
 
-  def WithValidator(self, validator):
+  def with_validator(self, validator):
     """Add a validator callback to this Measurement, chainable."""
     if not callable(validator):
       raise ValueError('Validator must be callable', validator)
     self.validators.append(validator)
     return self
 
-  def WithArgs(self, **kwargs):
-    """Creates a new Measurement, see openhtf.PhaseInfo.WithArgs."""
+  def with_args(self, **kwargs):
+    """Creates a new Measurement, see openhtf.PhaseInfo.with_args."""
     new_meas = mutablerecords.CopyRecord(self)
     if '{' in new_meas.name:
       formatter = lambda x: x.format(**kwargs) if x else x
@@ -164,11 +164,11 @@ class Measurement(  # pylint: disable=no-init
           type(self).__name__, attr))
 
     # Create a wrapper to invoke the attribute from within validators.
-    def _WithValidator(*args, **kwargs):  # pylint: disable=invalid-name
-      return self.WithValidator(getattr(validators, attr)(*args, **kwargs))
-    return _WithValidator
+    def _with_validator(*args, **kwargs):  # pylint: disable=invalid-name
+      return self.with_validator(getattr(validators, attr)(*args, **kwargs))
+    return _with_validator
 
-  def Validate(self, value):
+  def validate(self, value):
     """Validate this measurement and update its 'outcome' field."""
     # PASS if all our validators return True, otherwise FAIL.
     if all(v(value) for v in self.validators):
@@ -190,7 +190,7 @@ class Measurement(  # pylint: disable=no-init
         retval[attr] = getattr(self, attr)
     return retval
 
-  def MakeUnsetValue(self):
+  def make_unset_value(self):
     """Create an unset MeasuredValue for this measurement."""
     if self.dimensions:
       return DimensionedMeasuredValue(self.name, len(self.dimensions), self)
@@ -208,7 +208,7 @@ class MeasuredValue(object):
 
   This class stores values for un-dimensioned (single-value) measurements, for
   dimensioned values, see the DimensionedMeasuredValue.  The interfaces are very
-  similar, but differ slightly; the important part is the GetValue() interface
+  similar, but differ slightly; the important part is the get_value() interface
   on both of them.
   """
 
@@ -240,7 +240,7 @@ class MeasuredValue(object):
       _LOG.warning('Measurement %s is set to None', self.name)
     self.stored_value = value
     self.value_set = True
-    self.measurement.Validate(self.value)
+    self.measurement.validate(self.value)
 
 
 class DimensionedMeasuredValue(object):
@@ -329,7 +329,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
 
     self.measurements = measurements.Collection([
         measurements.Measurement('widget_height'),
-        measurements.Measurement('widget_freq_response').WithDimensions(
+        measurements.Measurement('widget_freq_response').with_dimensions(
             UOM['HERTZ'])])
     self.measurements.widget_height = 3
     print self.measurements.widget_height            # 3
@@ -345,7 +345,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
     # [(5, 10), (6, 11)]
   """
 
-  def _AssertValidKey(self, name):
+  def _assert_valid_key(self, name):
     """Raises if name is not a valid measurement."""
     if name not in self._measurements:
       raise NotAMeasurementError('Not a measurement', name, self._measurements)
@@ -361,22 +361,22 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
     return self[name]
 
   def __setitem__(self, name, value):  # pylint: disable=invalid-name
-    self._AssertValidKey(name)
+    self._assert_valid_key(name)
     if self._measurements[name].dimensions:
       raise InvalidDimensionsError(
           'Cannot set dimensioned measurement without indices')
     if name not in self._values:
-      self._values[name] = self._measurements[name].MakeUnsetValue()
+      self._values[name] = self._measurements[name].make_unset_value()
     self._values[name].value = value
 
   def __getitem__(self, name):  # pylint: disable=invalid-name
-    self._AssertValidKey(name)
+    self._assert_valid_key(name)
 
     # __getitem__ is used to set dimensioned values via __setitem__ on the
     # DimensionedMeasuredValue object, so we can't do any checking here.
     if self._measurements[name].dimensions:
       if name not in self._values:
-        self._values[name] = self._measurements[name].MakeUnsetValue()
+        self._values[name] = self._measurements[name].make_unset_value()
       return self._values[name]
 
     # For regular measurements, however, we can check that it's been set.

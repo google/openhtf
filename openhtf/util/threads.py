@@ -34,7 +34,7 @@ def Loop(_=None, force=False):   # pylint: disable=invalid-name
         'keep it, file an issue at https://github.com/google/openhtf/issues '
         'and use it as @Loop(force=True) for now.')
 
-  def RealLoop(fn):
+  def real_loop(fn):
     @functools.wraps(fn)
     def _proc(*args, **kwargs):
       """Wrapper to return."""
@@ -43,7 +43,7 @@ def Loop(_=None, force=False):   # pylint: disable=invalid-name
     _proc.once = fn  # way for tests to invoke the function once
                      # you may need to pass in "self" since this may be unbound.
     return _proc
-  return RealLoop
+  return real_loop
 
 
 class ExceptionSafeThread(threading.Thread):
@@ -62,13 +62,13 @@ class ExceptionSafeThread(threading.Thread):
         logging.exception('Thread raised an exception: %s', self.name)
         raise
     finally:
-      self._ThreadFinished()
+      self._thread_finished()
       _LOG.debug('Thread finished: %s', self.name)
 
   def _thread_proc(self):
     """The method called when executing the thread."""
 
-  def _ThreadFinished(self):
+  def _thread_finished(self):
     """The method called once _thread_proc has finished."""
 
   def _thread_exception(self, exception):
@@ -84,12 +84,12 @@ class KillableThread(ExceptionSafeThread):
   Based on recipe available at http://tomerfiliba.com/recipes/Thread2/
   """
 
-  def Kill(self):
+  def kill(self):
     """Terminates the current thread by raising an error."""
     if self.is_alive():
-      self.AsyncRaise(ThreadTerminationError)
+      self.async_raise(ThreadTerminationError)
 
-  def AsyncRaise(self, exc_type):
+  def async_raise(self, exc_type):
     """Raise the exception."""
     assert self.is_alive(), 'Only running threads have a thread identity'
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
@@ -102,7 +102,7 @@ class KillableThread(ExceptionSafeThread):
       raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
 
   def _thread_exception(self, exception):
-    """Suppress the exception when we're Kill()'d."""
+    """Suppress the exception when we're kill()'d."""
     return isinstance(exception, ThreadTerminationError)
 
 
@@ -119,7 +119,7 @@ class NoneByDefaultThreadLocal(threading.local):  # pylint: disable=too-few-publ
     return None
 
 
-def Synchronized(func):  # pylint: disable=invalid-name
+def synchronized(func):  # pylint: disable=invalid-name
   """Hold self._lock while executing func."""
   @functools.wraps(func)
   def synchronized_method(self, *args, **kwargs):
