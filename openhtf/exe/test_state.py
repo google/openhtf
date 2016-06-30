@@ -95,7 +95,7 @@ class TestState(object):
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
     self.logger = logs.InitializeRecordLogger(test_desc.uid, self.test_record)
-    self.plug_manager = plugs.PlugManager(test_desc.plug_types)
+    self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
     self.running_phase_state = None
     self.user_defined_state = {}
     self._lock = threading.Lock()
@@ -144,7 +144,8 @@ class TestState(object):
     return {
         'status': self._status,
         'test_record': self.test_record,
-        # TODO(madsci)
+        # TODO(madsci): pass the whole running_phase_state to provide
+        # Station API visibility of measurements as they are set.
         'running_phase_record': (self.running_phase_state and
                                  self.running_phase_state.phase_record),
     }

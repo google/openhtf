@@ -167,7 +167,7 @@ class PhaseOrTestIterator(collections.Iterator):
     self.plug_manager.InitializePlugs(plug_cls for plug_cls in plug_types if
                                       plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.OverridePlug(plug_type, plug_value)
+      self.plug_manager.UpdatePlug(plug_type, plug_value)
 
 
   @conf.SaveAndRestore(station_api_port=None)
@@ -177,7 +177,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
     # Cobble together a fake TestState to pass to the test phase.
     with mock.patch(
-          'openhtf.plugs.PlugManager', new=lambda _: self.plug_manager):
+          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test_state_ = test_state.TestState(openhtf.TestDescriptor(
           'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
 
@@ -197,7 +197,7 @@ class PhaseOrTestIterator(collections.Iterator):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.OverridePlug(plug_type, plug_value)
+      self.plug_manager.UpdatePlug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
     record_saver = util.NonLocalResult()
@@ -206,7 +206,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch(
-          'openhtf.plugs.PlugManager', new=lambda _: self.plug_manager):
+          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test.Execute(test_start=lambda: 'TestDutId')
 
     return record_saver.result
