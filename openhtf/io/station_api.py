@@ -118,8 +118,8 @@ MULTICAST_KWARGS = lambda: {
 }
 
 
-class InvalidTestError(Exception):
-  """Raised when information is requested about an unknown Test UID."""
+class PlugUnrecognizedError(Exception):
+  """Raised if a plug is requested that is not in use."""
 
 
 class SimpleThreadedXMLRPCServer(
@@ -333,11 +333,8 @@ class Station(object):
   @property
   def tests(self):
     """List active Test instances on this station."""
-    print('listing tests')
     with self._shared_proxy._lock:
-      print('acquired lock')
       tests = self._shared_proxy.list_tests()
-    print('received %s tests' % len(tests))
 
     updated_tests = {}
     for test_dict in tests:
@@ -422,8 +419,45 @@ class StationApi(object):
     return self._serialize_state_dict(state._asdict(), start_time_millis,
                                       skip_phases, skip_logs)
 
+  def wait_for_plug(self, test_id, plug_type_name, current_state, timeout_s):
+    """Long-poll RPC that blocks until the requested plug has an update.
+
+    While waiting, a thread is spawned that will call the plug's _asdict()
+    method in a tight loop until a change is detected (this is to prevent
+    Plug implementors from having to sprinkle notify calls everywhere to
+    trigger updates).
+
+    Args:
+      test_uid: Test UID from which to obtain the plug on which to wait.
+      plug_type_name: The plug type (string name, like 'my.module.MyPlug')
+          on which to wait for an update.
+      current_state: Current remotely known plug state.  This is what the
+          plug's state is compared against to detect an update.
+      timeout_s: Timeout (in seconds) to wait for an update.  If no update
+          occurs within this time, returns an empty string.
+
+    Returns:
+      New _asdict() state of plug, or None in the case of a timeout.
+
+    Raises:
+      UnrecognizedTestUidError: If the test_uid is not recognized.
+      TestNotRunningError: If the test requested is not currently running.
+      PlugUnrecognizedError: If the requested plug is not used by the
+          currently running test. 
+    """
+    test_state = openhtf.Test.state_by_uid(test_uid)
+    return test_state.plug_manager.WaitForPlugUpdate(
+        plug_type_name, current_state, timeout_s)
+
   def wait_for_update(self, test_uid, current_state, timeout_s):
     """Long-poll RPC that blocks until there is new information available.
+
+    Events that trigger an update:
+      Test Start/Finish
+      # TODO: Measurement is set/updated.
+
+    Note that plug state changes do NOT trigger an update here, use
+    wait_for_plug() to get plug state change events.
 
     Args:
       test_uid: Test UID for which to wait on an update.
@@ -434,19 +468,14 @@ class StationApi(object):
       Updated RemoteState, as per get_test_state, except args are taken from
     current_state rather than passed in individually (because we care about
     more stuff here).  In the event of a timeout, the empty string is
-    returned; in the event of there being no state information available for
-    the requested test (ie it completed and is no longer running), None is
     returned.
+
+    Raises:
+      UnrecognizedTestUidError: If the test_uid is not recognized.
+      TestNotRunningError: If the test requested is not currently running.
     """
-    test = openhtf.Test.TEST_INSTANCES.get(test_uid)
-    if not test:
-      raise InvalidTestError('Test UID %s not recognized' % test_uid)
-
-    state = test.state
-    if not state:
-      return None
-
-    state_dict, event = state.asdict_with_event()
+    test_state = openhtf.Test.state_by_uid(test_uid)
+    state_dict, event = test_state.asdict_with_event()
     if not current_state:
       _LOG.debug('RPC:wait_for_update() -> short-circuited wait (was blank)')
       return self._serialize_state_dict(state_dict)

@@ -34,6 +34,9 @@ from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
+conf.Declare('teardown_timeout_s', default_value=3, description=
+    'Timeout (in seconds) for test teardown functions.')
+
 
 class TestStopError(Exception):
   """Test is being stopped."""
@@ -50,17 +53,16 @@ class TestExecutor(threads.KillableThread):
   def __init__(self, test_data, test_start, teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
-    self._teardown_function = (
-        teardown_function
-        and openhtf.PhaseDescriptor.WrapOrCopy(teardown_function))
+    self._teardown_function = None
+    if teardown_function:
+      self._teardown_function = openhtf.PhaseDescriptor.WrapOrCopy(
+          teardown_function)
+      # Force teardown function timeout.
+      self._teardown_function.options.timeout_s = conf.teardown_timeout_s
+
     self._test_desc = test_data
     self._test_start = test_start
     self._lock = threading.Lock()
-
-  def _asdict(self):
-    # TODO(madsci): Remove this.
-    """Return a dictionary representation of this executor."""
-    return {'station_id': conf.station_id}
 
   def Start(self):
     """Style-compliant start method."""
