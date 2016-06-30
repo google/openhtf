@@ -33,7 +33,7 @@ class StubUsbHandle(usb_handle.UsbHandle):
     self.closed = False
 
   @classmethod
-  def _Dotify(cls, data):
+  def _dotify(cls, data):
     """Add dots."""
     return ''.join(char if char in cls.PRINTABLE_DATA else '.' for char in data)
 
@@ -46,8 +46,8 @@ class StubUsbHandle(usb_handle.UsbHandle):
     expected_data = self.expected_write_data.pop(0)
     if expected_data != data:
       raise ValueError('Expected %s, got %s (%s)' % (
-          self._Dotify(expected_data), binascii.hexlify(data),
-          self._Dotify(data)))
+          self._dotify(expected_data), binascii.hexlify(data),
+          self._dotify(data)))
 
   def read(self, length, dummy=None):
     """Stub Read method."""
@@ -56,7 +56,7 @@ class StubUsbHandle(usb_handle.UsbHandle):
     if length < len(data):
       raise ValueError(
           'Overflow packet length. Read %d bytes, got %d bytes: %s',
-          length, len(data), self._Dotify(data))
+          length, len(data), self._dotify(data))
     return data
 
   def Close(self):
@@ -67,11 +67,11 @@ class StubUsbHandle(usb_handle.UsbHandle):
     """Stub is_closed method."""
     return self.closed
 
-  def ExpectWrite(self, data):
-    """Stub ExpectWrite method."""
-    assert self.expected_write_data is not None, 'ExpectWrite would be ignored!'
+  def expect_write(self, data):
+    """Stub expect_write method."""
+    assert self.expected_write_data is not None, 'expect_write would be ignored!'
     self.expected_write_data.append(data)
 
-  def ExpectRead(self, data):
-    """Stub ExpectRead method."""
+  def expect_read(self, data):
+    """Stub expect_read method."""
     self.expected_read_data.append(data)

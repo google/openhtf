@@ -892,7 +892,7 @@ class AdbConnection(object):
       msg = adb_transport.read_until(
           ('CNXN',), timeouts.PolledTimeout.FromMillis(auth_timeout_ms))
     except usb_exceptions.UsbReadFailedError as exception:
-      if exception.IsTimeout():
+      if exception.is_timeout():
         exceptions.Reraise(usb_exceptions.DeviceAuthError,
                            'Accept auth key on device, then retry.')
       raise

@@ -115,12 +115,12 @@ class async_commandHandle(object):
     self.stdout = stdout or cStringIO.StringIO()
     self.force_closed_or_timeout = False
 
-    self.reader_thread = threading.Thread(target=self._ReaderThread)
+    self.reader_thread = threading.Thread(target=self._reader_thread_proc)
     self.reader_thread.daemon = True
     self.reader_thread.start()
 
     if stdin:
-      self.writer_thread = threading.Thread(target=self._WriterThread,
+      self.writer_thread = threading.Thread(target=self._writer_thread_proc,
                                             args=(is_raw,))
       self.writer_thread.daemon = True
       self.writer_thread.start()
@@ -128,7 +128,7 @@ class async_commandHandle(object):
     # Close ourselves after timeout expires, ignored if timeout won't expire.
     timeouts.ExecuteAfterDelay(timeout, self.Close)
 
-  def _WriterThread(self, is_raw):
+  def _writer_thread_proc(self, is_raw):
     """Write as long as the stream is not closed."""
     # If we're not in raw mode, do line-buffered reads to play nicer with
     # potential interactive uses, max of MAX_ADB_DATA, since anything we write
@@ -141,7 +141,7 @@ class async_commandHandle(object):
     while not self.stream.is_closed():
       self.stream.write(reader(adb_protocol.MAX_ADB_DATA))
 
-  def _ReaderThread(self):
+  def _reader_thread_proc(self):
     """Read until the stream is closed."""
     for data in self.stream.read_until_close():
       if self.stdout is not None:
@@ -161,7 +161,7 @@ class async_commandHandle(object):
     self.force_closed_or_timeout = True
     self.stream.Close()
 
-  def IsDone(self):
+  def is_done(self):
     """Return True if this command has completed."""
     return self.stream.is_closed()
 
@@ -199,7 +199,7 @@ class ShellService(object):
     self.adb_connection = adb_connection
 
   @staticmethod
-  def _ToRawCommand(command):
+  def _to_raw_command(command):
     """Convert the command to a raw signal."""
     # Android doesn't have stty, so we manually do the ioctl (yuck).  This ioctl
     # is a TCSETA (0x5403) with the following flags set:
@@ -226,7 +226,7 @@ class ShellService(object):
   def streaming_command(self, command, raw=False, timeout_ms=None):
     """Run the given command and yield the output as we receive it."""
     if raw:
-      command = self._ToRawCommand(command)
+      command = self._to_raw_command(command)
     return self.adb_connection.streaming_command('shell', command, timeout_ms)
 
   # pylint: disable=too-many-arguments
@@ -260,7 +260,7 @@ class ShellService(object):
     """
     timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
     if raw:
-      command = self._ToRawCommand(command)
+      command = self._to_raw_command(command)
     stream = self.adb_connection.open_stream('shell:%s' % command, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
@@ -273,6 +273,6 @@ class ShellService(object):
   # pylint: enable=too-many-arguments
 
   @classmethod
-  def UsingConnection(cls, adb_connection):
+  def using_connection(cls, adb_connection):
     """Factory method to match the interface of FilesyncService."""
     return cls(adb_connection)
