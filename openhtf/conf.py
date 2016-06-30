@@ -171,7 +171,7 @@ from openhtf.util import threads
 
 # If provided, --config-file will cause the given file to be Load()ed when the
 # conf module is initially imported.
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
     '--config-file', type=argparse.FileType('r'),
     help='File from which to load configuration values.')
@@ -268,7 +268,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     # pylint: disable=bad-super-call
     super(type(self), self).__setattr__(attr, value)
 
-  # Don't use Synchronized on this one, because __getitem__ handles it.
+  # Don't use synchronized on this one, because __getitem__ handles it.
   def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Get a config value via attribute access."""
     if self._IsValidKey(attr):
@@ -277,7 +277,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     raise AttributeError("'%s' object has no attribute '%s'" %
                          (type(self).__name__, attr))
 
-  @threads.Synchronized
+  @threads.synchronized
   def __getitem__(self, item):  # pylint: disable=invalid-name
     """Get a config value via item access.
 
@@ -306,7 +306,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     raise self.UnsetKeyError(
         'Configuration value not set and has no default', item)
 
-  @threads.Synchronized
+  @threads.synchronized
   def __contains__(self, name):  # pylint: disable=invalid-name
     """True if we have a value for name."""
     return (name in self._declarations and
@@ -314,7 +314,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
              name in self._loaded_values or
              name in self._flag_values))
 
-  @threads.Synchronized
+  @threads.synchronized
   def Declare(self, name, description=None, **kwargs):
     """Declare a configuration key with the given name.
 
@@ -333,7 +333,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     self._declarations[name] = self.Declaration(
         name, description=description, **kwargs)
 
-  @threads.Synchronized
+  @threads.synchronized
   def Reset(self):
     """Reset the loaded state of the configuration to what it was at import.
 
@@ -381,7 +381,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     self.LoadFromDict(
         kwargs, _override=_override, _allow_undeclared=_allow_undeclared)
 
-  @threads.Synchronized
+  @threads.synchronized
   def LoadFromDict(self, dictionary, _override=True, _allow_undeclared=False):
     """Loads the config with values from a dictionary instead of a file.
 
@@ -419,7 +419,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       self._logger.warning('Ignoring undeclared configuration keys: %s',
                            undeclared_keys)
 
-  @threads.Synchronized
+  @threads.synchronized
   def _asdict(self):
     """Create a dictionary snapshot of the current config values."""
     # Start with any default values we have, and override with loaded values,

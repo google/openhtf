@@ -268,7 +268,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
     return cached_state, {
         'status': cached_state.status.name,
-        'running_phase_state': data.ConvertToBaseTypes(
+        'running_phase_state': data.convert_to_base_types(
             cached_state.running_phase_state),
         'test_record': xmlrpclib.Binary(pickle.dumps(test_record))}
 
@@ -578,7 +578,7 @@ class StationApi(object):
             xmlrpclib.Binary(pickle.dumps(state_dict['test_record'])),
         'plugs': state_dict['plugs'],
         'running_phase_state':
-            data.ConvertToBaseTypes(state_dict['running_phase_state'])
+            data.convert_to_base_types(state_dict['running_phase_state'])
     }
 
   def get_test_state(self, test_uid, remote_record):

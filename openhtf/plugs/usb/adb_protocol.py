@@ -168,7 +168,7 @@ class AdbStream(object):
       AdbStreamClosedError: If the stream is already closed, or gets closed
         before the write completes.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     # Break the data up into our transport's maxdata sized WRTE messages.
     while data:
       self._transport.write(
@@ -197,7 +197,7 @@ class AdbStream(object):
       AdbTimeoutError: Timed out waiting for a message.
     """
     return self._transport.read(
-        length, timeouts.PolledTimeout.FromMillis(timeout_ms))
+        length, timeouts.PolledTimeout.from_millis(timeout_ms))
 
   def read_until_close(self, timeout_ms=None):
     """Yield data until this stream is closed.
@@ -390,7 +390,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
         # holding the message_received lock, we can immediately do the wait.
         try:
           self._message_received.wait(timeout.remaining)
-          if timeout.HasExpired():
+          if timeout.has_expired():
             raise usb_exceptions.AdbTimeoutError(
                 '%s timed out reading messages.', self)
         finally:
@@ -495,7 +495,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
     self.closed_state = self.ClosedState.CLOSED
     try:
       if not self.adb_connection.close_stream_transport(
-          self, timeouts.PolledTimeout.FromMillis(timeout_ms)):
+          self, timeouts.PolledTimeout.from_millis(timeout_ms)):
         _LOG.warning('Attempt to close mystery %s', self)
     except usb_exceptions.AdbTimeoutError:
       _LOG.warning('%s Close() timed out, ignoring', self)
@@ -656,7 +656,7 @@ class AdbConnection(object):
       An AdbStream object that can be used to read/write data to the specified
       service endpoint, or None if the requested service couldn't be opened.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
 
     stream_transport = self._make_stream_transport()
     self.transport.write_message(
@@ -713,7 +713,7 @@ class AdbConnection(object):
     Yields:
       The data contained in the responses from the service.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     stream = self.open_stream('%s:%s' % (service, command), timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
@@ -766,11 +766,11 @@ class AdbConnection(object):
         timeout expires.
       AdbStreamClosedError: If the given stream has been closed.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     # Bail when the timeout expires, or when we no longer have the given stream
     # in our map (it may have been closed, we don't want to leave a thread
     # hanging in this loop when that happens).
-    while (not timeout.HasExpired() and
+    while (not timeout.has_expired() and
            stream_transport.local_id in self._stream_transport_map):
       try:
         # Block for up to 10ms to rate-limit how fast we spin.
@@ -792,7 +792,7 @@ class AdbConnection(object):
         except Queue.Empty:
           pass
 
-        while not timeout.HasExpired():
+        while not timeout.has_expired():
           msg = self._handle_message_for_stream(
               stream_transport, self.transport.read_message(timeout), timeout)
           if msg:
@@ -800,7 +800,7 @@ class AdbConnection(object):
       finally:
         self._reader_lock.release()
 
-    if timeout.HasExpired():
+    if timeout.has_expired():
       raise usb_exceptions.AdbTimeoutError(
           'Read timed out for %s', stream_transport)
 
@@ -847,7 +847,7 @@ class AdbConnection(object):
       usb_exceptions.AdbProtocolError: When the device does authentication in an
         unexpected way, or fails to respond appropriately to our CNXN request.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     if FLAGS.adb_message_log:
       adb_transport = adb_message.DebugAdbTransportAdapter(transport)
     else:
@@ -890,10 +890,10 @@ class AdbConnection(object):
             data=rsa_keys[0].get_public_key() + '\0'))
     try:
       msg = adb_transport.read_until(
-          ('CNXN',), timeouts.PolledTimeout.FromMillis(auth_timeout_ms))
+          ('CNXN',), timeouts.PolledTimeout.from_millis(auth_timeout_ms))
     except usb_exceptions.UsbReadFailedError as exception:
       if exception.is_timeout():
-        exceptions.Reraise(usb_exceptions.DeviceAuthError,
+        exceptions.reraise(usb_exceptions.DeviceAuthError,
                            'Accept auth key on device, then retry.')
       raise
 

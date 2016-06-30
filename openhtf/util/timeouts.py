@@ -37,7 +37,7 @@ class PolledTimeout(object):
     self.timeout_s = timeout_s
 
   @classmethod
-  def FromMillis(cls, timeout_ms):
+  def from_millis(cls, timeout_ms):
     """Create a new PolledTimeout if needed.
 
     If timeout_ms is already a PolledTimeout, just return it, otherwise create a
@@ -51,14 +51,14 @@ class PolledTimeout(object):
       A PolledTimeout object that will expire in timeout_ms milliseconds, which
     may be timeout_ms itself, or a newly allocated PolledTimeout.
     """
-    if hasattr(timeout_ms, 'HasExpired'):
+    if hasattr(timeout_ms, 'has_expired'):
       return timeout_ms
     if timeout_ms is None:
       return cls(None)
     return cls(timeout_ms / 1000.0)
 
   @classmethod
-  def FromSeconds(cls, timeout_s):
+  def from_seconds(cls, timeout_s):
     """Create a new PolledTimeout if needed.
 
     If timeout_s is already a PolledTimeout, just return it, otherwise create a
@@ -72,26 +72,26 @@ class PolledTimeout(object):
       A PolledTimeout object that will expire in timeout_s seconds, which may
     be timeout_s itself, or a newly allocated PolledTimeout.
     """
-    if hasattr(timeout_s, 'HasExpired'):
+    if hasattr(timeout_s, 'has_expired'):
       return timeout_s
     return cls(timeout_s)
 
-  def Restart(self):
+  def restart(self):
     """Restarts the timeout. Initializing the start time to now."""
     self.start = time.time()
 
-  def Expire(self):
+  def expire(self):
     """Expire the timeout immediately."""
     self.timeout_s = 0
 
-  def HasExpired(self):
+  def has_expired(self):
     """Returns True if the timeout has expired."""
     if self.timeout_s is None:
       return False
     return self.seconds > self.timeout_s
 
   # Bad API. alusco is sometimes bad at naming.
-  Poll = HasExpired  # pylint: disable=invalid-name
+  Poll = has_expired  # pylint: disable=invalid-name
 
   # pylint: disable=missing-docstring
   @property
@@ -115,7 +115,7 @@ class PolledTimeout(object):
 
 # There's now no way to tell if a timeout occured generically
 # which sort of sucks (for generic validation fn)
-def LoopUntilTimeoutOrValid(timeout_s, function, validation_fn, sleep_s=1):  # pylint: disable=invalid-name
+def loop_until_timeout_or_valid(timeout_s, function, validation_fn, sleep_s=1):  # pylint: disable=invalid-name
   """Loops until the specified function returns valid or a timeout is reached.
 
   Note: The function may return anything which, when passed to validation_fn,
@@ -136,18 +136,18 @@ def LoopUntilTimeoutOrValid(timeout_s, function, validation_fn, sleep_s=1):  # p
   Returns:
     Whatever the function returned last.
   """
-  if timeout_s is None or not hasattr(timeout_s, 'HasExpired'):
+  if timeout_s is None or not hasattr(timeout_s, 'has_expired'):
     timeout_s = PolledTimeout(timeout_s)
 
   while True:
     # Calls the function at least once
     result = function()
-    if validation_fn(result) or timeout_s.HasExpired():
+    if validation_fn(result) or timeout_s.has_expired():
       return result
     time.sleep(sleep_s)
 
 
-def LoopUntilTimeoutOrTrue(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
+def loop_until_timeout_or_true(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
   """Loops until the specified function returns True or a timeout is reached.
 
   Note: The function may return anything which evaluates to implicit True.  This
@@ -165,10 +165,10 @@ def LoopUntilTimeoutOrTrue(timeout_s, function, sleep_s=1):  # pylint: disable=i
   Returns:
     Whatever the function returned last.
   """
-  return LoopUntilTimeoutOrValid(timeout_s, function, lambda x: x, sleep_s)
+  return loop_until_timeout_or_valid(timeout_s, function, lambda x: x, sleep_s)
 
 
-def LoopUntilTimeoutOrNotNone(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
+def loop_until_timeout_or_not_none(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
   """Loops until the specified function returns non-None or until a timeout.
 
   Args:
@@ -181,7 +181,7 @@ def LoopUntilTimeoutOrNotNone(timeout_s, function, sleep_s=1):  # pylint: disabl
   Returns:
     Whatever the function returned last.
   """
-  return LoopUntilTimeoutOrValid(
+  return loop_until_timeout_or_valid(
       timeout_s, function, lambda x: x is not None, sleep_s)
 
 
@@ -252,7 +252,7 @@ class Interval(object):
     else:
       return True
 
-  def Join(self, timeout_s=None):
+  def join(self, timeout_s=None):
     """Joins blocking until the interval ends or until timeout is reached.
 
     Args:
@@ -266,7 +266,7 @@ class Interval(object):
     return self.running
 
 
-def ExecuteForever(method, interval_s):  # pylint: disable=invalid-name
+def execute_forever(method, interval_s):  # pylint: disable=invalid-name
   """Executes a method forever at the specified interval.
 
   Args:
@@ -281,7 +281,7 @@ def ExecuteForever(method, interval_s):  # pylint: disable=invalid-name
   return interval
 
 
-def ExecuteUntilFalse(method, interval_s):  # pylint: disable=invalid-name
+def execute_until_false(method, interval_s):  # pylint: disable=invalid-name
   """Executes a method forever until the method returns a false value.
 
   Args:
@@ -297,21 +297,21 @@ def ExecuteUntilFalse(method, interval_s):  # pylint: disable=invalid-name
 
 
 # pylint: disable=invalid-name
-def RetryUntilTrueOrLimitReached(method, limit, sleep_s=1,
+def retry_until_true_or_limit_reached(method, limit, sleep_s=1,
                                  catch_exceptions=()):
   """Executes a method until the retry limit is hit or True is returned."""
-  return RetryUntilValidOrLimitReached(
+  return retry_until_valid_or_limit_reached(
       method, limit, lambda x: x, sleep_s, catch_exceptions)
 
 
-def RetryUntilNotNoneOrLimitReached(method, limit, sleep_s=1,
+def retry_until_not_none_or_limit_reached(method, limit, sleep_s=1,
                                     catch_exceptions=()):
   """Executes a method until the retry limit is hit or not None is returned."""
-  return RetryUntilValidOrLimitReached(
+  return retry_until_valid_or_limit_reached(
       method, limit, lambda x: x is not None, sleep_s, catch_exceptions)
 
 
-def RetryUntilValidOrLimitReached(method, limit, validation_fn, sleep_s=1,
+def retry_until_valid_or_limit_reached(method, limit, validation_fn, sleep_s=1,
                                   catch_exceptions=()):
   """Executes a method until the retry limit or validation_fn returns True.
 
@@ -340,9 +340,9 @@ def RetryUntilValidOrLimitReached(method, limit, validation_fn, sleep_s=1,
         raise
       return None
 
-  helper = RetryHelper(limit - 1)
+  helper = retry_helper(limit - 1)
   result = _execute_method(helper)
-  while not validation_fn(result) and helper.RetryIfPossible():
+  while not validation_fn(result) and helper.retry_if_possible():
     time.sleep(sleep_s)
     result = _execute_method(helper)
   return result
@@ -351,11 +351,11 @@ def RetryUntilValidOrLimitReached(method, limit, validation_fn, sleep_s=1,
 
 
 @contextlib.contextmanager
-def TakeAtLeastNSeconds(time_s):
+def take_at_least_n_seconds(time_s):
   """A context manager which ensures it takes at least time_s to execute.
 
   Example:
-    with TakeAtLeastNSeconds(5):
+    with take_at_least_n_seconds(5):
       do.Something()
       do.SomethingElse()
     # if Something and SomethingElse took 3 seconds, the with block with sleep
@@ -368,11 +368,11 @@ def TakeAtLeastNSeconds(time_s):
   """
   timeout = PolledTimeout(time_s)
   yield
-  while not timeout.HasExpired():
+  while not timeout.has_expired():
     time.sleep(timeout.remaining)
 
 
-def TakeAtMostNSeconds(time_s, func, *args, **kwargs):
+def take_at_most_n_seconds(time_s, func, *args, **kwargs):
   """A function that returns whether a function call took less than time_s.
 
   NOTE: The function call is not killed and will run indefinitely if hung.
@@ -393,7 +393,7 @@ def TakeAtMostNSeconds(time_s, func, *args, **kwargs):
   return True
 
 
-def ExecuteAfterDelay(time_s, func, *args, **kwargs):
+def execute_after_delay(time_s, func, *args, **kwargs):
   """A function that executes the given function after a delay.
 
   Executes func in a separate thread after a delay, so that this function
@@ -408,20 +408,20 @@ def ExecuteAfterDelay(time_s, func, *args, **kwargs):
     *args: Arguments to call the function with.
     **kwargs: Keyword arguments to call the function with.
   """
-  timeout = PolledTimeout.FromSeconds(time_s)
+  timeout = PolledTimeout.from_seconds(time_s)
 
-  def Target():
+  def target():
     time.sleep(timeout.remaining)
     try:
       func(*args, **kwargs)
     except Exception:  # pylint: disable=broad-except
       _LOG.exception('Error executing %s after %s expires.', func, timeout)
   if timeout.remaining is not None:
-    thread = threading.Thread(target=Target)
+    thread = threading.Thread(target=target)
     thread.start()
 
 
-class RetryHelper(object):  # pylint: disable=too-few-public-methods
+class retry_helper(object):  # pylint: disable=too-few-public-methods
   """A helper with to simplify retrying.
 
   Attributes:
@@ -436,7 +436,7 @@ class RetryHelper(object):  # pylint: disable=too-few-public-methods
     """
     self.remaining = retries
 
-  def RetryIfPossible(self):
+  def retry_if_possible(self):
     """Decrements a retry.
 
     Returns:

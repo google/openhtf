@@ -30,7 +30,7 @@ passed to test phases:
 In order to facilitate adding logs to the test record output from places
 outside the test phase (without forcing the author to pass the logger object
 around), a user can directly use a logger instance assocated with the Test's
-output TestRecord.  This is accessible via the GetRecordLoggerFor function
+output TestRecord.  This is accessible via the get_record_logger_for function
 in this module, which take's a Test's UID and returns a Python Logger:
 
   import logging
@@ -41,7 +41,7 @@ in this module, which take's a Test's UID and returns a Python Logger:
       self.test_uid = ''
 
     def MyRandomMethod(self):
-      logs.GetRecordLoggerFor(self.test_uid).info(
+      logs.get_record_logger_for(self.test_uid).info(
           'Log this to currently running test.')
 
   def MyPhase(test, helper):
@@ -49,7 +49,7 @@ in this module, which take's a Test's UID and returns a Python Logger:
 
   if __name__ == '__main__':
     helper = MyHelperClass()
-    my_test = openhtf.Test(MyPhase.WithArgs(helper=helper))
+    my_test = openhtf.Test(MyPhase.with_args(helper=helper))
     helper.test_uid = my_test.uid
     my_test.Excute()
 
@@ -84,7 +84,7 @@ QUIET = False
 LOGFILE = None
 
 LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
     '--verbosity', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
     action=argv.StoreInModule, target='%s.DEFAULT_LEVEL' % __name__,
@@ -109,12 +109,12 @@ LogRecord = collections.namedtuple(
     'LogRecord', 'level logger_name source lineno timestamp_millis message')
 
 
-def GetRecordLoggerFor(test_uid):
+def get_record_logger_for(test_uid):
   return logging.getLogger('.'.join((RECORD_LOGGER, test_uid)))
 
 
-def InitializeRecordLogger(test_uid, test_record, notify_update):
-  logger = GetRecordLoggerFor(test_uid)
+def initialize_record_logger(test_uid, test_record, notify_update):
+  logger = get_record_logger_for(test_uid)
   # All record loggers have a shared parent that's separately configured, so
   # we want to propagate to that logger.
   logger.propagate = True
@@ -124,7 +124,7 @@ def InitializeRecordLogger(test_uid, test_record, notify_update):
   return logger
 
 
-def LogOnce(log_func, msg, *args, **kwargs):
+def log_once(log_func, msg, *args, **kwargs):
   """"Logs a message only once."""
   if msg not in _LOGONCE_SEEN:
     log_func(msg, *args, **kwargs)
@@ -193,8 +193,8 @@ class RecordHandler(logging.Handler):
     self._notify_update()
 
 
-@functions.CallOnce
-def SetupLogger():
+@functions.call_once
+def setup_logger():
   """Configure logging for OpenHTF."""
   record_logger = logging.getLogger(RECORD_LOGGER)
   record_logger.propagate = False
@@ -207,7 +207,7 @@ def SetupLogger():
   formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
   if LOGFILE:
     try:
-      cur_time = str(util.TimeMillis())
+      cur_time = str(util.time_millis())
       file_handler = logging.FileHandler('%s.%s' % (LOGFILE, cur_time))
       file_handler.setFormatter(formatter)
       file_handler.setLevel(DEFAULT_LOGFILE_LEVEL.upper())

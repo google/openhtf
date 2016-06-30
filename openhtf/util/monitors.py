@@ -70,7 +70,7 @@ class _MonitorThread(threads.KillableThread):
     self.interval_ms = interval_ms
     self.extra_kwargs = extra_kwargs
 
-  def GetValue(self):
+  def get_value(self):
     arg_info = inspect.getargspec(self.monitor_desc.func)
     if arg_info.keywords:
       # Monitor phase takes **kwargs, so just pass everything in.
@@ -79,7 +79,7 @@ class _MonitorThread(threads.KillableThread):
       # Only pass in args that the monitor phase takes.
       kwargs = {arg: val for arg, val in self.extra_kwargs
                 if arg in arg_info.args}
-    return self.monitor_desc.WithArgs(**kwargs)(self.test_state)
+    return self.monitor_desc.with_args(**kwargs)(self.test_state)
 
   def _ThreadProc(self):
     measurement = getattr(self.test_state.test_api.measurements,
@@ -89,18 +89,18 @@ class _MonitorThread(threads.KillableThread):
     # Special case tight-loop monitoring.
     if not self.interval_ms:
       while True:
-        measurement[(time.time() - start_time) * 1000] = self.GetValue()
+        measurement[(time.time() - start_time) * 1000] = self.get_value()
 
     # Helper to take sample, return sample number and sample duration.
-    def _TakeSample():
-      pre_time, value, post_time = time.time(), self.GetValue(), time.time()
+    def _take_sample():
+      pre_time, value, post_time = time.time(), self.get_value(), time.time()
       measurement[(post_time - start_time) * 1000] = value
       return (int((post_time - start_time) * 1000 / self.interval_ms),
               (post_time - pre_time) * 1000)
       
     # Track the last sample number, and an approximation of the mean time
     # it takes to sample (so we can account for it in how long we sleep).
-    last_sample, mean_sample_ms = _TakeSample()
+    last_sample, mean_sample_ms = _take_sample()
     while True:
       # Find what sample number (float) we would be on if we sampled now.
       current_time = time.time()
@@ -115,14 +115,14 @@ class _MonitorThread(threads.KillableThread):
         self.test_state.logger.warning(
             'Monitor for "%s" skipping %s sample(s).', self.measurement_name,
             new_sample - last_sample - 1)
-      last_sample, cur_sample_ms = _TakeSample()
+      last_sample, cur_sample_ms = _take_sample()
       # Approximate 10-element sliding window average.
       mean_sample_ms = ((9 * mean_sample_ms) + cur_sample_ms) / 10.0
 
 
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
   monitor_desc = openhtf.PhaseDescriptor.WrapOrCopy(monitor_func)
-  def Wrapper(phase_func):
+  def wrapper(phase_func):
     phase_desc = openhtf.PhaseDescriptor.WrapOrCopy(phase_func)
 
     # Re-key this dict so we don't have to worry about collisions with
@@ -138,7 +138,7 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
         measurements.Measurement(measurement_name).WithUnits(
             units).WithDimensions(uom.MILLISECOND))
     @functools.wraps(phase_desc.func)
-    def MonitoredPhaseFunc(test_state, *args, **kwargs):
+    def monitored_phase_func(test_state, *args, **kwargs):
       # Start monitor thread, it will run monitor_desc periodically.
       monitor_thread = _MonitorThread(
           measurement_name, monitor_desc, phase_desc.extra_kwargs, test_state,
@@ -148,5 +148,5 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
         return phase_desc(test_state, *args, **kwargs)
       finally:
         monitor_thread.Kill()
-    return MonitoredPhaseFunc
-  return Wrapper
+    return monitored_phase_func
+  return wrapper

@@ -174,7 +174,7 @@ class Test(object):
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
     CreateArgParser(add_help=True).parse_known_args()
-    logs.SetupLogger()
+    logs.setup_logger()
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
@@ -372,7 +372,7 @@ class PhaseDescriptor(mutablerecords.Record(
     """
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
-      # or kwargs.  See WithArgs() below for more details.
+      # or kwargs.  See with_args() below for more details.
       retval = mutablerecords.CopyRecord(func)
     else:
       retval = cls(func, test_record.CodeInfo.ForFunction(func))
@@ -387,13 +387,13 @@ class PhaseDescriptor(mutablerecords.Record(
   def doc(self):
     return self.func.__doc__
 
-  def WithArgs(self, **kwargs):
+  def with_args(self, **kwargs):
     """Send these keyword-arguments to the phase when called."""
     # Make a copy so we can have multiple of the same phase with different args
     # in the same test.
     new_info = mutablerecords.CopyRecord(self)
     new_info.extra_kwargs.update(kwargs)
-    new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
+    new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
   def __call__(self, test_state):

@@ -44,7 +44,7 @@ def main():
                       help='Start in development mode.')
   args = parser.parse_args()
 
-  logs.SetupLogger()
+  logs.setup_logger()
 
   web_server = openhtf.io.frontend.WebGuiServer(args.discovery_interval_s,
                                                 args.disable_discovery,

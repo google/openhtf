@@ -94,7 +94,7 @@ class TestState(object):
         dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
-    self.logger = logs.InitializeRecordLogger(
+    self.logger = logs.initialize_record_logger(
         test_desc.uid, self.test_record, self.notify_update)
     self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
     self.running_phase_state = None
@@ -132,7 +132,7 @@ class TestState(object):
     currently running phase.
     """
     assert not self.running_phase_state, 'Phase already running!'
-    self.running_phase_state = PhaseState.FromDescriptor(
+    self.running_phase_state = PhaseState.from_descriptor(
         phase_desc, self.notify_update)
     try:
       with self.running_phase_state.record_timing_context:
@@ -303,10 +303,10 @@ class PhaseState(mutablerecords.Record('PhaseState', [
   """
 
   @classmethod
-  def FromDescriptor(cls, phase_desc, notify_cb):
+  def from_descriptor(cls, phase_desc, notify_cb):
     return cls(
         phase_desc.name,
-        test_record.PhaseRecord.FromDescriptor(phase_desc),
+        test_record.PhaseRecord.from_descriptor(phase_desc),
         {measurement.name:
              copy.deepcopy(measurement).set_notification_callback(notify_cb)
          for measurement in phase_desc.measurements})

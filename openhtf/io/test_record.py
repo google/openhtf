@@ -88,7 +88,7 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
   """
 
   @classmethod
-  def FromDescriptor(cls, phase_desc):
+  def from_descriptor(cls, phase_desc):
     return cls(phase_desc.name, phase_desc.code_info)
 
 
@@ -96,7 +96,7 @@ def _get_source_safely(obj):
   try:
     return inspect.getsource(obj)
   except Exception:
-    logs.LogOnce(
+    logs.log_once(
         _LOG.warning,
         'Unable to load source code for %s. Only logging this once.', obj)
     return ''

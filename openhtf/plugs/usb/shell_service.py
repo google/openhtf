@@ -126,7 +126,7 @@ class async_commandHandle(object):
       self.writer_thread.start()
 
     # Close ourselves after timeout expires, ignored if timeout won't expire.
-    timeouts.ExecuteAfterDelay(timeout, self.Close)
+    timeouts.execute_after_delay(timeout, self.Close)
 
   def _writer_thread_proc(self, is_raw):
     """Write as long as the stream is not closed."""
@@ -178,8 +178,8 @@ class async_commandHandle(object):
     timeout expired before the command completed.  Be careful to check the
     return value explicitly for None, as the output may be ''.
     """
-    closed = timeouts.LoopUntilTimeoutOrTrue(
-        timeouts.PolledTimeout.FromMillis(timeout_ms),
+    closed = timeouts.loop_until_timeout_or_true(
+        timeouts.PolledTimeout.from_millis(timeout_ms),
         self.stream.is_closed, .1)
     if closed:
       if hasattr(self.stdout, 'getvalue'):
@@ -258,7 +258,7 @@ class ShellService(object):
       AdbStreamUnavailableError: If the remote devices doesn't support the
         shell: service.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     if raw:
       command = self._to_raw_command(command)
     stream = self.adb_connection.open_stream('shell:%s' % command, timeout)

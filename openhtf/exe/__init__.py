@@ -76,7 +76,7 @@ class TestExecutor(threads.KillableThread):
     with self._lock:
       if self._exit_stack:
         self._exit_stack.close()
-    self.Kill()
+    self.kill()
 
   def finalize(self):
     """Finalize test execution and output resulting record to callbacks.

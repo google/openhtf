@@ -19,7 +19,7 @@ StoreInModule:
 import argparse
 
 
-def ModuleParser():
+def module_parser():
     return argparse.ArgumentParser(add_help=False)
 
 

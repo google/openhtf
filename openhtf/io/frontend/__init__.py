@@ -68,7 +68,7 @@ from openhtf.io.http_api import PING_RESPONSE_KEY
 from openhtf.util import classproperty
 from openhtf.util import logs
 from openhtf.util import multicast
-from openhtf.util.data import ConvertToBaseTypes
+from openhtf.util.data import convert_to_base_types
 
 
 _LOG = logging.getLogger(__name__)
@@ -286,7 +286,7 @@ class StationPubSub(PubSub):
     """Construct a message for publishing."""
     return json.dumps({
         'test_uid': test_uid,
-        'state': ConvertToBaseTypes(remote_state)
+        'state': convert_to_base_types(remote_state)
     })
 
   @classmethod
