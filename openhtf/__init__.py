@@ -59,6 +59,14 @@ __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
 
 
+class UnrecognizedTestUidError(Exception):
+  """Raised when information is requested about an unknown Test UID."""
+
+
+class TestNotRunningError(Exception):
+  """Raised when a test_uid is requested that is not currently running."""
+
+
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
@@ -115,6 +123,24 @@ class Test(object):
     # that we have at least one Test instance.
     station_api.start_server()
 
+  @classmethod
+  def state_by_uid(cls, test_uid):
+    """Get TestState of a test by UID.
+
+    Returns: TestState of currently running test, given by test_uid.
+
+    Raises:
+      UnrecognizedTestUidError: If the test_uid is not recognized.
+      TestNotRunningError: If the test requested is not currently running.
+    """
+    test = cls.TEST_INSTANCES.get(test_uid)
+    if not test:
+      raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
+    state = test.state
+    if not state:
+      return TestNotRunningError('Test UID %s is not running' % test_uid)
+    return state
+
   @property
   def uid(self):
     """Return a unique identifier for this Test instance.
@@ -124,17 +150,6 @@ class Test(object):
     be unique across different hosts.
     """
     return '%s:%s' % (station_api.STATION_API.UID, id(self))
-
-  def AddOutputCallback(self, callback):
-    """DEPRECATED: Use AddOutputCallbacks() instead."""
-    # TODO(madsci): Remove this before we push to PyPI, here for transitionary
-    # purposes.
-    raise AttributeError(
-        'DEPRECATED, use AddOutputCallbacks() instead of AddOutputCallback()')
-
-  def AddOutputCallbacks(self, *callbacks):
-    """Add the given function as an output module to this test."""
-    self._test_options.output_callbacks.extend(callbacks)
 
   @property
   def descriptor(self):
@@ -148,8 +163,19 @@ class Test(object):
       if self._executor:
         return self._executor.GetState()
 
+  def AddOutputCallback(self, callback):
+    """DEPRECATED: Use AddOutputCallbacks() instead."""
+    # TODO(madsci): Remove this before we push to PyPI, here for transitionary
+    # purposes.
+    raise AttributeError(
+        'DEPRECATED, use AddOutputCallbacks() instead of AddOutputCallback()')
+
   def GetOption(self, option):
     return getattr(self._test_options, option)
+
+  def AddOutputCallbacks(self, *callbacks):
+    """Add the given function as an output module to this test."""
+    self._test_options.output_callbacks.extend(callbacks)
 
   def Configure(self, **kwargs):
     """Update test-wide configuration options.
