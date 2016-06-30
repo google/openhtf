@@ -118,7 +118,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
   """Test start and stop triggers for Android devices."""
 
   @classmethod
-  def _TryOpen(cls):
+  def _try_open(cls):
     """Try to open a USB handle."""
     handle = None
     for usb_cls, subcls, protocol in [(adb_device.CLASS,
@@ -145,22 +145,22 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
     return False
 
   @classmethod
-  def TestStartFrontend(cls):
+  def test_start_frontend(cls):
     """Start when frontend event comes, but get serial from USB."""
     prompt_for_test_start('Connect Android device and press ENTER.',
                        text_input=False)()
-    return cls.TestStart()
+    return cls.test_start()
 
   @classmethod
-  def TestStart(cls):
+  def test_start(cls):
     """Returns serial when the test is ready to start."""
-    while not cls._TryOpen():
+    while not cls._try_open():
       time.sleep(1)
     return cls.serial_number
 
   @classmethod
-  def TestStop(cls):
+  def test_stop(cls):
     """Returns True when the test is completed and can restart."""
-    while cls._TryOpen():
+    while cls._try_open():
       time.sleep(1)
     cls.serial_number = None

@@ -83,9 +83,9 @@ class AdbDevice(object):
 
   def __init__(self, adb_connection):
     self._adb_connection = adb_connection
-    self.filesync_service = filesync_service.FilesyncService.UsingConnection(
+    self.filesync_service = filesync_service.FilesyncService.using_connection(
         adb_connection)
-    self.shell_service = shell_service.ShellService.UsingConnection(
+    self.shell_service = shell_service.ShellService.using_connection(
         adb_connection)
 
   def __str__(self):
@@ -165,7 +165,7 @@ class AdbDevice(object):
       dest_file = open(dest_file, 'w')
     elif not dest_file:
       dest_file = cStringIO.StringIO()
-    self.filesync_service.Recv(device_filename, dest_file,
+    self.filesync_service.recv(device_filename, dest_file,
                                timeouts.PolledTimeout.FromMillis(timeout_ms))
     # An empty call to cStringIO.StringIO returns an instance of
     # cStringIO.OutputType.

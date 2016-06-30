@@ -73,7 +73,7 @@ class UsbHandle(object):
   a Bulk or Interrupt transfer.
 
   It is recommended that subclasses implement the following Open() and
-  IterOpen() classmethods:
+  iter_open() classmethods:
     Open():
       Minimum Args:
         interface_class: USB interface_class to match
@@ -90,7 +90,7 @@ class UsbHandle(object):
         MultipleInterfacesFoundError: If multiple interfaces were found that
       match the given criteria.
 
-    IterOpen():
+    iter_open():
       Same Args as Open(), but instead of returning a UsbHandle, yields
     UsbHandle instances for all matching connected devices.
 
@@ -125,18 +125,18 @@ class UsbHandle(object):
     return '<%s: (%s %s)>' % (type(self).__name__, self.name, self.serial_number)
   __repr__ = __str__
 
-  def _TimeoutOrDefault(self, timeout_ms):
+  def _timeout_or_default(self, timeout_ms):
     """Specify a timeout or take the default."""
     return int(timeout_ms if timeout_ms is not None
                else self._default_timeout_ms)
 
-  def FlushBuffers(self):
+  def flush_buffers(self):
     """Default implementation, calls Read() until it blocks."""
     while True:
       try:
         self.read(FLUSH_READ_SIZE, timeout_ms=10)
       except usb_exceptions.LibusbWrappingError as exception:
-        if exception.IsTimeout():
+        if exception.is_timeout():
           break
         raise
 

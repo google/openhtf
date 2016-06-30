@@ -20,9 +20,9 @@ level overview of this ADB protocol implementation. Note that we only implement
 the host side of the protocol here, not the device side.
 
 adb_cnxn = adb_protocol.AdbConnection.connect(usb_transport)
-filesync = filesync_service.FilesyncService.UsingConnection(adb_cnxn)
-stat = filesync.Stat('/bin/sh')
-print 'Stat: ', stat
+filesync = filesync_service.FilesyncService.using_connection(adb_cnxn)
+stat = filesync.stat('/bin/sh')
+print 'stat: ', stat
 
 Documentation of this protocol is tough to find, so here it is:
 
@@ -129,7 +129,7 @@ DeviceFileStat = collections.namedtuple('DeviceFileStat', [
 def _make_message_type(name, attributes, has_data=True):
   """Make a message type for the AdbTransport subclasses."""
 
-  def AssertCommandIs(self, command):  # pylint: disable=invalid-name
+  def assert_command_is(self, command):  # pylint: disable=invalid-name
     """Assert that a message's command matches the given command."""
     if self.command != command:
       raise usb_exceptions.AdbProtocolError(
@@ -137,7 +137,7 @@ def _make_message_type(name, attributes, has_data=True):
 
   return type(name, (collections.namedtuple(name, attributes),),
               {
-                  'AssertCommandIs': AssertCommandIs,
+                  'assert_command_is': assert_command_is,
                   'has_data': has_data,
                   # Struct format on the wire has an unsigned int for each attr.
                   'struct_format': '<%sI' % len(attributes.split()),
@@ -155,7 +155,7 @@ class FilesyncService(object):
   stream is closed, we can reuse the same stream for subsequent requests and
   save a little overhead instead of establishing a new stream each time, so we
   take an AdbStream on creation rather than an AdbConnection.  A helper
-  classmethod, UsingConnection, is provided to create a FilesyncService directly
+  classmethod, using_connection, is provided to create a FilesyncService directly
   using an AdbConnection.
   """
 
@@ -169,12 +169,12 @@ class FilesyncService(object):
     """Close the stream."""
     self.stream.Close()
 
-  def Stat(self, filename, timeout=None):
+  def stat(self, filename, timeout=None):
     """Return device file stat."""
     transport = StatFilesyncTransport(self.stream)
-    transport.WriteData('STAT', filename, timeout)
+    transport.write_data('STAT', filename, timeout)
     stat_msg = transport.read_message(timeout)
-    stat_msg.AssertCommandIs('STAT')
+    stat_msg.assert_command_is('STAT')
     return DeviceFileStat(filename, stat_msg.mode, stat_msg.size, stat_msg.time)
 
   def List(self, path, timeout=None):
@@ -189,19 +189,19 @@ class FilesyncService(object):
     the requested path.
     """
     transport = DentFilesyncTransport(self.stream)
-    transport.WriteData('LIST', path, timeout)
+    transport.write_data('LIST', path, timeout)
     return (DeviceFileStat(dent_msg.name, dent_msg.mode,
                            dent_msg.size, dent_msg.time) for dent_msg in
-            transport.ReadUntilDone('DENT', timeout))
+            transport.read_until_done('DENT', timeout))
 
-  def Recv(self, filename, dest_file, timeout=None):
+  def recv(self, filename, dest_file, timeout=None):
     """Retrieve a file from the device into the file-like dest_file."""
     transport = DataFilesyncTransport(self.stream)
-    transport.WriteData('RECV', filename, timeout)
-    for data_msg in transport.ReadUntilDone('DATA', timeout):
+    transport.write_data('RECV', filename, timeout)
+    for data_msg in transport.read_until_done('DATA', timeout):
       dest_file.write(data_msg.data)
 
-  def _CheckForFailMessage(self, transport, exc_info, timeout):  # pylint: disable=no-self-use
+  def _check_for_fail_message(self, transport, exc_info, timeout):  # pylint: disable=no-self-use
     """Check for a 'FAIL' message from transport.
 
     This method always raises, if 'FAIL' was read, it will raise an
@@ -242,14 +242,14 @@ class FilesyncService(object):
       AdbRemoteError: If there's a remote error (but valid protocol).
     """
     transport = DataFilesyncTransport(self.stream)
-    transport.WriteData('SEND', '%s,%s' % (filename, st_mode), timeout)
+    transport.write_data('SEND', '%s,%s' % (filename, st_mode), timeout)
 
     try:
       while True:
         data = src_file.read(MAX_PUSH_DATA_BYTES)
         if not data:
           break
-        transport.WriteData('DATA', data, timeout)
+        transport.write_data('DATA', data, timeout)
 
       mtime = mtime or int(time.time())
       transport.write_message(
@@ -258,15 +258,15 @@ class FilesyncService(object):
       # Try to do one last read to see if we can get any more information,
       # ignoring any errors for this Read attempt. Note that this always
       # raises, either a new AdbRemoteError, or the AdbStreamClosedError.
-      self._CheckForFailMessage(transport, sys.exc_info(), timeout)
+      self._check_for_fail_message(transport, sys.exc_info(), timeout)
 
     data_msg = transport.read_message(timeout)
-    data_msg.AssertCommandIs('OKAY')
+    data_msg.assert_command_is('OKAY')
 
   # pylint: enable=too-many-arguments
 
   @classmethod
-  def UsingConnection(cls, connection, timeout=None):
+  def using_connection(cls, connection, timeout=None):
     """Create a new FilesyncService using the given AdbConnection."""
     return cls(connection.open_stream('sync:', timeout))
 
@@ -358,7 +358,7 @@ class AbstractFilesyncTransport(object):
                                               self.RECV_MSG_TYPE.__name__)
   __repr__ = __str__
 
-  def WriteData(self, command, data, timeout=None):
+  def write_data(self, command, data, timeout=None):
     """Shortcut for writing specifically a DataMessage."""
     self.write_message(FilesyncMessageTypes.DataMessage(command, data), timeout)
 
@@ -387,7 +387,7 @@ class AbstractFilesyncTransport(object):
 
   # pylint: enable=protected-access
 
-  def ReadUntilDone(self, command, timeout=None):
+  def read_until_done(self, command, timeout=None):
     """Yield messages read until we receive a 'DONE' command.
 
     Read messages of the given command until we receive a 'DONE' command.  If a
@@ -407,7 +407,7 @@ class AbstractFilesyncTransport(object):
     """
     message = self.read_message(timeout)
     while message.command != 'DONE':
-      message.AssertCommandIs(command)
+      message.assert_command_is(command)
       yield message
       message = self.read_message(timeout)
 
