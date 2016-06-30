@@ -38,8 +38,8 @@ import openhtf.io.user_input
 import openhtf.plugs
 import openhtf.util.measurements
 import openhtf.util.monitors
-import openhtf.util.units
 import openhtf.util.validators
+import openhtf.util.units
 
 
 # pylint: disable=invalid-name
@@ -49,6 +49,7 @@ prompts = openhtf.io.user_input.get_prompt_manager()
 triggers = openhtf.exe.triggers
 validators = openhtf.util.validators
 output = openhtf.io.output
+units = openhtf.util.units
 
 # Functions used in writing test scripts.
 measures = openhtf.util.measurements.measures
@@ -60,4 +61,3 @@ Measurement = openhtf.util.measurements.Measurement
 TestPhase = openhtf.PhaseOptions
 PhaseResult = openhtf.PhaseResult
 Test = openhtf.Test
-UOM = openhtf.util.units.UOM

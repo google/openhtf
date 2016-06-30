@@ -20,30 +20,22 @@ to False when done (there's a test to make sure you do this).
 """
 
 import cPickle as pickle
-import difflib
 import os.path
 import unittest
-
-from pprint import pformat
 
 import openhtf.conf as conf
 import openhtf.util as util
 
-from openhtf.io.output import json_factory
+from openhtf.io import output
 from openhtf.names import *
 from openhtf.util import data
+from openhtf.util import units
 
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
 
-def _PickleRecord(record):
-  """Output callback for saving updated output."""
-  with open(_LocalFilename('measurements_record.pickle'), 'wb') as picklefile:
-    pickle.dump(record, picklefile)
-
-def _LocalFilename(filename):
-  """Get an absolute path to filename in the same directory as this module."""
-  return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+RECORD_FILENAME = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'measurements_record.pickle')
 
 
 # Phases copied from the measurements example in examples/, because they
@@ -68,20 +60,20 @@ def LotsOfMeasurements(test):
 
 
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
-    'This measurement is validated.').WithUnits(UOM['SECOND']))
+    'This measurement is validated.').WithUnits(units.SECOND))
 def MeasureSeconds(test):
   test.measurements.validated_measurement = 5
 
 
 @measures(Measurement('dimensioned_measurement').WithDimensions(
-    UOM['SECOND'], UOM['HERTZ']))
-@measures('unset_dimensions', dimensions=(UOM['SECOND'], UOM['HERTZ']))
+    units.SECOND, units.HERTZ))
+@measures('unset_dimensions', dimensions=(units.SECOND, units.HERTZ))
 def MeasureDimensions(test):
   test.measurements.dimensioned_measurement[1, 2] = 5
 
 
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
-          units=UOM['HERTZ'], validators=[util.validators.InRange(0, 10)])
+          units=units.HERTZ, validators=[util.validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
 def InlinePhase(test):
   test.measurements.inline_kwargs = 15
@@ -95,8 +87,9 @@ class TestMeasurements(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     conf.Load(station_id='measurements_test')
-    with open(_LocalFilename('measurements_record.pickle'), 'rb') as picklefile:
-      cls.record = pickle.load(picklefile)
+    if not cls.UPDATE_OUTPUT:
+      with open(RECORD_FILENAME, 'rb') as picklefile:
+        cls.record = pickle.load(picklefile)
 
   def testMeasurements(self):
     result = util.NonLocalResult() 
@@ -107,13 +100,11 @@ class TestMeasurements(unittest.TestCase):
     # No need to run the http_api, we just want to generate the test record.
     test.Configure(http_port=None)
     if self.UPDATE_OUTPUT:
-      test.AddOutputCallbacks(_PickleRecord)
-    test.AddOutputCallbacks(_SaveResult)
-    test.Execute(test_start=lambda: 'TestDUT')
-    if self.UPDATE_OUTPUT:
-      with open(_LocalFilename('measurements_record.pickle'), 'wb') as pfile:
-        pickle.dump(result.result, pfile, -1)
+      test.AddOutputCallbacks(output.OutputToFile(RECORD_FILENAME))
     else:
+      test.AddOutputCallbacks(_SaveResult)
+    test.Execute(test_start=lambda: 'TestDUT')
+    if not self.UPDATE_OUTPUT:
       data.AssertRecordsEqualNonvolatile(
           self.record, result.result, _VOLATILE_FIELDS)
 

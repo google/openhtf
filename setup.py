@@ -117,6 +117,7 @@ INSTALL_REQUIRES = [
     'pyOpenSSL==0.15.1',
     'requests==2.9.1',
     'tornado==4.3',
+    'xlrd==1.0.0',
 ]
 
 

@@ -48,6 +48,7 @@ from openhtf.util import data
 from openhtf.util import measurements
 from openhtf.util import validators
 
+
 # pylint: disable=no-member
 MIMETYPE_MAP = {
   'image/jpeg': test_runs_pb2.JPG,
@@ -175,7 +176,7 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters,
     mangled_name = '_'.join([name] + [
         '%s%s' % (
           dim_val,
-          dim_units.uom_suffix if dim_units.uom_suffix else '') for
+          dim_units.suffix if dim_units.suffix else '') for
         dim_val, dim_units in zip(
           current_value[:-1], measurement.dimensions)])
     while mangled_name in mangled_parameters:
@@ -186,7 +187,7 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters,
     mangled_param.associated_attachment = attachment_name
     mangled_param.description = (
         'Mangled parameter from measurement %s with dimensions %s' % (
-        name, tuple(d.uom_suffix for d in measurement.dimensions)))
+        name, tuple(d.suffix for d in measurement.dimensions)))
 
     value = current_value[-1]
     if isinstance(value, numbers.Number):
@@ -198,7 +199,7 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters,
       mangled_param.description += '\nValidator: ' + str(validator)
 
     if measurement.units:
-      mangled_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
+      mangled_param.unit_code = UOM_CODE_MAP[measurement.units.code]
     mangled_parameters[mangled_name] = mangled_param
 
 
@@ -229,7 +230,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
       if measurement.docstring:
         testrun_param.description = measurement.docstring
       if measurement.units:
-        testrun_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
+        testrun_param.unit_code = UOM_CODE_MAP[measurement.units.code]
 
       if name not in phase.measured_values:
         testrun_param.status = test_runs_pb2.ERROR
@@ -256,8 +257,8 @@ def _ExtractParameters(record, testrun, used_parameter_names):
         attachment = testrun.info_parameters.add()
         attachment.name = 'multidim_%s' % name
         dims = [{
-            'uom_suffix': d.uom_suffix and d.uom_suffix.encode('utf8'),
-            'uom_code': d.uom_code}
+            'uom_suffix': d.suffix and d.suffix.encode('utf8'),
+            'uom_code': d.code}
             for d in measurement.dimensions]
         # Refer to the module docstring for the expected schema.
         attachment.value_binary = json.dumps({

@@ -32,7 +32,7 @@ Example:
 def CurrentMonitor(test, current_meter):
   return current_meter.GetReading()
 
-@monitors.monitors('current_draw', CurrentMonitor, units=units.UOM['AMPERE'])
+@monitors.monitors('current_draw', CurrentMonitor, units=units.AMPERE)
 def MyPhase(test):
   # Do some stuff for a while...
 
@@ -108,7 +108,7 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
     @plugs.plug(update_kwargs=False, **monitor_plugs)
     @measurements.measures(
         measurements.Measurement(measurement_name).WithUnits(
-            units).WithDimensions(uom.UOM['MILLISECOND']))
+            units).WithDimensions(uom.MILLISECOND))
     @functools.wraps(phase.func)
     def MonitoredPhaseFunc(phase_data, *args, **kwargs):
       # Start monitor thread, it will call monitor.func(phase_data) periodically
