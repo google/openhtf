@@ -25,13 +25,13 @@ from openhtf import plugs
 
 class UnittestPlug(plugs.BasePlug):
 
-  def SetupCap(self):
+  def setup_cap(self):
     print 'Set up the plugs instance.'
 
-  def TearDownCap(self):
+  def tear_down_cap(self):
     print 'Tear down the plugs instance.'
 
-  def DoStuff(self):
+  def do_stuff(self):
     print 'Plugs-specific functionality.'
 
 
@@ -52,7 +52,7 @@ class TestOpenhtf(unittest.TestCase):
   def __init__(self, unittest_name):
     super(TestOpenhtf, self).__init__(unittest_name)
 
-  def setUp(self):
+  def set_up(self):
     self.test_plug_type = UnittestPlug
     conf.Load(target_name='unittest_openhtf', test_start='frontend_serial')
 
@@ -61,13 +61,13 @@ class TestOpenhtf(unittest.TestCase):
     self.assertIn(self.test_plug_type, test.data.plug_types)
 
   # Mock test execution.
-  def testTestExecutor(self):
+  def test_test_executor(self):
     mock_starter = mock.Mock(spec=exe.TestExecutor)
-    mock_starter.Start()
-    mock_starter.Wait()
-    mock_starter.Stop()
+    mock_starter.start()
+    mock_starter.wait()
+    mock_starter.stop()
 
-  def testClassString(self):
+  def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
     phase_thread = exe.phase_executor.PhaseExecutorThread(phase_one, ' ')
     name = str(phase_thread)

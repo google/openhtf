@@ -32,7 +32,7 @@ FLUSH_READ_SIZE = 1024 * 64
 _LOG = logging.getLogger(__name__)
 
 
-def RequiresOpenHandle(method):  # pylint: disable=invalid-name
+def requires_open_handle(method):  # pylint: disable=invalid-name
   """Decorator to ensure a handle is open for certain methods.
 
   Subclasses should decorate their Read() and Write() with this rather than
@@ -176,7 +176,7 @@ class UsbHandle(object):
     """
 
   @abc.abstractmethod
-  def Close(self):
+  def close(self):
     """Close this handle and release any associated resources.
 
     Other methods must not be called after calling Close().  This method must

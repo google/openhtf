@@ -207,7 +207,7 @@ class Interval(object):
       return self.thread.isAlive()
     return False
 
-  def Start(self, interval_s):
+  def start(self, interval_s):
     """Starts executing the method at the specified interval.
 
     Args:
@@ -233,7 +233,7 @@ class Interval(object):
     self.thread.start()
     return True
 
-  def Stop(self, timeout_s=None):
+  def stop(self, timeout_s=None):
     """Stops the interval.
 
     If a timeout is provided and stop returns False then the thread is
@@ -277,7 +277,7 @@ def execute_forever(method, interval_s):  # pylint: disable=invalid-name
     An Interval object.
   """
   interval = Interval(method)
-  interval.Start(interval_s)
+  interval.start(interval_s)
   return interval
 
 
@@ -292,7 +292,7 @@ def execute_until_false(method, interval_s):  # pylint: disable=invalid-name
     An Interval object.
   """
   interval = Interval(method, stop_if_false=True)
-  interval.Start(interval_s)
+  interval.start(interval_s)
   return interval
 
 

@@ -97,7 +97,7 @@ class PromptManager(object):
           message, functools.partial(self.respond, self.prompt.id))
       console_prompt.start()
       self._cond.wait(timeout_s)
-      console_prompt.Stop()
+      console_prompt.stop()
       self.prompt = None
       if self._response is None:
         self.prompt = None
@@ -136,7 +136,7 @@ class ConsolePrompt(threading.Thread):
     self._callback = callback
     self._stopped = False
 
-  def Stop(self):
+  def stop(self):
     """Mark this ConsolePrompt as stopped.
 
     If this prompt was already stopped, do nothing.

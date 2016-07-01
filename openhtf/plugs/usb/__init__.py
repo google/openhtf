@@ -79,7 +79,7 @@ def _open_usb_handle(**kwargs):
         ethersync = cambrionix.EtherSync(mac_addr)
         serial = ethersync.get_usb_serial(port)
 
-  return local_usb.LibUsbHandle.Open(serial_number=serial, **kwargs)
+  return local_usb.LibUsbHandle.open(serial_number=serial, **kwargs)
 
 
 # pylint: disable=too-few-public-methods
@@ -92,7 +92,7 @@ class FastbootPlug(plugs.BasePlug):
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
             interface_protocol=fastboot_device.PROTOCOL))
-    device.tear_down = device.Close  # pylint: disable=invalid-name
+    device.tear_down = device.close  # pylint: disable=invalid-name
     return device
 
 
@@ -110,7 +110,7 @@ class AdbPlug(plugs.BasePlug):
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),
         **kwargs)
-    device.tear_down = device.Close  # pylint: disable=invalid-name
+    device.tear_down = device.close  # pylint: disable=invalid-name
     return device
 
 
@@ -128,7 +128,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
                                        fastboot_device.SUBCLASS,
                                        fastboot_device.PROTOCOL)]:
       try:
-        handle = local_usb.LibUsbHandle.Open(
+        handle = local_usb.LibUsbHandle.open(
             serial_number=cls.serial_number,
             interface_class=usb_cls,
             interface_subclass=subcls,
@@ -141,7 +141,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
         _LOG.warning('Multiple Android devices found, ignoring!')
       finally:
         if handle:
-          handle.Close()
+          handle.close()
     return False
 
   @classmethod

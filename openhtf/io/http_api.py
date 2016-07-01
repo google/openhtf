@@ -70,16 +70,16 @@ class Server(object):
                     multicast.MulticastListener(
                         multicast_response, **(multicast_info or {}))]
 
-  def Start(self):
+  def start(self):
     """Start all service threads."""
     for server in self.servers:
       server.start()
 
-  def Stop(self):
+  def stop(self):
     """Stop all service threads."""
     for server in self.servers:
       while server.is_alive():
-        server.Stop()
+        server.stop()
         server.join(self.KILL_TIMEOUT_S)
 
 
@@ -134,7 +134,7 @@ class HTTPServer(threading.Thread):
         self.wfile.write(PROMPT_NACK)
 
 
-  def Stop(self):
+  def stop(self):
     """Stop the HTTP server."""
     if self._server:
       self._server.shutdown()

@@ -26,7 +26,7 @@ class EmptyPlug(plugs.BasePlug):
 
 class TestMonitors(unittest.TestCase):
 
-  def setUp(self):
+  def set_up(self):
     self.phase_data = mock.MagicMock()
 
     def ProvidePlugs(plugs):

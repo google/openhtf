@@ -36,12 +36,12 @@ from openhtf.util import data
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
 
-def _PickleRecord(record):
+def _pickle_record(record):
   """Output callback for saving updated output."""
-  with open(_LocalFilename('measurements_record.pickle'), 'wb') as picklefile:
+  with open(_local_filename('measurements_record.pickle'), 'wb') as picklefile:
     pickle.dump(record, picklefile)
 
-def _LocalFilename(filename):
+def _local_filename(filename):
   """Get an absolute path to filename in the same directory as this module."""
   return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
@@ -49,18 +49,18 @@ def _LocalFilename(filename):
 # Phases copied from the measurements example in examples/, because they
 # cover the various ways a user might use measurements.
 @measures(Measurement('hello_world_measurement'))
-def HelloPhase(test):
+def hello_phase(test):
   test.measurements.hello_world_measurement = 'Hello!'
 
 
 @measures('hello_again_measurement')
-def AgainPhase(test):
+def again_phase(test):
   test.measurements.hello_again_measurement = 'Again!'
 
 
 @measures('first_measurement', 'second_measurement')
 @measures(Measurement('third'), Measurement('fourth'))
-def LotsOfMeasurements(test):
+def lots_of_measurements(test):
   test.measurements.first_measurement = 'First!'
   test.measurements['second_measurement'] = 'Second :('
   for measurement in ('third', 'fourth'):
@@ -69,21 +69,21 @@ def LotsOfMeasurements(test):
 
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
     'This measurement is validated.').WithUnits(UOM['SECOND']))
-def MeasureSeconds(test):
+def measure_seconds(test):
   test.measurements.validated_measurement = 5
 
 
 @measures(Measurement('dimensioned_measurement').WithDimensions(
     UOM['SECOND'], UOM['HERTZ']))
 @measures('unset_dimensions', dimensions=(UOM['SECOND'], UOM['HERTZ']))
-def MeasureDimensions(test):
+def measure_dimensions(test):
   test.measurements.dimensioned_measurement[1, 2] = 5
 
 
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
           units=UOM['HERTZ'], validators=[util.validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
-def InlinePhase(test):
+def inline_phase(test):
   test.measurements.inline_kwargs = 15
   test.measurements.another_inline = 'This one is unvalidated.'
 
@@ -95,28 +95,28 @@ class TestMeasurements(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     conf.Load(station_id='measurements_test')
-    with open(_LocalFilename('measurements_record.pickle'), 'rb') as picklefile:
+    with open(_local_filename('measurements_record.pickle'), 'rb') as picklefile:
       cls.record = pickle.load(picklefile)
 
-  def testMeasurements(self):
+  def test_measurements(self):
     result = util.NonLocalResult() 
-    def _SaveResult(test_record):
+    def _save_result(test_record):
       result.result = test_record
-    test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
-                MeasureDimensions, InlinePhase)
+    test = Test(hello_phase, again_phase, lots_of_measurements, measure_seconds,
+                measure_dimensions, inline_phase)
     # No need to run the http_api, we just want to generate the test record.
-    test.Configure(http_port=None)
+    test.configure(http_port=None)
     if self.UPDATE_OUTPUT:
-      test.AddOutputCallbacks(_PickleRecord)
-    test.AddOutputCallbacks(_SaveResult)
-    test.Execute(test_start=lambda: 'TestDUT')
+      test.add_output_callbacks(_pickle_record)
+    test.add_output_callbacks(_save_result)
+    test.execute(test_start=lambda: 'TestDUT')
     if self.UPDATE_OUTPUT:
-      with open(_LocalFilename('measurements_record.pickle'), 'wb') as pfile:
+      with open(_local_filename('measurements_record.pickle'), 'wb') as pfile:
         pickle.dump(result.result, pfile, -1)
     else:
       data.AssertRecordsEqualNonvolatile(
           self.record, result.result, _VOLATILE_FIELDS)
 
-  def testUpdateOutput(self):
+  def test_update_output(self):
     """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
     assert not self.UPDATE_OUTPUT, 'Change UPDATE_OUTPUT back to False!'

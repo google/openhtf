@@ -121,7 +121,7 @@ class Station(object):
                    self.hostport, response)
     return False
 
-  def Notify(self, message):
+  def notify(self, message):
     """Send a message to an OpenHTF instance in response to a prompt.
 
     Args:
@@ -195,7 +195,7 @@ class StationStore(threading.Thread):
     if station.station_id is UNKNOWN_STATION_ID:
       station.refresh()
 
-  def Stop(self):
+  def stop(self):
     """Stop the store."""
     self._stop_event.set()
     self.join()
@@ -243,7 +243,7 @@ class PromptHandler(tornado.web.RequestHandler):
   def post(self, host, port, prompt_id):
     msg = json.JSONEncoder().encode(
         {'id': prompt_id, 'response': self.request.body})
-    self.store[host, port].Notify(msg)
+    self.store[host, port].notify(msg)
 
 
 def main(argv):
@@ -311,7 +311,7 @@ def main(argv):
     """Handle SIGINT by stopping running executor and handler."""
     _LOG.error('Received SIGINT. Stopping frontend server.')
     tornado.ioloop.IOLoop.instance().stop()
-    store.Stop()
+    store.stop()
   signal.signal(signal.SIGINT, sigint_handler)
 
   print('Starting openhtf frontend server on http://localhost:%s.' % args.port)

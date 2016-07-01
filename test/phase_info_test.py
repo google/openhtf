@@ -35,30 +35,30 @@ def ExtraArgFunc(input=None):
 
 class TestPhaseInfo(unittest.TestCase):
 
-  def setUp(self):
+  def set_up(self):
       self._phase_data = mock.Mock(plug_manager=plugs.PlugManager())
 
   def testBasics(self):
-      phase = openhtf.PhaseInfo.WrapOrCopy(PlainFunc)
+      phase = openhtf.PhaseInfo.wrap_or_copy(PlainFunc)
       self.assertIs(phase.func, PlainFunc)
       self.assertEqual(0, len(phase.plugs))
       self.assertEqual('PlainFunc', phase.name)
       self.assertEqual('Plain Docstring', phase.doc)
       phase(self._phase_data)
 
-      test_phase = openhtf.PhaseInfo.WrapOrCopy(NormalTestPhase)
+      test_phase = openhtf.PhaseInfo.wrap_or_copy(NormalTestPhase)
       self.assertEqual('NormalTestPhase', test_phase.name)
       self.assertEqual('return value', test_phase(self._phase_data))
 
   def testMultiplePhases(self):
-      phase = openhtf.PhaseInfo.WrapOrCopy(PlainFunc)
-      second_phase = openhtf.PhaseInfo.WrapOrCopy(phase)
+      phase = openhtf.PhaseInfo.wrap_or_copy(PlainFunc)
+      second_phase = openhtf.PhaseInfo.wrap_or_copy(phase)
       for attr in type(phase).all_attribute_names:
         if attr == 'func': continue
         self.assertIsNot(getattr(phase, attr), getattr(second_phase, attr))
 
   def testWithArgs(self):
-      phase = openhtf.PhaseInfo.WrapOrCopy(ExtraArgFunc)
+      phase = openhtf.PhaseInfo.wrap_or_copy(ExtraArgFunc)
       phase = phase.WithArgs(input='input arg')
       result = phase(self._phase_data)
       self.assertEqual('input arg', result)

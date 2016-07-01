@@ -71,7 +71,7 @@ class TestExecutor(threads.KillableThread):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self._teardown_function = (teardown_function and
-                               openhtf.PhaseInfo.WrapOrCopy(teardown_function))
+                               openhtf.PhaseInfo.wrap_or_copy(teardown_function))
 
     self._test_data = test_data
     self._plug_manager = plug_manager
@@ -88,11 +88,11 @@ class TestExecutor(threads.KillableThread):
   def set_test_start(self, test_start):
     self._test_start = test_start
 
-  def Start(self):
+  def start(self):
     """Style-compliant start method."""
     self.start()
 
-  def Stop(self):
+  def stop(self):
     """Stop this test."""
     _LOG.info('Stopping test executor.')
     with self._lock:
@@ -100,7 +100,7 @@ class TestExecutor(threads.KillableThread):
         self._exit_stack.close()
     self.kill()
 
-  def Wait(self):
+  def wait(self):
     """Waits until death."""
     self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
 
@@ -125,7 +125,7 @@ class TestExecutor(threads.KillableThread):
         self._exit_stack = exit_stack
 
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
-      # self._lock while we do this, or else calls to Stop() will deadlock.
+      # self._lock while we do this, or else calls to stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
       dut_id = self._wait_for_test_start(suppressor)
@@ -195,7 +195,7 @@ class TestExecutor(threads.KillableThread):
       # will already be stopped, but this won't hurt anything.  If the test
       # exited abnormally, we don't want to leave this hanging around in
       # some weird state.
-      executor.Stop()
+      executor.stop()
 
       # If Stop was called, we don't care about the test stopping completely
       # anymore, nor if ctrl-C was hit.

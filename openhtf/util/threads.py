@@ -26,13 +26,13 @@ class ThreadTerminationError(SystemExit):
   """Sibling of SystemExit, but specific to thread termination."""
 
 
-def Loop(_=None, force=False):   # pylint: disable=invalid-name
+def loop(_=None, force=False):   # pylint: disable=invalid-name
   """Causes a function to loop indefinitely."""
   if not force:
     raise AttributeError(
-        'threads.Loop() is DEPRECATED.  If you really like this and want to '
+        'threads.loop() is DEPRECATED.  If you really like this and want to '
         'keep it, file an issue at https://github.com/google/openhtf/issues '
-        'and use it as @Loop(force=True) for now.')
+        'and use it as @loop(force=True) for now.')
 
   def real_loop(fn):
     @functools.wraps(fn)

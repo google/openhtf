@@ -347,7 +347,7 @@ class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-publ
 
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
-    test.AddOutputCallback(openhtf.OutputToTestRunProto(
+    test.add_output_callback(openhtf.OutputToTestRunProto(
         '/data/test_records/{dut_id}.{metadata[test_name]}.pb'))
 
   Args:

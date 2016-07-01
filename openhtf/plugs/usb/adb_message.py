@@ -52,7 +52,7 @@ from openhtf.util import timeouts
 
 gflags.DEFINE_boolean('adb_message_log', False,
                       'Set to True to save all incoming and outgoing '
-                      'AdbMessages and print them on Close().')
+                      'AdbMessages and print them on close().')
 FLAGS = gflags.FLAGS
 _LOG = logging.getLogger(__name__)
 
@@ -106,9 +106,9 @@ class AdbTransportAdapter(object):
     trans = str(self._transport)
     return '<%s: (%s)' % (type(self).__name__, trans[1:])
 
-  def Close(self):
+  def close(self):
     """Close the connection."""
-    self._transport.Close()
+    self._transport.close()
 
   def write_message(self, message, timeout):
     """Send the given message over this transport.
@@ -214,11 +214,11 @@ class DebugAdbTransportAdapter(AdbTransportAdapter):
     self.messages = []
     _LOG.debug('%s logging messages', self)
 
-  def Close(self):
+  def close(self):
     _LOG.debug('%s logged messages:', self)
     for message in self.messages:
       _LOG.debug(message)
-    super(DebugAdbTransportAdapter, self).Close()
+    super(DebugAdbTransportAdapter, self).close()
 
   def read_message(self, timeout):
     message = super(DebugAdbTransportAdapter, self).read_message(timeout)

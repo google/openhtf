@@ -23,13 +23,13 @@ import openhtf.plugs as plugs
 
 
 conf.Declare('example_plug_increment', default_value=1,
-             description='Increment constant for example plug.')
+             description='increment constant for example plug.')
 
 
 class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
   """Example of a simple plug.
 
-  This plug simply keeps a value and increments it each time Increment() is
+  This plug simply keeps a value and increments it each time increment() is
   called.  You'll notice a few paradigms here:
 
     - @conf.InjectPositionalArgs
@@ -43,7 +43,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
       For example, if you had no openhtf.conf loaded, you could do this:
         my_plug = ExamplePlug(example_plug_increment=4)
 
-    - TearDown()
+    - tear_down()
       This method will be called automatically by the OpenHTF framework at
       the end of test execution.  Here is a good place to do any close()
       calls or similar resource cleanup that you need to do.  In this case,
@@ -58,7 +58,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
       don't have to do anything special to maintain state within a plug
       across phases.
 
-      This does imply, however, that if you *want* per-phase TearDown()
+      This does imply, however, that if you *want* per-phase tear_down()
       semantics, you have to implement them manually.  The recommended
       way to do this is to make your plug support Python's context
       manager interface (__enter__ and __exit__), and then access it via
@@ -74,11 +74,11 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
     return '<%s: %s>' % (type(self).__name__, self.value)
   __repr__ = __str__
 
-  def TearDown(self):
+  def tear_down(self):
     """Tear down the plug instance."""
     self.logger.info('Tearing down %s', self)
 
-  def Increment(self):
-    """Increment our value, return the new value."""
+  def increment(self):
+    """increment our value, return the new value."""
     self.value += self.increment
     return self.value

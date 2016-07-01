@@ -425,7 +425,7 @@ def measures(*measurements, **kwargs):
   # 'measurements' is guaranteed to be a list of Measurement objects here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
-    phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
+    phase = openhtf.PhaseInfo.wrap_or_copy(wrapped_phase)
     duplicate_names = (set(m.name for m in measurements) &
                        set(m.name for m in phase.measurements))
     if duplicate_names:

@@ -71,10 +71,10 @@ class Test(object):
     def PhaseTwo(test):
       # Analyze widget integration status
 
-    Test(PhaseOne, PhaseTwo).Execute()
+    Test(PhaseOne, PhaseTwo).execute()
 
   Note that Test() objects *must* be created in the main thread, but can be
-  .Execute()'d in a separate thread.
+  .execute()'d in a separate thread.
   """
 
   def __init__(self, *phases, **metadata):
@@ -84,26 +84,26 @@ class Test(object):
     self._test_data.metadata['config'] = conf._asdict()
     self._lock = threading.lock()
     self._executor = None
-    # Make sure Configure() gets called at least once before Execute().  The
-    # user might call Configure() again to override options, but we don't want
+    # Make sure configure() gets called at least once before execute().  The
+    # user might call configure() again to override options, but we don't want
     # to force them to if they want to use defaults.  For default values, see
     # the class definition of TestOptions.
-    self.Configure()
+    self.configure()
     # TODO(madsci): Fix this to play nice with multiple Test instances.
-    signal.signal(signal.SIGINT, self.StopFromSigInt)
+    signal.signal(signal.SIGINT, self.stop_from_sig_int)
 
-  def AddOutputCallback(self, callback):
-    """DEPRECATED: Use AddOutputCallbacks() instead."""
+  def add_output_callback(self, callback):
+    """DEPRECATED: Use add_output_callbacks() instead."""
     # TODO(madsci): Remove this before we push to PyPI, here for transitionary
     # purposes.
     raise AttributeError(
-        'DEPRECATED, use AddOutputCallbacks() instead of AddOutputCallback()')
+        'DEPRECATED, use add_output_callbacks() instead of add_output_callback()')
 
-  def AddOutputCallbacks(self, *callbacks):
+  def add_output_callbacks(self, *callbacks):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def OutputTestRecord(self, record):
+  def output_test_record(self, record):
     """Feed the record of this test to all output modules."""
     for output_cb in self._test_options.output_callbacks:
       try:
@@ -116,24 +116,24 @@ class Test(object):
   def data(self):
     return self._test_data
 
-  def Configure(self, **kwargs):
+  def configure(self, **kwargs):
     """Update test-wide configuration options.
 
     Valid kwargs:
       http_port: Port on which to run the http_api, or None to disable.
       output_callbacks: List of output callbacks to run, typically it's better
-          to use AddOutputCallbacks(), but you can pass [] here to reset them.
+          to use add_output_callbacks(), but you can pass [] here to reset them.
       teardown_function: Function to run at teardown.  We pass the same
           arguments to it as a phase.
     """
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
-    CreateArgParser(add_help=True).parse_known_args()
+    create_arg_parser(add_help=True).parse_known_args()
     logs.setup_logger()
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
-  def StopFromSigInt(self, *_):
+  def stop_from_sig_int(self, *_):
     """Stop test execution as abruptly as we can, only in response to SIGINT."""
     _LOG.error('Received SIGINT.')
     with self._lock:
@@ -142,14 +142,14 @@ class Test(object):
         # TestState str()'s nicely to a descriptive string, so let's log that
         # just for good measure.
         _LOG.error('Test state: %s', self._executor.get_state())
-        self._executor.Stop()
+        self._executor.stop()
         self._executor = None
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.
     raise KeyboardInterrupt()
 
-  def Execute(self, test_start=None, loop=None):
+  def execute(self, test_start=None, loop=None):
     """Starts the framework and executes the given test.
 
     Args:
@@ -161,11 +161,11 @@ class Test(object):
     if loop is not None:
       raise ValueError(
           'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
-          'use a while True: loop around Test.Execute() instead.')
+          'use a while True: loop around Test.execute() instead.')
 
     # We have to lock this section to ensure we don't call
-    # TestExecutor.StopFromSigInt() in self.Stop() between instantiating it and
-    # .Start()'ing it.
+    # TestExecutor.stop_from_sig_int() in self.Stop() between instantiating it and
+    # .start()'ing it.
     with self._lock:
       self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager(),
                                         self._test_options.teardown_function)
@@ -175,20 +175,20 @@ class Test(object):
       if self._test_options.http_port:
         http_server = http_api.Server(
             self._executor, self._test_options.http_port)
-        http_server.Start()
+        http_server.start()
 
-      self._executor.Start()
+      self._executor.start()
 
     try:
-      self._executor.Wait()
+      self._executor.wait()
     finally:
       # If the framework doesn't transition from INITIALIZING to EXECUTING
       # then test state isn't set and there's no record to output.
       if self._executor and self._executor.get_state():
         record = self._executor.get_state().get_finished_record()
-        self.OutputTestRecord(record)
+        self.output_test_record(record)
       if http_server:
-        http_server.Stop()
+        http_server.stop()
       self._executor = None
 
 
@@ -214,7 +214,7 @@ class TestData(collections.namedtuple(
   """
 
   def __new__(cls, phases, code_info, metadata):
-    phases = [PhaseInfo.WrapOrCopy(phase) for phase in phases]
+    phases = [PhaseInfo.wrap_or_copy(phase) for phase in phases]
     return super(TestData, cls).__new__(cls, phases, code_info, metadata)
 
   @property
@@ -223,13 +223,13 @@ class TestData(collections.namedtuple(
     return {plug.cls for phase in self.phases for plug in phase.plugs}
 
 
-def CreateArgParser(add_help=False):
+def create_arg_parser(add_help=False):
   """Creates an argparse.ArgumentParser for parsing command line flags.
 
   If you want to add arguments, create your own with this as a parent:
 
   >>> parser = argparse.ArgumentParser(
-          'My args title', parents=[openhtf.CreateArgParser()])
+          'My args title', parents=[openhtf.create_arg_parser()])
   >>> parser.parse_args()
   """
   return argparse.ArgumentParser('OpenHTF-based testing', parents=[
@@ -262,7 +262,7 @@ class PhaseOptions(mutablerecords.Record(
   """
 
   def __call__(self, phase_func):
-    phase = PhaseInfo.WrapOrCopy(phase_func)
+    phase = PhaseInfo.wrap_or_copy(phase_func)
     for attr in self.__slots__:
       value = getattr(self, attr)
       if value is not None:
@@ -290,7 +290,7 @@ class PhaseInfo(mutablerecords.Record(
   """
 
   @classmethod
-  def WrapOrCopy(cls, func):
+  def wrap_or_copy(cls, func):
     """Return a new PhaseInfo from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different

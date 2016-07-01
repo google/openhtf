@@ -94,9 +94,9 @@ class _MonitorThread(threads.KillableThread):
 
 
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
-  monitor = openhtf.PhaseInfo.WrapOrCopy(monitor_func)
+  monitor = openhtf.PhaseInfo.wrap_or_copy(monitor_func)
   def wrapper(phase_func):
-    phase = openhtf.PhaseInfo.WrapOrCopy(phase_func)
+    phase = openhtf.PhaseInfo.wrap_or_copy(phase_func)
 
     # Re-key this dict so we don't have to worry about collisions with
     # plug.plug() decorators on the phase function.  Since we aren't

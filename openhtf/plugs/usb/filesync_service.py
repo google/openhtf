@@ -163,11 +163,11 @@ class FilesyncService(object):
     self.stream = stream
 
   def __del__(self):  # pylint: disable=invalid-name
-    self.Close()
+    self.close()
 
-  def Close(self):
+  def close(self):
     """Close the stream."""
-    self.stream.Close()
+    self.stream.close()
 
   def stat(self, filename, timeout=None):
     """Return device file stat."""
@@ -177,7 +177,7 @@ class FilesyncService(object):
     stat_msg.assert_command_is('STAT')
     return DeviceFileStat(filename, stat_msg.mode, stat_msg.size, stat_msg.time)
 
-  def List(self, path, timeout=None):
+  def list(self, path, timeout=None):
     """List directory contents on the device.
 
     Args:
@@ -226,7 +226,7 @@ class FilesyncService(object):
     raise exc_info[0], exc_info[1], exc_info[2]
 
   # pylint: disable=too-many-arguments
-  def Send(self, src_file, filename, st_mode=DEFAULT_PUSH_MODE, mtime=None,
+  def send(self, src_file, filename, st_mode=DEFAULT_PUSH_MODE, mtime=None,
            timeout=None):
     """Push a file-like object to the device.
 

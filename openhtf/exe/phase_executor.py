@@ -208,7 +208,7 @@ class PhaseExecutor(object):
     _LOG.debug('Phase finished with outcome %s', phase_outcome)
     return phase_outcome
 
-  def Stop(self):
+  def stop(self):
     """Stops the current phase."""
     if self._current_phase_thread:
       self._current_phase_thread.kill()

@@ -59,7 +59,7 @@ class StubUsbHandle(usb_handle.UsbHandle):
           length, len(data), self._dotify(data))
     return data
 
-  def Close(self):
+  def close(self):
     """Stub Close method."""
     self.closed = True
 

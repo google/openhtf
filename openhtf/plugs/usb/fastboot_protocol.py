@@ -195,9 +195,9 @@ class FastbootCommands(object):
     """This instance's USB handle."""
     return self._usb
 
-  def Close(self):
+  def close(self):
     """Close the USB handle."""
-    self._usb.Close()
+    self._usb.close()
 
   def _simple_command(self, command, arg=None, **kwargs):
     """Send a simple command."""

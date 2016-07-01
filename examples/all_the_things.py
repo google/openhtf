@@ -35,7 +35,7 @@ from openhtf.names import *
 
 @plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
-  return example.Increment()
+  return example.increment()
 
 
 @measures(
@@ -56,7 +56,7 @@ def hello_world(test, example):
     raise Exception()
   test.measurements.widget_color = 'Black'
   test.measurements.widget_size = 3
-  test.logger.info('Plug value: %s', example.Increment())
+  test.logger.info('Plug value: %s', example.increment())
 
 
 # Timeout if this phase takes longer than 10 seconds.
@@ -88,7 +88,7 @@ def dimensions(test):
 
 
 def attachments(test):
-  test.Attach('test_attachment', 'This is test attachment data.')
+  test.attach('test_attachment', 'This is test attachment data.')
   test.attach_from_file('example_attachment.txt')
 
 def teardown(test):
@@ -100,11 +100,11 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.AddOutputCallbacks(
+  test.add_output_callbacks(
       json_factory.OutputToJSON(
           './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
           indent=4))
-  test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
+  test.add_output_callbacks(mfg_inspector.OutputToTestRunProto(
       './{dut_id}.{start_time_millis}.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
@@ -112,7 +112,7 @@ if __name__ == '__main__':
   # 'my_private_key.json'.
   #if os.path.isfile('my_private_key.json'):
   #  with open('my_private_key.json', 'r') as json_file:
-  #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
+  #    test.add_output_callbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
-  test.Configure(http_port=None, teardown_function=teardown)
-  test.Execute(test_start=triggers.prompt_for_test_start())
+  test.configure(http_port=None, teardown_function=teardown)
+  test.execute(test_start=triggers.prompt_for_test_start())

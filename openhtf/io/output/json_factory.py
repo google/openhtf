@@ -13,7 +13,7 @@ class OutputToJSON(output.OutputToFile):
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
-    test.AddOutputCallback(openhtf.OutputToJson(
+    test.add_output_callback(openhtf.OutputToJson(
         '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
 
   Args:
