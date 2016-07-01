@@ -127,6 +127,15 @@ class SimpleThreadedXMLRPCServer(
   """Helper for handling multiple simultaneous RPCs in threads."""
 
 
+class LockedProxy(xmlrpclib.ServerProxy):
+  """ServerProxy that has a self._lock attribute for locking access."""
+
+  def __init__(self, host, port):
+    super(LockedProxy, self).__init__(
+        'http://%s:%s' % (host, port), allow_none=True)
+    self._lock = threading.Lock()
+
+
 class RemoteState(collections.namedtuple('RemoteState', [
     'status', 'test_record', 'running_phase_record'])):
 
@@ -277,7 +286,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
 class Station(object):
 
-  def __init__(self, station_info):
+  def __init__(self, station_info, proxy=None):
     self._station_info = station_info
     # Each Station needs its own History instance because Test UIDs are only
     # unique within a station, so if you tried to store all stations' histories
@@ -286,11 +295,11 @@ class Station(object):
     # Maps test UID to RemoteTest, so we can reuse old RemoteTest objects in
     # order to benefit from their saved state (phases and logs).
     self.cached_tests = {}
-    # Shared proxy and lock used for synchronous calls we expect to be fast.
+    # Shared proxy used for synchronous calls we expect to be fast.
     # Long-polling calls should use the 'proxy' attribute directly instead, as
     # it creates a new ServerProxy object each time, avoiding the danger of
     # blocking short requests with long-running ones.
-    self._shared_proxy = self.make_proxy()
+    self._shared_proxy = proxy or self.make_proxy()
 
   def __hash__(self):
     return hash(self._station_info)
@@ -304,11 +313,7 @@ class Station(object):
 
   def make_proxy(self):
     """Make a new ServerProxy for this station."""
-    proxy = xmlrpclib.ServerProxy(
-        'http://%s:%s' % (self.host, self.station_api_port),
-        allow_none=True)
-    proxy._lock = threading.Lock()
-    return proxy
+    return LockedProxy(self.host, self.station_api_port)
 
   def __str__(self):
     return 'Station %s@%s:%s, Listening on %s' % (
@@ -331,6 +336,11 @@ class Station(object):
       except TypeError:
         _LOG.debug('Received invalid discovery response from %s: %s',
                    host, response, exc_info=True)
+
+  @classmethod
+  def from_host_port(cls, host, port):
+    proxy = LockedProxy(host, port)
+    return cls(StationInfo(host, **proxy.get_station_info()), proxy)
 
   @property
   def tests(self):
@@ -359,6 +369,15 @@ class Station(object):
 class StationApi(object):
 
   UID = '%s:%s' % (os.getpid(), util.TimeMillis())
+
+  def get_station_info(self):
+    """Obtain dict required for a StationInfo for this station."""
+    return { 
+        'station_id': conf.station_id,
+        'station_api_bind_address': conf.station_api_bind_address,
+        'station_api_port': conf.station_api_port,
+        'last_activity_time_millis': self.last_activity_time_millis,
+    }
 
   def list_tests(self):
     """List currently known test types.
