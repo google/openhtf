@@ -22,7 +22,7 @@ import openhtf.conf as conf
 import openhtf.plugs as plugs
 
 
-conf.Declare('example_plug_increment', default_value=1,
+conf.declare('example_plug_increment', default_value=1,
              description='increment constant for example plug.')
 
 
@@ -32,12 +32,12 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
   This plug simply keeps a value and increments it each time increment() is
   called.  You'll notice a few paradigms here:
 
-    - @conf.InjectPositionalArgs
+    - @conf.inject_positional_args
       This is generally a good way to pass in any configuration that your
       plug needs, such as an IP address or serial port to connect to.  If
       You want to use your plug outside of the OpenHTF framework, you can
       still manually instantiate it, but you must pass the arguments by
-      keyword (as a side effect of the way InjectPositionalArgs is
+      keyword (as a side effect of the way inject_positional_args is
       implemented).
 
       For example, if you had no openhtf.conf loaded, you could do this:
@@ -65,7 +65,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
       a with: block at the beginning of every phase where it is used.
   """
 
-  @conf.InjectPositionalArgs
+  @conf.inject_positional_args
   def __init__(self, example_plug_increment):
     self.increment = example_plug_increment
     self.value = 0

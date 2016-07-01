@@ -55,7 +55,7 @@ class TestOutput(unittest.TestCase):
   UPDATE_OUTPUT = False
 
   @classmethod
-  def setUpClass(cls):
+  def set_up_class(cls):
     # Load input testrun from pickled file.
     with open(_local_filename('record.pickle'), 'rb') as picklefile:
       cls.record = pickle.load(picklefile)
@@ -66,7 +66,7 @@ class TestOutput(unittest.TestCase):
     with open(_local_filename('record.testrun'), 'rb') as testrunfile:
       cls.testrun = test_runs_pb2.TestRun.FromString(testrunfile.read())
 
-  def testJson(self):
+  def test_json(self):
     json_output = StringIO()
     json_factory.OutputToJSON(json_output, sort_keys=True, indent=2)(self.record)
     if self.UPDATE_OUTPUT:
@@ -75,7 +75,7 @@ class TestOutput(unittest.TestCase):
     else:
       data.AssertEqualsAndDiff(self.json, json_output.getvalue())
 
-  def testTestrun(self):
+  def test_testrun(self):
     testrun_output = StringIO()
     mfg_inspector.OutputToTestRunProto(testrun_output)(self.record)
     if self.UPDATE_OUTPUT:
@@ -87,6 +87,6 @@ class TestOutput(unittest.TestCase):
           text_format.MessageToString(self.testrun),
           text_format.MessageToString(actual))
 
-  def testUpdateOutput(self):
+  def test_update_output(self):
     """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
     assert not self.UPDATE_OUTPUT, 'Change UPDATE_OUTPUT back to False!'

@@ -20,16 +20,16 @@ import openhtf
 from openhtf import plugs
 
 
-def PlainFunc():
+def plain_func():
   """Plain Docstring"""
   pass
 
 
-def NormalTestPhase(test):
+def normal_test_phase(test):
   return 'return value'
 
 
-def ExtraArgFunc(input=None):
+def extra_arg_func(input=None):
   return input
 
 
@@ -38,27 +38,27 @@ class TestPhaseInfo(unittest.TestCase):
   def set_up(self):
       self._phase_data = mock.Mock(plug_manager=plugs.PlugManager())
 
-  def testBasics(self):
-      phase = openhtf.PhaseInfo.wrap_or_copy(PlainFunc)
-      self.assertIs(phase.func, PlainFunc)
+  def test_basics(self):
+      phase = openhtf.PhaseInfo.wrap_or_copy(plain_func)
+      self.assertIs(phase.func, plain_func)
       self.assertEqual(0, len(phase.plugs))
-      self.assertEqual('PlainFunc', phase.name)
+      self.assertEqual('plain_func', phase.name)
       self.assertEqual('Plain Docstring', phase.doc)
       phase(self._phase_data)
 
-      test_phase = openhtf.PhaseInfo.wrap_or_copy(NormalTestPhase)
-      self.assertEqual('NormalTestPhase', test_phase.name)
+      test_phase = openhtf.PhaseInfo.wrap_or_copy(normal_test_phase)
+      self.assertEqual('normal_test_phase', test_phase.name)
       self.assertEqual('return value', test_phase(self._phase_data))
 
-  def testMultiplePhases(self):
-      phase = openhtf.PhaseInfo.wrap_or_copy(PlainFunc)
+  def test_multiple_phases(self):
+      phase = openhtf.PhaseInfo.wrap_or_copy(plain_func)
       second_phase = openhtf.PhaseInfo.wrap_or_copy(phase)
       for attr in type(phase).all_attribute_names:
         if attr == 'func': continue
         self.assertIsNot(getattr(phase, attr), getattr(second_phase, attr))
 
-  def testWithArgs(self):
-      phase = openhtf.PhaseInfo.wrap_or_copy(ExtraArgFunc)
+  def test_with_args(self):
+      phase = openhtf.PhaseInfo.wrap_or_copy(extra_arg_func)
       phase = phase.WithArgs(input='input arg')
       result = phase(self._phase_data)
       self.assertEqual('input arg', result)

@@ -72,7 +72,7 @@ UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
 BUILD_PATH = os.path.join(os.path.dirname(__file__), 'src', 'dist')
 PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
 
-conf.Declare('stations',
+conf.declare('stations',
              default_value=[],
              description='List of manually declared stations.')
 

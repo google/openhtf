@@ -64,17 +64,17 @@ would see the output (with other framework logs before and after):
   Tearing down ExamplePlug!
 
 Plugs will often need to use configuration values.  The recommended way
-of doing this is with the conf.InjectPositionalArgs decorator:
+of doing this is with the conf.inject_positional_args decorator:
 
   from openhtf import plugs
   from openhtf import conf
 
-  conf.Declare('my_config_key', default_value='my_config_value')
+  conf.declare('my_config_key', default_value='my_config_value')
 
   class ExamplePlug(plugs.BasePlug):
     '''A plug that requires some configuration.'''
 
-    @conf.InjectPositionalArgs
+    @conf.inject_positional_args
     def __init__(self, my_config_key)
       self._my_config = my_config_key
 

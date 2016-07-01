@@ -46,10 +46,10 @@ from openhtf.util import measurements
 
 # All tests require a station_id.  This can be via the --config-file
 # automatically loaded by OpenHTF, provided explicitly to the config with
-# conf.Load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
-# with conf.LoadFromDict({..., 'station_id': 'My_Station'}).  If none of those
+# conf.load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
+# with conf.load_from_dict({..., 'station_id': 'My_Station'}).  If none of those
 # are provided then we'll fall back to the machine's hostname.
-conf.Declare('station_id', 'The name of this test station',
+conf.declare('station_id', 'The name of this test station',
              default_value=socket.gethostname())
 
 __version__ = util.get_version()

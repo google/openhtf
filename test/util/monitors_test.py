@@ -29,11 +29,11 @@ class TestMonitors(unittest.TestCase):
   def set_up(self):
     self.phase_data = mock.MagicMock()
 
-    def ProvidePlugs(plugs):
+    def provide_plugs(plugs):
       return {name: cls() for name, cls in plugs}
-    self.phase_data.plug_manager.ProvidePlugs = ProvidePlugs
+    self.phase_data.plug_manager.provide_plugs = provide_plugs
 
-  def testBasics(self):
+  def test_basics(self):
 
     def monitor_func(test):
       return 1
