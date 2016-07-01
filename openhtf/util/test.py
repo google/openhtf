@@ -35,7 +35,7 @@ separate your test into separate decorated test* methods in your test case
 
 Lastly, while not implemented here, it's common to need to temporarily alter
 configuration values for individual tests.  This can be accomplished with the
-@conf.SaveAndRestore decorator (see docs in conf.py, examples below).
+@conf.save_and_restore decorator (see docs in conf.py, examples below).
 
 A few isolated examples, also see test/util/test_test.py for some usage:
 
@@ -48,8 +48,8 @@ A few isolated examples, also see test/util/test_test.py for some usage:
 
     # Decorate the test* method with this to be able to yield a phase to run it.
     @test.yields_phases
-    # Decorate with conf.SaveAndRestore to temporarily set conf values.
-    @conf.SaveAndRestore(phase_variance='test_phase_variance')
+    # Decorate with conf.save_and_restore to temporarily set conf values.
+    @conf.save_and_restore(phase_variance='test_phase_variance')
     def test_first_phase(self):
       phase_record = yield mytest.first_phase
       # Check a measurement value.

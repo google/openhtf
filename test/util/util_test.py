@@ -22,16 +22,16 @@ from openhtf.util import timeouts
 class TestUtil(unittest.TestCase):
 
   @classmethod
-  def setUpClass(cls):
+  def set_up_class(cls):
     cls.timeout = 60
     cls.polledtimeout = timeouts.PolledTimeout(cls.timeout)
 
   @classmethod
-  def tearDownClass(cls):
+  def tear_down_class(cls):
     pass
 
   @mock.patch.object(time, 'time')
-  def test_timeExpired_false(self, mock_time):
+  def test_time_expired_false(self, mock_time):
     elapsed = 3
     mock_time.side_effect = [1, 1 + elapsed, 2 + elapsed]
 
@@ -40,6 +40,6 @@ class TestUtil(unittest.TestCase):
     self.assertLessEqual(sec, self.timeout - elapsed)
     self.assertFalse(self.polledtimeout.HasExpired())
 
-  def test_timeExpired_true(self):
+  def test_time_expired_true(self):
     self.polledtimeout.Expire()
     self.assertTrue(self.polledtimeout.HasExpired())

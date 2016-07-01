@@ -41,9 +41,9 @@ from openhtf.plugs import cambrionix
 
 _LOG = logging.getLogger(__name__)
 
-conf.Declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
-conf.Declare('remote_usb', 'ethersync or other')
-conf.Declare('ethersync', 'ethersync configuration')
+conf.declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
+conf.declare('remote_usb', 'ethersync or other')
+conf.declare('ethersync', 'ethersync configuration')
 
 def _open_usb_handle(**kwargs):
   """Open a UsbHandle subclass, based on configuration.
