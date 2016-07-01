@@ -148,12 +148,13 @@ class RemoteState(collections.namedtuple('RemoteState', [
     test_record = pickle.loads(saxutils.unescape(test_record))
     cached_rec = cached_state and cached_state.test_record
 
-    # If we have saved phases/logs for the same test (identified by the
+    # If we have cached phases/logs for the same test (identified by the
     # start_time_millis of the test), then prepend them to the ones we
     # received from the remote end.  If these timestamps don't match, then
     # the remote side will have already sent us all phases and logs, so
     # there's no need to re-request them.  We'll update our local cache later.
-    if cached_rec and cached_rec.start_time_millis == test_record.start_time_millis:
+    if (cached_rec and
+        cached_rec.start_time_millis == test_record.start_time_millis):
       test_record.phases = cached_rec.phases + test_record.phases
       test_record.log_records = cached_rec.log_records + test_record.log_records
      
@@ -169,7 +170,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     'test_uid', 'test_name',
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
-    # Track last known state so we can detect deltas.
+    # Cache last known state so we can detect deltas.
     'cached_state': None, 'state_lock': threading.Lock})):
 
   def __hash__(self):
@@ -184,16 +185,16 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return state.test_record.start_time_millis
 
   @property
-  def saved_phases(self):
-    """Number of phases we have saved in our last known state."""
+  def num_cached_phases(self):
+    """Number of phases we have cached in our cached state."""
     state = self.cached_state
     if not state or not state.test_record:
       return 0
     return len(state.test_record.phases)
 
   @property
-  def saved_logs(self):
-    """Number of log records we have saved in our last known state."""
+  def num_cached_logs(self):
+    """Number of log records we have cached in our cached state."""
     state = self.cached_state
     if not state or not state.test_record:
       return 0
@@ -233,7 +234,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     elif remote_state_dict is None:
       # None indicates no state info is available, test likely stopped.
       self.cached_state = None
-    # Timeout, just return the last known state.
+    # Timeout, just return the cached state.
     return self.cached_state
 
   def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
@@ -246,11 +247,12 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
   def state(self):
     # Grab a snapshot of these holding the lock so we know they are consistent.
     with self.state_lock:
-      saved_phases = self.saved_phases
-      saved_logs = self.saved_logs
+      num_cached_phases = self.num_cached_phases
+      num_cached_logs = self.num_cached_logs
       cached_state = self.cached_state
 
-    remote_state_dict = self.get_remote_state_dict(saved_phases, saved_logs)
+    remote_state_dict = self.get_remote_state_dict(
+        num_cached_phases, num_cached_logs)
     if remote_state_dict:
       retval = RemoteState(cached_state, **remote_state_dict)
       with self.state_lock:
@@ -293,7 +295,7 @@ class Station(object):
     # together, you could get Test UID collisions.
     self._history = history.History()
     # Maps test UID to RemoteTest, so we can reuse old RemoteTest objects in
-    # order to benefit from their saved state (phases and logs).
+    # order to benefit from their cached state (phases and logs).
     self.cached_tests = {}
     # Shared proxy used for synchronous calls we expect to be fast.
     # Long-polling calls should use the 'proxy' attribute directly instead, as
