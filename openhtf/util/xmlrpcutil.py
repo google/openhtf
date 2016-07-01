@@ -14,6 +14,7 @@
 
 """Utility helpers for xmlrpclib."""
 
+import functools
 import httplib
 import xmlrpclib
 
