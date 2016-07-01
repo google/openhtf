@@ -88,6 +88,7 @@ from openhtf import util
 from openhtf.exe import test_state
 from openhtf.util import data
 from openhtf.util import multicast
+from openhtf.util import xmlrpcutil
 
 _LOG = logging.getLogger(__name__)
 
@@ -118,6 +119,10 @@ MULTICAST_KWARGS = lambda: {
 }
 
 
+class StationInfoChangedError(Exception):
+  """Raised when a station's info changed unexpectedly."""
+
+
 class PlugUnrecognizedError(Exception):
   """Raised if a plug is requested that is not in use."""
 
@@ -125,15 +130,6 @@ class PlugUnrecognizedError(Exception):
 class SimpleThreadedXMLRPCServer(
     SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
   """Helper for handling multiple simultaneous RPCs in threads."""
-
-
-class LockedProxy(xmlrpclib.ServerProxy):
-  """ServerProxy that has a self._lock attribute for locking access."""
-
-  def __init__(self, host, port):
-    super(LockedProxy, self).__init__(
-        'http://%s:%s' % (host, port), allow_none=True)
-    self._lock = threading.Lock()
 
 
 class RemoteState(collections.namedtuple('RemoteState', [
@@ -238,18 +234,16 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return self.cached_state
 
   def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
-    with self.shared_proxy._lock:
-      return self.shared_proxy.get_test_state(
-          self.test_uid, long(self.start_time_millis),
-          skip_phases, skip_logs)
+    return self.shared_proxy.get_test_state(
+        self.test_uid, long(self.start_time_millis),
+        skip_phases, skip_logs)
 
   @property
   def state(self):
     # Grab a snapshot of these holding the lock so we know they are consistent.
-    with self.state_lock:
-      num_cached_phases = self.num_cached_phases
-      num_cached_logs = self.num_cached_logs
-      cached_state = self.cached_state
+    num_cached_phases = self.num_cached_phases
+    num_cached_logs = self.num_cached_logs
+    cached_state = self.cached_state
 
     remote_state_dict = self.get_remote_state_dict(
         num_cached_phases, num_cached_logs)
@@ -273,12 +267,11 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     from the remote end.  Alternatively, accessing the 'cached_history'
     attribute will reference only local already-known history.
     """
-    with self.shared_proxy._lock:
-      last_start_time = self.cached_history.last_start_time(self.test_uid)
-      new_history = self.shared_proxy.get_history_after(
-          self.test_uid, long(last_start_time))
-      _LOG.debug('Requested history update for %s after %s, got %s results.',
-                 self.test_uid, last_start_time, len(new_history))
+    last_start_time = self.cached_history.last_start_time(self.test_uid)
+    new_history = self.shared_proxy.get_history_after(
+        self.test_uid, long(last_start_time))
+    _LOG.debug('Requested history update for %s after %s, got %s results.',
+               self.test_uid, last_start_time, len(new_history))
 
     for pickled_record in new_history:
       self.cached_history.append_record(
@@ -313,10 +306,6 @@ class Station(object):
   def __ne__(self, other):
     return not self.__eq__(other)
 
-  def make_proxy(self):
-    """Make a new ServerProxy for this station."""
-    return LockedProxy(self.host, self.station_api_port)
-
   def __str__(self):
     return 'Station %s@%s:%s, Listening on %s' % (
         self.station_id, self.host, self.station_api_port,
@@ -324,6 +313,11 @@ class Station(object):
 
   def __getattr__(self, attr):
     return getattr(self._station_info, attr)
+
+  def make_proxy(self):
+    """Make a new ServerProxy for this station."""
+    return xmlrpcutil.LockedTimeoutServerProxy(
+        self.host, self.station_api_port, allow_none=True)
 
   @classmethod
   def discover_stations(cls, timeout_s=3):
@@ -341,8 +335,21 @@ class Station(object):
 
   @classmethod
   def from_host_port(cls, host, port):
-    proxy = LockedProxy(host, port)
+    proxy = xmlrpcutil.LockedTimeoutServerProxy(host, port, allow_none=True)
     return cls(StationInfo(host, **proxy.get_station_info()), proxy)
+
+  @property
+  def reachable(self):
+    """True if the remote Station is reachable."""
+    try:
+      station_info = self._shared_proxy.get_station_info()
+    except (socket.timeout, socket.error):
+      return False
+
+    if self._station_info != station_info:
+      raise StationInfoChangedError(
+          'Station info changed', self._station_info, station_info)
+    return True
 
   @property
   def tests(self):
