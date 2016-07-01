@@ -119,7 +119,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
     """A string of the physical port of this device, like 'X-X.X.X'."""
     return self._device_to_sysfs_path(self._device)
 
-  @usb_handle.RequiresOpenHandle
+  @usb_handle.requires_open_handle
   def read(self, length, timeout_ms=None):
     try:
       return self._handle.bulkRead(
@@ -130,7 +130,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
           exception, '%s failed read (timeout %sms)', self,
           self._timeout_or_default(timeout_ms))
 
-  @usb_handle.RequiresOpenHandle
+  @usb_handle.requires_open_handle
   def write(self, data, timeout_ms=None):
     try:
       return self._handle.bulkWrite(
@@ -141,7 +141,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
           exception, '%s failed write (timeout %sms)', self,
           self._timeout_or_default(timeout_ms))
 
-  def Close(self):
+  def close(self):
     if self.is_closed():
       return
 
@@ -154,7 +154,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
       self._handle = None
 
   @classmethod
-  def Open(cls, **kwargs):
+  def open(cls, **kwargs):
     """See iter_open, but raises if multiple or no matches found."""
     handle_iter = cls.iter_open(**kwargs)
 
@@ -172,8 +172,8 @@ class LibUsbHandle(usb_handle.UsbHandle):
       return handle
 
     # We have more than one device, close the ones we opened and bail.
-    handle.Close()
-    multiple_handle.Close()
+    handle.close()
+    multiple_handle.close()
     raise usb_exceptions.MultipleInterfacesFoundError(kwargs)
 
   # pylint: disable=too-many-arguments

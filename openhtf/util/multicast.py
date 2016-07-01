@@ -71,7 +71,7 @@ class MulticastListener(threading.Thread):
                           socket.IP_MULTICAST_TTL,
                           self.ttl)
 
-  def Stop(self):
+  def stop(self):
     """Stop listening for messages."""
     self._live = False
     try:

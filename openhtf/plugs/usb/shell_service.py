@@ -47,13 +47,13 @@ Some examples of how to use this service:
   # command's output, waiting on it to complete.
   cmd = shell.async_command('echo foo; sleep 10')
   bar = shell.command('echo bar')
-  foo = cmd.Wait()
+  foo = cmd.wait()
   baz = shell.command('echo baz')
 
   # A version using a with context to do the same thing:
   with shell.async_command('echo foo; sleep 10') as c:
     bar = shell.command('echo bar')
-    foo = c.Wait()
+    foo = c.wait()
   baz = shell.command('echo baz')
 
   # Run a command in the background while we do some other stuff, save the
@@ -85,7 +85,7 @@ class async_commandHandle(object):
   read from stdin and written to the command's stdin, and output from the
   command is written to stdout. If stdin is None, no input is written to the
   command.  If stdout is None, the output from the command is buffered
-  internally, and will be returned from a call to Wait() - see the Wait() method
+  internally, and will be returned from a call to wait() - see the wait() method
   for details.
 
   You can tell if a stream was closed locally by checking the
@@ -102,7 +102,7 @@ class async_commandHandle(object):
       stdin: File-like object to use for reading stdin for the command, can be
         None, in which case no input is sent to the command.
       stdout: File-like object to use for writing output of the command to, can
-        be None, in which case output can be obtained by calling Wait().
+        be None, in which case output can be obtained by calling wait().
       timeout: timeouts.PolledTimeout to use for the command.
       is_raw: If True, we'll do reads from stdin, otherwise we do readlines
         instead to play nicer with potential interactive uses (read doesn't
@@ -126,7 +126,7 @@ class async_commandHandle(object):
       self.writer_thread.start()
 
     # Close ourselves after timeout expires, ignored if timeout won't expire.
-    timeouts.execute_after_delay(timeout, self.Close)
+    timeouts.execute_after_delay(timeout, self.close)
 
   def _writer_thread_proc(self, is_raw):
     """Write as long as the stream is not closed."""
@@ -153,19 +153,19 @@ class async_commandHandle(object):
   def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
     if exc_type:
       return False
-    self.Wait()
+    self.wait()
     return True
 
-  def Close(self):
+  def close(self):
     """Close this handle immediately - you may lose output."""
     self.force_closed_or_timeout = True
-    self.stream.Close()
+    self.stream.close()
 
   def is_done(self):
     """Return True if this command has completed."""
     return self.stream.is_closed()
 
-  def Wait(self, timeout_ms=None):
+  def wait(self, timeout_ms=None):
     """Block until this command has completed.
 
     Args:
@@ -246,7 +246,7 @@ class ShellService(object):
         be None, in which case nothing will be written to the command's stdin.
       stdout: File-like object to write the command's output to.  Can be None,
         in which case the command's output will be buffered internally, and can
-        be access via the return value of Wait().
+        be access via the return value of wait().
       raw: If True, run the command as per RawCommand (see above).
       timeout_ms: Timeout for the command, in milliseconds.
 

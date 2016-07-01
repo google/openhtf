@@ -67,7 +67,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
             'attachments': self.attachments.keys(),
             'plug_manager': self.plug_manager}
 
-  def Attach(self, name, data, mimetype=None):
+  def attach(self, name, data, mimetype=None):
     """Store the given data as an attachment with the given name.
 
     Args:
@@ -102,7 +102,7 @@ class PhaseData(object):  # pylint: disable=too-many-instance-attributes
       IOError: Raised if the given filename couldn't be opened.
     """
     with open(filename, 'rb') as f:  # pylint: disable=invalid-name
-      self.Attach(
+      self.attach(
           name if name is not None else filename, f.read(),
           mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
               filename)[0])

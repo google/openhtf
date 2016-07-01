@@ -66,7 +66,7 @@ class FastbootDevice(object):
     """Lock the device."""
     self.oem('lock', timeout_ms=1000)
 
-  def Close(self):
+  def close(self):
     """Close the device."""
     if self._protocol:
       self.__getattr__('Close')()

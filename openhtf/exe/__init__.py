@@ -62,7 +62,7 @@ class TestExecutor(threads.KillableThread):
 
     self._teardown_function = (
         teardown_function and
-        openhtf.PhaseDescriptor.WrapOrCopy(
+        openhtf.PhaseDescriptor.wrap_or_copy(
             teardown_function, timeout_s=timeout_s))
         
     self._test_descriptor = test_descriptor

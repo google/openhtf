@@ -31,6 +31,7 @@ from openhtf.names import *
 from openhtf.util import data
 from openhtf.util import units
 
+
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
 
@@ -41,18 +42,18 @@ RECORD_FILENAME = os.path.join(
 # Phases copied from the measurements example in examples/, because they
 # cover the various ways a user might use measurements.
 @measures(Measurement('hello_world_measurement'))
-def HelloPhase(test):
+def hello_phase(test):
   test.measurements.hello_world_measurement = 'Hello!'
 
 
 @measures('hello_again_measurement')
-def AgainPhase(test):
+def again_phase(test):
   test.measurements.hello_again_measurement = 'Again!'
 
 
 @measures('first_measurement', 'second_measurement')
 @measures(Measurement('third'), Measurement('fourth'))
-def LotsOfMeasurements(test):
+def lots_of_measurements(test):
   test.measurements.first_measurement = 'First!'
   test.measurements['second_measurement'] = 'Second :('
   for measurement in ('third', 'fourth'):
@@ -61,21 +62,21 @@ def LotsOfMeasurements(test):
 
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
     'This measurement is validated.').WithUnits(units.SECOND))
-def MeasureSeconds(test):
+def measure_seconds(test):
   test.measurements.validated_measurement = 5
 
 
 @measures(Measurement('dimensioned_measurement').WithDimensions(
     units.SECOND, units.HERTZ))
 @measures('unset_dimensions', dimensions=(units.SECOND, units.HERTZ))
-def MeasureDimensions(test):
+def measure_dimensions(test):
   test.measurements.dimensioned_measurement[1, 2] = 5
 
 
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
           units=units.HERTZ, validators=[util.validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
-def InlinePhase(test):
+def inline_phase(test):
   test.measurements.inline_kwargs = 15
   test.measurements.another_inline = 'This one is unvalidated.'
 
@@ -91,20 +92,20 @@ class TestMeasurements(unittest.TestCase):
       with open(RECORD_FILENAME, 'rb') as picklefile:
         cls.record = pickle.load(picklefile)
 
-  def testUnitEnforcement(self):
+  def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
     self.assertRaises(TypeError, Measurement('bad_units').WithUnits, 1701)
 
-  def testMeasurements(self):
+  def test_measurements(self):
     result = util.NonLocalResult()
-    def _SaveResult(test_record):
+    def _save_result(test_record):
       result.result = test_record
     Test.uid = 'UNITTEST:MOCK:UID'
     test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
                 MeasureDimensions, InlinePhase)
 
     if self.UPDATE_OUTPUT:
-      test.AddOutputCallbacks(output.OutputToFile(RECORD_FILENAME))
+      test.add_output_callbacks(output.OutputToFile(RECORD_FILENAME))
     else:
       test.AddOutputCallbacks(_SaveResult)
     test.Execute(test_start=lambda: 'TestDUT')
@@ -112,6 +113,6 @@ class TestMeasurements(unittest.TestCase):
       data.AssertRecordsEqualNonvolatile(
           self.record, result.result, _VOLATILE_FIELDS)
 
-  def testUpdateOutput(self):
+  def test_update_output(self):
     """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
     assert not self.UPDATE_OUTPUT, 'Change UPDATE_OUTPUT back to False!'

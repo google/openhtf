@@ -103,10 +103,10 @@ class AdbDevice(object):
     """Return the device serial."""
     return self._adb_connection.serial
 
-  def Close(self):
+  def close(self):
     """Close the ADB connection."""
-    self.filesync_service.Close()
-    self._adb_connection.Close()
+    self.filesync_service.close()
+    self._adb_connection.close()
 
   def install(self, apk_path, destination_dir=None, timeout_ms=None):
     """Install apk to device.
@@ -146,7 +146,7 @@ class AdbDevice(object):
       mtime = os.path.getmtime(source_file)
       source_file = open(source_file)
 
-    self.filesync_service.Send(
+    self.filesync_service.send(
         source_file, device_filename, mtime=mtime,
         timeout=timeouts.PolledTimeout.from_millis(timeout_ms))
 
@@ -172,9 +172,9 @@ class AdbDevice(object):
     if isinstance(dest_file, cStringIO.OutputType):
       return dest_file.getvalue()
 
-  def List(self, device_path, timeout_ms=None):
+  def list(self, device_path, timeout_ms=None):
     """Yield filesync_service.DeviceFileStat objects for directory contents."""
-    return self.filesync_service.List(
+    return self.filesync_service.list(
         device_path, timeouts.PolledTimeout.from_millis(timeout_ms))
 
   def command(self, command, raw=False, timeout_ms=None):
@@ -230,7 +230,7 @@ class AdbDevice(object):
     """Remount / as read-write."""
     self._check_remote_command('remount:', timeout_ms, ['remount succeeded'])
 
-  def Root(self, timeout_ms=None):
+  def root(self, timeout_ms=None):
     """Restart adbd as root on device."""
     self._check_remote_command('root:', timeout_ms,
                              ['already running as root',

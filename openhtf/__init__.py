@@ -82,10 +82,10 @@ class Test(object):
     def PhaseTwo(test):
       # Analyze widget integration status
 
-    Test(PhaseOne, PhaseTwo).Execute()
+    Test(PhaseOne, PhaseTwo).execute()
 
   Note that Test() objects *must* be created in the main thread, but can be
-  .Execute()'d in a separate thread.
+  .execute()'d in a separate thread.
   """
 
   TEST_INSTANCES = weakref.WeakValueDictionary()
@@ -162,7 +162,7 @@ class Test(object):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def Configure(self, **kwargs):
+  def configure(self, **kwargs):
     """Update test-wide configuration options.
 
     Valid kwargs:
@@ -173,24 +173,24 @@ class Test(object):
     """
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
-    CreateArgParser(add_help=True).parse_known_args()
+    create_arg_parser(add_help=True).parse_known_args()
     logs.setup_logger()
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
   @classmethod
-  def HandleSigInt(cls, *_):
+  def handle_sig_int(cls, *_):
     if cls.TEST_INSTANCES:
       _LOG.error('Received SIGINT, stopping all tests.')
       for test in cls.TEST_INSTANCES.values():
-        test.StopFromSigInt()
+        test.stop_from_sig_int()
     station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.
     raise KeyboardInterrupt()
 
-  def StopFromSigInt(self):
+  def stop_from_sig_int(self):
     """Stop test execution as abruptly as we can, only in response to SIGINT."""
     with self._lock:
       _LOG.error('Stopping %s due to SIGINT', self)
@@ -200,7 +200,7 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.test_state)
         self._executor.stop()
 
-  def Execute(self, test_start=None):
+  def execute(self, test_start=None):
     """Starts the framework and executes the given test.
 
     Args:
@@ -270,7 +270,7 @@ class TestDescriptor(collections.namedtuple(
   """
 
   def __new__(cls, uid, phases, code_info, metadata):
-    phases = [PhaseDescriptor.WrapOrCopy(phase) for phase in phases]
+    phases = [PhaseDescriptor.wrap_or_copy(phase) for phase in phases]
     return super(TestDescriptor, cls).__new__(
         cls, uid, phases, code_info, metadata)
 
@@ -280,13 +280,13 @@ class TestDescriptor(collections.namedtuple(
     return {plug.cls for phase in self.phases for plug in phase.plugs}
 
 
-def CreateArgParser(add_help=False):
+def create_arg_parser(add_help=False):
   """Creates an argparse.ArgumentParser for parsing command line flags.
 
   If you want to add arguments, create your own with this as a parent:
 
   >>> parser = argparse.ArgumentParser(
-          'My args title', parents=[openhtf.CreateArgParser()])
+          'My args title', parents=[openhtf.create_arg_parser()])
   >>> parser.parse_args()
   """
   return argparse.ArgumentParser('OpenHTF-based testing', parents=[
@@ -329,7 +329,7 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
       setattr(self, k, v)
 
   def __call__(self, phase_func):
-    phase = PhaseDescriptor.WrapOrCopy(phase_func)
+    phase = PhaseDescriptor.wrap_or_copy(phase_func)
     for attr in self.__slots__:
       value = getattr(self, attr)
       if value is not None:
@@ -357,7 +357,7 @@ class PhaseDescriptor(mutablerecords.Record(
   """
 
   @classmethod
-  def WrapOrCopy(cls, func, **options):
+  def wrap_or_copy(cls, func, **options):
     """Return a new PhaseDescriptor from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different
@@ -497,4 +497,4 @@ class TestApi(collections.namedtuple('TestApi', [
 
 
 # Register signal handler to stop all tests on SIGINT.
-signal.signal(signal.SIGINT, Test.HandleSigInt)
+signal.signal(signal.SIGINT, Test.handle_sig_int)

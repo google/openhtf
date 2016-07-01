@@ -277,7 +277,7 @@ def plug(update_kwargs=True, **plugs):
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-    phase_desc = openhtf.PhaseDescriptor.WrapOrCopy(func)
+    phase_desc = openhtf.PhaseDescriptor.wrap_or_copy(func)
     duplicates = frozenset(p.name for p in phase_desc.plugs) & frozenset(plugs)
     if duplicates:
       raise DuplicatePlugError(

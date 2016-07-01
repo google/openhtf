@@ -80,4 +80,4 @@ class EtherSync(object):
       usb handle
     """
     serial = self.get_usb_serial(port_num)
-    return local_usb.LibUsbHandle.Open(serial_number=serial)
+    return local_usb.LibUsbHandle.open(serial_number=serial)

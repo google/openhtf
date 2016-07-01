@@ -16,7 +16,7 @@ module, and will typically be a type, instances of which are callable:
       return value < self.limit
 
   # Name defaults to the validator's __name__ attribute unless overridden.
-  validators.Register(MyLessThanValidator, name='LessThan')
+  validators.register(MyLessThanValidator, name='LessThan')
 
   # Now you can refer to the validator by name directly on measurements.
   @measurements.measures(
@@ -60,7 +60,7 @@ class Validators(object):
     self.modules = modules
     self._validators = {}
 
-  def Register(self, validator, name=None):
+  def register(self, validator, name=None):
     name = name or validator.__name__
     if hasattr(self, name):
       raise ValueError('Duplicate validator name', name)
@@ -117,7 +117,7 @@ class Validators(object):
     def __ne__(self, other):
       return not self == other
 
-  def Equals(self, value):
+  def equals(self, value):
     if isinstance(value, self.modules['numbers'].Number):
       return self.InRange(minimum=value, maximum=value)
     else:

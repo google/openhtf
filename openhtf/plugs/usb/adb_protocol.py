@@ -219,9 +219,9 @@ class AdbStream(object):
       except usb_exceptions.AdbStreamClosedError:
         break
 
-  def Close(self, timeout_ms=100):
+  def close(self, timeout_ms=100):
     """Close the stream."""
-    self._transport.Close(timeout_ms)
+    self._transport.close(timeout_ms)
 
 
 class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
@@ -487,7 +487,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
         self._read_buffer.appendleft(push_back)
     return data
 
-  def Close(self, timeout_ms):
+  def close(self, timeout_ms):
     """Close this stream, future reads/writes will fail."""
     if self.closed_state == self.ClosedState.CLOSED:
       return
@@ -498,7 +498,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
           self, timeouts.PolledTimeout.from_millis(timeout_ms)):
         _LOG.warning('Attempt to close mystery %s', self)
     except usb_exceptions.AdbTimeoutError:
-      _LOG.warning('%s Close() timed out, ignoring', self)
+      _LOG.warning('%s close() timed out, ignoring', self)
 
 
 class AdbConnection(object):
@@ -631,9 +631,9 @@ class AdbConnection(object):
       else:
         _LOG.warning('Received message for unknown local-id: %s', message)
 
-  def Close(self):
+  def close(self):
     """Close the connection."""
-    self.transport.Close()
+    self.transport.close()
 
   def open_stream(self, destination, timeout_ms=None):
     """Opens a new stream to a destination service on the device.
