@@ -135,18 +135,18 @@ class RemoteState(collections.namedtuple('RemoteState', [
         self.status.name,
         self.running_phase_record and self.running_phase_record.name)
 
-  def __new__(cls, last_known_state, status, test_record, running_phase_record):
+  def __new__(cls, cached_state, status, test_record, running_phase_record):
     test_record = pickle.loads(saxutils.unescape(test_record))
-    lks_rec = last_known_state and last_known_state.test_record
+    cached_rec = cached_state and cached_state.test_record
 
     # If we have saved phases/logs for the same test (identified by the
     # start_time_millis of the test), then prepend them to the ones we
     # received from the remote end.  If these timestamps don't match, then
     # the remote side will have already sent us all phases and logs, so
     # there's no need to re-request them.  We'll update our local cache later.
-    if lks_rec and lks_rec.start_time_millis == test_record.start_time_millis:
-      test_record.phases = lks_rec.phases + test_record.phases
-      test_record.log_records = lks_rec.log_records + test_record.log_records
+    if cached_rec and cached_rec.start_time_millis == test_record.start_time_millis:
+      test_record.phases = cached_rec.phases + test_record.phases
+      test_record.log_records = cached_rec.log_records + test_record.log_records
      
     return super(RemoteState, cls).__new__(
         cls, test_state.TestState.Status[status], test_record,
@@ -161,14 +161,14 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
     # Track last known state so we can detect deltas.
-    'last_known_state': None, 'state_lock': threading.Lock})):
+    'cached_state': None, 'state_lock': threading.Lock})):
 
   def __hash__(self):
     return hash((self.test_uid, self.created_time_millis))
 
   @property
   def start_time_millis(self):
-    state = self.last_known_state
+    state = self.cached_state
     if (not state or not state.test_record or
         not state.test_record.start_time_millis):
       return 0
@@ -177,7 +177,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
   @property
   def saved_phases(self):
     """Number of phases we have saved in our last known state."""
-    state = self.last_known_state
+    state = self.cached_state
     if not state or not state.test_record:
       return 0
     return len(state.test_record.phases)
@@ -185,15 +185,15 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
   @property
   def saved_logs(self):
     """Number of log records we have saved in our last known state."""
-    state = self.last_known_state
+    state = self.cached_state
     if not state or not state.test_record:
       return 0
     return len(state.test_record.log_records)
   
   def __str__(self):
-    # Use last_known_state because accessing self.state triggers an RPC, and
+    # Use cached_state because accessing self.state triggers an RPC, and
     # we don't want str() to trigger an RPC because that's counterintuitive.
-    lks = self.last_known_state
+    lks = self.cached_state
     return 'RemoteTest "%s" Status: %s, Created: %s, Last run: %s' % (
         self.test_name, lks and lks.status.name,
         time.strftime(
@@ -206,24 +206,26 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
     Returns: Updated state, as if accessing self.state.
     """
-    lks = self.last_known_state  # Grab a reference so it doesn't change on us.
-    lks_dict = lks and {
+    lks = self.cached_state  # Grab a reference so it doesn't change on us.
+    # TODO(don't send all phases/logs here, just counts.
+    cached_dict = lks and {
         'status': lks.status.name,
         'test_record': saxutils.escape(pickle.dumps(lks.test_record)),
         'running_phase_record':
             saxutils.escape(pickle.dumps(lks.running_phase_record)),
     }
     remote_state_dict = self.proxy_factory().wait_for_update(
-        self.test_uid, lks_dict, timeout_s)
+        self.test_uid, cached_dict, timeout_s)
     if remote_state_dict:
+      # TODO(madsci): Track last updated state.
       retval = RemoteState(lks, **remote_state_dict)
       with self.state_lock:
-        self.last_known_state = retval
+        self.cached_state = retval
     elif remote_state_dict is None:
       # None indicates no state info is available, test likely stopped.
-      self.last_known_state = None
+      self.cached_state = None
     # Timeout, just return the last known state.
-    return self.last_known_state
+    return self.cached_state
 
   def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
     with self.shared_proxy._lock:
@@ -237,17 +239,17 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     with self.state_lock:
       saved_phases = self.saved_phases
       saved_logs = self.saved_logs
-      last_known_state = self.last_known_state
+      cached_state = self.cached_state
 
     remote_state_dict = self.get_remote_state_dict(saved_phases, saved_logs)
     if remote_state_dict:
-      retval = RemoteState(last_known_state, **remote_state_dict)
+      retval = RemoteState(cached_state, **remote_state_dict)
       with self.state_lock:
-        self.last_known_state = retval
+        self.cached_state = retval
       return retval
 
   @property
-  def local_history(self):
+  def cached_history(self):
     return self.cached_history.for_test_uid(self.test_uid)
 
   @property
@@ -257,7 +259,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     Note that accessing this attribute triggers an RPC to check for any new
     history entries since the most recent known one.  This means saving a
     reference to the return value and reusing it will not trigger an update
-    from the remote end.  Alternatively, accessing the 'local_history'
+    from the remote end.  Alternatively, accessing the 'cached_history'
     attribute will reference only local already-known history.
     """
     with self.shared_proxy._lock:
@@ -270,7 +272,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     for pickled_record in new_history:
       self.cached_history.append_record(
           self.test_uid, pickle.loads(saxutils.unescape(pickled_record)))
-    return self.local_history
+    return self.cached_history
 
 
 class Station(object):
@@ -283,7 +285,7 @@ class Station(object):
     self._history = history.History()
     # Maps test UID to RemoteTest, so we can reuse old RemoteTest objects in
     # order to benefit from their saved state (phases and logs).
-    self._known_tests = {}
+    self.cached_tests = {}
     # Shared proxy and lock used for synchronous calls we expect to be fast.
     # Long-polling calls should use the 'proxy' attribute directly instead, as
     # it creates a new ServerProxy object each time, avoiding the danger of
@@ -340,15 +342,15 @@ class Station(object):
     for test_dict in tests:
       test_uid = test_dict['test_uid']
       ctime_millis = test_dict['created_time_millis']
-      if (test_uid not in self._known_tests or
-          ctime_millis != self._known_tests[test_uid].created_time_millis):
+      if (test_uid not in self.cached_tests or
+          ctime_millis != self.cached_tests[test_uid].created_time_millis):
         updated_tests[test_uid] = RemoteTest(
             self.make_proxy, self._shared_proxy, self._history, **test_dict)
       else:
-        updated_tests[test_uid] = self._known_tests[test_uid]
+        updated_tests[test_uid] = self.cached_tests[test_uid]
 
-    self._known_tests = updated_tests
-    return self._known_tests.itervalues()
+    self.cached_tests = updated_tests
+    return dict(self.cached_tests)
 
 
 ### Server-side objects below here. ###
