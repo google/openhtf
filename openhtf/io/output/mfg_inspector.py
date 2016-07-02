@@ -120,7 +120,7 @@ def _PopulateHeader(record, testrun):
     attachment = testrun.info_parameters.add()
     attachment.name = 'config'
     attachment.value_binary = json.dumps(
-        record.metadata['config'], sort_keys=True)
+        record.metadata['config'], sort_keys=True, indent=4)
 
 
 def _EnsureUniqueParameterName(name, used_parameter_names):
