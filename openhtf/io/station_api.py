@@ -199,9 +199,9 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
   def __str__(self):
     # Use cached_state because accessing self.state triggers an RPC, and
     # we don't want str() to trigger an RPC because that's counterintuitive.
-    lks = self.cached_state
+    cached_state = self.cached_state
     return 'RemoteTest "%s" Status: %s, Created: %s, Last run: %s' % (
-        self.test_name, lks and lks.status.name,
+        self.test_name, cached_state and cached_state.status.name,
         time.strftime(
             '%a@%H:%M:%S', time.localtime(self.created_time_millis / 1000)),
         self.last_run_time_millis and time.strftime(
@@ -212,31 +212,30 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
     Returns: Updated state, as if accessing self.state.
     """
-    lks = self.cached_state  # Grab a reference so it doesn't change on us.
-    # TODO(don't send all phases/logs here, just counts.
-    cached_dict = lks and {
-        'status': lks.status.name,
-        'test_record': saxutils.escape(pickle.dumps(lks.test_record)),
+    # Make a copy so we can swap out phases and logs with counts instead.
+    state = mutablerecords.CopyRecord(self.cached_state)
+    state.test_record.phases = len(state.test_record.phases)
+    state.test_record.log_records = len(state.test_record.log_records)
+    cached_dict = state and {
+        'status': state.status.name,
+        'test_record': saxutils.escape(pickle.dumps(state.test_record)),
         'running_phase_record':
-            saxutils.escape(pickle.dumps(lks.running_phase_record)),
+            saxutils.escape(pickle.dumps(state.running_phase_record)),
     }
+    # TODO(madsci): Handle Fault exceptions and re-raise relevant exceptions.
     remote_state_dict = self.proxy_factory().wait_for_update(
         self.test_uid, cached_dict, timeout_s)
     if remote_state_dict:
-      # TODO(madsci): Track last updated state.
-      retval = RemoteState(lks, **remote_state_dict)
+      retval = RemoteState(state, **remote_state_dict)
       with self.state_lock:
         self.cached_state = retval
-    elif remote_state_dict is None:
-      # None indicates no state info is available, test likely stopped.
-      self.cached_state = None
+
     # Timeout, just return the cached state.
     return self.cached_state
 
   def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
     return self.shared_proxy.get_test_state(
-        self.test_uid, long(self.start_time_millis),
-        skip_phases, skip_logs)
+        self.test_uid, cached_dict['test_record'])
 
   @property
   def state(self):
@@ -413,13 +412,14 @@ class StationApi(object):
     return retval
 
   @staticmethod
-  def _serialize_state_dict(state, start_time_millis=None,
-                            skip_phases=0, skip_logs=0):
-    if (start_time_millis and
-        start_time_millis == state['test_record'].start_time_millis):
+  def _serialize_state_dict(state, remote_record=None):
+    if (remote_record and
+        remote_record.start_time_millis ==
+        state['test_record'].start_time_millis):
+      # Make a copy and delete phases/logs that are already known remotely.
       state['test_record'] = mutablerecords.CopyRecord(state['test_record'])
-      del state['test_record'].phases[:skip_phases]
-      del state['test_record'].log_records[:skip_logs]
+      del state['test_record'].phases[:remote_record.phases]
+      del state['test_record'].log_records[:remote_record.log_records]
 
     return {
         'status': state['status'].name,
@@ -428,26 +428,21 @@ class StationApi(object):
             saxutils.escape(pickle.dumps(state['running_phase_record'])),
     }
 
-  def get_test_state(self, test_uid, start_time_millis, skip_phases, skip_logs):
+  def get_test_state(self, test_uid, remote_record):
     """Get test state for the given Test UID.
 
-    start_time_millis is checked against the start_time_millis of any currently
-    running test state.  If they match, then skip_phases and skip_logs
-    (integers) are used to know how many PhaseRecords and LogRecords to skip
-    in the TestRecord of the state returned.
+    If a remote TestRecord is cached, information from it will be used to
+    limit the phases/log records returned to only new ones.
+
+    Args:
+      test_uid: Test for which to obtain TestState info.
+      remote_record: TestRecord we have cached on the remote side (if any),
+          with phases and log_records swapped out for their respective lengths.
     """
-    _LOG.debug('RPC:get_test_state(%s, %s, %s, %s)', test_uid,
-               start_time_millis, skip_phases, skip_logs)
-    test = openhtf.Test.TEST_INSTANCES.get(test_uid)
-    if not test:
-      return None
-
-    state = test.state
-    if not state:
-      return None
-
-    return self._serialize_state_dict(state._asdict(), start_time_millis,
-                                      skip_phases, skip_logs)
+    _LOG.debug('RPC:get_test_state(%s)', test_uid)
+    state = openhtf.Test.state_by_uid(test_uid)
+    remote_record = pickle.loads(saxutils.unescape(remote_record))
+    return self._serialize_state_dict(state._asdict(), remote_record)
 
   def wait_for_plug(self, test_id, plug_type_name, current_state, timeout_s):
     """Long-poll RPC that blocks until the requested plug has an update.
@@ -479,7 +474,7 @@ class StationApi(object):
     return test_state.plug_manager.WaitForPlugUpdate(
         plug_type_name, current_state, timeout_s)
 
-  def wait_for_update(self, test_uid, current_state, timeout_s):
+  def wait_for_update(self, test_uid, remote_state, timeout_s):
     """Long-poll RPC that blocks until there is new information available.
 
     Events that trigger an update:
@@ -491,58 +486,60 @@ class StationApi(object):
 
     Args:
       test_uid: Test UID for which to wait on an update.
-      current_state: Current RemoteState that we have for the test, as a dict.
+      remote_state: Current RemoteState that we have for the test, as a dict,
+          with phases and log_records swapped out for counts instead of the
+          actual records themselves.
       timeout_s: Number of seconds to wait for an update before giving up.
 
     Returns:
       Updated RemoteState, as per get_test_state, except args are taken from
-    current_state rather than passed in individually (because we care about
-    more stuff here).  In the event of a timeout, the empty string is
-    returned.
+    remote_state rather than passed in individually (because we care about
+    more stuff here).  In the event of a timeout, returns None.
 
     Raises:
       UnrecognizedTestUidError: If the test_uid is not recognized.
       TestNotRunningError: If the test requested is not currently running.
     """
-    test_state = openhtf.Test.state_by_uid(test_uid)
-    state_dict, event = test_state.asdict_with_event()
-    if not current_state:
+    state = openhtf.Test.state_by_uid(test_uid)
+    state_dict, event = state.asdict_with_event()
+    if not remote_state:
       _LOG.debug('RPC:wait_for_update() -> short-circuited wait (was blank)')
       return self._serialize_state_dict(state_dict)
 
-    # If we get here, we have to deserialize the remote state for comparison.
-    test_record = pickle.loads(saxutils.unescape(current_state['test_record']))
-    running_phase_record = pickle.loads(
-        saxutils.unescape(current_state['running_phase_record']))
-    current_state = {
-        'status': test_state.TestState.Status[current_state['status']],
-        'test_record': test_record,
-        'running_phase_record': running_phase_record,
+    # Make a copy with phase/log record counts swapped out for comparison with
+    # remote_state.
+    state_dict_counts = state._asdict(copy_records=True)
+    state_dict_counts['test_record'].phases = len(
+        state_dict_counts['test_record'].phases)
+    state_dict_counts['test_record'].log_records = len(
+        state_dict_counts['test_record'].log_records)
+
+    # Deserialize the remote state for comparison.
+    remote_state = {
+        'status': test_state.TestState.Status[remote_state['status']],
+        'test_record': pickle.loads(
+            saxutils.unescape(remote_state['test_record'])),
+        'running_phase_record': pickle.loads(
+            saxutils.unescape(remote_state['running_phase_record'])),
+
     }
-    if state_dict != current_state:
+    if state_dict_counts != remote_state:
       _LOG.debug('RPC:wait_for_update() -> short-circuited wait')
       # We already have new info, serialize the new state and send it,
       # skipping any phases/logs that we already know about remotely.
-      return self._serialize_state_dict(
-          state_dict, current_state['test_record'].start_time_millis,
-          len(current_state['test_record'].phases),
-          len(current_state['test_record'].log_records))
+      return self._serialize_state_dict(state_dict, remote_state['test_record'])
 
     # If we get here, then the remote side is already up-to-date, so we wait
     # for there to be new information available.  We rely on the TestState
     # object itself to notify us when this is the case.
     if not event.wait(timeout_s):
       _LOG.debug('RPC:wait_for_update() -> timeout')
-      return ''
+      return
 
     _LOG.debug('RPC:wait_for_update() -> change after wait')
     # Grab a fresh copy of the state and return the new info.
-    state = test.state
-    if not state:
-      return None
-    return self._serialize_state_dict(
-        state._asdict(), current_state.start_time_millis,
-        len(current_state.phases), len(current_state.log_records))
+    state_dict = openhtf.Test.state_by_uid(test_uid).as_dict()
+    return self._serialize_state_dict(state_dict, remote_state'test_record'])
 
   def get_history_after(self, test_uid, start_time_millis):
     """Get a list of pickled TestRecords for test_uid from the History."""
