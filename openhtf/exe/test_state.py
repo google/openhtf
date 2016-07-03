@@ -139,15 +139,20 @@ class TestState(object):
       self.running_phase_state = None
       self.notify_update()
 
-  def _asdict(self):
+  def _asdict(self, copy_records=False):
     """Return a dict representation of the test's state."""
+    test_rec = self.test_record
+    phase_rec = (self.running_phase_state
+                 and self.running_phase_state.phase_record)
+    if copy_records:
+      test_rec = mutablerecords.CopyRecord(test_rec)
+      phase_rec = phase_rec and mutablerecords.CopyRecord(phase_rec)
+
     return {
-        'status': self._status,
-        'test_record': self.test_record,
+        'status': self._status, 'test_record': test_rec,
         # TODO(madsci): pass the whole running_phase_state to provide
         # Station API visibility of measurements as they are set.
-        'running_phase_record': (self.running_phase_state and
-                                 self.running_phase_state.phase_record),
+        'running_phase_record': phase_rec
     }
 
   @threads.Synchronized
