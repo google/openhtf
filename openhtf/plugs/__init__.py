@@ -108,6 +108,7 @@ import mutablerecords
 
 import openhtf
 from openhtf.util import logs
+from openhtf.util import timeouts
 
 
 _LOG = logging.getLogger(__name__)
@@ -133,12 +134,7 @@ class PlugUpdateThread(threading.Thread):
     self.plug = plug_instance
     self.current_state = current_state
     self.timeout_s = timeout_s
-    self.start_time = None
     self.updated_state = None
-
-  @property
-  def is_timedout(self):
-    return self.start_time and time.time() - self.start_time > self.timeout_s
 
   def join(self):
     """Like Thread.join(), but return our updated state (or None on timeout).
@@ -150,8 +146,8 @@ class PlugUpdateThread(threading.Thread):
     return self.updated_state
 
   def run(self):
-    self.start_time = time.time()
-    while not self.is_timedout:
+    timeout = timeouts.PolledTimeout.FromSeconds(self.timeout_s)
+    while not timeout.HasExpired():
       new_state = self.plug._asdict()
       if new_state != self.current_state:
         self.updated_state = new_state
