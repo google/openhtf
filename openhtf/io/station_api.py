@@ -49,7 +49,7 @@ information to connect to the station via XML-RPC to obtain more details:
 
   for station in Station.discover_stations():
     print 'Found station "%s", with tests:' % station.station_id
-    for test in station.tests:
+    for test in station.tests.itervalues():
       print '  %s' % test.test_name  # test is a RemoteTest object.
 
 Each RemoteTest returned by Station.tests has an associated history,
@@ -127,9 +127,16 @@ class PlugUnrecognizedError(Exception):
   """Raised if a plug is requested that is not in use."""
 
 
+class LockedTimeoutReraisingProxy(
+    xmlrpcutil.TimeoutServerProxyMixin, xmlrpcutil.LockedServerProxyMixin,
+    xmlrpcutil.BaseServerProxy):
+  """ServerProxy with additional features we use."""
+
+
 class SimpleThreadedXMLRPCServer(
     SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
   """Helper for handling multiple simultaneous RPCs in threads."""
+  daemon_threads = True
 
 
 class RemoteState(collections.namedtuple('RemoteState', [
@@ -161,7 +168,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
 
 class RemoteTest(mutablerecords.Record('RemoteTest', [
     # Internal references for providing a more programmatic interface.
-    'proxy_factory', 'shared_proxy', 'cached_history',
+    'proxy_factory', 'shared_proxy', '_cached_history',
     # Identifiers for this test (API and more user-friendly),
     'test_uid', 'test_name',
     # Timestamps (in milliseconds) that we care about.
@@ -212,26 +219,34 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
     Returns: Updated state, as if accessing self.state.
     """
+    cached_state = self.cached_state
+    cached_dict = None
     # Make a copy so we can swap out phases and logs with counts instead.
-    state = mutablerecords.CopyRecord(self.cached_state)
-    state.test_record.phases = len(state.test_record.phases)
-    state.test_record.log_records = len(state.test_record.log_records)
-    cached_dict = state and {
-        'status': state.status.name,
-        'test_record': saxutils.escape(pickle.dumps(state.test_record)),
-        'running_phase_record':
-            saxutils.escape(pickle.dumps(state.running_phase_record)),
-    }
+    if self.cached_state:
+      state = cached_state._replace(
+          test_record=mutablerecords.CopyRecord(cached_state.test_record))
+      state.test_record.phases = len(state.test_record.phases)
+      state.test_record.log_records = len(state.test_record.log_records)
+      cached_dict = {
+          'status': state.status.name,
+          'test_record': saxutils.escape(pickle.dumps(state.test_record)),
+          'running_phase_record':
+              saxutils.escape(pickle.dumps(state.running_phase_record)),
+      }
     # TODO(madsci): Handle Fault exceptions and re-raise relevant exceptions.
-    remote_state_dict = self.proxy_factory().wait_for_update(
-        self.test_uid, cached_dict, timeout_s)
+    try:
+      remote_state_dict = self.proxy_factory(timeout_s + 3).wait_for_update(
+          self.test_uid, cached_dict, timeout_s)
+    except Exception as e:
+      #import pdb; pdb.set_trace()
+      raise
     if remote_state_dict:
-      retval = RemoteState(state, **remote_state_dict)
+      retval = RemoteState(cached_state, **remote_state_dict)
       with self.state_lock:
         self.cached_state = retval
 
     # Timeout, just return the cached state.
-    return self.cached_state
+    return cached_state
 
   def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
     return self.shared_proxy.get_test_state(
@@ -254,7 +269,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
   @property
   def cached_history(self):
-    return self.cached_history.for_test_uid(self.test_uid)
+    return self._cached_history.for_test_uid(self.test_uid)
 
   @property
   def history(self):
@@ -266,14 +281,14 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     from the remote end.  Alternatively, accessing the 'cached_history'
     attribute will reference only local already-known history.
     """
-    last_start_time = self.cached_history.last_start_time(self.test_uid)
+    last_start_time = self._cached_history.last_start_time(self.test_uid)
     new_history = self.shared_proxy.get_history_after(
         self.test_uid, long(last_start_time))
     _LOG.debug('Requested history update for %s after %s, got %s results.',
                self.test_uid, last_start_time, len(new_history))
 
     for pickled_record in new_history:
-      self.cached_history.append_record(
+      self._cached_history.append_record(
           self.test_uid, pickle.loads(saxutils.unescape(pickled_record)))
     return self.cached_history
 
@@ -313,13 +328,14 @@ class Station(object):
   def __getattr__(self, attr):
     return getattr(self._station_info, attr)
 
-  def make_proxy(self):
+  def make_proxy(self, timeout_s=5):
     """Make a new ServerProxy for this station."""
-    return xmlrpcutil.LockedTimeoutServerProxy(
-        self.host, self.station_api_port, allow_none=True)
+    return LockedTimeoutReraisingProxy(
+        'http://%s:%s' % (self.host, self.station_api_port),
+        timeout_s=timeout_s, allow_none=True)
 
   @classmethod
-  def discover_stations(cls, timeout_s=3):
+  def discover(cls, timeout_s=3):
     """Discover Stations, yielding them as they're found."""
     for host, response in multicast.send(conf.station_discovery_string,
                                          timeout_s=timeout_s,
@@ -334,7 +350,8 @@ class Station(object):
 
   @classmethod
   def from_host_port(cls, host, port):
-    proxy = xmlrpcutil.LockedTimeoutServerProxy(host, port, allow_none=True)
+    proxy = LockedTimeoutReraisingProxy(
+        'http://%s:%s' % (host, port), allow_none=True)
     return cls(StationInfo(host, **proxy.get_station_info()), proxy)
 
   @property
@@ -353,8 +370,7 @@ class Station(object):
   @property
   def tests(self):
     """List active Test instances on this station."""
-    with self._shared_proxy._lock:
-      tests = self._shared_proxy.list_tests()
+    tests = self._shared_proxy.list_tests()
 
     updated_tests = {}
     for test_dict in tests:
@@ -362,8 +378,11 @@ class Station(object):
       ctime_millis = test_dict['created_time_millis']
       if (test_uid not in self.cached_tests or
           ctime_millis != self.cached_tests[test_uid].created_time_millis):
-        updated_tests[test_uid] = RemoteTest(
+        try:
+          updated_tests[test_uid] = RemoteTest(
             self.make_proxy, self._shared_proxy, self._history, **test_dict)
+        except Exception as e:
+          import pdb; pdb.set_trace()
       else:
         updated_tests[test_uid] = self.cached_tests[test_uid]
 
@@ -500,6 +519,7 @@ class StationApi(object):
       UnrecognizedTestUidError: If the test_uid is not recognized.
       TestNotRunningError: If the test requested is not currently running.
     """
+    _LOG.debug('RPC:wait_for_update(timeout_s=%s)', timeout_s)
     state = openhtf.Test.state_by_uid(test_uid)
     state_dict, event = state.asdict_with_event()
     if not remote_state:
@@ -538,8 +558,8 @@ class StationApi(object):
 
     _LOG.debug('RPC:wait_for_update() -> change after wait')
     # Grab a fresh copy of the state and return the new info.
-    state_dict = openhtf.Test.state_by_uid(test_uid).as_dict()
-    return self._serialize_state_dict(state_dict, remote_state'test_record'])
+    state_dict = openhtf.Test.state_by_uid(test_uid)._asdict()
+    return self._serialize_state_dict(state_dict, remote_state['test_record'])
 
   def get_history_after(self, test_uid, start_time_millis):
     """Get a list of pickled TestRecords for test_uid from the History."""

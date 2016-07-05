@@ -176,7 +176,7 @@ class StationList(object):
   def check_for_stations(self):
     """Discover for new stations, doesn't remove any stations."""
     new_stations = set()
-    for station in station_api.Station.discover_stations():
+    for station in station_api.Station.discover():
       if station not in self.stations:
         new_stations.add(station)
     if new_stations:
