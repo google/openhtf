@@ -27,8 +27,8 @@ class AdderPlug(plugs.BasePlug):
   LAST_INSTANCE = None
 
   def __init__(self):
-    self.__class__.INSTANCE_COUNT += 1
-    self.__class__.LAST_INSTANCE = self
+    type(self).INSTANCE_COUNT += 1
+    type(self).LAST_INSTANCE = self
     self.state = 'CREATED'
     self.number = 0
 
@@ -46,14 +46,14 @@ class AdderPlug(plugs.BasePlug):
 class TearDownRaisesPlug1(plugs.BasePlug):
   TORN_DOWN = False
   def TearDown(self):
-    self.__class__.TORN_DOWN = True
+    type(self).TORN_DOWN = True
     raise Exception()
 
 
 class TearDownRaisesPlug2(plugs.BasePlug):
   TORN_DOWN = False
   def TearDown(self):
-    self.__class__.TORN_DOWN = True
+    type(self).TORN_DOWN = True
     raise Exception()
 
 
