@@ -138,7 +138,7 @@ class Test(object):
       raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
     state = test.state
     if not state:
-      return TestNotRunningError('Test UID %s is not running' % test_uid)
+      raise TestNotRunningError('Test UID %s is not running' % test_uid)
     return state
 
   @property
@@ -195,9 +195,10 @@ class Test(object):
 
   @classmethod
   def HandleSigInt(cls, *_):
-    _LOG.error('Received SIGINT, stopping all tests.')
-    for test in cls.TEST_INSTANCES.values():
-      test.StopFromSigInt()
+    if cls.TEST_INSTANCES:
+      _LOG.error('Received SIGINT, stopping all tests.')
+      for test in cls.TEST_INSTANCES.values():
+        test.StopFromSigInt()
     station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
