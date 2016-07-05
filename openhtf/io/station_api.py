@@ -72,8 +72,6 @@ import threading
 import time
 import xmlrpclib
 
-from xml.sax import saxutils
-
 import mutablerecords
 
 # Fix for xmlrpclib to use <i8> for longs instead of <int>, because our
@@ -148,7 +146,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
         self.running_phase_record and self.running_phase_record.name)
 
   def __new__(cls, cached_state, status, test_record, running_phase_record):
-    test_record = pickle.loads(saxutils.unescape(test_record))
+    test_record = pickle.loads(test_record.data)
     cached_rec = cached_state and cached_state.test_record
 
     # If we have cached phases/logs for the same test (identified by the
@@ -163,7 +161,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
      
     return super(RemoteState, cls).__new__(
         cls, test_state.TestState.Status[status], test_record,
-        pickle.loads(saxutils.unescape(running_phase_record)))
+        pickle.loads(running_phase_record.data))
 
 
 class RemoteTest(mutablerecords.Record('RemoteTest', [
@@ -229,9 +227,9 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
       state.test_record.log_records = len(state.test_record.log_records)
       cached_dict = {
           'status': state.status.name,
-          'test_record': saxutils.escape(pickle.dumps(state.test_record)),
+          'test_record': xmlrpclib.Binary(pickle.dumps(state.test_record)),
           'running_phase_record':
-              saxutils.escape(pickle.dumps(state.running_phase_record)),
+              xmlrpclib.Binary(pickle.dumps(state.running_phase_record)),
       }
     # TODO(madsci): Handle Fault exceptions and re-raise relevant exceptions.
     try:
@@ -289,7 +287,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
     for pickled_record in new_history:
       self._cached_history.append_record(
-          self.test_uid, pickle.loads(saxutils.unescape(pickled_record)))
+          self.test_uid, pickle.loads(pickled_record.data))
     return self.cached_history
 
 
@@ -399,6 +397,8 @@ class StationApi(object):
 
   def get_station_info(self):
     """Obtain dict required for a StationInfo for this station."""
+    _LOG.debug('RPC:get_station_info() -> %s:%s',
+               conf.station_id, conf.station_api_port)
     return { 
         'station_id': conf.station_id,
         'station_api_bind_address': conf.station_api_bind_address,
@@ -442,9 +442,9 @@ class StationApi(object):
 
     return {
         'status': state['status'].name,
-        'test_record': saxutils.escape(pickle.dumps(state['test_record'])),
+        'test_record': xmlrpclib.Binary(pickle.dumps(state['test_record'])),
         'running_phase_record':
-            saxutils.escape(pickle.dumps(state['running_phase_record'])),
+            xmlrpclib.Binary(pickle.dumps(state['running_phase_record'])),
     }
 
   def get_test_state(self, test_uid, remote_record):
@@ -460,7 +460,7 @@ class StationApi(object):
     """
     _LOG.debug('RPC:get_test_state(%s)', test_uid)
     state = openhtf.Test.state_by_uid(test_uid)
-    remote_record = pickle.loads(saxutils.unescape(remote_record))
+    remote_record = pickle.loads(remote_record.data)
     return self._serialize_state_dict(state._asdict(), remote_record)
 
   def wait_for_plug(self, test_id, plug_type_name, current_state, timeout_s):
@@ -537,10 +537,9 @@ class StationApi(object):
     # Deserialize the remote state for comparison.
     remote_state = {
         'status': test_state.TestState.Status[remote_state['status']],
-        'test_record': pickle.loads(
-            saxutils.unescape(remote_state['test_record'])),
+        'test_record': pickle.loads(remote_state['test_record'].data),
         'running_phase_record': pickle.loads(
-            saxutils.unescape(remote_state['running_phase_record'])),
+            remote_state['running_phase_record'].data),
 
     }
     if state_dict_counts != remote_state:
@@ -563,9 +562,9 @@ class StationApi(object):
 
   def get_history_after(self, test_uid, start_time_millis):
     """Get a list of pickled TestRecords for test_uid from the History."""
-    _LOG.debug('RPC:get_history_after()')
+    _LOG.debug('RPC:get_history_after(%s)', start_time_millis)
     # TODO(madsci): We really should pull attachments out of band here.
-    return [saxutils.escape(pickle.dumps(test_record))
+    return [xmlrpclib.Binary(pickle.dumps(test_record))
             for test_record in history.for_test_uid(
                 test_uid, start_after_millis=start_time_millis)]
 
@@ -642,9 +641,13 @@ def start_server():
   # TODO(madsci): Blech, fix this.
   global API_SERVER
   if not API_SERVER and conf.station_api_port or conf.enable_station_discovery:
+    _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
+               conf.station_api_port and int(conf.station_api_port),
+               'en' if conf.enable_station_discovery else 'dis')
     API_SERVER = ApiServer()
     API_SERVER.start()
 
 def stop_server():
   if API_SERVER:
+    _LOG.debug('Stopping Station API server.')
     API_SERVER.stop()

@@ -147,7 +147,6 @@ class StationList(object):
           new_status = (updated_state
                         and updated_state.status
                         and updated_state.status.name)
-          remote_test.history  # Access this to trigger an update RPC. 
           self.update_queue.put(
               'Update triggered by Test "%s", %s new phases, '
               '%s new logs, status: %s -> %s' % (
@@ -161,6 +160,7 @@ class StationList(object):
     print(station)
     try:
       for remote_test in station.tests.itervalues():
+        remote_test.history  # Trigger an update of the local history cache.
         print_test(remote_test)
         if (remote_test not in self.update_threads or
             not self.update_threads[remote_test].is_alive()):

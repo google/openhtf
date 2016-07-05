@@ -119,4 +119,5 @@ if __name__ == '__main__':
   #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
   #test.Configure(teardown_function=teardown)
-  test.Execute(test_start=triggers.PromptForTestStart())
+  while True:
+    test.Execute(test_start=triggers.PromptForTestStart())
