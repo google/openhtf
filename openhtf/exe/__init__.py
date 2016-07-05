@@ -76,11 +76,13 @@ class TestExecutor(threads.KillableThread):
         self._exit_stack.close()
     self.Kill()
 
-  def Finalize(self, output_callbacks):
+  def Finalize(self):
     """Finalize test execution and output resulting record to callbacks.
 
     Should only be called once at the conclusion of a test run, and will raise
     an exception if end_time_millis is already set.
+
+    Returns: Finalized TestState.  It should not be modified after this call.
 
     Raises: TestAlreadyFinalized if end_time_millis already set.
     """
@@ -91,16 +93,8 @@ class TestExecutor(threads.KillableThread):
       self._test_state.logger.info('Finishing test with outcome ABORTED.')
       self._test_state.Finalize(test_record.Outcome.ABORTED)
 
-    _LOG.debug('Test completed for %s, saving to history and outputting.',
-               self._test_state.test_record.metadata['test_name'])
-
-    for output_cb in output_callbacks:
-      try:
-        output_cb(self._test_state.test_record)
-      except Exception:
-        _LOG.exception(
-            'Output callback %s errored out; continuing anyway', output_cb)
-
+    return self._test_state
+    
   def Wait(self):
     """Waits until death."""
     try:
