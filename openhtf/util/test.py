@@ -170,7 +170,7 @@ class PhaseOrTestIterator(collections.Iterator):
       self.plug_manager.UpdatePlug(plug_type, plug_value)
 
 
-  @conf.SaveAndRestore(station_api_port=None)
+  @conf.SaveAndRestore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
@@ -192,7 +192,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
     return phase_state.phase_record
 
-  @conf.SaveAndRestore(station_api_port=None)
+  @conf.SaveAndRestore(station_api_port=None, enable_station_discovery=False)
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
@@ -300,17 +300,6 @@ def patch_plugs(**mock_plugs):
 
 
 class TestCase(unittest.TestCase):
-
-  @classmethod
-  def setUpClass(cls):
-    """Disable station_api for tests by default, restore it when done."""
-    #cls.saved_station_api_port = conf.station_api_port
-    #conf.Load(station_api_port=None)
-
-  @classmethod
-  def tearDownClass(cls):
-    pass
-    #conf.Load(station_api_port=cls.saved_station_api_port)
 
   def _AssertPhaseOrTestRecord(func):
     """Decorator for automatically invoking self.assertTestPhases when needed.

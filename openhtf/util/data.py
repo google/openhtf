@@ -157,12 +157,10 @@ def TotalSize(obj):
           current_obj.iteritems())))
     elif (isinstance(current_obj, collections.Iterable) and
           not isinstance(current_obj, basestring)):
-      size += sum(map(sizeof, iter(current_obj)))
+      size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
-      size += sizeof(current_obj.__slots__)
-      size += sum(map(sizeof, current_obj.optional_attributes.itervalues()))
-      size += sum(map(sizeof, (getattr(current_obj, attr)
-                               for attr in current_obj.__slots__)))
+      size += sum(sizeof(getattr(current_obj, attr))
+                  for attr in current_obj.__slots__)
     return size
 
   return sizeof(obj)

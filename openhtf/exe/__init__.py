@@ -118,7 +118,6 @@ class TestExecutor(threads.KillableThread):
 
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self._test_descriptor.code_info.name)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
