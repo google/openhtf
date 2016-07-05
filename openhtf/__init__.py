@@ -214,20 +214,13 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.GetState())
         self._executor.Stop()
 
-  def Execute(self, test_start=None, loop=None):
+  def Execute(self, test_start=None):
     """Starts the framework and executes the given test.
 
     Args:
       test_start: Trigger for starting the test, defaults to not setting the DUT
           serial number.
-      loop: DEPRECATED
     """
-    # TODO(madsci): Remove this after a transitionary period.
-    if loop is not None:
-      raise ValueError(
-          'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
-          'use a while True: loop around Test.Execute() instead.')
-
     # Lock this section so we don't .Stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
@@ -251,13 +244,20 @@ class Test(object):
     try:
       self._executor.Wait()
     finally:
-      with self._lock:
-        try:
-          self._executor.Finalize(
-              self._test_options.output_callbacks +
-              [functools.partial(history.append_record, self.uid)])
-        finally:
-          self._executor = None
+      try:
+        final_state = self._executor.Finalize()
+
+        _LOG.debug('Test completed for %s, saving to history and outputting.',
+                   final_state.test_record.metadata['test_name'])
+        for output_cb in (self._test_options.output_callbacks +
+                          [functools.partial(history.append_record, self.uid)]):
+          try:
+            output_cb(final_state.test_record)
+          except Exception:
+            _LOG.exception(
+                'Output callback %s raised; continuing anyway', output_cb)
+      finally:
+        self._executor = None
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
