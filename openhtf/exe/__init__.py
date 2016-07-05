@@ -50,7 +50,7 @@ class UnfinalizedTestError(Exception):
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
 
-  def __init__(self, test_data, test_start, teardown_function=None):
+  def __init__(self, test_descriptor, test_start, teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
     self._teardown_function = None
@@ -60,7 +60,7 @@ class TestExecutor(threads.KillableThread):
       # Force teardown function timeout.
       self._teardown_function.options.timeout_s = conf.teardown_timeout_s
 
-    self._test_desc = test_data
+    self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._lock = threading.Lock()
 
@@ -124,14 +124,14 @@ class TestExecutor(threads.KillableThread):
 
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self._test_desc.code_info.name)
+      _LOG.info('Starting test %s', self._test_descriptor.code_info.name)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
         # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
 
-      self._test_state = test_state.TestState(self._test_desc)
+      self._test_state = test_state.TestState(self._test_descriptor)
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
       # self._lock while we do this, or else calls to Stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
@@ -178,7 +178,8 @@ class TestExecutor(threads.KillableThread):
     self._test_state.SetStatusRunning()
 
     try:
-      for phase_outcome in executor.ExecutePhases(self._test_desc.phases):
+      for phase_outcome in executor.ExecutePhases(
+          self._test_descriptor.phases):
         if self._test_state.SetStatusFromPhaseOutcome(phase_outcome):
           break
       else:
