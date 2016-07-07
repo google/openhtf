@@ -66,12 +66,12 @@ def phase_to_str(phase):
 
 def print_test(remote_test):
   print(' |-- %s' % (remote_test,))
-  remote_state = remote_test.last_known_state
+  remote_state = remote_test.cached_state
   if remote_state:
     print(' |    |-- RemoteTest State:')
     print_state(remote_state)
   print(' |    |-- History:')
-  for test_record in remote_test.local_history:
+  for test_record in remote_test.cached_history:
     print(' |         |-- DUT: "%s", Ran %s Phases in %.2f sec, Outcome: %s' % (
         test_record.dut_id, len(test_record.phases),
         (test_record.end_time_millis - test_record.start_time_millis) / 1000.0,
@@ -126,28 +126,27 @@ class StationList(object):
   def watch_test(self, remote_test):
     try:
       while True:
-        last_known_state = remote_test.last_known_state
+        cached_state = remote_test.cached_state
         # Long timeout so we can see the update triggering work.
         # wait_for_update() returns the same as remote_test.state, but blocks
         # until there's new info available.  In the case of a timeout, the
         # last known state is returned, so we don't need to update.
         updated_state = remote_test.wait_for_update(20)
-        if updated_state != last_known_state:
+        if updated_state != cached_state:
           new_phases = old_phases = 0
           new_logs = old_logs = 0
           if updated_state and updated_state.test_record:
             new_phases = len(updated_state.test_record.phases)
             new_logs = len(updated_state.test_record.log_records)
-          if last_known_state and last_known_state.test_record:
-            old_phases = len(last_known_state.test_record.phases)
-            old_logs = len(last_known_state.test_record.log_records)
-          old_status = (last_known_state
-                        and last_known_state.status
-                        and last_known_state.status.name)
+          if cached_state and cached_state.test_record:
+            old_phases = len(cached_state.test_record.phases)
+            old_logs = len(cached_state.test_record.log_records)
+          old_status = (cached_state
+                        and cached_state.status
+                        and cached_state.status.name)
           new_status = (updated_state
                         and updated_state.status
                         and updated_state.status.name)
-          remote_test.history  # Access this to trigger an update RPC. 
           self.update_queue.put(
               'Update triggered by Test "%s", %s new phases, '
               '%s new logs, status: %s -> %s' % (
@@ -160,7 +159,8 @@ class StationList(object):
   def print_station(self, station):
     print(station)
     try:
-      for remote_test in station.tests:
+      for remote_test in station.tests.itervalues():
+        remote_test.history  # Trigger an update of the local history cache.
         print_test(remote_test)
         if (remote_test not in self.update_threads or
             not self.update_threads[remote_test].is_alive()):
@@ -176,7 +176,7 @@ class StationList(object):
   def check_for_stations(self):
     """Discover for new stations, doesn't remove any stations."""
     new_stations = set()
-    for station in station_api.Station.discover_stations():
+    for station in station_api.Station.discover():
       if station not in self.stations:
         new_stations.add(station)
     if new_stations:

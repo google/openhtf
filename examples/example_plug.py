@@ -78,6 +78,6 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
     self.logger.info('Tearing down %s', self)
 
   def Increment(self):
-    """Increment our value, return the new value."""
+    """Increment our value, return the previous value."""
     self.value += self.increment
-    return self.value
+    return self.value - self.increment

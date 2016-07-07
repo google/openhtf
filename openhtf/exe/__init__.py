@@ -34,6 +34,9 @@ from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
+conf.Declare('teardown_timeout_s', default_value=3, description=
+    'Timeout (in seconds) for test teardown functions.')
+
 
 class TestStopError(Exception):
   """Test is being stopped."""
@@ -47,20 +50,19 @@ class UnfinalizedTestError(Exception):
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
 
-  def __init__(self, test_data, test_start, teardown_function=None):
+  def __init__(self, test_descriptor, test_start, teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
 
-    self._teardown_function = (
-        teardown_function and openhtf.PhaseInfo.WrapOrCopy(teardown_function))
-    self._test_data = test_data
-    self._plug_manager = plugs.PlugManager()
+    self._teardown_function = None
+    if teardown_function:
+      self._teardown_function = openhtf.PhaseDescriptor.WrapOrCopy(
+          teardown_function)
+      # Force teardown function timeout.
+      self._teardown_function.options.timeout_s = conf.teardown_timeout_s
+
+    self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._lock = threading.Lock()
-
-  def _asdict(self):
-    # TODO(madsci): Remove this.
-    """Return a dictionary representation of this executor."""
-    return {'station_id': conf.station_id}
 
   def Start(self):
     """Style-compliant start method."""
@@ -74,11 +76,13 @@ class TestExecutor(threads.KillableThread):
         self._exit_stack.close()
     self.Kill()
 
-  def Finalize(self, output_callbacks):
+  def Finalize(self):
     """Finalize test execution and output resulting record to callbacks.
 
     Should only be called once at the conclusion of a test run, and will raise
     an exception if end_time_millis is already set.
+
+    Returns: Finalized TestState.  It should not be modified after this call.
 
     Raises: TestAlreadyFinalized if end_time_millis already set.
     """
@@ -89,16 +93,8 @@ class TestExecutor(threads.KillableThread):
       self._test_state.logger.info('Finishing test with outcome ABORTED.')
       self._test_state.Finalize(test_record.Outcome.ABORTED)
 
-    _LOG.debug('Test completed for %s, saving to history and outputting.',
-               self._test_state.test_record.metadata['test_name'])
-
-    for output_cb in output_callbacks:
-      try:
-        output_cb(self._test_state.test_record)
-      except Exception:
-        _LOG.exception(
-            'Output callback %s errored out; continuing anyway', output_cb)
-
+    return self._test_state
+    
   def Wait(self):
     """Waits until death."""
     try:
@@ -122,21 +118,19 @@ class TestExecutor(threads.KillableThread):
 
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      _LOG.info('Starting test %s', self._test_data.code_info.name)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
         # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
 
-      self._test_state = test_state.TestState(
-          self._test_data, self._plug_manager)
+      self._test_state = test_state.TestState(self._test_descriptor)
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
       # self._lock while we do this, or else calls to Stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
       self._test_state.TestStarted(self._WaitForTestStart())
-      self._InitializePlugs()
+      self._test_state.plug_manager.InitializePlugs()
 
       with self._lock:
         if not self._exit_stack:
@@ -144,11 +138,11 @@ class TestExecutor(threads.KillableThread):
           # call to Stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          self._plug_manager.TearDownPlugs()
+          self._test_state.plug_manager.TearDownPlugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self._plug_manager.TearDownPlugs)
+        exit_stack.callback(self._test_state.plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
         executor = self._MakePhaseExecutor(exit_stack)
@@ -166,11 +160,6 @@ class TestExecutor(threads.KillableThread):
       return
     return self._test_start()
 
-  def _InitializePlugs(self):
-    """Perform some initialization and create a PlugManager."""
-    _LOG.info('Initializing plugs.')
-    self._plug_manager.InitializePlugs(self._test_data.plug_types)
-
   def _MakePhaseExecutor(self, exit_stack):
     """Create a phase_executor.PhaseExecutor and set it up."""
     executor = phase_executor.PhaseExecutor(self._test_state)
@@ -182,7 +171,8 @@ class TestExecutor(threads.KillableThread):
     self._test_state.SetStatusRunning()
 
     try:
-      for phase_outcome in executor.ExecutePhases(self._test_data.phases):
+      for phase_outcome in executor.ExecutePhases(
+          self._test_descriptor.phases):
         if self._test_state.SetStatusFromPhaseOutcome(phase_outcome):
           break
       else:

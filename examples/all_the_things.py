@@ -35,6 +35,7 @@ from openhtf.names import *
 
 @plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
+  time.sleep(.2)
   return example.Increment()
 
 
@@ -91,8 +92,10 @@ def attachments(test):
   test.Attach('test_attachment', 'This is test attachment data.')
   test.AttachFromFile('example_attachment.txt')
 
+
 def teardown(test):
   test.logger.info('Running teardown')
+
 
 if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
@@ -104,8 +107,8 @@ if __name__ == '__main__':
       json_factory.OutputToJSON(
           './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
           indent=4))
-  test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
-      './{dut_id}.{start_time_millis}.pb'))
+  #test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
+  #    './{dut_id}.{start_time_millis}.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
@@ -114,5 +117,6 @@ if __name__ == '__main__':
   #  with open('my_private_key.json', 'r') as json_file:
   #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
-  test.Configure(http_port=None, teardown_function=teardown)
-  test.Execute(test_start=triggers.PromptForTestStart())
+  #test.Configure(teardown_function=teardown)
+  while True:
+    test.Execute(test_start=triggers.PromptForTestStart())

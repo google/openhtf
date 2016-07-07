@@ -13,11 +13,21 @@
 # limitations under the License.
 
 import unittest
-import time
 import mock
 
 
 from openhtf.util import functions
+
+
+class MockTime(object):
+  def __init__(self):
+    self._time = 0
+  def sleep(self, seconds):
+    self._time += seconds
+  def time(self):
+    self._time += 1
+    return self._time - 1
+
 
 class TestFunctions(unittest.TestCase):
 
@@ -47,3 +57,14 @@ class TestFunctions(unittest.TestCase):
     assert CanOnlyCallOnce() == 1
     assert CanOnlyCallOnce() == 1
     assert len(calls) == 1
+
+  @mock.patch('openhtf.util.functions.time', new_callable=MockTime)
+  def testCallAtMostEvery(self, mock_time):
+    call_times = []
+    @functions.CallAtMostEvery(5)
+    def CallOnceEveryFiveSeconds():
+      call_times.append(mock_time.time())
+    for _ in xrange(100):
+      CallOnceEveryFiveSeconds()
+    # Each call takes "6 seconds", so we get call times up to 600.
+    self.assertEquals(range(2, 600, 6), call_times) 
