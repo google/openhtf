@@ -1,0 +1,5 @@
+
+def register(linter):
+	pass
+
+	
