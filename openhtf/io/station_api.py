@@ -67,6 +67,7 @@ import json
 import logging
 import os
 import SimpleXMLRPCServer
+import socket
 import SocketServer
 import threading
 import time
@@ -356,7 +357,8 @@ class Station(object):
   def reachable(self):
     """True if the remote Station is reachable."""
     try:
-      station_info = self._shared_proxy.get_station_info()
+      station_info = StationInfo(
+          self.host, **self._shared_proxy.get_station_info())
     except (socket.timeout, socket.error):
       return False
 
@@ -403,7 +405,7 @@ class StationApi(object):
         'station_id': conf.station_id,
         'station_api_bind_address': conf.station_api_bind_address,
         'station_api_port': conf.station_api_port,
-        'last_activity_time_millis': self.last_activity_time_millis,
+        'last_activity_time_millis': API_SERVER.last_activity_time_millis,
     }
 
   def list_tests(self):
