@@ -1,6 +1,4 @@
 
 
-
-def register(linter):
-	pass
-
+#def transform(node):
+#	if node.name

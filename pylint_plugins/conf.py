@@ -219,8 +219,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
   # pylint: enable=invalid-name,bad-super-call,too-few-public-methods
 
   __slots__ = ('_logger', '_lock', '_modules', '_declarations',
-               '_flag_values', '_flags', '_loaded_values', 'ARG_PARSER',
-               '__name__')
+               '_flag_values', '_flags', '_loaded_values', 'ARG_PARSER')
 
   def __init__(self, logger, lock, parser, **kwargs):
     """Initializes the configuration state.
@@ -239,7 +238,6 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     self._modules = kwargs
     self._declarations = {}
     self.ARG_PARSER = parser
-    self.__name__ = 'Configuration'
 
     # Parse just the flags we care about, since this happens at import time.
     self._flags, _ = parser.parse_known_args()
