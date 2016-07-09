@@ -1,31 +1,25 @@
 
-import conf_plugin
-import mutables_plugin
-import tornado_plugin
 import astroid
 from astroid import MANAGER
+
 
 
 def register(linter):
 	pass
 
-#for i in range(0,250):
-#	print("hello")
 
-def transform(cls):
+
+def conf_transform(cls):
   if cls.name == 'openhtf.conf':
- 	from openhtf import conf
- 	#for a in cls.__dict__.items():
- 	#	print(a)
- 	#print('HELLO THERE ',cls.parent)
- 	a = MANAGER.ast_from_class(conf)
-  	return a
-MANAGER.register_transform(astroid.Module, transform)
+  	import pdb;pdb.set_trace()
+	cls._locals.update(cls.locals['Configuration'][0])
 
-#problem: it's still reading it as a module, not a class... 
-#look at builder class
-#the visit() function seems to be important
+MANAGER.register_transform(astroid.Module, conf_transform)
 
-#def transform2(cls):
-#  print(type(cls))
-#MANAGER.register_transform(astroid.Class, transform2)
+#def conf_transform2(func):
+#  print(func)
+  #if func.name == 'Declare':
+    #print(func.name)
+ 	#func._locals.update(func.locals['Configuration'][0])
+
+#MANAGER.register_transform(astroid.Statement, conf_transform2)
