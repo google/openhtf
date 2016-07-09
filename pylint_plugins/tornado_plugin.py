@@ -1,7 +1,0 @@
-
-
-
-def reg(linter):
-	pass
-
-	
