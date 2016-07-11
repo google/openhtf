@@ -74,8 +74,11 @@ class MulticastListener(threading.Thread):
   def Stop(self):
     """Stop listening for messages."""
     self._live = False
-    self._sock.shutdown(socket.SHUT_RDWR)
-    self._sock.close()
+    try:
+      self._sock.shutdown(socket.SHUT_RDWR)
+      self._sock.close()
+    except socket.error:
+      pass
     self.join()
 
   def run(self):
