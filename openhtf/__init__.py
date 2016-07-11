@@ -63,10 +63,6 @@ class UnrecognizedTestUidError(Exception):
   """Raised when information is requested about an unknown Test UID."""
 
 
-class TestNotRunningError(Exception):
-  """Raised when a test_uid is requested that is not currently running."""
-
-
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
 
@@ -131,15 +127,11 @@ class Test(object):
 
     Raises:
       UnrecognizedTestUidError: If the test_uid is not recognized.
-      TestNotRunningError: If the test requested is not currently running.
     """
     test = cls.TEST_INSTANCES.get(test_uid)
     if not test:
       raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
-    state = test.state
-    if not state:
-      raise TestNotRunningError('Test UID %s is not running' % test_uid)
-    return state
+    return test.state
 
   @property
   def uid(self):
@@ -162,13 +154,6 @@ class Test(object):
     with self._lock:
       if self._executor:
         return self._executor.GetState()
-
-  def AddOutputCallback(self, callback):
-    """DEPRECATED: Use AddOutputCallbacks() instead."""
-    # TODO(madsci): Remove this before we push to PyPI, here for transitionary
-    # purposes.
-    raise AttributeError(
-        'DEPRECATED, use AddOutputCallbacks() instead of AddOutputCallback()')
 
   def GetOption(self, option):
     return getattr(self._test_options, option)
@@ -417,7 +402,7 @@ class PhaseDescriptor(mutablerecords.Record(
 
 class TestApi(collections.namedtuple('TestApi', [
     'logger', 'state', 'test_record', 'measurements', 'attachments',
-    'Attach', 'AttachFromFile'])):
+    'attach', 'attach_from_file', 'notify_update'])):
   """Class passed to test phases as the first argument.
 
   Attributes:
@@ -425,8 +410,8 @@ class TestApi(collections.namedtuple('TestApi', [
         instance containing the data that was attached (and the MIME type
         that was assumed based on extension, if any).  Only attachments
         that have been attached in the current phase show up here, and this
-        attribute should not be modified directly, use TestApi.Attach() or
-        TestApi.AttachFromFile() instead.
+        attribute should not be modified directly, use TestApi.attach() or
+        TestApi.attach_from_file() instead.
 
     dut_id: This attribute provides getter and setter access to the DUT ID
         of the device under test by the currently running openhtf.Test.  A
@@ -458,6 +443,17 @@ class TestApi(collections.namedtuple('TestApi', [
         provided by TestApi.  If you find yourself using this, please file a
         feature request for an alternative at:
           https://github.com/google/openhtf/issues/new    
+
+  Callable Attributes:
+
+    attach: Attach binary data to the test, see TestState.attach().
+
+    attach_from_file: Attach binary data from a file, see
+        TestState.attach_from_file().
+
+    notify_update: Notify any frontends of an interesting update.  Typically
+        this is automatically called internally when interesting things happen,
+        but it can be called by the user (takes no args).
   """
   @property
   def dut_id(self):
@@ -469,6 +465,7 @@ class TestApi(collections.namedtuple('TestApi', [
       self.logger.warning('Overriding previous DUT ID "%s" with "%s".',
                           self.test_record.dut_id, dut_id)
     self.test_record.dut_id = dut_id
+    self.notify_update()
 
 
 # Register signal handler to stop all tests on SIGINT.
