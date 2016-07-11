@@ -105,11 +105,6 @@ conf.Declare('station_discovery_address')
 conf.Declare('station_discovery_port')
 conf.Declare('station_discovery_ttl')
 
-# Information about a remote station.
-StationInfo = collections.namedtuple('StationInfo', [
-    'host', 'station_id', 'station_api_bind_address', 'station_api_port',
-    'last_activity_time_millis'])
-
 # Build multicast kwargs based on conf, otherwise use defaults.
 MULTICAST_KWARGS = lambda: {
     attr: conf['station_discovery_%s' % attr]
@@ -118,8 +113,12 @@ MULTICAST_KWARGS = lambda: {
 }
 
 
-class StationInfoChangedError(Exception):
+class StationStaleError(Exception):
   """Raised when a station's info changed unexpectedly."""
+
+
+class StationUnreachableError(Exception):
+  """Raised when an operation fails due to an unreachable station."""
 
 
 class PlugUnrecognizedError(Exception):
@@ -127,6 +126,7 @@ class PlugUnrecognizedError(Exception):
 
 
 class LockedTimeoutReraisingProxy(
+    # TODO(madsci): ReraisingMixin
     xmlrpcutil.TimeoutServerProxyMixin, xmlrpcutil.LockedServerProxyMixin,
     xmlrpcutil.BaseServerProxy):
   """ServerProxy with additional features we use."""
@@ -136,6 +136,23 @@ class SimpleThreadedXMLRPCServer(
     SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
   """Helper for handling multiple simultaneous RPCs in threads."""
   daemon_threads = True
+
+
+class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
+    'station_uid': None,
+    'station_api_bind_address': None, 'last_activity_time_millis': 0})):
+  """Information about a remote station.
+
+  Attributes;
+    station_id: Station identifier (user-facing name), set via config.
+    station_uid: UID of a station, based on PID, guaranteed to be unique to
+        a given host (including restarts of the station).
+    station_api_bind_address: Address the remote Station API is listening on,
+        included to detect network configuration errors with stations
+        discovered via multicast.
+    last_activity_time_millis: Approximate most recent time new activity
+        occurred on the remote Station.
+  """
 
 
 class RemoteState(collections.namedtuple('RemoteState', [
@@ -294,7 +311,9 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
 class Station(object):
 
-  def __init__(self, station_info, proxy=None):
+  def __init__(self, host, station_api_port, station_info, proxy=None):
+    self.host = host
+    self.station_api_port = station_api_port
     self._station_info = station_info
     # Each Station needs its own History instance because Test UIDs are only
     # unique within a station, so if you tried to store all stations' histories
@@ -310,10 +329,13 @@ class Station(object):
     self._shared_proxy = proxy or self.make_proxy()
 
   def __hash__(self):
-    return hash(self._station_info)
+    return hash((self.host, self.station_api_port,
+                 self._station_info.station_id))
 
   def __eq__(self, other):
     return (type(self) == type(other) and
+            self.host == other.host and
+            self.station_api_port == other.station_api_port and
             self._station_info == other._station_info)
 
   def __ne__(self, other):
@@ -321,12 +343,14 @@ class Station(object):
 
   def __str__(self):
     return 'Station %s@%s:%s, Listening on %s' % (
-        self.station_id, self.host, self.station_api_port,
-        self.station_api_bind_address)
+        self._station_info.station_id, self.host, self.station_api_port,
+        self._station_info.station_api_bind_address)
 
-  def __getattr__(self, attr):
-    return getattr(self._station_info, attr)
-
+  @property
+  def last_activity_time_millis(self):
+    self.reachable  # Best-effort try to get up-to-date info.
+    return self._station_info.last_activity_time_millis
+  
   def make_proxy(self, timeout_s=5):
     """Make a new ServerProxy for this station."""
     return LockedTimeoutReraisingProxy(
@@ -340,7 +364,9 @@ class Station(object):
                                          timeout_s=timeout_s,
                                          **MULTICAST_KWARGS()):
       try:
-        yield cls(StationInfo(host, **json.loads(response)))
+        response = json.loads(response)
+        port = response.pop('station_api_port')
+        yield cls(host, port, StationInfo(**response))
       except ValueError:
         _LOG.debug('Received malformed JSON from %s: %s', host, response)
       except TypeError:
@@ -348,28 +374,67 @@ class Station(object):
                    host, response, exc_info=True)
 
   @classmethod
-  def from_host_port(cls, host, port):
+  def from_host_port(cls, host, port, station_id=None):
     proxy = LockedTimeoutReraisingProxy(
         'http://%s:%s' % (host, port), allow_none=True)
-    return cls(StationInfo(host, **proxy.get_station_info()), proxy)
+    try:
+      station_info = StationInfo(**proxy.get_station_info())
+      if station_id and station_info.station_id != station_id:
+        _LOG.warning('Actual Station ID (%s) does not match configured (%s).',
+                     station_info.station_id, station_id)
+    except socket.error:
+      station_info = StationInfo(station_id)
 
+    return cls(host, port, station_info, proxy)
+      
   @property
   def reachable(self):
-    """True if the remote Station is reachable."""
+    """Returns True if the station is reachable, also updates StationInfo.
+
+    Raises:
+      StationStaleError: If the remote station info has changed in a way that
+          indicates the remote process is a new process since last we knew.
+    """
     try:
-      station_info = StationInfo(
-          self.host, **self._shared_proxy.get_station_info())
-    except (socket.timeout, socket.error):
+      station_info = StationInfo(**self._shared_proxy.get_station_info())
+    except socket.error:
       return False
 
-    if self._station_info != station_info:
-      raise StationInfoChangedError(
-          'Station info changed', self._station_info, station_info)
+    if (self._station_info.station_id and
+        self._station_info.station_id != station_info.station_id):
+      # If we've ever seen activity, this is a hard error, otherwise it's just
+      # a configuration mismatch, so we warn instead.
+      if self._station_info.last_activity_time_millis:
+        raise StationStaleError(
+            'Station ID changed', self._station_info, station_info)
+      _LOG.warning('Actual Station ID "%s" does not match configured "%s".',
+                   station_info.station_id, self._station_info.station_id)
+
+    if self._station_info.station_uid != station_info.station_uid:
+      raise StationStaleError(
+          'Station UID (PID:time_millis) changed %s -> %s',
+          self._station_info.station_uid, station_info.station_uid)
+
+    # Update our local 
+    self._station_info = station_info
     return True
 
   @property
   def tests(self):
-    """List active Test instances on this station."""
+    """Dictionary mapping Test UID to RemoteTest instance.
+
+    Returns a copy of self.cached_tests, after updating it to reflect the
+    state of the remote station.  Any Test instances that are no longer
+    reported by the remote station are not included here (and it's likely
+    that accessing attributes that trigger RPCs on and saved references to
+    old RemoteTest instances will raise).
+
+    To access the dict of RemoteTest instances *without* triggering an RPC
+    update, access the cached_tests attribute directly (do *not* modify it).
+    """
+    if not self.reachable:
+      raise StationUnreachableError(
+          'Station "%s" unreachable' % self._station_info.station_id)
     tests = self._shared_proxy.list_tests()
 
     updated_tests = {}
@@ -382,6 +447,7 @@ class Station(object):
           updated_tests[test_uid] = RemoteTest(
             self.make_proxy, self._shared_proxy, self._history, **test_dict)
         except Exception as e:
+          # TODO(madsci): catch real exceptions here.
           import pdb; pdb.set_trace()
       else:
         updated_tests[test_uid] = self.cached_tests[test_uid]
@@ -398,13 +464,12 @@ class StationApi(object):
   UID = '%s:%s' % (os.getpid(), util.TimeMillis())
 
   def get_station_info(self):
-    """Obtain dict required for a StationInfo for this station."""
-    _LOG.debug('RPC:get_station_info() -> %s:%s',
-               conf.station_id, conf.station_api_port)
+    """Obtain dict required to make a StationInfo for this station."""
+    _LOG.debug('RPC:get_station_info() -> %s:%s', conf.station_id, self.UID)
     return { 
         'station_id': conf.station_id,
+        'station_uid': self.UID,
         'station_api_bind_address': conf.station_api_bind_address,
-        'station_api_port': conf.station_api_port,
         'last_activity_time_millis': API_SERVER.last_activity_time_millis,
     }
 
@@ -587,6 +652,7 @@ class ApiServer(threading.Thread):
       _LOG.debug('Received unexpected traffic on discovery socket: %s', message)
     else:
       return json.dumps({
+          'station_uid': StationApi.UID,
           'station_id': conf.station_id,
           'station_api_bind_address': conf.station_api_bind_address,
           'station_api_port': conf.station_api_port,
