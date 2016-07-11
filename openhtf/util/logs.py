@@ -113,14 +113,14 @@ def GetRecordLoggerFor(test_uid):
   return logging.getLogger('.'.join((RECORD_LOGGER, test_uid)))
 
 
-def InitializeRecordLogger(test_uid, test_record):
+def InitializeRecordLogger(test_uid, test_record, notify_update):
   logger = GetRecordLoggerFor(test_uid)
   # All record loggers have a shared parent that's separately configured, so
   # we want to propagate to that logger.
   logger.propagate = True
   logger.setLevel(logging.DEBUG)
   # Just in case, make sure we don't have any extra handlers hanging around.
-  logger.handlers = [RecordHandler(test_record)]
+  logger.handlers = [RecordHandler(test_record, notify_update)]
   return logger
 
 
@@ -163,9 +163,10 @@ MAC_FILTER = MacAddressLogFilter()
 class RecordHandler(logging.Handler):
   """A handler to save logs to an HTF TestRecord."""
 
-  def __init__(self, test_record):
+  def __init__(self, test_record, notify_update):
     super(RecordHandler, self).__init__(level=logging.DEBUG)
     self._test_record = test_record
+    self._notify_update = notify_update
     self.addFilter(MAC_FILTER)
 
   def emit(self, record):
@@ -189,6 +190,7 @@ class RecordHandler(logging.Handler):
         record.lineno, int(record.created * 1000), message
     )
     self._test_record.log_records.append(log_record)
+    self._notify_update()
 
 
 @functions.CallOnce

@@ -105,7 +105,8 @@ class Measurement(  # pylint: disable=no-init
     mutablerecords.Record(
         'Measurement', ['name'],
         {'units': None, 'dimensions': None, 'docstring': None,
-         'validators': list, 'outcome': Outcome.UNSET, 'stored_value': None})):
+         '_notification_cb': None, 'validators': list, 'outcome': Outcome.UNSET,
+         'stored_value': None})):
   """Record encapsulating descriptive data for a measurement.
 
   This record includes an _asdict() method so it can be easily output.  Output
@@ -123,6 +124,16 @@ class Measurement(  # pylint: disable=no-init
       the value(s) of this Measurement that have been set, if any.
     stored_value: Internal state for lazy creation of value attribute.
   """
+
+  def set_notification_callback(self, notification_cb):
+    """Set the notifier we'll call when measurements are set."""
+    self._notification_cb = notification_cb
+    return self
+
+  def notify_value_set(self):
+    assert self._notification_cb, (
+        'Measurement set, but has no notification callback!')
+    self._notification_cb()
 
   @property
   def value(self):
@@ -270,6 +281,7 @@ class MeasuredValue(object):
     self.stored_value = value
     self.is_value_set = True
     self.measurement.Validate()
+    self.measurement.notify_value_set()
 
 
 class DimensionedMeasuredValue(object):
@@ -312,6 +324,7 @@ class DimensionedMeasuredValue(object):
           self.name, coordinates, self.value_dict[coordinates], value)
     self.value_dict[coordinates] = value
     self.measurement.outcome = Outcome.PARTIALLY_SET
+    self.measurement.notify_value_set()
 
   def __getitem__(self, coordinates):  # pylint: disable=invalid-name
     # Wrap single dimensions in a tuple so we can assume value_dict keys are
