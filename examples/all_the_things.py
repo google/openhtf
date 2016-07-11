@@ -90,8 +90,8 @@ def dimensions(test):
 
 
 def attachments(test):
-  test.Attach('test_attachment', 'This is test attachment data.')
-  test.AttachFromFile('example_attachment.txt')
+  test.attach('test_attachment', 'This is test attachment data.')
+  test.attach_from_file('example_attachment.txt')
 
 
 def teardown(test):
