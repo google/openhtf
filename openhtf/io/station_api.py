@@ -166,15 +166,26 @@ class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
     return not self.__eq__(other)
 
 
+class RemotePhase(collections.namedtuple('RemotePhase', [
+    'name', 'codeinfo', 'start_time_millis', 'attachments', 'measurements'])):
+  """Encapsulating class for info about a remotely executing Phase.
+
+  See PhaseState._asdict() in exe/test_state.py for attribute details.
+
+  Notably, 'attachments' is a dict mapping name to sha256 hash of the
+  attachment's data, not the actual attachment data itself.
+  """
+
+
 class RemoteState(collections.namedtuple('RemoteState', [
-    'status', 'test_record', 'running_phase_record'])):
+    'status', 'test_record', 'running_phase_state'])):
 
   def __str__(self):
     return '<RemoteState %s, Running Phase: %s>' % (
         self.status.name,
-        self.running_phase_record and self.running_phase_record.name)
+        self.running_phase_state and self.running_phase_state.name)
 
-  def __new__(cls, cached_state, status, test_record, running_phase_record):
+  def __new__(cls, cached_state, status, test_record, running_phase_state):
     test_record = pickle.loads(test_record.data)
     cached_rec = cached_state and cached_state.test_record
 
@@ -190,7 +201,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
      
     return super(RemoteState, cls).__new__(
         cls, test_state.TestState.Status[status], test_record,
-        pickle.loads(running_phase_record.data))
+        running_phase_state and RemotePhase(**running_phase_state))
 
 
 class RemoteTest(mutablerecords.Record('RemoteTest', [
@@ -254,9 +265,9 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
       state.test_record.log_records = len(state.test_record.log_records)
       return cached_state, {
           'status': state.status.name,
+          'running_phase_state':
+              data.ConvertToBaseTypes(state.running_phase_state),
           'test_record': xmlrpclib.Binary(pickle.dumps(state.test_record)),
-          'running_phase_record':
-              xmlrpclib.Binary(pickle.dumps(state.running_phase_record)),
       }
     return cached_state, None
 
@@ -556,8 +567,8 @@ class StationApi(object):
         'status': state_dict['status'].name,
         'test_record':
             xmlrpclib.Binary(pickle.dumps(state_dict['test_record'])),
-        'running_phase_record':
-            xmlrpclib.Binary(pickle.dumps(state_dict['running_phase_record'])),
+        'running_phase_state':
+            data.ConvertToBaseTypes(state_dict['running_phase_state'])
     }
 
   def get_test_state(self, test_uid, remote_record):
@@ -615,8 +626,11 @@ class StationApi(object):
     """Long-poll RPC that blocks until there is new information available.
 
     Events that trigger an update:
-      Test Start/Finish
-      # TODO: Measurement is set/updated.
+      Test Status Changes (ie, transition from WAITING_FOR_START to RUNNING).
+      Phase Start/Finish.
+      Measurement is set/updated.
+      Attachment is attached.
+      Log line is produced (via TestApi.logger).
 
     Note that plug state changes do NOT trigger an update here, use
     wait_for_plug() to get plug state change events.
@@ -667,19 +681,17 @@ class StationApi(object):
         state_dict_counts['test_record'].phases)
     state_dict_counts['test_record'].log_records = len(
         state_dict_counts['test_record'].log_records)
+    state_dict_counts['running_phase_state'] = data.ConvertToBaseTypes(
+        state_dict_counts['running_phase_state'])
 
     # Deserialize the RemoteState fields for comparison.
     remote_state_dict = remote_state_dict and {
         'status': test_state.TestState.Status[remote_state_dict['status']],
         'test_record': pickle.loads(remote_state_dict['test_record'].data),
-        'running_phase_record': pickle.loads(
-            remote_state_dict['running_phase_record'].data),
-
+        'running_phase_state': remote_state_dict['running_phase_state'],
     }
     if state_dict_counts != remote_state_dict:
       _LOG.debug('RPC:wait_for_update() -> short-circuited wait')
-      _LOG.debug('    local:  %s', state_dict_counts)
-      _LOG.debug('    remote: %s', remote_state_dict)
       # We already have new info, serialize the new state and send it,
       # skipping any phases/logs that we already know about remotely.
       return self._serialize_state_dict(
