@@ -151,10 +151,7 @@ class TestState(object):
     """Return a dict representation of the test's state."""
     return {
         'status': self._status, 'test_record': self.test_record,
-        # TODO(madsci): pass the whole running_phase_state to provide
-        # Station API visibility of measurements as they are set.
-        'running_phase_record': self.running_phase_state
-            and self.running_phase_state.phase_record,
+        'running_phase_state': self.running_phase_state,
     }
 
   @threads.Synchronized
@@ -309,6 +306,19 @@ class PhaseState(mutablerecords.Record('PhaseState', [
              copy.deepcopy(measurement).set_notification_callback(notify_cb)
          for measurement in phase_desc.measurements})
 
+  def _asdict(self):
+    return {
+        'name': self.name, 'codeinfo': self.phase_record.codeinfo,
+        'start_time_millis': 0, # long(self.phase_record.start_time_millis),
+        # We only serialize attachment hashes, they can be large.
+        'attachments': {
+            name: attachment.sha256 for name, attachment in
+            self.attachments.iteritems()
+        },
+        # Measurements have their own _asdict() implementation.
+        'measurements': self.measurements,
+    }
+
   @property
   def result(self):
     return self.phase_record.result
@@ -369,12 +379,6 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     This method performs some pre-phase setup on self (for measurements), and
     records the start and end time based on when the context is entered/exited.
     """
-    # TODO(madsci): investigate this, remove?
-    # Populate dummy measurement declaration list for frontend API.
-    self.phase_record.measurements = {
-        measurement.name: measurement._asdict()
-        for measurement in self.measurements.itervalues()
-    }
     self.phase_record.start_time_millis = util.TimeMillis()
 
     try:

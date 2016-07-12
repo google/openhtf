@@ -17,6 +17,7 @@
 
 
 import collections
+import hashlib
 import inspect
 import logging
 import os
@@ -35,11 +36,17 @@ class InvalidMeasurementDimensions(Exception):
   """Raised when a measurement is taken with the wrong number of dimensions."""
 
 
-Attachment = collections.namedtuple('Attachment', 'data mimetype')
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
 Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])
 # LogRecord is in openhtf.util.logs.LogRecord.
+
+
+class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
+  """Encapsulate attachment data and guessed MIME type."""
+  @property
+  def sha256(self):
+    return hashlib.sha256(self.data).hexdigest()
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init

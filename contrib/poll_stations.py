@@ -84,9 +84,9 @@ def print_test(remote_test):
 
 def print_state(remote_state):
   prefix = ' |    |    |'
-  if remote_state.running_phase_record:
+  if remote_state.running_phase_state:
     print('%s-- Running Phase: %s' % (
-          prefix, remote_state.running_phase_record.name))
+          prefix, remote_state.running_phase_state.name))
   else:
     print('%s-- No Phase Currently Running' % prefix)
   print('%s-- Completed Phases:' % prefix)
