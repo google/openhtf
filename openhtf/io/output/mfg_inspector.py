@@ -26,7 +26,6 @@ MULTIDIM_JSON schema:
   }
 }
 """
-
 import httplib2
 import json
 import logging
@@ -119,7 +118,8 @@ def _PopulateHeader(record, testrun):
   if 'config' in record.metadata:
     attachment = testrun.info_parameters.add()
     attachment.name = 'config'
-    attachment.value_binary = str(record.metadata['config'])
+    config = record.metadata['config']
+    attachment.value_binary = str(dict(sorted(config.items())))
 
 
 def _EnsureUniqueParameterName(name, used_parameter_names):
