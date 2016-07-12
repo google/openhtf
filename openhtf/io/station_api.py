@@ -87,6 +87,7 @@ from openhtf import util
 from openhtf.exe import test_state
 from openhtf.util import data
 from openhtf.util import multicast
+from openhtf.util import threads
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
 
@@ -112,10 +113,6 @@ MULTICAST_KWARGS = lambda: {
     for attr in ('address', 'port', 'ttl')
     if 'station_discovery_%s' % attr in conf
 }
-
-
-class StationStaleError(Exception):
-  """Raised when a station's info changed unexpectedly."""
 
 
 class StationUnreachableError(Exception):
@@ -158,6 +155,15 @@ class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
     last_activity_time_millis: Approximate most recent time new activity
         occurred on the remote Station.
   """
+
+  # We only really care about station_id and uid for equality checks.
+  def __eq__(self, other):
+    return (type(self) is type(other) and
+            self.station_id == other.station_id and
+            self.station_uid == other.station_uid)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
 
 class RemoteState(collections.namedtuple('RemoteState', [
@@ -318,23 +324,66 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
 
 class Station(object):
+  """Class providing an interface to a remote Station.
+
+  A 'Station' is a single Python process with one or more instances of
+  openhtf.Test created.  Stations can be discovered via multicast (if the
+  Station has discovery enabled, as it is by default), or created explicitly
+  for a given host and port (see discover() and from_host_port() respectively).
+
+  Stations are singleton by host-port combination, so that subsequent calls to
+  discover() or from_host_port() that would return a Station with the same host
+  and port instead return the previous (now shared) instance.  If the remote
+  station_id or station_uid change, the local cached History is cleared, but
+  the same object is still otherwise reused (with updated StationInfo).
+
+  Each Station instance keeps a local cache of remote Test instances, which is
+  accessible via the 'tests' attribute.  This attribute is a dict mapping
+  Test UID to an instance of RemoteTest (see RemoteTest for details of that
+  interface).
+
+  Cached RemoteTest instances can be accessed via the 'cached_tests' attribute,
+  which is the same dict mapping as 'tests', but does not trigger any RPCs to
+  update the local state.
+
+  The 'reachable' attribute can be used as a lightweight check if the host is
+  currently responding to RPC requests (
+  """
+
+  STATION_MAP = {}  # Map (host, port) to Station instance.
+  STATION_LOCK = threading.Lock()
+
+  def __new__(cls, host, station_api_port, station_info, proxy=None):
+    cls.STATION_LOCK.acquire()
+    return cls.STATION_MAP.setdefault(
+        (host, station_api_port), super(Station, cls).__new__(cls))
 
   def __init__(self, host, station_api_port, station_info, proxy=None):
     self.host = host
     self.station_api_port = station_api_port
+
+    try:
+      if self._station_info != station_info:
+        _LOG.warning(
+            'Reusing Station (%s) with new StationInfo: %s, clearing History.',
+            self._station_info.station_id, station_info)
+        self._history = history.History()
+        self.cached_tests = {}
+    except AttributeError:
+      logging.debug('Creating new Station (%s) at %s:%s',
+                    station_info.station_id, host, station_api_port)
+      # We're not reusing a shared instance, initialize things we need.
+      self._history = history.History()
+      self._lock = threading.Lock()
+      self.cached_tests = {}
+    
     self._station_info = station_info
-    # Each Station needs its own History instance because Test UIDs are only
-    # unique within a station, so if you tried to store all stations' histories
-    # together, you could get Test UID collisions.
-    self._history = history.History()
-    # Maps test UID to RemoteTest, so we can reuse old RemoteTest objects in
-    # order to benefit from their cached state (phases and logs).
-    self.cached_tests = {}
     # Shared proxy used for synchronous calls we expect to be fast.
     # Long-polling calls should use the 'proxy' attribute directly instead, as
     # it creates a new ServerProxy object each time, avoiding the danger of
     # blocking short requests with long-running ones.
     self._shared_proxy = proxy or self.make_proxy()
+    self.STATION_LOCK.release()
 
   def __hash__(self):
     return hash((self.host, self.station_api_port,
@@ -396,34 +445,21 @@ class Station(object):
     return cls(host, port, station_info, proxy)
       
   @property
+  @threads.Synchronized
   def reachable(self):
-    """Returns True if the station is reachable, also updates StationInfo.
-
-    Raises:
-      StationStaleError: If the remote station info has changed in a way that
-          indicates the remote process is a new process since last we knew.
-    """
+    """Returns True if the station is reachable, also updates StationInfo."""
     try:
       station_info = StationInfo(**self._shared_proxy.get_station_info())
     except socket.error:
       return False
 
-    if (self._station_info.station_id and
-        self._station_info.station_id != station_info.station_id):
-      # If we've ever seen activity, this is a hard error, otherwise it's just
-      # a configuration mismatch, so we warn instead.
-      if self._station_info.last_activity_time_millis:
-        raise StationStaleError(
-            'Station ID changed', self._station_info, station_info)
-      _LOG.warning('Actual Station ID "%s" does not match configured "%s".',
-                   station_info.station_id, self._station_info.station_id)
+    if self._station_info.station_id and self._station_info != station_info:
+      _LOG.warning(
+          'Reusing Station (%s) with new StationInfo: %s, clearing History.',
+          self._station_info.station_id, station_info)
+      self._history = history.History()
 
-    if self._station_info.station_uid != station_info.station_uid:
-      raise StationStaleError(
-          'Station UID (PID:time_millis) changed %s -> %s',
-          self._station_info.station_uid, station_info.station_uid)
-
-    # Update our local 
+    # Update our local StationInfo.
     self._station_info = station_info
     return True
 
@@ -642,6 +678,8 @@ class StationApi(object):
     }
     if state_dict_counts != remote_state_dict:
       _LOG.debug('RPC:wait_for_update() -> short-circuited wait')
+      _LOG.debug('    local:  %s', state_dict_counts)
+      _LOG.debug('    remote: %s', remote_state_dict)
       # We already have new info, serialize the new state and send it,
       # skipping any phases/logs that we already know about remotely.
       return self._serialize_state_dict(
@@ -714,15 +752,12 @@ class ApiServer(threading.Thread):
         self.multicast_listener.start()
 
       # server_forever() doesn't return until we call stop()
-      _LOG.debug(
-          'Starting station_api server on port %s', conf.station_api_port)
       self.station_api_server.serve_forever()
-      _LOG.debug('station_api server exiting.')
+      _LOG.debug('Station API returned from serve_forever(), done serving.')
     else:
-      _LOG.debug('Started station_api, but station_api_port disabled, bailing.')
+      _LOG.debug('Started Station API, but station_api_port disabled, bailing.')
 
   def stop(self):
-    _LOG.debug('Stopping station_api.')
     try:
       try:
         if self.multicast_listener:
@@ -731,7 +766,7 @@ class ApiServer(threading.Thread):
         if self.station_api_server:
           self.station_api_server.shutdown()
     except Exception:
-      _LOG.debug('Exception stopping station_api, ignoring.', exc_info=True)
+      _LOG.debug('Exception stopping Station API, ignoring.', exc_info=True)
 
 
 # Singleton instances.
@@ -739,7 +774,7 @@ STATION_API = StationApi()
 API_SERVER = None
 
 def start_server():
-  # TODO(madsci): Blech, fix this.
+  # TODO(madsci): Blech, fix this. Suggestions?
   global API_SERVER
   if not API_SERVER and conf.station_api_port or conf.enable_station_discovery:
     _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
