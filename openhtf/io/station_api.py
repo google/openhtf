@@ -87,6 +87,8 @@ from openhtf import util
 from openhtf.exe import test_state
 from openhtf.util import data
 from openhtf.util import multicast
+from openhtf.util import threads
+from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
 
 _LOG = logging.getLogger(__name__)
@@ -105,11 +107,6 @@ conf.Declare('station_discovery_address')
 conf.Declare('station_discovery_port')
 conf.Declare('station_discovery_ttl')
 
-# Information about a remote station.
-StationInfo = collections.namedtuple('StationInfo', [
-    'host', 'station_id', 'station_api_bind_address', 'station_api_port',
-    'last_activity_time_millis'])
-
 # Build multicast kwargs based on conf, otherwise use defaults.
 MULTICAST_KWARGS = lambda: {
     attr: conf['station_discovery_%s' % attr]
@@ -118,8 +115,12 @@ MULTICAST_KWARGS = lambda: {
 }
 
 
-class StationInfoChangedError(Exception):
-  """Raised when a station's info changed unexpectedly."""
+class StationUnreachableError(Exception):
+  """Raised when an operation fails due to an unreachable station."""
+
+
+class UpdateTimeout(Exception):
+  """Raised when a wait_for_update call times out."""
 
 
 class PlugUnrecognizedError(Exception):
@@ -127,6 +128,7 @@ class PlugUnrecognizedError(Exception):
 
 
 class LockedTimeoutReraisingProxy(
+    # TODO(madsci): ReraisingMixin
     xmlrpcutil.TimeoutServerProxyMixin, xmlrpcutil.LockedServerProxyMixin,
     xmlrpcutil.BaseServerProxy):
   """ServerProxy with additional features we use."""
@@ -138,15 +140,52 @@ class SimpleThreadedXMLRPCServer(
   daemon_threads = True
 
 
+class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
+    'station_uid': None,
+    'station_api_bind_address': None, 'last_activity_time_millis': 0})):
+  """Information about a remote station.
+
+  Attributes;
+    station_id: Station identifier (user-facing name), set via config.
+    station_uid: UID of a station, based on PID, guaranteed to be unique to
+        a given host (including restarts of the station).
+    station_api_bind_address: Address the remote Station API is listening on,
+        included to detect network configuration errors with stations
+        discovered via multicast.
+    last_activity_time_millis: Approximate most recent time new activity
+        occurred on the remote Station.
+  """
+
+  # We only really care about station_id and uid for equality checks.
+  def __eq__(self, other):
+    return (type(self) is type(other) and
+            self.station_id == other.station_id and
+            self.station_uid == other.station_uid)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
+
+class RemotePhase(collections.namedtuple('RemotePhase', [
+    'name', 'codeinfo', 'start_time_millis', 'attachments', 'measurements'])):
+  """Encapsulating class for info about a remotely executing Phase.
+
+  See PhaseState._asdict() in exe/test_state.py for attribute details.
+
+  Notably, 'attachments' is a dict mapping name to sha256 hash of the
+  attachment's data, not the actual attachment data itself.
+  """
+
+
 class RemoteState(collections.namedtuple('RemoteState', [
-    'status', 'test_record', 'running_phase_record'])):
+    'status', 'test_record', 'running_phase_state'])):
 
   def __str__(self):
     return '<RemoteState %s, Running Phase: %s>' % (
         self.status.name,
-        self.running_phase_record and self.running_phase_record.name)
+        self.running_phase_state and self.running_phase_state.name)
 
-  def __new__(cls, cached_state, status, test_record, running_phase_record):
+  def __new__(cls, cached_state, status, test_record, running_phase_state):
     test_record = pickle.loads(test_record.data)
     cached_rec = cached_state and cached_state.test_record
 
@@ -162,7 +201,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
      
     return super(RemoteState, cls).__new__(
         cls, test_state.TestState.Status[status], test_record,
-        pickle.loads(running_phase_record.data))
+        running_phase_state and RemotePhase(**running_phase_state))
 
 
 class RemoteTest(mutablerecords.Record('RemoteTest', [
@@ -173,7 +212,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
     # Cache last known state so we can detect deltas.
-    'cached_state': None, 'state_lock': threading.Lock})):
+    'cached_state': None})):
 
   def __hash__(self):
     return hash((self.test_uid, self.created_time_millis))
@@ -187,20 +226,13 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return state.test_record.start_time_millis
 
   @property
-  def num_cached_phases(self):
-    """Number of phases we have cached in our cached state."""
+  def state_cache_info(self):
     state = self.cached_state
     if not state or not state.test_record:
-      return 0
-    return len(state.test_record.phases)
-
-  @property
-  def num_cached_logs(self):
-    """Number of log records we have cached in our cached state."""
-    state = self.cached_state
-    if not state or not state.test_record:
-      return 0
-    return len(state.test_record.log_records)
+      return 0, 0, state
+    return (len(state.test_record.phases),
+            len(state.test_record.log_records),
+            state)
   
   def __str__(self):
     # Use cached_state because accessing self.state triggers an RPC, and
@@ -213,39 +245,54 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
         self.last_run_time_millis and time.strftime(
             '%a@%H:%M:%S', time.localtime(self.last_run_time_millis / 1000)))
 
-  def wait_for_update(self, timeout_s=1):
-    """Block until there's new state data available, or timeout.
+  @property
+  def cached_state_and_dict(self):
+    """Get our cached state as a dict, with phases/records swapped out.
 
-    Returns: Updated state, as if accessing self.state.
+    Returns:
+      Cached state used to generate the dict, and a dict representation
+    of that state, with phases/records swapped out for respective counts.
+    This is used to send to a running test so only have to send back new
+    phases and log records.
     """
     cached_state = self.cached_state
-    cached_dict = None
+
     # Make a copy so we can swap out phases and logs with counts instead.
-    if self.cached_state:
+    if cached_state:
       state = cached_state._replace(
           test_record=mutablerecords.CopyRecord(cached_state.test_record))
       state.test_record.phases = len(state.test_record.phases)
       state.test_record.log_records = len(state.test_record.log_records)
-      cached_dict = {
+      return cached_state, {
           'status': state.status.name,
+          'running_phase_state':
+              data.ConvertToBaseTypes(state.running_phase_state),
           'test_record': xmlrpclib.Binary(pickle.dumps(state.test_record)),
-          'running_phase_record':
-              xmlrpclib.Binary(pickle.dumps(state.running_phase_record)),
       }
-    # TODO(madsci): Handle Fault exceptions and re-raise relevant exceptions.
-    try:
-      remote_state_dict = self.proxy_factory(timeout_s + 3).wait_for_update(
-          self.test_uid, cached_dict, timeout_s)
-    except Exception as e:
-      #import pdb; pdb.set_trace()
-      raise
-    if remote_state_dict:
-      retval = RemoteState(cached_state, **remote_state_dict)
-      with self.state_lock:
-        self.cached_state = retval
+    return cached_state, None
 
-    # Timeout, just return the cached state.
-    return cached_state
+  def wait_for_update(self, timeout_s=1):
+    """Block until there's new state data available, or timeout.
+
+    Returns:
+      Updated state, as if accessing self.state.  The only way to know a
+    timeout occurred is to check the return value against the previous value
+    of cached_state for a change.
+    """
+    cached_state, cached_dict = self.cached_state_and_dict
+    try:
+      remote_state_dict = self.proxy_factory(timeout_s + 1).wait_for_update(
+          self.test_uid, cached_dict, timeout_s)
+    except xmlrpclib.Fault as fault:
+      # TODO(madsci): This is a super kludge, eventually implement the
+      # ReraisingMixin for ServerProxy, but that's hard, so do this for now.
+      if 'openhtf.io.station_api.UpdateTimeout' in fault.faultString:
+        return self.cached_state
+      raise
+
+    self.cached_state = (remote_state_dict and
+                         RemoteState(cached_state, **remote_state_dict))
+    return self.cached_state
 
   def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
     return self.shared_proxy.get_test_state(
@@ -253,18 +300,13 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
   @property
   def state(self):
-    # Grab a snapshot of these holding the lock so we know they are consistent.
-    num_cached_phases = self.num_cached_phases
-    num_cached_logs = self.num_cached_logs
     cached_state = self.cached_state
 
     remote_state_dict = self.get_remote_state_dict(
         num_cached_phases, num_cached_logs)
     if remote_state_dict:
-      retval = RemoteState(cached_state, **remote_state_dict)
-      with self.state_lock:
-        self.cached_state = retval
-      return retval
+      self.cached_state = RemoteState(cached_state, **remote_state_dict)
+    return self.cached_state
 
   @property
   def cached_history(self):
@@ -293,27 +335,75 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
 
 class Station(object):
+  """Class providing an interface to a remote Station.
 
-  def __init__(self, station_info, proxy=None):
+  A 'Station' is a single Python process with one or more instances of
+  openhtf.Test created.  Stations can be discovered via multicast (if the
+  Station has discovery enabled, as it is by default), or created explicitly
+  for a given host and port (see discover() and from_host_port() respectively).
+
+  Stations are singleton by host-port combination, so that subsequent calls to
+  discover() or from_host_port() that would return a Station with the same host
+  and port instead return the previous (now shared) instance.  If the remote
+  station_id or station_uid change, the local cached History is cleared, but
+  the same object is still otherwise reused (with updated StationInfo).
+
+  Each Station instance keeps a local cache of remote Test instances, which is
+  accessible via the 'tests' attribute.  This attribute is a dict mapping
+  Test UID to an instance of RemoteTest (see RemoteTest for details of that
+  interface).
+
+  Cached RemoteTest instances can be accessed via the 'cached_tests' attribute,
+  which is the same dict mapping as 'tests', but does not trigger any RPCs to
+  update the local state.
+
+  The 'reachable' attribute can be used as a lightweight check if the host is
+  currently responding to RPC requests (
+  """
+
+  STATION_MAP = {}  # Map (host, port) to Station instance.
+  STATION_LOCK = threading.Lock()
+
+  def __new__(cls, host, station_api_port, station_info, proxy=None):
+    cls.STATION_LOCK.acquire()
+    return cls.STATION_MAP.setdefault(
+        (host, station_api_port), super(Station, cls).__new__(cls))
+
+  def __init__(self, host, station_api_port, station_info, proxy=None):
+    self.host = host
+    self.station_api_port = station_api_port
+
+    try:
+      if self._station_info != station_info:
+        _LOG.warning(
+            'Reusing Station (%s) with new StationInfo: %s, clearing History.',
+            self._station_info.station_id, station_info)
+        self._history = history.History()
+        self.cached_tests = {}
+    except AttributeError:
+      logging.debug('Creating new Station (%s) at %s:%s',
+                    station_info.station_id, host, station_api_port)
+      # We're not reusing a shared instance, initialize things we need.
+      self._history = history.History()
+      self._lock = threading.Lock()
+      self.cached_tests = {}
+    
     self._station_info = station_info
-    # Each Station needs its own History instance because Test UIDs are only
-    # unique within a station, so if you tried to store all stations' histories
-    # together, you could get Test UID collisions.
-    self._history = history.History()
-    # Maps test UID to RemoteTest, so we can reuse old RemoteTest objects in
-    # order to benefit from their cached state (phases and logs).
-    self.cached_tests = {}
     # Shared proxy used for synchronous calls we expect to be fast.
     # Long-polling calls should use the 'proxy' attribute directly instead, as
     # it creates a new ServerProxy object each time, avoiding the danger of
     # blocking short requests with long-running ones.
     self._shared_proxy = proxy or self.make_proxy()
+    self.STATION_LOCK.release()
 
   def __hash__(self):
-    return hash(self._station_info)
+    return hash((self.host, self.station_api_port,
+                 self._station_info.station_id))
 
   def __eq__(self, other):
     return (type(self) == type(other) and
+            self.host == other.host and
+            self.station_api_port == other.station_api_port and
             self._station_info == other._station_info)
 
   def __ne__(self, other):
@@ -321,12 +411,14 @@ class Station(object):
 
   def __str__(self):
     return 'Station %s@%s:%s, Listening on %s' % (
-        self.station_id, self.host, self.station_api_port,
-        self.station_api_bind_address)
+        self._station_info.station_id, self.host, self.station_api_port,
+        self._station_info.station_api_bind_address)
 
-  def __getattr__(self, attr):
-    return getattr(self._station_info, attr)
-
+  @property
+  def last_activity_time_millis(self):
+    self.reachable  # Best-effort try to get up-to-date info.
+    return self._station_info.last_activity_time_millis
+  
   def make_proxy(self, timeout_s=5):
     """Make a new ServerProxy for this station."""
     return LockedTimeoutReraisingProxy(
@@ -340,7 +432,9 @@ class Station(object):
                                          timeout_s=timeout_s,
                                          **MULTICAST_KWARGS()):
       try:
-        yield cls(StationInfo(host, **json.loads(response)))
+        response = json.loads(response)
+        port = response.pop('station_api_port')
+        yield cls(host, port, StationInfo(**response))
       except ValueError:
         _LOG.debug('Received malformed JSON from %s: %s', host, response)
       except TypeError:
@@ -348,28 +442,54 @@ class Station(object):
                    host, response, exc_info=True)
 
   @classmethod
-  def from_host_port(cls, host, port):
+  def from_host_port(cls, host, port, station_id=None):
     proxy = LockedTimeoutReraisingProxy(
         'http://%s:%s' % (host, port), allow_none=True)
-    return cls(StationInfo(host, **proxy.get_station_info()), proxy)
-
-  @property
-  def reachable(self):
-    """True if the remote Station is reachable."""
     try:
-      station_info = StationInfo(
-          self.host, **self._shared_proxy.get_station_info())
-    except (socket.timeout, socket.error):
+      station_info = StationInfo(**proxy.get_station_info())
+      if station_id and station_info.station_id != station_id:
+        _LOG.warning('Actual Station ID (%s) does not match configured (%s).',
+                     station_info.station_id, station_id)
+    except socket.error:
+      station_info = StationInfo(station_id)
+
+    return cls(host, port, station_info, proxy)
+      
+  @property
+  @threads.Synchronized
+  def reachable(self):
+    """Returns True if the station is reachable, also updates StationInfo."""
+    try:
+      station_info = StationInfo(**self._shared_proxy.get_station_info())
+    except socket.error:
       return False
 
-    if self._station_info != station_info:
-      raise StationInfoChangedError(
-          'Station info changed', self._station_info, station_info)
+    if self._station_info.station_id and self._station_info != station_info:
+      _LOG.warning(
+          'Reusing Station (%s) with new StationInfo: %s, clearing History.',
+          self._station_info.station_id, station_info)
+      self._history = history.History()
+
+    # Update our local StationInfo.
+    self._station_info = station_info
     return True
 
   @property
   def tests(self):
-    """List active Test instances on this station."""
+    """Dictionary mapping Test UID to RemoteTest instance.
+
+    Returns a copy of self.cached_tests, after updating it to reflect the
+    state of the remote station.  Any Test instances that are no longer
+    reported by the remote station are not included here (and it's likely
+    that accessing attributes that trigger RPCs on and saved references to
+    old RemoteTest instances will raise).
+
+    To access the dict of RemoteTest instances *without* triggering an RPC
+    update, access the cached_tests attribute directly (do *not* modify it).
+    """
+    if not self.reachable:
+      raise StationUnreachableError(
+          'Station "%s" unreachable' % self._station_info.station_id)
     tests = self._shared_proxy.list_tests()
 
     updated_tests = {}
@@ -382,6 +502,7 @@ class Station(object):
           updated_tests[test_uid] = RemoteTest(
             self.make_proxy, self._shared_proxy, self._history, **test_dict)
         except Exception as e:
+          # TODO(madsci): catch real exceptions here.
           import pdb; pdb.set_trace()
       else:
         updated_tests[test_uid] = self.cached_tests[test_uid]
@@ -398,13 +519,12 @@ class StationApi(object):
   UID = '%s:%s' % (os.getpid(), util.TimeMillis())
 
   def get_station_info(self):
-    """Obtain dict required for a StationInfo for this station."""
-    _LOG.debug('RPC:get_station_info() -> %s:%s',
-               conf.station_id, conf.station_api_port)
+    """Obtain dict required to make a StationInfo for this station."""
+    _LOG.debug('RPC:get_station_info() -> %s:%s', conf.station_id, self.UID)
     return { 
         'station_id': conf.station_id,
+        'station_uid': self.UID,
         'station_api_bind_address': conf.station_api_bind_address,
-        'station_api_port': conf.station_api_port,
         'last_activity_time_millis': API_SERVER.last_activity_time_millis,
     }
 
@@ -433,20 +553,22 @@ class StationApi(object):
     return retval
 
   @staticmethod
-  def _serialize_state_dict(state, remote_record=None):
+  def _serialize_state_dict(state_dict, remote_record=None):
     if (remote_record and
         remote_record.start_time_millis ==
-        state['test_record'].start_time_millis):
+        state_dict['test_record'].start_time_millis):
       # Make a copy and delete phases/logs that are already known remotely.
-      state['test_record'] = mutablerecords.CopyRecord(state['test_record'])
-      del state['test_record'].phases[:remote_record.phases]
-      del state['test_record'].log_records[:remote_record.log_records]
+      state_dict['test_record'] = mutablerecords.CopyRecord(
+          state_dict['test_record'])
+      del state_dict['test_record'].phases[:remote_record.phases]
+      del state_dict['test_record'].log_records[:remote_record.log_records]
 
     return {
-        'status': state['status'].name,
-        'test_record': xmlrpclib.Binary(pickle.dumps(state['test_record'])),
-        'running_phase_record':
-            xmlrpclib.Binary(pickle.dumps(state['running_phase_record'])),
+        'status': state_dict['status'].name,
+        'test_record':
+            xmlrpclib.Binary(pickle.dumps(state_dict['test_record'])),
+        'running_phase_state':
+            data.ConvertToBaseTypes(state_dict['running_phase_state'])
     }
 
   def get_test_state(self, test_uid, remote_record):
@@ -459,11 +581,16 @@ class StationApi(object):
       test_uid: Test for which to obtain TestState info.
       remote_record: TestRecord we have cached on the remote side (if any),
           with phases and log_records swapped out for their respective lengths.
+
+    Returns:
+      Serialized RemoteState, as a dict, or None if the remote test is not
+    currently .Execute()'ing.
     """
     _LOG.debug('RPC:get_test_state(%s)', test_uid)
     state = openhtf.Test.state_by_uid(test_uid)
-    remote_record = pickle.loads(remote_record.data)
-    return self._serialize_state_dict(state._asdict(), remote_record)
+    if state:
+      remote_record = pickle.loads(remote_record.data)
+      return self._serialize_state_dict(state._asdict(), remote_record)
 
   def wait_for_plug(self, test_id, plug_type_name, current_state, timeout_s):
     """Long-poll RPC that blocks until the requested plug has an update.
@@ -495,72 +622,93 @@ class StationApi(object):
     return test_state.plug_manager.WaitForPlugUpdate(
         plug_type_name, current_state, timeout_s)
 
-  def wait_for_update(self, test_uid, remote_state, timeout_s):
+  def wait_for_update(self, test_uid, remote_state_dict, timeout_s):
     """Long-poll RPC that blocks until there is new information available.
 
     Events that trigger an update:
-      Test Start/Finish
-      # TODO: Measurement is set/updated.
+      Test Status Changes (ie, transition from WAITING_FOR_START to RUNNING).
+      Phase Start/Finish.
+      Measurement is set/updated.
+      Attachment is attached.
+      Log line is produced (via TestApi.logger).
 
     Note that plug state changes do NOT trigger an update here, use
     wait_for_plug() to get plug state change events.
 
     Args:
       test_uid: Test UID for which to wait on an update.
-      remote_state: Current RemoteState that we have for the test, as a dict,
+      remote_state_dict: Current RemoteState that we have for the test, as a dict,
           with phases and log_records swapped out for counts instead of the
           actual records themselves.
       timeout_s: Number of seconds to wait for an update before giving up.
 
     Returns:
       Updated RemoteState, as per get_test_state, except args are taken from
-    remote_state rather than passed in individually (because we care about
+    remote_state_dict rather than passed in individually (because we care about
     more stuff here).  In the event of a timeout, returns None.
 
     Raises:
       UnrecognizedTestUidError: If the test_uid is not recognized.
-      TestNotRunningError: If the test requested is not currently running.
+      UpdateTimeout: If there was no new information before the timeout expired,
+          as differentiated from a None return value, which indicates the
+          requested test is not being Execute()'ed on the remote side (but we
+          previously thought it was).
     """
     _LOG.debug('RPC:wait_for_update(timeout_s=%s)', timeout_s)
     state = openhtf.Test.state_by_uid(test_uid)
-    state_dict, event = state.asdict_with_event()
-    if not remote_state:
-      _LOG.debug('RPC:wait_for_update() -> short-circuited wait (was blank)')
-      return self._serialize_state_dict(state_dict)
+    if state is None:
+      if remote_state_dict:
+        # Remote end expects there to be a test running but there isn't, this
+        # is all the information we need to return immediately.
+        return
 
+      # Remote end already thinks the test isn't Execute()'ing, so wait for it.
+      state = timeouts.LoopUntilTimeoutOrNotNone(
+          timeout_s, lambda: openhtf.Test.state_by_uid(test_uid), sleep_s=.1)
+      if not state:
+        raise UpdateTimeout(
+            "No test started Execute()'ing before timeout", timeout_s)
+      _LOG.debug('RPC:wait_for_update() -> short-circuited wait (was blank)')
+      return self._serialize_state_dict(state._asdict())
+       
+    state_dict, event = state.asdict_with_event()
     # Make a copy with phase/log record counts swapped out for comparison with
-    # remote_state.
-    state_dict_counts = state._asdict(copy_records=True)
+    # remote_state_dict.
+    state_dict_counts = dict(state_dict)
+    state_dict_counts['test_record'] = mutablerecords.CopyRecord(
+        state_dict_counts['test_record'])
     state_dict_counts['test_record'].phases = len(
         state_dict_counts['test_record'].phases)
     state_dict_counts['test_record'].log_records = len(
         state_dict_counts['test_record'].log_records)
+    state_dict_counts['running_phase_state'] = data.ConvertToBaseTypes(
+        state_dict_counts['running_phase_state'])
 
-    # Deserialize the remote state for comparison.
-    remote_state = {
-        'status': test_state.TestState.Status[remote_state['status']],
-        'test_record': pickle.loads(remote_state['test_record'].data),
-        'running_phase_record': pickle.loads(
-            remote_state['running_phase_record'].data),
-
+    # Deserialize the RemoteState fields for comparison.
+    remote_state_dict = remote_state_dict and {
+        'status': test_state.TestState.Status[remote_state_dict['status']],
+        'test_record': pickle.loads(remote_state_dict['test_record'].data),
+        'running_phase_state': remote_state_dict['running_phase_state'],
     }
-    if state_dict_counts != remote_state:
+    if state_dict_counts != remote_state_dict:
       _LOG.debug('RPC:wait_for_update() -> short-circuited wait')
       # We already have new info, serialize the new state and send it,
       # skipping any phases/logs that we already know about remotely.
-      return self._serialize_state_dict(state_dict, remote_state['test_record'])
+      return self._serialize_state_dict(
+          state_dict, remote_state_dict and remote_state_dict['test_record'])
 
     # If we get here, then the remote side is already up-to-date, so we wait
     # for there to be new information available.  We rely on the TestState
     # object itself to notify us when this is the case.
     if not event.wait(timeout_s):
-      _LOG.debug('RPC:wait_for_update() -> timeout')
-      return
+      _LOG.debug('RPC:wait_for_update() -> timeout after %s seconds', timeout_s)
+      raise UpdateTimeout('No new information before timeout.', timeout_s)
 
     _LOG.debug('RPC:wait_for_update() -> change after wait')
     # Grab a fresh copy of the state and return the new info.
-    state_dict = openhtf.Test.state_by_uid(test_uid)._asdict()
-    return self._serialize_state_dict(state_dict, remote_state['test_record'])
+    state = openhtf.Test.state_by_uid(test_uid)
+    return state and self._serialize_state_dict(
+        state._asdict(), remote_state_dict['test_record'])
 
   def get_history_after(self, test_uid, start_time_millis):
     """Get a list of pickled TestRecords for test_uid from the History."""
@@ -587,6 +735,7 @@ class ApiServer(threading.Thread):
       _LOG.debug('Received unexpected traffic on discovery socket: %s', message)
     else:
       return json.dumps({
+          'station_uid': StationApi.UID,
           'station_id': conf.station_id,
           'station_api_bind_address': conf.station_api_bind_address,
           'station_api_port': conf.station_api_port,
@@ -615,15 +764,12 @@ class ApiServer(threading.Thread):
         self.multicast_listener.start()
 
       # server_forever() doesn't return until we call stop()
-      _LOG.debug(
-          'Starting station_api server on port %s', conf.station_api_port)
       self.station_api_server.serve_forever()
-      _LOG.debug('station_api server exiting.')
+      _LOG.debug('Station API returned from serve_forever(), done serving.')
     else:
-      _LOG.debug('Started station_api, but station_api_port disabled, bailing.')
+      _LOG.debug('Started Station API, but station_api_port disabled, bailing.')
 
   def stop(self):
-    _LOG.debug('Stopping station_api.')
     try:
       try:
         if self.multicast_listener:
@@ -632,7 +778,7 @@ class ApiServer(threading.Thread):
         if self.station_api_server:
           self.station_api_server.shutdown()
     except Exception:
-      _LOG.debug('Exception stopping station_api, ignoring.', exc_info=True)
+      _LOG.debug('Exception stopping Station API, ignoring.', exc_info=True)
 
 
 # Singleton instances.
@@ -640,7 +786,7 @@ STATION_API = StationApi()
 API_SERVER = None
 
 def start_server():
-  # TODO(madsci): Blech, fix this.
+  # TODO(madsci): Blech, fix this. Suggestions?
   global API_SERVER
   if not API_SERVER and conf.station_api_port or conf.enable_station_discovery:
     _LOG.debug('Starting Station API server on port %s (discovery %sabled).',

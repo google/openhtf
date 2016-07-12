@@ -94,7 +94,8 @@ class TestState(object):
         dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
-    self.logger = logs.InitializeRecordLogger(test_desc.uid, self.test_record)
+    self.logger = logs.InitializeRecordLogger(
+        test_desc.uid, self.test_record, self.notify_update)
     self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
     self.running_phase_state = None
     self.user_defined_state = {}
@@ -116,7 +117,8 @@ class TestState(object):
         self.logger, self.user_defined_state, self.test_record,
         measurements.Collection(running_phase_state.measurements),
         running_phase_state.attachments,
-        running_phase_state.Attach, running_phase_state.AttachFromFile))
+        running_phase_state.attach, running_phase_state.attach_from_file,
+        self.notify_update))
 
   @contextlib.contextmanager
   def RunningPhaseContext(self, phase_desc):
@@ -130,29 +132,26 @@ class TestState(object):
     currently running phase.
     """
     assert not self.running_phase_state, 'Phase already running!'
-    self.running_phase_state = PhaseState.FromDescriptor(phase_desc)
+    self.running_phase_state = PhaseState.FromDescriptor(
+        phase_desc, self.notify_update)
     try:
       with self.running_phase_state.record_timing_context:
+        self.notify_update()  # New phase started.
         yield self.running_phase_state
     finally:
+      # Clear notification callbacks so we can serialize measurements.
+      for meas in self.running_phase_state.phase_record.measurements.values():
+        meas.set_notification_callback(None)
+        
       self.test_record.phases.append(self.running_phase_state.phase_record)
       self.running_phase_state = None
-      self.notify_update()
+      self.notify_update()  # Phase finished.
 
-  def _asdict(self, copy_records=False):
+  def _asdict(self):
     """Return a dict representation of the test's state."""
-    test_rec = self.test_record
-    phase_rec = (self.running_phase_state
-                 and self.running_phase_state.phase_record)
-    if copy_records:
-      test_rec = mutablerecords.CopyRecord(test_rec)
-      phase_rec = phase_rec and mutablerecords.CopyRecord(phase_rec)
-
     return {
-        'status': self._status, 'test_record': test_rec,
-        # TODO(madsci): pass the whole running_phase_state to provide
-        # Station API visibility of measurements as they are set.
-        'running_phase_record': phase_rec
+        'status': self._status, 'test_record': self.test_record,
+        'running_phase_state': self.running_phase_state,
     }
 
   @threads.Synchronized
@@ -187,7 +186,7 @@ class TestState(object):
     method returns, so this should only be used for log messages/user display
     and not for programmatic purposes.
     """
-    return self.running_phase_record and self.running_phase_record.name
+    return self.running_phase_state and self.running_phase_state.name
 
   def SetStatusFromPhaseOutcome(self, phase_outcome):
     """Set our internal state based on the given phase outcome.
@@ -224,11 +223,13 @@ class TestState(object):
     # This might still be None; it's the value returned by test_start.
     self.test_record.dut_id = dut_id
     self.test_record.start_time_millis = util.TimeMillis()
+    self.notify_update()
 
   def SetStatusRunning(self):
     """Mark the test as actually running, can't be done once Finalized."""
     assert self._status == self.Status.WAITING_FOR_TEST_START
     self._status = self.Status.RUNNING
+    self.notify_update()
 
   def Finalize(self, test_outcome=None):
     """Mark the state as finished.
@@ -274,6 +275,7 @@ class TestState(object):
     self.logger.handlers = []
     self.test_record.end_time_millis = util.TimeMillis()
     self._status = self.Status.COMPLETED
+    self.notify_update()
 
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
@@ -283,7 +285,7 @@ class TestState(object):
 
 
 class PhaseState(mutablerecords.Record('PhaseState', [
-    'phase_record', 'measurements'])):
+    'name', 'phase_record', 'measurements'])):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
@@ -296,11 +298,26 @@ class PhaseState(mutablerecords.Record('PhaseState', [
   """
 
   @classmethod
-  def FromDescriptor(cls, phase_desc):
+  def FromDescriptor(cls, phase_desc, notify_cb):
     return cls( 
+        phase_desc.name,
         test_record.PhaseRecord.FromDescriptor(phase_desc),
-        {measurement.name: copy.deepcopy(measurement)
+        {measurement.name:
+             copy.deepcopy(measurement).set_notification_callback(notify_cb)
          for measurement in phase_desc.measurements})
+
+  def _asdict(self):
+    return {
+        'name': self.name, 'codeinfo': self.phase_record.codeinfo,
+        'start_time_millis': 0, # long(self.phase_record.start_time_millis),
+        # We only serialize attachment hashes, they can be large.
+        'attachments': {
+            name: attachment.sha256 for name, attachment in
+            self.attachments.iteritems()
+        },
+        # Measurements have their own _asdict() implementation.
+        'measurements': self.measurements,
+    }
 
   @property
   def result(self):
@@ -314,7 +331,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
   def attachments(self):
     return self.phase_record.attachments
 
-  def Attach(self, name, data, mimetype=None):
+  def attach(self, name, data, mimetype=None):
     """Store the given data as an attachment with the given name.
 
     Args:
@@ -333,7 +350,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
                    mimetype, name)
     self.phase_record.attachments[name] = test_record.Attachment(data, mimetype)
 
-  def AttachFromFile(self, filename, name=None, mimetype=None):
+  def attach_from_file(self, filename, name=None, mimetype=None):
     """Store the contents of the given filename as an attachment.
 
     Args:
@@ -349,7 +366,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
       IOError: Raised if the given filename couldn't be opened.
     """
     with open(filename, 'rb') as f:  # pylint: disable=invalid-name
-      self.Attach(
+      self.attach(
           name if name is not None else filename, f.read(),
           mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
               filename)[0])
@@ -362,12 +379,6 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     This method performs some pre-phase setup on self (for measurements), and
     records the start and end time based on when the context is entered/exited.
     """
-    # TODO(madsci): investigate this, remove?
-    # Populate dummy measurement declaration list for frontend API.
-    self.phase_record.measurements = {
-        measurement.name: measurement._asdict()
-        for measurement in self.measurements.itervalues()
-    }
     self.phase_record.start_time_millis = util.TimeMillis()
 
     try:
