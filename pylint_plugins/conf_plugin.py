@@ -2,6 +2,9 @@
 import astroid
 from astroid import MANAGER
 
+def __init__(self):
+	pass
+
 
 
 def register(linter):
@@ -14,7 +17,7 @@ def conf_transform(cls):
  	import pdb;pdb.set_trace()
 	cls._locals.update(cls.locals['Configuration'][0])
 
-#MANAGER.register_transform(astroid.Module, conf_transform)
+MANAGER.register_transform(astroid.Module, conf_transform)
 
 #def conf_transform2(func):
 #  print(func)

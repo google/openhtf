@@ -4,8 +4,6 @@ import astroid
 from astroid import MANAGER
 from pylint import lint
 
-def __init__(self):
-  pass
 
 def wrap_add_message(func):
   def add_message(msg_descr, line=None, node=None, args=None, confidence=None):
