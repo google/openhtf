@@ -41,8 +41,8 @@ modules are fairly well documented inline through the use of docstrings.
 
 Note: some of the `examples/` require protocol buffer code to be generated via
 `setup python.py build` command.  This requires protocol buffer compiler
-library to be installed (
-[additional instructions](CONTRIBUTING.md#setting-up-your-dev-environment))
+library to be installed
+([additional instructions](CONTRIBUTING.md#setting-up-your-dev-environment)).
 
 ## Nomenclature
 OpenHTF uses certain nomenclature internally for several of its core concepts.
