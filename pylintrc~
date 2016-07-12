@@ -19,7 +19,7 @@ persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=conf_plugin
+load-plugins=pylint_plugins.conf_plugin,pylint_plugins.openhtf_plugin
 
 [MESSAGES CONTROL]
 
