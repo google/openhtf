@@ -15,7 +15,7 @@
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
-python all_the_things.py --config=example_config.yaml
+python all_the_things.py
 """
 
 import json

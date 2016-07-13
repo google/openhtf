@@ -58,7 +58,7 @@ class BuildProtoCommand(Command):
       if platform.system() == 'Linux':
         # Default to /usr?
         prefix = '/usr'
-      elif platform.system() == 'Mac':
+      elif platform.system() in ['Mac', 'Darwin']:
         # Default to /usr/local for Homebrew
         prefix = '/usr/local'
       else:

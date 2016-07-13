@@ -93,7 +93,7 @@ def LotsOfMeasurements(test):
 # describing the measurement.  Validators can get quite complex, for more
 # details, see the validators.py example.
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
-    'This measurement is validated.').WithUnits(UOM['SECOND']))
+    'This measurement is validated.').WithUnits(units.SECOND))
 def MeasureSeconds(test):
   # The 'outcome' of this measurement in the test_record result will be a PASS
   # because its value passes the validator specified (0 <= 5 <= 10).
@@ -106,7 +106,7 @@ def MeasureSeconds(test):
 # must be a string containing the measurement name).  If you want to specify
 # multiple measurements this way, you can stack multiple decorators.
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
-          units=UOM['HERTZ'], validators=[validators.InRange(0, 10)])
+          units=units.HERTZ, validators=[validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
 def InlinePhase(test):
   # This measurement will have an outcome of FAIL, because the set value of 15
