@@ -19,7 +19,7 @@ persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_plugins.openhtf_pylint
+load-plugins=pylint_plugins.conf_plugin
 
 [MESSAGES CONTROL]
 
@@ -54,7 +54,7 @@ output-format=text
 # Put messages in a separate file for each module / package specified on the
 # command line instead of printing them on stdout. Reports (if any) will be
 # written in a file name "pylint_global.[txt|html]".
-files-output=y
+files-output=no
 
 # Tells whether to display a full report or only the messages
 reports=yes
