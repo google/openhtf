@@ -239,7 +239,6 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     self._modules = kwargs
     self._declarations = {}
     self.ARG_PARSER = parser
-    self.__name__ = 'Configuration'
 
     # Parse just the flags we care about, since this happens at import time.
     self._flags, _ = parser.parse_known_args()
