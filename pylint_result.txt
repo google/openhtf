@@ -1,0 +1,1687 @@
+************* Module openhtf
+W: 92, 0: TODO(madsci): Fix this to play nice with multiple Test instances. (fixme)
+W: 97, 0: TODO(madsci): Remove this before we push to PyPI, here for transitionary (fixme)
+W:160, 0: TODO(madsci): Remove this after a transitionary period. (fixme)
+E: 84,41: No value for argument 'self' in method call (no-value-for-parameter)
+W: 95,30: Unused argument 'callback' (unused-argument)
+R: 95, 2: Method could be a function (no-self-use)
+W:111,13: Catching too general exception Exception (broad-except)
+C:116, 2: Missing method docstring (missing-docstring)
+R:195, 0: Too few public methods (0/2) (too-few-public-methods)
+C:226, 0: Invalid function name "CreateArgParser" (invalid-name)
+C:246, 0: Invalid constant name "PhaseResult" (invalid-name)
+C:264, 2: Invalid method name "__call__" (invalid-name)
+R:249, 0: Too few public methods (0/2) (too-few-public-methods)
+R:273, 0: Too few public methods (0/2) (too-few-public-methods)
+C:311, 2: Missing method docstring (missing-docstring)
+C:315, 2: Missing method docstring (missing-docstring)
+C:327, 2: Invalid method name "__call__" (invalid-name)
+************* Module openhtf.conf
+I:219, 0: Locally enabling invalid-name (C0103) (locally-enabled)
+I:219, 0: Locally enabling bad-super-call (E1003) (locally-enabled)
+I:219, 0: Locally enabling too-few-public-methods (R0903) (locally-enabled)
+C:241, 4: Invalid attribute name "ARG_PARSER" (invalid-name)
+W:484, 4: Redefining name 'functools' from outer scope (line 160) (redefined-outer-name)
+C:490, 4: Invalid function name "_SavingWrapper" (invalid-name)
+C:490, 4: Missing function docstring (missing-docstring)
+W:529, 4: Redefining name 'functools' from outer scope (line 160) (redefined-outer-name)
+W:496, 8: Attribute '_loaded_values' defined outside __init__ (attribute-defined-outside-init)
+************* Module openhtf.exe.phase_executor
+C:171, 0: Trailing whitespace (trailing-whitespace)
+W:103,28: Redefining name 'phase_data' from outer scope (line 39) (redefined-outer-name)
+W:183, 4: Redefining name 'phase_data' from outer scope (line 39) (redefined-outer-name)
+W: 39, 0: Unused phase_data imported from openhtf.exe (unused-import)
+************* Module openhtf.exe.test_state
+W:122, 0: TODO(madsci): Decouple flow control from pass/fail. (fixme)
+C: 69, 0: Line too long (82/80) (line-too-long)
+C: 73, 2: Invalid method name "__del__" (invalid-name)
+************* Module openhtf.exe.triggers
+W: 40, 0: TODO(madsci): Remove this after transitionary period.  Note it was broken (fixme)
+W: 38,14: Unused argument 'serial' (unused-argument)
+C: 47, 0: Invalid function name "PromptForTestStart" (invalid-name)
+W: 31, 0: Unused import time (unused-import)
+************* Module openhtf.exe.phase_data
+W: 29, 0: Unused import mutablerecords (unused-import)
+C: 25, 0: standard import "import copy" comes before "import contextlib2" (wrong-import-order)
+C: 26, 0: standard import "import logging" comes before "import contextlib2" (wrong-import-order)
+C: 27, 0: standard import "import mimetypes" comes before "import contextlib2" (wrong-import-order)
+************* Module openhtf.exe
+E: 84,26: Module 'openhtf.conf' has no 'station_id' member (no-member)
+C: 88, 2: Missing method docstring (missing-docstring)
+E:173,53: Module 'openhtf.conf' has no 'station_id' member (no-member)
+W:218, 6: Access to a protected member _ExecuteOnePhase of a client class (protected-access)
+W:115, 4: Attribute '_output_thread' defined outside __init__ (attribute-defined-outside-init)
+W:114, 4: Attribute '_test_state' defined outside __init__ (attribute-defined-outside-init)
+W:148, 8: Attribute '_test_state' defined outside __init__ (attribute-defined-outside-init)
+W:113, 4: Attribute '_exit_stack' defined outside __init__ (attribute-defined-outside-init)
+W:125, 8: Attribute '_exit_stack' defined outside __init__ (attribute-defined-outside-init)
+************* Module openhtf.plugs
+C:122, 2: Missing method docstring (missing-docstring)
+W:153, 6: Redefining name 'plug' from outer scope (line 131) (redefined-outer-name)
+W:179,18: Redefining name 'plug' from outer scope (line 131) (redefined-outer-name)
+C:201, 2: Missing method docstring (missing-docstring)
+C:212, 2: Missing method docstring (missing-docstring)
+C:217, 2: Missing method docstring (missing-docstring)
+W:236, 8: Redefining name 'plug' from outer scope (line 131) (redefined-outer-name)
+************* Module openhtf.plugs.usb.usb_handle
+C:125, 0: Line too long (81/80) (line-too-long)
+************* Module openhtf.plugs.usb.filesync_service
+I:266, 0: Locally enabling too-many-arguments (R0913) (locally-enabled)
+I:388, 0: Locally enabling protected-access (W0212) (locally-enabled)
+I:483, 0: Locally enabling invalid-name (C0103) (locally-enabled)
+************* Module openhtf.plugs.usb.fastboot_device
+C:124, 0: Trailing newlines (trailing-newlines)
+************* Module openhtf.plugs.usb
+C: 94, 4: Invalid attribute name "TearDown" (invalid-name)
+************* Module openhtf.plugs.usb.fastboot_protocol
+I:115, 0: Locally enabling too-many-arguments (R0913) (locally-enabled)
+I:234, 0: Locally enabling too-many-arguments (R0913) (locally-enabled)
+C:329, 0: Trailing newlines (trailing-newlines)
+C: 22, 0: standard import "import logging" comes before "import gflags" (wrong-import-order)
+C: 23, 0: standard import "import os" comes before "import gflags" (wrong-import-order)
+C: 24, 0: standard import "import struct" comes before "import gflags" (wrong-import-order)
+************* Module openhtf.plugs.usb.shell_service
+I:273, 0: Locally enabling too-many-arguments (R0913) (locally-enabled)
+************* Module openhtf.plugs.usb.adb_message
+C: 45, 0: standard import "import logging" comes before "import gflags" (wrong-import-order)
+C: 46, 0: standard import "import string" comes before "import gflags" (wrong-import-order)
+C: 47, 0: standard import "import struct" comes before "import gflags" (wrong-import-order)
+C: 48, 0: standard import "import threading" comes before "import gflags" (wrong-import-order)
+************* Module openhtf.plugs.usb.adb_device
+C: 93, 0: Wrong continued indentation (add 1 space).
+                                self._adb_connection.serial,
+                                ^| (bad-continuation)
+C: 94, 0: Wrong continued indentation (add 1 space).
+                                self._adb_connection.systemtype,
+                                ^| (bad-continuation)
+C: 95, 0: Wrong continued indentation (add 1 space).
+                                self._adb_connection.transport)
+                                ^| (bad-continuation)
+C:112, 4: Invalid attribute name "TearDown" (invalid-name)
+************* Module openhtf.plugs.usb.__init__
+C: 75, 0: Exactly one space required after comma
+      except (KeyError,TypeError):
+                      ^ (bad-whitespace)
+E:149, 4: Undefined variable 'PromptForTestStart' (undefined-variable)
+************* Module openhtf.plugs.usb.adb_protocol
+C:153, 0: Wrong continued indentation (add 3 spaces).
+                                self._destination,
+                                ^  | (bad-continuation)
+C:154, 0: Wrong continued indentation (add 3 spaces).
+                                self._transport.local_id,
+                                ^  | (bad-continuation)
+C:155, 0: Wrong continued indentation (add 3 spaces).
+                                self._transport.remote_id)
+                                ^  | (bad-continuation)
+C:264, 0: Wrong continued indentation (add 3 spaces).
+                            self.local_id,
+                            ^  | (bad-continuation)
+C:265, 0: Wrong continued indentation (add 3 spaces).
+                            self.remote_id)
+                            ^  | (bad-continuation)
+R:854, 6: Redefinition of adb_transport type from openhtf.plugs.usb.adb_message.DebugAdbTransportAdapter to openhtf.plugs.usb.adb_message.AdbTransportAdapter (redefined-variable-type)
+C: 81, 0: standard import "import itertools" comes before "import gflags" (wrong-import-order)
+C: 82, 0: standard import "import logging" comes before "import gflags" (wrong-import-order)
+C: 83, 0: standard import "import Queue" comes before "import gflags" (wrong-import-order)
+C: 84, 0: standard import "import threading" comes before "import gflags" (wrong-import-order)
+************* Module openhtf.plugs.cambrionix.__init__
+C: 23, 0: Wrong hanging indentation (remove 2 spaces).
+        '1':'112',
+      | ^ (bad-continuation)
+C: 24, 0: Wrong hanging indentation (remove 2 spaces).
+        '2':'111',
+      | ^ (bad-continuation)
+C: 25, 0: Wrong hanging indentation (remove 2 spaces).
+        '3':'114',
+      | ^ (bad-continuation)
+C: 26, 0: Wrong hanging indentation (remove 2 spaces).
+        '4':'113',
+      | ^ (bad-continuation)
+C: 27, 0: Wrong hanging indentation (remove 2 spaces).
+        '5':'212',
+      | ^ (bad-continuation)
+C: 28, 0: Wrong hanging indentation (remove 2 spaces).
+        '6':'211',
+      | ^ (bad-continuation)
+C: 29, 0: Wrong hanging indentation (remove 2 spaces).
+        '7':'214',
+      | ^ (bad-continuation)
+C: 30, 0: Wrong hanging indentation (remove 2 spaces).
+        '8':'213',
+      | ^ (bad-continuation)
+C: 39, 0: Exactly one space required around assignment
+    addr_info=mac_addr.lower().split(':')
+             ^ (bad-whitespace)
+C: 40, 0: Unnecessary parens after 'if' keyword (superfluous-parens)
+C: 44, 0: Exactly one space required around assignment
+    self._addr=''.join(addr_info[2:])
+              ^ (bad-whitespace)
+C: 56, 0: Exactly one space required around assignment
+    port=self.port_map[str(port_num)]
+        ^ (bad-whitespace)
+C: 57, 0: Exactly one space required around assignment
+    arg=''.join(['DEVICE INFO,', self._addr, '.', port])
+       ^ (bad-whitespace)
+C: 59, 0: Exactly one space required after comma
+    info = subprocess.check_output(cmd,stderr=subprocess.STDOUT)
+                                      ^ (bad-whitespace)
+C: 67, 0: Exactly one space required after comma
+        subprocess.check_output(cmd,stderr=subprocess.STDOUT)
+                                   ^ (bad-whitespace)
+************* Module openhtf.plugs.cambrionix
+C:  1, 0: Missing module docstring (missing-docstring)
+E: 68, 8: Undefined variable 'time' (undefined-variable)
+************* Module openhtf.io.test_record
+C: 41, 0: Invalid constant name "Outcome" (invalid-name)
+C: 84, 0: Invalid function name "_GetSourceSafely" (invalid-name)
+C: 84, 0: Missing function docstring (missing-docstring)
+W: 87, 9: Catching too general exception Exception (broad-except)
+C: 99, 2: Missing method docstring (missing-docstring)
+C:110, 2: Missing method docstring (missing-docstring)
+************* Module openhtf.io.http_api
+W: 66, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:120,15: Unused variable 'path' (unused-variable)
+W:120,21: Unused variable 'version' (unused-variable)
+W:120, 6: Unused variable 'command' (unused-variable)
+************* Module openhtf.io.frontend.__main__
+C: 19, 0: Trailing whitespace (trailing-whitespace)
+C: 22, 0: Trailing whitespace (trailing-whitespace)
+C:281, 0: Trailing whitespace (trailing-whitespace)
+E: 75, 0: No value for argument 'name' in method call (no-value-for-parameter)
+W:112,10: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:117,40: Invalid variable name "e" (invalid-name)
+C:133,40: Invalid variable name "e" (invalid-name)
+R:147, 2: Too many arguments (6/5) (too-many-arguments)
+W:158, 4: Statement seems to have no effect (pointless-statement)
+E:158, 4: Module 'openhtf.conf' has no 'station_id' member (no-member)
+W:183, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:207, 0: Method 'data_received' is abstract in class 'RequestHandler' but is not overridden (abstract-method)
+W:209, 2: Arguments number differs from overridden 'initialize' method (arguments-differ)
+W:216, 0: Method 'data_received' is abstract in class 'RequestHandler' but is not overridden (abstract-method)
+W:218, 2: Arguments number differs from overridden 'initialize' method (arguments-differ)
+W:232, 0: Method 'data_received' is abstract in class 'RequestHandler' but is not overridden (abstract-method)
+W:234, 2: Arguments number differs from overridden 'initialize' method (arguments-differ)
+W:237, 2: Arguments number differs from overridden 'get' method (arguments-differ)
+W:241, 0: Method 'data_received' is abstract in class 'RequestHandler' but is not overridden (abstract-method)
+W:243, 2: Arguments number differs from overridden 'initialize' method (arguments-differ)
+W:246, 2: Arguments number differs from overridden 'post' method (arguments-differ)
+W:252, 9: Unused argument 'argv' (unused-argument)
+************* Module openhtf.io.output.console_summary
+I: 38, 0: Locally enabling invalid-name (C0103) (locally-enabled)
+C: 30, 0: Trailing whitespace (trailing-whitespace)
+C: 32, 0: Trailing whitespace (trailing-whitespace)
+C: 33, 0: Trailing whitespace (trailing-whitespace)
+C: 34, 0: Trailing whitespace (trailing-whitespace)
+C: 35, 0: Trailing whitespace (trailing-whitespace)
+C: 42, 0: Wrong continued indentation (add 10 spaces).
+                   self.BOLD, record.code_info.name, ':',
+                   ^         | (bad-continuation)
+C: 43, 0: Wrong continued indentation (add 10 spaces).
+                   record.outcome.name, self.RESET))]
+                   ^         | (bad-continuation)
+C: 59, 0: Line too long (81/80) (line-too-long)
+C: 60, 0: Trailing whitespace (trailing-whitespace)
+C: 61, 0: Wrong continued indentation (remove 2 spaces).
+                                  (self.indent*2, str(measured[result.name])))
+                                | ^ (bad-continuation)
+C: 64, 0: Trailing whitespace (trailing-whitespace)
+C: 66, 0: Trailing whitespace (trailing-whitespace)
+C: 68, 0: Trailing whitespace (trailing-whitespace)
+W: 69, 0: Bad indentation. Found 11 spaces, expected 10 (bad-indentation)
+C: 70, 0: Wrong continued indentation (add 1 space).
+                              (phase.name, phase_time_sec))
+                              ^| (bad-continuation)
+C: 72, 0: Trailing whitespace (trailing-whitespace)
+C: 73, 0: Wrong continued indentation (add 26 spaces).
+                              record.outcome_details[0].code))
+                              ^                         | (bad-continuation)
+C: 74, 0: Trailing whitespace (trailing-whitespace)
+R: 12, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
+C: 12, 0: Old-style class defined. (old-style-class)
+C: 40, 2: Invalid method name "__call__" (invalid-name)
+W: 63,16: Unused variable 'validator' (unused-variable)
+R: 12, 0: Too few public methods (0/2) (too-few-public-methods)
+W:  5, 0: Unused __main__ imported as tester (unused-import)
+W:  7, 0: Unused util imported from openhtf (unused-import)
+************* Module openhtf.io.output.json_factory
+C: 33, 0: Trailing whitespace (trailing-whitespace)
+C: 36, 0: Trailing whitespace (trailing-whitespace)
+C: 44, 0: Line too long (82/80) (line-too-long)
+C: 37, 2: Invalid method name "convert_to_dict" (invalid-name)
+C: 37, 2: Missing method docstring (missing-docstring)
+W:  5, 0: Unused test_state imported from openhtf.exe (unused-import)
+************* Module openhtf.io.output.mfg_inspector
+I: 72, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:147, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:164, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:310, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:402, 0: Locally enabling invalid-name (C0103) (locally-enabled)
+I:402, 0: Locally enabling missing-docstring (C0111) (locally-enabled)
+C: 54, 0: Wrong hanging indentation (add 2 spaces).
+  'image/jpeg': test_runs_pb2.JPG,
+  ^ | (bad-continuation)
+C: 55, 0: Wrong hanging indentation (add 2 spaces).
+  'image/png': test_runs_pb2.PNG,
+  ^ | (bad-continuation)
+C: 56, 0: Wrong hanging indentation (add 2 spaces).
+  'audio/x-wav': test_runs_pb2.WAV,
+  ^ | (bad-continuation)
+C: 57, 0: Wrong hanging indentation (add 2 spaces).
+  'text/plain': test_runs_pb2.TEXT_UTF8,
+  ^ | (bad-continuation)
+C: 58, 0: Wrong hanging indentation (add 2 spaces).
+  'image/tiff': test_runs_pb2.TIFF,
+  ^ | (bad-continuation)
+C: 59, 0: Wrong hanging indentation (add 2 spaces).
+  'video/mp4': test_runs_pb2.MP4,
+  ^ | (bad-continuation)
+C: 62, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.ERROR: test_runs_pb2.ERROR,
+  ^ | (bad-continuation)
+C: 63, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.FAIL: test_runs_pb2.FAIL,
+  ^ | (bad-continuation)
+C: 64, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.PASS: test_runs_pb2.PASS,
+  ^ | (bad-continuation)
+C: 65, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.TIMEOUT: test_runs_pb2.ERROR,
+  ^ | (bad-continuation)
+C: 69, 0: Wrong hanging indentation (add 2 spaces).
+  u.GetOptions().Extensions[units_pb2.uom_code]: num
+  ^ | (bad-continuation)
+C: 70, 0: Wrong hanging indentation (add 2 spaces).
+  for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
+  ^ | (bad-continuation)
+C:117, 0: Trailing whitespace (trailing-whitespace)
+C:118, 0: Trailing whitespace (trailing-whitespace)
+C:141, 0: Wrong continued indentation (add 36 spaces).
+      sort_keys=True, indent=2).serialize_test_record(record)
+      ^                                   | (bad-continuation)
+C:178, 0: Wrong hanging indentation (add 2 spaces).
+          dim_val,
+          ^ | (bad-continuation)
+C:179, 0: Wrong hanging indentation (add 2 spaces).
+          dim_units.suffix if dim_units.suffix else '') for
+          ^ | (bad-continuation)
+C:181, 0: Wrong hanging indentation (add 2 spaces).
+          current_value[:-1], measurement.dimensions)])
+          ^ | (bad-continuation)
+C:190, 0: Wrong hanging indentation (add 4 spaces).
+        name, tuple(d.suffix for d in measurement.dimensions)))
+        ^   | (bad-continuation)
+C:262, 0: Wrong continued indentation (add 4 spaces).
+            for d in measurement.dimensions]
+            ^   | (bad-continuation)
+C:284, 0: Line too long (86/80) (line-too-long)
+C:457, 0: Line too long (83/80) (line-too-long)
+E: 42, 0: No name 'guzzle_pb2' in module 'openhtf.io.proto' (no-name-in-module)
+E: 43, 0: No name 'test_runs_pb2' in module 'openhtf.io.proto' (no-name-in-module)
+E: 44, 0: No name 'units_pb2' in module 'openhtf.io.proto' (no-name-in-module)
+C:125, 0: Missing function docstring (missing-docstring)
+W:139, 2: Unused variable 'record_dict' (unused-variable)
+W:152,13: Redefining name 'data' from outer scope (line 47) (redefined-outer-name)
+R:206, 0: Too many local variables (16/15) (too-many-locals)
+E:247,35: Module 'openhtf.util.validators' has no 'InRange' member (no-member)
+R:213, 2: Too many nested blocks (6/5) (too-many-nested-blocks)
+E:252,37: Module 'openhtf.util.validators' has no 'RegexMatcher' member (no-member)
+R:206, 0: Too many branches (21/12) (too-many-branches)
+R:206, 0: Too many statements (52/50) (too-many-statements)
+W:367,28: Redefining name 'test_record' from outer scope (line 46) (redefined-outer-name)
+C:419, 2: Invalid method name "from_json" (invalid-name)
+W:445, 6: Redefining name 'data' from outer scope (line 47) (redefined-outer-name)
+C:447,28: Invalid variable name "f" (invalid-name)
+W:469,21: Redefining name 'test_record' from outer scope (line 46) (redefined-outer-name)
+W:493,21: Redefining name 'test_record' from outer scope (line 46) (redefined-outer-name)
+R:475, 0: Too few public methods (0/2) (too-few-public-methods)
+W: 36, 0: Unused import sys (unused-import)
+C: 31, 0: standard import "import json" comes before "import httplib2" (wrong-import-order)
+C: 32, 0: standard import "import logging" comes before "import httplib2" (wrong-import-order)
+C: 33, 0: standard import "import numbers" comes before "import httplib2" (wrong-import-order)
+C: 35, 0: standard import "import os" comes before "import httplib2" (wrong-import-order)
+C: 36, 0: standard import "import sys" comes before "import httplib2" (wrong-import-order)
+C: 37, 0: standard import "import threading" comes before "import httplib2" (wrong-import-order)
+C: 38, 0: standard import "import zlib" comes before "import httplib2" (wrong-import-order)
+************* Module openhtf.io.output.__init__
+W: 32, 0: TODO(wallacbe): Switch to util (fixme)
+************* Module openhtf.io.output
+C: 40, 2: Invalid method name "write" (invalid-name)
+C: 40, 2: Missing method docstring (missing-docstring)
+C: 43, 2: Invalid method name "close" (invalid-name)
+C: 43, 2: Missing method docstring (missing-docstring)
+C: 66, 2: Invalid method name "serialize_test_record" (invalid-name)
+C: 71, 2: Invalid method name "open_file" (invalid-name)
+C: 76, 2: Invalid method name "open_output_file" (invalid-name)
+C:102, 2: Invalid method name "__call__" (invalid-name)
+************* Module openhtf.util.data
+W: 66, 0: Bad indentation. Found 9 spaces, expected 8 (bad-indentation)
+C: 32, 0: Invalid function name "AssertEqualsAndDiff" (invalid-name)
+C: 49, 0: Invalid function name "AssertRecordsEqualNonvolatile" (invalid-name)
+C: 76,14: Invalid variable name "f" (invalid-name)
+C: 76,17: Invalid variable name "s" (invalid-name)
+C: 93, 0: Invalid function name "ConvertToBaseTypes" (invalid-name)
+R:138, 4: Redefinition of obj type from tuple to str (redefined-variable-type)
+************* Module openhtf.util.test
+C:138, 0: Invalid constant name "RecordSaver" (invalid-name)
+C:141, 0: Missing class docstring (missing-docstring)
+C:142, 2: Invalid method name "__init__" (invalid-name)
+C:164, 2: Invalid method name "_handle_phase" (invalid-name)
+E:181, 9: Context manager 'generator' doesn't implement __enter__ and __exit__. (not-context-manager)
+W:184,13: Catching too general exception Exception (broad-except)
+C:190, 2: Invalid method name "_handle_test" (invalid-name)
+C:190, 2: Missing method docstring (missing-docstring)
+R:141, 0: Too few public methods (1/2) (too-few-public-methods)
+C:254, 2: Missing function docstring (missing-docstring)
+C:289, 4: Missing function docstring (missing-docstring)
+C:297, 0: Missing class docstring (missing-docstring)
+E:299, 2: Method should have "self" as first argument (no-self-argument)
+C:312, 4: Missing function docstring (missing-docstring)
+W:319,17: Catching too general exception Exception (broad-except)
+C:332, 2: Invalid method name "assertTestPass" (invalid-name)
+C:332, 2: Missing method docstring (missing-docstring)
+C:335, 2: Invalid method name "assertTestFail" (invalid-name)
+C:335, 2: Missing method docstring (missing-docstring)
+C:338, 2: Invalid method name "assertTestError" (invalid-name)
+C:338, 2: Missing method docstring (missing-docstring)
+C:343, 2: Invalid method name "assertTestOutcomeCode" (invalid-name)
+C:351, 2: Invalid method name "assertPhaseContinue" (invalid-name)
+C:351, 2: Missing method docstring (missing-docstring)
+C:356, 2: Invalid method name "assertPhaseRepeat" (invalid-name)
+C:356, 2: Missing method docstring (missing-docstring)
+C:359, 2: Invalid method name "assertPhaseStop" (invalid-name)
+C:359, 2: Missing method docstring (missing-docstring)
+C:362, 2: Invalid method name "assertPhaseError" (invalid-name)
+C:362, 2: Missing method docstring (missing-docstring)
+C:372, 2: Invalid method name "assertNotMeasured" (invalid-name)
+C:372, 2: Missing method docstring (missing-docstring)
+C:373, 4: Missing function docstring (missing-docstring)
+C:390, 2: Invalid method name "assertMeasured" (invalid-name)
+C:390, 2: Missing method docstring (missing-docstring)
+C:400, 2: Invalid method name "assertMeasurementPass" (invalid-name)
+C:400, 2: Missing method docstring (missing-docstring)
+C:406, 2: Invalid method name "assertMeasurementFail" (invalid-name)
+C:406, 2: Missing method docstring (missing-docstring)
+************* Module openhtf.util.logs
+W: 80,10: Access to a protected member _StoreTrueAction of a client class (protected-access)
+C: 98, 0: Invalid function name "LogOnce" (invalid-name)
+C:166, 0: Invalid function name "SetupLogger" (invalid-name)
+W: 54, 0: Unused import functools (unused-import)
+W: 60, 0: Unused datetime imported from datetime (unused-import)
+************* Module openhtf.util.monitors
+C:126, 0: Trailing newlines (trailing-newlines)
+C: 55, 0: Missing class docstring (missing-docstring)
+R: 59, 2: Too many arguments (6/5) (too-many-arguments)
+C: 69, 2: Missing method docstring (missing-docstring)
+C: 96, 0: Missing function docstring (missing-docstring)
+C: 98, 2: Invalid function name "Wrapper" (invalid-name)
+C: 98, 2: Missing function docstring (missing-docstring)
+C:113, 4: Invalid function name "MonitoredPhaseFunc" (invalid-name)
+C:113, 4: Missing function docstring (missing-docstring)
+************* Module openhtf.util.measurements
+W: 45, 0: TODO(madsci): Make validators.py example. (fixme)
+C:101, 0: Invalid constant name "Outcome" (invalid-name)
+C:167, 4: Missing function docstring (missing-docstring)
+W:131, 4: Attribute 'units' defined outside __init__ (attribute-defined-outside-init)
+W:175, 6: Attribute 'outcome' defined outside __init__ (attribute-defined-outside-init)
+W:177, 6: Attribute 'outcome' defined outside __init__ (attribute-defined-outside-init)
+W:126, 4: Attribute 'docstring' defined outside __init__ (attribute-defined-outside-init)
+W:136, 4: Attribute 'dimensions' defined outside __init__ (attribute-defined-outside-init)
+C:223, 2: Missing method docstring (missing-docstring)
+R:201, 0: Too few public methods (1/2) (too-few-public-methods)
+R:246, 0: Too few public methods (1/2) (too-few-public-methods)
+R:303, 0: Too few public methods (0/2) (too-few-public-methods)
+************* Module openhtf.util.multicast
+W: 97, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+************* Module openhtf.util.stubs
+E: 24,18: Module 'openhtf.exe.phase_data' has no 'TestMetadata' member (no-member)
+E: 25, 9: Module 'openhtf.exe.phase_data' has no 'phase_data' member (no-member)
+************* Module openhtf.util.threads
+C: 37, 2: Invalid function name "RealLoop" (invalid-name)
+C: 37, 2: Invalid argument name "fn" (invalid-name)
+C: 37, 2: Missing function docstring (missing-docstring)
+W: 60,11: Catching too general exception Exception (broad-except)
+W:127, 9: Access to a protected member _lock of a client class (protected-access)
+************* Module openhtf.util.__init__
+C: 78, 0: Line too long (81/80) (line-too-long)
+************* Module openhtf.util
+R: 75, 0: Too few public methods (0/2) (too-few-public-methods)
+************* Module openhtf.util.validators
+E: 88, 0: Bad option value 'g-import-not-at-top' (bad-option-value)
+C: 63, 2: Missing method docstring (missing-docstring)
+C: 69, 2: Invalid method name "__getattr__" (invalid-name)
+C: 87, 4: Invalid method name "__call__" (invalid-name)
+C:113, 4: Invalid method name "__eq__" (invalid-name)
+C:117, 4: Invalid method name "__ne__" (invalid-name)
+R: 76, 2: Too few public methods (0/2) (too-few-public-methods)
+C:120, 2: Missing method docstring (missing-docstring)
+C:133, 4: Invalid method name "__call__" (invalid-name)
+C:136, 4: Invalid method name "__deepcopy__" (invalid-name)
+C:142, 4: Invalid method name "__eq__" (invalid-name)
+C:145, 4: Invalid method name "__ne__" (invalid-name)
+R:126, 2: Too few public methods (0/2) (too-few-public-methods)
+C:150, 2: Missing method docstring (missing-docstring)
+************* Module openhtf.util.functions
+C: 45, 0: Trailing newlines (trailing-newlines)
+C: 21, 0: Invalid function name "CallOnce" (invalid-name)
+C: 33, 2: Invalid function name "_Wrapper" (invalid-name)
+C: 33, 2: Missing function docstring (missing-docstring)
+************* Module openhtf.util.units
+C: 71, 0: Line too long (81/80) (line-too-long)
+C: 75, 0: Line too long (85/80) (line-too-long)
+C: 85, 0: Line too long (90/80) (line-too-long)
+C: 89, 0: Line too long (92/80) (line-too-long)
+C: 95, 0: Line too long (90/80) (line-too-long)
+C: 97, 0: Line too long (102/80) (line-too-long)
+C: 99, 0: Line too long (111/80) (line-too-long)
+C:103, 0: Line too long (97/80) (line-too-long)
+C:105, 0: Line too long (107/80) (line-too-long)
+C:107, 0: Line too long (91/80) (line-too-long)
+C:109, 0: Line too long (123/80) (line-too-long)
+C:111, 0: Line too long (122/80) (line-too-long)
+C:113, 0: Line too long (83/80) (line-too-long)
+C:115, 0: Line too long (115/80) (line-too-long)
+C:117, 0: Line too long (81/80) (line-too-long)
+C:119, 0: Line too long (83/80) (line-too-long)
+C:123, 0: Line too long (81/80) (line-too-long)
+C:125, 0: Line too long (83/80) (line-too-long)
+C:153, 0: Line too long (90/80) (line-too-long)
+C:163, 0: Line too long (85/80) (line-too-long)
+C:173, 0: Line too long (101/80) (line-too-long)
+C:177, 0: Line too long (105/80) (line-too-long)
+C:181, 0: Line too long (81/80) (line-too-long)
+C:185, 0: Line too long (83/80) (line-too-long)
+C:189, 0: Line too long (91/80) (line-too-long)
+C:195, 0: Line too long (103/80) (line-too-long)
+C:197, 0: Line too long (97/80) (line-too-long)
+C:233, 0: Line too long (91/80) (line-too-long)
+C:241, 0: Line too long (142/80) (line-too-long)
+C:243, 0: Line too long (94/80) (line-too-long)
+C:247, 0: Line too long (84/80) (line-too-long)
+C:249, 0: Line too long (81/80) (line-too-long)
+C:275, 0: Line too long (87/80) (line-too-long)
+C:277, 0: Line too long (87/80) (line-too-long)
+C:279, 0: Line too long (99/80) (line-too-long)
+C:281, 0: Line too long (93/80) (line-too-long)
+C:319, 0: Line too long (92/80) (line-too-long)
+C:345, 0: Line too long (118/80) (line-too-long)
+C:355, 0: Line too long (82/80) (line-too-long)
+C:357, 0: Line too long (107/80) (line-too-long)
+C:361, 0: Line too long (85/80) (line-too-long)
+C:363, 0: Line too long (91/80) (line-too-long)
+C:365, 0: Line too long (81/80) (line-too-long)
+C:367, 0: Line too long (210/80) (line-too-long)
+C:368, 0: Line too long (96/80) (line-too-long)
+C:369, 0: Line too long (181/80) (line-too-long)
+C:370, 0: Line too long (83/80) (line-too-long)
+C:371, 0: Line too long (195/80) (line-too-long)
+C:372, 0: Line too long (89/80) (line-too-long)
+C:373, 0: Line too long (206/80) (line-too-long)
+C:374, 0: Line too long (94/80) (line-too-long)
+C:375, 0: Line too long (89/80) (line-too-long)
+C:381, 0: Line too long (102/80) (line-too-long)
+C:383, 0: Line too long (97/80) (line-too-long)
+C:385, 0: Line too long (86/80) (line-too-long)
+C:387, 0: Line too long (81/80) (line-too-long)
+C:389, 0: Line too long (97/80) (line-too-long)
+C:391, 0: Line too long (98/80) (line-too-long)
+C:395, 0: Line too long (99/80) (line-too-long)
+C:397, 0: Line too long (88/80) (line-too-long)
+C:399, 0: Line too long (99/80) (line-too-long)
+C:401, 0: Line too long (93/80) (line-too-long)
+C:403, 0: Line too long (91/80) (line-too-long)
+C:405, 0: Line too long (86/80) (line-too-long)
+C:407, 0: Line too long (89/80) (line-too-long)
+C:409, 0: Line too long (96/80) (line-too-long)
+C:411, 0: Line too long (82/80) (line-too-long)
+C:413, 0: Line too long (86/80) (line-too-long)
+C:431, 0: Line too long (109/80) (line-too-long)
+C:433, 0: Line too long (96/80) (line-too-long)
+C:435, 0: Line too long (135/80) (line-too-long)
+C:439, 0: Line too long (84/80) (line-too-long)
+C:441, 0: Line too long (91/80) (line-too-long)
+C:443, 0: Line too long (120/80) (line-too-long)
+C:451, 0: Line too long (120/80) (line-too-long)
+C:453, 0: Line too long (91/80) (line-too-long)
+C:457, 0: Line too long (81/80) (line-too-long)
+C:461, 0: Line too long (111/80) (line-too-long)
+C:463, 0: Line too long (111/80) (line-too-long)
+C:465, 0: Line too long (85/80) (line-too-long)
+C:467, 0: Line too long (105/80) (line-too-long)
+C:473, 0: Line too long (96/80) (line-too-long)
+C:479, 0: Line too long (87/80) (line-too-long)
+C:481, 0: Line too long (98/80) (line-too-long)
+C:487, 0: Line too long (164/80) (line-too-long)
+C:488, 0: Line too long (81/80) (line-too-long)
+C:489, 0: Line too long (172/80) (line-too-long)
+C:490, 0: Line too long (85/80) (line-too-long)
+C:491, 0: Line too long (170/80) (line-too-long)
+C:492, 0: Line too long (84/80) (line-too-long)
+C:495, 0: Line too long (186/80) (line-too-long)
+C:496, 0: Line too long (92/80) (line-too-long)
+C:497, 0: Line too long (182/80) (line-too-long)
+C:498, 0: Line too long (90/80) (line-too-long)
+C:499, 0: Line too long (176/80) (line-too-long)
+C:500, 0: Line too long (87/80) (line-too-long)
+C:501, 0: Line too long (166/80) (line-too-long)
+C:502, 0: Line too long (82/80) (line-too-long)
+C:503, 0: Line too long (95/80) (line-too-long)
+C:549, 0: Line too long (81/80) (line-too-long)
+C:567, 0: Line too long (101/80) (line-too-long)
+C:569, 0: Line too long (99/80) (line-too-long)
+C:577, 0: Line too long (88/80) (line-too-long)
+C:579, 0: Line too long (92/80) (line-too-long)
+C:591, 0: Line too long (145/80) (line-too-long)
+C:595, 0: Line too long (84/80) (line-too-long)
+C:599, 0: Line too long (94/80) (line-too-long)
+C:603, 0: Line too long (84/80) (line-too-long)
+C:605, 0: Line too long (110/80) (line-too-long)
+C:609, 0: Line too long (87/80) (line-too-long)
+C:619, 0: Line too long (105/80) (line-too-long)
+C:625, 0: Line too long (95/80) (line-too-long)
+C:629, 0: Line too long (94/80) (line-too-long)
+C:633, 0: Line too long (95/80) (line-too-long)
+C:635, 0: Line too long (97/80) (line-too-long)
+C:643, 0: Line too long (92/80) (line-too-long)
+C:645, 0: Line too long (85/80) (line-too-long)
+C:647, 0: Line too long (109/80) (line-too-long)
+C:649, 0: Line too long (98/80) (line-too-long)
+C:651, 0: Line too long (84/80) (line-too-long)
+C:653, 0: Line too long (107/80) (line-too-long)
+C:657, 0: Line too long (81/80) (line-too-long)
+C:659, 0: Line too long (105/80) (line-too-long)
+C:663, 0: Line too long (104/80) (line-too-long)
+C:667, 0: Line too long (85/80) (line-too-long)
+C:669, 0: Line too long (103/80) (line-too-long)
+C:675, 0: Line too long (91/80) (line-too-long)
+C:693, 0: Line too long (82/80) (line-too-long)
+C:707, 0: Line too long (85/80) (line-too-long)
+C:719, 0: Line too long (95/80) (line-too-long)
+C:721, 0: Line too long (94/80) (line-too-long)
+C:725, 0: Line too long (95/80) (line-too-long)
+C:729, 0: Line too long (97/80) (line-too-long)
+C:733, 0: Line too long (89/80) (line-too-long)
+C:743, 0: Line too long (82/80) (line-too-long)
+C:749, 0: Line too long (81/80) (line-too-long)
+C:753, 0: Line too long (125/80) (line-too-long)
+C:757, 0: Line too long (88/80) (line-too-long)
+C:765, 0: Line too long (97/80) (line-too-long)
+C:767, 0: Line too long (99/80) (line-too-long)
+C:793, 0: Line too long (81/80) (line-too-long)
+C:831, 0: Line too long (123/80) (line-too-long)
+C:845, 0: Line too long (109/80) (line-too-long)
+C:859, 0: Line too long (82/80) (line-too-long)
+C:861, 0: Line too long (99/80) (line-too-long)
+C:873, 0: Line too long (82/80) (line-too-long)
+C:895, 0: Line too long (93/80) (line-too-long)
+C:901, 0: Line too long (91/80) (line-too-long)
+C:903, 0: Line too long (82/80) (line-too-long)
+C:943, 0: Line too long (126/80) (line-too-long)
+C:945, 0: Line too long (86/80) (line-too-long)
+C:947, 0: Line too long (97/80) (line-too-long)
+C:951, 0: Line too long (87/80) (line-too-long)
+C:969, 0: Line too long (101/80) (line-too-long)
+C:971, 0: Line too long (89/80) (line-too-long)
+C:991, 0: Line too long (91/80) (line-too-long)
+C:999, 0: Line too long (90/80) (line-too-long)
+C:1005, 0: Line too long (102/80) (line-too-long)
+C:1007, 0: Line too long (109/80) (line-too-long)
+C:1013, 0: Line too long (83/80) (line-too-long)
+C:1015, 0: Line too long (107/80) (line-too-long)
+C:1017, 0: Line too long (123/80) (line-too-long)
+C:1023, 0: Line too long (106/80) (line-too-long)
+C:1025, 0: Line too long (139/80) (line-too-long)
+C:1029, 0: Line too long (85/80) (line-too-long)
+C:1035, 0: Line too long (140/80) (line-too-long)
+C:1039, 0: Line too long (108/80) (line-too-long)
+C:1041, 0: Line too long (112/80) (line-too-long)
+C:1045, 0: Line too long (98/80) (line-too-long)
+C:1105, 0: Line too long (124/80) (line-too-long)
+C:1113, 0: Line too long (86/80) (line-too-long)
+C:1117, 0: Line too long (103/80) (line-too-long)
+C:1123, 0: Line too long (102/80) (line-too-long)
+C:1131, 0: Line too long (93/80) (line-too-long)
+C:1133, 0: Line too long (118/80) (line-too-long)
+C:1137, 0: Line too long (98/80) (line-too-long)
+C:1139, 0: Line too long (136/80) (line-too-long)
+C:1141, 0: Line too long (84/80) (line-too-long)
+C:1143, 0: Line too long (91/80) (line-too-long)
+C:1145, 0: Line too long (84/80) (line-too-long)
+C:1149, 0: Line too long (93/80) (line-too-long)
+C:1151, 0: Line too long (109/80) (line-too-long)
+C:1153, 0: Line too long (100/80) (line-too-long)
+C:1171, 0: Line too long (87/80) (line-too-long)
+C:1175, 0: Line too long (125/80) (line-too-long)
+C:1177, 0: Line too long (154/80) (line-too-long)
+C:1179, 0: Line too long (169/80) (line-too-long)
+C:1183, 0: Line too long (82/80) (line-too-long)
+C:1187, 0: Line too long (85/80) (line-too-long)
+C:1191, 0: Line too long (103/80) (line-too-long)
+C:1201, 0: Line too long (101/80) (line-too-long)
+C:1209, 0: Line too long (85/80) (line-too-long)
+C:1211, 0: Line too long (82/80) (line-too-long)
+C:1213, 0: Line too long (100/80) (line-too-long)
+C:1215, 0: Line too long (141/80) (line-too-long)
+C:1219, 0: Line too long (107/80) (line-too-long)
+C:1225, 0: Line too long (81/80) (line-too-long)
+C:1243, 0: Line too long (87/80) (line-too-long)
+C:1247, 0: Line too long (99/80) (line-too-long)
+C:1249, 0: Line too long (164/80) (line-too-long)
+C:1251, 0: Line too long (179/80) (line-too-long)
+C:1252, 0: Line too long (81/80) (line-too-long)
+C:1257, 0: Line too long (117/80) (line-too-long)
+C:1259, 0: Line too long (135/80) (line-too-long)
+C:1277, 0: Line too long (93/80) (line-too-long)
+C:1281, 0: Line too long (87/80) (line-too-long)
+C:1283, 0: Line too long (97/80) (line-too-long)
+C:1285, 0: Line too long (99/80) (line-too-long)
+C:1287, 0: Line too long (94/80) (line-too-long)
+C:1295, 0: Line too long (84/80) (line-too-long)
+C:1297, 0: Line too long (104/80) (line-too-long)
+C:1381, 0: Line too long (97/80) (line-too-long)
+C:1383, 0: Line too long (86/80) (line-too-long)
+C:1395, 0: Line too long (106/80) (line-too-long)
+C:1397, 0: Line too long (116/80) (line-too-long)
+C:1399, 0: Line too long (89/80) (line-too-long)
+C:1401, 0: Line too long (83/80) (line-too-long)
+C:1427, 0: Line too long (84/80) (line-too-long)
+C:1447, 0: Line too long (90/80) (line-too-long)
+C:1449, 0: Line too long (115/80) (line-too-long)
+C:1451, 0: Line too long (115/80) (line-too-long)
+C:1453, 0: Line too long (95/80) (line-too-long)
+C:1455, 0: Line too long (129/80) (line-too-long)
+C:1459, 0: Line too long (101/80) (line-too-long)
+C:1461, 0: Line too long (90/80) (line-too-long)
+C:1501, 0: Line too long (92/80) (line-too-long)
+C:1503, 0: Line too long (90/80) (line-too-long)
+C:1505, 0: Line too long (81/80) (line-too-long)
+C:1509, 0: Line too long (92/80) (line-too-long)
+C:1511, 0: Line too long (90/80) (line-too-long)
+C:1515, 0: Line too long (92/80) (line-too-long)
+C:1517, 0: Line too long (90/80) (line-too-long)
+C:1521, 0: Line too long (92/80) (line-too-long)
+C:1523, 0: Line too long (90/80) (line-too-long)
+C:1531, 0: Line too long (92/80) (line-too-long)
+C:1533, 0: Line too long (90/80) (line-too-long)
+C:1541, 0: Line too long (90/80) (line-too-long)
+C:1543, 0: Line too long (92/80) (line-too-long)
+C:1547, 0: Line too long (82/80) (line-too-long)
+C:1549, 0: Line too long (82/80) (line-too-long)
+C:1553, 0: Line too long (89/80) (line-too-long)
+C:1563, 0: Line too long (115/80) (line-too-long)
+C:1565, 0: Line too long (90/80) (line-too-long)
+C:1567, 0: Line too long (81/80) (line-too-long)
+C:1595, 0: Line too long (81/80) (line-too-long)
+C:1597, 0: Line too long (89/80) (line-too-long)
+C:1613, 0: Line too long (82/80) (line-too-long)
+C:1615, 0: Line too long (94/80) (line-too-long)
+C:1617, 0: Line too long (94/80) (line-too-long)
+C:1623, 0: Line too long (98/80) (line-too-long)
+C:1625, 0: Line too long (89/80) (line-too-long)
+C:1627, 0: Line too long (83/80) (line-too-long)
+C:1645, 0: Line too long (82/80) (line-too-long)
+C:1649, 0: Line too long (81/80) (line-too-long)
+C:1651, 0: Line too long (83/80) (line-too-long)
+C:1653, 0: Line too long (89/80) (line-too-long)
+C:1655, 0: Line too long (87/80) (line-too-long)
+C:1657, 0: Line too long (90/80) (line-too-long)
+C:1659, 0: Line too long (92/80) (line-too-long)
+C:1661, 0: Line too long (98/80) (line-too-long)
+C:1663, 0: Line too long (96/80) (line-too-long)
+C:1665, 0: Line too long (92/80) (line-too-long)
+C:1667, 0: Line too long (94/80) (line-too-long)
+C:1669, 0: Line too long (100/80) (line-too-long)
+C:1671, 0: Line too long (98/80) (line-too-long)
+C:1673, 0: Line too long (82/80) (line-too-long)
+C:1675, 0: Line too long (82/80) (line-too-long)
+C:1677, 0: Line too long (85/80) (line-too-long)
+C:1679, 0: Line too long (82/80) (line-too-long)
+C:1681, 0: Line too long (82/80) (line-too-long)
+C:1685, 0: Line too long (82/80) (line-too-long)
+C:1689, 0: Line too long (92/80) (line-too-long)
+C:1693, 0: Line too long (134/80) (line-too-long)
+C:1699, 0: Line too long (86/80) (line-too-long)
+C:1707, 0: Line too long (85/80) (line-too-long)
+C:1709, 0: Line too long (83/80) (line-too-long)
+C:1711, 0: Line too long (86/80) (line-too-long)
+C:1713, 0: Line too long (88/80) (line-too-long)
+C:1715, 0: Line too long (94/80) (line-too-long)
+C:1717, 0: Line too long (92/80) (line-too-long)
+C:1719, 0: Line too long (88/80) (line-too-long)
+C:1721, 0: Line too long (90/80) (line-too-long)
+C:1723, 0: Line too long (96/80) (line-too-long)
+C:1725, 0: Line too long (94/80) (line-too-long)
+C:1731, 0: Line too long (93/80) (line-too-long)
+C:1733, 0: Line too long (90/80) (line-too-long)
+C:1743, 0: Line too long (85/80) (line-too-long)
+C:1745, 0: Line too long (83/80) (line-too-long)
+C:1749, 0: Line too long (83/80) (line-too-long)
+C:1753, 0: Line too long (87/80) (line-too-long)
+C:1757, 0: Line too long (86/80) (line-too-long)
+C:1759, 0: Line too long (101/80) (line-too-long)
+C:1761, 0: Line too long (87/80) (line-too-long)
+C:1763, 0: Line too long (83/80) (line-too-long)
+C:1765, 0: Line too long (96/80) (line-too-long)
+C:1767, 0: Line too long (99/80) (line-too-long)
+C:1769, 0: Line too long (112/80) (line-too-long)
+C:1771, 0: Line too long (94/80) (line-too-long)
+C:1773, 0: Line too long (107/80) (line-too-long)
+C:1775, 0: Line too long (97/80) (line-too-long)
+C:1777, 0: Line too long (110/80) (line-too-long)
+C:1779, 0: Line too long (88/80) (line-too-long)
+C:1791, 0: Line too long (97/80) (line-too-long)
+C:1809, 0: Line too long (83/80) (line-too-long)
+C:1819, 0: Line too long (101/80) (line-too-long)
+C:1827, 0: Line too long (85/80) (line-too-long)
+C:1829, 0: Line too long (104/80) (line-too-long)
+C:1833, 0: Line too long (105/80) (line-too-long)
+C:1835, 0: Line too long (103/80) (line-too-long)
+C:1837, 0: Line too long (81/80) (line-too-long)
+C:1839, 0: Line too long (94/80) (line-too-long)
+C:1841, 0: Line too long (92/80) (line-too-long)
+C:1843, 0: Line too long (114/80) (line-too-long)
+C:1845, 0: Line too long (90/80) (line-too-long)
+C:1847, 0: Line too long (103/80) (line-too-long)
+C:1849, 0: Line too long (92/80) (line-too-long)
+C:1851, 0: Line too long (88/80) (line-too-long)
+C:1853, 0: Line too long (97/80) (line-too-long)
+C:1855, 0: Line too long (82/80) (line-too-long)
+C:1865, 0: Line too long (95/80) (line-too-long)
+C:1869, 0: Line too long (84/80) (line-too-long)
+C:1871, 0: Line too long (100/80) (line-too-long)
+C:1873, 0: Line too long (82/80) (line-too-long)
+C:1875, 0: Line too long (100/80) (line-too-long)
+C:1877, 0: Line too long (108/80) (line-too-long)
+C:1879, 0: Line too long (109/80) (line-too-long)
+C:1881, 0: Line too long (107/80) (line-too-long)
+C:1883, 0: Line too long (85/80) (line-too-long)
+C:1885, 0: Line too long (98/80) (line-too-long)
+C:1887, 0: Line too long (96/80) (line-too-long)
+C:1889, 0: Line too long (118/80) (line-too-long)
+C:1891, 0: Line too long (94/80) (line-too-long)
+C:1893, 0: Line too long (107/80) (line-too-long)
+C:1895, 0: Line too long (100/80) (line-too-long)
+C:1897, 0: Line too long (95/80) (line-too-long)
+C:1899, 0: Line too long (84/80) (line-too-long)
+C:1901, 0: Line too long (93/80) (line-too-long)
+C:1903, 0: Line too long (82/80) (line-too-long)
+C:1907, 0: Line too long (89/80) (line-too-long)
+C:1909, 0: Line too long (91/80) (line-too-long)
+C:1911, 0: Line too long (97/80) (line-too-long)
+C:1919, 0: Line too long (86/80) (line-too-long)
+C:1927, 0: Line too long (85/80) (line-too-long)
+C:1929, 0: Line too long (83/80) (line-too-long)
+C:1931, 0: Line too long (102/80) (line-too-long)
+C:1935, 0: Line too long (107/80) (line-too-long)
+C:1937, 0: Line too long (109/80) (line-too-long)
+C:1939, 0: Line too long (115/80) (line-too-long)
+C:1941, 0: Line too long (113/80) (line-too-long)
+C:1943, 0: Line too long (83/80) (line-too-long)
+C:1945, 0: Line too long (85/80) (line-too-long)
+C:1947, 0: Line too long (91/80) (line-too-long)
+C:1949, 0: Line too long (89/80) (line-too-long)
+C:1951, 0: Line too long (96/80) (line-too-long)
+C:1955, 0: Line too long (98/80) (line-too-long)
+C:1957, 0: Line too long (104/80) (line-too-long)
+C:1959, 0: Line too long (102/80) (line-too-long)
+C:1961, 0: Line too long (94/80) (line-too-long)
+C:1963, 0: Line too long (96/80) (line-too-long)
+C:1965, 0: Line too long (102/80) (line-too-long)
+C:1967, 0: Line too long (100/80) (line-too-long)
+C:1969, 0: Line too long (99/80) (line-too-long)
+C:1971, 0: Line too long (103/80) (line-too-long)
+C:1973, 0: Line too long (105/80) (line-too-long)
+C:1975, 0: Line too long (111/80) (line-too-long)
+C:1977, 0: Line too long (109/80) (line-too-long)
+C:1981, 0: Line too long (81/80) (line-too-long)
+C:1983, 0: Line too long (87/80) (line-too-long)
+C:1985, 0: Line too long (85/80) (line-too-long)
+C:1987, 0: Line too long (92/80) (line-too-long)
+C:1989, 0: Line too long (94/80) (line-too-long)
+C:1991, 0: Line too long (100/80) (line-too-long)
+C:1993, 0: Line too long (98/80) (line-too-long)
+C:1995, 0: Line too long (90/80) (line-too-long)
+C:1997, 0: Line too long (92/80) (line-too-long)
+C:1999, 0: Line too long (98/80) (line-too-long)
+C:2001, 0: Line too long (96/80) (line-too-long)
+C:2003, 0: Line too long (91/80) (line-too-long)
+C:2011, 0: Line too long (85/80) (line-too-long)
+C:2015, 0: Line too long (81/80) (line-too-long)
+C:2025, 0: Line too long (86/80) (line-too-long)
+C:2027, 0: Line too long (118/80) (line-too-long)
+C:2029, 0: Line too long (88/80) (line-too-long)
+C:2037, 0: Line too long (85/80) (line-too-long)
+C:2041, 0: Line too long (97/80) (line-too-long)
+C:2055, 0: Line too long (81/80) (line-too-long)
+C:2059, 0: Line too long (92/80) (line-too-long)
+C:2061, 0: Line too long (90/80) (line-too-long)
+C:2063, 0: Line too long (90/80) (line-too-long)
+C:2077, 0: Line too long (95/80) (line-too-long)
+C:2089, 0: Line too long (85/80) (line-too-long)
+C:2093, 0: Line too long (86/80) (line-too-long)
+C:2105, 0: Line too long (86/80) (line-too-long)
+C:2107, 0: Line too long (92/80) (line-too-long)
+C:2109, 0: Line too long (90/80) (line-too-long)
+C:2111, 0: Line too long (93/80) (line-too-long)
+C:2125, 0: Line too long (111/80) (line-too-long)
+C:2137, 0: Line too long (89/80) (line-too-long)
+C:2141, 0: Line too long (103/80) (line-too-long)
+C:2145, 0: Line too long (82/80) (line-too-long)
+C:2151, 0: Line too long (83/80) (line-too-long)
+C:2153, 0: Line too long (83/80) (line-too-long)
+C:2163, 0: Line too long (125/80) (line-too-long)
+C:2167, 0: Line too long (84/80) (line-too-long)
+C:2171, 0: Line too long (83/80) (line-too-long)
+C:2181, 0: Line too long (94/80) (line-too-long)
+C:2183, 0: Line too long (83/80) (line-too-long)
+C:2189, 0: Line too long (116/80) (line-too-long)
+C:2191, 0: Line too long (112/80) (line-too-long)
+C:2193, 0: Line too long (109/80) (line-too-long)
+C:2195, 0: Line too long (95/80) (line-too-long)
+C:2197, 0: Line too long (85/80) (line-too-long)
+C:2199, 0: Line too long (86/80) (line-too-long)
+C:2201, 0: Line too long (95/80) (line-too-long)
+C:2203, 0: Line too long (95/80) (line-too-long)
+C:2205, 0: Line too long (82/80) (line-too-long)
+C:2207, 0: Line too long (104/80) (line-too-long)
+C:2211, 0: Line too long (93/80) (line-too-long)
+C:2219, 0: Line too long (90/80) (line-too-long)
+C:2225, 0: Line too long (82/80) (line-too-long)
+C:2227, 0: Line too long (85/80) (line-too-long)
+C:2237, 0: Line too long (106/80) (line-too-long)
+C:2243, 0: Line too long (84/80) (line-too-long)
+C:2261, 0: Line too long (91/80) (line-too-long)
+C:2263, 0: Line too long (108/80) (line-too-long)
+C:2267, 0: Line too long (82/80) (line-too-long)
+C:2289, 0: Line too long (91/80) (line-too-long)
+C:2303, 0: Line too long (88/80) (line-too-long)
+C:2309, 0: Line too long (87/80) (line-too-long)
+C:2315, 0: Line too long (95/80) (line-too-long)
+C:2321, 0: Line too long (108/80) (line-too-long)
+C:2325, 0: Line too long (105/80) (line-too-long)
+C:2327, 0: Line too long (88/80) (line-too-long)
+C:2339, 0: Line too long (84/80) (line-too-long)
+C:2361, 0: Line too long (88/80) (line-too-long)
+C:2367, 0: Line too long (86/80) (line-too-long)
+C:2369, 0: Line too long (84/80) (line-too-long)
+C:2375, 0: Line too long (91/80) (line-too-long)
+C:2377, 0: Line too long (94/80) (line-too-long)
+C:2379, 0: Line too long (94/80) (line-too-long)
+C:2385, 0: Line too long (200/80) (line-too-long)
+C:2386, 0: Line too long (92/80) (line-too-long)
+C:2389, 0: Line too long (96/80) (line-too-long)
+C:2391, 0: Line too long (92/80) (line-too-long)
+C:2393, 0: Line too long (210/80) (line-too-long)
+C:2394, 0: Line too long (97/80) (line-too-long)
+C:2395, 0: Line too long (92/80) (line-too-long)
+C:2397, 0: Line too long (98/80) (line-too-long)
+C:2399, 0: Line too long (96/80) (line-too-long)
+C:2401, 0: Line too long (96/80) (line-too-long)
+C:2405, 0: Line too long (86/80) (line-too-long)
+C:2407, 0: Line too long (92/80) (line-too-long)
+C:2409, 0: Line too long (90/80) (line-too-long)
+C:2415, 0: Line too long (85/80) (line-too-long)
+C:2417, 0: Line too long (109/80) (line-too-long)
+C:2419, 0: Line too long (105/80) (line-too-long)
+C:2425, 0: Line too long (91/80) (line-too-long)
+C:2427, 0: Line too long (225/80) (line-too-long)
+C:2428, 0: Line too long (102/80) (line-too-long)
+C:2429, 0: Line too long (225/80) (line-too-long)
+C:2430, 0: Line too long (102/80) (line-too-long)
+C:2431, 0: Line too long (229/80) (line-too-long)
+C:2432, 0: Line too long (104/80) (line-too-long)
+C:2433, 0: Line too long (187/80) (line-too-long)
+C:2434, 0: Line too long (86/80) (line-too-long)
+C:2435, 0: Line too long (149/80) (line-too-long)
+C:2437, 0: Line too long (147/80) (line-too-long)
+C:2439, 0: Line too long (215/80) (line-too-long)
+C:2440, 0: Line too long (97/80) (line-too-long)
+C:2441, 0: Line too long (133/80) (line-too-long)
+C:2443, 0: Line too long (215/80) (line-too-long)
+C:2444, 0: Line too long (97/80) (line-too-long)
+C:2445, 0: Line too long (219/80) (line-too-long)
+C:2446, 0: Line too long (99/80) (line-too-long)
+C:2447, 0: Line too long (177/80) (line-too-long)
+C:2448, 0: Line too long (81/80) (line-too-long)
+C:2449, 0: Line too long (139/80) (line-too-long)
+C:2451, 0: Line too long (137/80) (line-too-long)
+C:2453, 0: Line too long (109/80) (line-too-long)
+C:2461, 0: Line too long (89/80) (line-too-long)
+C:2463, 0: Line too long (115/80) (line-too-long)
+C:2465, 0: Line too long (107/80) (line-too-long)
+C:2467, 0: Line too long (109/80) (line-too-long)
+C:2469, 0: Line too long (113/80) (line-too-long)
+C:2471, 0: Line too long (104/80) (line-too-long)
+C:2473, 0: Line too long (108/80) (line-too-long)
+C:2475, 0: Line too long (81/80) (line-too-long)
+C:2477, 0: Line too long (83/80) (line-too-long)
+C:2479, 0: Line too long (89/80) (line-too-long)
+C:2481, 0: Line too long (87/80) (line-too-long)
+C:2483, 0: Line too long (93/80) (line-too-long)
+C:2485, 0: Line too long (95/80) (line-too-long)
+C:2487, 0: Line too long (101/80) (line-too-long)
+C:2489, 0: Line too long (99/80) (line-too-long)
+C:2493, 0: Line too long (82/80) (line-too-long)
+C:2499, 0: Line too long (152/80) (line-too-long)
+C:2501, 0: Line too long (171/80) (line-too-long)
+C:2503, 0: Line too long (142/80) (line-too-long)
+C:2505, 0: Line too long (113/80) (line-too-long)
+C:2507, 0: Line too long (111/80) (line-too-long)
+C:2511, 0: Line too long (100/80) (line-too-long)
+C:2513, 0: Line too long (96/80) (line-too-long)
+C:2515, 0: Line too long (106/80) (line-too-long)
+C:2517, 0: Line too long (83/80) (line-too-long)
+C:2519, 0: Line too long (87/80) (line-too-long)
+C:2521, 0: Line too long (104/80) (line-too-long)
+C:2523, 0: Line too long (95/80) (line-too-long)
+C:2525, 0: Line too long (93/80) (line-too-long)
+C:2529, 0: Line too long (94/80) (line-too-long)
+C:2531, 0: Line too long (96/80) (line-too-long)
+C:2533, 0: Line too long (102/80) (line-too-long)
+C:2535, 0: Line too long (100/80) (line-too-long)
+C:2537, 0: Line too long (94/80) (line-too-long)
+C:2545, 0: Line too long (84/80) (line-too-long)
+C:2547, 0: Line too long (90/80) (line-too-long)
+C:2563, 0: Line too long (96/80) (line-too-long)
+C:2565, 0: Line too long (102/80) (line-too-long)
+C:2567, 0: Line too long (100/80) (line-too-long)
+C:2569, 0: Line too long (93/80) (line-too-long)
+C:2573, 0: Line too long (94/80) (line-too-long)
+C:2575, 0: Line too long (100/80) (line-too-long)
+C:2579, 0: Line too long (111/80) (line-too-long)
+C:2581, 0: Line too long (84/80) (line-too-long)
+C:2583, 0: Line too long (97/80) (line-too-long)
+C:2585, 0: Line too long (83/80) (line-too-long)
+C:2587, 0: Line too long (106/80) (line-too-long)
+C:2597, 0: Line too long (82/80) (line-too-long)
+C:2599, 0: Line too long (84/80) (line-too-long)
+C:2601, 0: Line too long (88/80) (line-too-long)
+C:2603, 0: Line too long (99/80) (line-too-long)
+C:2605, 0: Line too long (107/80) (line-too-long)
+C:2607, 0: Line too long (106/80) (line-too-long)
+C:2613, 0: Line too long (85/80) (line-too-long)
+C:2615, 0: Line too long (83/80) (line-too-long)
+C:2621, 0: Line too long (85/80) (line-too-long)
+C:2623, 0: Line too long (83/80) (line-too-long)
+C:2625, 0: Line too long (106/80) (line-too-long)
+C:2627, 0: Line too long (87/80) (line-too-long)
+C:2629, 0: Line too long (81/80) (line-too-long)
+C:2631, 0: Line too long (87/80) (line-too-long)
+C:2633, 0: Line too long (93/80) (line-too-long)
+C:2637, 0: Line too long (111/80) (line-too-long)
+C:2639, 0: Line too long (84/80) (line-too-long)
+C:2641, 0: Line too long (83/80) (line-too-long)
+C:2643, 0: Line too long (89/80) (line-too-long)
+C:2649, 0: Line too long (173/80) (line-too-long)
+C:2651, 0: Line too long (96/80) (line-too-long)
+C:2653, 0: Line too long (122/80) (line-too-long)
+C:2655, 0: Line too long (120/80) (line-too-long)
+C:2659, 0: Line too long (109/80) (line-too-long)
+C:2663, 0: Line too long (105/80) (line-too-long)
+C:2665, 0: Line too long (82/80) (line-too-long)
+C:2671, 0: Line too long (121/80) (line-too-long)
+C:2673, 0: Line too long (102/80) (line-too-long)
+C:2675, 0: Line too long (92/80) (line-too-long)
+C:2677, 0: Line too long (83/80) (line-too-long)
+C:2679, 0: Line too long (87/80) (line-too-long)
+C:2681, 0: Line too long (149/80) (line-too-long)
+C:2683, 0: Line too long (122/80) (line-too-long)
+C:2685, 0: Line too long (113/80) (line-too-long)
+C:2687, 0: Line too long (135/80) (line-too-long)
+C:2689, 0: Line too long (108/80) (line-too-long)
+C:2691, 0: Line too long (149/80) (line-too-long)
+C:2693, 0: Line too long (122/80) (line-too-long)
+C:2695, 0: Line too long (94/80) (line-too-long)
+C:2697, 0: Line too long (100/80) (line-too-long)
+C:2699, 0: Line too long (141/80) (line-too-long)
+C:2701, 0: Line too long (114/80) (line-too-long)
+C:2703, 0: Line too long (98/80) (line-too-long)
+C:2705, 0: Line too long (139/80) (line-too-long)
+C:2707, 0: Line too long (112/80) (line-too-long)
+C:2709, 0: Line too long (82/80) (line-too-long)
+C:2711, 0: Line too long (97/80) (line-too-long)
+C:2713, 0: Line too long (132/80) (line-too-long)
+C:2715, 0: Line too long (95/80) (line-too-long)
+C:2717, 0: Line too long (83/80) (line-too-long)
+C:2719, 0: Line too long (96/80) (line-too-long)
+C:2721, 0: Line too long (95/80) (line-too-long)
+C:2723, 0: Line too long (113/80) (line-too-long)
+C:2725, 0: Line too long (113/80) (line-too-long)
+C:2729, 0: Line too long (98/80) (line-too-long)
+C:2731, 0: Line too long (100/80) (line-too-long)
+C:2733, 0: Line too long (106/80) (line-too-long)
+C:2735, 0: Line too long (104/80) (line-too-long)
+C:2737, 0: Line too long (98/80) (line-too-long)
+C:2739, 0: Line too long (100/80) (line-too-long)
+C:2749, 0: Line too long (105/80) (line-too-long)
+C:2753, 0: Line too long (100/80) (line-too-long)
+C:2765, 0: Line too long (101/80) (line-too-long)
+C:2769, 0: Line too long (93/80) (line-too-long)
+C:2771, 0: Line too long (93/80) (line-too-long)
+C:2773, 0: Line too long (105/80) (line-too-long)
+C:2781, 0: Line too long (96/80) (line-too-long)
+C:2785, 0: Line too long (92/80) (line-too-long)
+C:2791, 0: Line too long (89/80) (line-too-long)
+C:2797, 0: Line too long (84/80) (line-too-long)
+C:2801, 0: Line too long (137/80) (line-too-long)
+C:2805, 0: Line too long (136/80) (line-too-long)
+C:2807, 0: Line too long (96/80) (line-too-long)
+C:2809, 0: Line too long (144/80) (line-too-long)
+C:2813, 0: Line too long (95/80) (line-too-long)
+C:2815, 0: Line too long (113/80) (line-too-long)
+C:2817, 0: Line too long (127/80) (line-too-long)
+C:2831, 0: Line too long (86/80) (line-too-long)
+C:2835, 0: Line too long (100/80) (line-too-long)
+C:2839, 0: Line too long (86/80) (line-too-long)
+C:2841, 0: Line too long (106/80) (line-too-long)
+C:2843, 0: Line too long (104/80) (line-too-long)
+C:2845, 0: Line too long (89/80) (line-too-long)
+C:2847, 0: Line too long (85/80) (line-too-long)
+C:2849, 0: Line too long (186/80) (line-too-long)
+C:2850, 0: Line too long (86/80) (line-too-long)
+C:2851, 0: Line too long (101/80) (line-too-long)
+C:2853, 0: Line too long (97/80) (line-too-long)
+C:2855, 0: Line too long (109/80) (line-too-long)
+C:2857, 0: Line too long (105/80) (line-too-long)
+C:2863, 0: Line too long (95/80) (line-too-long)
+C:2865, 0: Line too long (106/80) (line-too-long)
+C:2869, 0: Line too long (94/80) (line-too-long)
+C:2871, 0: Line too long (90/80) (line-too-long)
+C:2873, 0: Line too long (87/80) (line-too-long)
+C:2875, 0: Line too long (83/80) (line-too-long)
+C:2877, 0: Line too long (100/80) (line-too-long)
+C:2879, 0: Line too long (96/80) (line-too-long)
+C:2883, 0: Line too long (98/80) (line-too-long)
+C:2885, 0: Line too long (83/80) (line-too-long)
+C:2887, 0: Line too long (92/80) (line-too-long)
+C:2889, 0: Line too long (94/80) (line-too-long)
+C:2891, 0: Line too long (100/80) (line-too-long)
+C:2893, 0: Line too long (98/80) (line-too-long)
+C:2895, 0: Line too long (113/80) (line-too-long)
+C:2897, 0: Line too long (113/80) (line-too-long)
+C:2899, 0: Line too long (108/80) (line-too-long)
+C:2901, 0: Line too long (87/80) (line-too-long)
+C:2903, 0: Line too long (100/80) (line-too-long)
+C:2905, 0: Line too long (82/80) (line-too-long)
+C:2913, 0: Line too long (85/80) (line-too-long)
+C:2915, 0: Line too long (83/80) (line-too-long)
+C:2917, 0: Line too long (89/80) (line-too-long)
+C:2919, 0: Line too long (91/80) (line-too-long)
+C:2921, 0: Line too long (97/80) (line-too-long)
+C:2923, 0: Line too long (95/80) (line-too-long)
+C:2931, 0: Line too long (85/80) (line-too-long)
+C:2933, 0: Line too long (83/80) (line-too-long)
+C:2935, 0: Line too long (96/80) (line-too-long)
+C:2937, 0: Line too long (98/80) (line-too-long)
+C:2939, 0: Line too long (104/80) (line-too-long)
+C:2941, 0: Line too long (102/80) (line-too-long)
+C:2949, 0: Line too long (87/80) (line-too-long)
+C:2951, 0: Line too long (82/80) (line-too-long)
+C:2965, 0: Line too long (83/80) (line-too-long)
+C:2969, 0: Line too long (85/80) (line-too-long)
+C:2971, 0: Line too long (81/80) (line-too-long)
+C:2973, 0: Line too long (100/80) (line-too-long)
+C:2975, 0: Line too long (96/80) (line-too-long)
+C:2979, 0: Line too long (91/80) (line-too-long)
+C:2981, 0: Line too long (87/80) (line-too-long)
+C:2985, 0: Line too long (89/80) (line-too-long)
+C:2987, 0: Line too long (85/80) (line-too-long)
+C:2989, 0: Line too long (88/80) (line-too-long)
+C:2993, 0: Line too long (85/80) (line-too-long)
+C:2995, 0: Line too long (109/80) (line-too-long)
+C:2999, 0: Line too long (123/80) (line-too-long)
+C:3001, 0: Line too long (96/80) (line-too-long)
+C:3003, 0: Line too long (82/80) (line-too-long)
+C:3005, 0: Line too long (104/80) (line-too-long)
+C:3007, 0: Line too long (106/80) (line-too-long)
+C:3009, 0: Line too long (86/80) (line-too-long)
+C:3015, 0: Line too long (93/80) (line-too-long)
+C:3019, 0: Line too long (81/80) (line-too-long)
+C:3021, 0: Line too long (86/80) (line-too-long)
+C:3049, 0: Line too long (84/80) (line-too-long)
+C:3059, 0: Line too long (90/80) (line-too-long)
+C:3063, 0: Line too long (89/80) (line-too-long)
+C:3077, 0: Line too long (83/80) (line-too-long)
+C:3079, 0: Line too long (106/80) (line-too-long)
+C:3087, 0: Line too long (85/80) (line-too-long)
+C:3089, 0: Line too long (83/80) (line-too-long)
+C:3097, 0: Line too long (156/80) (line-too-long)
+C:3099, 0: Line too long (128/80) (line-too-long)
+C:3101, 0: Line too long (126/80) (line-too-long)
+C:3103, 0: Line too long (82/80) (line-too-long)
+C:3107, 0: Line too long (92/80) (line-too-long)
+C:3113, 0: Line too long (83/80) (line-too-long)
+C:3115, 0: Line too long (127/80) (line-too-long)
+C:3117, 0: Line too long (85/80) (line-too-long)
+C:3119, 0: Line too long (88/80) (line-too-long)
+C:3123, 0: Line too long (100/80) (line-too-long)
+C:3131, 0: Line too long (97/80) (line-too-long)
+C:3133, 0: Line too long (99/80) (line-too-long)
+C:3137, 0: Line too long (87/80) (line-too-long)
+C:3139, 0: Line too long (99/80) (line-too-long)
+C:3141, 0: Line too long (115/80) (line-too-long)
+C:3147, 0: Line too long (120/80) (line-too-long)
+C:3149, 0: Line too long (85/80) (line-too-long)
+C:3153, 0: Line too long (128/80) (line-too-long)
+C:3155, 0: Line too long (114/80) (line-too-long)
+C:3161, 0: Line too long (86/80) (line-too-long)
+C:3163, 0: Line too long (114/80) (line-too-long)
+C:3175, 0: Line too long (90/80) (line-too-long)
+C:3181, 0: Line too long (82/80) (line-too-long)
+C:3189, 0: Line too long (126/80) (line-too-long)
+C:3193, 0: Line too long (83/80) (line-too-long)
+C:3199, 0: Line too long (85/80) (line-too-long)
+C:3203, 0: Line too long (108/80) (line-too-long)
+C:3211, 0: Line too long (109/80) (line-too-long)
+C:3215, 0: Line too long (83/80) (line-too-long)
+C:3219, 0: Line too long (97/80) (line-too-long)
+C:3221, 0: Line too long (105/80) (line-too-long)
+C:3231, 0: Line too long (97/80) (line-too-long)
+C:3237, 0: Line too long (106/80) (line-too-long)
+C:3245, 0: Line too long (89/80) (line-too-long)
+C:3255, 0: Line too long (105/80) (line-too-long)
+C:3257, 0: Line too long (96/80) (line-too-long)
+C:3261, 0: Line too long (100/80) (line-too-long)
+C:3271, 0: Line too long (104/80) (line-too-long)
+C:3283, 0: Line too long (103/80) (line-too-long)
+C:3289, 0: Line too long (89/80) (line-too-long)
+C:3297, 0: Line too long (88/80) (line-too-long)
+C:3299, 0: Line too long (91/80) (line-too-long)
+C:3321, 0: Line too long (84/80) (line-too-long)
+C:3323, 0: Line too long (88/80) (line-too-long)
+C:3339, 0: Line too long (88/80) (line-too-long)
+C:3343, 0: Line too long (87/80) (line-too-long)
+C:3345, 0: Line too long (87/80) (line-too-long)
+C:3349, 0: Line too long (104/80) (line-too-long)
+C:3351, 0: Line too long (101/80) (line-too-long)
+C:3353, 0: Line too long (98/80) (line-too-long)
+C:3355, 0: Line too long (95/80) (line-too-long)
+C:3357, 0: Line too long (95/80) (line-too-long)
+C:3359, 0: Line too long (98/80) (line-too-long)
+C:3361, 0: Line too long (92/80) (line-too-long)
+C:3367, 0: Line too long (91/80) (line-too-long)
+C:3369, 0: Line too long (112/80) (line-too-long)
+C:3371, 0: Line too long (94/80) (line-too-long)
+C:3373, 0: Line too long (93/80) (line-too-long)
+C:3375, 0: Line too long (84/80) (line-too-long)
+C:3377, 0: Line too long (89/80) (line-too-long)
+C:3379, 0: Line too long (89/80) (line-too-long)
+C:3381, 0: Line too long (98/80) (line-too-long)
+C:3383, 0: Line too long (82/80) (line-too-long)
+C:3387, 0: Line too long (82/80) (line-too-long)
+C:3393, 0: Line too long (82/80) (line-too-long)
+C:3395, 0: Line too long (109/80) (line-too-long)
+C:3399, 0: Line too long (104/80) (line-too-long)
+C:3401, 0: Line too long (94/80) (line-too-long)
+C:3403, 0: Line too long (96/80) (line-too-long)
+C:3405, 0: Line too long (88/80) (line-too-long)
+C:3407, 0: Line too long (90/80) (line-too-long)
+C:3409, 0: Line too long (96/80) (line-too-long)
+C:3411, 0: Line too long (107/80) (line-too-long)
+C:3413, 0: Line too long (89/80) (line-too-long)
+C:3415, 0: Line too long (81/80) (line-too-long)
+C:3417, 0: Line too long (103/80) (line-too-long)
+C:3423, 0: Line too long (95/80) (line-too-long)
+C:3425, 0: Line too long (83/80) (line-too-long)
+C:3427, 0: Line too long (173/80) (line-too-long)
+C:3429, 0: Line too long (163/80) (line-too-long)
+C:3431, 0: Line too long (170/80) (line-too-long)
+C:3433, 0: Line too long (177/80) (line-too-long)
+C:3434, 0: Line too long (81/80) (line-too-long)
+C:3435, 0: Line too long (167/80) (line-too-long)
+C:3437, 0: Line too long (177/80) (line-too-long)
+C:3438, 0: Line too long (81/80) (line-too-long)
+C:3439, 0: Line too long (155/80) (line-too-long)
+C:3441, 0: Line too long (153/80) (line-too-long)
+C:3443, 0: Line too long (159/80) (line-too-long)
+C:3445, 0: Line too long (147/80) (line-too-long)
+C:3447, 0: Line too long (170/80) (line-too-long)
+C:3449, 0: Line too long (160/80) (line-too-long)
+C:3451, 0: Line too long (164/80) (line-too-long)
+C:3453, 0: Line too long (154/80) (line-too-long)
+C:3455, 0: Line too long (171/80) (line-too-long)
+C:3457, 0: Line too long (144/80) (line-too-long)
+C:3459, 0: Line too long (107/80) (line-too-long)
+C:3461, 0: Line too long (104/80) (line-too-long)
+C:3463, 0: Line too long (107/80) (line-too-long)
+C:3473, 0: Line too long (136/80) (line-too-long)
+C:3475, 0: Line too long (212/80) (line-too-long)
+C:3476, 0: Line too long (97/80) (line-too-long)
+C:3477, 0: Line too long (202/80) (line-too-long)
+C:3478, 0: Line too long (92/80) (line-too-long)
+C:3479, 0: Line too long (216/80) (line-too-long)
+C:3480, 0: Line too long (99/80) (line-too-long)
+C:3481, 0: Line too long (207/80) (line-too-long)
+C:3482, 0: Line too long (94/80) (line-too-long)
+C:3483, 0: Line too long (109/80) (line-too-long)
+C:3487, 0: Line too long (102/80) (line-too-long)
+C:3489, 0: Line too long (94/80) (line-too-long)
+C:3491, 0: Line too long (111/80) (line-too-long)
+C:3493, 0: Line too long (104/80) (line-too-long)
+C:3495, 0: Line too long (184/80) (line-too-long)
+C:3496, 0: Line too long (85/80) (line-too-long)
+C:3497, 0: Line too long (174/80) (line-too-long)
+C:3499, 0: Line too long (188/80) (line-too-long)
+C:3500, 0: Line too long (87/80) (line-too-long)
+C:3501, 0: Line too long (178/80) (line-too-long)
+C:3502, 0: Line too long (82/80) (line-too-long)
+C:3503, 0: Line too long (225/80) (line-too-long)
+C:3504, 0: Line too long (102/80) (line-too-long)
+C:3505, 0: Line too long (215/80) (line-too-long)
+C:3506, 0: Line too long (97/80) (line-too-long)
+C:3527, 0: Line too long (84/80) (line-too-long)
+C:3555, 0: Line too long (94/80) (line-too-long)
+C:3589, 0: Line too long (91/80) (line-too-long)
+C:3593, 0: Line too long (88/80) (line-too-long)
+C:3597, 0: Line too long (83/80) (line-too-long)
+C:3633, 0: Line too long (82/80) (line-too-long)
+C:3643, 0: Line too long (98/80) (line-too-long)
+C:3647, 0: Line too long (86/80) (line-too-long)
+C:3653, 0: Line too long (90/80) (line-too-long)
+C:3663, 0: Line too long (88/80) (line-too-long)
+C:3673, 0: Line too long (159/80) (line-too-long)
+C:3675, 0: Line too long (149/80) (line-too-long)
+C:3677, 0: Line too long (137/80) (line-too-long)
+C:3685, 0: Line too long (83/80) (line-too-long)
+C:3691, 0: Line too long (85/80) (line-too-long)
+C:3693, 0: Line too long (85/80) (line-too-long)
+C:3695, 0: Line too long (85/80) (line-too-long)
+C:3697, 0: Line too long (84/80) (line-too-long)
+C:3699, 0: Line too long (102/80) (line-too-long)
+C:3705, 0: Line too long (93/80) (line-too-long)
+C:3707, 0: Line too long (99/80) (line-too-long)
+C:3711, 0: Line too long (81/80) (line-too-long)
+C:3713, 0: Line too long (81/80) (line-too-long)
+C:3719, 0: Line too long (83/80) (line-too-long)
+C:3721, 0: Line too long (83/80) (line-too-long)
+C:3725, 0: Line too long (81/80) (line-too-long)
+C:3737, 0: Line too long (87/80) (line-too-long)
+C:3739, 0: Line too long (87/80) (line-too-long)
+C:3741, 0: Line too long (85/80) (line-too-long)
+C:3749, 0: Line too long (83/80) (line-too-long)
+C:3751, 0: Line too long (83/80) (line-too-long)
+C:3753, 0: Line too long (81/80) (line-too-long)
+C:3757, 0: Line too long (89/80) (line-too-long)
+C:3759, 0: Line too long (89/80) (line-too-long)
+C:3761, 0: Line too long (87/80) (line-too-long)
+C:3763, 0: Line too long (85/80) (line-too-long)
+C:3765, 0: Line too long (110/80) (line-too-long)
+C:3769, 0: Line too long (83/80) (line-too-long)
+C:3771, 0: Line too long (81/80) (line-too-long)
+C:3773, 0: Line too long (83/80) (line-too-long)
+C:3775, 0: Line too long (99/80) (line-too-long)
+C:3777, 0: Line too long (100/80) (line-too-long)
+C:3783, 0: Line too long (115/80) (line-too-long)
+C:3787, 0: Line too long (95/80) (line-too-long)
+C:3791, 0: Line too long (97/80) (line-too-long)
+C:3799, 0: Line too long (81/80) (line-too-long)
+C:3801, 0: Line too long (81/80) (line-too-long)
+C:3807, 0: Line too long (139/80) (line-too-long)
+C:3809, 0: Line too long (173/80) (line-too-long)
+C:3810, 0: Line too long (81/80) (line-too-long)
+C:3841, 0: Line too long (88/80) (line-too-long)
+C:3847, 0: Line too long (96/80) (line-too-long)
+C:3861, 0: Line too long (81/80) (line-too-long)
+C:3879, 0: Line too long (93/80) (line-too-long)
+C:3885, 0: Line too long (117/80) (line-too-long)
+C:3891, 0: Line too long (107/80) (line-too-long)
+C:3893, 0: Line too long (96/80) (line-too-long)
+C:3901, 0: Line too long (86/80) (line-too-long)
+C:3903, 0: Line too long (126/80) (line-too-long)
+C:3905, 0: Line too long (87/80) (line-too-long)
+C:3907, 0: Line too long (88/80) (line-too-long)
+C:3949, 0: Line too long (85/80) (line-too-long)
+C:3965, 0: Line too long (85/80) (line-too-long)
+C:3967, 0: Line too long (83/80) (line-too-long)
+C:3975, 0: Line too long (84/80) (line-too-long)
+C:3977, 0: Line too long (85/80) (line-too-long)
+C:3979, 0: Line too long (83/80) (line-too-long)
+C:3985, 0: Line too long (85/80) (line-too-long)
+C:4029, 0: Line too long (92/80) (line-too-long)
+C:4041, 0: Line too long (102/80) (line-too-long)
+C:4053, 0: Line too long (101/80) (line-too-long)
+C:4071, 0: Line too long (114/80) (line-too-long)
+C:4085, 0: Line too long (97/80) (line-too-long)
+C:4087, 0: Line too long (109/80) (line-too-long)
+C:4089, 0: Line too long (87/80) (line-too-long)
+C:4097, 0: Line too long (109/80) (line-too-long)
+C:4109, 0: Line too long (97/80) (line-too-long)
+C:4117, 0: Line too long (96/80) (line-too-long)
+C:4141, 0: Line too long (117/80) (line-too-long)
+C:4149, 0: Line too long (115/80) (line-too-long)
+C:4155, 0: Line too long (93/80) (line-too-long)
+C:  1, 0: Too many lines in module (4258/1000) (too-many-lines)
+C:4244, 2: Invalid method name "__call__" (invalid-name)
+R:4239, 0: Too few public methods (0/2) (too-few-public-methods)
+C:4258, 0: Invalid constant name "Unit" (invalid-name)
+************* Module openhtf.util.argv
+W:  7, 0: Bad indentation. Found 4 spaces, expected 2 (bad-indentation)
+W: 12, 0: Bad indentation. Found 4 spaces, expected 2 (bad-indentation)
+W: 13, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 14, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 15, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 16, 0: Bad indentation. Found 12 spaces, expected 6 (bad-indentation)
+W: 17, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 19, 0: Bad indentation. Found 4 spaces, expected 2 (bad-indentation)
+W: 20, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 21, 0: Bad indentation. Found 12 spaces, expected 6 (bad-indentation)
+W: 22, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+C: 23, 0: Trailing newlines (trailing-newlines)
+C:  6, 0: Invalid function name "ModuleParser" (invalid-name)
+C:  6, 0: Missing function docstring (missing-docstring)
+C: 10, 0: Missing class docstring (missing-docstring)
+R: 10, 0: Too few public methods (0/2) (too-few-public-methods)
+R:  1, 0: Cyclic import (openhtf -> openhtf.util.measurements) (cyclic-import)
+R:  1, 0: Cyclic import (openhtf -> openhtf.exe -> openhtf.exe.phase_executor) (cyclic-import)
+R:  1, 0: Cyclic import (openhtf -> openhtf.exe -> openhtf.exe.phase_executor -> openhtf.exe.phase_data -> openhtf.util.measurements) (cyclic-import)
+R:  1, 0: Cyclic import (openhtf -> openhtf.plugs) (cyclic-import)
+R:  1, 0: Cyclic import (openhtf -> openhtf.exe.phase_executor -> openhtf.exe.phase_data -> openhtf.util.measurements) (cyclic-import)
+R:  1, 0: Cyclic import (openhtf -> openhtf.exe -> openhtf.exe.test_state -> openhtf.util.measurements) (cyclic-import)
+R:  1, 0: Cyclic import (openhtf -> openhtf.exe -> openhtf.exe.test_state -> openhtf.exe.phase_data -> openhtf.util.measurements) (cyclic-import)
+R:  1, 0: Cyclic import (openhtf -> openhtf.exe -> openhtf.exe.test_state) (cyclic-import)
+
+
+Report
+======
+7561 statements analysed.
+
+Statistics by type
+------------------
+
++---------+-------+-----------+-----------+------------+---------+
+|type     |number |old number |difference |%documented |%badname |
++=========+=======+===========+===========+============+=========+
+|module   |49     |49         |=          |97.96       |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|class    |141    |141        |=          |97.16       |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|method   |402    |402        |=          |91.54       |15.67    |
++---------+-------+-----------+-----------+------------+---------+
+|function |82     |82         |=          |76.83       |58.54    |
++---------+-------+-----------+-----------+------------+---------+
+
+
+
+External dependencies
+---------------------
+::
+
+    contextlib2 (openhtf.exe.phase_data,openhtf.exe)
+    enum (openhtf.io.test_record,openhtf.util.measurements,openhtf.util.data,openhtf.exe,openhtf.exe.test_state,openhtf.plugs.usb.adb_protocol,openhtf)
+    httplib2 (openhtf.io.output.mfg_inspector)
+    mutablerecords (openhtf.io.test_record,openhtf.util.measurements,openhtf.util.data,openhtf.exe.phase_data,openhtf.util.test,openhtf.plugs,openhtf.util,openhtf,openhtf.conf)
+    oauth2client 
+      \-client (openhtf.io.output.mfg_inspector)
+    openhtf (openhtf.util.measurements,openhtf.util.test,openhtf.exe,openhtf.util.monitors,openhtf.plugs,openhtf.exe.phase_executor,openhtf.exe.test_state,openhtf.names)
+      \-conf (openhtf.io.frontend.__main__,openhtf.exe,openhtf,openhtf.plugs.usb)
+      \-exe (openhtf)
+      | \-phase_data (openhtf.util.stubs,openhtf.exe.phase_executor,openhtf.exe.test_state,openhtf.util.test)
+      | \-phase_executor (openhtf.exe,openhtf,openhtf.util.test)
+      | \-test_state (openhtf.io.output.json_factory,openhtf.exe)
+      | \-triggers (openhtf)
+      \-io 
+      | \-http_api (openhtf.io.frontend.__main__,openhtf)
+      | \-output (openhtf.io.output.json_factory,openhtf.io.output.mfg_inspector)
+      | | \-json_factory (openhtf.names,openhtf.io.output.mfg_inspector)
+      | \-proto (openhtf.io.output.mfg_inspector)
+      | \-test_record (openhtf.exe.test_state,openhtf.exe.phase_data,openhtf.util.test,openhtf.io.output.console_summary,openhtf.exe.phase_executor,openhtf.io.output.mfg_inspector,openhtf)
+      | \-user_input (openhtf.exe.triggers,openhtf.io.http_api,openhtf.exe,openhtf,openhtf.names)
+      \-plugs (openhtf.util.test,openhtf.util.monitors,openhtf,openhtf.plugs.usb,openhtf.names)
+      | \-cambrionix (openhtf.plugs.usb)
+      | \-usb 
+      |   \-adb_device (openhtf.plugs.usb)
+      |   \-adb_message (openhtf.plugs.usb.filesync_service,openhtf.plugs.usb.adb_protocol)
+      |   \-adb_protocol (openhtf.plugs.usb.shell_service,openhtf.plugs.usb.adb_device)
+      |   \-fastboot_device (openhtf.plugs.usb)
+      |   \-fastboot_protocol (openhtf.plugs.usb.fastboot_device)
+      |   \-filesync_service (openhtf.plugs.usb.adb_device)
+      |   \-local_usb (openhtf.plugs.cambrionix,openhtf.plugs.usb)
+      |   \-shell_service (openhtf.plugs.usb.adb_device)
+      |   \-usb_exceptions (openhtf.plugs.usb.shell_service,openhtf.plugs.usb.local_usb,openhtf.plugs.usb.filesync_service,openhtf.plugs.usb.adb_protocol,openhtf.plugs.usb.adb_message,openhtf.plugs.usb.fastboot_device,openhtf.plugs.usb,openhtf.plugs.usb.fastboot_protocol,openhtf.plugs.usb.adb_device,openhtf.plugs.usb.usb_handle)
+      |   \-usb_handle (openhtf.plugs.usb.local_usb,openhtf.plugs.usb.usb_handle_stub)
+      \-util (openhtf.io.test_record,openhtf.exe.phase_data,openhtf.util.logs,openhtf.io.output.console_summary,openhtf.exe.test_state,openhtf)
+        \-data (openhtf.io.http_api,openhtf.io.output.json_factory,openhtf.io.output,openhtf.io.output.mfg_inspector,openhtf.exe.test_state)
+        \-exceptions (openhtf.plugs.usb.adb_protocol)
+        \-functions (openhtf,openhtf.util.logs)
+        \-logs (openhtf.io.test_record,openhtf.plugs,openhtf.io.frontend.__main__,openhtf,openhtf.exe.test_state)
+        \-measurements (openhtf.exe.test_state,openhtf.exe.phase_data,openhtf.util.test,openhtf.util.monitors,openhtf.names,openhtf.io.output.console_summary,openhtf.io.output.mfg_inspector,openhtf)
+        \-monitors (openhtf.names)
+        \-multicast (openhtf.io.http_api,openhtf.io.frontend.__main__)
+        \-threads (openhtf.exe.phase_executor,openhtf.exe,openhtf.util.monitors,openhtf.conf)
+        \-timeouts (openhtf.plugs.usb.shell_service,openhtf.plugs.usb.adb_device,openhtf.plugs.usb.adb_message,openhtf.plugs.usb.adb_protocol,openhtf.plugs.usb.fastboot_device)
+        \-units (openhtf.names,openhtf.util.monitors)
+        \-validators (openhtf.util.measurements,openhtf.names,openhtf.io.output.mfg_inspector)
+    pkg_resources (openhtf.util)
+    requests (openhtf.io.frontend.__main__)
+    tornado 
+      \-escape (openhtf.io.frontend.__main__)
+      \-ioloop (openhtf.io.frontend.__main__)
+      \-web (openhtf.io.frontend.__main__)
+    yaml (openhtf.conf)
+
+
+
+Raw metrics
+-----------
+
++----------+-------+------+---------+-----------+
+|type      |number |%     |previous |difference |
++==========+=======+======+=========+===========+
+|code      |8154   |58.54 |8153     |+1.00      |
++----------+-------+------+---------+-----------+
+|docstring |3579   |25.70 |3579     |=          |
++----------+-------+------+---------+-----------+
+|comment   |808    |5.80  |808      |=          |
++----------+-------+------+---------+-----------+
+|empty     |1387   |9.96  |1385     |+2.00      |
++----------+-------+------+---------+-----------+
+
+
+
+Duplication
+-----------
+
++-------------------------+------+---------+-----------+
+|                         |now   |previous |difference |
++=========================+======+=========+===========+
+|nb duplicated lines      |0     |0        |=          |
++-------------------------+------+---------+-----------+
+|percent duplicated lines |0.000 |0.000    |=          |
++-------------------------+------+---------+-----------+
+
+
+
+Messages by category
+--------------------
+
++-----------+-------+---------+-----------+
+|type       |number |previous |difference |
++===========+=======+=========+===========+
+|convention |1098   |1098     |=          |
++-----------+-------+---------+-----------+
+|refactor   |32     |32       |=          |
++-----------+-------+---------+-----------+
+|warning    |83     |82       |+1.00      |
++-----------+-------+---------+-----------+
+|error      |17     |16       |+1.00      |
++-----------+-------+---------+-----------+
+
+
+
+% errors / warnings by module
+-----------------------------
+
++------------------------------------+------+--------+---------+-----------+
+|module                              |error |warning |refactor |convention |
++====================================+======+========+=========+===========+
+|openhtf.io.output.mfg_inspector     |29.41 |8.43    |15.62    |2.91       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.io.frontend.__main__        |11.76 |16.87   |3.12     |0.46       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.exe.__init__                |11.76 |7.23    |0.00     |0.09       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.test                   |11.76 |2.41    |3.12     |3.10       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.stubs                  |11.76 |0.00    |0.00     |0.00       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf                             |5.88  |6.02    |12.50    |0.64       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.validators             |5.88  |0.00    |6.25     |1.00       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.cambrionix.__init__   |5.88  |0.00    |0.00     |1.46       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.usb.__init__          |5.88  |0.00    |0.00     |0.09       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.argv                   |0.00  |13.25   |28.12    |0.36       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.measurements           |0.00  |7.23    |9.38     |0.27       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.io.output.console_summary   |0.00  |4.82    |6.25     |1.73       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.io.http_api                 |0.00  |4.82    |0.00     |0.00       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.__init__              |0.00  |3.61    |0.00     |0.36       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.conf                        |0.00  |3.61    |0.00     |0.27       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.logs                   |0.00  |3.61    |0.00     |0.18       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.exe.triggers                |0.00  |3.61    |0.00     |0.09       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.exe.phase_executor          |0.00  |3.61    |0.00     |0.09       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.threads                |0.00  |2.41    |0.00     |0.27       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.data                   |0.00  |1.20    |3.12     |0.46       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.io.output.__init__          |0.00  |1.20    |0.00     |0.73       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.io.test_record              |0.00  |1.20    |0.00     |0.46       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.io.output.json_factory      |0.00  |1.20    |0.00     |0.46       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.exe.phase_data              |0.00  |1.20    |0.00     |0.27       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.exe.test_state              |0.00  |1.20    |0.00     |0.18       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.multicast              |0.00  |1.20    |0.00     |0.00       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.units                  |0.00  |0.00    |3.12     |80.69      |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.usb.adb_protocol      |0.00  |0.00    |3.12     |0.82       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.monitors               |0.00  |0.00    |3.12     |0.73       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.__init__               |0.00  |0.00    |3.12     |0.09       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.util.functions              |0.00  |0.00    |0.00     |0.36       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.usb.fastboot_protocol |0.00  |0.00    |0.00     |0.36       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.usb.adb_message       |0.00  |0.00    |0.00     |0.36       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.usb.adb_device        |0.00  |0.00    |0.00     |0.36       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.usb.fastboot_device   |0.00  |0.00    |0.00     |0.18       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.plugs.usb.usb_handle        |0.00  |0.00    |0.00     |0.09       |
++------------------------------------+------+--------+---------+-----------+
+
+
+
+Messages
+--------
+
++-------------------------------+------------+
+|message id                     |occurrences |
++===============================+============+
+|line-too-long                  |890         |
++-------------------------------+------------+
+|invalid-name                   |65          |
++-------------------------------+------------+
+|missing-docstring              |49          |
++-------------------------------+------------+
+|bad-continuation               |39          |
++-------------------------------+------------+
+|wrong-import-order             |21          |
++-------------------------------+------------+
+|trailing-whitespace            |19          |
++-------------------------------+------------+
+|locally-enabled                |16          |
++-------------------------------+------------+
+|too-few-public-methods         |14          |
++-------------------------------+------------+
+|bad-indentation                |13          |
++-------------------------------+------------+
+|redefined-outer-name           |12          |
++-------------------------------+------------+
+|attribute-defined-outside-init |11          |
++-------------------------------+------------+
+|unused-import                  |9           |
++-------------------------------+------------+
+|cyclic-import                  |8           |
++-------------------------------+------------+
+|no-member                      |7           |
++-------------------------------+------------+
+|fixme                          |7           |
++-------------------------------+------------+
+|bad-whitespace                 |7           |
++-------------------------------+------------+
+|arguments-differ               |6           |
++-------------------------------+------------+
+|unused-variable                |5           |
++-------------------------------+------------+
+|trailing-newlines              |5           |
++-------------------------------+------------+
+|broad-except                   |5           |
++-------------------------------+------------+
+|logging-not-lazy               |4           |
++-------------------------------+------------+
+|abstract-method                |4           |
++-------------------------------+------------+
+|unused-argument                |3           |
++-------------------------------+------------+
+|protected-access               |3           |
++-------------------------------+------------+
+|no-name-in-module              |3           |
++-------------------------------+------------+
+|undefined-variable             |2           |
++-------------------------------+------------+
+|too-many-arguments             |2           |
++-------------------------------+------------+
+|redefined-variable-type        |2           |
++-------------------------------+------------+
+|no-value-for-parameter         |2           |
++-------------------------------+------------+
+|too-many-statements            |1           |
++-------------------------------+------------+
+|too-many-nested-blocks         |1           |
++-------------------------------+------------+
+|too-many-locals                |1           |
++-------------------------------+------------+
+|too-many-lines                 |1           |
++-------------------------------+------------+
+|too-many-instance-attributes   |1           |
++-------------------------------+------------+
+|too-many-branches              |1           |
++-------------------------------+------------+
+|superfluous-parens             |1           |
++-------------------------------+------------+
+|pointless-statement            |1           |
++-------------------------------+------------+
+|old-style-class                |1           |
++-------------------------------+------------+
+|not-context-manager            |1           |
++-------------------------------+------------+
+|no-self-use                    |1           |
++-------------------------------+------------+
+|no-self-argument               |1           |
++-------------------------------+------------+
+|bad-option-value               |1           |
++-------------------------------+------------+
+
+
+
+Global evaluation
+-----------------
+Your code has been rated at 8.28/10 (previous run: 8.29/10, -0.01)
+

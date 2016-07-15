@@ -30,6 +30,8 @@ def wrap_add_message(func):
 
 #storing a reference to the openhtf.conf module node
 clss = []
+clss_locals = {}
+current_root = []
 
 def trans_expr(node):
   if (isinstance(node.func, astroid.Attribute) and
@@ -37,9 +39,19 @@ def trans_expr(node):
       node.func.expr.name == 'conf' and
       node.func.attrname == 'Declare'):
 
+    #import pdb
+    #pdb.set_trace()
 
+    #keeping track of the current root, refreshing the locals if it changes
+    if current_root == []:
+    	current_root.append(node.root())
+    elif current_root[0] != node.root():
+    	current_root[0] = node.root()
+    	clss[0].locals = clss_locals
+
+    #adding the conf attribute to the module's locals
     if node.args and clss:
-      clss[0].locals[node.args[0].value] = [None]
+    	clss[0].locals[node.args[0].value] = [None]
   
 
     # madsci's stuff - didn't use it sorry.... 
@@ -66,11 +78,10 @@ def conf_transform(cls):
   if cls.name == 'openhtf.conf':
     #putting all the attributes in Configuration into the openhtf.conf node
     cls._locals.update(cls.locals['Configuration'][0].locals)
-    #cls._locals.update(members) DOESN'T WORK, this method is only called once in the beginning
 
     #storing reference to this node for future use
     clss.append(cls)
-
+    clss_locals.update(cls.locals)
 
 
 def register(linter):
