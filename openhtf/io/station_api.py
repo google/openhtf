@@ -246,7 +246,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
             '%a@%H:%M:%S', time.localtime(self.last_run_time_millis / 1000)))
 
   @property
-  def cached_state_and_dict(self):
+  def cached_state_and_swapped_dict(self):
     """Get our cached state as a dict, with phases/records swapped out.
 
     Returns:
@@ -256,6 +256,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     phases and log records.
     """
     cached_state = self.cached_state
+    swapped_dict = None
 
     # Make a copy so we can swap out phases and logs with counts instead.
     if cached_state:
@@ -263,13 +264,13 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
           test_record=mutablerecords.CopyRecord(cached_state.test_record))
       state.test_record.phases = len(state.test_record.phases)
       state.test_record.log_records = len(state.test_record.log_records)
-      return cached_state, {
+      swapped_dict = {
           'status': state.status.name,
           'running_phase_state':
               data.ConvertToBaseTypes(state.running_phase_state),
           'test_record': xmlrpclib.Binary(pickle.dumps(state.test_record)),
       }
-    return cached_state, None
+    return cached_state, swapped_dict
 
   def wait_for_update(self, timeout_s=1):
     """Block until there's new state data available, or timeout.
@@ -279,10 +280,10 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     timeout occurred is to check the return value against the previous value
     of cached_state for a change.
     """
-    cached_state, cached_dict = self.cached_state_and_dict
+    cached_state, swapped_dict = self.cached_state_and_swapped_dict
     try:
       remote_state_dict = self.proxy_factory(timeout_s + 1).wait_for_update(
-          self.test_uid, cached_dict, timeout_s)
+          self.test_uid, swapped_dict, timeout_s)
     except xmlrpclib.Fault as fault:
       # TODO(madsci): This is a super kludge, eventually implement the
       # ReraisingMixin for ServerProxy, but that's hard, so do this for now.
@@ -294,18 +295,13 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
                          RemoteState(cached_state, **remote_state_dict))
     return self.cached_state
 
-  def get_remote_state_dict(self, skip_phases=0, skip_logs=0):
-    return self.shared_proxy.get_test_state(
-        self.test_uid, cached_dict['test_record'])
-
   @property
   def state(self):
-    cached_state = self.cached_state
-
-    remote_state_dict = self.get_remote_state_dict(
-        num_cached_phases, num_cached_logs)
-    if remote_state_dict:
-      self.cached_state = RemoteState(cached_state, **remote_state_dict)
+    cached_state, swapped_dict = self.cached_state_and_swapped_dict
+    remote_state_dict = self.shared_proxy.get_test_state(
+        self.test_uid, swapped_dict and swapped_dict['test_record'])
+    self.cached_state = (
+        remote_state_dict and RemoteState(cached_state, **remote_state_dict))
     return self.cached_state
 
   @property
@@ -668,7 +664,8 @@ class StationApi(object):
       if not state:
         raise UpdateTimeout(
             "No test started Execute()'ing before timeout", timeout_s)
-      _LOG.debug('RPC:wait_for_update() -> short-circuited wait (was blank)')
+      _LOG.debug(
+          'RPC:wait_for_update() -> short-circuited wait (local was blank)')
       return self._serialize_state_dict(state._asdict())
        
     state_dict, event = state.asdict_with_event()
@@ -682,7 +679,7 @@ class StationApi(object):
     state_dict_counts['test_record'].log_records = len(
         state_dict_counts['test_record'].log_records)
     state_dict_counts['running_phase_state'] = data.ConvertToBaseTypes(
-        state_dict_counts['running_phase_state'])
+        state_dict_counts['running_phase_state'], tuple_type=list)
 
     # Deserialize the RemoteState fields for comparison.
     remote_state_dict = remote_state_dict and {
@@ -691,7 +688,17 @@ class StationApi(object):
         'running_phase_state': remote_state_dict['running_phase_state'],
     }
     if state_dict_counts != remote_state_dict:
-      _LOG.debug('RPC:wait_for_update() -> short-circuited wait')
+      if not remote_state_dict:
+        _LOG.debug(
+            'RPC:wait_for_update() -> short-circuited wait (remote was blank)')
+      else:
+        log_msg = ['RPC:wait_for_update() -> short-circuited wait, diff:']
+        #import pdb; pdb.set_trace()
+        log_msg.extend(
+            data.pprint_diff(remote_state_dict, state_dict_counts,
+                             'remote_state', 'local_state'))
+        _LOG.debug('\n'.join(log_msg))
+
       # We already have new info, serialize the new state and send it,
       # skipping any phases/logs that we already know about remotely.
       return self._serialize_state_dict(
