@@ -121,7 +121,11 @@ class StationList(object):
     print('Last Updated @%s, %s Total Updates' % (fmt_time(), self.update_count))
     print(header + '\n')
     for station in list(self.stations):
-      self.print_station(station)
+      try:
+        self.print_station(station)
+      except station_api.StationUnreachableError:
+        print(' |-- Station Unreachable')
+        self.stations.remove(station)
 
   def watch_test(self, remote_test):
     try:
@@ -160,7 +164,9 @@ class StationList(object):
     print(station)
     try:
       for remote_test in station.tests.itervalues():
-        remote_test.history  # Trigger an update of the local history cache.
+        # Trigger an update of the local history cache and state.
+        remote_test.state
+        remote_test.history
         print_test(remote_test)
         if (remote_test not in self.update_threads or
             not self.update_threads[remote_test].is_alive()):
