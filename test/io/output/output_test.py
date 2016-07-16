@@ -73,7 +73,7 @@ class TestOutput(unittest.TestCase):
       with open(_LocalFilename('record.json'), 'wb') as jsonfile:
         jsonfile.write(json_output.getvalue())
     else:
-      self.assertTrue(data.equals_log_diff(self.json, json_output.getvalue())
+      self.assertTrue(data.equals_log_diff(self.json, json_output.getvalue()))
 
   def testTestrun(self):
     testrun_output = StringIO()
