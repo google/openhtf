@@ -76,6 +76,7 @@ conf.Declare('stations',
              default_value=[],
              description='List of manually declared stations.')
 
+#pylint: disable = W0221,W0223
 
 
 class Station(object):
