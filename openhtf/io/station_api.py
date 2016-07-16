@@ -414,6 +414,11 @@ class Station(object):
   def last_activity_time_millis(self):
     self.reachable  # Best-effort try to get up-to-date info.
     return self._station_info.last_activity_time_millis
+
+  @property
+  def station_id(self):
+    self.reachable
+    return self._station_info.station_id
   
   def make_proxy(self, timeout_s=5):
     """Make a new ServerProxy for this station."""
@@ -585,7 +590,7 @@ class StationApi(object):
     _LOG.debug('RPC:get_test_state(%s)', test_uid)
     state = openhtf.Test.state_by_uid(test_uid)
     if state:
-      remote_record = pickle.loads(remote_record.data)
+      remote_record = remote_record and pickle.loads(remote_record.data)
       return self._serialize_state_dict(state._asdict(), remote_record)
 
   def wait_for_plug(self, test_id, plug_type_name, current_state, timeout_s):
