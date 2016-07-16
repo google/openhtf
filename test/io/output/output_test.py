@@ -73,7 +73,7 @@ class TestOutput(unittest.TestCase):
       with open(_LocalFilename('record.json'), 'wb') as jsonfile:
         jsonfile.write(json_output.getvalue())
     else:
-      data.AssertEqualsAndDiff(self.json, json_output.getvalue())
+      self.assertTrue(data.equals_with_diff(self.json, json_output.getvalue())
 
   def testTestrun(self):
     testrun_output = StringIO()
@@ -83,9 +83,9 @@ class TestOutput(unittest.TestCase):
         testrunfile.write(testrun_output.getvalue())
     else:
       actual = test_runs_pb2.TestRun.FromString(testrun_output.getvalue())
-      data.AssertEqualsAndDiff(
+      self.assertTrue(data.equals_with_diff(
           text_format.MessageToString(self.testrun),
-          text_format.MessageToString(actual))
+          text_format.MessageToString(actual)))
 
   def testUpdateOutput(self):
     """Make sure we don't accidentally leave UPDATE_OUTPUT True."""

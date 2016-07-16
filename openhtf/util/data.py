@@ -19,9 +19,11 @@ little easier to work with them.
 """
 
 import collections
+import difflib
 import itertools
 import logging
 import numbers
+import pprint
 import struct
 import sys
 
@@ -30,21 +32,26 @@ from mutablerecords import records
 from enum import Enum
 
 
-def AssertEqualsAndDiff(expected, actual):
-  """Compare two string blobs, log diff and raise if they don't match."""
+def pprint_diff(first, second, first_name='first', second_name='second'):
+  """Compare the pprint representation of two objects and yield diff lines."""
+  return difflib.unified_diff(
+      pprint.pformat(first).splitlines(),
+      pprint.pformat(second).splitlines(),
+      fromfile=first_name, tofile=second_name, lineterm='')
+
+
+def equals_with_diff(expected, actual):
+  """Compare two string blobs, error log diff if they don't match."""
   if expected == actual:
-    return
+    return True
 
   # Output the diff first.
-  logging.error('***** Data mismatch:*****')
+  logging.error('***** Data mismatch: *****')
   for line in difflib.unified_diff(
       expected.splitlines(), actual.splitlines(),
       fromfile='expected', tofile='actual', lineterm=''):
     logging.error(line)
   logging.error('^^^^^  Data diff  ^^^^^')
-
-  # Then raise the AssertionError as expected.
-  assert expected == actual
 
 
 def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
@@ -91,7 +98,7 @@ def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):
     assert first == second
 
 
-def ConvertToBaseTypes(obj, ignore_keys=tuple()):
+def ConvertToBaseTypes(obj, ignore_keys=tuple(), tuple_type=tuple):
   """Recursively convert objects into base types, mostly dicts and strings.
 
   This is used to convert some special types of objects used internally into
@@ -109,7 +116,9 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
     - Other non-None values are converted to strings via str().
 
   This results in the return value containing only dicts, lists, tuples,
-  strings, Numbers, and None.
+  strings, Numbers, and None.  If tuples should be converted to lists (ie
+  for an encoding that does not differentiate between the two), pass
+  'tuple_type=list' as an argument.
   """
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, basestring), 'Pass a real iterable!'
@@ -126,12 +135,14 @@ def ConvertToBaseTypes(obj, ignore_keys=tuple()):
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    obj = {k: ConvertToBaseTypes(v, ignore_keys) for k, v in obj.iteritems()
-           if k not in ignore_keys}
+    obj = {ConvertToBaseTypes(k, ignore_keys, tuple_type):
+               ConvertToBaseTypes(v, ignore_keys, tuple_type)
+           for k, v in obj.iteritems() if k not in ignore_keys}
   elif isinstance(obj, list):
-    obj = [ConvertToBaseTypes(value, ignore_keys) for value in obj]
+    obj = [ConvertToBaseTypes(value, ignore_keys, tuple_type) for value in obj]
   elif isinstance(obj, tuple):
-    obj = tuple(ConvertToBaseTypes(value, ignore_keys) for value in obj)
+    obj = tuple_type(
+        ConvertToBaseTypes(value, ignore_keys, tuple_type) for value in obj)
   elif obj is not None and (
       not isinstance(obj, numbers.Number) and not isinstance(obj, basestring)):
     # Leave None as None to distinguish it from "None", as well as numbers and
