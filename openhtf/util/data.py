@@ -40,18 +40,18 @@ def pprint_diff(first, second, first_name='first', second_name='second'):
       fromfile=first_name, tofile=second_name, lineterm='')
 
 
-def equals_with_diff(expected, actual):
+def equals_log_diff(expected, actual, level=logging.ERROR):
   """Compare two string blobs, error log diff if they don't match."""
   if expected == actual:
     return True
 
   # Output the diff first.
-  logging.error('***** Data mismatch: *****')
+  logging.log(level, '***** Data mismatch: *****')
   for line in difflib.unified_diff(
       expected.splitlines(), actual.splitlines(),
       fromfile='expected', tofile='actual', lineterm=''):
-    logging.error(line)
-  logging.error('^^^^^  Data diff  ^^^^^')
+    logging.log(level, line)
+  logging.log(level, '^^^^^  Data diff  ^^^^^')
 
 
 def AssertRecordsEqualNonvolatile(first, second, volatile_fields, indent=0):

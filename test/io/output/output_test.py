@@ -73,7 +73,7 @@ class TestOutput(unittest.TestCase):
       with open(_LocalFilename('record.json'), 'wb') as jsonfile:
         jsonfile.write(json_output.getvalue())
     else:
-      self.assertTrue(data.equals_with_diff(self.json, json_output.getvalue())
+      self.assertTrue(data.equals_log_diff(self.json, json_output.getvalue())
 
   def testTestrun(self):
     testrun_output = StringIO()
@@ -83,7 +83,7 @@ class TestOutput(unittest.TestCase):
         testrunfile.write(testrun_output.getvalue())
     else:
       actual = test_runs_pb2.TestRun.FromString(testrun_output.getvalue())
-      self.assertTrue(data.equals_with_diff(
+      self.assertTrue(data.equals_log_diff(
           text_format.MessageToString(self.testrun),
           text_format.MessageToString(actual)))
 
