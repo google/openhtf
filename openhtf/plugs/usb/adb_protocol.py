@@ -424,7 +424,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
     return self.closed_state == self.ClosedState.OPEN
 
   def IsClosed(self):
-    """Return true ifff the transport layer is closed."""
+    """Return true iff the transport layer is closed."""
     return self.closed_state == self.ClosedState.CLOSED
 
   def EnqueueMessage(self, message, timeout):
