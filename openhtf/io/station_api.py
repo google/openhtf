@@ -63,6 +63,7 @@ in this module.
 
 import collections
 import cPickle as pickle
+import functools
 import json
 import logging
 import os
@@ -115,6 +116,15 @@ MULTICAST_KWARGS = lambda: {
 
 class StationUnreachableError(Exception):
   """Raised when an operation fails due to an unreachable station."""
+  @classmethod
+  def reraise_socket_error(cls, func):
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+      try:
+        return func(*args, **kwargs)
+      except socket.error:
+        raise cls('Station unreachable.')
+    return _wrapper
 
 
 class UpdateTimeout(Exception):
@@ -163,14 +173,15 @@ class RemotePhase(collections.namedtuple('RemotePhase', [
 
 
 class RemoteState(collections.namedtuple('RemoteState', [
-    'status', 'test_record', 'running_phase_state'])):
+    'status', 'test_record', 'plugs', 'running_phase_state'])):
 
   def __str__(self):
     return '<RemoteState %s, Running Phase: %s>' % (
         self.status.name,
         self.running_phase_state and self.running_phase_state.name)
 
-  def __new__(cls, cached_state, status, test_record, running_phase_state):
+  def __new__(cls, cached_state, status,
+              test_record, plugs, running_phase_state):
     test_record = pickle.loads(test_record.data)
     cached_rec = cached_state and cached_state.test_record
 
@@ -185,7 +196,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
       test_record.log_records = cached_rec.log_records + test_record.log_records
 
     return super(RemoteState, cls).__new__(
-        cls, test_state.TestState.Status[status], test_record,
+        cls, test_state.TestState.Status[status], test_record, plugs,
         running_phase_state and RemotePhase(**running_phase_state))
 
 
@@ -281,6 +292,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return self.cached_state
 
   @property
+  @StationUnreachableError.reraise_socket_error
   def state(self):
     cached_state, swapped_dict = self.cached_state_and_swapped_dict
     remote_state_dict = self.shared_proxy.get_test_state(
@@ -294,6 +306,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return self._cached_history.for_test_uid(self.test_uid)
 
   @property
+  @StationUnreachableError.reraise_socket_error
   def history(self):
     """Get a history.History instance for this remote test.
 
@@ -461,6 +474,7 @@ class Station(object):
     return True
 
   @property
+  @StationUnreachableError.reraise_socket_error
   def tests(self):
     """Dictionary mapping Test UID to RemoteTest instance.
 

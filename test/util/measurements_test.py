@@ -99,7 +99,7 @@ class TestMeasurements(unittest.TestCase):
       cls.record = pickle.load(picklefile)
 
   def testMeasurements(self):
-    result = util.NonLocalResult() 
+    result = util.NonLocalResult()
     def _SaveResult(test_record):
       result.result = test_record
     Test.uid = 'UNITTEST:MOCK:UID'
