@@ -105,10 +105,13 @@ import threading
 import time
 
 import mutablerecords
+import sockjs.tornado
 
 import openhtf
+from openhtf import conf
 from openhtf.util import logs
 from openhtf.util import timeouts
+from openhtf.util import xmlrpcutil
 
 
 _LOG = logging.getLogger(__name__)
@@ -126,34 +129,6 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
-class PlugUpdateThread(threading.Thread):
-
-  def __init__(self, plug_instance, current_state, timeout_s):
-    super(PlugUpdateThread, self).__init__(
-        name='%s-%s' % (type(self).__name__, type(plug_instance).__name__))
-    self.plug = plug_instance
-    self.current_state = current_state
-    self.timeout_s = timeout_s
-    self.updated_state = None
-
-  def join(self):
-    """Like Thread.join(), but return our updated state (or None on timeout).
-
-    Note our timeout is determined at construction time, so we don't support
-    an addition timeout specified here.
-    """
-    super(PlugUpdateThread, self).join()
-    return self.updated_state
-
-  def run(self):
-    timeout = timeouts.PolledTimeout.FromSeconds(self.timeout_s)
-    while not timeout.HasExpired():
-      new_state = self.plug._asdict()
-      if new_state != self.current_state:
-        self.updated_state = new_state
-        break
-
-
 class BasePlug(object): # pylint: disable=too-few-public-methods
   """All plug types must subclass this type.
 
@@ -162,6 +137,10 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
         doesn't appear here), and is the same logger as passed into test
         phases via TestApi.
   """
+  # Override this to True in subclasses to support remote Plug access.
+  enable_remote = False
+  # Allow explicitly disabling remote access to specific attributes.
+  disable_remote_attrs = set()
 
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
@@ -182,6 +161,80 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     pass
 
 
+class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
+                 sockjs.tornado.SockJSConnection):
+  """Remote interface to a Plug.
+
+  This class is used by the frontend server to poke at Plugs that are currently
+  in use by a remotely running OpenHTF Test.  It also provides a SockJS
+  interface as a SockJSConnection for frontend clients to interact with.
+  """
+
+  def __init__(self, host, port, plug_name, session):
+    super(RemotePlug, self).__init__((host, port))
+    sockjs.tornado.SockJSConnection.__init__(self, session)
+    # Grab exactly the attrs we want, the server has all plugs', not just ours.
+    for method in self.system.listMethods():
+      name, attr = method.rsplit('.', 1)
+      if name == plug_name:
+        if hasattr(type(self), attr):
+          _LOG.warning(
+              'Skipping predefined attribute "%s" for remote access.', attr)
+        else:
+          setattr(self, attr, functools.partial(self.__request, method))
+
+  def __getattr__(self, attr):
+    _LOG.debug('RemotePlug "%s" requested unknown attribute "%s", known:')
+    _LOG.debug(str(self.system.listMethods()))
+    raise AttributeError(
+        'RemotePlug attribute "%s" not found, is it disabled?' % attr)
+
+  def on_message(self, msg):
+    """Called when we receive a JSON message from a frontend client."""
+    try:
+      attr, args = json.loads(msg)
+    except ValueError:
+      _LOG.warning('Malformed JSON request received: %s', msg, exc_info=True)
+      # TODO(madsci): What to do when we get malformed request?
+      return
+
+    try:
+      self.send(json.dumps(getattr(self, attr)(*args)))
+    except (AttributeError, TypeError, ValueError):
+      _LOG.warning('Error handling JSON RPC request: %s(%s)', attr, args,
+                   exc_info=True)
+      # TODO(madsci): How to send exceptions back?
+      return
+
+  @classmethod
+  def discover(cls, host, port, **kwargs):
+    """Discover what plugs are available at host, port, yielding them.
+
+    The only kwarg expected is 'timeout_s', and it will default to
+    xmlrpcutil.DEFAULT_PROXY_TIMEOUT_S if not provided.  This timeout only
+    applies to the discovery.  To set a timeout on the resulting RemotePlug
+    instances, call settimeout() on them (they have the same default).
+
+    Yields:
+      Tuples of:
+        - Callable that expects a Session and returns a SockJSConnection
+        - URL to which that SockJSConnection should be bound.
+
+    This is so that the yielded tuples may be easily passed to sockjs a la:
+        sockjs.tornado.SockJSRouter(*result)
+    """
+    proxy = xmlrpcutil.TimeoutProxyMixin((host, port), **kwargs)
+    seen = set()
+    for method in proxy.system.listMethods():
+      if not method.startswith('plugs.'):
+        continue
+      plug_name, _ = method.rsplit('.', 1)
+      if plug_name not in seen:
+        seen.add(plug_name)
+        yield (functools.partial(cls, host, port, plug_name),
+               '/' + plug_name.replace('.', '/'))
+
+
 def plug(update_kwargs=True, **plugs):
   """Creates a decorator that passes in plugs when invoked.
 
@@ -193,7 +246,7 @@ def plug(update_kwargs=True, **plugs):
   with @staticmethod.
 
   Args:
-    **plugs: Dict mapping name to Plug type.
+ wait_for_plug_update(   **plugs: Dict mapping name to Plug type.
 
   Returns:
     A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
@@ -253,6 +306,49 @@ class PlugManager(object):
     self._logger = logger
     self._plugs_by_type = {}
     self._plugs_by_name = {}
+    self._xmlrpc_server = None
+
+  def _asdict(self):
+    return {'plug_names': self._plugs_by_name.keys(),
+            'xmlrpc_port': self._xmlrpc_server and
+                           self._xmlrpc_server.socket.getsockname()[1]}
+
+  def _InitializeRpcServer(self):
+    """Initialize and start an XMLRPC server for current plug types.
+
+    If any plugs we currently know about have enable_remote set True, then
+    register their public methods (ones that don't start with _) and spin up
+    an XMLRPC Server.
+
+    Plug methods are available via RPC calls to:
+      'plugs.<plug_module>.<plug_type>.<plug_method>'
+
+    Note that this method will shutdown any previously running server, but
+    should still not be called twice in the lifetime of a PlugManager.
+    """
+    server = xmlrpcutil.SimpleThreadedXmlRpcServer((
+        conf.station_api_bind_address, 0))
+    for name, plug in self._plugs_by_name.iteritems():
+      if not plug.enable_remote:
+        continue
+
+      for attr in dir(plug):
+        if (not attr.startswith('_') and
+            attr not in {'TearDown', 'tear_down'} and
+            attr not in plug.disable_remote_attrs):
+          server.register_function(
+              getattr(plug, attr), name='.'.join(('plugs', name, attr)))
+
+    if server.system_listMethods():
+      if self._xmlrpc_server:
+        _LOG.warning('Shutting down previous PlugManager XMLRPC Server.')
+        self._xmlrpc_server.shutdown()
+      server.register_introspection_functions()
+      server_thread = threading.Thread(target=server.serve_forever,
+                                       name='PlugManager-XMLRPCServer')
+      server_thread.daemon = True
+      server_thread.start()
+      self._xmlrpc_server = server
 
   def InitializePlugs(self, plug_types=None):
     """Instantiate required plugs.
@@ -283,14 +379,18 @@ class PlugManager(object):
         self.TearDownPlugs()
         raise
       self.UpdatePlug(plug_type, plug_instance)
+    self._InitializeRpcServer()
 
   def UpdatePlug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.
- 
+
     Safely tears down the old instance if one was already created, but that's
     generally not the case outside unittests.  Also, we explicitly pass the
     plug_type rather than detecting it from plug_value to allow unittests to
     override plugs with Mock instances.
+
+    Note this should only be used inside unittests, as this mechanism is not
+    compatible with RemotePlug support.
     """
     self._plug_types.add(plug_type)
     if plug_type in self._plugs_by_type:
@@ -298,9 +398,6 @@ class PlugManager(object):
     self._plugs_by_type[plug_type] = plug_value
     self._plugs_by_name[
         '.'.join((plug_type.__module__, plug_type.__name__))] = plug_value
-
-  def _asdict(self):
-    return dict(self._plugs_by_name)
 
   def ProvidePlugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
@@ -316,6 +413,11 @@ class PlugManager(object):
     Any exceptions in TearDown() methods are logged, but do not get raised
     by this method.
     """
+    if self._xmlrpc_server:
+      _LOG.debug('Shutting down Plug XMLRPC Server.')
+      self._xmlrpc_server.shutdown()
+      self._xmlrpc_server = None
+
     _LOG.debug('Tearing down all plugs.')
     for plug in self._plugs_by_type.itervalues():
       try:
@@ -325,7 +427,7 @@ class PlugManager(object):
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
-  def WaitForPlugUpdate(self, plug_type_name, current_state, timeout_s):
+  def wait_for_plug_update(self, plug_type_name, current_state, timeout_s):
     """Return an updated plug state dict, or None on timeout.
 
     This method blocks until the plug described by plug_type_name has a state
@@ -339,8 +441,9 @@ class PlugManager(object):
     """
     if plug_type_name not in self._plugs_by_name:
       raise InvalidPlugError('Unknown plug name "%s"' % plug_type_name)
-
-    update_thread = PlugUpdateThread(self._plugs_by_name[plug_type_name],
-                                     current_state, timeout_s)
-    update_thread.start()
-    return update_thread.join()
+    plug = self._plugs_by_name[plug_type_name]
+    timeout = timeouts.PolledTimeout.FromSeconds(timeout_s)
+    while not timeout.HasExpired():
+      new_state = plug._asdict()
+      if new_state != current_state:
+        return new_state

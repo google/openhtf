@@ -84,10 +84,8 @@ class PlugsTest(test.TestCase):
         self.plug_manager.ProvidePlugs(
             (('adder_plug', AdderPlug),))['adder_plug'])
     self.assertItemsEqual(
-        {'plugs_test.AdderPlug'}, self.plug_manager._asdict())
-    self.assertIs(
-        AdderPlug.LAST_INSTANCE,
-        self.plug_manager._asdict()['plugs_test.AdderPlug'])
+        {'plug_names': 'plugs_test.AdderPlug',
+         'xmlrpc_port': None}, self.plug_manager._asdict())
     self.assertEquals('CREATED', AdderPlug.LAST_INSTANCE.state)
 
   @test.yields_phases
@@ -99,7 +97,7 @@ class PlugsTest(test.TestCase):
       self.assertIs(AdderPlug.LAST_INSTANCE, adder_plug)
       self.assertIs(AdderPlug.LAST_INSTANCE, other_plug)
     yield dummy_phase
-      
+
     @plugs.plug(adder_plug=AdderPlug,
                 other_plug=plugs.BasePlug)
     def dummy_phase(test_api, adder_plug, other_plug):
@@ -117,11 +115,11 @@ class PlugsTest(test.TestCase):
 
   def test_plug_updates(self):
     self.plug_manager.InitializePlugs({AdderPlug})
-    update = self.plug_manager.WaitForPlugUpdate(
+    update = self.plug_manager.wait_for_plug_update(
         'plugs_test.AdderPlug', {}, .001)
     self.assertEquals({'number': 0}, update)
     # No update since last time, this should time out (return None).
-    self.assertIsNone(self.plug_manager.WaitForPlugUpdate(
+    self.assertIsNone(self.plug_manager.wait_for_plug_update(
         'plugs_test.AdderPlug', update, .001))
 
     def _delay_then_update():
@@ -129,10 +127,10 @@ class PlugsTest(test.TestCase):
       self.assertEquals(1, AdderPlug.LAST_INSTANCE.increment())
     threading.Thread(target=_delay_then_update).start()
     start_time = time.time()
-    self.assertEquals({'number': 1}, self.plug_manager.WaitForPlugUpdate(
+    self.assertEquals({'number': 1}, self.plug_manager.wait_for_plug_update(
         'plugs_test.AdderPlug', update, 5))
     self.assertGreater(time.time() - start_time, .2)
-  
+
   def test_invalid_plug(self):
     with self.assertRaises(plugs.InvalidPlugError):
       self.plug_manager.InitializePlugs({object})
@@ -142,7 +140,7 @@ class PlugsTest(test.TestCase):
       self.plug_manager.InitializePlugs({
           type('BadPlug', (plugs.BasePlug,), {'logger': None})})
     with self.assertRaises(plugs.InvalidPlugError):
-      self.plug_manager.WaitForPlugUpdate('invalid', {}, 0)
+      self.plug_manager.wait_for_plug_update('invalid', {}, 0)
 
   def test_duplicate_plug(self):
     with self.assertRaises(plugs.DuplicatePlugError):

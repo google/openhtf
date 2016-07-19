@@ -116,6 +116,7 @@ INSTALL_REQUIRES = [
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
     'requests==2.9.1',
+    'sockjs-tornado==1.0.3',
     'tornado==4.3',
     'xlrd==1.0.0',
 ]
