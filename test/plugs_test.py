@@ -84,7 +84,7 @@ class PlugsTest(test.TestCase):
         self.plug_manager.ProvidePlugs(
             (('adder_plug', AdderPlug),))['adder_plug'])
     self.assertItemsEqual(
-        {'plug_names': 'plugs_test.AdderPlug',
+        {'plug_states': {'plugs_test.AdderPlug': {'number': 0}},
          'xmlrpc_port': None}, self.plug_manager._asdict())
     self.assertEquals('CREATED', AdderPlug.LAST_INSTANCE.state)
 
