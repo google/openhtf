@@ -96,7 +96,7 @@ class TestMeasurements(unittest.TestCase):
     self.assertRaises(TypeError, Measurement('bad_units').WithUnits, 1701)
 
   def testMeasurements(self):
-    result = util.NonLocalResult() 
+    result = util.NonLocalResult()
     def _SaveResult(test_record):
       result.result = test_record
     Test.uid = 'UNITTEST:MOCK:UID'
