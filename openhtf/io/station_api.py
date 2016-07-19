@@ -173,14 +173,15 @@ class RemotePhase(collections.namedtuple('RemotePhase', [
 
 
 class RemoteState(collections.namedtuple('RemoteState', [
-    'status', 'test_record', 'running_phase_state'])):
+    'status', 'test_record', 'plugs', 'running_phase_state'])):
 
   def __str__(self):
     return '<RemoteState %s, Running Phase: %s>' % (
         self.status.name,
         self.running_phase_state and self.running_phase_state.name)
 
-  def __new__(cls, cached_state, status, test_record, running_phase_state):
+  def __new__(cls, cached_state, status,
+              test_record, plugs, running_phase_state):
     test_record = pickle.loads(test_record.data)
     cached_rec = cached_state and cached_state.test_record
 
@@ -195,7 +196,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
       test_record.log_records = cached_rec.log_records + test_record.log_records
 
     return super(RemoteState, cls).__new__(
-        cls, test_state.TestState.Status[status], test_record,
+        cls, test_state.TestState.Status[status], test_record, plugs,
         running_phase_state and RemotePhase(**running_phase_state))
 
 
