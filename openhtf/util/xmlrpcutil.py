@@ -16,8 +16,12 @@
 
 import functools
 import httplib
+import SimpleXMLRPCServer
+import SocketServer
 import threading
 import xmlrpclib
+
+DEFAULT_PROXY_TIMEOUT_S = 3
 
 
 class TimeoutHTTPConnection(httplib.HTTPConnection):
@@ -25,22 +29,29 @@ class TimeoutHTTPConnection(httplib.HTTPConnection):
     httplib.HTTPConnection.__init__(self, *args, **kwargs)
     self.timeout_s = timeout_s
 
+  def settimeout(self, timeout_s):
+    self.timeout_s = timeout_s
+    self.sock.settimeout(self.timeout_s)
+
   def connect(self):
     httplib.HTTPConnection.connect(self)
     self.sock.settimeout(self.timeout_s)
 
 
 class TimeoutTransport(xmlrpclib.Transport):
-
   def __init__(self, timeout_s, *args, **kwargs):
     xmlrpclib.Transport.__init__(self, *args, **kwargs)
     self._connection = None
     self.timeout_s = timeout_s
 
+  def settimeout(self, timeout_s):
+    self.timeout_s = timeout_s
+    if self._connection:
+      self._connection[1].settimeout(timeout_s)
+
   def make_connection(self, host):
-    if self._connection and host == self._connection[0]:
-      return self._connection[1]
-    self._connection = host, TimeoutHTTPConnection(self.timeout_s, host)
+    if not self._connection or host != self._connection[0]:
+      self._connection = host, TimeoutHTTPConnection(self.timeout_s, host)
     return self._connection[1]
 
 
@@ -48,15 +59,19 @@ class BaseServerProxy(xmlrpclib.ServerProxy, object):
   """New-style base class for ServerProxy, allows for use of Mixins below."""
 
 
-class TimeoutServerProxyMixin(object):
+class TimeoutProxyMixin(object):
   """A ServerProxy that supports timeouts."""
   def __init__(self, *args, **kwargs):
-    super(TimeoutServerProxyMixin, self).__init__(
-        transport=TimeoutTransport(kwargs.pop('timeout_s', 5)),
+    super(TimeoutProxyMixin, self).__init__(
+        transport=TimeoutTransport(
+            kwargs.pop('timeout_s', DEFAULT_PROXY_TIMEOUT_S)),
         *args, **kwargs)
 
+  def __settimeout(self, timeout_s):
+    self.__transport.settimeout(timeout_s)
 
-class LockedServerProxyMixin(object):
+
+class LockedProxyMixin(object):
   """A ServerProxy that locks calls to methods."""
   def __init__(self, *args, **kwargs):
     super(LockedServerProxyMixin, self).__init__(*args, **kwargs)
@@ -74,3 +89,13 @@ class LockedServerProxyMixin(object):
       _Wrapper.__name__ = attr
       return _Wrapper
     return method
+
+
+class LockedTimeoutProxy(TimeoutProxyMixin, LockedProxyMixin, BaseServerProxy):
+  """ServerProxy with additional features we use."""
+
+
+class SimpleThreadedXmlRpcServer(
+    SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
+  """Helper for handling multiple simultaneous RPCs in threads."""
+  daemon_threads = True
