@@ -207,13 +207,12 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
       return
 
   @classmethod
-  def discover(cls, host, port, **kwargs):
+  def discover(cls, host, port, timeout_s=xmlrpcutil.DEFAULT_PROXY_TIMEOUT_S):
     """Discover what plugs are available at host, port, yielding them.
 
-    The only kwarg expected is 'timeout_s', and it will default to
-    xmlrpcutil.DEFAULT_PROXY_TIMEOUT_S if not provided.  This timeout only
-    applies to the discovery.  To set a timeout on the resulting RemotePlug
-    instances, call settimeout() on them (they have the same default).
+    timeout_s only applies to the discovery.  To set a timeout on the resulting
+    RemotePlug instances, call settimeout() on them (they have the same
+    default).
 
     Yields:
       Tuples of:
@@ -228,11 +227,16 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     for method in proxy.system.listMethods():
       if not method.startswith('plugs.'):
         continue
-      plug_name, _ = method.rsplit('.', 1)
+      try:
+        _, plug_name, _ = method.split('.')
+      except ValueError:
+        _LOG.warning('Invalid RemotePlug method: %s', method)
+        continue
+
       if plug_name not in seen:
         seen.add(plug_name)
-        yield (functools.partial(cls, host, port, plug_name),
-               '/' + plug_name.replace('.', '/'))
+        # Skip 'plugs.' prefix for URLs.
+        yield (functools.partial(cls, host, port, plug_name), plug_name[6:])
 
 
 def plug(update_kwargs=True, **plugs):
@@ -309,7 +313,8 @@ class PlugManager(object):
     self._xmlrpc_server = None
 
   def _asdict(self):
-    return {'plug_names': self._plugs_by_name.keys(),
+    return {'plug_states': {name: plug._asdict()
+                            for name, plug in self._plugs_by_name.iteritems()},
             'xmlrpc_port': self._xmlrpc_server and
                            self._xmlrpc_server.socket.getsockname()[1]}
 

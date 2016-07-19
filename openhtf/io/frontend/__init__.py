@@ -45,7 +45,6 @@ frontend server.
 """
 
 
-from __future__ import print_function
 import collections
 import functools
 import json
@@ -81,6 +80,9 @@ PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
 conf.Declare('stations',
              default_value=[],
              description='List of manually declared stations.')
+
+
+Hostport = collections.namedtuple('Hostport', ['host', 'port'])
 
 
 class TestWatcher(threading.Thread):
@@ -160,7 +162,7 @@ class StationStore(threading.Thread):
   def _discover(self):
     """Discover stations through the station API."""
     for station in station_api.Station.discover():
-      hostport = (station.host, station.station_api_port)
+      hostport = Hostport(station.host, station.station_api_port)
       self.stations.setdefault(hostport, station)
 
       try:
@@ -284,7 +286,8 @@ class StationPubSub(PubSub):
 
   def on_subscribe(self, info):
     """Add the subscriber and send intial state."""
-    hostport = (info.arguments['host'][0], int(info.arguments['port'][0]))
+    hostport = Hostport(info.arguments['host'][0],
+                        int(info.arguments['port'][0]))
     self.subscriber_to_hostport_map[self] = hostport
     if hostport not in self._store.stations:
       _LOG.debug('Client tried to subscribe to unknown station. This can '
@@ -317,10 +320,10 @@ class WebGuiServer(tornado.web.Application):
   def __init__(self, discovery_interval_s, disable_discovery, http_port,
                dev_mode=False):
     self.store = StationStore(
-        discovery_interval_s,
-        disable_discovery,
+        discovery_interval_s, disable_discovery,
         DashboardPubSub.publish_discovery_update,
-        StationPubSub.publish_test_state_update)
+        self.handle_test_state_update,
+    )
 
     path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
     dash_router = sockjs.tornado.SockJSRouter(DashboardPubSub, '/sub/dashboard')
@@ -330,12 +333,47 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:(?:[0-9]{1,3}\.){3}[0-9]{1,3})/(?:[0-9]{1,5})(?:/*)',
          self.MainHandler, {'port': http_port}),
-        (r"/(.*\..*)", tornado.web.StaticFileHandler, {'path': path}),
-        (r"/(styles\.css)", tornado.web.StaticFileHandler, {'path': path}),
+        (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path}),
+        (r'/(styles\.css)', tornado.web.StaticFileHandler, {'path': path}),
     ] + dash_router.urls + station_router.urls
     super(WebGuiServer, self).__init__(
         handler_routes, template_path=path, static_path=path, debug=dev_mode)
     self.listen(self.port)
+
+  def remove_handlers_by_url(self, url):
+    """Remove any handlers with the given URL pattern (must match exactly)."""
+    if not url.endswith('$'):
+      url += '$'  # tornado does this internally, so we do the same.
+    self.handlers = [h for h in self.handlers if h[1].regex.pattern != url]
+
+  def has_handler_for_url(self, url):
+    """Returns True if there's a handler for the given URL (exact match)."""
+    if not url.endswith('$'):
+      url += '$'  # tornado does this internally, so we do the same.
+    return any(h[1].regex.pattern == url for h in self.handlers)
+
+  def handle_test_state_update(self, hostport, test_uid, state):
+    """Handle an update to a RemoteState.
+
+    This handler updates our URL handlers with any newly available plug
+    information and notifies the StationPubSub of the event.
+    """
+    def _make_sockjs_url(rel_url):
+      """SockJS URL is /plugs/<host>/<port>/<test_uid>/<plug_name>"""
+      return r'/plugs/%s/%s/%s/%s' % (hostport + (test_uid, rel_url))
+
+    StationPubSub.publish_test_state_update(hostport, test_uid, state)
+    plugs_port = state.plugs['xmlrpc_port']
+    if plugs_port:
+      # See plugs.RemotePlug.discover for details, but essentially this call
+      # yields (connection-type, URL) tuples, where URL is relative to the
+      # particular station and test_uid in question.  We generate an absolute
+      # URL for use with SockJS with _make_sockjs_url().
+      self.add_handlers(
+          (conn, _make_sockjs_url(rel_url)) for conn, rel_url
+          in plugs.RemotePlug.discover(hostport.host, plugs_port)
+          if not self.has_handler_for_url(_make_sockjs_url(rel_url))
+      )
 
   def start(self):
     """Start the web server."""

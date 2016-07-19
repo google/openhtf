@@ -17,7 +17,7 @@
 
 Classes implemented in this module encapsulate state information about a
 running test, including test-wide state and currently executing phase
-state.  
+state.
 
 These classes also implement various logic and audit mechanisms for state
 transitions during the course of the lifetime of a single Execute()
@@ -112,7 +112,7 @@ class TestState(object):
     be accessed within a RunningPhaseContext().
     """
     running_phase_state = self.running_phase_state
-    return (running_phase_state and 
+    return (running_phase_state and
             openhtf.TestApi(
         self.logger, self.user_defined_state, self.test_record,
         measurements.Collection(running_phase_state.measurements),
@@ -142,7 +142,7 @@ class TestState(object):
       # Clear notification callbacks so we can serialize measurements.
       for meas in self.running_phase_state.phase_record.measurements.values():
         meas.set_notification_callback(None)
-        
+
       self.test_record.phases.append(self.running_phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
@@ -151,6 +151,7 @@ class TestState(object):
     """Return a dict representation of the test's state."""
     return {
         'status': self._status, 'test_record': self.test_record,
+        'plugs': self.plug_manager._asdict(),
         'running_phase_state': self.running_phase_state,
     }
 
@@ -299,7 +300,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
 
   @classmethod
   def FromDescriptor(cls, phase_desc, notify_cb):
-    return cls( 
+    return cls(
         phase_desc.name,
         test_record.PhaseRecord.FromDescriptor(phase_desc),
         {measurement.name:
