@@ -66,9 +66,7 @@ import cPickle as pickle
 import json
 import logging
 import os
-import SimpleXMLRPCServer
 import socket
-import SocketServer
 import threading
 import time
 import xmlrpclib
@@ -125,19 +123,6 @@ class UpdateTimeout(Exception):
 
 class PlugUnrecognizedError(Exception):
   """Raised if a plug is requested that is not in use."""
-
-
-class LockedTimeoutReraisingProxy(
-    # TODO(madsci): ReraisingMixin
-    xmlrpcutil.TimeoutServerProxyMixin, xmlrpcutil.LockedServerProxyMixin,
-    xmlrpcutil.BaseServerProxy):
-  """ServerProxy with additional features we use."""
-
-
-class SimpleThreadedXMLRPCServer(
-    SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
-  """Helper for handling multiple simultaneous RPCs in threads."""
-  daemon_threads = True
 
 
 class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
@@ -198,7 +183,7 @@ class RemoteState(collections.namedtuple('RemoteState', [
         cached_rec.start_time_millis == test_record.start_time_millis):
       test_record.phases = cached_rec.phases + test_record.phases
       test_record.log_records = cached_rec.log_records + test_record.log_records
-     
+
     return super(RemoteState, cls).__new__(
         cls, test_state.TestState.Status[status], test_record,
         running_phase_state and RemotePhase(**running_phase_state))
@@ -233,7 +218,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return (len(state.test_record.phases),
             len(state.test_record.log_records),
             state)
-  
+
   def __str__(self):
     # Use cached_state because accessing self.state triggers an RPC, and
     # we don't want str() to trigger an RPC because that's counterintuitive.
@@ -383,7 +368,7 @@ class Station(object):
       self._history = history.History()
       self._lock = threading.Lock()
       self.cached_tests = {}
-    
+
     self._station_info = station_info
     # Shared proxy used for synchronous calls we expect to be fast.
     # Long-polling calls should use the 'proxy' attribute directly instead, as
@@ -419,10 +404,10 @@ class Station(object):
   def station_id(self):
     self.reachable
     return self._station_info.station_id
-  
+
   def make_proxy(self, timeout_s=5):
     """Make a new ServerProxy for this station."""
-    return LockedTimeoutReraisingProxy(
+    return xmlrpcutil.LockedTimeoutProxy(
         'http://%s:%s' % (self.host, self.station_api_port),
         timeout_s=timeout_s, allow_none=True)
 
@@ -444,7 +429,7 @@ class Station(object):
 
   @classmethod
   def from_host_port(cls, host, port, station_id=None):
-    proxy = LockedTimeoutReraisingProxy(
+    proxy = xmlrpcutil.LockedTimeoutProxy(
         'http://%s:%s' % (host, port), allow_none=True)
     try:
       station_info = StationInfo(**proxy.get_station_info())
@@ -455,7 +440,7 @@ class Station(object):
       station_info = StationInfo(station_id)
 
     return cls(host, port, station_info, proxy)
-      
+
   @property
   @threads.Synchronized
   def reachable(self):
@@ -522,7 +507,7 @@ class StationApi(object):
   def get_station_info(self):
     """Obtain dict required to make a StationInfo for this station."""
     _LOG.debug('RPC:get_station_info() -> %s:%s', conf.station_id, self.UID)
-    return { 
+    return {
         'station_id': conf.station_id,
         'station_uid': self.UID,
         'station_api_bind_address': conf.station_api_bind_address,
@@ -617,10 +602,10 @@ class StationApi(object):
       UnrecognizedTestUidError: If the test_uid is not recognized.
       TestNotRunningError: If the test requested is not currently running.
       PlugUnrecognizedError: If the requested plug is not used by the
-          currently running test. 
+          currently running test.
     """
     test_state = openhtf.Test.state_by_uid(test_uid)
-    return test_state.plug_manager.WaitForPlugUpdate(
+    return test_state.plug_manager.wait_for_plug_update(
         plug_type_name, current_state, timeout_s)
 
   def wait_for_update(self, test_uid, remote_state_dict, timeout_s):
@@ -672,7 +657,7 @@ class StationApi(object):
       _LOG.debug(
           'RPC:wait_for_update() -> short-circuited wait (local was blank)')
       return self._serialize_state_dict(state._asdict())
-       
+
     state_dict, event = state.asdict_with_event()
     # Make a copy with phase/log record counts swapped out for comparison with
     # remote_state_dict.
@@ -756,13 +741,11 @@ class ApiServer(threading.Thread):
 
   def run(self):
     if conf.station_api_port:
-      self.station_api_server = SimpleThreadedXMLRPCServer(
+      self.station_api_server = xmlrpcutil.SimpleThreadedXmlRpcServer(
           (conf.station_api_bind_address, int(conf.station_api_port)),
           allow_none=True,
           logRequests=logging.getLogger().level <= logging.DEBUG)
       self.station_api_server.register_instance(STATION_API)
-      self.station_api_server.register_introspection_functions()
-      self.station_api_server.register_multicall_functions()
 
       # Discovery is useless if station_api is disabled, so we don't ever start
       # a MulticastListener if station_api_port isn't set, even if
