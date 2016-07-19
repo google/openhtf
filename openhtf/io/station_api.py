@@ -63,6 +63,7 @@ in this module.
 
 import collections
 import cPickle as pickle
+import functools
 import json
 import logging
 import os
@@ -115,6 +116,15 @@ MULTICAST_KWARGS = lambda: {
 
 class StationUnreachableError(Exception):
   """Raised when an operation fails due to an unreachable station."""
+  @classmethod
+  def reraise_socket_error(cls, func):
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+      try:
+        return func(*args, **kwargs)
+      except socket.error:
+        raise cls('Station unreachable.')
+    return _wrapper
 
 
 class UpdateTimeout(Exception):
@@ -281,6 +291,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return self.cached_state
 
   @property
+  @StationUnreachableError.reraise_socket_error
   def state(self):
     cached_state, swapped_dict = self.cached_state_and_swapped_dict
     remote_state_dict = self.shared_proxy.get_test_state(
@@ -294,6 +305,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     return self._cached_history.for_test_uid(self.test_uid)
 
   @property
+  @StationUnreachableError.reraise_socket_error
   def history(self):
     """Get a history.History instance for this remote test.
 
@@ -461,6 +473,7 @@ class Station(object):
     return True
 
   @property
+  @StationUnreachableError.reraise_socket_error
   def tests(self):
     """Dictionary mapping Test UID to RemoteTest instance.
 
