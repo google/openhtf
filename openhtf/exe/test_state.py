@@ -205,16 +205,16 @@ class TestState(object):
       code = str(type(phase_outcome.phase_result).__name__)
       description = str(phase_outcome.phase_result).decode('utf8', 'replace')
       self.test_record.AddOutcomeDetails(code, description)
-      self.Finalize(test_record.Outcome.ERROR)
+      self.finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:
       self.logger.debug('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
-      self.Finalize(test_record.Outcome.TIMEOUT)
+      self.finalize(test_record.Outcome.TIMEOUT)
     elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.debug('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
       # TODO(madsci): Decouple flow control from pass/fail.
-      self.Finalize(test_record.Outcome.ABORTED)
+      self.finalize(test_record.Outcome.ABORTED)
 
     return self.is_finalized
 
@@ -226,13 +226,13 @@ class TestState(object):
     self.test_record.start_time_millis = util.TimeMillis()
     self.notify_update()
 
-  def SetStatusRunning(self):
-    """Mark the test as actually running, can't be done once Finalized."""
+  def set_status_running(self):
+    """Mark the test as actually running, can't be done once finalized."""
     assert self._status == self.Status.WAITING_FOR_TEST_START
     self._status = self.Status.RUNNING
     self.notify_update()
 
-  def Finalize(self, test_outcome=None):
+  def finalize(self, test_outcome=None):
     """Mark the state as finished.
 
     This method is called with no arguments on normal test completion, or
