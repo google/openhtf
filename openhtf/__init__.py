@@ -153,7 +153,7 @@ class Test(object):
     """Transient state info about the currently executing test, or None."""
     with self._lock:
       if self._executor:
-        return self._executor.GetState()
+        return self._executor.test_state
 
   def GetOption(self, option):
     return getattr(self._test_options, option)
@@ -197,8 +197,8 @@ class Test(object):
       if self._executor:
         # TestState str()'s nicely to a descriptive string, so let's log that
         # just for good measure.
-        _LOG.error('Test state: %s', self._executor.GetState())
-        self._executor.Stop()
+        _LOG.error('Test state: %s', self._executor.test_state)
+        self._executor.stop()
 
   def Execute(self, test_start=None):
     """Starts the framework and executes the given test.
@@ -207,7 +207,7 @@ class Test(object):
       test_start: Trigger for starting the test, defaults to not setting the DUT
           serial number.
     """
-    # Lock this section so we don't .Stop() the executor between instantiating
+    # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
       # Sanity check to make sure someone isn't doing something weird like
@@ -225,13 +225,13 @@ class Test(object):
       self._executor = exe.TestExecutor(
           self._test_desc, test_start, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
-      self._executor.Start()
+      self._executor.start()
 
     try:
-      self._executor.Wait()
+      self._executor.wait()
     finally:
       try:
-        final_state = self._executor.Finalize()
+        final_state = self._executor.finalize()
 
         _LOG.debug('Test completed for %s, saving to history and outputting.',
                    final_state.test_record.metadata['test_name'])
@@ -320,6 +320,13 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
       pass
   """
 
+  def update(self, **kwargs):
+    for k, v in kwargs.iteritems():
+      if k not in self.__slots__:
+        raise AttributeError('Type %s does not have attribute %s' % (
+            type(self).__name__, k))
+      setattr(self, k, v)
+
   def __call__(self, phase_func):
     phase = PhaseDescriptor.WrapOrCopy(phase_func)
     for attr in self.__slots__:
@@ -349,7 +356,7 @@ class PhaseDescriptor(mutablerecords.Record(
   """
 
   @classmethod
-  def WrapOrCopy(cls, func):
+  def WrapOrCopy(cls, func, **options):
     """Return a new PhaseDescriptor from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different
@@ -357,14 +364,19 @@ class PhaseDescriptor(mutablerecords.Record(
 
     Args:
       func: A phase function or PhaseDescriptor instance.
+      **options: Options to update on the result.
 
     Returns:
       A new PhaseDescriptor object.
     """
-    if not isinstance(func, cls):
-      return cls(func, test_record.CodeInfo.ForFunction(func))
-    # We want to copy so that a phase can be reused with different options, etc.
-    return mutablerecords.CopyRecord(func)
+    if isinstance(func, cls):
+      # We want to copy so that a phase can be reused with different options
+      # or kwargs.  See WithArgs() below for more details.
+      retval = mutablerecords.CopyRecord(func)
+    else:
+      retval = cls(func, test_record.CodeInfo.ForFunction(func))
+    retval.options.update(**options)
+    return retval
 
   @property
   def name(self):
