@@ -63,6 +63,8 @@ class TestExecutor(threads.KillableThread):
     self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._lock = threading.Lock()
+    self._exit_stack = None
+    self._test_state = None
 
   def Start(self):
     """Style-compliant start method."""
@@ -111,11 +113,6 @@ class TestExecutor(threads.KillableThread):
 
   def _ThreadProc(self):
     """Handles one whole test from start to finish."""
-    with self._lock:
-      self._exit_stack = None
-    self._test_state = None
-    self._output_thread = None
-
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
 
