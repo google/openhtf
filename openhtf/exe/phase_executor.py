@@ -34,6 +34,8 @@ framework.
 
 import collections
 import logging
+import sys
+import traceback
 
 import openhtf
 from openhtf.exe import phase_data
@@ -122,6 +124,10 @@ class PhaseExecutorThread(threads.KillableThread):
     self._phase_outcome = PhaseOutcome(phase_return)
 
   def _ThreadException(self, exc):
+    print 'INSIDE EXCEPTION THING'
+    print sys.exc_info()
+    import pdb 
+    pdb.set_trace()
     self._phase_outcome = PhaseOutcome(exc)
     self._phase_data.logger.exception('Phase %s raised an exception', self.name)
 

@@ -1,0 +1,74 @@
+{
+  "phases": [
+    {
+      "start_time_millis": 1468972848140, 
+      "attachments": {}, 
+      "measured_values": {
+        "hello_world_measurement": "Hello Again!"
+      }, 
+      "measurements": {
+        "hello_world_measurement": {
+          "outcome": "PASS", 
+          "name": "hello_world_measurement"
+        }
+      }, 
+      "end_time_millis": 1468972848144, 
+      "name": "hello_world", 
+      "result": {
+        "phase_result": "HELLO THERE"
+      }, 
+      "codeinfo": {
+        "docstring": "A hello world test phase.", 
+        "name": "hello_world", 
+        "sourcecode": "@measures(Measurement('hello_world_measurement'))\ndef hello_world(test):\n  \"\"\"A hello world test phase.\"\"\"\n  # At the heart of an OpenHTF test script are the test phases, such as\n  # this one.  Any callable can be used as a test phase, so long as it\n  # accepts a single argument that is the 'test' object.  This test object\n  # is how you will interact with the OpenHTF test framework once a test is\n  # running.  See other examples for more complex cases, but here is a good\n  # example of the sort of minimal functionality you're likely to use.\n\n  # The test.logger attribute is a Python logger instance that is configured\n  # to log to the test record we will output at the end of the test.  This\n  # is the recommended way to do any logging within test phases (this is also\n  # how to get logs to show up in the frontend).\n  test.logger.info('Hello World!')\n\n  # As described above, this is how measurements are set.  The value that has\n  # been set can also be accessed, but should only be set once (this will be\n  # enforced in the future, for now it's best-practice).\n  test.measurements.hello_world_measurement = 'Hello Again!'\n  raise Exception(\"HELLO THERE\") \n"
+      }
+    }
+  ], 
+  "start_time_millis": 1468972848140, 
+  "outcome_details": [
+    {
+      "code": "Exception", 
+      "description": "HELLO THERE"
+    }
+  ], 
+  "end_time_millis": 1468972848190, 
+  "station_id": "maddychan0.mtv.corp.google.com", 
+  "dut_id": "test", 
+  "code_info": {
+    "docstring": "Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\n\n  python hello_world.py\n\nAfterwards, take a look at the hello_world.json output file.  This will\ngive you a basic idea of what a minimal test outputs.\n\nFor more information on measurements, see the measurements.py example.\n\nTODO(someone): Write an output example.\nFor more information on output, see the output.py example.", 
+    "name": "hello_world.py", 
+    "sourcecode": "# Copyright 2016 Google Inc. All Rights Reserved.\n\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n\n#     http://www.apache.org/licenses/LICENSE-2.0\n\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n\"\"\"Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\n\n  python hello_world.py\n\nAfterwards, take a look at the hello_world.json output file.  This will\ngive you a basic idea of what a minimal test outputs.\n\nFor more information on measurements, see the measurements.py example.\n\nTODO(someone): Write an output example.\nFor more information on output, see the output.py example.\n\"\"\"\n\n# Import this output mechanism as it's the specific one we want to use.\nfrom openhtf.io.output import json_factory\n\n# Import a handful of useful names.  If you're worried about polluting\n# your namespace, you can manually import just the things you want, this\n# is just a convenience.  See names.py for an exhaustive list.\nfrom openhtf.names import *\n\n\n# The @measures annotation notifies the OpenHTF framework that this test\n# phase will be taking a measurement that we'd like to call\n# 'hello_world_measurement'.  Measurements can be accessed and set via\n# the 'test' object, always passed as the first argument to test phases.\n@measures(Measurement('hello_world_measurement'))\ndef hello_world(test):\n  \"\"\"A hello world test phase.\"\"\"\n  # At the heart of an OpenHTF test script are the test phases, such as\n  # this one.  Any callable can be used as a test phase, so long as it\n  # accepts a single argument that is the 'test' object.  This test object\n  # is how you will interact with the OpenHTF test framework once a test is\n  # running.  See other examples for more complex cases, but here is a good\n  # example of the sort of minimal functionality you're likely to use.\n\n  # The test.logger attribute is a Python logger instance that is configured\n  # to log to the test record we will output at the end of the test.  This\n  # is the recommended way to do any logging within test phases (this is also\n  # how to get logs to show up in the frontend).\n  test.logger.info('Hello World!')\n\n  # As described above, this is how measurements are set.  The value that has\n  # been set can also be accessed, but should only be set once (this will be\n  # enforced in the future, for now it's best-practice).\n  test.measurements.hello_world_measurement = 'Hello Again!'\n  raise Exception(\"HELLO THERE\") \n"
+  }, 
+  "log_records": [
+    {
+      "timestamp_millis": 1468972848140, 
+      "level": 20, 
+      "source": "hello_world.py", 
+      "lineno": 57, 
+      "message": "Hello World!", 
+      "logger_name": "openhtf.test_record"
+    }, 
+    {
+      "timestamp_millis": 1468972848141, 
+      "level": 40, 
+      "source": "phase_executor.py", 
+      "lineno": 126, 
+      "message": "Phase hello_world raised an exception\nTraceback (most recent call last):\n  File \"/usr/local/google/home/maddychan/openhtf/openhtf/util/threads.py\", line 59, in run\n    self._ThreadProc()\n  File \"/usr/local/google/home/maddychan/openhtf/openhtf/exe/phase_executor.py\", line 113, in _ThreadProc\n    phase_return = self._phase(self._phase_data)\n  File \"/usr/local/google/home/maddychan/openhtf/openhtf/__init__.py\", line 338, in __call__\n    return self.func(phase_data, **kwargs)\n  File \"hello_world.py\", line 63, in hello_world\n    raise Exception(\"HELLO THERE\")\nException: HELLO THERE\n", 
+      "logger_name": "openhtf.test_record"
+    }, 
+    {
+      "timestamp_millis": 1468972848189, 
+      "level": 10, 
+      "source": "test_state.py", 
+      "lineno": 164, 
+      "message": "Finishing test execution with outcome ERROR.", 
+      "logger_name": "openhtf.test_record"
+    }
+  ], 
+  "outcome": "ERROR", 
+  "metadata": {
+    "config": {
+      "station_id": "maddychan0.mtv.corp.google.com"
+    }
+  }
+}
