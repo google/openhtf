@@ -156,7 +156,7 @@ class PhaseExecutor(object):
     self.test_state = test_state
     self._current_phase_thread = None
 
-  def ExecutePhases(self, phases):
+  def execute_phases(self, phases):
     """Executes each phase or skips them, yielding PhaseOutcome instances.
 
     Args:
@@ -167,7 +167,7 @@ class PhaseExecutor(object):
     """
     for phase in phases:
       while True:
-        outcome = self._ExecuteOnePhase(phase)
+        outcome = self._execute_one_phase(phase)
         if outcome:
           yield outcome
 
@@ -182,7 +182,7 @@ class PhaseExecutor(object):
           # run_if was falsey, just skip this phase.
           break
 
-  def _ExecuteOnePhase(self, phase_desc, skip_record=False):
+  def _execute_one_phase(self, phase_desc, skip_record=False):
     """Executes the given phase, returning a PhaseOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase.options.run_if():
@@ -200,7 +200,7 @@ class PhaseExecutor(object):
     _LOG.debug('Phase finished with result %s', phase_state.result)
     return phase_state.result
 
-  def Stop(self):
+  def stop(self):
     """Stops execution of the current phase, if any.
 
     It will raise a ThreadTerminationError, which will cause the test to stop
