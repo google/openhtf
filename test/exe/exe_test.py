@@ -62,9 +62,9 @@ class TestExecutor(unittest.TestCase):
   # Mock test execution.
   def testTestExecutor(self):
     mock_starter = mock.Mock(spec=exe.TestExecutor)
-    mock_starter.Start()
-    mock_starter.Wait()
-    mock_starter.Stop()
+    mock_starter.start()
+    mock_starter.wait()
+    mock_starter.stop()
 
   def testClassString(self):
     check_list = ['PhaseExecutorThread', 'phase_one']

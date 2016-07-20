@@ -105,7 +105,7 @@ class Measurement(  # pylint: disable=no-init
         'Measurement', ['name'],
         {'units': None, 'dimensions': None, 'docstring': None,
          '_notification_cb': None, 'validators': list, 'outcome': Outcome.UNSET,
-         'stored_value': None})):
+         'measured_value': None})):
   """Record encapsulating descriptive data for a measurement.
 
   This record includes an _asdict() method so it can be easily output.  Output
@@ -119,26 +119,44 @@ class Measurement(  # pylint: disable=no-init
     dimensions: Tuple of UOM codes for units of dimensions.
     validators: List of callable validator objects to perform pass/fail checks.
     outcome: One of the Outcome() enumeration values, starting at UNSET.
-    value: An instance of MeasuredValue or DimensionedMeasuredValue containing
-      the value(s) of this Measurement that have been set, if any.
-    stored_value: Internal state for lazy creation of value attribute.
+    measured_value: An instance of MeasuredValue or DimensionedMeasuredValue
+      containing the value(s) of this Measurement that have been set, if any.
   """
+
+  def __init__(self, name, **kwargs):
+    super(Measurement, self).__init__(name, **kwargs)
+    self._initialize_value()
+
+  def _initialize_value(self):
+    if self.measured_value and self.measured_value.is_value_set:
+      raise ValueError('Cannot update a Measurement once a value is set.')
+
+    if self.dimensions:
+      self.measured_value = DimensionedMeasuredValue(
+          self.name, len(self.dimensions))
+    else:
+      self.measured_value = MeasuredValue(self.name)
+
+  def __setattr__(self, attr, value):
+    super(Measurement, self).__setattr__(attr, value)
+    # When dimensions changes, we may need to update our measured_value type.
+    if attr == 'dimensions':
+      self._initialize_value()
 
   def set_notification_callback(self, notification_cb):
     """Set the notifier we'll call when measurements are set."""
     self._notification_cb = notification_cb
+    if not notification_cb and self.dimensions:
+      self.measured_value.notify_value_set = None
     return self
 
   def notify_value_set(self):
-    assert self._notification_cb, (
-        'Measurement set, but has no notification callback!')
-    self._notification_cb()
-
-  @property
-  def value(self):
-    if not self.stored_value:
-      self.stored_value = self.MakeUnsetValue()
-    return self.stored_value
+    if self.dimensions:
+      self.outcome = Outcome.PARTIALLY_SET
+    else:
+      self.validate()
+    if self._notification_cb:
+      self._notification_cb()
 
   def Doc(self, docstring):
     """Set this Measurement's docstring, returns self for chaining."""
@@ -187,10 +205,10 @@ class Measurement(  # pylint: disable=no-init
       return self.WithValidator(getattr(validators, attr)(*args, **kwargs))
     return _WithValidator
 
-  def Validate(self):
+  def validate(self):
     """Validate this measurement and update its 'outcome' field."""
     # PASS if all our validators return True, otherwise FAIL.
-    if all(v(self.value.value) for v in self.validators):
+    if all(v(self.measured_value.value) for v in self.validators):
       self.outcome = Outcome.PASS
     else:
       self.outcome = Outcome.FAIL
@@ -202,8 +220,8 @@ class Measurement(  # pylint: disable=no-init
         'name': self.name,
         'outcome': self.outcome,
     }
-    if self.value.is_value_set:
-      retval['measured_value'] = self.value.value
+    if self.measured_value.is_value_set:
+      retval['measured_value'] = self.measured_value.value
 
     if len(self.validators):
       retval['validators'] = [str(v) for v in self.validators]
@@ -212,15 +230,10 @@ class Measurement(  # pylint: disable=no-init
         retval[attr] = getattr(self, attr)
     return retval
 
-  def MakeUnsetValue(self):
-    """Create an unset MeasuredValue for this measurement."""
-    if self.dimensions:
-      return DimensionedMeasuredValue(self.name, len(self.dimensions), self)
-    else:
-      return MeasuredValue(self.name, self)
 
-
-class MeasuredValue(object):
+class MeasuredValue(
+    mutablerecords.Record('MeasuredValue', ['name'],
+                          {'stored_value': None, 'is_value_set': False})):
   """Class encapsulating actual values measured.
 
   Note that this is really just a value wrapper with some sanity checks.  See
@@ -234,12 +247,8 @@ class MeasuredValue(object):
   on both of them.
   """
 
-  def __init__(self, name, measurement):
-    self.name = name
-    self.measurement = measurement
-    self.stored_value = None
-    # Track this so we can differentiate between unset and set-to-None.
-    self.is_value_set = False
+  def __str__(self):
+    return str(self.value) if self.is_value_set else 'UNSET'
 
   def __eq__(self, other):
     return (type(self) == type(other) and self.name == other.name and
@@ -269,23 +278,23 @@ class MeasuredValue(object):
       _LOG.warning('Measurement %s is set to None', self.name)
     self.stored_value = value
     self.is_value_set = True
-    self.measurement.Validate()
-    self.measurement.notify_value_set()
 
 
-class DimensionedMeasuredValue(object):
+class DimensionedMeasuredValue(mutablerecords.Record(
+    'DimensionedMeasuredValue', ['name', 'num_dimensions'],
+    {'notify_value_set': None, 'value_dict': collections.OrderedDict})):
   """Class encapsulating actual values measured.
 
   See the MeasuredValue class docstring for more info.  This class provides a
   dict-like interface for indexing into dimensioned measurements.
   """
 
-  def __init__(self, name, num_dimensions, measurement):
-    assert num_dimensions > 0, 'Must have 1 or more dimensions'
-    self.name = name
-    self.num_dimensions = num_dimensions
-    self.measurement = measurement
-    self.value_dict = collections.OrderedDict()
+  def __str__(self):
+    return str(self.value) if self.is_value_set else 'UNSET'
+
+  def with_notify(self, notify_value_set):
+    self.notify_value_set = notify_value_set
+    return self
 
   @property
   def is_value_set(self):
@@ -312,8 +321,8 @@ class DimensionedMeasuredValue(object):
           'Overriding previous measurement %s[%s] value of %s with %s',
           self.name, coordinates, self.value_dict[coordinates], value)
     self.value_dict[coordinates] = value
-    self.measurement.outcome = Outcome.PARTIALLY_SET
-    self.measurement.notify_value_set()
+    if self.notify_value_set:
+      self.notify_value_set()
 
   def __getitem__(self, coordinates):  # pylint: disable=invalid-name
     # Wrap single dimensions in a tuple so we can assume value_dict keys are
@@ -388,7 +397,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
 
   def __iter__(self):  # pylint: disable=invalid-name
     """Extract each MeasurementValue's value."""
-    return ((key, meas.value.value)
+    return ((key, meas.measured_value.value)
             for key, meas in self._measurements.iteritems())
 
   def __setattr__(self, name, value):  # pylint: disable=invalid-name
@@ -402,16 +411,18 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
     if self._measurements[name].dimensions:
       raise InvalidDimensionsError(
           'Cannot set dimensioned measurement without indices')
-    self._measurements[name].value.set(value)
+    self._measurements[name].measured_value.set(value)
+    self._measurements[name].notify_value_set()
 
   def __getitem__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
 
     if self._measurements[name].dimensions:
-      return self._measurements[name].value
+      return self._measurements[name].measured_value.with_notify(
+          self._measurements[name].notify_value_set)
 
     # Return the MeasuredValue's value, MeasuredValue will raise if not set.
-    return self._measurements[name].value.value
+    return self._measurements[name].measured_value.value
 
 
 def measures(*measurements, **kwargs):

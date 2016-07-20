@@ -52,23 +52,21 @@ class TestExecutor(threads.KillableThread):
 
   def __init__(self, test_descriptor, test_start, teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
+    self.test_state = None
 
-    self._teardown_function = None
-    if teardown_function:
-      self._teardown_function = openhtf.PhaseDescriptor.WrapOrCopy(
-          teardown_function)
-      # Force teardown function timeout.
-      self._teardown_function.options.timeout_s = conf.teardown_timeout_s
-
+    # Force teardown function timeout, otherwise we can hang for a long time
+    # when shutting down, such as in response to a SIGINT.
+    self._teardown_function = (
+        teardown_function and
+        openhtf.PhaseDescriptor.WrapOrCopy(
+            teardown_function, timeout_s=conf.teardown_timeout_s))
+        
     self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._lock = threading.Lock()
+    self._exit_stack = None
 
-  def Start(self):
-    """Style-compliant start method."""
-    self.start()
-
-  def Stop(self):
+  def stop(self):
     """Stop this test."""
     _LOG.info('Stopping test executor.')
     with self._lock:
@@ -76,7 +74,7 @@ class TestExecutor(threads.KillableThread):
         self._exit_stack.close()
     self.Kill()
 
-  def Finalize(self):
+  def finalize(self):
     """Finalize test execution and output resulting record to callbacks.
 
     Should only be called once at the conclusion of a test run, and will raise
@@ -86,36 +84,27 @@ class TestExecutor(threads.KillableThread):
 
     Raises: TestAlreadyFinalized if end_time_millis already set.
     """
-    if not self._test_state:
+    if not self.test_state:
       raise TestStopError('Test Stopped.')
 
-    if not self._test_state.is_finalized:
-      self._test_state.logger.info('Finishing test with outcome ABORTED.')
-      self._test_state.Finalize(test_record.Outcome.ABORTED)
+    if not self.test_state.is_finalized:
+      self.test_state.logger.info('Finishing test with outcome ABORTED.')
+      self.test_state.finalize(test_record.Outcome.ABORTED)
 
-    return self._test_state
+    return self.test_state
     
-  def Wait(self):
+  def wait(self):
     """Waits until death."""
     try:
       self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
     except KeyboardInterrupt:
-      self._test_state.logger.info(
+      self.test_state.logger.info(
           'KeyboardInterrupt caught, finishing test with outcome ABORTED.')
-      self._test_state.Finalize(test_record.Outcome.ABORTED)
+      self.test_state.finalize(test_record.Outcome.ABORTED)
       raise
-
-  def GetState(self):
-    """Return the current TestState object."""
-    return self._test_state
 
   def _ThreadProc(self):
     """Handles one whole test from start to finish."""
-    with self._lock:
-      self._exit_stack = None
-    self._test_state = None
-    self._output_thread = None
-
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
 
@@ -124,66 +113,66 @@ class TestExecutor(threads.KillableThread):
         # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
 
-      self._test_state = test_state.TestState(self._test_descriptor)
+      self.test_state = test_state.TestState(self._test_descriptor)
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
-      # self._lock while we do this, or else calls to Stop() will deadlock.
+      # self._lock while we do this, or else calls to stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
-      self._test_state.TestStarted(self._WaitForTestStart())
-      self._test_state.plug_manager.InitializePlugs()
+      self.test_state.TestStarted(self._wait_for_test_start())
+      self.test_state.plug_manager.InitializePlugs()
 
       with self._lock:
         if not self._exit_stack:
           # We shouldn't get here, but just in case something went weird with a
-          # call to Stop() and we ended up resuming execution here but the
+          # call to stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          self._test_state.plug_manager.TearDownPlugs()
+          self.test_state.plug_manager.TearDownPlugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self._test_state.plug_manager.TearDownPlugs)
+        exit_stack.callback(self.test_state.plug_manager.TearDownPlugs)
 
         # Perform initialization of some top-level stuff we need.
-        executor = self._MakePhaseExecutor(exit_stack)
+        executor = self._make_phase_executor(exit_stack)
 
       # Everything is set, set status and begin test execution.  Note we don't
       # protect this with a try: block because the PhaseExecutor handles any
       # exceptions from test code.  Any exceptions here are caused by the
       # framework, and we probably want them to interrupt framework state
       # changes (like the transition to FINISHING).
-      self._ExecuteTestPhases(executor)
+      self._execute_test_phases(executor)
 
-  def _WaitForTestStart(self):
+  def _wait_for_test_start(self):
     """Wait for the test start trigger to return a DUT ID."""
     if self._test_start is None:
       return
     return self._test_start()
 
-  def _MakePhaseExecutor(self, exit_stack):
+  def _make_phase_executor(self, exit_stack):
     """Create a phase_executor.PhaseExecutor and set it up."""
-    executor = phase_executor.PhaseExecutor(self._test_state)
-    exit_stack.callback(executor.Stop)
+    executor = phase_executor.PhaseExecutor(self.test_state)
+    exit_stack.callback(executor.stop)
     return executor
 
-  def _ExecuteTestPhases(self, executor):
+  def _execute_test_phases(self, executor):
     """Executes one test's phases from start to finish."""
-    self._test_state.SetStatusRunning()
+    self.test_state.set_status_running()
 
     try:
-      for phase_outcome in executor.ExecutePhases(
+      for phase_outcome in executor.execute_phases(
           self._test_descriptor.phases):
-        if self._test_state.SetStatusFromPhaseOutcome(phase_outcome):
+        if self.test_state.SetStatusFromPhaseOutcome(phase_outcome):
           break
       else:
-        self._test_state.Finalize()
+        if self._teardown_function:
+          executor.execute_one_phase(
+              self._teardown_function, output_record=False)
+        self.test_state.finalize()
     except KeyboardInterrupt:
-      self._test_state.logger.info(
+      self.test_state.logger.info(
           'KeyboardInterrupt caught, finishing test with outcome ABORTED.')
-      self._test_state.Finalize(test_record.Outcome.ABORTED)
+      if self._teardown_function:
+        executor.execute_one_phase(self._teardown_function, output_record=False)
+      self.test_state.finalize(test_record.Outcome.ABORTED)
       raise
-
-    # Run teardown function. TODO(madsci): Rethink this, it has to happen
-    # before the TestState is Finalize()'d.
-    if self._teardown_function:
-      executor._ExecuteOnePhase(self._teardown_function, skip_record=True)

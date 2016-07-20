@@ -121,7 +121,7 @@ class TestState(object):
         self.notify_update))
 
   @contextlib.contextmanager
-  def RunningPhaseContext(self, phase_desc):
+  def running_phase_context(self, phase_desc, output_record=True):
     """Create a context within which a single phase is running.
 
     Yields a PhaseState object for tracking transient state during the
@@ -139,11 +139,11 @@ class TestState(object):
         self.notify_update()  # New phase started.
         yield self.running_phase_state
     finally:
-      # Clear notification callbacks so we can serialize measurements.
-      for meas in self.running_phase_state.phase_record.measurements.values():
-        meas.set_notification_callback(None)
-
-      self.test_record.phases.append(self.running_phase_state.phase_record)
+      if output_record:
+        # Clear notification callbacks so we can serialize measurements.
+        for meas in self.running_phase_state.measurements.values():
+          meas.set_notification_callback(None)
+        self.test_record.phases.append(self.running_phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
 
@@ -205,16 +205,16 @@ class TestState(object):
       code = str(type(phase_outcome.phase_result).__name__)
       description = str(phase_outcome.phase_result).decode('utf8', 'replace')
       self.test_record.AddOutcomeDetails(code, description)
-      self.Finalize(test_record.Outcome.ERROR)
+      self.finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:
       self.logger.debug('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
-      self.Finalize(test_record.Outcome.TIMEOUT)
+      self.finalize(test_record.Outcome.TIMEOUT)
     elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.debug('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
       # TODO(madsci): Decouple flow control from pass/fail.
-      self.Finalize(test_record.Outcome.ABORTED)
+      self.finalize(test_record.Outcome.ABORTED)
 
     return self.is_finalized
 
@@ -226,13 +226,13 @@ class TestState(object):
     self.test_record.start_time_millis = util.TimeMillis()
     self.notify_update()
 
-  def SetStatusRunning(self):
-    """Mark the test as actually running, can't be done once Finalized."""
+  def set_status_running(self):
+    """Mark the test as actually running, can't be done once finalized."""
     assert self._status == self.Status.WAITING_FOR_TEST_START
     self._status = self.Status.RUNNING
     self.notify_update()
 
-  def Finalize(self, test_outcome=None):
+  def finalize(self, test_outcome=None):
     """Mark the state as finished.
 
     This method is called with no arguments on normal test completion, or
@@ -394,7 +394,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
 
       # Validate multi-dimensional measurements now that we have all values.
       validated_measurements.update({
-          name: measurement.Validate()
+          name: measurement.validate()
           for name, measurement in self.measurements.iteritems()
           if measurement.outcome is measurements.Outcome.PARTIALLY_SET
       })
