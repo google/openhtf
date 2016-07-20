@@ -57,6 +57,16 @@ _LOG = logging.getLogger(__name__)
 class InvalidPhaseResultError(Exception):
   """Raised when a PhaseOutcome is created with an invalid phase result."""
 
+class ExceptionOutcome(collections.namedtuple('ExceptionOutcome', ['exc_type','exc_val','exc_tb'])):
+
+  def _asdict(self):
+    return_dict = {}
+    excep = traceback.format_exception(self.exc_type,self.exc_val,self.exc_tb)
+    return_dict['exc_type'] = str(self.exc_type)
+    return_dict['exc_val'] = self.exc_val
+    return_dict['exc_tb'] = "".join(a for a in excep)
+    return return_dict
+
 
 class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   """Provide some utility and sanity around phase return values.
@@ -71,7 +81,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   phase_result is an instance of Exception, then that is the Exception that
   was raised by the phase.  The raised_exception attribute can be used as
   a convenience to test for that condition, and the is_timeout attribute can
-  similarly be used to check for the timeout case.
+  similarly be used to check for the timeout case. _asdict()
 
   The only accepted values for phase_result are None (timeout), an instance
   of Exception (phase raised), or an instance of openhtf.PhaseResult.  Any
@@ -79,7 +89,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   """
   def __init__(self, phase_result):
     if (phase_result is not None and
-        not isinstance(phase_result, (Exception, openhtf.PhaseResult))):
+        not isinstance(phase_result, (ExceptionOutcome, openhtf.PhaseResult))):
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
     super(PhaseOutcome, self).__init__(phase_result)
 
@@ -91,7 +101,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   @property
   def raised_exception(self):
     """True if the phase in question raised an exception."""
-    return isinstance(self.phase_result, Exception)
+    return isinstance(self.phase_result, ExceptionOutcome)
 
 
 class PhaseExecutorThread(threads.KillableThread):
@@ -124,11 +134,7 @@ class PhaseExecutorThread(threads.KillableThread):
     self._phase_outcome = PhaseOutcome(phase_return)
 
   def _ThreadException(self, exc):
-    print 'INSIDE EXCEPTION THING'
-    print sys.exc_info()
-    import pdb 
-    pdb.set_trace()
-    self._phase_outcome = PhaseOutcome(exc)
+    self._phase_outcome = PhaseOutcome(ExceptionOutcome(*sys.exc_info()))
     self._phase_data.logger.exception('Phase %s raised an exception', self.name)
 
   def JoinOrDie(self):
