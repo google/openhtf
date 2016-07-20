@@ -140,7 +140,7 @@ class TestState(object):
         yield self.running_phase_state
     finally:
       # Clear notification callbacks so we can serialize measurements.
-      for meas in self.running_phase_state.phase_record.measurements.values():
+      for meas in self.running_phase_state.measurements.values():
         meas.set_notification_callback(None)
 
       self.test_record.phases.append(self.running_phase_state.phase_record)
@@ -394,7 +394,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
 
       # Validate multi-dimensional measurements now that we have all values.
       validated_measurements.update({
-          name: measurement.Validate()
+          name: measurement.validate()
           for name, measurement in self.measurements.iteritems()
           if measurement.outcome is measurements.Outcome.PARTIALLY_SET
       })
