@@ -182,7 +182,7 @@ class PhaseOrTestIterator(collections.Iterator):
           'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
 
     # Actually execute the phase, saving the result in our return value.
-    with test_state_.RunningPhaseContext(phase_desc) as phase_state:
+    with test_state_.running_phase_context(phase_desc) as phase_state:
       try:
         phase_state.result = phase_executor.PhaseOutcome(
             phase_desc(test_state_))
