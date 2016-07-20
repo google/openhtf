@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+declare var SockJS; // Global provided by the sockjs library.
 
-import {Pipe, PipeTransform} from 'angular2/core';
+import {Injectable, Pipe, PipeTransform} from 'angular2/core';
 
 
 /** A base class for map-based piping. Subclasses need to override 'map'.**/
@@ -37,7 +38,7 @@ export class MapPipe implements PipeTransform {
 export class SimplifyStatus extends MapPipe {
   map = {
     'EXECUTING': 'RUNNING',
-    'START_WAIT': 'WAITING',
+    'WAITING_FOR_TEST_START': 'WAITING',
     'STOP_WAIT': 'WAITING',
     'TIMEOUT': 'ERROR',
   };
@@ -56,6 +57,7 @@ export class StatusToColor extends MapPipe {
     'PENDING': 'blue-grey lighten-3 white-text',
     'WAITING': 'blue-grey lighten-3 white-text',
     'OFFLINE': 'blue-grey lighten-3 white-text',
+    'UNREACHABLE': 'blue-grey lighten-3 white-text',
   };
 }
 
@@ -205,9 +207,9 @@ export class Countdown {
    * Create a new Countdown for the given number of seconds.
    * @param {number} seconds - Length of the countdown in seconds.
    */
-  constructor(seconds: number) {
+  constructor(seconds: number, onDoneCallback: Function) {
     this.lengthSeconds = seconds;
-    this.onDone = function() { };
+    this.onDone = onDoneCallback || function() { };
     this.reset();
   }
 
@@ -228,7 +230,6 @@ export class Countdown {
       if (this.millisRemaining <= 0) {
         this.millisRemaining = 0;
         this.stop();
-        this.onDone();
       }
       else { lastCheck = Date.now(); }
     }, 250);
@@ -240,6 +241,7 @@ export class Countdown {
   stop() {
     clearInterval(this.intervalID);
     this.intervalID = undefined;
+    this.onDone();
   }
 
   /**
@@ -249,4 +251,124 @@ export class Countdown {
     if (this.intervalID) { this.stop(); }
     else { this.start(); }
   }
+}
+
+
+@Injectable()
+export class SubscriptionService {
+  CONNECTION_TIMEOUT_MS: number = 2000;
+  INITIAL_RECONNECT_COUNTDOWN_MS: number = 1000;
+
+  private checkJob: number;
+  private gracefullyClosed: boolean;
+  private reconnectCountdown: number;
+  private reconnectJob: number;
+  private sock: any;
+  private url: string;
+
+  /**
+   * Create a SubscriptionService.
+   */
+  constructor() {
+    this.gracefullyClosed = true;
+    this.reconnectCountdown = this.INITIAL_RECONNECT_COUNTDOWN_MS;
+    this.url = null;
+  }
+
+  /**
+   * Set the subscription URL. Must call before subscribing.
+   */
+  setUrl(newUrl) {
+    this.url = newUrl;
+  }
+
+  /**
+   * Subscribe to the service at this.url via sockjs connection.
+   */
+  subscribe() {
+    if (this.url == null) {
+      console.error('Subscription URL must be set before subscribing.');
+      return;
+    }
+    console.debug(`Attempting to subscribe to ${this.url}.`);
+    this.sock = SockJS(this.url);
+    this.sock.onmessage = (msg) => { this.onmessage(msg); };
+    this.sock.onopen = () => { this.handleOpen(); };
+
+    // Check the connnection after the timeout, and reconnect with exponential
+    // backoff on failure.
+    this.checkJob = setTimeout(() => {
+      if (this.sock.readyState != 1) {
+        console.debug(`Subscription to ${this.url} failed.`);
+        if (this.reconnectCountdown == Infinity) {
+          console.warn('Too many failed re-sub attempts; stopping.');
+          return;
+        }
+        console.debug(`Trying again in ${this.reconnectCountdown}ms.`);
+        this.reconnectJob = setTimeout(() => {
+          this.subscribe();
+        }, this.reconnectCountdown);
+        this.reconnectCountdown = this.reconnectCountdown * 2;
+      }
+    }, this.CONNECTION_TIMEOUT_MS);
+  }
+
+  /**
+   * Callback tied to the socket's onopen condition.
+   *
+   * Does internal housekeeping in addition to normal onopen behavior.
+   */
+  handleOpen() {
+    console.debug(`Subscribed to ${this.url}.`);
+    this.gracefullyClosed = false;
+    this.reconnectCountdown = this.INITIAL_RECONNECT_COUNTDOWN_MS;
+    this.sock.onclose = () => this.handleClose();
+    this.onsubscribe();
+  }
+
+  /**
+   * Callback tied to socket's onclose condition, only if socket was opened.
+   *
+   * In addition to normal onclose behavior, will initiate reconnect attempts
+   * on non-graceful closure.
+   */
+  handleClose() {
+    this.onunsubscribe();
+    if (!this.gracefullyClosed) {
+      console.debug(`Connection to ${this.url} lost. Will attempt re-sub.`);
+      this.subscribe();
+    }
+  }
+
+  /**
+   * Intentionally closes the socket.
+   */
+  unsubscribe() {
+    console.debug(`Unsubscribing from ${this.url}.`);
+    if (this.reconnectJob) {
+      clearTimeout(this.reconnectJob);
+    }
+    if (this.checkJob) {
+      clearTimeout(this.checkJob);
+    }
+    this.gracefullyClosed = true;
+    this.sock.close();
+  }
+
+  //  -------- API methods. Subclasses should override. --------
+
+  /**
+   * Called when subscription is successfully made.
+   */
+  onsubscribe() {}
+
+  /**
+   * Called when an active subscription is closed.
+   */
+  onunsubscribe() {}
+
+  /**
+   * Called when messages are recived, with the message.
+   */
+  onmessage(message: any) {}
 }

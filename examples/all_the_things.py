@@ -120,6 +120,5 @@ if __name__ == '__main__':
   #  with open('my_private_key.json', 'r') as json_file:
   #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
-  #test.Configure(teardown_function=teardown)
-  while True:
-    test.Execute(test_start=triggers.PromptForTestStart())
+  test.Configure(teardown_function=teardown)
+  test.Execute(test_start=triggers.PromptForTestStart())

@@ -16,10 +16,10 @@
 """Frontend server for OpenHTF using the station API.
 
 This server has two ways of knowing which stations to track:
-
+  
   (1) Discovery pings sent using OpenHTF's multicast station discovery service.
       These pings can be disabled via the '--disable-multicast' flag if desired.
-
+  
   (2) A list of stations provided via the server's config yaml file (specified
       via the '--config-file' flag). This list will be sought under the config
       key 'stations', which should contain a list of station entries:
@@ -96,7 +96,7 @@ class TestWatcher(threading.Thread):
     wait_timeout_s: Seconds to wait for an update before timeout and retry.
   """
   daemon = True
-  DEFAULT_WAIT_TIMEOUT_S = 15
+  DEFAULT_WAIT_TIMEOUT_S = 5
 
   def __init__(self, hostport, test, callback,
                wait_timeout_s=DEFAULT_WAIT_TIMEOUT_S):
@@ -170,9 +170,9 @@ class StationStore(threading.Thread):
           if (hostport, test_uid) not in self._watchers:
             self._watchers[hostport, test_uid] = TestWatcher(
                 hostport, remote_test,self._on_update_callback)
-      except (socket.error, station_api.StationUnreachableError) as e:
+      except station_api.StationUnreachableError:
         _LOG.debug('Station at %s is unreachable.', hostport)
-
+    
     if self._on_discovery_callback:
       self._on_discovery_callback(self.stations)
 
@@ -296,7 +296,7 @@ class StationPubSub(PubSub):
     try:
       for test_uid, remote_test in self._store[hostport].tests.iteritems():
         self.send(self.make_msg(test_uid, remote_test.state))
-    except socket.error:
+    except station_api.StationUnreachableError:
       _LOG.debug('Station %s unreachable during on_subscribe.', hostport)
 
   def on_unsubscribe(self):
