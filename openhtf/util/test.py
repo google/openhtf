@@ -380,7 +380,7 @@ class TestCase(unittest.TestCase):
         self.assertIn(measurement, phase_record.measurements)
       if measurement in phase_record.measurements:
         self.assertFalse(
-            phase_record.measurements[measurement].value.is_value_set,
+            phase_record.measurements[measurement].measured_value.is_value_set,
             'Measurement %s unexpectedly set' % measurement)
         self.assertIs(measurements.Outcome.UNSET,
                       phase_record.measurements[measurement].outcome)
@@ -394,14 +394,15 @@ class TestCase(unittest.TestCase):
 
   @_AssertPhaseOrTestRecord
   def assertMeasured(self, phase_record, measurement, value=mock.ANY):
-    self.assertTrue(phase_record.measurements[measurement].value.is_value_set,
-                    'Measurement %s not set' % measurement)
+    self.assertTrue(
+        phase_record.measurements[measurement].measured_value.is_value_set,
+       'Measurement %s not set' % measurement)
     if value is not mock.ANY:
       self.assertEquals(
-          value, phase_record.measurements[measurement].value.value,
+          value, phase_record.measurements[measurement].measured_value.value,
           'Measurement %s has wrong value: expected %s, got %s' %
           (measurement, value,
-           phase_record.measurements[measurement].value.value))
+           phase_record.measurements[measurement].measured_value.value))
 
   @_AssertPhaseOrTestRecord
   def assertMeasurementPass(self, phase_record, measurement):
