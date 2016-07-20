@@ -216,6 +216,10 @@ class TestState(object):
       # TODO(madsci): Decouple flow control from pass/fail.
       self.finalize(test_record.Outcome.ABORTED)
 
+    if self.is_finalized != phase_outcome.is_terminal:
+      raise exe.TestExecutionError(
+          'Unexpected finalized state (%s) after PhaseOutcome %s.',
+          self.is_finalized, phase_outcome) 
     return self.is_finalized
 
   def TestStarted(self, dut_id):

@@ -182,10 +182,6 @@ class PhaseExecutor(object):
             self._execute_one_phase(teardown_func, output_record=False)
           yield outcome
   
-          # We shouldn't keep executing if the outcome was terminal.
-          if outcome.is_terminal:
-            raise IndexError('Kept executing phases after terminal outcome.')
-  
           # If we're done with this phase, skip to the next one.
           if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
             break
