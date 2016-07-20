@@ -42,10 +42,6 @@ class TestStopError(Exception):
   """Test is being stopped."""
 
 
-class UnfinalizedTestError(Exception):
-  """A Test wasn't finalized, likely we missed an abort condition."""
-
-
 # pylint: disable=too-many-instance-attributes
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
@@ -98,9 +94,7 @@ class TestExecutor(threads.KillableThread):
     try:
       self.join(sys.float_info.max)  # Timeout needed for SIGINT handling.
     except KeyboardInterrupt:
-      self.test_state.logger.info(
-          'KeyboardInterrupt caught, finishing test with outcome ABORTED.')
-      self.test_state.finalize(test_record.Outcome.ABORTED)
+      self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
 
   def _ThreadProc(self):
@@ -161,18 +155,11 @@ class TestExecutor(threads.KillableThread):
 
     try:
       for phase_outcome in executor.execute_phases(
-          self._test_descriptor.phases):
+          self._test_descriptor.phases, self._teardown_function):
         if self.test_state.SetStatusFromPhaseOutcome(phase_outcome):
           break
       else:
-        if self._teardown_function:
-          executor.execute_one_phase(
-              self._teardown_function, output_record=False)
         self.test_state.finalize()
     except KeyboardInterrupt:
-      self.test_state.logger.info(
-          'KeyboardInterrupt caught, finishing test with outcome ABORTED.')
-      if self._teardown_function:
-        executor.execute_one_phase(self._teardown_function, output_record=False)
-      self.test_state.finalize(test_record.Outcome.ABORTED)
+      self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise

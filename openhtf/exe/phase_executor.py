@@ -92,6 +92,12 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
     return isinstance(self.phase_result, (
         Exception, threads.ThreadTerminationError))
 
+  @property
+  def is_terminal(self):
+    """True if this outcome will stop the test."""
+    return (self.raised_exception or self.is_timeout or
+            self.phase_result == openhtf.PhaseResult.STOP)
+
 
 class PhaseExecutorThread(threads.KillableThread):
   """Handles the execution and result of a single test phase.
@@ -156,7 +162,7 @@ class PhaseExecutor(object):
     self.test_state = test_state
     self._current_phase_thread = None
 
-  def execute_phases(self, phases):
+  def execute_phases(self, phases, teardown_func):
     """Executes each phase or skips them, yielding PhaseOutcome instances.
 
     Args:
@@ -167,22 +173,30 @@ class PhaseExecutor(object):
     """
     for phase in phases:
       while True:
-        outcome = self.execute_one_phase(phase)
+        outcome = self._execute_one_phase(phase)
         if outcome:
+          # We have to run the teardown_func *before* we yield the outcome,
+          # because yielding the outcome results in the state being finalized
+          # in the case of a terminal outcome.
+          if outcome.is_terminal and teardown_func:
+            self._execute_one_phase(teardown_func, output_record=False)
           yield outcome
-
-          # If there was an error, stop executing now.
-          if outcome.raised_exception:
-            return
-
+  
+          # We shouldn't keep executing if the outcome was terminal.
+          if outcome.is_terminal:
+            raise IndexError('Kept executing phases after terminal outcome.')
+  
           # If we're done with this phase, skip to the next one.
           if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
             break
         else:
           # run_if was falsey, just skip this phase.
           break
+    # If all phases complete with no terminal outcome, we end up here.
+    if teardown_func:
+      self._execute_one_phase(teardown_func, output_record=False)
 
-  def execute_one_phase(self, phase_desc, output_record=True):
+  def _execute_one_phase(self, phase_desc, output_record=True):
     """Executes the given phase, returning a PhaseOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase.options.run_if():
