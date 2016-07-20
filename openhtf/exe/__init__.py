@@ -38,6 +38,10 @@ conf.Declare('teardown_timeout_s', default_value=3, description=
     'Timeout (in seconds) for test teardown functions.')
 
 
+class TestExecutionError(Exception):
+  """Raised when there's an internal error during test execution."""
+
+
 class TestStopError(Exception):
   """Test is being stopped."""
 
