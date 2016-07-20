@@ -89,3 +89,17 @@ class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
     InnerFunction()
     return x.result
   """
+
+
+class classproperty(object):
+  """Exactly what it sounds like.
+
+  Note that classproperties don't have setters, so setting them will replace
+  the classproperty with the new value. In most use cases (forcing subclasses
+  to override the classproperty, for example) this is desired.
+  """
+  def __init__(self, func):
+    self._func = func
+
+  def __get__(self, instance, owner):
+    return self._func(owner)

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 
-import {Component, Input} from 'angular2/core';
+declare var $;  // Global provided by the jquery package.
+
+import {Component, Input, OnInit} from 'angular2/core';
 
 import {LoggingLevelToColor} from './utils';
 import 'file?name=/styles/station.logs.css!./station.logs.css';
@@ -24,11 +26,11 @@ import 'file?name=/styles/station.logs.css!./station.logs.css';
   selector: 'logs',
   template: `
     <div class="log-listing">
-      <div *ngIf="!test?.record?.log_records?.length > 0"
-           class="center-align grey-text">
-        <h5>Log is currently empty.</h5>
+      <div *ngIf="!log_records?.length > 0"
+           class="big-message">
+        Log is currently empty.
       </div>
-      <div *ngFor="let entry of test?.record?.log_records"
+      <div *ngFor="let entry of log_records"
             class="log-entry {{entry.level | loggingLevelToColor}}">
         <span class='timestamp'>
           {{entry.timestamp_millis | date:'short'}}
@@ -40,6 +42,10 @@ import 'file?name=/styles/station.logs.css!./station.logs.css';
   styleUrls: ['styles/station.logs.css'],
   pipes: [LoggingLevelToColor]
 })
-export class Logs {
-  @Input() test: any[];
+export class Logs implements OnInit {
+  @Input() log_records: any[];
+
+  ngOnInit() {
+    // $('ul.tabs').tabs();
+  }
 }

@@ -24,6 +24,11 @@
   text-align: right;
 }
 
+.measurement .value {
+  max-width: 300px;
+  overflow-x: hidden;
+}
+
 .measurement td {
   border-radius: 0;
   padding: .3em 1em .3em 1em;

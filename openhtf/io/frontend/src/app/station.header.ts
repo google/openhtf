@@ -13,7 +13,9 @@
 // limitations under the License.
 
 
-import {Component, Input} from 'angular2/core';
+declare var $: any;  // Global provided by the jquery package.
+
+import {Component, Input, OnInit} from 'angular2/core';
 
 import {Countdown} from './utils';
 import 'file?name=/styles/station.header.css!./station.header.css';
@@ -24,9 +26,16 @@ import 'file?name=/templates/station.header.html!./station.header.html';
   templateUrl: 'templates/station.header.html',
   styleUrls: ['styles/station.header.css']
 })
-export class StationHeader {
+export class StationHeader implements OnInit {
   @Input() countdown: Countdown;
-  @Input() state: any;
-  @Input() ip: string;
-  @Input() port: string;
+  @Input() stationInfo: any;
+
+  /**
+   * Executed when this component's properties change.
+   * @param changes - Object describing the changes.
+   */
+  ngOnInit() {
+    $('.navbar .indicator').addClass("blue lighten-1");
+    $(".dropdown-button").dropdown();
+  }
 }

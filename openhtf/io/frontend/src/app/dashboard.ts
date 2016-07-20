@@ -15,10 +15,10 @@
 
 declare var $;  // Global provided by the jquery package.
 
-import {Component, Input} from 'angular2/core';
+import {Component, Input, OnDestroy, OnInit} from 'angular2/core';
 import {RouterLink} from 'angular2/router';
 
-import {DashboardService, Listing} from './dashboard.service';
+import {DashboardService} from './dashboard.service';
 import {Countdown, StatusToColor} from './utils';
 import 'file?name=/styles/dashboard.css!./dashboard.css';
 
@@ -29,13 +29,28 @@ import 'file?name=/styles/dashboard.css!./dashboard.css';
   template: `
     <a class="waves-effect waves-light card hoverable
               {{listing.status | statusToColor}}"
-              [routerLink]="['Station', {ip:listing.ip,
+              [routerLink]="['Station', {host:listing.host,
                                          port:listing.port}]">
-        <div class="station-name">{{listing.name}}</div>
+        <div class="station-name">{{listing.station_id}}</div>
         <div class="details">
-          {{listing.ip}} : {{listing.port}}
+          {{listing.host}} : {{listing.port}}
        </div>
-       <div class="status">{{listing.status}}</div>
+       <div class="cardfooter">
+         <div class="leftcell">
+           <span *ngIf="listing.status == 'UNREACHABLE'"
+                 class="unreachable-label">
+             <span class="iconlabel">
+               <i class="tiny material-icons">error_outline</i>
+               <span>{{listing.status}}</span>
+             </span>
+           </span >
+         </div>
+         <div class="rightcell">
+           <span class="star">
+             <i class="small material-icons">computer</i>
+           </span>
+         </div>
+       </div>
     </a>
   `,
   directives: [RouterLink],
@@ -43,7 +58,7 @@ import 'file?name=/styles/dashboard.css!./dashboard.css';
   pipes: [StatusToColor]
 })
 export class StationCard {
-  @Input() listing: Listing;
+  @Input() listing;
 }
 
 
@@ -51,21 +66,38 @@ export class StationCard {
 @Component({
   selector: 'dashboard',
   template: `
-    <div *ngIf="dashboardService.getListings().length == 0">
-        no stations detected
+    <div id="dashboard">
+      <div *ngIf="dashboardService.getListings().length == 0"
+           class="big-message">
+          No stations detected.
+      </div>
+      <station-card *ngFor="let listing of dashboardService.getListings()"
+                    [listing]="listing">
+      </station-card>
     </div>
-    <station-card *ngFor="let listing of dashboardService.getListings()"
-                  [listing]="listing">
-    </station-card>
   `,
   styleUrls: ['styles/dashboard.css'],
   directives: [StationCard],
   providers: [DashboardService],
 })
-export class Dashboard {
+export class Dashboard implements OnDestroy, OnInit {
 
   /**
    * Create a Dashboard component.
    */
   constructor(private dashboardService: DashboardService) {}
+
+  /**
+   * Set up the component by subscribing to dashboard updates.
+   */
+  ngOnInit() {
+    this.dashboardService.subscribe();
+  }
+
+  /**
+   * Tear down the component by closing the dashboard service.
+   */
+   ngOnDestroy() {
+     this.dashboardService.unsubscribe();
+   }
 }

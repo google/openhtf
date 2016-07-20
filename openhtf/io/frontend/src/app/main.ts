@@ -41,7 +41,7 @@ import 'file?name=/styles.css!./styles.css';
 })
 @RouteConfig([
   { path: '/', name: 'Dashboard', component: Dashboard },
-  {path: '/station/:ip/:port', name: 'Station', component: Station}
+  {path: '/station/:host/:port', name: 'Station', component: Station}
 ])
 export class AppComponent {
 

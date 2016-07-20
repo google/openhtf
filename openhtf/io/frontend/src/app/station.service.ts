@@ -13,76 +13,146 @@
 // limitations under the License.
 
 
+declare var jsonpatch; // Global provided by the fast-json-patch package.
+
 import {Injectable} from 'angular2/core';
-import {
-  Headers,
-  Http,
-  Response,
-  RequestOptions
-} from 'angular2/http';
-import {Observable} from 'rxjs/Observable';
+
+import {SubscriptionService} from './utils';
 
 
-/** Provides interactions with OpenHTF stations through their HTTP API's. **/
+/** Provider of station updates from the OpenHTF frontend server. **/
 @Injectable()
-export class StationService {
-  BASE_URL: string = '/raw/station';
+export class StationService extends SubscriptionService {
+  BASE_URL: string = '/sub/station';
+  UNKNOWN_HOST: string = '???.???.???.???';
+  UNKNOWN_PORT: string = '????';
+  UNKNOWN_STATION_ID: string = '(station ID unknown)';
+  
+  private history: any;
+  private reachable: boolean;
+  private stationInfo: any;
+  private testList: any[];
+  private tests: any;
+  private pausedTests: any[];
 
   /**
    * Create a StationService.
    */
-  constructor(private http: Http) {
-    // TODO(jethier): Get updates from stations through pubsub rather than
-    //                through dumb polling.
+  constructor() {
+    super();
+    this.history = {};
+    this.reachable = false;
+    this.stationInfo = {
+      'host': this.UNKNOWN_HOST,
+      'port': this.UNKNOWN_PORT,
+      'station_id': this.UNKNOWN_STATION_ID
+    };
+    this.testList = [];
+    this.tests = {};
+    this.pausedTests = [];
   }
 
   /**
-   * Extract and return station state from an Observable.
+   * Configure the station service; must be done once before subscribing.
+   * @param host - Host of the OpenHTF station to get updates for.
+   * @param port - Port for the OpenHTF station's station API.
+   */  
+  setHostPort(host: string, port: string) {
+    this.stationInfo.host = host;
+    this.stationInfo.port = port;
+    this.setUrl(`${this.BASE_URL}?host=${host}&port=${port}`);
+  }
+
+  /**
+   * Update our state object for the given test to match the provided state.
+   * @param test_uid - A string uniquely identifying a test on the station.
+   * @param state - An object representing a serialized OpenHTF RemoteState
+   *                instance.
    */
-  private extractData(res: Response) {
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(`Bad response status from station: ${res.status}`);
+  updateTest(test_uid: string, state: any) {
+    if (this.tests[test_uid] == undefined) {
+      this.tests[test_uid] = state;
+      this.testList.push(state);
+    } else if (this.pausedTests.indexOf(test_uid) == -1) {
+      let diff = jsonpatch.compare(this.tests[test_uid], state);
+      jsonpatch.apply(this.tests[test_uid], diff);
+      if (state && state.status == 'COMPLETED') {
+        // Test has finished!
+        // TODO(jethier): Refresh the history object.
+        this.pausedTests.push(test_uid);
+        console.debug('Test completed.');
+        setTimeout(() => {
+          this.pausedTests.splice(this.pausedTests.indexOf(test_uid), 1);
+        }, 15000);
+      }
     }
-    let body = res.json();
-    return body;
   }
 
   /**
-   * Log an error message thrown by an Observable and re-throw.
+   * Process messages upon receipt.
+   * @param msg - A JSON-formatted representation of a test update. Contains
+   *              two top-level fields:
+   *                  test_uid: A string uniquely identifying the test.
+   *                  state: A serialized OpenHTF RemoteState instance.
    */
-  private handleError(error: any) {
-    let errMsg = error.message || 'Error communicating with station.';
-    console.error(errMsg);
-    return Observable.throw(errMsg);
+  onmessage(msg) {
+    this.reachable = true;
+    if (!msg) {
+      console.warn('Received an empty state update.');
+      return;
+    }
+    let parsedData = JSON.parse(msg.data);
+    let test_uid = parsedData.test_uid, state = parsedData.state;
+    if (this.stationInfo.station_id != state.test_record.station_id) {
+      if (this.stationInfo.station_id == this.UNKNOWN_STATION_ID) {
+        this.stationInfo.station_id = state.test_record.station_id;
+      } else {
+        console.warn(
+            `Received a station_id that doesn't match the previous one: ` +
+            `${state.test_record.station_id}.`);
+      }
+    }
+    this.updateTest(test_uid, state);
+  }
+
+  onunsubscribe() {
+    this.reachable = false;
   }
 
   /**
-   * Return an Observable for the current state of the station.
+   * Return a reference to the basic info about the station.
+   *
+   * The returned object contains the following fields:
+   *     host: A string host (ip address) for the station.
+   *     port: A string TCP port for the station's API.
+   *     station_id: A string OpenHTF station_id.
    */
-  getState(ip, port): Observable<StationState> {
-    return this.http.get(`${this.BASE_URL}/${ip}/${port}`)
-      .map(this.extractData)
-      .catch(this.handleError);
+  getStationInfo(): Object {
+    return this.stationInfo;
+  }
+
+  /**
+   * Return a reference to the object representing the tests on this station.
+   *
+   * The returned object maps string unique id's for each test on the station
+   * to objects representing the serialized OpenHTF RemoteState instances.
+   */
+  getTests(): any[] {
+    return this.testList;
   }
 
   /**
    * Send a response to the given station for the given prompt.
    */
-   respondToPrompt(ip: string, port: string, id: string, response: string) {
-     let headers = new Headers({ 'Content-Type': 'application/json' });
-     let options = new RequestOptions({ headers: headers });
-     this.http.post('/station/' + ip + '/' + port + '/prompt/' + id,
-       response,
-       options).catch(this.handleError)
-               .subscribe();
-   }
-}
-
-
-/**
- * Thin record class representing a response from an OpenHTF station API.
- */
-export class StationState {
-  framework: any;
-  test: any;
+  respondToPrompt(ip: string, port: string, id: string, response: string) {
+    // TODO(jethier): Refactor and reinstate prompt response logic once
+    //                prompts-as-plugs rewrite is complete.
+    //
+    // let headers = new Headers({ 'Content-Type': 'application/json' });
+    // let options = new RequestOptions({ headers: headers });
+    // this.http.post('/station/' + ip + '/' + port + '/prompt/' + id,
+    //   response,
+    //   options).catch(this.handleError)
+    //           .subscribe();
+  }
 }

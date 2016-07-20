@@ -14,9 +14,11 @@
 
 
 declare var $;  // Global provided by the jquery package.
-declare var jsonpatch; // Global provided by the fast-json-patch package.
 
-import {Component, OnDestroy} from 'angular2/core';
+import {Component,
+        OnDestroy,
+        OnInit,
+        SimpleChange} from 'angular2/core';
 import {RouteParams} from 'angular2/router';
 
 import {Logs} from './station.logs';
@@ -26,7 +28,7 @@ import {PhaseListing} from './station.phases';
 import {Prompt} from './station.prompt';
 import {StationService} from './station.service';
 import {TestHeader} from './station.testheader';
-import {Countdown} from './utils';
+import {Countdown, ObjectToArray} from './utils';
 import 'file?name=/styles/station.css!./station.css';
 import 'file?name=/templates/station.html!./station.html';
 
@@ -36,89 +38,43 @@ import 'file?name=/templates/station.html!./station.html';
   selector: 'station',
   templateUrl: 'templates/station.html',
   styleUrls: ['styles/station.css'],
+  pipes: [ObjectToArray],
   directives: [StationHeader, Prompt, TestHeader, PhaseListing, Logs, Metadata],
   providers: [StationService]
 })
-export class Station implements OnDestroy {
-  private ip: string;
-  private port: string;
-  private stationState: any;
+export class Station implements OnDestroy, OnInit {
+  private stationInfo: any;
   private currentMillis: number;
-  private countdown: Countdown;
-  private paused: boolean;
-  private pollingJob: number;
+  private currentMillisJob: number;
+  private tests: any[];
 
   /**
    * Create a Station view component.
    */
   constructor(private routeParams: RouteParams,
               private stationService: StationService) {
-    this.paused = false;
-    this.stationState = {};
-  }
-
-  /**
-   * Pause display updates for the given number of seconds.
-   */
-  pauseForCountdown(seconds: number) {
-    // TODO(jethier): Make the countdown timer look good. Possibly replace the
-    //                "current" button temporarily with a radial progress bar.
-    // TODO(jethier): Make this timeout configurable.
-    this.countdown = new Countdown(seconds);
-    this.paused = true;
-    this.countdown.onDone = () => { this.paused = false; };
-    this.countdown.reset();
-    this.countdown.start();
+    this.currentMillis = setInterval(() => {
+      this.currentMillis = Date.now();
+    }, 250);
   }
 
   /**
    * Set up the view component on initialization.
    */
   public ngOnInit(): any{
-    $('ul.tabs').tabs();
-    this.ip = this.routeParams.get('ip');
-    this.port = this.routeParams.get('port');
-    this.pollStationService();  // Avoid waiting for the first interval.
-    this.pollingJob = setInterval(() => this.pollStationService(), 250);
-  }
-
-  // TODO(jethier): Update this service to use pubsub instead of polling.
-  /**
-   * Make a request to the frontend server for this station's state.
-   */
-  pollStationService() {
-    this.currentMillis = Date.now();
-    // TODO(jethier): Fat arrow syntax below used to make __this unecessary.
-    //                Not sure when or why it broke. Investigation needed.
-    let __this = this;
-    this.stationService.getState(this.ip, this.port)
-                  .subscribe(
-                      state => __this.updateState(state),
-                      error => console.log('Error: ', error));
-  }
-
-  /**
-   * Use the given station state to update the view component.
-   */
-  updateState(newState) {
-    // TODO(jethier): Detect when a new test is being started, display the
-    //                previous test, and pause for a countdown.
-
-    // The conditional is necessary because it's possble to get 'undefined'
-    // responses when a station shuts down.
-    if (newState) {
-      let diff = jsonpatch.compare(this.stationState, newState);
-      jsonpatch.apply(this.stationState, diff);
-    }
-    else {
-      this.stationState = {};
-    }
+    $('station-header ul.tabs').tabs();
+    this.stationService.setHostPort(this.routeParams.get('host'),
+                                    this.routeParams.get('port'));
+    this.stationService.subscribe();
+    this.stationInfo = this.stationService.getStationInfo();
+    this.tests = this.stationService.getTests();
   }
 
   /**
    * Tear down the view component when navigating away.
    */
-  ngOnDestroy() {
-    clearInterval(this.pollingJob);
+  public ngOnDestroy() {
+    this.stationService.unsubscribe();
+    clearInterval(this.currentMillisJob);
   }
 }

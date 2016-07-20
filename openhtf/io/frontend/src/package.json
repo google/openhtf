@@ -2,8 +2,11 @@
   "name": "OpenHTFClient",
   "version": "0.9.0",
   "scripts": {
+    "postinstall": "python ./other_modules/get_other_modules.py",
     "build": "webpack",
+    "prestart": "python ./other_modules/get_other_modules.py",
     "start": "webpack --watch",
+    "get_other_modules": "python ./other_modules/get_other_modules.py --force",
     "update_prebuilt": "cp -r ./dist/* ../prebuilt"
   },
   "license": "Apache-2.0",
@@ -24,16 +27,18 @@
     "script-loader": "~0.7.0"
   },
   "dependencies": {
-    "angular2": "^2.0.0-beta.13",
+    "angular2": "~2.0.0-beta.13",
     "es6-promise": "^3.0.2",
     "es6-shim": "^0.35.0",
-    "reflect-metadata": "0.1.2",
-    "zone.js": "^0.6.6",
+    "fast-json-patch": "~0.5.7",
     "jquery": "~2.2.3",
-    "materialize-css": "~0.97.6",
-    "velocity-animate": "~1.2.3",
-    "material-icons": "~0.1.0",
     "material-design-icons": "~2.2.3",
-    "fast-json-patch": "~0.5.7"
+    "material-icons": "~0.1.0",
+    "materialize-css": "~0.97.6",
+    "reflect-metadata": "0.1.2",
+    "rxjs": "^5.0.0-beta.10",
+    "symbol-observable": "^1.0.1",
+    "velocity-animate": "~1.2.3",
+    "zone.js": "^0.6.6"
   }
 }
