@@ -81,7 +81,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   phase_result is an instance of Exception, then that is the Exception that
   was raised by the phase.  The raised_exception attribute can be used as
   a convenience to test for that condition, and the is_timeout attribute can
-  similarly be used to check for the timeout case. _asdict()
+  similarly be used to check for the timeout case. 
 
   The only accepted values for phase_result are None (timeout), an instance
   of Exception (phase raised), or an instance of openhtf.PhaseResult.  Any

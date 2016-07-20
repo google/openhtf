@@ -60,7 +60,6 @@ def hello_world(test):
   # been set can also be accessed, but should only be set once (this will be
   # enforced in the future, for now it's best-practice).
   test.measurements.hello_world_measurement = 'Hello Again!'
-  raise Exception("HELLO THERE") 
 
 
 if __name__ == '__main__':
