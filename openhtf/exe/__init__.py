@@ -165,14 +165,14 @@ class TestExecutor(threads.KillableThread):
         if self.test_state.SetStatusFromPhaseOutcome(phase_outcome):
           break
       else:
+        if self._teardown_function:
+          executor.execute_one_phase(
+              self._teardown_function, output_record=False)
         self.test_state.finalize()
     except KeyboardInterrupt:
       self.test_state.logger.info(
           'KeyboardInterrupt caught, finishing test with outcome ABORTED.')
+      if self._teardown_function:
+        executor.execute_one_phase(self._teardown_function, output_record=False)
       self.test_state.finalize(test_record.Outcome.ABORTED)
       raise
-
-    # Run teardown function. TODO(madsci): Rethink this, it has to happen
-    # before the TestState is finalize()'d.
-    if self._teardown_function:
-      executor._execute_one_phase(self._teardown_function, skip_record=True)

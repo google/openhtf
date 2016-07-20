@@ -167,7 +167,7 @@ class PhaseExecutor(object):
     """
     for phase in phases:
       while True:
-        outcome = self._execute_one_phase(phase)
+        outcome = self.execute_one_phase(phase)
         if outcome:
           yield outcome
 
@@ -182,7 +182,7 @@ class PhaseExecutor(object):
           # run_if was falsey, just skip this phase.
           break
 
-  def _execute_one_phase(self, phase_desc, skip_record=False):
+  def execute_one_phase(self, phase_desc, output_record=True):
     """Executes the given phase, returning a PhaseOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase.options.run_if():
@@ -190,7 +190,8 @@ class PhaseExecutor(object):
                 phase_desc.name)
       return
 
-    with self.test_state.RunningPhaseContext(phase_desc) as phase_state:
+    with self.test_state.running_phase_context(
+        phase_desc, output_record) as phase_state:
       _LOG.info('Executing phase %s', phase_desc.name)
       phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
       phase_thread.start()
