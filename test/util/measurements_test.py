@@ -91,6 +91,10 @@ class TestMeasurements(unittest.TestCase):
       with open(RECORD_FILENAME, 'rb') as picklefile:
         cls.record = pickle.load(picklefile)
 
+  def testUnitEnforcement(self):
+    """Creating a measurement with invalid units should raise."""
+    self.assertRaises(TypeError, Measurement('bad_units').WithUnits, 1701)
+
   def testMeasurements(self):
     result = util.NonLocalResult() 
     def _SaveResult(test_record):
