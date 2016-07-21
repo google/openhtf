@@ -93,7 +93,7 @@ class History(object):
         (self.all_tests_history.size_mb * 1024.0 * 1024.0) +
         sys.getsizeof(self.per_test_history) +
         sum(sys.getsizeof(test) for test in self.per_test_history)) /
-        (1024.0 * 1024.0))
+            (1024.0 * 1024.0))
 
   def _maybe_evict(self):
     size_mb = self.size_mb

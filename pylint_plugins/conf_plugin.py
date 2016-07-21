@@ -18,7 +18,7 @@ def trans_expr(node):
   if (isinstance(node.func, astroid.Attribute) and
   	isinstance(node.func.expr, astroid.Name) and
   	node.func.expr.name == 'conf' and
-  	node.func.attrname == 'Declare'):
+  	node.func.attrname == 'declare'):
     
     
     if clss.conf_node:
@@ -37,7 +37,7 @@ def trans_expr(node):
 	        # We assume the name is an astroid.Const(str), so it has a str value.
 	        conf_key_name = keyword.value.value
 	        break
-	    assert conf_key_name != None, "Invalid conf.Declare() syntax"
+	    assert conf_key_name != None, "Invalid conf.declare() syntax"
 	      
       clss.conf_node.locals[conf_key_name] = [None]
 

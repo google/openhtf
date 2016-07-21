@@ -35,7 +35,7 @@ from openhtf.util import threads
 _LOG = logging.getLogger(__name__)
 
 conf.declare('teardown_timeout_s', default_value=3, description=
-    'Timeout (in seconds) for test teardown functions.')
+             'Timeout (in seconds) for test teardown functions.')
 
 
 class TestExecutionError(Exception):
@@ -64,7 +64,7 @@ class TestExecutor(threads.KillableThread):
         teardown_function and
         openhtf.PhaseDescriptor.wrap_or_copy(
             teardown_function, timeout_s=timeout_s))
-        
+
     self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._lock = threading.Lock()
@@ -95,7 +95,7 @@ class TestExecutor(threads.KillableThread):
       self.test_state.finalize(test_record.Outcome.ABORTED)
 
     return self.test_state
-    
+
   def wait(self):
     """Waits until death."""
     try:

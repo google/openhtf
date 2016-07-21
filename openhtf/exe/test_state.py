@@ -26,7 +26,6 @@ invokation of an openhtf.Test instance.
 
 import contextlib
 import copy
-import json
 import logging
 import threading
 import weakref
@@ -47,8 +46,8 @@ from openhtf.util import logs
 from openhtf.util import measurements
 from openhtf.util import threads
 
-conf.declare('allow_unset_measurements', default_value=False, description=
-    'If True, unset measurements do not cause Tests to FAIL.')
+conf.declare('allow_unset_measurements', default_value=False, description=\
+  'If True, unset measurements do not cause Tests to FAIL.')
 
 _LOG = logging.getLogger(__name__)
 
@@ -114,11 +113,11 @@ class TestState(object):
     running_phase_state = self.running_phase_state
     return (running_phase_state and
             openhtf.TestApi(
-        self.logger, self.user_defined_state, self.test_record,
-        measurements.Collection(running_phase_state.measurements),
-        running_phase_state.attachments,
-        running_phase_state.attach, running_phase_state.attach_from_file,
-        self.notify_update))
+                self.logger, self.user_defined_state, self.test_record,
+                measurements.Collection(running_phase_state.measurements),
+                running_phase_state.attachments,
+                running_phase_state.attach, running_phase_state.attach_from_file,
+                self.notify_update))
 
   @contextlib.contextmanager
   def running_phase_context(self, phase_desc, output_record=True):
@@ -219,7 +218,7 @@ class TestState(object):
     if self.is_finalized != phase_outcome.is_terminal:
       raise exe.TestExecutionError(
           'Unexpected finalized state (%s) after PhaseOutcome %s.',
-          self.is_finalized, phase_outcome) 
+          self.is_finalized, phase_outcome)
     return self.is_finalized
 
   def mark_test_started(self, dut_id):

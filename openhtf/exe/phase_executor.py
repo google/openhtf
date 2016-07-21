@@ -181,7 +181,7 @@ class PhaseExecutor(object):
           if outcome.is_terminal and teardown_func:
             self._execute_one_phase(teardown_func, output_record=False)
           yield outcome
-  
+
           # If we're done with this phase, skip to the next one.
           if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
             break
@@ -213,11 +213,10 @@ class PhaseExecutor(object):
 
   def stop(self):
     """Stops execution of the current phase, if any.
-    
+
     It will raise a ThreadTerminationError, which will cause the test to stop
     executing and terminate with an ERROR state.
     """
     current_phase_thread = self._current_phase_thread
     if current_phase_thread:
       current_phase_thread.kill()
-

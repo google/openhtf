@@ -21,12 +21,10 @@ state. This wrapping happens by decorating a method with any of various
 supported decorators.
 """
 
-import contextlib2
 import copy
 import logging
 import mimetypes
-
-import mutablerecords
+import contextlib2
 
 from openhtf import util
 from openhtf.io import test_record
