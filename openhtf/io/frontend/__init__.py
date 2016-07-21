@@ -338,7 +338,7 @@ class WebGuiServer(tornado.web.Application):
     ] + dash_router.urls + station_router.urls
     super(WebGuiServer, self).__init__(
         handler_routes, template_path=path, static_path=path, debug=dev_mode)
-    self.listen(self.port)
+    self.listen(http_port)
 
   def remove_handlers_by_url(self, url):
     """Remove any handlers with the given URL pattern (must match exactly)."""
