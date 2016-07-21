@@ -35,6 +35,33 @@ Our code review process generally follows a predictable flow:
 9. One of the maintainers will merge the PR into the main repo.
 
 
+### Repo Structure and Hygiene
+Our code repo follows the "single master" pattern described
+[here](http://endoflineblog.com/follow-up-to-gitflow-considered-harmful).
+As the name suggests, there is a single persistent "master" branch. Other
+branches are all temporary and are deleted once the changes have been merged
+back into master. Releases are marked (and created) via git tags.
+
+
+#### Release Readiness
+Our current criteria for release readiness is all unit tests to pass, and
+sign-off obtained from a majority of the official maintainers.
+
+
+#### Mergeability
+When making a PR, it helps to try to keep it mergeable into the official repo.
+In practice, this usually means periodically rebasing on google/openhtf:master
+when there are changes upstream after your PR was created.
+
+
+#### Commits
+We generally tend toward squashing commits on merge rather than filling our git
+log with merge commits. Sometimes, however, especially for large, sweeping
+changes, it makes sense to preserve multple commits in the history. If you're
+authoring such a PR, consider using a rebase with squashes and fixups to reduce 
+the commit history down to a commit per salient change.
+
+
 ### Code Standards
 For a smooth code review, it helps to make sure your code adheres to standards,
 conventions, and design goals for OpenHTF. A best-effort attempt to understand 
@@ -46,12 +73,20 @@ making the review process as fast and painless as possible.
 OpenHTF's Python code follows the
 [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
 We provide a `pylintrc` file at the top level of our repo that you can use with
-[pylint](https://www.pylint.org/) to lint your Python code.
+[pylint](https://www.pylint.org/) to lint your Python code. We expect the 
+codebase to produce zero pylint warnings, and we allow the use of explicit
+`pylint: disable=...` comments in certain cases where it makes sense.
 
 OpenHTF's built-in web frontend, written in TypeScript and using Angular2,
 follows the [Angular2 Style Guide](https://angular.io/styleguide).
 We recommend using [codelyzer](https://www.npmjs.com/package/codelyzer) to lint
 your frontend code.
+
+
+#### Write Tests
+Our unit test code lives in the 'test' directory side-by-side with the openhtf
+module itself in the repo. We look for 80% or better test coverage on new code.
+For updates to existing code, we expect a non-negative delta in test coverage.
 
 
 #### Provide Documentation
