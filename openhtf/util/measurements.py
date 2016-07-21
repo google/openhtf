@@ -71,6 +71,7 @@ import mutablerecords
 
 import openhtf
 from openhtf.util import validators
+from openhtf.util import units
 
 _LOG = logging.getLogger(__name__)
 
@@ -126,14 +127,23 @@ class Measurement(  # pylint: disable=no-init
     self.docstring = docstring
     return self
 
-  def WithUnits(self, units):
+  def _maybe_make_unit_desc(self, unit_desc):
+    """Return the UnitDescriptor or convert a string to one."""
+    if isinstance(unit_desc, str):
+      unit_desc = units.Unit(unit_desc)
+    if not (isinstance(unit_desc, units.UnitDescriptor) or unit_desc is None):
+      raise TypeError('Invalid units for measurement %s: %s' % (self.name,
+                                                                unit_desc))
+    return unit_desc
+
+  def WithUnits(self, unit_desc):
     """Declare the units for this Measurement, returns self for chaining."""
-    self.units = units
+    self.units = self._maybe_make_unit_desc(unit_desc)
     return self
 
   def WithDimensions(self, *dimensions):
     """Declare dimensions for this Measurement, returns self for chaining."""
-    self.dimensions = dimensions
+    self.dimensions = [self._maybe_make_unit_desc(dim) for dim in dimensions]
     return self
 
   def WithValidator(self, validator):

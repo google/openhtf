@@ -24,10 +24,10 @@ Used to retrieve UNECE unit codes by object, name, or suffix:
 
     from openhtf.util import units
 
-    # The following three lines are equivalent:
-    @measures(units.METRE_PER_SECOND)
-    @measures(units.Unit('m/s'))
-    @measures(units.Unit('metre per second'))
+    # The following three expressions are equivalent:
+    units.METRE_PER_SECOND
+    units.Unit('m/s')
+    units.Unit('metre per second')
 
 OpenHTF uses UNECE unit codes internally because they are relatively complete
 and modern, and because they are recognized internationally. For full details
