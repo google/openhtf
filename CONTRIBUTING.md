@@ -74,8 +74,8 @@ OpenHTF's Python code follows the
 [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
 We provide a `pylintrc` file at the top level of our repo that you can use with
 [pylint](https://www.pylint.org/) to lint your Python code. We expect the 
-codebase to produce zero pylint warnings, although we allow the use of explicit
-pylint-disable comments in certain cases where it makes sense.
+codebase to produce zero pylint warnings, and we allow the use of explicit
+`pylint: disable=...` comments in certain cases where it makes sense.
 
 OpenHTF's built-in web frontend, written in TypeScript and using Angular2,
 follows the [Angular2 Style Guide](https://angular.io/styleguide).
@@ -86,7 +86,7 @@ your frontend code.
 #### Write Tests
 Our unit test code lives in the 'test' directory side-by-side with the openhtf
 module itself in the repo. We look for 80% or better test coverage on new code.
-For updates to existing code, we expecta non-negative delta in test coverage.
+For updates to existing code, we expect a non-negative delta in test coverage.
 
 
 #### Provide Documentation
