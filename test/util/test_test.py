@@ -47,7 +47,7 @@ def test_phase(phase_data, my_plug):
   phase_data.measurements.othr_measurement = 0xDEAD
   phase_data.measurements.passes = 5
   phase_data.measurements.fails = 20
-  phase_data.test_record.AddOutcomeDetails(0xBED)
+  phase_data.test_record.add_outcome_details(0xBED)
 
 
 def raising_phase(phase_data):
@@ -66,11 +66,11 @@ class TestTest(test.TestCase):
   @test.yields_phases
   def test_phase_retvals(self):
     phase_record = yield phase_retval(openhtf.PhaseResult.CONTINUE)
-    self.assertPhaseContinue(phase_record)
+    self.assert_phase_continue(phase_record)
     phase_record = yield phase_retval(openhtf.PhaseResult.REPEAT)
-    self.assertPhaseRepeat(phase_record)
+    self.assert_phase_repeat(phase_record)
     phase_record = yield phase_retval(openhtf.PhaseResult.STOP)
-    self.assertPhaseStop(phase_record)
+    self.assert_phase_stop(phase_record)
 
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
   def test_patch_plugs_phase(self, mock_plug):
@@ -79,12 +79,12 @@ class TestTest(test.TestCase):
     phase_record = yield test_phase
 
     mock_plug.do_stuff.assert_called_with('stuff_args')
-    self.assertPhaseContinue(phase_record)
+    self.assert_phase_continue(phase_record)
     self.assertEquals('test_phase', phase_record.name)
-    self.assertMeasured(phase_record, 'test_measurement', 0xBEEF)
-    self.assertMeasured(phase_record, 'othr_measurement', 0xDEAD)
-    self.assertMeasurementPass(phase_record, 'passes')
-    self.assertMeasurementFail(phase_record, 'fails')
+    self.assert_measured(phase_record, 'test_measurement', 0xBEEF)
+    self.assert_measured(phase_record, 'othr_measurement', 0xDEAD)
+    self.assert_measurement_pass(phase_record, 'passes')
+    self.assert_measurement_fail(phase_record, 'fails')
 
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
   def test_patch_plugs_test(self, mock_plug):
@@ -93,43 +93,43 @@ class TestTest(test.TestCase):
     test_record = yield openhtf.Test(phase_retval(None), test_phase)
     mock_plug.do_stuff.assert_called_with('stuff_args')
     # The test fails because the 'fails' measurement fails.
-    self.assertTestFail(test_record)
-    self.assertTestOutcomeCode(test_record, 0xBED)
-    self.assertNotMeasured(test_record, 'unset_measurement')
-    self.assertNotMeasured(test_record.phases[-1], 'unset_measurement')
-    self.assertMeasured(test_record, 'test_measurement', 0xBEEF)
-    self.assertMeasured(test_record, 'othr_measurement', 0xDEAD)
-    self.assertMeasurementPass(test_record, 'passes')
-    self.assertMeasurementFail(test_record, 'fails')
+    self.assert_test_fail(test_record)
+    self.assert_test_outcome_code(test_record, 0xBED)
+    self.assert_not_measured(test_record, 'unset_measurement')
+    self.assert_not_measured(test_record.phases[-1], 'unset_measurement')
+    self.assert_measured(test_record, 'test_measurement', 0xBEEF)
+    self.assert_measured(test_record, 'othr_measurement', 0xDEAD)
+    self.assert_measurement_pass(test_record, 'passes')
+    self.assert_measurement_fail(test_record, 'fails')
 
   @unittest.expectedFailure
   @test.yields_phases
   def test_strict_measurement(self):
     phase_record = yield phase_retval(None)
-    self.assertNotMeasured(phase_record, 'unset_measurement')
+    self.assert_not_measured(phase_record, 'unset_measurement')
 
   @unittest.expectedFailure
   @test.yields_phases
   def test_wrong_measured_value(self):
     test_rec = yield openhtf.Test(phase_retval(None))
-    self.assertMeasured(test_rec, 'test_measurement', 0xBAD)
+    self.assert_measured(test_rec, 'test_measurement', 0xBAD)
 
   @test.yields_phases
   def test_passing_test(self):
     test_record = yield openhtf.Test(phase_retval(None))
-    self.assertTestPass(test_record)
+    self.assert_test_pass(test_record)
 
   @test.yields_phases
   def test_errors(self):
     phase_record = yield raising_phase
-    self.assertPhaseError(phase_record, DummyException)
+    self.assert_phase_error(phase_record, DummyException)
 
     test_record = yield openhtf.Test(raising_phase)
-    self.assertTestError(test_record, DummyException)
+    self.assert_test_error(test_record, DummyException)
 
   def test_bad_assert(self):
     with self.assertRaises(test.InvalidTestError):
-      self.assertMeasured(None)
+      self.assert_measured(None)
 
   def test_doesnt_yield(self):
     def doesnt_yield(inner_self):

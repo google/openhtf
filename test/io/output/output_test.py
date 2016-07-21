@@ -55,7 +55,7 @@ class TestOutput(unittest.TestCase):
   UPDATE_OUTPUT = False
 
   @classmethod
-  def set_up_class(cls):
+  def setUp(cls):
     # Load input testrun from pickled file.
     with open(_local_filename('record.pickle'), 'rb') as picklefile:
       cls.record = pickle.load(picklefile)

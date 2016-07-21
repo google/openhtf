@@ -164,12 +164,12 @@ class PhaseOrTestIterator(collections.Iterator):
     # Make sure we initialize any plugs, this will ignore any that have already
     # been initialized.
     plug_types = list(plug_types)
-    self.plug_manager.InitializePlugs(plug_cls for plug_cls in plug_types if
+    self.plug_manager.initialize_plugs(plug_cls for plug_cls in plug_types if
                                       plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
       self.plug_manager.update_plug(plug_type, plug_value)
 
-  @conf.SaveAndRestore(station_api_port=None, enable_station_discovery=False)
+  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
@@ -191,7 +191,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
     return phase_state.phase_record
 
-  @conf.SaveAndRestore(station_api_port=None, enable_station_discovery=False)
+  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.

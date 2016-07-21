@@ -60,13 +60,13 @@ def lots_of_measurements(test):
     test.measurements[measurement] = measurement + ' is the best!'
 
 
-@measures(Measurement('validated_measurement').InRange(0, 10).Doc(
-    'This measurement is validated.').WithUnits(units.SECOND))
+@measures(Measurement('validated_measurement').InRange(0, 10).doc(
+    'This measurement is validated.').with_units(units.SECOND))
 def measure_seconds(test):
   test.measurements.validated_measurement = 5
 
 
-@measures(Measurement('dimensioned_measurement').WithDimensions(
+@measures(Measurement('dimensioned_measurement').with_dimensions(
     units.SECOND, units.HERTZ))
 @measures('unset_dimensions', dimensions=(units.SECOND, units.HERTZ))
 def measure_dimensions(test):
@@ -101,16 +101,16 @@ class TestMeasurements(unittest.TestCase):
     def _save_result(test_record):
       result.result = test_record
     Test.uid = 'UNITTEST:MOCK:UID'
-    test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
-                MeasureDimensions, InlinePhase)
+    test = Test(hello_phase, again_phase, lots_of_measurements, measure_seconds,
+                measure_dimensions, inline_phase)
 
     if self.UPDATE_OUTPUT:
       test.add_output_callbacks(output.OutputToFile(RECORD_FILENAME))
     else:
-      test.AddOutputCallbacks(_SaveResult)
+      test.add_output_callbacks(_SaveResult)
     test.Execute(test_start=lambda: 'TestDUT')
     if not self.UPDATE_OUTPUT:
-      data.AssertRecordsEqualNonvolatile(
+      data.assert_records_equal_nonvolatile(
           self.record, result.result, _VOLATILE_FIELDS)
 
   def test_update_output(self):

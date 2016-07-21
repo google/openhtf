@@ -5,21 +5,22 @@
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-init-hook='import sys; sys.path.append("./")'
+#init-hook=
 
 # Profiled execution.
 profile=no
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
-ignore=CVS,guzzle_pb2.py,test_runs_pb2.py,units_pb2.py
+ignore=CVS
 
 # Pickle collected data for later comparisons.
 persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_plugins.conf_plugin,pylint_plugins.mutablerecords_plugin
+load-plugins=
+
 
 [MESSAGES CONTROL]
 
@@ -41,7 +42,7 @@ load-plugins=pylint_plugins.conf_plugin,pylint_plugins.mutablerecords_plugin
 
 # Supress all import errors until SublimeLinter-pylint gets virtualenv support.
 # Supress errors about locally defined disables.
-disable=import-error,I0011,W0223,W0212
+disable=import-error,I0011
 
 
 [REPORTS]
@@ -105,26 +106,26 @@ required-attributes=
 bad-functions=map,filter,apply,input
 
 # Regular expression which should only match correct module names
-module-rgx=[a-z_][a-z0-9][a-z0-9_]{1,30}$
+module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
 
 # Regular expression which should only match correct module level names
 const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
 
 # Regular expression which should only match correct class names
-class-rgx=[A-Z_][a-zA-Z0-9][a-zA-Z0-9]{0,30}$
+class-rgx=[A-Z_][a-zA-Z0-9]+$
 
 # Regular expression which should only match correct function names
-function-rgx=[a-z_][a-z0-9][a-z0-9_]{0,30}$
+function-rgx=[a-z_][a-z0-9_]{2,30}$
 
 # Regular expression which should only match correct method names
 # method-rgx=[a-z_][a-z0-9_]{2,30}$
-method-rgx=[a-z_][a-z0-9_]{2,30}$
+method-rgx=[A-Z_][a-zA-Z0-9]{2,30}$
 
 # Regular expression which should only match correct instance attribute names
-attr-rgx=[a-z_][a-z0-9][a-z0-9_]{0,30}$
+attr-rgx=[a-z_][a-z0-9_]{2,30}$
 
 # Regular expression which should only match correct argument names
-argument-rgx=[a-z_][a-z0-9][a-z0-9_]{0,30}$
+argument-rgx=[a-z_][a-z0-9_]{2,30}$
 
 # Regular expression which should only match correct variable names
 variable-rgx=[a-z_][a-z0-9_]{2,30}$

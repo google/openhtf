@@ -26,7 +26,7 @@ class EmptyPlug(plugs.BasePlug):
 
 class TestMonitors(unittest.TestCase):
 
-  def set_up(self):
+  def setUp(self):
     self.test_state = mock.MagicMock()
 
     def provide_plugs(plugs):

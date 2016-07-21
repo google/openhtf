@@ -43,7 +43,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
       For example, if you had no openhtf.conf loaded, you could do this:
         my_plug = ExamplePlug(example_plug_increment=4)
 
-    - tear_down()
+    - tearDown()
       This method will be called automatically by the OpenHTF framework at
       the end of test execution.  Here is a good place to do any close()
       calls or similar resource cleanup that you need to do.  In this case,
@@ -58,7 +58,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
       don't have to do anything special to maintain state within a plug
       across phases.
 
-      This does imply, however, that if you *want* per-phase tear_down()
+      This does imply, however, that if you *want* per-phase tearDown()
       semantics, you have to implement them manually.  The recommended
       way to do this is to make your plug support Python's context
       manager interface (__enter__ and __exit__), and then access it via
@@ -73,7 +73,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
   def __str__(self):
     return '<%s: %s>' % (type(self).__name__, self.value)
 
-  def tear_down(self):
+  def tearDown(self):
     """Tear down the plug instance."""
     self.logger.info('Tearing down %s', self)
 

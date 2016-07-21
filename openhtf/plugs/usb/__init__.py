@@ -92,7 +92,7 @@ class FastbootPlug(plugs.BasePlug):
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
             interface_protocol=fastboot_device.PROTOCOL))
-    device.tear_down = device.close  # pylint: disable=invalid-name
+    device.tearDown = device.close  # pylint: disable=invalid-name
     return device
 
 
@@ -110,7 +110,7 @@ class AdbPlug(plugs.BasePlug):
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),
         **kwargs)
-    device.tear_down = device.close  # pylint: disable=invalid-name
+    device.tearDown = device.close  # pylint: disable=invalid-name
     return device
 
 

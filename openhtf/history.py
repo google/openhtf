@@ -29,7 +29,7 @@ from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
-conf.Declare('max_history_size_mb', default_value=256)
+conf.declare('max_history_size_mb', default_value=256)
 
 
 class HistorySyncError(Exception):
@@ -119,7 +119,7 @@ class History(object):
 
     _LOG.debug('Done evicting, history now %.2f MB', size_mb)
 
-  @threads.Synchronized
+  @threads.synchronized
   def append_record(self, test_uid, record):
     """Append the given record for the given test UID to the history.
 
@@ -136,13 +136,13 @@ class History(object):
     self.per_test_history[test_uid].append(test_uid, record)
     self.all_tests_history.append(test_uid, record)
 
-  @threads.Synchronized
+  @threads.synchronized
   def for_test_uid(self, test_uid, start_after_millis=0):
     """Copy history for the given test UID."""
     return list(entry.record for entry in self.per_test_history[test_uid]
                 if entry.record.start_time_millis > start_after_millis)
 
-  @threads.Synchronized
+  @threads.synchronized
   def last_start_time(self, test_uid):
     """Get the most recent start time for the given test UID.
 

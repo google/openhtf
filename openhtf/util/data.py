@@ -89,7 +89,7 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
         raise
   elif (isinstance(first, records.RecordClass) and
         isinstance(second, records.RecordClass)):
-    AssertRecordsEqualNonvolatile(
+    assert_records_equal_nonvolatile(
         {slot: getattr(first, slot) for slot in first.__slots__},
         {slot: getattr(second, slot) for slot in second.__slots__},
         volatile_fields, indent)

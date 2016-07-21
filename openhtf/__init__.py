@@ -96,23 +96,23 @@ class Test(object):
       raise KeyError(
           'Invalid metadata key "config", it will be automatically populated.')
 
-    self.created_time_millis = util.TimeMillis()
+    self.created_time_millis = util.time_millis()
     self.last_run_time_millis = None
-    code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
+    code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
     self._test_desc = TestDescriptor(self.uid, phases, code_info, metadata)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
 
-    # Make sure Configure() gets called at least once before Execute().  The
-    # user might call Configure() again to override options, but we don't want
+    # Make sure configure() gets called at least once before Execute().  The
+    # user might call configure() again to override options, but we don't want
     # to force them to if they want to use defaults.  For default values, see
     # the class definition of TestOptions.
     if 'test_name' in metadata:
       # Allow legacy metadata key for specifying test name.
-      self.Configure(name=metadata['test_name'])
+      self.configure(name=metadata['test_name'])
     else:
-      self.Configure()
+      self.configure()
 
     self.TEST_INSTANCES[self.uid] = self
     # This is a noop if the server is already running, otherwise start it now
@@ -220,7 +220,7 @@ class Test(object):
       # Snapshot some things we care about and store them.
       self._test_desc.metadata['test_name'] = self._test_options.name
       self._test_desc.metadata['config'] = conf._asdict()
-      self.last_run_time_millis = util.TimeMillis()
+      self.last_run_time_millis = util.time_millis()
 
       self._executor = exe.TestExecutor(
           self._test_desc, test_start, self._test_options.teardown_function)
@@ -375,7 +375,7 @@ class PhaseDescriptor(mutablerecords.Record(
       # or kwargs.  See with_args() below for more details.
       retval = mutablerecords.CopyRecord(func)
     else:
-      retval = cls(func, test_record.CodeInfo.ForFunction(func))
+      retval = cls(func, test_record.CodeInfo.for_function(func))
     retval.options.update(**options)
     return retval
 

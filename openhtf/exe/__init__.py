@@ -34,7 +34,7 @@ from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
-conf.Declare('teardown_timeout_s', default_value=3, description=
+conf.declare('teardown_timeout_s', default_value=3, description=
     'Timeout (in seconds) for test teardown functions.')
 
 
@@ -120,7 +120,7 @@ class TestExecutor(threads.KillableThread):
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
       self.test_state.mark_test_started(self._wait_for_test_start())
-      self.test_state.plug_manager.InitializePlugs()
+      self.test_state.plug_manager.initialize_plugs()
 
       with self._lock:
         if not self._exit_stack:

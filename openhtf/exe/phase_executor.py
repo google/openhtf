@@ -206,7 +206,7 @@ class PhaseExecutor(object):
       phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      phase_state.result = phase_thread.JoinOrDie()
+      phase_state.result = phase_thread.join_or_die()
 
     _LOG.debug('Phase finished with result %s', phase_state.result)
     return phase_state.result
@@ -219,5 +219,5 @@ class PhaseExecutor(object):
     """
     current_phase_thread = self._current_phase_thread
     if current_phase_thread:
-      current_phase_thread.Kill()
+      current_phase_thread.kill()
 

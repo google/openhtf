@@ -34,7 +34,7 @@ Some constraints on measurements:
 
   - Measurement names must be valid python variable names.  This is mostly for
     sanity, but also ensures you can access them via attribute access in phases.
-    This applies *after* any WithArgs() substitution (not covered in this
+    This applies *after* any with_args() substitution (not covered in this
     tutorial, see the phases.py example for more details).
 
   - You cannot declare the same measurement name multiple times on the same
@@ -93,7 +93,7 @@ def lots_of_measurements(test):
 # describing the measurement.  Validators can get quite complex, for more
 # details, see the validators.py example.
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
-    'This measurement is validated.').WithUnits(units.SECOND))
+    'This measurement is validated.').with_units(units.SECOND))
 def measure_seconds(test):
   # The 'outcome' of this measurement in the test_record result will be a PASS
   # because its value passes the validator specified (0 <= 5 <= 10).

@@ -135,8 +135,8 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
     @openhtf.PhaseOptions(requires_state=True)
     @plugs.plug(update_kwargs=False, **monitor_plugs)
     @measurements.measures(
-        measurements.Measurement(measurement_name).WithUnits(
-            units).WithDimensions(uom.MILLISECOND))
+        measurements.Measurement(measurement_name).with_units(
+            units).with_dimensions(uom.MILLISECOND))
     @functools.wraps(phase_desc.func)
     def monitored_phase_func(test_state, *args, **kwargs):
       # Start monitor thread, it will run monitor_desc periodically.
@@ -147,6 +147,6 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
       try:
         return phase_desc(test_state, *args, **kwargs)
       finally:
-        monitor_thread.Kill()
+        monitor_thread.kill()
     return monitored_phase_func
   return wrapper

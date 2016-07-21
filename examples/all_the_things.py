@@ -80,9 +80,9 @@ def set_measurements(test):
 
 
 @measures(
-    Measurement('unset_dims').WithDimensions(units.HERTZ),
-    Measurement('dimensions').WithDimensions(units.HERTZ),
-    Measurement('lots_of_dims').WithDimensions(
+    Measurement('unset_dims').with_dimensions(units.HERTZ),
+    Measurement('dimensions').with_dimensions(units.HERTZ),
+    Measurement('lots_of_dims').with_dimensions(
         units.HERTZ, units.SECOND, units.RADIAN))
 def dimensions(test):
   for dim in range(5):

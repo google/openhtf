@@ -5,7 +5,7 @@
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-init-hook='import sys; sys.path.append("./")'
+#init-hook=
 
 # Profiled execution.
 profile=no
@@ -19,7 +19,8 @@ persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_plugins.conf_plugin,pylint_plugins.mutablerecords_plugin
+load-plugins=
+
 
 [MESSAGES CONTROL]
 

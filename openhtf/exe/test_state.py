@@ -47,7 +47,7 @@ from openhtf.util import logs
 from openhtf.util import measurements
 from openhtf.util import threads
 
-conf.Declare('allow_unset_measurements', default_value=False, description=
+conf.declare('allow_unset_measurements', default_value=False, description=
     'If True, unset measurements do not cause Tests to FAIL.')
 
 _LOG = logging.getLogger(__name__)
@@ -155,7 +155,7 @@ class TestState(object):
         'running_phase_state': self.running_phase_state,
     }
 
-  @threads.Synchronized
+  @threads.synchronized
   def asdict_with_event(self):
     """Get a dict representation of this test's state and an update event.
 
@@ -168,7 +168,7 @@ class TestState(object):
     self._update_events.add(event)
     return self._asdict(), event
 
-  @threads.Synchronized
+  @threads.synchronized
   def notify_update(self):
     """Notify any update events that there was an update."""
     for event in self._update_events:
@@ -204,7 +204,7 @@ class TestState(object):
                         'exception, outcome ERROR.')
       code = str(type(phase_outcome.phase_result).__name__)
       description = str(phase_outcome.phase_result).decode('utf8', 'replace')
-      self.test_record.AddOutcomeDetails(code, description)
+      self.test_record.add_outcome_details(code, description)
       self.finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:
       self.logger.debug('Finishing test execution early due to phase '
@@ -227,7 +227,7 @@ class TestState(object):
     assert self._status == self.Status.WAITING_FOR_TEST_START
     # This might still be None; it's the value returned by test_start.
     self.test_record.dut_id = dut_id
-    self.test_record.start_time_millis = util.TimeMillis()
+    self.test_record.start_time_millis = util.time_millis()
     self.notify_update()
 
   def set_status_running(self):
@@ -278,7 +278,7 @@ class TestState(object):
 
     # The test is done at this point, no further updates to test_record.
     self.logger.handlers = []
-    self.test_record.end_time_millis = util.TimeMillis()
+    self.test_record.end_time_millis = util.time_millis()
     self._status = self.Status.COMPLETED
     self.notify_update()
 
@@ -384,7 +384,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     This method performs some pre-phase setup on self (for measurements), and
     records the start and end time based on when the context is entered/exited.
     """
-    self.phase_record.start_time_millis = util.TimeMillis()
+    self.phase_record.start_time_millis = util.time_millis()
 
     try:
       yield
@@ -405,4 +405,4 @@ class PhaseState(mutablerecords.Record('PhaseState', [
 
       # Fill out final values for the PhaseRecord.
       self.phase_record.measurements = validated_measurements
-      self.phase_record.end_time_millis = util.TimeMillis()
+      self.phase_record.end_time_millis = util.time_millis()

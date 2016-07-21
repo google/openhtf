@@ -35,7 +35,7 @@ def extra_arg_func(input=None):
 
 class TestPhaseDescriptor(unittest.TestCase):
 
-  def set_up(self):
+  def setUp(self):
       self._phase_data = mock.Mock(plug_manager=plugs.PlugManager())
 
   def test_basics(self):
@@ -59,11 +59,11 @@ class TestPhaseDescriptor(unittest.TestCase):
 
   def test_with_args(self):
       phase = openhtf.PhaseDescriptor.wrap_or_copy(extra_arg_func)
-      phase = phase.WithArgs(input='input arg')
+      phase = phase.with_args(input='input arg')
       result = phase(self._phase_data)
       self.assertEqual('input arg', result)
 
-      second_phase = phase.WithArgs(input='second input')
+      second_phase = phase.with_args(input='second input')
       first_result = phase(self._phase_data)
       second_result = second_phase(self._phase_data)
       self.assertEqual('input arg', first_result)

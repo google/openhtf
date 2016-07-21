@@ -96,15 +96,15 @@ _LOG = logging.getLogger(__name__)
 # to use for station discovery, even if it's overridden in the config.
 DEFAULT_DISCOVERY_STRING = 'OPENHTF_DISCOVERY'
 
-conf.Declare('enable_station_discovery', default_value=True)
-conf.Declare('station_api_bind_address', default_value='0.0.0.0')
-conf.Declare('station_api_port', default_value=8888)
-conf.Declare('station_discovery_string', default_value=DEFAULT_DISCOVERY_STRING)
+conf.declare('enable_station_discovery', default_value=True)
+conf.declare('station_api_bind_address', default_value='0.0.0.0')
+conf.declare('station_api_port', default_value=8888)
+conf.declare('station_discovery_string', default_value=DEFAULT_DISCOVERY_STRING)
 
 # These have defaults in util.multicast, we'll use those if not set.
-conf.Declare('station_discovery_address')
-conf.Declare('station_discovery_port')
-conf.Declare('station_discovery_ttl')
+conf.declare('station_discovery_address')
+conf.declare('station_discovery_port')
+conf.declare('station_discovery_ttl')
 
 # Build multicast kwargs based on conf, otherwise use defaults.
 MULTICAST_KWARGS = lambda: {
@@ -462,7 +462,7 @@ class Station(object):
     return cls(host, port, station_info, proxy)
 
   @property
-  @threads.Synchronized
+  @threads.synchronized
   def reachable(self):
     """Returns True if the station is reachable, also updates StationInfo."""
     try:
@@ -523,7 +523,7 @@ class Station(object):
 
 class StationApi(object):
 
-  UID = '%s:%s' % (os.getpid(), util.TimeMillis())
+  UID = '%s:%s' % (os.getpid(), util.time_millis())
 
   def get_station_info(self):
     """Obtain dict required to make a StationInfo for this station.

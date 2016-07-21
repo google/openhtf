@@ -52,7 +52,7 @@ class TestExecutor(unittest.TestCase):
   def __init__(self, unittest_name):
     super(TestExecutor, self).__init__(unittest_name)
 
-  def set_up(self):
+  def setUp(self):
     self.test_plug_type = UnittestPlug
 
   def test_plug_map(self):

@@ -1,0 +1,110 @@
+running test
+Searching for pytest-cov>=2.2.1
+Best match: pytest-cov 2.3.0
+Processing pytest_cov-2.3.0-py2.7.egg
+
+Using /usr/local/google/home/maddychan/openhtf/.eggs/pytest_cov-2.3.0-py2.7.egg
+Searching for pytest>=2.9.2
+Best match: pytest 2.9.2
+Processing pytest-2.9.2-py2.7.egg
+
+Using /usr/local/google/home/maddychan/openhtf/.eggs/pytest-2.9.2-py2.7.egg
+Searching for mock>=2.0.0
+Best match: mock 2.0.0
+Processing mock-2.0.0-py2.7.egg
+
+Using /usr/local/google/home/maddychan/openhtf/.eggs/mock-2.0.0-py2.7.egg
+Searching for coverage>=3.7.1
+Best match: coverage 4.2b1
+Processing coverage-4.2b1-py2.7-linux-x86_64.egg
+
+Using /usr/local/google/home/maddychan/openhtf/.eggs/coverage-4.2b1-py2.7-linux-x86_64.egg
+Searching for py>=1.4.29
+Best match: py 1.4.31
+Processing py-1.4.31-py2.7.egg
+
+Using /usr/local/google/home/maddychan/openhtf/.eggs/py-1.4.31-py2.7.egg
+Searching for pbr>=0.11
+Best match: pbr 1.10.0
+Processing pbr-1.10.0-py2.7.egg
+
+Using /usr/local/google/home/maddychan/openhtf/.eggs/pbr-1.10.0-py2.7.egg
+Searching for funcsigs>=1
+Best match: funcsigs 1.0.2
+Processing funcsigs-1.0.2-py2.7.egg
+
+Using /usr/local/google/home/maddychan/openhtf/.eggs/funcsigs-1.0.2-py2.7.egg
+running egg_info
+writing requirements to openhtf.egg-info/requires.txt
+writing openhtf.egg-info/PKG-INFO
+writing top-level names to openhtf.egg-info/top_level.txt
+writing dependency_links to openhtf.egg-info/dependency_links.txt
+reading manifest file 'openhtf.egg-info/SOURCES.txt'
+writing manifest file 'openhtf.egg-info/SOURCES.txt'
+running build_ext
+running build_proto
+Attempting to build proto files:
+/usr/local/google/home/maddychan/openhtf/openhtf/io/proto/guzzle.proto
+/usr/local/google/home/maddychan/openhtf/openhtf/io/proto/units.proto
+/usr/local/google/home/maddychan/openhtf/openhtf/io/proto/test_runs.proto
+invoking pytest.main with test
+============================= test session starts ==============================
+platform linux2 -- Python 2.7.6, pytest-2.9.2, py-1.4.31, pluggy-0.3.1
+rootdir: /usr/local/google/home/maddychan/openhtf, inifile: 
+plugins: cov-2.3.0
+collected 55 items
+
+test/conf_test.py ..................
+test/phase_descriptor_test.py ...
+test/plugs_test.py .......
+test/exe/exe_test.py ...
+test/io/output/output_test.py ...
+test/util/functions_test.py ...
+test/util/logs_test.py .
+test/util/measurements_test.py ..
+test/util/monitors_test.py FF
+test/util/test_test.py .........xx
+test/util/util_test.py ..
+
+=================================== FAILURES ===================================
+____________________________ TestMonitors.testPlugs ____________________________
+
+self = <monitors_test.TestMonitors testMethod=testPlugs>
+
+    def testPlugs(self):
+    
+      @plugs.plug(empty=EmptyPlug)
+      def monitor(test, empty):
+        return 2
+    
+      @monitors.monitors('meas', monitor, poll_interval_ms=10)
+      def phase(test):
+        time.sleep(0.1)
+    
+      phase(self.test_state)
+      _, first_meas, _ = (
+>         self.test_state.test_api.measurements.meas.__setitem__.mock_calls[0])
+E     IndexError: list index out of range
+
+test/util/monitors_test.py:70: IndexError
+___________________________ TestMonitors.test_basics ___________________________
+
+self = <monitors_test.TestMonitors testMethod=test_basics>
+
+    def test_basics(self):
+    
+      def monitor_func(test):
+        return 1
+    
+      @monitors.monitors('meas', monitor_func, poll_interval_ms=10)
+      def phase(test):
+        time.sleep(0.1)
+    
+      phase(self.test_state)
+    
+      _, first_meas, _ = (
+>         self.test_state.test_api.measurements.meas.__setitem__.mock_calls[0])
+E     IndexError: list index out of range
+
+test/util/monitors_test.py:48: IndexError
+====== 2 failed, 51 passed, 2 xfailed, 3 pytest-warnings in 1.56 seconds =======
