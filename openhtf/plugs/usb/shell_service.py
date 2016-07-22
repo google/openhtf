@@ -78,7 +78,7 @@ from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
 
 
-class async_commandHandle(object):
+class AsyncCommandHandle(object):
   """This class is used for interacting with an asynchronous command.
 
   This handle is used to close a command or to wait on it to complete. Data is
@@ -231,7 +231,7 @@ class ShellService(object):
 
   # pylint: disable=too-many-arguments
   def async_command(self, command, stdin=None, stdout=None, raw=False,
-                   timeout_ms=None):
+                    timeout_ms=None):
     """Run the given command on the device asynchronously.
 
     Input will be read from stdin, output written to stdout.  ADB doesn't
@@ -251,7 +251,7 @@ class ShellService(object):
       timeout_ms: Timeout for the command, in milliseconds.
 
     Returns:
-      An async_commandHandle instance that can be used to send/receive data to
+      An AsyncCommandHandle instance that can be used to send/receive data to
     and from the command or wait on the command to finish.
 
     Raises:
@@ -269,7 +269,7 @@ class ShellService(object):
       # Short delay to make sure the ioctl to set raw mode happens before we do
       # any writes to the stream, if we don't do this bad things happen...
       time.sleep(.1)
-    return async_commandHandle(stream, stdin, stdout, timeout, raw)
+    return AsyncCommandHandle(stream, stdin, stdout, timeout, raw)
   # pylint: enable=too-many-arguments
 
   @classmethod

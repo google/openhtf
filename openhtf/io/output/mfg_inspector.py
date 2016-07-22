@@ -27,16 +27,15 @@ MULTIDIM_JSON schema:
 }
 """
 
-import httplib2
 import json
 import logging
 import numbers
-import oauth2client.client
 import os
-import sys
 import threading
 import zlib
 
+import httplib2
+import oauth2client.client
 from openhtf.io import output
 from openhtf.io.output import json_factory
 from openhtf.io.proto import guzzle_pb2
@@ -51,24 +50,24 @@ from openhtf.util import validators
 
 # pylint: disable=no-member
 MIMETYPE_MAP = {
-  'image/jpeg': test_runs_pb2.JPG,
-  'image/png': test_runs_pb2.PNG,
-  'audio/x-wav': test_runs_pb2.WAV,
-  'text/plain': test_runs_pb2.TEXT_UTF8,
-  'image/tiff': test_runs_pb2.TIFF,
-  'video/mp4': test_runs_pb2.MP4,
+    'image/jpeg': test_runs_pb2.JPG,
+    'image/png': test_runs_pb2.PNG,
+    'audio/x-wav': test_runs_pb2.WAV,
+    'text/plain': test_runs_pb2.TEXT_UTF8,
+    'image/tiff': test_runs_pb2.TIFF,
+    'video/mp4': test_runs_pb2.MP4,
 }
 OUTCOME_MAP = {
-  test_record.Outcome.ERROR: test_runs_pb2.ERROR,
-  test_record.Outcome.FAIL: test_runs_pb2.FAIL,
-  test_record.Outcome.PASS: test_runs_pb2.PASS,
-  test_record.Outcome.TIMEOUT: test_runs_pb2.ERROR,
-  test_record.Outcome.ABORTED: test_runs_pb2.ERROR,
+    test_record.Outcome.ERROR: test_runs_pb2.ERROR,
+    test_record.Outcome.FAIL: test_runs_pb2.FAIL,
+    test_record.Outcome.PASS: test_runs_pb2.PASS,
+    test_record.Outcome.TIMEOUT: test_runs_pb2.ERROR,
+    test_record.Outcome.ABORTED: test_runs_pb2.ERROR,
 }
 
 UOM_CODE_MAP = {
-  u.GetOptions().Extensions[units_pb2.uom_code]: num
-  for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
+    u.GetOptions().Extensions[units_pb2.uom_code]: num
+    for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
 }
 # pylint: enable=no-member
 
@@ -141,7 +140,7 @@ def _attach_json(record, testrun):
   """
   record_dict = data.convert_to_base_types(record, ignore_keys=('attachments',))
   record_json = json_factory.OutputToJSON(inline_attachments=False,
-      sort_keys=True, indent=2).serialize_test_record(record)
+                                          sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = record_json
@@ -179,8 +178,8 @@ def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
     # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
     mangled_name = '_'.join([name] + [
         '%s%s' % (
-          dim_val,
-          dim_units.suffix if dim_units.suffix else '') for
+            dim_val,
+            dim_units.suffix if dim_units.suffix else '') for
         dim_val, dim_units in zip(
           coord, measurement.dimensions)])
     while mangled_name in mangled_parameters:
@@ -191,7 +190,7 @@ def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
     mangled_param.associated_attachment = attachment_name
     mangled_param.description = (
         'Mangled parameter from measurement %s with dimensions %s' % (
-        name, tuple(d.suffix for d in measurement.dimensions)))
+            name, tuple(d.suffix for d in measurement.dimensions)))
 
     if isinstance(val, numbers.Number):
       mangled_param.numeric_value = float(val)
@@ -258,7 +257,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
         dims = [{
             'uom_suffix': d.suffix and d.suffix.encode('utf8'),
             'uom_code': d.code}
-            for d in measurement.dimensions]
+                for d in measurement.dimensions]
         # Refer to the module docstring for the expected schema.
         attachment.value_binary = json.dumps({
             'outcome': str(testrun_param.status), 'name': name,
@@ -387,7 +386,7 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
   class _MemStorage(oauth2client.client.Storage):
     """Helper Storage class that keeps credentials in memory."""
     def __init__(self):
-      self._lock = threading.lock()
+      self._lock = threading.Lock()
       self._credentials = None
 
     def acquire_lock(self):

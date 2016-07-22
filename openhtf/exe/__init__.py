@@ -163,7 +163,7 @@ class TestExecutor(threads.KillableThread):
     try:
       for phase_outcome in executor.execute_phases(
           self._test_descriptor.phases, self._teardown_function):
-        if self.test_state.SetStatusFromPhaseOutcome(phase_outcome):
+        if self.test_state.set_status_from_phase_outcome(phase_outcome):
           break
       else:
         self.test_state.finalize()

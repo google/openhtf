@@ -149,7 +149,7 @@ def send(query,
 
   # Set up our thread-safe Queue for handling responses.
   recv_queue = Queue.Queue()
-  def _HandleResponses():
+  def _handle_responses():
     while True:
       try:
         data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
@@ -162,8 +162,8 @@ def send(query,
         recv_queue.put((address[0], str(data)))
 
   # Yield responses as they come in, giving up once timeout expires.
-  response_thread = threading.Thread(target=_HandleResponses)
-  response_thread.start() 
+  response_thread = threading.Thread(target=_handle_responses)
+  response_thread.start()
   while response_thread.is_alive():
     recv_tuple = recv_queue.get()
     if not recv_tuple:

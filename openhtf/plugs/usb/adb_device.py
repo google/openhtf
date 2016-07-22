@@ -90,9 +90,9 @@ class AdbDevice(object):
 
   def __str__(self):
     return '<%s: %s(%s) @%s>' % (type(self).__name__,
-                                self._adb_connection.serial,
-                                self._adb_connection.systemtype,
-                                self._adb_connection.transport)
+                                 self._adb_connection.serial,
+                                 self._adb_connection.systemtype,
+                                 self._adb_connection.transport)
   __repr__ = __str__
 
   def get_system_type(self):
@@ -185,7 +185,7 @@ class AdbDevice(object):
   def async_command(self, command, raw=False, timeout_ms=None):
     """See shell_service.ShellService.async_command()."""
     return self.shell_service.async_command(command, raw=raw,
-                                           timeout_ms=timeout_ms)
+                                            timeout_ms=timeout_ms)
 
   def _check_remote_command(self, destination, timeout_ms, success_msgs=None):
     """Open a stream to destination, check for remote errors.
@@ -233,8 +233,8 @@ class AdbDevice(object):
   def root(self, timeout_ms=None):
     """Restart adbd as root on device."""
     self._check_remote_command('root:', timeout_ms,
-                             ['already running as root',
-                              'restarting adbd as root'])
+                               ['already running as root',
+                                'restarting adbd as root'])
 
   @classmethod
   def connect(cls, usb_handle, **kwargs):

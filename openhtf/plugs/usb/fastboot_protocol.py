@@ -18,10 +18,11 @@
 import binascii
 import collections
 import cStringIO
-import gflags
 import logging
 import os
 import struct
+
+import gflags
 
 from . import usb_exceptions
 
@@ -79,8 +80,8 @@ class FastbootProtocol(object):
 
   # pylint: disable=too-many-arguments
   def handle_data_sending(self, source_file, source_len,
-                        info_cb=DEFAULT_MESSAGE_CALLBACK,
-                        progress_callback=None, timeout_ms=None):
+                          info_cb=DEFAULT_MESSAGE_CALLBACK,
+                          progress_callback=None, timeout_ms=None):
     """Handles the protocol for sending data to the device.
 
     Arguments:
@@ -206,8 +207,8 @@ class FastbootCommands(object):
 
   # pylint: disable=too-many-arguments
   def flash_from_file(self, partition, source_file, source_len=0,
-                    info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None,
-                    timeout_ms=None):
+                      info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None,
+                      timeout_ms=None):
     """Flashes a partition from the file on disk.
 
     Args:
@@ -277,7 +278,7 @@ class FastbootCommands(object):
       Response to a download request, normally nothing.
     """
     return self._simple_command('flash', arg=partition, info_cb=info_cb,
-                               timeout_ms=timeout_ms)
+                                timeout_ms=timeout_ms)
 
   def erase(self, partition, timeout_ms=None):
     """Erases the given partition."""
@@ -326,4 +327,3 @@ class FastbootCommands(object):
   def reboot_bootloader(self, timeout_ms=None):
     """Reboots into the bootloader, usually equiv to Reboot('bootloader')."""
     return self._simple_command('reboot-bootloader', timeout_ms=timeout_ms)
-

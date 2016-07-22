@@ -179,8 +179,8 @@ class LibUsbHandle(usb_handle.UsbHandle):
   # pylint: disable=too-many-arguments
   @classmethod
   def iter_open(cls, name=None, interface_class=None, interface_subclass=None,
-               interface_protocol=None, serial_number=None, port_path=None,
-               default_timeout_ms=None):
+                interface_protocol=None, serial_number=None, port_path=None,
+                default_timeout_ms=None):
     """Find and yield locally connected devices that match.
 
     Note that devices are opened (and interfaces claimd) as they are yielded.

@@ -119,8 +119,8 @@ class TestWatcher(threading.Thread):
             self._test.wait_for_update(timeout_s=self._wait_timeout_s))
       except socket.error:
         _LOG.debug('Station at %s went unreachable. Ending monitoring of '
-                     'remote test %s (%s).',
-                     self._hostport, self._test.test_name, self._test.test_uid)
+                   'remote test %s (%s).',
+                   self._hostport, self._test.test_name, self._test.test_uid)
         return
 
 

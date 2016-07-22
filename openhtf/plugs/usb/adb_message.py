@@ -41,11 +41,12 @@ message entity.  See adb_protocol.py for the stateful components.
 """
 
 import collections
-import gflags
 import logging
 import string
 import struct
 import threading
+
+import gflags
 
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
@@ -91,7 +92,7 @@ class AdbTransportAdapter(object):
   work on AdbMessage instances, not arbitrary data, so it can't quite be
   dropped in anywhere a Transport is used.
 
-  This class maintains its own lock so that multiple threads can read
+  This class maintains its own Lock so that multiple threads can read
   AdbMessages from the same underlying transport without stealing each
   other's headers/data.
   """
@@ -99,8 +100,8 @@ class AdbTransportAdapter(object):
   def __init__(self, transport):
     """Create an AdbTransportAdapter that writes to/reads from 'transport'."""
     self._transport = transport
-    self._reader_lock = threading.lock()
-    self._writer_lock = threading.lock()
+    self._reader_lock = threading.Lock()
+    self._writer_lock = threading.Lock()
 
   def __str__(self):
     trans = str(self._transport)

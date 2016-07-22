@@ -61,7 +61,7 @@ class TestFunctions(unittest.TestCase):
   @mock.patch('openhtf.util.functions.time', new_callable=MockTime)
   def testCallAtMostEvery(self, mock_time):
     call_times = []
-    @functions.CallAtMostEvery(5)
+    @functions.call_at_most_every(5)
     def CallOnceEveryFiveSeconds():
       call_times.append(mock_time.time())
     for _ in xrange(100):

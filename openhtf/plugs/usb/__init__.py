@@ -73,7 +73,7 @@ def _open_usb_handle(**kwargs):
       try:
         mac_addr = device['mac_addr']
         port = device['plug_port']
-      except (KeyError,TypeError):
+      except (KeyError, TypeError):
         raise ValueError('Ethersync needs mac_addr and plug_port to be set')
       else:
         ethersync = cambrionix.EtherSync(mac_addr)
@@ -148,7 +148,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
   def test_start_frontend(cls):
     """Start when frontend event comes, but get serial from USB."""
     prompt_for_test_start('Connect Android device and press ENTER.',
-                       text_input=False)()
+                          text_input=False)()
     return cls.test_start()
 
   @classmethod

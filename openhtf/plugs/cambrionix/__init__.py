@@ -20,14 +20,14 @@ class EtherSync(object):
      Cambrionix unit."""
 
   port_map = {
-        '1':'112',
-        '2':'111',
-        '3':'114',
-        '4':'113',
-        '5':'212',
-        '6':'211',
-        '7':'214',
-        '8':'213',
+      '1':'112',
+      '2':'111',
+      '3':'114',
+      '4':'113',
+      '5':'212',
+      '6':'211',
+      '7':'214',
+      '8':'213',
   }
 
   def __init__(self, mac_addr):
@@ -36,12 +36,12 @@ class EtherSync(object):
       Args:
         mac_addr: mac address of the Cambrionix unit for EtherSync.
     """
-    addr_info=mac_addr.lower().split(':')
-    if (len(addr_info) < 6):
+    addr_info = mac_addr.lower().split(':')
+    if len(addr_info) < 6:
       raise ValueError('Invalid mac address')
 
     addr_info[2] = 'EtherSync'
-    self._addr=''.join(addr_info[2:])
+    self._addr = ''.join(addr_info[2:])
 
   def get_usb_serial(self, port_num):
     """Get the device serial number
@@ -53,10 +53,10 @@ class EtherSync(object):
       usb device serial number
     """
 
-    port=self.port_map[str(port_num)]
-    arg=''.join(['DEVICE INFO,', self._addr, '.', port])
+    port = self.port_map[str(port_num)]
+    arg = ''.join(['DEVICE INFO,', self._addr, '.', port])
     cmd = (['esuit64', '-t', arg])
-    info = subprocess.check_output(cmd,stderr=subprocess.STDOUT)
+    info = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     serial = None
     if "SERIAL" in info:
       serial_info = info.split('SERIAL:')[1]
@@ -64,7 +64,7 @@ class EtherSync(object):
       use_info = info.split('BY')[1].split(' ')[1]
       if use_info == 'NO':
         cmd = (['esuit64', '-t', 'AUTO USE ALL'])
-        subprocess.check_output(cmd,stderr=subprocess.STDOUT)
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         time.sleep(50.0/1000.0)
     else:
       raise ValueError('No USB device detected')

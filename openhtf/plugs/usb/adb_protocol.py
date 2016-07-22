@@ -77,12 +77,12 @@ Example usage of a connection and stream:
 """
 
 import collections
-import gflags
 import itertools
 import logging
 import Queue
 import threading
 
+import gflags
 from enum import Enum
 
 from openhtf.plugs.usb import adb_message
@@ -150,9 +150,9 @@ class AdbStream(object):
 
   def __str__(self):
     return '<%s: (%s, %s->%s)>' % (type(self).__name__,
-                                self._destination,
-                                self._transport.local_id,
-                                self._transport.remote_id)
+                                   self._destination,
+                                   self._transport.local_id,
+                                   self._transport.remote_id)
   __repr__ = __str__
 
   def write(self, data, timeout_ms=None):
@@ -251,18 +251,18 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
     # Read buffer, deque of string containing data read for this stream.
     self._read_buffer = collections.deque()
     self._buffer_size = 0  # Total bytes in _read_buffer.
-    self._read_buffer_lock = threading.lock()
+    self._read_buffer_lock = threading.Lock()
     # Lock to protect against multiple simultaneous in-flight writes.
-    self._write_lock = threading.lock()
+    self._write_lock = threading.Lock()
     # Some locking/events to protect against race conditions reading messages.
     self._expecting_okay = True
     self._message_received = threading.Condition()
-    self._reader_lock = threading.lock()
+    self._reader_lock = threading.Lock()
 
   def __str__(self):
     return '<%s: (%s->%s)>' % (type(self).__name__,
-                            self.local_id,
-                            self.remote_id)
+                               self.local_id,
+                               self.remote_id)
   __repr__ = __str__
 
   def _set_or_check_remote_id(self, remote_id):
@@ -357,22 +357,22 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
       AdbStreamClosedError: If this stream is already closed.
     """
     while not predicate():
-      # Hold the message_received lock while we try to acquire the reader_lock
+      # Hold the message_received Lock while we try to acquire the reader_lock
       # and waiting on the message_received condition, to prevent another reader
       # thread from notifying the condition between us failing to acquire the
       # reader_lock and waiting on the condition.
       self._message_received.acquire()
       if self._reader_lock.acquire(False):
         try:
-          # Release the message_received lock while we do the read so other
+          # Release the message_received Lock while we do the read so other
           # threads can wait() on the condition without having to block on
-          # acquiring the message_received lock (we may have a longer timeout
+          # acquiring the message_received Lock (we may have a longer timeout
           # than them, so that would be bad).
           self._message_received.release()
 
           # We are now the thread responsible for reading a message.  Check
           # predicate() to make sure nobody else read a message between our last
-          # check and acquiring the reader lock.
+          # check and acquiring the reader Lock.
           if predicate():
             return
 
@@ -387,7 +387,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
           self._reader_lock.release()
       else:
         # There is some other thread reading a message.  Since we are already
-        # holding the message_received lock, we can immediately do the wait.
+        # holding the message_received Lock, we can immediately do the wait.
         try:
           self._message_received.wait(timeout.remaining)
           if timeout.has_expired():
@@ -416,7 +416,7 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
       AdbProtocolError: If we receive a WRTE message instead of OKAY/CLSE.
     """
     self._handle_message(self.adb_connection.read_for_stream(self, timeout),
-                        handle_wrte=False)
+                         handle_wrte=False)
     return self.is_open()
 
   def is_open(self):
@@ -549,11 +549,11 @@ class AdbConnection(object):
     self.transport = transport
     self.maxdata = maxdata
     self._last_id_used = 0
-    self._reader_lock = threading.lock()
-    self._open_lock = threading.lock()
+    self._reader_lock = threading.Lock()
+    self._open_lock = threading.Lock()
     # Maps local_id: AdbStreamTransport object for the relevant stream.
     self._stream_transport_map = {}
-    self._stream_transport_map_lock = threading.Rlock()
+    self._stream_transport_map_lock = threading.RLock()
 
   def _make_stream_transport(self):
     """Create an AdbStreamTransport with a newly allocated local_id."""
@@ -615,7 +615,7 @@ class AdbConnection(object):
               stream_transport, message)
         self.transport.write_message(adb_message.AdbMessage(
             'OKAY', stream_transport.local_id, stream_transport.remote_id),
-                                    timeout)
+                                     timeout)
       elif message.command == 'CLSE':
         self.close_stream_transport(stream_transport, timeout)
       return message
@@ -692,7 +692,7 @@ class AdbConnection(object):
         if stream_transport.remote_id:
           self.transport.write_message(adb_message.AdbMessage(
               'CLSE', stream_transport.local_id, stream_transport.remote_id),
-                                      timeout)
+                                       timeout)
         return True
     return False
 
@@ -778,15 +778,15 @@ class AdbConnection(object):
       except Queue.Empty:
         pass
 
-      # If someone else has the lock, just keep checking our queue.
+      # If someone else has the Lock, just keep checking our queue.
       if not self._reader_lock.acquire(False):
         continue
 
       try:
-        # Now that we've acquired the lock, we have to check the queue again,
-        # just in case someone had the lock but hadn't yet added our message
+        # Now that we've acquired the Lock, we have to check the queue again,
+        # just in case someone had the Lock but hadn't yet added our message
         # to the queue when we checked the first time.  Now that we have the
-        # lock ourselves, we're sure there are no potentially in-flight reads.
+        # Lock ourselves, we're sure there are no potentially in-flight reads.
         try:
           return stream_transport.message_queue.get_nowait()
         except Queue.Empty:

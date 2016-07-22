@@ -14,7 +14,6 @@
 
 """Utility helpers for xmlrpclib."""
 
-import functools
 import httplib
 import SimpleXMLRPCServer
 import SocketServer
@@ -81,13 +80,13 @@ class LockedProxyMixin(object):
     method = super(LockedProxyMixin, self).__getattr__(attr)
     if callable(method):
       # xmlrpc doesn't support **kwargs, so only accept *args.
-      def _Wrapper(*args):
+      def _wrapper(*args):
         with self._lock:
           return method(*args)
       # functools.wraps() doesn't work with _Method internal type within
       # xmlrpclib.  We only care about the name anyway, so manually set it.
-      _Wrapper.__name__ = attr
-      return _Wrapper
+      _wrapper.__name__ = attr
+      return _wrapper
     return method
 
 

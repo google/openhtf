@@ -55,7 +55,6 @@ W: 39, 0: TODO(madsci): Remove this after transitionary period.  Note it was bro
 C: 46, 0: Line too long (81/80) (line-too-long)
 W: 37,15: Unused argument 'serial' (unused-argument)
 ************* Module openhtf.exe
-C:  1, 0: Invalid module name "exe" (invalid-name)
 E: 37, 0: No value for argument 'name' in method call (no-value-for-parameter)
 ************* Module openhtf.plugs.__init__
 W:198, 0: TODO(madsci): What to do when we get malformed request? (fixme)
@@ -89,7 +88,6 @@ C:325, 0: Line too long (81/80) (line-too-long)
 ************* Module openhtf.plugs.usb.shell_service
 I:273, 0: Locally enabling too-many-arguments (R0913) (locally-enabled)
 ************* Module openhtf.plugs.usb
-C:  1, 0: Invalid module name "usb" (invalid-name)
 E:150, 4: Undefined variable 'prompt_for_test_start' (undefined-variable)
 ************* Module openhtf.plugs.usb.adb_protocol
 C:347, 0: Line too long (81/80) (line-too-long)
@@ -99,15 +97,18 @@ R:854, 6: Redefinition of adb_transport type from openhtf.plugs.usb.adb_message.
 C:  1, 0: Missing module docstring (missing-docstring)
 E: 68, 8: Undefined variable 'time' (undefined-variable)
 ************* Module openhtf.io.test_record
-C: 40, 0: Invalid constant name "Outcome" (invalid-name)
-C: 47, 2: Missing method docstring (missing-docstring)
-C: 90, 2: Missing method docstring (missing-docstring)
-C: 94, 0: Missing function docstring (missing-docstring)
-W: 97, 9: Catching too general exception Exception (broad-except)
-C:109, 2: Missing method docstring (missing-docstring)
-C:120, 2: Missing method docstring (missing-docstring)
+C: 41, 0: Invalid constant name "Outcome" (invalid-name)
+C: 48, 2: Missing method docstring (missing-docstring)
+C: 91, 2: Missing method docstring (missing-docstring)
+C: 95, 0: Missing function docstring (missing-docstring)
+W: 98, 9: Catching too general exception Exception (broad-except)
+C:110, 2: Missing method docstring (missing-docstring)
+C:121, 2: Missing method docstring (missing-docstring)
+W: 29, 0: Unused util imported from openhtf (unused-import)
 ************* Module openhtf.io.http_api
-C:115, 0: Line too long (82/80) (line-too-long)
+C:115, 0: Wrong continued indentation (add 3 spaces).
+                                                ignore_keys=('plug_manager',)),
+                                                ^  | (bad-continuation)
 W: 66, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
 W:120,15: Unused variable 'path' (unused-variable)
 W:120,21: Unused variable 'version' (unused-variable)
@@ -119,7 +120,29 @@ W:284, 0: TODO(madsci): This is a super kludge, eventually implement the (fixme)
 W:505, 0: TODO(madsci): catch real exceptions here. (fixme)
 W:727, 0: TODO(madsci): We really should pull attachments out of band here. (fixme)
 W:798, 0: TODO(madsci): Blech, fix this. Suggestions? (fixme)
+C:210, 0: Wrong hanging indentation (add 4 spaces).
+    # Cache last known state so we can detect deltas.
+    ^   | (bad-continuation)
+C:211, 0: Wrong hanging indentation (add 4 spaces).
+    'cached_state': None})):
+    ^   | (bad-continuation)
+C:503, 0: Wrong hanging indentation (add 2 spaces).
+            self.make_proxy, self._shared_proxy, self._history, **test_dict)
+            ^ | (bad-continuation)
 C:640, 0: Line too long (82/80) (line-too-long)
+C:769, 0: Exactly one space required after comma
+            self.multicast_response,  **MULTICAST_KWARGS())
+                                   ^ (bad-whitespace)
+C: 82, 0: Import "import openhtf" should be placed at the top of the module (wrong-import-position)
+C: 83, 0: Import "from openhtf import conf" should be placed at the top of the module (wrong-import-position)
+C: 84, 0: Import "from openhtf import history" should be placed at the top of the module (wrong-import-position)
+C: 85, 0: Import "from openhtf import util" should be placed at the top of the module (wrong-import-position)
+C: 86, 0: Import "from openhtf.exe import test_state" should be placed at the top of the module (wrong-import-position)
+C: 87, 0: Import "from openhtf.util import data" should be placed at the top of the module (wrong-import-position)
+C: 88, 0: Import "from openhtf.util import multicast" should be placed at the top of the module (wrong-import-position)
+C: 89, 0: Import "from openhtf.util import threads" should be placed at the top of the module (wrong-import-position)
+C: 90, 0: Import "from openhtf.util import timeouts" should be placed at the top of the module (wrong-import-position)
+C: 91, 0: Import "from openhtf.util import xmlrpcutil" should be placed at the top of the module (wrong-import-position)
 E: 99, 0: No value for argument 'name' in method call (no-value-for-parameter)
 E:100, 0: No value for argument 'name' in method call (no-value-for-parameter)
 E:101, 0: No value for argument 'name' in method call (no-value-for-parameter)
@@ -159,7 +182,7 @@ E:525,22: Module 'openhtf.conf' has no 'station_id' member (no-member)
 E:527,36: Module 'openhtf.conf' has no 'station_api_bind_address' member (no-member)
 R:531, 2: Method could be a function (no-self-use)
 C:556, 2: Missing method docstring (missing-docstring)
-W:621, 4: Redefining name 'test_state' from outer scope (line 81) (redefined-outer-name)
+W:621, 4: Redefining name 'test_state' from outer scope (line 86) (redefined-outer-name)
 E:621,43: Undefined variable 'test_uid' (undefined-variable)
 W:595,26: Unused argument 'test_id' (unused-argument)
 R:595, 2: Method could be a function (no-self-use)
@@ -187,6 +210,10 @@ E:802,45: Module 'openhtf.conf' has no 'station_api_port' member (no-member)
 E:803,23: Module 'openhtf.conf' has no 'enable_station_discovery' member (no-member)
 C:807, 0: Missing function docstring (missing-docstring)
 ************* Module openhtf.io.frontend.__main__
+C: 19, 0: Trailing whitespace (trailing-whitespace)
+C: 22, 0: Trailing whitespace (trailing-whitespace)
+C:281, 0: Trailing whitespace (trailing-whitespace)
+C:  1, 0: Invalid module name "__main__" (invalid-name)
 E: 75, 0: No value for argument 'name' in method call (no-value-for-parameter)
 W:113,10: Specify string format arguments as logging function parameters (logging-not-lazy)
 C:118,40: Invalid variable name "e" (invalid-name)
@@ -194,6 +221,16 @@ C:134,40: Invalid variable name "e" (invalid-name)
 R:148, 2: Too many arguments (6/5) (too-many-arguments)
 W:183, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
 W:252, 9: Unused argument 'argv' (unused-argument)
+************* Module openhtf.io.frontend.__init__
+C:122, 0: Wrong continued indentation (remove 2 spaces).
+                     'remote test %s (%s).',
+                   | ^ (bad-continuation)
+C:123, 0: Wrong continued indentation (remove 2 spaces).
+                     self._hostport, self._test.test_name, self._test.test_uid)
+                   | ^ (bad-continuation)
+C:172, 0: Exactly one space required after comma
+                hostport, remote_test,self._on_update_callback)
+                                     ^ (bad-whitespace)
 ************* Module openhtf.io.frontend
 E: 80, 0: No value for argument 'name' in method call (no-value-for-parameter)
 C:173,68: Invalid variable name "e" (invalid-name)
@@ -208,101 +245,224 @@ E:341,16: Instance of 'WebGuiServer' has no 'port' member (no-member)
 E:372, 6: No value for argument 'host_handlers' in method call (no-value-for-parameter)
 E:374,13: Undefined variable 'plugs' (undefined-variable)
 ************* Module openhtf.io.output.console_summary
-I: 37, 0: Locally enabling invalid-name (C0103) (locally-enabled)
-C: 58, 0: Line too long (81/80) (line-too-long)
-C: 72, 0: Line too long (88/80) (line-too-long)
-R: 11, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
-C: 11, 0: Old-style class defined. (old-style-class)
-W: 62,16: Unused variable 'validator' (unused-variable)
-R: 11, 0: Too few public methods (0/2) (too-few-public-methods)
+I: 38, 0: Locally enabling invalid-name (C0103) (locally-enabled)
+C: 30, 0: Trailing whitespace (trailing-whitespace)
+C: 32, 0: Trailing whitespace (trailing-whitespace)
+C: 33, 0: Trailing whitespace (trailing-whitespace)
+C: 34, 0: Trailing whitespace (trailing-whitespace)
+C: 35, 0: Trailing whitespace (trailing-whitespace)
+C: 42, 0: Wrong continued indentation (add 10 spaces).
+                   self.BOLD, record.code_info.name, ':',
+                   ^         | (bad-continuation)
+C: 43, 0: Wrong continued indentation (add 10 spaces).
+                   record.outcome.name, self.RESET))]
+                   ^         | (bad-continuation)
+C: 59, 0: Line too long (81/80) (line-too-long)
+C: 60, 0: Trailing whitespace (trailing-whitespace)
+C: 61, 0: Wrong continued indentation (remove 2 spaces).
+                                  (self.indent*2, str(measured[result.name])))
+                                | ^ (bad-continuation)
+C: 64, 0: Trailing whitespace (trailing-whitespace)
+C: 66, 0: Trailing whitespace (trailing-whitespace)
+C: 68, 0: Trailing whitespace (trailing-whitespace)
+W: 69, 0: Bad indentation. Found 11 spaces, expected 10 (bad-indentation)
+C: 70, 0: Wrong continued indentation (add 1 space).
+                              (phase.name, phase_time_sec))
+                              ^| (bad-continuation)
+C: 72, 0: Trailing whitespace (trailing-whitespace)
+C: 73, 0: Wrong continued indentation (add 26 spaces).
+                              record.outcome_details[0].code))
+                              ^                         | (bad-continuation)
+C: 74, 0: Trailing whitespace (trailing-whitespace)
+R: 12, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
+C: 12, 0: Old-style class defined. (old-style-class)
+W: 63,16: Unused variable 'validator' (unused-variable)
+R: 12, 0: Too few public methods (0/2) (too-few-public-methods)
 W:  5, 0: Unused __main__ imported as tester (unused-import)
+W:  7, 0: Unused util imported from openhtf (unused-import)
 ************* Module openhtf.io.output.json_factory
-C: 43, 0: Line too long (85/80) (line-too-long)
-C: 36, 2: Missing method docstring (missing-docstring)
+C: 33, 0: Trailing whitespace (trailing-whitespace)
+C: 36, 0: Trailing whitespace (trailing-whitespace)
+C: 44, 0: Line too long (85/80) (line-too-long)
+C: 37, 2: Missing method docstring (missing-docstring)
+W:  5, 0: Unused test_state imported from openhtf.exe (unused-import)
 ************* Module openhtf.io.output.mfg_inspector
-I: 72, 0: Locally enabling no-member (E1101) (locally-enabled)
-I:147, 0: Locally enabling no-member (E1101) (locally-enabled)
-I:164, 0: Locally enabling no-member (E1101) (locally-enabled)
-I:310, 0: Locally enabling no-member (E1101) (locally-enabled)
-I:402, 0: Locally enabling invalid-name (C0103) (locally-enabled)
-I:402, 0: Locally enabling missing-docstring (C0111) (locally-enabled)
-C: 70, 0: Line too long (82/80) (line-too-long)
-C:141, 0: Line too long (97/80) (line-too-long)
-C:284, 0: Line too long (89/80) (line-too-long)
-C:336, 0: Line too long (81/80) (line-too-long)
-C:457, 0: Line too long (83/80) (line-too-long)
-C:125, 0: Missing function docstring (missing-docstring)
-W:139, 2: Unused variable 'record_dict' (unused-variable)
-W:152,13: Redefining name 'data' from outer scope (line 46) (redefined-outer-name)
-R:206, 0: Too many local variables (16/15) (too-many-locals)
-E:247,35: Module 'openhtf.util.validators' has no 'InRange' member (no-member)
-R:213, 2: Too many nested blocks (6/5) (too-many-nested-blocks)
-E:252,37: Module 'openhtf.util.validators' has no 'RegexMatcher' member (no-member)
-R:206, 0: Too many branches (21/12) (too-many-branches)
-R:206, 0: Too many statements (52/50) (too-many-statements)
-W:367,28: Redefining name 'test_record' from outer scope (line 45) (redefined-outer-name)
-W:445, 6: Redefining name 'data' from outer scope (line 46) (redefined-outer-name)
-C:447,28: Invalid variable name "f" (invalid-name)
-W:469,21: Redefining name 'test_record' from outer scope (line 45) (redefined-outer-name)
-W:493,21: Redefining name 'test_record' from outer scope (line 45) (redefined-outer-name)
-E:499,17: Instance of 'UploadOrOutput' has no '_OutputToTestRunProto' member (no-member)
-R:475, 0: Too few public methods (0/2) (too-few-public-methods)
+I: 73, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:148, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:165, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:311, 0: Locally enabling no-member (E1101) (locally-enabled)
+I:403, 0: Locally enabling invalid-name (C0103) (locally-enabled)
+I:403, 0: Locally enabling missing-docstring (C0111) (locally-enabled)
+C: 54, 0: Wrong hanging indentation (add 2 spaces).
+  'image/jpeg': test_runs_pb2.JPG,
+  ^ | (bad-continuation)
+C: 55, 0: Wrong hanging indentation (add 2 spaces).
+  'image/png': test_runs_pb2.PNG,
+  ^ | (bad-continuation)
+C: 56, 0: Wrong hanging indentation (add 2 spaces).
+  'audio/x-wav': test_runs_pb2.WAV,
+  ^ | (bad-continuation)
+C: 57, 0: Wrong hanging indentation (add 2 spaces).
+  'text/plain': test_runs_pb2.TEXT_UTF8,
+  ^ | (bad-continuation)
+C: 58, 0: Wrong hanging indentation (add 2 spaces).
+  'image/tiff': test_runs_pb2.TIFF,
+  ^ | (bad-continuation)
+C: 59, 0: Wrong hanging indentation (add 2 spaces).
+  'video/mp4': test_runs_pb2.MP4,
+  ^ | (bad-continuation)
+C: 62, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.ERROR: test_runs_pb2.ERROR,
+  ^ | (bad-continuation)
+C: 63, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.FAIL: test_runs_pb2.FAIL,
+  ^ | (bad-continuation)
+C: 64, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.PASS: test_runs_pb2.PASS,
+  ^ | (bad-continuation)
+C: 65, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.TIMEOUT: test_runs_pb2.ERROR,
+  ^ | (bad-continuation)
+C: 66, 0: Wrong hanging indentation (add 2 spaces).
+  test_record.Outcome.ABORTED: test_runs_pb2.ERROR,
+  ^ | (bad-continuation)
+C: 70, 0: Wrong hanging indentation (add 2 spaces).
+  u.GetOptions().Extensions[units_pb2.uom_code]: num
+  ^ | (bad-continuation)
+C: 71, 0: Wrong hanging indentation (add 2 spaces).
+  for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
+  ^ | (bad-continuation)
+C:118, 0: Trailing whitespace (trailing-whitespace)
+C:119, 0: Trailing whitespace (trailing-whitespace)
+C:142, 0: Wrong continued indentation (add 36 spaces).
+      sort_keys=True, indent=2).serialize_test_record(record)
+      ^                                   | (bad-continuation)
+C:169, 0: Wrong continued indentation (add 1 space).
+                       attachment_name):
+                       ^| (bad-continuation)
+C:179, 0: Wrong hanging indentation (add 2 spaces).
+          dim_val,
+          ^ | (bad-continuation)
+C:180, 0: Wrong hanging indentation (add 2 spaces).
+          dim_units.suffix if dim_units.suffix else '') for
+          ^ | (bad-continuation)
+C:182, 0: Wrong hanging indentation (add 2 spaces).
+          current_value[:-1], measurement.dimensions)])
+          ^ | (bad-continuation)
+C:191, 0: Wrong hanging indentation (add 4 spaces).
+        name, tuple(d.suffix for d in measurement.dimensions)))
+        ^   | (bad-continuation)
+C:263, 0: Wrong continued indentation (add 4 spaces).
+            for d in measurement.dimensions]
+            ^   | (bad-continuation)
+C:285, 0: Line too long (89/80) (line-too-long)
+C:337, 0: Line too long (81/80) (line-too-long)
+C:458, 0: Line too long (83/80) (line-too-long)
+C:126, 0: Missing function docstring (missing-docstring)
+W:140, 2: Unused variable 'record_dict' (unused-variable)
+W:153,13: Redefining name 'data' from outer scope (line 47) (redefined-outer-name)
+R:207, 0: Too many local variables (16/15) (too-many-locals)
+E:248,35: Module 'openhtf.util.validators' has no 'InRange' member (no-member)
+R:214, 2: Too many nested blocks (6/5) (too-many-nested-blocks)
+E:253,37: Module 'openhtf.util.validators' has no 'RegexMatcher' member (no-member)
+R:207, 0: Too many branches (21/12) (too-many-branches)
+R:207, 0: Too many statements (52/50) (too-many-statements)
+W:368,28: Redefining name 'test_record' from outer scope (line 46) (redefined-outer-name)
+W:446, 6: Redefining name 'data' from outer scope (line 47) (redefined-outer-name)
+C:448,28: Invalid variable name "f" (invalid-name)
+W:470,21: Redefining name 'test_record' from outer scope (line 46) (redefined-outer-name)
+W:494,21: Redefining name 'test_record' from outer scope (line 46) (redefined-outer-name)
+E:500,17: Instance of 'UploadOrOutput' has no '_OutputToTestRunProto' member (no-member)
+R:476, 0: Too few public methods (0/2) (too-few-public-methods)
+W: 36, 0: Unused import sys (unused-import)
+C: 31, 0: standard import "import json" comes before "import httplib2" (wrong-import-order)
+C: 32, 0: standard import "import logging" comes before "import httplib2" (wrong-import-order)
+C: 33, 0: standard import "import numbers" comes before "import httplib2" (wrong-import-order)
+C: 35, 0: standard import "import os" comes before "import httplib2" (wrong-import-order)
+C: 36, 0: standard import "import sys" comes before "import httplib2" (wrong-import-order)
+C: 37, 0: standard import "import threading" comes before "import httplib2" (wrong-import-order)
+C: 38, 0: standard import "import zlib" comes before "import httplib2" (wrong-import-order)
 ************* Module openhtf.io.output.__init__
 W: 32, 0: TODO(wallacbe): Switch to util (fixme)
 ************* Module openhtf.io.output
 C: 40, 2: Missing method docstring (missing-docstring)
 C: 43, 2: Missing method docstring (missing-docstring)
 ************* Module openhtf.util.xmlrpcutil
-C: 26, 0: Missing class docstring (missing-docstring)
-C: 31, 2: Missing method docstring (missing-docstring)
-E: 33, 4: Instance of '_socketobject' has no 'settimeout' member (no-member)
-E: 37, 4: Instance of '_socketobject' has no 'settimeout' member (no-member)
-C: 40, 0: Missing class docstring (missing-docstring)
-C: 46, 2: Missing method docstring (missing-docstring)
-R: 57, 0: Too few public methods (0/2) (too-few-public-methods)
-C: 69, 2: Missing method docstring (missing-docstring)
-R: 61, 0: Too few public methods (0/2) (too-few-public-methods)
-E: 76,10: Undefined variable 'LockedServerProxyMixin' (undefined-variable)
-E: 80,19: Undefined variable 'LockedServerProxyMixin' (undefined-variable)
-C: 83, 6: Missing function docstring (missing-docstring)
-R: 73, 0: Too few public methods (0/2) (too-few-public-methods)
-R: 93, 0: Too few public methods (0/2) (too-few-public-methods)
+C: 27, 0: Missing class docstring (missing-docstring)
+C: 32, 2: Missing method docstring (missing-docstring)
+E: 34, 4: Instance of '_socketobject' has no 'settimeout' member (no-member)
+E: 38, 4: Instance of '_socketobject' has no 'settimeout' member (no-member)
+C: 41, 0: Missing class docstring (missing-docstring)
+C: 47, 2: Missing method docstring (missing-docstring)
+R: 58, 0: Too few public methods (0/2) (too-few-public-methods)
+C: 70, 2: Missing method docstring (missing-docstring)
+R: 62, 0: Too few public methods (0/2) (too-few-public-methods)
+E: 77,10: Undefined variable 'LockedServerProxyMixin' (undefined-variable)
+E: 81,19: Undefined variable 'LockedServerProxyMixin' (undefined-variable)
+C: 84, 6: Invalid function name "_Wrapper" (invalid-name)
+C: 84, 6: Missing function docstring (missing-docstring)
+R: 74, 0: Too few public methods (0/2) (too-few-public-methods)
+R: 94, 0: Too few public methods (0/2) (too-few-public-methods)
+W: 17, 0: Unused import functools (unused-import)
 ************* Module openhtf.util.data
+W: 74, 0: Bad indentation. Found 9 spaces, expected 8 (bad-indentation)
+C: 75, 0: Wrong continued indentation (add 3 spaces).
+                                       volatile_fields, indent + 2)
+                                       ^  | (bad-continuation)
+C: 82, 0: Wrong continued indentation (add 3 spaces).
+                                  volatile_fields, indent)
+                                  ^  | (bad-continuation)
 C:142, 0: Line too long (82/80) (line-too-long)
 C: 84,14: Invalid variable name "f" (invalid-name)
 C: 84,17: Invalid variable name "s" (invalid-name)
 R:150, 4: Redefinition of obj type from tuple to str (redefined-variable-type)
 C:155, 0: Invalid function name "TotalSize" (invalid-name)
 ************* Module openhtf.util.test
-C:139, 0: Missing class docstring (missing-docstring)
-C:162, 2: Missing method docstring (missing-docstring)
-E:171, 3: No value for argument 'self' in method call (no-value-for-parameter)
-W:187,13: Catching too general exception Exception (broad-except)
-C:194, 2: Missing method docstring (missing-docstring)
-E:193, 3: No value for argument 'self' in method call (no-value-for-parameter)
-R:139, 0: Too few public methods (1/2) (too-few-public-methods)
-C:257, 2: Missing function docstring (missing-docstring)
-C:292, 4: Missing function docstring (missing-docstring)
-C:300, 0: Missing class docstring (missing-docstring)
-E:302, 2: Method should have "self" as first argument (no-self-argument)
-C:315, 4: Missing function docstring (missing-docstring)
-W:322,17: Catching too general exception Exception (broad-except)
-C:335, 2: Missing method docstring (missing-docstring)
-C:338, 2: Missing method docstring (missing-docstring)
-C:341, 2: Missing method docstring (missing-docstring)
-C:354, 2: Missing method docstring (missing-docstring)
-C:359, 2: Missing method docstring (missing-docstring)
-C:362, 2: Missing method docstring (missing-docstring)
-C:365, 2: Missing method docstring (missing-docstring)
-C:375, 2: Missing method docstring (missing-docstring)
-C:376, 4: Missing function docstring (missing-docstring)
-C:394, 2: Missing method docstring (missing-docstring)
-C:406, 2: Missing method docstring (missing-docstring)
-C:412, 2: Missing method docstring (missing-docstring)
+C:168, 0: Wrong continued indentation (add 1 space).
+                                      plug_cls not in self.mock_plugs)
+                                      ^| (bad-continuation)
+C:179, 0: Wrong hanging indentation (remove 2 spaces).
+          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+        | ^ (bad-continuation)
+C:208, 0: Wrong hanging indentation (remove 2 spaces).
+          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+        | ^ (bad-continuation)
+C:398, 0: Wrong hanging indentation (add 1 space).
+       'Measurement %s not set' % measurement)
+       ^| (bad-continuation)
+C:140, 0: Missing class docstring (missing-docstring)
+C:163, 2: Missing method docstring (missing-docstring)
+E:172, 3: No value for argument 'self' in method call (no-value-for-parameter)
+W:188,13: Catching too general exception Exception (broad-except)
+C:195, 2: Missing method docstring (missing-docstring)
+E:194, 3: No value for argument 'self' in method call (no-value-for-parameter)
+R:140, 0: Too few public methods (1/2) (too-few-public-methods)
+C:258, 2: Missing function docstring (missing-docstring)
+C:293, 4: Missing function docstring (missing-docstring)
+C:301, 0: Missing class docstring (missing-docstring)
+E:303, 2: Method should have "self" as first argument (no-self-argument)
+C:316, 4: Missing function docstring (missing-docstring)
+W:323,17: Catching too general exception Exception (broad-except)
+C:336, 2: Missing method docstring (missing-docstring)
+C:339, 2: Missing method docstring (missing-docstring)
+C:342, 2: Missing method docstring (missing-docstring)
+C:355, 2: Missing method docstring (missing-docstring)
+C:360, 2: Missing method docstring (missing-docstring)
+C:363, 2: Missing method docstring (missing-docstring)
+C:366, 2: Missing method docstring (missing-docstring)
+C:376, 2: Missing method docstring (missing-docstring)
+C:377, 4: Missing function docstring (missing-docstring)
+C:395, 2: Missing method docstring (missing-docstring)
+C:407, 2: Missing method docstring (missing-docstring)
+C:413, 2: Missing method docstring (missing-docstring)
+W:123, 0: Unused import mutablerecords (unused-import)
 ************* Module openhtf.util.logs
-C:110, 0: Missing function docstring (missing-docstring)
-C:114, 0: Missing function docstring (missing-docstring)
+C:112, 0: Missing function docstring (missing-docstring)
+C:116, 0: Missing function docstring (missing-docstring)
+W: 68, 0: Unused import functools (unused-import)
+W: 74, 0: Unused datetime imported from datetime (unused-import)
 ************* Module openhtf.util.monitors
+C:100, 0: Trailing whitespace (trailing-whitespace)
 C: 59, 0: Missing class docstring (missing-docstring)
 R: 63, 2: Too many arguments (6/5) (too-many-arguments)
 C: 73, 2: Missing method docstring (missing-docstring)
@@ -327,9 +487,9 @@ C:295, 2: Missing method docstring (missing-docstring)
 C:300, 2: Missing method docstring (missing-docstring)
 R:349, 0: Too few public methods (0/2) (too-few-public-methods)
 ************* Module openhtf.util.multicast
+C:166, 0: Trailing whitespace (trailing-whitespace)
+C:152, 2: Invalid function name "_HandleResponses" (invalid-name)
 C:152, 2: Missing function docstring (missing-docstring)
-E:165,44: Undefined variable '_HandleResponses' (undefined-variable)
-W:152, 2: Unused variable '_handle_responses' (unused-variable)
 ************* Module openhtf.util.threads
 C: 37, 2: Missing function docstring (missing-docstring)
 W: 60,11: Catching too general exception Exception (broad-except)
@@ -346,11 +506,34 @@ R:126, 2: Too few public methods (0/2) (too-few-public-methods)
 C:150, 2: Missing method docstring (missing-docstring)
 ************* Module openhtf.util.functions
 C: 35, 2: Missing function docstring (missing-docstring)
+C: 47, 0: Invalid function name "CallAtMostEvery" (invalid-name)
+C: 53, 2: Invalid function name "Decorator" (invalid-name)
 C: 53, 2: Missing function docstring (missing-docstring)
+C: 61, 4: Invalid function name "_Wrapper" (invalid-name)
 C: 61, 4: Missing function docstring (missing-docstring)
-************* Module openhtf.util.units
-I:4239, 0: Locally enabling line-too-long (C0301) (locally-enabled)
+************* Module openhtf.util.timeouts
+C:301, 0: Wrong continued indentation (add 5 spaces).
+                                 catch_exceptions=()):
+                                 ^    | (bad-continuation)
+C:308, 0: Wrong continued indentation (add 6 spaces).
+                                    catch_exceptions=()):
+                                    ^     | (bad-continuation)
+C:315, 0: Wrong continued indentation (add 5 spaces).
+                                  catch_exceptions=()):
+                                  ^    | (bad-continuation)
 ************* Module openhtf.util.argv
+W:  8, 0: Bad indentation. Found 4 spaces, expected 2 (bad-indentation)
+W: 13, 0: Bad indentation. Found 4 spaces, expected 2 (bad-indentation)
+W: 14, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 15, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 16, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 17, 0: Bad indentation. Found 12 spaces, expected 6 (bad-indentation)
+W: 18, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 20, 0: Bad indentation. Found 4 spaces, expected 2 (bad-indentation)
+W: 21, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+W: 22, 0: Bad indentation. Found 12 spaces, expected 6 (bad-indentation)
+W: 23, 0: Bad indentation. Found 8 spaces, expected 4 (bad-indentation)
+C: 24, 0: Trailing newlines (trailing-newlines)
 C:  7, 0: Missing function docstring (missing-docstring)
 C: 11, 0: Missing class docstring (missing-docstring)
 R: 11, 0: Too few public methods (0/2) (too-few-public-methods)
@@ -412,8 +595,18 @@ import threading
 
 import requests (duplicate-code)
 R:  1, 0: Similar lines in 2 files
+==openhtf.exe.test_state:35
+==openhtf.util.test:122
+import mutablerecords
+
+import openhtf
+
+from openhtf import conf
+from openhtf import plugs
+from openhtf import util (duplicate-code)
+R:  1, 0: Similar lines in 2 files
 ==openhtf.exe.__init__:25
-==openhtf.util.test:125
+==openhtf.util.test:126
 from openhtf import conf
 from openhtf import plugs
 from openhtf import util
@@ -424,7 +617,7 @@ from openhtf.io import test_record (duplicate-code)
 
 Report
 ======
-8402 statements analysed.
+4211 statements analysed.
 
 Statistics by type
 ------------------
@@ -432,13 +625,13 @@ Statistics by type
 +---------+-------+-----------+-----------+------------+---------+
 |type     |number |old number |difference |%documented |%badname |
 +=========+=======+===========+===========+============+=========+
-|module   |51     |51         |=          |98.04       |5.88     |
+|module   |50     |50         |=          |98.00       |4.00     |
 +---------+-------+-----------+-----------+------------+---------+
-|class    |173    |173        |=          |93.64       |0.58     |
+|class    |172    |172        |=          |93.60       |0.58     |
 +---------+-------+-----------+-----------+------------+---------+
-|method   |519    |519        |=          |87.86       |0.19     |
+|method   |517    |517        |=          |87.81       |0.19     |
 +---------+-------+-----------+-----------+------------+---------+
-|function |95     |95         |=          |69.47       |4.21     |
+|function |95     |95         |=          |69.47       |9.47     |
 +---------+-------+-----------+-----------+------------+---------+
 
 
@@ -450,7 +643,7 @@ External dependencies
     contextlib2 (openhtf.exe.phase_data,openhtf.exe)
     enum (openhtf.io.test_record,openhtf.util.measurements,openhtf.util.data,openhtf.exe,openhtf.exe.test_state,openhtf.plugs.usb.adb_protocol,openhtf)
     httplib2 (openhtf.io.output.mfg_inspector)
-    mutablerecords (openhtf.io.test_record,openhtf.io.station_api,openhtf.plugs,openhtf.exe.test_state,openhtf.util,openhtf.util.measurements,openhtf,openhtf.conf)
+    mutablerecords (openhtf.io.test_record,openhtf.io.station_api,openhtf.util.test,openhtf.plugs,openhtf.exe.test_state,openhtf.util,openhtf.util.measurements,openhtf,openhtf.conf)
       \-records (openhtf.util.data)
     oauth2client 
       \-client (openhtf.io.output.mfg_inspector)
@@ -458,7 +651,7 @@ External dependencies
       \-conf (openhtf.io.station_api,openhtf.io.frontend.__main__,openhtf.exe.test_state,openhtf.exe,openhtf.util.test,openhtf.io.frontend,openhtf.plugs,openhtf.plugs.usb,openhtf.history,openhtf)
       \-exe (openhtf)
       | \-phase_executor (openhtf.exe,openhtf,openhtf.util.test)
-      | \-test_state (openhtf.io.station_api,openhtf.exe,openhtf.util.test)
+      | \-test_state (openhtf.io.station_api,openhtf.io.output.json_factory,openhtf.exe,openhtf.util.test)
       | \-triggers (openhtf)
       \-history (openhtf.io.station_api)
       \-io 
@@ -485,7 +678,7 @@ External dependencies
       |   \-shell_service (openhtf.plugs.usb.adb_device)
       |   \-usb_exceptions (openhtf.plugs.usb.shell_service,openhtf.plugs.usb.local_usb,openhtf.plugs.usb.filesync_service,openhtf.plugs.usb.adb_protocol,openhtf.plugs.usb.adb_message,openhtf.plugs.usb.fastboot_device,openhtf.plugs.usb,openhtf.plugs.usb.fastboot_protocol,openhtf.plugs.usb.adb_device,openhtf.plugs.usb.usb_handle)
       |   \-usb_handle (openhtf.plugs.usb.local_usb,openhtf.plugs.usb.usb_handle_stub)
-      \-util (openhtf.io.station_api,openhtf.util.test,openhtf.exe.phase_data,openhtf.exe,openhtf.util.logs,openhtf.io.frontend,openhtf.exe.test_state,openhtf)
+      \-util (openhtf.io.test_record,openhtf.io.station_api,openhtf.util.test,openhtf.exe.phase_data,openhtf.exe,openhtf.util.logs,openhtf.io.output.console_summary,openhtf.io.frontend,openhtf.exe.test_state,openhtf)
         \-data (openhtf.io.station_api,openhtf.io.output.mfg_inspector,openhtf.io.frontend,openhtf.io.output,openhtf.exe.test_state,openhtf.history,openhtf.io.http_api,openhtf.io.output.json_factory,openhtf)
         \-exceptions (openhtf.plugs.usb.adb_protocol)
         \-functions (openhtf,openhtf.util.logs)
@@ -516,13 +709,13 @@ Raw metrics
 +----------+-------+------+---------+-----------+
 |type      |number |%     |previous |difference |
 +==========+=======+======+=========+===========+
-|code      |9251   |57.40 |9251     |=          |
+|code      |5060   |42.64 |5060     |=          |
 +----------+-------+------+---------+-----------+
-|docstring |4267   |26.47 |4267     |=          |
+|docstring |4245   |35.77 |4245     |=          |
 +----------+-------+------+---------+-----------+
-|comment   |945    |5.86  |944      |+1.00      |
+|comment   |927    |7.81  |927      |=          |
 +----------+-------+------+---------+-----------+
-|empty     |1655   |10.27 |1656     |-1.00      |
+|empty     |1634   |13.77 |1634     |=          |
 +----------+-------+------+---------+-----------+
 
 
@@ -533,9 +726,9 @@ Duplication
 +-------------------------+------+---------+-----------+
 |                         |now   |previous |difference |
 +=========================+======+=========+===========+
-|nb duplicated lines      |47    |47       |=          |
+|nb duplicated lines      |54    |54       |=          |
 +-------------------------+------+---------+-----------+
-|percent duplicated lines |0.293 |0.293    |=          |
+|percent duplicated lines |0.457 |0.457    |=          |
 +-------------------------+------+---------+-----------+
 
 
@@ -546,13 +739,13 @@ Messages by category
 +-----------+-------+---------+-----------+
 |type       |number |previous |difference |
 +===========+=======+=========+===========+
-|convention |141    |143      |-2.00      |
+|convention |221    |239      |-18.00     |
 +-----------+-------+---------+-----------+
-|refactor   |44     |45       |-1.00      |
+|refactor   |45     |45       |=          |
 +-----------+-------+---------+-----------+
-|warning    |57     |57       |=          |
+|warning    |77     |77       |=          |
 +-----------+-------+---------+-----------+
-|error      |66     |66       |=          |
+|error      |65     |74       |-9.00      |
 +-----------+-------+---------+-----------+
 
 
@@ -563,79 +756,81 @@ Messages by category
 +------------------------------------+------+--------+---------+-----------+
 |module                              |error |warning |refactor |convention |
 +====================================+======+========+=========+===========+
-|openhtf.io.station_api              |45.45 |24.56   |11.36    |15.60      |
+|openhtf.io.station_api              |46.15 |18.18   |11.11    |16.29      |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.frontend.__init__        |12.12 |3.51    |2.27     |0.71       |
+|openhtf.io.frontend.__init__        |12.31 |2.60    |2.22     |1.81       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.__init__              |6.06  |14.04   |2.27     |0.71       |
+|openhtf.plugs.__init__              |6.15  |10.39   |2.22     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.xmlrpcutil             |6.06  |0.00    |9.09     |4.26       |
+|openhtf.util.xmlrpcutil             |6.15  |1.30    |8.89     |3.17       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.mfg_inspector     |4.55  |10.53   |11.36    |4.96       |
+|openhtf.io.output.mfg_inspector     |4.62  |9.09    |11.11    |15.38      |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.exe.test_state              |4.55  |5.26    |2.27     |4.96       |
+|openhtf.util.test                   |4.62  |3.90    |2.22     |10.41      |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.test                   |4.55  |3.51    |2.27     |13.48      |
+|openhtf.exe.test_state              |4.62  |3.90    |2.22     |3.17       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf                             |3.03  |1.75    |6.82     |5.67       |
+|openhtf                             |3.08  |1.30    |6.67     |3.62       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.frontend.__main__        |1.52  |5.26    |2.27     |1.42       |
+|openhtf.io.frontend.__main__        |1.54  |3.90    |2.22     |2.71       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.multicast              |1.52  |1.75    |0.00     |0.71       |
+|openhtf.exe.phase_executor          |1.54  |1.30    |0.00     |0.00       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.exe.phase_executor          |1.52  |1.75    |0.00     |0.00       |
+|openhtf.util.validators             |1.54  |0.00    |4.44     |1.36       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.validators             |1.52  |0.00    |4.55     |2.13       |
+|openhtf.util.monitors               |1.54  |0.00    |2.22     |4.07       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.monitors               |1.52  |0.00    |2.27     |5.67       |
+|openhtf.history                     |1.54  |0.00    |0.00     |3.17       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.history                     |1.52  |0.00    |0.00     |4.96       |
+|openhtf.plugs.cambrionix.__init__   |1.54  |0.00    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.usb.__init__          |1.52  |0.00    |0.00     |0.71       |
+|openhtf.plugs.usb.__init__          |1.54  |0.00    |0.00     |0.00       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.cambrionix.__init__   |1.52  |0.00    |0.00     |0.71       |
+|openhtf.exe.__init__                |1.54  |0.00    |0.00     |0.00       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.exe.__init__                |1.52  |0.00    |0.00     |0.71       |
+|openhtf.util.argv                   |0.00  |14.29   |28.89    |1.36       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.http_api                 |0.00  |7.02    |0.00     |0.71       |
+|openhtf.io.output.console_summary   |0.00  |5.19    |4.44     |8.14       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.conf                        |0.00  |5.26    |0.00     |2.13       |
+|openhtf.io.http_api                 |0.00  |5.19    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.measurements           |0.00  |3.51    |4.55     |5.67       |
+|openhtf.conf                        |0.00  |3.90    |0.00     |1.36       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.console_summary   |0.00  |3.51    |4.55     |2.13       |
+|openhtf.util.measurements           |0.00  |2.60    |4.44     |3.62       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.exe.triggers                |0.00  |3.51    |0.00     |0.71       |
+|openhtf.io.test_record              |0.00  |2.60    |0.00     |2.71       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.test_record              |0.00  |1.75    |0.00     |4.26       |
+|openhtf.util.logs                   |0.00  |2.60    |0.00     |0.90       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.__init__          |0.00  |1.75    |0.00     |1.42       |
+|openhtf.exe.triggers                |0.00  |2.60    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.threads                |0.00  |1.75    |0.00     |0.71       |
+|openhtf.util.data                   |0.00  |1.30    |2.22     |2.71       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.argv                   |0.00  |0.00    |27.27    |1.42       |
+|openhtf.io.output.json_factory      |0.00  |1.30    |0.00     |1.81       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.data                   |0.00  |0.00    |2.27     |2.84       |
+|openhtf.io.output.__init__          |0.00  |1.30    |0.00     |0.90       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.usb.adb_protocol      |0.00  |0.00    |2.27     |1.42       |
+|openhtf.util.threads                |0.00  |1.30    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.__init__               |0.00  |0.00    |2.27     |0.71       |
+|openhtf.plugs.usb.adb_protocol      |0.00  |0.00    |2.22     |0.90       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.functions              |0.00  |0.00    |0.00     |2.13       |
+|openhtf.util.__init__               |0.00  |0.00    |2.22     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.util.logs                   |0.00  |0.00    |0.00     |1.42       |
+|openhtf.util.functions              |0.00  |0.00    |0.00     |2.71       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.json_factory      |0.00  |0.00    |0.00     |1.42       |
+|openhtf.util.timeouts               |0.00  |0.00    |0.00     |1.36       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.usb.usb_handle_stub   |0.00  |0.00    |0.00     |0.71       |
+|openhtf.util.multicast              |0.00  |0.00    |0.00     |1.36       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.usb.usb_handle        |0.00  |0.00    |0.00     |0.71       |
+|openhtf.plugs.usb.usb_handle_stub   |0.00  |0.00    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.usb.filesync_service  |0.00  |0.00    |0.00     |0.71       |
+|openhtf.plugs.usb.usb_handle        |0.00  |0.00    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.usb.fastboot_protocol |0.00  |0.00    |0.00     |0.71       |
+|openhtf.plugs.usb.filesync_service  |0.00  |0.00    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
-|openhtf.io.__init__                 |0.00  |0.00    |0.00     |0.71       |
+|openhtf.plugs.usb.fastboot_protocol |0.00  |0.00    |0.00     |0.45       |
++------------------------------------+------+--------+---------+-----------+
+|openhtf.io.__init__                 |0.00  |0.00    |0.00     |0.45       |
 +------------------------------------+------+--------+---------+-----------+
 
 
@@ -648,25 +843,37 @@ Messages
 +===============================+============+
 |missing-docstring              |95          |
 +-------------------------------+------------+
+|bad-continuation               |40          |
++-------------------------------+------------+
 |no-member                      |29          |
 +-------------------------------+------------+
-|line-too-long                  |21          |
+|invalid-name                   |24          |
 +-------------------------------+------------+
-|invalid-name                   |20          |
+|trailing-whitespace            |20          |
 +-------------------------------+------------+
-|locally-enabled                |17          |
+|line-too-long                  |17          |
 +-------------------------------+------------+
 |too-few-public-methods         |16          |
 +-------------------------------+------------+
 |no-value-for-parameter         |16          |
 +-------------------------------+------------+
+|locally-enabled                |16          |
++-------------------------------+------------+
 |redefined-outer-name           |14          |
 +-------------------------------+------------+
-|undefined-variable             |13          |
+|bad-indentation                |13          |
++-------------------------------+------------+
+|undefined-variable             |12          |
++-------------------------------+------------+
+|unused-import                  |11          |
++-------------------------------+------------+
+|wrong-import-position          |10          |
 +-------------------------------+------------+
 |fixme                          |10          |
 +-------------------------------+------------+
-|unused-variable                |8           |
+|wrong-import-order             |8           |
++-------------------------------+------------+
+|unused-variable                |7           |
 +-------------------------------+------------+
 |cyclic-import                  |7           |
 +-------------------------------+------------+
@@ -676,9 +883,7 @@ Messages
 +-------------------------------+------------+
 |no-self-use                    |5           |
 +-------------------------------+------------+
-|duplicate-code                 |4           |
-+-------------------------------+------------+
-|unused-import                  |3           |
+|duplicate-code                 |5           |
 +-------------------------------+------------+
 |unsubscriptable-object         |3           |
 +-------------------------------+------------+
@@ -696,11 +901,13 @@ Messages
 +-------------------------------+------------+
 |no-self-argument               |2           |
 +-------------------------------+------------+
+|bad-whitespace                 |2           |
++-------------------------------+------------+
 |attribute-defined-outside-init |2           |
 +-------------------------------+------------+
-|wrong-import-order             |1           |
-+-------------------------------+------------+
 |unsupported-membership-test    |1           |
++-------------------------------+------------+
+|trailing-newlines              |1           |
 +-------------------------------+------------+
 |too-many-statements            |1           |
 +-------------------------------+------------+
@@ -727,5 +934,5 @@ Messages
 
 Global evaluation
 -----------------
-Your code has been rated at 9.32/10 (previous run: 9.32/10, +0.00)
+Your code has been rated at 8.41/10 (previous run: 8.26/10, +0.15)
 

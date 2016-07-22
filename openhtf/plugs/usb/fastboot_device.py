@@ -121,4 +121,3 @@ def _retry_usb_function(count, func, *args, **kwargs):
       time.sleep(0.1)
     else:
       break
-

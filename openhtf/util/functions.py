@@ -44,13 +44,13 @@ def call_once(func):
   _wrapper.MarkAsRun = lambda: setattr(_wrapper, 'has_run', True)
   return _wrapper
 
-def CallAtMostEvery(seconds, count=1):
+def call_at_most_every(seconds, count=1):
   """Call the decorated function at most count times every seconds seconds.
 
   The decorated function will sleep to ensure that at most count invocations
   occur within any 'seconds' second window.
   """
-  def Decorator(func):
+  def decorator(func):
     try:
       call_history = getattr(func, '_call_history')
     except AttributeError:
@@ -58,7 +58,7 @@ def CallAtMostEvery(seconds, count=1):
       setattr(func, '_call_history', call_history)
 
     @functools.wraps(func)
-    def _Wrapper(*args, **kwargs):
+    def _wrapper(*args, **kwargs):
       current_time = time.time()
       window_count = sum(ts > current_time - seconds for ts in call_history)
       if window_count >= count:
@@ -69,5 +69,5 @@ def CallAtMostEvery(seconds, count=1):
       # Append this call, deque will automatically trim old calls using maxlen.
       call_history.append(time.time())
       return func(*args, **kwargs)
-    return _Wrapper
-  return Decorator
+    return _wrapper
+  return decorator

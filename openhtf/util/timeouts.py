@@ -298,21 +298,21 @@ def execute_until_false(method, interval_s):  # pylint: disable=invalid-name
 
 # pylint: disable=invalid-name
 def retry_until_true_or_limit_reached(method, limit, sleep_s=1,
-                                 catch_exceptions=()):
+                                      catch_exceptions=()):
   """Executes a method until the retry limit is hit or True is returned."""
   return retry_until_valid_or_limit_reached(
       method, limit, lambda x: x, sleep_s, catch_exceptions)
 
 
 def retry_until_not_none_or_limit_reached(method, limit, sleep_s=1,
-                                    catch_exceptions=()):
+                                          catch_exceptions=()):
   """Executes a method until the retry limit is hit or not None is returned."""
   return retry_until_valid_or_limit_reached(
       method, limit, lambda x: x is not None, sleep_s, catch_exceptions)
 
 
 def retry_until_valid_or_limit_reached(method, limit, validation_fn, sleep_s=1,
-                                  catch_exceptions=()):
+                                       catch_exceptions=()):
   """Executes a method until the retry limit or validation_fn returns True.
 
   The method is always called once so the effective lower limit for 'limit' is

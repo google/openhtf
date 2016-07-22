@@ -71,15 +71,15 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
       if key in volatile_fields:
         continue
       try:
-         assert_records_equal_nonvolatile(first[key], second[key],
-                                       volatile_fields, indent + 2)
+        assert_records_equal_nonvolatile(first[key], second[key],
+                                         volatile_fields, indent + 2)
       except AssertionError:
         logging.error('%sKey: %s ^', ' ' * indent, key)
         raise
   elif hasattr(first, '_asdict') and hasattr(second, '_asdict'):
     # Compare namedtuples as dicts so we get more useful output.
     assert_records_equal_nonvolatile(first._asdict(), second._asdict(),
-                                  volatile_fields, indent)
+                                     volatile_fields, indent)
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
     for idx, (f, s) in enumerate(itertools.izip(first, second)):
       try:

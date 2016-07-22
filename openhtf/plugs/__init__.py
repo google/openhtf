@@ -27,7 +27,7 @@ is-ready check.
 
 If the Station API is enabled, then the _asdict() method of plugs may be
 called in a tight loop to detect state updates.  Since _asdict() may incur
-significant overhead, it's recommended to use functions.CallAtMostEvery()
+significant overhead, it's recommended to use functions.call_at_most_every()
 to limit the rate at which _asdict() is called.  As an additional
 consideration, a separate thread calling _asdict() implies that Plugs must
 be thread-safe if Station API is enabled (at least, calls to _asdict() must
@@ -150,7 +150,7 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     PlugManager (if the Station API is enabled, which is the default).
 
     Note this method is called in a tight loop, it is recommended that you
-    decorate it with functions.CallAtMostEvery() to limit the frequency at
+    decorate it with functions.call_at_most_every() to limit the frequency at
     which updates happen (pass a number of seconds to it to limit samples to
     once per that number of seconds).
     """

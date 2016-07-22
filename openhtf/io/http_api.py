@@ -112,7 +112,7 @@ class HTTPServer(threading.Thread):
       states.
       """
       result = {'test': data.convert_to_base_types(self.executor.get_state(),
-                                                ignore_keys=('plug_manager',)),
+                                                   ignore_keys=('plug_manager',)),
                 'framework': data.convert_to_base_types(self.executor)}
       self.send_response(200)
       self.end_headers()

@@ -4,7 +4,6 @@ import os
 import sys
 import __main__ as tester
 
-from openhtf import util
 from openhtf.io import test_record
 from openhtf.util import measurements as measurement
 
@@ -27,20 +26,20 @@ class ConsoleSummary():
       self.ORANGE = ""
       self.RESET = ""
       self.BOLD = ""
-    
+
     self.color_table = {
-        test_record.Outcome.PASS:self.GREEN, 
-        test_record.Outcome.FAIL:self.RED, 
-        test_record.Outcome.ERROR:self.ORANGE, 
-        test_record.Outcome.TIMEOUT:self.ORANGE, 
+        test_record.Outcome.PASS:self.GREEN,
+        test_record.Outcome.FAIL:self.RED,
+        test_record.Outcome.ERROR:self.ORANGE,
+        test_record.Outcome.TIMEOUT:self.ORANGE,
     }
     self.output_stream = output_stream
   # pylint: enable=invalid-name
 
   def __call__(self, record):
     output_lines = [''.join((self.color_table[record.outcome],
-                   self.BOLD, record.code_info.name, ':',
-                   record.outcome.name, self.RESET))]
+                             self.BOLD, record.code_info.name, ':',
+                             record.outcome.name, self.RESET))]
     if record.outcome != test_record.Outcome.PASS:
       for phase in record.phases:
         new_phase = True
@@ -57,21 +56,21 @@ class ConsoleSummary():
               new_phase = False
 
             output_lines.append('%sfailed_item: %s' % (self.indent, result.name))
-            output_lines.append('%smeasured_value: %s' % 
-                                  (self.indent*2, str(measured[result.name])))
+            output_lines.append('%smeasured_value: %s' %
+                                (self.indent*2, str(measured[result.name])))
             output_lines.append('%svalidators:' % (self.indent*2))
             for validator in result.validators:
-              output_lines.append('%svalidator: %s' % 
+              output_lines.append('%svalidator: %s' %
                                   (self.indent*3, str(result.validators)))
-        
+
         phase_result = phase.result.phase_result
-        if not phase_result:   #Timeout 
-           output_lines.append('timeout phase: %s [ran for %.2f sec]' %
+        if not phase_result:   #Timeout
+          output_lines.append('timeout phase: %s [ran for %.2f sec]' %
                               (phase.name, phase_time_sec))
         elif 'CONTINUE' not in str(phase_result):  #Exception
-          output_lines.append('%sexception type: %s' % (self.indent, 
-                              record.outcome_details[0].code))
- 
+          output_lines.append('%sexception type: %s' % (self.indent,
+                                                        record.outcome_details[0].code))
+
     output_lines.append('\n')
     text = '\n'.join(output_lines)
     self.output_stream.write(text)

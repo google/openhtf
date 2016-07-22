@@ -65,13 +65,11 @@ no way to change this, if you don't like it redirect stdout to /dev/null.
 
 import argparse
 import collections
-import functools
 import logging
 import os
 import re
 import sys
 import traceback
-from datetime import datetime
 
 from openhtf import util
 from openhtf.util import argv

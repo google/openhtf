@@ -120,7 +120,6 @@ import types
 import unittest
 
 import mock
-import mutablerecords
 
 import openhtf
 
@@ -165,7 +164,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # been initialized.
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(plug_cls for plug_cls in plug_types if
-                                      plug_cls not in self.mock_plugs)
+                                       plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
       self.plug_manager.update_plug(plug_type, plug_value)
 
@@ -176,7 +175,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
     # Cobble together a fake TestState to pass to the test phase.
     with mock.patch(
-          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test_state_ = test_state.TestState(openhtf.TestDescriptor(
           'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
 
@@ -205,7 +204,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch(
-          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test.execute(test_start=lambda: 'TestDutId')
 
     return record_saver.result
@@ -408,7 +407,7 @@ class TestCase(unittest.TestCase):
   def assert_measured(self, phase_record, measurement, value=mock.ANY):
     self.assertTrue(
         phase_record.measurements[measurement].measured_value.is_value_set,
-       'Measurement %s not set' % measurement)
+        'Measurement %s not set' % measurement)
     if value is not mock.ANY:
       self.assertEquals(
           value, phase_record.measurements[measurement].measured_value.value,

@@ -188,7 +188,7 @@ class TestState(object):
     """
     return self.running_phase_state and self.running_phase_state.name
 
-  def SetStatusFromPhaseOutcome(self, phase_outcome):
+  def set_status_from_phase_outcome(self, phase_outcome):
     """Set our internal state based on the given phase outcome.
 
     Args:

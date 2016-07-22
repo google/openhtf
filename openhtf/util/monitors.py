@@ -97,7 +97,7 @@ class _MonitorThread(threads.KillableThread):
       measurement[(post_time - start_time) * 1000] = value
       return (int((post_time - start_time) * 1000 / self.interval_ms),
               (post_time - pre_time) * 1000)
-      
+
     # Track the last sample number, and an approximation of the mean time
     # it takes to sample (so we can account for it in how long we sleep).
     last_sample, mean_sample_ms = _take_sample()

@@ -2,7 +2,6 @@
 
 import base64
 from json import JSONEncoder
-from openhtf.exe import test_state
 from openhtf.io import output
 from openhtf.util import data
 
@@ -30,10 +29,10 @@ class OutputToJSON(output.OutputToFile):
     super(OutputToJSON, self).__init__(filename_pattern)
     self.inline_attachments = inline_attachments
     self.json_encoder = JSONEncoder(**kwargs)
- 
+
   def serialize_test_record(self, test_record):
     return self.json_encoder.encode(self.convert_to_dict(test_record))
-  
+
   def convert_to_dict(self, test_record):
     if self.inline_attachments:
       as_dict = data.convert_to_base_types(test_record)

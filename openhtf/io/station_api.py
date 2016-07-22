@@ -74,11 +74,6 @@ import xmlrpclib
 
 import mutablerecords
 
-# Fix for xmlrpclib to use <i8> for longs instead of <int>, because our
-# timestamps are in millis, which are too big for 4-byte ints.
-xmlrpclib.Marshaller.dispatch[long] = (
-    lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
-
 import openhtf
 from openhtf import conf
 from openhtf import history
@@ -89,6 +84,11 @@ from openhtf.util import multicast
 from openhtf.util import threads
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
+
+# Fix for xmlrpclib to use <i8> for longs instead of <int>, because our
+# timestamps are in millis, which are too big for 4-byte ints.
+xmlrpclib.Marshaller.dispatch[long] = (
+    lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
 
 _LOG = logging.getLogger(__name__)
 
@@ -212,8 +212,8 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     'test_uid', 'test_name',
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
-    # Cache last known state (a RemoteState) so we can detect deltas.
-    'cached_state': None})):
+        # Cache last known state (a RemoteState) so we can detect deltas.
+        'cached_state': None})):
 
   def __hash__(self):
     return hash((self.test_uid, self.created_time_millis))
@@ -507,7 +507,7 @@ class Station(object):
           ctime_millis != self.cached_tests[test_uid].created_time_millis):
         try:
           updated_tests[test_uid] = RemoteTest(
-            self.make_proxy, self._shared_proxy, self._history, **test_dict)
+              self.make_proxy, self._shared_proxy, self._history, **test_dict)
         except Exception as e:
           # TODO(madsci): catch real exceptions here.
           import pdb; pdb.set_trace()
@@ -781,7 +781,7 @@ class ApiServer(threading.Thread):
       # enable_station_discovery is set.
       if conf.enable_station_discovery:
         self.multicast_listener = multicast.MulticastListener(
-            self.multicast_response,  **MULTICAST_KWARGS())
+            self.multicast_response, **MULTICAST_KWARGS())
         _LOG.debug(
             'Listening for multicast discovery at %s:%s',
             self.multicast_listener.address, self.multicast_listener.port)

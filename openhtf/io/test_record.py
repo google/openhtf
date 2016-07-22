@@ -26,7 +26,6 @@ import mutablerecords
 
 from enum import Enum
 
-from openhtf import util
 from openhtf.util import logs
 
 _LOG = logging.getLogger(__name__)
