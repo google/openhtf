@@ -67,7 +67,8 @@ OUTCOME_MAP = {
 
 UOM_CODE_MAP = {
     u.GetOptions().Extensions[units_pb2.uom_code]: num
-    for num, u in units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
+    for num, u in
+    units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
 }
 # pylint: enable=no-member
 
@@ -139,8 +140,9 @@ def _attach_json(record, testrun):
   copied over and can potentially be quite large.
   """
   record_dict = data.convert_to_base_types(record, ignore_keys=('attachments',))
-  record_json = json_factory.OutputToJSON(inline_attachments=False,
-                                          sort_keys=True, indent=2).serialize_test_record(record)
+  record_json = json_factory.OutputToJSON(
+      inline_attachments=False,
+      sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = record_json
@@ -282,7 +284,8 @@ def _extract_parameters(record, testrun, used_parameter_names):
 def _add_mangled_parameters(testrun, mangled_parameters, used_parameter_names):
   """Add any mangled parameters we generated from multidim measurements."""
   for mangled_name, mangled_param in sorted(mangled_parameters.items()):
-    if mangled_name != _ensure_unique_parameter_name(mangled_name, used_parameter_names):
+    if mangled_name != _ensure_unique_parameter_name(mangled_name,
+                                                     used_parameter_names):
       logging.warning('Mangled name %s in use by non-mangled parameter',
                       mangled_name)
     testrun_param = testrun.test_parameters.add()
@@ -334,7 +337,8 @@ def _test_run_from_test_record(record):
   _attach_json(record, testrun)
 
   used_parameter_names = set('OpenHTF_record.json')
-  mangled_parameters = _extract_parameters(record, testrun, used_parameter_names)
+  mangled_parameters = _extract_parameters(record, testrun,
+                                           used_parameter_names)
   _add_mangled_parameters(testrun, mangled_parameters, used_parameter_names)
   _add_log_lines(record, testrun)
   return testrun
@@ -445,8 +449,8 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     if isinstance(testrun, test_runs_pb2.TestRun):
       data = testrun.SerializeToString()
     elif os.path.isfile(testrun):
-      with open(testrun) as f:
-        data = f.read()
+      with open(testrun) as file:
+        data = file.read()
     else:
       InvalidTestRunError('Invalid test run data')
 
@@ -455,7 +459,8 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     test_run_envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
     serialized_envelope = test_run_envelope.SerializeToString()
 
-    resp, content = http.request(self.destination_url, 'POST', serialized_envelope)
+    resp, content = http.request(self.destination_url, 'POST',
+                                 serialized_envelope)
     if resp.status != 200:
       try:
         results = json.loads(content)

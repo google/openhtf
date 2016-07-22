@@ -35,6 +35,7 @@ from enum import Enum
 
 from openhtf import conf
 from openhtf import exe
+from openhtf import history
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
@@ -237,7 +238,7 @@ class Test(object):
         _LOG.debug('Test completed for %s, saving to history and outputting.',
                    final_state.test_record.metadata['test_name'])
         for output_cb in (self._test_options.output_callbacks +
-                          [functools.partial(history.append_record, self.uid)]):
+                          [functools.partial(history.APPEND_RECORD, self.uid)]):
           try:
             output_cb(final_state.test_record)
           except Exception:
@@ -300,7 +301,7 @@ def create_arg_parser(add_help=False):
 # does after the phase.  CONTINUE causes the framework to execute the next
 # phase, REPEAT causes the framework to execute that same phase again, and STOP
 # causes the framework to stop executing.
-PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
+PHASE_RESULT = Enum('PHASE_RESULT', ['CONTINUE', 'REPEAT', 'STOP'])
 
 
 class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
@@ -322,11 +323,11 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
   """
 
   def update(self, **kwargs):
-    for k, v in kwargs.iteritems():
-      if k not in self.__slots__:
+    for key, value in kwargs.iteritems():
+      if key not in self.__slots__:
         raise AttributeError('Type %s does not have attribute %s' % (
-            type(self).__name__, k))
-      setattr(self, k, v)
+            type(self).__name__, key))
+      setattr(self, key, value)
 
   def __call__(self, phase_func):
     phase = PhaseDescriptor.wrap_or_copy(phase_func)

@@ -30,9 +30,9 @@ import logging
 import threading
 import weakref
 
+import mimetypes
 from enum import Enum
 
-import mimetypes
 import mutablerecords
 
 import openhtf
@@ -41,7 +41,6 @@ from openhtf import conf
 from openhtf import plugs
 from openhtf import util
 from openhtf.io import test_record
-from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import measurements
 from openhtf.util import threads
@@ -116,7 +115,8 @@ class TestState(object):
                 self.logger, self.user_defined_state, self.test_record,
                 measurements.Collection(running_phase_state.measurements),
                 running_phase_state.attachments,
-                running_phase_state.attach, running_phase_state.attach_from_file,
+                running_phase_state.attach,
+                running_phase_state.attach_from_file,
                 self.notify_update))
 
   @contextlib.contextmanager
@@ -209,9 +209,9 @@ class TestState(object):
       self.logger.debug('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
       self.finalize(test_record.Outcome.TIMEOUT)
-    elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
+    elif phase_outcome.phase_result == openhtf.PHASE_RESULT.STOP:
       self.logger.debug('Finishing test execution early due to '
-                        'PhaseResult.STOP, outcome FAIL.')
+                        'PHASE_RESULT.STOP, outcome FAIL.')
       # TODO(madsci): Decouple flow control from pass/fail.
       self.finalize(test_record.Outcome.ABORTED)
 

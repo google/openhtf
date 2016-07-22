@@ -69,7 +69,8 @@ class StubUsbHandle(usb_handle.UsbHandle):
 
   def expect_write(self, data):
     """Stub expect_write method."""
-    assert self.expected_write_data is not None, 'expect_write would be ignored!'
+    assert self.expected_write_data is not None, \
+        'expect_write would be ignored!'
     self.expected_write_data.append(data)
 
   def expect_read(self, data):

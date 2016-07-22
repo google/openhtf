@@ -55,7 +55,8 @@ class ConsoleSummary():
                                   (phase.name, phase_time_sec))
               new_phase = False
 
-            output_lines.append('%sfailed_item: %s' % (self.indent, result.name))
+            output_lines.append('%sfailed_item: %s' % (self.indent,
+                                                       result.name))
             output_lines.append('%smeasured_value: %s' %
                                 (self.indent*2, str(measured[result.name])))
             output_lines.append('%svalidators:' % (self.indent*2))
@@ -68,8 +69,9 @@ class ConsoleSummary():
           output_lines.append('timeout phase: %s [ran for %.2f sec]' %
                               (phase.name, phase_time_sec))
         elif 'CONTINUE' not in str(phase_result):  #Exception
-          output_lines.append('%sexception type: %s' % (self.indent,
-                                                        record.outcome_details[0].code))
+          output_lines.append('%sexception type: %s' % (
+              self.indent,
+              record.outcome_details[0].code))
 
     output_lines.append('\n')
     text = '\n'.join(output_lines)

@@ -327,7 +327,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
                self.test_uid, last_start_time, len(new_history))
 
     for pickled_record in new_history:
-      self._cached_history.append_record(
+      self._cached_history.APPEND_RECORD(
           self.test_uid, pickle.loads(pickled_record.data))
     return self.cached_history
 

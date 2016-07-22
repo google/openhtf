@@ -124,7 +124,7 @@ class PlugOverrideError(Exception):
 class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
-
+plugs
 class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
@@ -258,10 +258,10 @@ def plug(update_kwargs=True, **plugs):
   Raises:
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
-  for plug in plugs.itervalues():
-    if not issubclass(plug, BasePlug):
+  for a_plug in plugs.itervalues():
+    if not issubclass(a_plug, BasePlug):
       raise InvalidPlugError(
-          'Plug %s is not a subclass of plugs.BasePlug' % plug)
+          'Plug %s is not a subclass of plugs.BasePlug' % a_plug)
 
   def result(func):
     """Wrap the given function and return the wrapper.
@@ -283,8 +283,8 @@ def plug(update_kwargs=True, **plugs):
       raise DuplicatePlugError(
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
     phase_desc.plugs.extend([
-        openhtf.PhasePlug(name, plug, update_kwargs=update_kwargs)
-        for name, plug in plugs.iteritems()])
+        openhtf.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
+        for name, a_plug in plugs.iteritems()])
     return phase_desc
   return result
 
@@ -333,16 +333,16 @@ class PlugManager(object):
     """
     server = xmlrpcutil.SimpleThreadedXmlRpcServer((
         conf.station_api_bind_address, 0))
-    for name, plug in self._plugs_by_name.iteritems():
-      if not plug.enable_remote:
+    for name, a_plug in self._plugs_by_name.iteritems():
+      if not a_plug.enable_remote:
         continue
 
-      for attr in dir(plug):
+      for attr in dir(a_plug):
         if (not attr.startswith('_') and
             attr not in {'tearDown', 'tearDown'} and
-            attr not in plug.disable_remote_attrs):
+            attr not in a_plug.disable_remote_attrs):
           server.register_function(
-              getattr(plug, attr), name='.'.join(('plugs', name, attr)))
+              getattr(a_plug, attr), name='.'.join(('plugs', name, attr)))
 
     if server.system_listMethods():
       if self._xmlrpc_server:
@@ -424,11 +424,11 @@ class PlugManager(object):
       self._xmlrpc_server = None
 
     _LOG.debug('Tearing down all plugs.')
-    for plug in self._plugs_by_type.itervalues():
+    for a_plug in self._plugs_by_type.itervalues():
       try:
-        plug.tearDown()
+        a_plug.tearDown()
       except Exception:  # pylint: disable=broad-except
-        _LOG.warning('Exception calling tearDown on %s:', plug, exc_info=True)
+        _LOG.warning('Exception calling tearDown on %s:', a_plug, exc_info=True)
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 

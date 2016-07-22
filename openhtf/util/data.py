@@ -81,9 +81,9 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
     assert_records_equal_nonvolatile(first._asdict(), second._asdict(),
                                      volatile_fields, indent)
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
-    for idx, (f, s) in enumerate(itertools.izip(first, second)):
+    for idx, (fir, sec) in enumerate(itertools.izip(first, second)):
       try:
-        assert_records_equal_nonvolatile(f, s, volatile_fields, indent + 2)
+        assert_records_equal_nonvolatile(fir, sec, volatile_fields, indent + 2)
       except AssertionError:
         logging.error('%sIndex: %s ^', ' ' * indent, idx)
         raise
@@ -139,7 +139,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
                convert_to_base_types(v, ignore_keys, tuple_type)
            for k, v in obj.iteritems() if k not in ignore_keys}
   elif isinstance(obj, list):
-    obj = [convert_to_base_types(value, ignore_keys, tuple_type) for value in obj]
+    obj = [convert_to_base_types(val, ignore_keys, tuple_type) for val in obj]
   elif isinstance(obj, tuple):
     obj = tuple_type(
         convert_to_base_types(value, ignore_keys, tuple_type) for value in obj)
@@ -152,7 +152,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
   return obj
 
 
-def TotalSize(obj):
+def total_size(obj):
   """Returns the approximate total memory footprint an object."""
   seen = set()
   def sizeof(current_obj):

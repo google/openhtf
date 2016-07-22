@@ -122,7 +122,8 @@ class UsbHandle(object):
       _LOG.error('!!!!!USB!!!!! %s not closed!', type(self).__name__)
 
   def __str__(self):
-    return '<%s: (%s %s)>' % (type(self).__name__, self.name, self.serial_number)
+    return '<%s: (%s %s)>' % (type(self).__name__, self.name,
+                              self.serial_number)
   __repr__ = __str__
 
   def _timeout_or_default(self, timeout_ms):

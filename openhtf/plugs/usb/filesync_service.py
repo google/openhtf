@@ -155,8 +155,8 @@ class FilesyncService(object):
   stream is closed, we can reuse the same stream for subsequent requests and
   save a little overhead instead of establishing a new stream each time, so we
   take an AdbStream on creation rather than an AdbConnection.  A helper
-  classmethod, using_connection, is provided to create a FilesyncService directly
-  using an AdbConnection.
+  classmethod, using_connection, is provided to create a FilesyncService
+  directly using an AdbConnection.
   """
 
   def __init__(self, stream):

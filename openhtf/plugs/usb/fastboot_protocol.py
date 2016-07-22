@@ -322,7 +322,8 @@ class FastbootCommands(object):
     Returns:
         Usually the empty string. Depends on the bootloader and the target_mode.
     """
-    return self._simple_command('reboot', arg=target_mode, timeout_ms=timeout_ms)
+    return self._simple_command('reboot', arg=target_mode,
+                                timeout_ms=timeout_ms)
 
   def reboot_bootloader(self, timeout_ms=None):
     """Reboots into the bootloader, usually equiv to Reboot('bootloader')."""

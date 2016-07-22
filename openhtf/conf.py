@@ -58,10 +58,10 @@ conf.inject_positional_args decorator:
   # antimatter_intermix_constant will be taken from the configuration value.
   x = ModifyThePhaseVariance(phase_variance=2.71828)
 
-Decorating a function with conf.inject_positional_args forces all other arguments
-to be passed by keyword in order to avoid ambiguity in the values of positional
-args.  Values passed via keyword that also exist in the config will override
-config values and log a warning message.  Keyword args in the function
+Decorating a function with conf.inject_positional_args forces all other
+arguments to be passed by keyword in order to avoid ambiguity in the values of
+positional args.  Values passed via keyword that also exist in the config will
+override config values and log a warning message.  Keyword args in the function
 declaration will not be overridden (because it would be ambiguous which default
 to use), and any overlap in keyword arg names and config keys will result in a
 warning message.

@@ -20,9 +20,9 @@ relevant options. Each option is taken into account when executing a phase,
 such as checking options.run_if as soon as possible and timing out at the
 appropriate time.
 
-A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or STOP.
+A phase must return an openhtf.PHASE_RESULT, one of CONTINUE, REPEAT, or STOP.
 A phase may also return None, or have no return statement, which is the same as
-returning openhtf.PhaseResult.CONTINUE.  These results are then acted upon
+returning openhtf.PHASE_RESULT.CONTINUE.  These results are then acted upon
 accordingly and a new test run status is returned.
 
 Phases are always run in order and not allowed to loop back, though a phase may
@@ -36,7 +36,6 @@ import collections
 import logging
 
 import openhtf
-from openhtf.io import test_record
 from openhtf.util import argv
 from openhtf.util import threads
 
@@ -58,7 +57,7 @@ class InvalidPhaseResultError(Exception):
 class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   """Provide some utility and sanity around phase return values.
 
-  This should not be confused with openhtf.PhaseResult.  PhaseResult is an
+  This should not be confused with openhtf.PHASE_RESULT.  PHASE_RESULT is an
   enumeration to provide user-facing valid phase return values.  This tuple
   is used internally to track other possible outcomes (timeout, exception),
   and to perform some sanity checking (weird return values from phases).
@@ -71,12 +70,12 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   similarly be used to check for the timeout case.
 
   The only accepted values for phase_result are None (timeout), an instance
-  of Exception (phase raised), or an instance of openhtf.PhaseResult.  Any
+  of Exception (phase raised), or an instance of openhtf.PHASE_RESULT.  Any
   other value will raise an InvalidPhaseResultError.
   """
   def __init__(self, phase_result):
     if (phase_result is not None and
-        not isinstance(phase_result, (openhtf.PhaseResult, Exception)) and
+        not isinstance(phase_result, (openhtf.PHASE_RESULT, Exception)) and
         not isinstance(phase_result, threads.ThreadTerminationError)):
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
     super(PhaseOutcome, self).__init__(phase_result)
@@ -96,7 +95,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   def is_terminal(self):
     """True if this outcome will stop the test."""
     return (self.raised_exception or self.is_timeout or
-            self.phase_result == openhtf.PhaseResult.STOP)
+            self.phase_result == openhtf.PHASE_RESULT.STOP)
 
 
 class PhaseExecutorThread(threads.KillableThread):
@@ -118,7 +117,7 @@ class PhaseExecutorThread(threads.KillableThread):
     # Call the phase, save the return value, or default it to CONTINUE.
     phase_return = self._phase_desc(self._test_state)
     if phase_return is None:
-      phase_return = openhtf.PhaseResult.CONTINUE
+      phase_return = openhtf.PHASE_RESULT.CONTINUE
 
     # If phase_return is invalid, this will raise, and _phase_outcome will get
     # set to the InvalidPhaseResultError in _thread_exception instead.
@@ -183,7 +182,7 @@ class PhaseExecutor(object):
           yield outcome
 
           # If we're done with this phase, skip to the next one.
-          if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
+          if outcome.phase_result is openhtf.PHASE_RESULT.CONTINUE:
             break
         else:
           # run_if was falsey, just skip this phase.

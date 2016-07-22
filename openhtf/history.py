@@ -68,14 +68,14 @@ class TestHistory(object):
   def pop(self):
     """Pop the oldest record and return the test_uid it was associated with."""
     popped_entry = self.entries.pop()
-    self.entry_bytes -= data.TotalSize(popped_entry)
+    self.entry_bytes -= data.total_size(popped_entry)
     return popped_entry.test_uid
 
   def append(self, test_uid, record):
     """Append a new record associated with the given test uid."""
-    entry = HistoryEntry(test_uid, record)
+    entry = HISTORY_ENTRY(test_uid, record)
     self.entries.appendleft(entry)
-    self.entry_bytes += data.TotalSize(entry)
+    self.entry_bytes += data.total_size(entry)
 
 
 class History(object):

@@ -344,8 +344,8 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
 
     This is repeated as long as predicate() returns False.  There is some
     locking used internally here so that we don't end up with multiple threads
-    blocked on a call to read_for_stream when another thread has read the message
-    that caused predicate() to become True.
+    blocked on a call to read_for_stream when another thread has read the
+    message that caused predicate() to become True.
 
     Args:
       predicate: Callable, keep reading messages until it returns true.  Note
@@ -377,7 +377,8 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
             return
 
           # Read and handle a message, using our timeout.
-          self._handle_message(self.adb_connection.read_for_stream(self, timeout))
+          self._handle_message(
+              self.adb_connection.read_for_stream(self, timeout))
 
           # Notify anyone interested that we handled a message, causing them to
           # check their predicate again.

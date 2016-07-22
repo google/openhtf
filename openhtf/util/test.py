@@ -366,14 +366,14 @@ class TestCase(unittest.TestCase):
 
   def assert_phase_continue(self, phase_record):
     if phase_record.result.phase_result is not None:
-      self.assertIs(openhtf.PhaseResult.CONTINUE,
+      self.assertIs(openhtf.PHASE_RESULT.CONTINUE,
                     phase_record.result.phase_result)
 
   def assert_phase_repeat(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
+    self.assertIs(openhtf.PHASE_RESULT.REPEAT, phase_record.result.phase_result)
 
   def assert_phase_stop(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.STOP, phase_record.result.phase_result)
+    self.assertIs(openhtf.PHASE_RESULT.STOP, phase_record.result.phase_result)
 
   def assert_phase_error(self, phase_record, exc_type=None):
     self.assertTrue(phase_record.result.raised_exception,

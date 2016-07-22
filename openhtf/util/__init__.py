@@ -75,8 +75,8 @@ def get_version():
 class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
   """Holds a single result as a nonlocal variable.
 
-  Comparable to using Python 3's nonlocal keyword, it allows an inner function to
-  set the value in an outer function's namespace:
+  Comparable to using Python 3's nonlocal keyword, it allows an inner function
+  to set the value in an outer function's namespace:
 
   def WrappingFunction():
     x = NonLocalResult()
