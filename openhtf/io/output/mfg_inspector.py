@@ -171,14 +171,14 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters,
   We generate these by doing some name mangling, using some sane limits for
   very large multidimensional measurements.
   """
-  for current_value in value[:MAX_PARAMS_PER_MEASUREMENT]:
+  for coord, val in value.value_dict.iteritems():
     # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
     mangled_name = '_'.join([name] + [
         '%s%s' % (
           dim_val,
           dim_units.uom_suffix if dim_units.uom_suffix else '') for
         dim_val, dim_units in zip(
-          current_value[:-1], measurement.dimensions)])
+          coord, measurement.dimensions)])
     while mangled_name in mangled_parameters:
       logging.warning('Mangled name %s already in use', mangled_name)
       mangled_name += '_'
@@ -189,11 +189,10 @@ def _MangleMeasurement(name, value, measurement, mangled_parameters,
         'Mangled parameter from measurement %s with dimensions %s' % (
         name, tuple(d.uom_suffix for d in measurement.dimensions)))
 
-    value = current_value[-1]
-    if isinstance(value, numbers.Number):
-      mangled_param.numeric_value = float(value)
+    if isinstance(val, numbers.Number):
+      mangled_param.numeric_value = float(val)
     else:
-      mangled_param.text_value = str(value)
+      mangled_param.text_value = str(val)
     # Check for validators we know how to translate.
     for validator in measurement.validators:
       mangled_param.description += '\nValidator: ' + str(validator)
@@ -232,10 +231,10 @@ def _ExtractParameters(record, testrun, used_parameter_names):
       if measurement.units:
         testrun_param.unit_code = UOM_CODE_MAP[measurement.units.uom_code]
 
-      if name not in phase.measured_values:
+      if not measurement.measured_value:
         testrun_param.status = test_runs_pb2.ERROR
         continue
-      value = phase.measured_values[name]
+      value = measurement.measured_value
       if measurement.dimensions is None:
         # Just a plain ol' value.
         if isinstance(value, numbers.Number):
@@ -263,7 +262,9 @@ def _ExtractParameters(record, testrun, used_parameter_names):
         # Refer to the module docstring for the expected schema.
         attachment.value_binary = json.dumps({
             'outcome': str(testrun_param.status), 'name': name,
-            'dimensions': dims, 'value': value}, sort_keys=True)
+            'dimensions': dims,
+            'value': value.value if value.is_value_set else None
+        }, sort_keys=True)
         attachment.type = test_runs_pb2.MULTIDIM_JSON
         _MangleMeasurement(
             name, value, measurement, mangled_parameters, attachment.name)

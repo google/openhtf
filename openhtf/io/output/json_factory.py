@@ -41,5 +41,6 @@ class OutputToJSON(output.OutputToFile):
         for value in phase['attachments'].itervalues():
           value['data'] = base64.standard_b64encode(value['data'])
     else:
-      as_dict = data.ConvertToBaseTypes(test_record, ignore_keys=('attachments',))
+      as_dict = data.ConvertToBaseTypes(test_record,
+                                        ignore_keys=('attachments',))
     return as_dict

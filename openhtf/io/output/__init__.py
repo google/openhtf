@@ -24,6 +24,7 @@ import base64
 import contextlib
 import cPickle as pickle
 import os
+import shutil
 import tempfile
 from openhtf.util import data
 
@@ -41,7 +42,7 @@ class Atomic(object):
 
   def close(self):
     self.temp.close()
-    os.rename(self.temp.name, self.filename)
+    shutil.move(self.temp.name, self.filename)
 
 
 class OutputToFile(object):
