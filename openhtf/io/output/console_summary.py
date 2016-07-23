@@ -2,7 +2,6 @@
 
 import os
 import sys
-import __main__ as tester
 
 from openhtf.io import test_record
 from openhtf.util import measurements as measurement

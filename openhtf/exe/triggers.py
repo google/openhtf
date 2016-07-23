@@ -34,7 +34,7 @@ from openhtf.io import user_input
 _LOG = logging.getLogger(__name__)
 
 
-def auto_start(serial='UNKNOWN_DUT_ID'):  # pylint: disable=invalid-name
+def auto_start():  # pylint: disable=invalid-name
   """DEPRECATED, use a lambda instead."""
   # TODO(madsci): Remove this after transitionary period.  Note it was broken
   # before (it should have returned lambda: serial), so I doubt anyone is

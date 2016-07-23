@@ -30,11 +30,11 @@ class TimeoutHTTPConnection(httplib.HTTPConnection):
 
   def settimeout(self, timeout_s):
     self.timeout_s = timeout_s
-    self.sock.settimeout(self.timeout_s)
+    self.settimeout(self.timeout_s)
 
   def connect(self):
     httplib.HTTPConnection.connect(self)
-    self.sock.settimeout(self.timeout_s)
+    self.settimeout(self.timeout_s)
 
 
 class TimeoutTransport(xmlrpclib.Transport):

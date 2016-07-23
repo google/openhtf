@@ -12,14 +12,14 @@ profile=no
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
-ignore=CVS,guzzle_pb2.py,test_runs_pb2.py,units_pb2.py,units.py
+ignore=CVS,guzzle_pb2.py,test_runs_pb2.py,units_pb2.py
 
 # Pickle collected data for later comparisons.
 persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_plugins.conf_plugin,pylint_plugins.mutablerecords_plugin
+load-plugins=pylint_plugins.conf_plugin,pylint_plugins.mutablerecords_plugin,pylint_plugins.validate_plugin
 
 [MESSAGES CONTROL]
 

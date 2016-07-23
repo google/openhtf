@@ -2,7 +2,6 @@
 C:159, 2: Missing method docstring (missing-docstring)
 C:183, 2: Missing method docstring (missing-docstring)
 E:223,43: No value for argument 'self' in method call (no-value-for-parameter)
-E:241,45: Module 'openhtf.history' has no 'APPEND_RECORD' member (no-member)
 W:244,17: Catching too general exception Exception (broad-except)
 R:251, 0: Too few public methods (0/2) (too-few-public-methods)
 C:325, 2: Missing method docstring (missing-docstring)
@@ -14,13 +13,9 @@ C:473, 2: Missing method docstring (missing-docstring)
 ************* Module openhtf.history
 E: 32, 0: No value for argument 'name' in method call (no-value-for-parameter)
 C: 60, 2: Missing method docstring (missing-docstring)
-E: 76,12: Undefined variable 'HISTORY_ENTRY' (undefined-variable)
 C: 81, 0: Missing class docstring (missing-docstring)
 C: 91, 2: Missing method docstring (missing-docstring)
 C: 98, 2: Missing method docstring (missing-docstring)
-C:163, 0: Invalid constant name "append_record" (invalid-name)
-C:164, 0: Invalid constant name "for_test_uid" (invalid-name)
-C:165, 0: Invalid constant name "last_start_time" (invalid-name)
 ************* Module openhtf.conf
 I:219, 0: Locally enabling invalid-name (C0103) (locally-enabled)
 I:219, 0: Locally enabling bad-super-call (E1003) (locally-enabled)
@@ -45,7 +40,6 @@ C:327, 2: Missing method docstring (missing-docstring)
 C:335, 2: Missing method docstring (missing-docstring)
 ************* Module openhtf.exe.triggers
 W: 39, 0: TODO(madsci): Remove this after transitionary period.  Note it was broken (fixme)
-W: 37,15: Unused argument 'serial' (unused-argument)
 ************* Module openhtf.exe
 C:  1, 0: Invalid module name "exe" (invalid-name)
 E: 37, 0: No value for argument 'name' in method call (no-value-for-parameter)
@@ -59,7 +53,6 @@ R:145, 2: Method could be a function (no-self-use)
 E:195,19: Undefined variable 'json' (undefined-variable)
 E:202,16: Undefined variable 'json' (undefined-variable)
 E:225,57: Undefined variable 'kwargs' (undefined-variable)
-W:210,32: Unused argument 'timeout_s' (unused-argument)
 C:315, 2: Missing method docstring (missing-docstring)
 E:335, 8: Module 'openhtf.conf' has no 'station_api_bind_address' member (no-member)
 W:449, 4: Redefining name 'plug' from outer scope (line 242) (redefined-outer-name)
@@ -89,16 +82,7 @@ W: 97, 9: Catching too general exception Exception (broad-except)
 C:109, 2: Missing method docstring (missing-docstring)
 C:120, 2: Missing method docstring (missing-docstring)
 ************* Module openhtf.io.http_api
-C:115, 0: Wrong hanging indentation (remove 10 spaces).
-                    self.executor.get_state(),
-          |         ^ (bad-continuation)
-C:116, 0: Wrong hanging indentation (remove 10 spaces).
-                    ignore_keys=('plug_manager',)),
-          |         ^ (bad-continuation)
 W: 66, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
-W:121,15: Unused variable 'path' (unused-variable)
-W:121,21: Unused variable 'version' (unused-variable)
-W:121, 6: Unused variable 'command' (unused-variable)
 ************* Module openhtf.io
 C:  1, 0: Invalid module name "io" (invalid-name)
 ************* Module openhtf.io.station_api
@@ -178,25 +162,22 @@ E: 75, 0: No value for argument 'name' in method call (no-value-for-parameter)
 W:113,10: Specify string format arguments as logging function parameters (logging-not-lazy)
 R:148, 2: Too many arguments (6/5) (too-many-arguments)
 W:183, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
-W:252, 9: Unused argument 'argv' (unused-argument)
+E:326, 2: Too many positional arguments for function call (too-many-function-args)
 ************* Module openhtf.io.frontend
 E: 80, 0: No value for argument 'name' in method call (no-value-for-parameter)
-E:198, 2: Method should have "self" as first argument (no-self-argument)
-R:198, 2: Method could be a function (no-self-use)
-E:214,18: Non-iterable value cls.subscribers is used in an iterating context (not-an-iterable)
-E:220, 4: Method 'subscribers' has no 'add' member (no-member)
-E:225, 4: Method 'subscribers' has no 'remove' member (no-member)
-W:314, 4: Arguments number differs from overridden 'initialize' method (arguments-differ)
-E:341,16: Instance of 'WebGuiServer' has no 'port' member (no-member)
-E:372, 6: No value for argument 'host_handlers' in method call (no-value-for-parameter)
-E:374,13: Undefined variable 'plugs' (undefined-variable)
+E:199, 2: method already defined line 196 (function-redefined)
+E:199, 2: Method should have "self" as first argument (no-self-argument)
+R:199, 2: Method could be a function (no-self-use)
+W:315, 4: Arguments number differs from overridden 'initialize' method (arguments-differ)
+E:342,16: Instance of 'WebGuiServer' has no 'port' member (no-member)
+E:373, 6: No value for argument 'host_handlers' in method call (no-value-for-parameter)
+E:375,13: Undefined variable 'plugs' (undefined-variable)
 ************* Module openhtf.io.output.console_summary
-I: 37, 0: Locally enabling invalid-name (C0103) (locally-enabled)
-R: 11, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
-C: 11, 0: Old-style class defined. (old-style-class)
-W: 63,16: Unused variable 'validator' (unused-variable)
-R: 11, 0: Too few public methods (0/2) (too-few-public-methods)
-W:  5, 0: Unused __main__ imported as tester (unused-import)
+I: 36, 0: Locally enabling invalid-name (C0103) (locally-enabled)
+R: 10, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
+C: 10, 0: Old-style class defined. (old-style-class)
+W: 62,16: Unused variable 'validator' (unused-variable)
+R: 10, 0: Too few public methods (0/2) (too-few-public-methods)
 ************* Module openhtf.io.output.json_factory
 C: 36, 2: Missing method docstring (missing-docstring)
 ************* Module openhtf.io.output.mfg_inspector
@@ -207,12 +188,9 @@ I:313, 0: Locally enabling no-member (E1101) (locally-enabled)
 I:406, 0: Locally enabling invalid-name (C0103) (locally-enabled)
 I:406, 0: Locally enabling missing-docstring (C0111) (locally-enabled)
 C:126, 0: Missing function docstring (missing-docstring)
-W:140, 2: Unused variable 'record_dict' (unused-variable)
 W:154,13: Redefining name 'data' from outer scope (line 46) (redefined-outer-name)
 R:208, 0: Too many local variables (16/15) (too-many-locals)
-E:249,35: Module 'openhtf.util.validators' has no 'InRange' member (no-member)
 R:215, 2: Too many nested blocks (6/5) (too-many-nested-blocks)
-E:254,37: Module 'openhtf.util.validators' has no 'RegexMatcher' member (no-member)
 R:208, 0: Too many branches (21/12) (too-many-branches)
 R:208, 0: Too many statements (52/50) (too-many-statements)
 W:371,28: Redefining name 'test_record' from outer scope (line 45) (redefined-outer-name)
@@ -220,8 +198,8 @@ W:449, 6: Redefining name 'data' from outer scope (line 46) (redefined-outer-nam
 W:451,28: Redefining built-in 'file' (redefined-builtin)
 W:474,21: Redefining name 'test_record' from outer scope (line 45) (redefined-outer-name)
 W:498,21: Redefining name 'test_record' from outer scope (line 45) (redefined-outer-name)
-E:504,17: Instance of 'UploadOrOutput' has no '_OutputToTestRunProto' member (no-member)
 R:480, 0: Too few public methods (0/2) (too-few-public-methods)
+W: 46, 0: Unused data imported from openhtf.util (unused-import)
 ************* Module openhtf.io.output.__init__
 W: 32, 0: TODO(wallacbe): Switch to util (fixme)
 ************* Module openhtf.io.output
@@ -230,8 +208,6 @@ C: 43, 2: Missing method docstring (missing-docstring)
 ************* Module openhtf.util.xmlrpcutil
 C: 26, 0: Missing class docstring (missing-docstring)
 C: 31, 2: Missing method docstring (missing-docstring)
-E: 33, 4: Instance of '_socketobject' has no 'settimeout' member (no-member)
-E: 37, 4: Instance of '_socketobject' has no 'settimeout' member (no-member)
 C: 40, 0: Missing class docstring (missing-docstring)
 C: 46, 2: Missing method docstring (missing-docstring)
 R: 57, 0: Too few public methods (0/2) (too-few-public-methods)
@@ -283,7 +259,7 @@ C: 95, 4: Missing function docstring (missing-docstring)
 C:123, 0: Missing function docstring (missing-docstring)
 C:125, 2: Missing function docstring (missing-docstring)
 C:141, 4: Missing function docstring (missing-docstring)
-E:139,35: Module 'openhtf.util.units' has no 'UOM' member (no-member)
+E:139, 0: Sequence index is not an int, slice, or instance with __index__ (invalid-sequence-index)
 ************* Module openhtf.util.measurements
 W: 44, 0: TODO(madsci): Make validators.py example. (fixme)
 C:100, 0: Invalid constant name "Outcome" (invalid-name)
@@ -391,7 +367,7 @@ from openhtf.io import test_record (duplicate-code)
 
 Report
 ======
-8402 statements analysed.
+8400 statements analysed.
 
 Statistics by type
 ------------------
@@ -399,11 +375,11 @@ Statistics by type
 +---------+-------+-----------+-----------+------------+---------+
 |type     |number |old number |difference |%documented |%badname |
 +=========+=======+===========+===========+============+=========+
-|module   |51     |50         |+1.00      |98.04       |5.88     |
+|module   |51     |51         |=          |98.04       |5.88     |
 +---------+-------+-----------+-----------+------------+---------+
-|class    |173    |172        |+1.00      |93.64       |0.58     |
+|class    |173    |173        |=          |93.64       |0.58     |
 +---------+-------+-----------+-----------+------------+---------+
-|method   |519    |511        |+8.00      |87.86       |0.19     |
+|method   |519    |519        |=          |87.86       |0.19     |
 +---------+-------+-----------+-----------+------------+---------+
 |function |95     |95         |=          |69.47       |3.16     |
 +---------+-------+-----------+-----------+------------+---------+
@@ -483,13 +459,13 @@ Raw metrics
 +----------+-------+------+---------+-----------+
 |type      |number |%     |previous |difference |
 +==========+=======+======+=========+===========+
-|code      |9264   |57.43 |9224     |+40.00     |
+|code      |9262   |57.41 |9262     |=          |
 +----------+-------+------+---------+-----------+
-|docstring |4268   |26.46 |4257     |+11.00     |
+|docstring |4268   |26.46 |4268     |=          |
 +----------+-------+------+---------+-----------+
-|comment   |945    |5.86  |935      |+10.00     |
+|comment   |948    |5.88  |948      |=          |
 +----------+-------+------+---------+-----------+
-|empty     |1654   |10.25 |1636     |+18.00     |
+|empty     |1654   |10.25 |1654     |=          |
 +----------+-------+------+---------+-----------+
 
 
@@ -502,7 +478,7 @@ Duplication
 +=========================+======+=========+===========+
 |nb duplicated lines      |47    |47       |=          |
 +-------------------------+------+---------+-----------+
-|percent duplicated lines |0.292 |0.294    |-0.00      |
+|percent duplicated lines |0.292 |0.292    |=          |
 +-------------------------+------+---------+-----------+
 
 
@@ -513,13 +489,13 @@ Messages by category
 +-----------+-------+---------+-----------+
 |type       |number |previous |difference |
 +===========+=======+=========+===========+
-|convention |113    |121      |-8.00      |
+|convention |108    |108      |=          |
 +-----------+-------+---------+-----------+
 |refactor   |44     |44       |=          |
 +-----------+-------+---------+-----------+
-|warning    |50     |50       |=          |
+|warning    |43     |43       |=          |
 +-----------+-------+---------+-----------+
-|error      |67     |67       |=          |
+|error      |59     |61       |-2.00      |
 +-----------+-------+---------+-----------+
 
 
@@ -530,55 +506,55 @@ Messages by category
 +----------------------------------+------+--------+---------+-----------+
 |module                            |error |warning |refactor |convention |
 +==================================+======+========+=========+===========+
-|openhtf.io.station_api            |44.78 |28.00   |11.36    |19.47      |
+|openhtf.io.station_api            |50.85 |32.56   |11.36    |20.37      |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.frontend.__init__      |11.94 |2.00    |2.27     |0.00       |
+|openhtf.io.frontend.__init__      |10.17 |2.33    |2.27     |0.00       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.__init__            |7.46  |10.00   |2.27     |0.88       |
+|openhtf.plugs.__init__            |8.47  |9.30    |2.27     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.xmlrpcutil           |5.97  |0.00    |9.09     |5.31       |
+|openhtf.util.test                 |5.08  |4.65    |2.27     |17.59      |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.mfg_inspector   |4.48  |14.00   |11.36    |0.88       |
+|openhtf.exe.test_state            |5.08  |2.33    |2.27     |4.63       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.test                 |4.48  |4.00    |2.27     |16.81      |
+|openhtf.io.frontend.__main__      |3.39  |4.65    |2.27     |0.00       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.exe.test_state            |4.48  |2.00    |2.27     |4.42       |
+|openhtf.util.xmlrpcutil           |3.39  |0.00    |9.09     |5.56       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf                           |2.99  |2.00    |6.82     |5.31       |
+|openhtf                           |1.69  |2.33    |6.82     |5.56       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.history                   |2.99  |0.00    |0.00     |6.19       |
+|openhtf.util.validators           |1.69  |0.00    |4.55     |2.78       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.frontend.__main__      |1.49  |6.00    |2.27     |0.00       |
+|openhtf.util.monitors             |1.69  |0.00    |2.27     |7.41       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.validators           |1.49  |0.00    |4.55     |2.65       |
+|openhtf.history                   |1.69  |0.00    |0.00     |3.70       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.monitors             |1.49  |0.00    |2.27     |7.08       |
+|openhtf.plugs.usb.__init__        |1.69  |0.00    |0.00     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.usb.__init__        |1.49  |0.00    |0.00     |0.88       |
+|openhtf.plugs.cambrionix.__init__ |1.69  |0.00    |0.00     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.plugs.cambrionix.__init__ |1.49  |0.00    |0.00     |0.88       |
+|openhtf.exe.__init__              |1.69  |0.00    |0.00     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.exe.__init__              |1.49  |0.00    |0.00     |0.88       |
+|openhtf.exe.phase_executor        |1.69  |0.00    |0.00     |0.00       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.exe.phase_executor        |1.49  |0.00    |0.00     |0.00       |
+|openhtf.io.output.mfg_inspector   |0.00  |16.28   |11.36    |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.http_api               |0.00  |8.00    |0.00     |1.77       |
+|openhtf.conf                      |0.00  |6.98    |0.00     |1.85       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.conf                      |0.00  |6.00    |0.00     |1.77       |
+|openhtf.util.measurements         |0.00  |4.65    |4.55     |7.41       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.measurements         |0.00  |4.00    |4.55     |7.08       |
+|openhtf.io.output.console_summary |0.00  |2.33    |4.55     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.console_summary |0.00  |4.00    |4.55     |0.88       |
+|openhtf.io.test_record            |0.00  |2.33    |0.00     |5.56       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.exe.triggers              |0.00  |4.00    |0.00     |0.00       |
+|openhtf.io.output.__init__        |0.00  |2.33    |0.00     |1.85       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.test_record            |0.00  |2.00    |0.00     |5.31       |
+|openhtf.util.threads              |0.00  |2.33    |0.00     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.__init__        |0.00  |2.00    |0.00     |1.77       |
+|openhtf.io.http_api               |0.00  |2.33    |0.00     |0.00       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.threads              |0.00  |2.00    |0.00     |0.88       |
+|openhtf.exe.triggers              |0.00  |2.33    |0.00     |0.00       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.argv                 |0.00  |0.00    |27.27    |1.77       |
+|openhtf.util.argv                 |0.00  |0.00    |27.27    |1.85       |
 +----------------------------------+------+--------+---------+-----------+
 |openhtf.util.data                 |0.00  |0.00    |2.27     |0.00       |
 +----------------------------------+------+--------+---------+-----------+
@@ -586,15 +562,15 @@ Messages by category
 +----------------------------------+------+--------+---------+-----------+
 |openhtf.plugs.usb.adb_protocol    |0.00  |0.00    |2.27     |0.00       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.functions            |0.00  |0.00    |0.00     |2.65       |
+|openhtf.util.functions            |0.00  |0.00    |0.00     |2.78       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.logs                 |0.00  |0.00    |0.00     |1.77       |
+|openhtf.util.logs                 |0.00  |0.00    |0.00     |1.85       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.util.multicast            |0.00  |0.00    |0.00     |0.88       |
+|openhtf.util.multicast            |0.00  |0.00    |0.00     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.output.json_factory    |0.00  |0.00    |0.00     |0.88       |
+|openhtf.io.output.json_factory    |0.00  |0.00    |0.00     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
-|openhtf.io.__init__               |0.00  |0.00    |0.00     |0.88       |
+|openhtf.io.__init__               |0.00  |0.00    |0.00     |0.93       |
 +----------------------------------+------+--------+---------+-----------+
 
 
@@ -607,7 +583,7 @@ Messages
 +===============================+============+
 |missing-docstring              |95          |
 +-------------------------------+------------+
-|no-member                      |30          |
+|no-member                      |21          |
 +-------------------------------+------------+
 |locally-enabled                |17          |
 +-------------------------------+------------+
@@ -615,25 +591,23 @@ Messages
 +-------------------------------+------------+
 |no-value-for-parameter         |16          |
 +-------------------------------+------------+
-|undefined-variable             |13          |
-+-------------------------------+------------+
-|invalid-name                   |11          |
+|undefined-variable             |12          |
 +-------------------------------+------------+
 |fixme                          |10          |
 +-------------------------------+------------+
 |redefined-outer-name           |9           |
 +-------------------------------+------------+
+|invalid-name                   |8           |
++-------------------------------+------------+
 |cyclic-import                  |7           |
 +-------------------------------+------------+
 |broad-except                   |7           |
 +-------------------------------+------------+
-|unused-variable                |6           |
-+-------------------------------+------------+
-|unused-argument                |6           |
-+-------------------------------+------------+
 |no-self-use                    |5           |
 +-------------------------------+------------+
 |duplicate-code                 |4           |
++-------------------------------+------------+
+|unused-argument                |3           |
 +-------------------------------+------------+
 |unsubscriptable-object         |3           |
 +-------------------------------+------------+
@@ -645,13 +619,13 @@ Messages
 +-------------------------------+------------+
 |logging-not-lazy               |3           |
 +-------------------------------+------------+
+|unused-variable                |2           |
++-------------------------------+------------+
 |unidiomatic-typecheck          |2           |
 +-------------------------------+------------+
 |too-many-instance-attributes   |2           |
 +-------------------------------+------------+
 |no-self-argument               |2           |
-+-------------------------------+------------+
-|bad-continuation               |2           |
 +-------------------------------+------------+
 |attribute-defined-outside-init |2           |
 +-------------------------------+------------+
@@ -665,19 +639,23 @@ Messages
 +-------------------------------+------------+
 |too-many-locals                |1           |
 +-------------------------------+------------+
+|too-many-function-args         |1           |
++-------------------------------+------------+
 |too-many-branches              |1           |
 +-------------------------------+------------+
 |redefined-builtin              |1           |
 +-------------------------------+------------+
 |old-style-class                |1           |
 +-------------------------------+------------+
-|not-an-iterable                |1           |
-+-------------------------------+------------+
 |multiple-statements            |1           |
 +-------------------------------+------------+
 |line-too-long                  |1           |
 +-------------------------------+------------+
+|invalid-sequence-index         |1           |
++-------------------------------+------------+
 |global-statement               |1           |
++-------------------------------+------------+
+|function-redefined             |1           |
 +-------------------------------+------------+
 |bad-option-value               |1           |
 +-------------------------------+------------+
@@ -688,5 +666,5 @@ Messages
 
 Global evaluation
 -----------------
-Your code has been rated at 9.35/10 (previous run: 9.34/10, +0.01)
+Your code has been rated at 9.42/10 (previous run: 9.40/10, +0.01)
 

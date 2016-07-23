@@ -193,6 +193,7 @@ class StationStore(threading.Thread):
 
 class PubSub(sockjs.tornado.SockJSConnection):
   """Generic pub/sub based on SockJS connections."""
+  subscribers = set()
 
   @classproperty
   def _lock(cls):

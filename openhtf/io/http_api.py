@@ -112,13 +112,13 @@ class HTTPServer(threading.Thread):
       states.
       """
       result = {'test': data.convert_to_base_types(
-                    self.executor.get_state(),
-                    ignore_keys=('plug_manager',)),
+          self.executor.get_state(),
+          ignore_keys=('plug_manager',)),
                 'framework': data.convert_to_base_types(self.executor)}
       self.send_response(200)
       self.end_headers()
       self.wfile.write(json.dumps(result))
-      command, path, version = self.requestline.split()
+      #command, path, version = self.requestline.split()
 
     def do_post(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""

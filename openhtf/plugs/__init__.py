@@ -207,7 +207,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
       return
 
   @classmethod
-  def discover(cls, host, port, timeout_s=xmlrpcutil.DEFAULT_PROXY_TIMEOUT_S):
+  def discover(cls, host, port):
     """Discover what plugs are available at host, port, yielding them.
 
     timeout_s only applies to the discovery.  To set a timeout on the resulting

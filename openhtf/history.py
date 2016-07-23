@@ -73,7 +73,7 @@ class TestHistory(object):
 
   def append(self, test_uid, record):
     """Append a new record associated with the given test uid."""
-    entry = HISTORY_ENTRY(test_uid, record)
+    entry = HistoryEntry(test_uid, record)
     self.entries.appendleft(entry)
     self.entry_bytes += data.total_size(entry)
 
@@ -160,6 +160,7 @@ class History(object):
 # will need to create multiple instances itself, however, since it tracks
 # multiple stations at once.
 HISTORY = History()
+# pylint: disable=invalid-name
 append_record = HISTORY.append_record
 for_test_uid = HISTORY.for_test_uid
 last_start_time = HISTORY.last_start_time

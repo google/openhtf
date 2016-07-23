@@ -238,7 +238,7 @@ class Test(object):
         _LOG.debug('Test completed for %s, saving to history and outputting.',
                    final_state.test_record.metadata['test_name'])
         for output_cb in (self._test_options.output_callbacks +
-                          [functools.partial(history.APPEND_RECORD, self.uid)]):
+                          [functools.partial(history.append_record, self.uid)]):
           try:
             output_cb(final_state.test_record)
           except Exception:
