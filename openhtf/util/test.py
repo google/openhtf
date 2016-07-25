@@ -184,7 +184,7 @@ class PhaseOrTestIterator(collections.Iterator):
       try:
         phase_state.result = phase_executor.PhaseOutcome(
             phase_desc(test_state_))
-      except Exception as exc:
+      except Exception as exc:  # pylint:disable=broad-except
         logging.exception('Exception executing phase %s', phase_desc.name)
         phase_state.result = phase_executor.PhaseOutcome(exc)
 
@@ -332,7 +332,7 @@ class TestCase(unittest.TestCase):
           try:
             func(self, phase_record, *args)
             break
-          except Exception:
+          except Exception:  # pylint: disable=broad-except
             exc_info = sys.exc_info()
         else:
           if exc_info:
@@ -366,14 +366,14 @@ class TestCase(unittest.TestCase):
 
   def assert_phase_continue(self, phase_record):
     if phase_record.result.phase_result is not None:
-      self.assertIs(openhtf.PHASE_RESULT.CONTINUE,
+      self.assertIs(openhtf.PhaseResult.CONTINUE,
                     phase_record.result.phase_result)
 
   def assert_phase_repeat(self, phase_record):
-    self.assertIs(openhtf.PHASE_RESULT.REPEAT, phase_record.result.phase_result)
+    self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
 
   def assert_phase_stop(self, phase_record):
-    self.assertIs(openhtf.PHASE_RESULT.STOP, phase_record.result.phase_result)
+    self.assertIs(openhtf.PhaseResult.STOP, phase_record.result.phase_result)
 
   def assert_phase_error(self, phase_record, exc_type=None):
     self.assertTrue(phase_record.result.raised_exception,

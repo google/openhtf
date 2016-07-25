@@ -82,7 +82,7 @@ QUIET = False
 LOGFILE = None
 
 LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
-ARG_PARSER = argv.module_parser()
+ARG_PARSER = argv.ModuleParser()
 ARG_PARSER.add_argument(
     '--verbosity', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
     action=argv.StoreInModule, target='%s.DEFAULT_LEVEL' % __name__,

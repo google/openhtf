@@ -87,14 +87,14 @@ class TestMeasurements(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    conf.Load(station_id='measurements_test', station_api_port=None)
+    conf.load(station_id='measurements_test', station_api_port=None)
     if not cls.UPDATE_OUTPUT:
       with open(RECORD_FILENAME, 'rb') as picklefile:
         cls.record = pickle.load(picklefile)
 
   def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
-    self.assertRaises(TypeError, Measurement('bad_units').WithUnits, 1701)
+    self.assertRaises(TypeError, Measurement('bad_units').with_units, 1701)
 
   def test_measurements(self):
     result = util.NonLocalResult()
@@ -107,8 +107,8 @@ class TestMeasurements(unittest.TestCase):
     if self.UPDATE_OUTPUT:
       test.add_output_callbacks(output.OutputToFile(RECORD_FILENAME))
     else:
-      test.add_output_callbacks(_SaveResult)
-    test.Execute(test_start=lambda: 'TestDUT')
+      test.add_output_callbacks(_save_result)
+    test.execute(test_start=lambda: 'TestDUT')
     if not self.UPDATE_OUTPUT:
       data.assert_records_equal_nonvolatile(
           self.record, result.result, _VOLATILE_FIELDS)

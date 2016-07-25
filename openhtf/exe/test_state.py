@@ -27,6 +27,7 @@ invokation of an openhtf.Test instance.
 import contextlib
 import copy
 import logging
+import socket
 import threading
 import weakref
 
@@ -47,6 +48,13 @@ from openhtf.util import threads
 
 conf.declare('allow_unset_measurements', default_value=False, description=\
   'If True, unset measurements do not cause Tests to FAIL.')
+# All tests require a station_id.  This can be via the --config-file
+# automatically loaded by OpenHTF, provided explicitly to the config with
+# conf.load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
+# with conf.load_from_dict({..., 'station_id': 'My_Station'}).  If none of those
+# are provided then we'll fall back to the machine's hostname.
+conf.declare('station_id', 'The name of this test station',
+             default_value=socket.gethostname())
 
 _LOG = logging.getLogger(__name__)
 
@@ -209,14 +217,14 @@ class TestState(object):
       self.logger.debug('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
       self.finalize(test_record.Outcome.TIMEOUT)
-    elif phase_outcome.phase_result == openhtf.PHASE_RESULT.STOP:
+    elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.debug('Finishing test execution early due to '
-                        'PHASE_RESULT.STOP, outcome FAIL.')
+                        'PhaseResult.STOP, outcome FAIL.')
       # TODO(madsci): Decouple flow control from pass/fail.
       self.finalize(test_record.Outcome.ABORTED)
 
     if self.is_finalized != phase_outcome.is_terminal:
-      raise exe.TestExecutionError(
+      raise openhtf.InvalidTestStateError(
           'Unexpected finalized state (%s) after PhaseOutcome %s.',
           self.is_finalized, phase_outcome)
     return self.is_finalized

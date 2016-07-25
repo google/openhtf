@@ -65,11 +65,11 @@ class TestTest(test.TestCase):
 
   @test.yields_phases
   def test_phase_retvals(self):
-    phase_record = yield phase_retval(openhtf.PHASE_RESULT.CONTINUE)
+    phase_record = yield phase_retval(openhtf.PhaseResult.CONTINUE)
     self.assert_phase_continue(phase_record)
-    phase_record = yield phase_retval(openhtf.PHASE_RESULT.REPEAT)
+    phase_record = yield phase_retval(openhtf.PhaseResult.REPEAT)
     self.assert_phase_repeat(phase_record)
-    phase_record = yield phase_retval(openhtf.PHASE_RESULT.STOP)
+    phase_record = yield phase_retval(openhtf.PhaseResult.STOP)
     self.assert_phase_stop(phase_record)
 
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))

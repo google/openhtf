@@ -85,7 +85,6 @@ class Validators(object):
       self.maximum = maximum
 
     def __call__(self, value):
-      # pylint: disable=g-import-not-at-top
       import math
       # Check for nan
       if math.isnan(value):
@@ -117,6 +116,8 @@ class Validators(object):
     def __ne__(self, other):
       return not self == other
 
+  in_range = InRange  # pylint: disable=invalid-name
+
   def equals(self, value):
     if isinstance(value, self.modules['numbers'].Number):
       return self.InRange(minimum=value, maximum=value)
@@ -147,7 +148,7 @@ class Validators(object):
 
   # We have to use our saved reference to the re module because this module
   # has lost all references by the sys.modules replacement and has been gc'd.
-  def _matches_regex(self, regex):
+  def matches_regex(self, regex):
     return self.RegexMatcher(regex, self.modules['re'].compile(regex))
 
 sys.modules[__name__] = Validators(sys.modules)

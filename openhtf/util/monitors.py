@@ -81,7 +81,7 @@ class _MonitorThread(threads.KillableThread):
                 if arg in arg_info.args}
     return self.monitor_desc.with_args(**kwargs)(self.test_state)
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     measurement = getattr(self.test_state.test_api.measurements,
                           self.measurement_name)
     start_time = time.time()

@@ -38,7 +38,7 @@ if platform.system() != 'Windows':
 
 _LOG = logging.getLogger(__name__)
 
-ARG_PARSER = argv.module_parser()
+ARG_PARSER = argv.ModuleParser()
 ARG_PARSER.add_argument(
     '--prompt_timeout_s', type=int, action=argv.StoreInModule,
     target='%s.DEFAULT_TIMEOUT_S' % __name__,

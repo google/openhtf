@@ -100,6 +100,7 @@ self._my_config having a value of 'my_config_value'.
 
 import collections
 import functools
+import json
 import logging
 import threading
 import time
@@ -124,7 +125,6 @@ class PlugOverrideError(Exception):
 class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
-plugs
 class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
@@ -222,7 +222,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     This is so that the yielded tuples may be easily passed to sockjs a la:
         sockjs.tornado.SockJSRouter(*result)
     """
-    proxy = xmlrpcutil.TimeoutProxyMixin((host, port), **kwargs)
+    proxy = xmlrpcutil.TimeoutProxyMixin((host, port))
     seen = set()
     for method in proxy.system.listMethods():
       if not method.startswith('plugs.'):
@@ -446,9 +446,9 @@ class PlugManager(object):
     """
     if plug_type_name not in self._plugs_by_name:
       raise InvalidPlugError('Unknown plug name "%s"' % plug_type_name)
-    plug = self._plugs_by_name[plug_type_name]
+    plug_instance = self._plugs_by_name[plug_type_name]
     timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
     while not timeout.has_expired():
-      new_state = plug._asdict()
+      new_state = plug_instance._asdict()
       if new_state != current_state:
         return new_state

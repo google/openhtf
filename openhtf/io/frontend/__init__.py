@@ -62,6 +62,7 @@ import tornado.ioloop
 import tornado.web
 
 from openhtf import conf
+from openhtf import plugs
 from openhtf.io import station_api
 from openhtf.io.http_api import PING_STRING
 from openhtf.io.http_api import PING_RESPONSE_KEY
@@ -193,17 +194,16 @@ class StationStore(threading.Thread):
 
 class PubSub(sockjs.tornado.SockJSConnection):
   """Generic pub/sub based on SockJS connections."""
-  subscribers = set()
 
   @classproperty
-  def _lock(cls):
+  def _lock(cls):  # pylint: disable=no-self-argument
     """Ensure subclasses don't share subscriber locks by forcing override."""
     raise AttributeError(
         'The PubSub class should not be instantiated directly. '
         'Instead, subclass it and override the _lock attribute.')
 
   @classproperty
-  def subscribers(cls):
+  def subscribers(cls):  # pylint: disable=no-self-argument
     """Ensure subclasses don't share subscribers by forcing override."""
     raise AttributeError(
         'The PubSub class should not be instantiated directly. '
@@ -324,7 +324,7 @@ class WebGuiServer(tornado.web.Application):
     """Main handler for OpenHTF frontend app.
 
     Serves the index page; the main entry point for the client app."""
-    def initialize(self, port):
+    def initialize(self, port):  # pylint: disable=arguments-differ
       self.port = port
 
     def get(self):

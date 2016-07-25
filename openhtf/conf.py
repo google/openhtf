@@ -171,7 +171,7 @@ from openhtf.util import threads
 
 # If provided, --config-file will cause the given file to be load()ed when the
 # conf module is initially imported.
-ARG_PARSER = argv.module_parser()
+ARG_PARSER = argv.ModuleParser()
 ARG_PARSER.add_argument(
     '--config-file', type=argparse.FileType('r'),
     help='File from which to load configuration values.')
@@ -480,7 +480,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     Returns:
       Wrapper to replace _func, as per Python decorator semantics.
     """
-    functools = self._modules['functools']
+    functools = self._modules['functools']  # pylint: disable=redefined-outer-name
 
     if not _func:
       return functools.partial(self.save_and_restore, **config_values)
@@ -492,7 +492,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
         self.load_from_dict(config_values)
         return _func(*args, **kwargs)
       finally:
-        self._loaded_values = saved_config
+        self._loaded_values = saved_config # pylint: disable=attribute-defined-outside-init
     return _saving_wrapper
 
   def inject_positional_args(self, method):
@@ -525,7 +525,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     keyword_arg_index = -1 * len(argspec.defaults or [])
     arg_names = argspec.args[:keyword_arg_index or None]
     kwarg_names = argspec.args[len(arg_names):]
-    functools = self._modules['functools']
+    functools = self._modules['functools']  # pylint: disable=redefined-outer-name
 
     # Create the actual method wrapper, all we do is update kwargs.  Note we
     # don't pass any *args through because there can't be any - we've filled

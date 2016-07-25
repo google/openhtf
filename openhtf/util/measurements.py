@@ -158,7 +158,7 @@ class Measurement(  # pylint: disable=no-init
     """Set the notifier we'll call when measurements are set."""
     self._notification_cb = notification_cb
     if not notification_cb and self.dimensions:
-      self.measured_value.notify_value_set = None
+      self.measured_value.notify_value_set = None  # pylint: disable=attribute-defined-outside-init
     return self
 
   def notify_value_set(self):

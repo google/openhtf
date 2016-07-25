@@ -44,11 +44,11 @@ def example_monitor(example):
 @measures(
     Measurement('unset_meas'),
     Measurement(
-        'widget_type').MatchesRegex(r'.*Widget$').Doc(
+        'widget_type').matches_regex(r'.*Widget$').doc(
             '''This measurement tracks the type of widgets.'''),
     Measurement(
-        'widget_color').Doc('Color of the widget'),
-    Measurement('widget_size').InRange(1, 4))
+        'widget_color').doc('Color of the widget'),
+    Measurement('widget_size').in_range(1, 4))
 @plug(example=example_plug.ExamplePlug)
 @plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
@@ -123,5 +123,4 @@ if __name__ == '__main__':
   #        json.load(json_file)))
 
   #test.configure(teardown_function=teardown)
-  while True:
-    test.execute(test_start=user_input.prompt_for_test_start())
+  test.execute(test_start=user_input.prompt_for_test_start())

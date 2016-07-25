@@ -43,7 +43,6 @@ from openhtf.io.proto import test_runs_pb2
 from openhtf.io.proto import units_pb2
 
 from openhtf.io import test_record
-from openhtf.util import data
 from openhtf.util import measurements
 from openhtf.util import validators
 
@@ -139,7 +138,6 @@ def _attach_json(record, testrun):
   un-mangled fields later if we want.  Remove attachments since those get
   copied over and can potentially be quite large.
   """
-  #record_dict=data.convert_to_base_types(record,ignore_keys=('attachments',))
   record_json = json_factory.OutputToJSON(
       inline_attachments=False,
       sort_keys=True, indent=2).serialize_test_record(record)
@@ -153,13 +151,13 @@ def _attach_json(record, testrun):
 
 def _extract_attachments(phase, testrun, used_parameter_names):
   """Extract attachments, just copy them over."""
-  for name, (data, mimetype) in sorted(phase.attachments.items()):
+  for name, (attachment_data, mimetype) in sorted(phase.attachments.items()):
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
-    if isinstance(data, unicode):
-      data = data.encode('utf8')
-    testrun_param.value_binary = data
+    if isinstance(attachment_data, unicode):
+      attachment_data = attachment_data.encode('utf8')
+    testrun_param.value_binary = attachment_data
     if mimetype in MIMETYPE_MAP:
       testrun_param.type = MIMETYPE_MAP[mimetype]
     else:
@@ -369,8 +367,8 @@ class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-publ
     super(OutputToTestRunProto, self).__init__(filename_pattern)
 
   @staticmethod
-  def serialize_test_record(test_record):
-    return _test_run_from_test_record(test_record).SerializeToString()
+  def serialize_test_record(test_record_obj):
+    return _test_run_from_test_record(test_record_obj).SerializeToString()
 
 
 class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
@@ -447,15 +445,15 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     self.credentials.authorize(http)
 
     if isinstance(testrun, test_runs_pb2.TestRun):
-      data = testrun.SerializeToString()
+      serialized_run = testrun.SerializeToString()
     elif os.path.isfile(testrun):
-      with open(testrun) as file:
-        data = file.read()
+      with open(testrun) as testrun_file:
+        serialized_run = testrun_file.read()
     else:
       InvalidTestRunError('Invalid test run data')
 
     test_run_envelope = guzzle_pb2.TestRunEnvelope()
-    test_run_envelope.payload = zlib.compress(data)
+    test_run_envelope.payload = zlib.compress(serialized_run)
     test_run_envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
     serialized_envelope = test_run_envelope.SerializeToString()
 
@@ -472,9 +470,9 @@ class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
     # Return True if successful
     return True
 
-  def __call__(self, test_record):  # pylint: disable=invalid-name
+  def __call__(self, test_record_obj):  # pylint: disable=invalid-name
 
-    testrun = _test_run_from_test_record(test_record)
+    testrun = _test_run_from_test_record(test_record_obj)
     self.upload_test_run(testrun)
 
 
@@ -496,12 +494,12 @@ class UploadOrOutput(object):
     self._UploadToMfgInspector = UploadToMfgInspector(user, keydata)
     self.OutputToTestRunProto = OutputToTestRunProto(filename_pattern)
 
-  def __call__(self, test_record):  # pylint: disable=invalid-name
+  def __call__(self, test_record_obj):  # pylint: disable=invalid-name
     try:
       logging.info('Attempting to upload to mfg-inspector')
-      self._UploadToMfgInspector(test_record)
+      self._UploadToMfgInspector(test_record_obj)
     except Exception:
       logging.warning('%s', self._upload_fail_message)
-      filename = self.OutputToTestRunProto(test_record)
+      filename = self.OutputToTestRunProto(test_record_obj)
       logging.info('Saved local file: %s', filename)
       raise

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import subprocess
+import time
 from openhtf.plugs.usb import local_usb
 
 class EtherSync(object):

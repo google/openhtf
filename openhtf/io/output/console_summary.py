@@ -61,7 +61,7 @@ class ConsoleSummary():
             output_lines.append('%svalidators:' % (self.indent*2))
             for validator in result.validators:
               output_lines.append('%svalidator: %s' %
-                                  (self.indent*3, str(result.validators)))
+                                  (self.indent*3, str(validator)))
 
         phase_result = phase.result.phase_result
         if not phase_result:   #Timeout

@@ -94,7 +94,7 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
 def _get_source_safely(obj):
   try:
     return inspect.getsource(obj)
-  except Exception:
+  except Exception:  # pylint: disable=broad-except
     logs.log_once(
         _LOG.warning,
         'Unable to load source code for %s. Only logging this once.', obj)

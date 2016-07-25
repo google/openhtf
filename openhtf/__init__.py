@@ -48,13 +48,6 @@ from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import measurements
 
-# All tests require a station_id.  This can be via the --config-file
-# automatically loaded by OpenHTF, provided explicitly to the config with
-# conf.load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
-# with conf.load_from_dict({..., 'station_id': 'My_Station'}).  If none of those
-# are provided then we'll fall back to the machine's hostname.
-conf.declare('station_id', 'The name of this test station',
-             default_value=socket.gethostname())
 
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
@@ -241,7 +234,7 @@ class Test(object):
                           [functools.partial(history.append_record, self.uid)]):
           try:
             output_cb(final_state.test_record)
-          except Exception:
+          except Exception:  # pylint: disable=broad-except
             _LOG.exception(
                 'Output callback %s raised; continuing anyway', output_cb)
       finally:
@@ -301,7 +294,7 @@ def create_arg_parser(add_help=False):
 # does after the phase.  CONTINUE causes the framework to execute the next
 # phase, REPEAT causes the framework to execute that same phase again, and STOP
 # causes the framework to stop executing.
-PHASE_RESULT = Enum('PHASE_RESULT', ['CONTINUE', 'REPEAT', 'STOP'])
+PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
 
 
 class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {

@@ -57,7 +57,7 @@ class ExceptionSafeThread(threading.Thread):
   def run(self):
     try:
       self._thread_proc()
-    except Exception as exception:
+    except Exception as exception:  # pylint: disable=broad-except
       if not self._thread_exception(exception):
         logging.exception('Thread raised an exception: %s', self.name)
         raise

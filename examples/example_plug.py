@@ -22,7 +22,7 @@ import openhtf.conf as conf
 import openhtf.plugs as plugs
 
 
-conf.declare('example_plug_increment', default_value=1,
+conf.declare('example_plug_increment_size', default_value=1,
              description='increment constant for example plug.')
 
 
@@ -66,8 +66,8 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
   """
 
   @conf.inject_positional_args
-  def __init__(self, example_plug_increment):
-    self.increment = example_plug_increment
+  def __init__(self, example_plug_increment_size):
+    self.increment_size = example_plug_increment_size
     self.value = 0
 
   def __str__(self):
@@ -79,5 +79,5 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
 
   def increment(self):
     """Increment our value, return the previous value."""
-    self.value += self.increment
-    return self.value - self.increment
+    self.value += self.increment_size
+    return self.value - self.increment_size

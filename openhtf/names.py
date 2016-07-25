@@ -25,7 +25,7 @@ Decorators for test phase functions:
 
 Classes for instantiation:
   Measurement   A measurement to be taken within a test phase.
-  PHASE_RESULT  Return value from phases for controlling the framework.
+  PhaseResult   Return value from phases for controlling the framework.
   Test          Type to instantiate an OpenHTF test.
 
 Unit codes for lookup:
@@ -59,5 +59,5 @@ plug = openhtf.plugs.plug
 # Classes used in writing test scripts.
 Measurement = openhtf.util.measurements.Measurement
 TestPhase = openhtf.PhaseOptions
-PHASE_RESULT = openhtf.PHASE_RESULT
+PhaseResult = openhtf.PhaseResult
 Test = openhtf.Test
