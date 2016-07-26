@@ -27,7 +27,7 @@
         <li class="tab">
           <a href="#logs">
             <div class="nav-button">
-              <i class="material-icons">assignment</i>
+              <i class="material-icons">subject</i>
               <div class="nav-label">LOGS</div>
             </div>
           </a>
@@ -45,7 +45,7 @@
     <div class="test-status-tag">
       {{status | simplifyStatus}}
         <div class="duration" *ngIf="startTime">
-          {{(((endTime || currentMillis) - startTime) / 1000 | number:['1.2-2'])}}s
+          {{(((endTime || currentMillis) - startTime) / 1000 | number:['1.0-0'])}}s
         </div>
     </div>
   </div>

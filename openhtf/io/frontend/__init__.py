@@ -363,7 +363,7 @@ class WebGuiServer(tornado.web.Application):
       return r'/plugs/%s/%s/%s/%s' % (hostport + (test_uid, rel_url))
 
     StationPubSub.publish_test_state_update(hostport, test_uid, state)
-    plugs_port = state.plugs['xmlrpc_port']
+    plugs_port = state.plugs and state.plugs['xmlrpc_port']
     if plugs_port:
       # See plugs.RemotePlug.discover for details, but essentially this call
       # yields (connection-type, URL) tuples, where URL is relative to the

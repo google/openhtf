@@ -97,12 +97,12 @@ export class StationService extends SubscriptionService {
    */
   onmessage(msg) {
     this.reachable = true;
-    if (!msg) {
+    let parsedData = JSON.parse(msg.data);
+    let test_uid = parsedData.test_uid, state = parsedData.state;
+    if (!state) {
       console.warn('Received an empty state update.');
       return;
     }
-    let parsedData = JSON.parse(msg.data);
-    let test_uid = parsedData.test_uid, state = parsedData.state;
     if (this.stationInfo.station_id != state.test_record.station_id) {
       if (this.stationInfo.station_id == this.UNKNOWN_STATION_ID) {
         this.stationInfo.station_id = state.test_record.station_id;

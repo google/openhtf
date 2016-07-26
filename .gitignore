@@ -35,6 +35,7 @@ venv/
 
 # node stuff
 node_modules/
+other_modules/
 
 # Sublime Text stuff
 *.sublime-project
