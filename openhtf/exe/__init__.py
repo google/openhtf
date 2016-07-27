@@ -169,6 +169,8 @@ class TestExecutor(threads.KillableThread):
   def _MakeTestState(self, dut_id, suppressor):
     """Create a test_state.TestState for the current test."""
     suppressor.failure_reason = 'Test is invalid.'
+    if not dut_id:
+      dut_id = 'UNKNOWN_DUT_ID'
     return test_state.TestState(
         self._test_data, self._plug_manager, dut_id, conf.station_id)
 
