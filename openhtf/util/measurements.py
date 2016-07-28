@@ -144,6 +144,11 @@ class Measurement(  # pylint: disable=no-init
       self._initialize_value()
 
   def __setstate__(self, state):
+    """Set this record's state during unpickling.
+
+    This override is necessary to ensure that the the _initialize_value check
+    is skipped during unpickling.
+    """
     dimensions = state.pop('dimensions')
     super(Measurement, self).__setstate__(state)
     object.__setattr__(self, 'dimensions', dimensions)
@@ -340,15 +345,14 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     """The values stored in this record.
 
     Returns:
-      A list of dicts mapping coordinates to values measured at those
-      coordinates. Elements are output in the order in which they were set.
+      A list of tuples; the last element of each tuple will be the measured
+      value, the other elements will be the assocated coordinates.  The tuples
+      are output in the order in which they were set.
     """
     if not self.is_value_set:
       raise MeasurementNotSetError('Measurement not yet set', self.name)
-    return [{
-        'coordinates': coord,
-        'value': val
-    } for coord, val in self.value_dict.iteritems()]
+    return [dimensions + (value,) for dimensions, value in
+            self.value_dict.iteritems()]
 
 
 class Collection(mutablerecords.Record('Collection', ['_measurements'])):

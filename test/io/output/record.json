@@ -134,30 +134,22 @@
             }
           ], 
           "measured_value": [
-            {
-              "coordinates": [
-                200.54197311401367
-              ], 
-              "value": 1
-            }, 
-            {
-              "coordinates": [
-                1000.6899833679199
-              ], 
-              "value": 2
-            }, 
-            {
-              "coordinates": [
-                2001.004934310913
-              ], 
-              "value": 3
-            }, 
-            {
-              "coordinates": [
-                3001.008987426758
-              ], 
-              "value": 4
-            }
+            [
+              200.54197311401367, 
+              1
+            ], 
+            [
+              1000.6899833679199, 
+              2
+            ], 
+            [
+              2001.004934310913, 
+              3
+            ], 
+            [
+              3001.008987426758, 
+              4
+            ]
           ], 
           "name": "monitor_measurement", 
           "outcome": "PASS"
@@ -186,36 +178,26 @@
             }
           ], 
           "measured_value": [
-            {
-              "coordinates": [
-                0
-              ], 
-              "value": 1
-            }, 
-            {
-              "coordinates": [
-                1
-              ], 
-              "value": 2
-            }, 
-            {
-              "coordinates": [
-                2
-              ], 
-              "value": 4
-            }, 
-            {
-              "coordinates": [
-                3
-              ], 
-              "value": 8
-            }, 
-            {
-              "coordinates": [
-                4
-              ], 
-              "value": 16
-            }
+            [
+              0, 
+              1
+            ], 
+            [
+              1, 
+              2
+            ], 
+            [
+              2, 
+              4
+            ], 
+            [
+              3, 
+              8
+            ], 
+            [
+              4, 
+              16
+            ]
           ], 
           "name": "dimensions", 
           "outcome": "PASS"
@@ -236,38 +218,30 @@
             }
           ], 
           "measured_value": [
-            {
-              "coordinates": [
-                1, 
-                21, 
-                101
-              ], 
-              "value": 123
-            }, 
-            {
-              "coordinates": [
-                2, 
-                22, 
-                102
-              ], 
-              "value": 126
-            }, 
-            {
-              "coordinates": [
-                3, 
-                23, 
-                103
-              ], 
-              "value": 129
-            }, 
-            {
-              "coordinates": [
-                4, 
-                24, 
-                104
-              ], 
-              "value": 132
-            }
+            [
+              1, 
+              21, 
+              101, 
+              123
+            ], 
+            [
+              2, 
+              22, 
+              102, 
+              126
+            ], 
+            [
+              3, 
+              23, 
+              103, 
+              129
+            ], 
+            [
+              4, 
+              24, 
+              104, 
+              132
+            ]
           ], 
           "name": "lots_of_dims", 
           "outcome": "PASS"

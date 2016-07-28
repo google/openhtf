@@ -164,14 +164,15 @@ def _ExtractAttachments(phase, testrun, used_parameter_names):
       # pylint: enable=no-member
 
 
-def _MangleMeasurement(name, value, measurement, mangled_parameters,
+def _MangleMeasurement(name, measured_value, measurement, mangled_parameters,
                        attachment_name):
   """Flatten parameters for backwards compatibility, watch for collisions.
 
   We generate these by doing some name mangling, using some sane limits for
   very large multidimensional measurements.
   """
-  for coord, val in value.value_dict.iteritems():
+  for coord, val in measured_value.value_dict.items(
+      )[:MAX_PARAMS_PER_MEASUREMENT]:
     # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
     mangled_name = '_'.join([name] + [
         '%s%s' % (
@@ -234,7 +235,9 @@ def _ExtractParameters(record, testrun, used_parameter_names):
       if not measurement.measured_value:
         testrun_param.status = test_runs_pb2.ERROR
         continue
-      value = measurement.measured_value
+      value = None
+      if measurement.measured_value.is_value_set:
+        value = measurement.measured_value.value
       if measurement.dimensions is None:
         # Just a plain ol' value.
         if isinstance(value, numbers.Number):
@@ -263,11 +266,12 @@ def _ExtractParameters(record, testrun, used_parameter_names):
         attachment.value_binary = json.dumps({
             'outcome': str(testrun_param.status), 'name': name,
             'dimensions': dims,
-            'value': value.value if value.is_value_set else None
+            'value': value
         }, sort_keys=True)
         attachment.type = test_runs_pb2.MULTIDIM_JSON
         _MangleMeasurement(
-            name, value, measurement, mangled_parameters, attachment.name)
+            name, measurement.measured_value, measurement, mangled_parameters,
+            attachment.name)
       if testrun_param.status == test_runs_pb2.FAIL:
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
