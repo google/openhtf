@@ -26,8 +26,9 @@
     </div>
     <div class="collapsible-body {{phase.measurements | measToPassFail | statusToDark}}">
       <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
-      <div class="measurement-container">
-        <table class="measurement-listing white-text">
+      <div class="measurement-container"
+           [innerHTML]="phase.measurements | measToHtml">
+        <!-- <table class="measurement-listing white-text">
           <tr class="header-row">
             <td>measurement name</td>
             <td>validator(s)</td>
@@ -44,7 +45,7 @@
             </td>
             <td class="outcome {{meas.value.outcome | outcomeToColor}}">{{meas.value.outcome}}</td>
           </tr>
-        </table>
+        </table> -->
       </div>
     </div>
   </li>
@@ -68,8 +69,9 @@
     </div>
     <div class="collapsible-body {{'RUNNING' | statusToDark}}">
       <p *ngIf="state?.running_phase_state?.docstring" class="docstring">{{state.running_phase_state.docstring}}</p>
-      <div class="measurement-container">
-        <table class="measurement-listing white-text">
+      <div class="measurement-container"
+           [innerHTML]="state.running_phase_state?.measurements | measToHtml">
+        <!-- <table class="measurement-listing white-text">
           <tr class="header-row">
             <td>measurement name</td>
             <td>validator(s)</td>
@@ -86,7 +88,7 @@
             </td>
             <td class="outcome {{meas.value.outcome | outcomeToColor}}">{{meas.value.outcome}}</td>
           </tr>
-        </table>
+        </table> -->
       </div>
     </div>
   </li>
