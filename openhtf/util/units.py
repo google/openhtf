@@ -50,8 +50,7 @@ ALL_UNITS = []
 # by a known dimension (such as a ratio)
 NO_DIMENSION = UnitDescriptor('No dimension', 'NDL', None)
 ALL_UNITS.append(NO_DIMENSION)
-NONE = UnitDescriptor('None', None, None)
-ALL_UNITS.append(NONE)
+NONE = NO_DIMENSION
 LIFT = UnitDescriptor('lift', '05', '''''')
 ALL_UNITS.append(LIFT)
 SMALL_SPRAY = UnitDescriptor('small spray', '06', '''''')
