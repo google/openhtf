@@ -143,6 +143,16 @@ class Measurement(  # pylint: disable=no-init
     if attr == 'dimensions':
       self._initialize_value()
 
+  def __setstate__(self, state):
+    """Set this record's state during unpickling.
+
+    This override is necessary to ensure that the the _initialize_value check
+    is skipped during unpickling.
+    """
+    dimensions = state.pop('dimensions')
+    super(Measurement, self).__setstate__(state)
+    object.__setattr__(self, 'dimensions', dimensions)
+
   def set_notification_callback(self, notification_cb):
     """Set the notifier we'll call when measurements are set."""
     self._notification_cb = notification_cb
@@ -288,7 +298,6 @@ class DimensionedMeasuredValue(mutablerecords.Record(
   See the MeasuredValue class docstring for more info.  This class provides a
   dict-like interface for indexing into dimensioned measurements.
   """
-
   def __str__(self):
     return str(self.value) if self.is_value_set else 'UNSET'
 
@@ -337,8 +346,8 @@ class DimensionedMeasuredValue(mutablerecords.Record(
 
     Returns:
       A list of tuples; the last element of each tuple will be the measured
-    value, the other elements will be the assocated coordinates.  The tuples
-    are output in the order in which they were set.
+      value, the other elements will be the assocated coordinates.  The tuples
+      are output in the order in which they were set.
     """
     if not self.is_value_set:
       raise MeasurementNotSetError('Measurement not yet set', self.name)
