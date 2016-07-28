@@ -1,16 +1,93 @@
+.big-message {
+  color: #bdbdbd;
+  font-size: 14pt;
+  font-weight: 500;
+  padding-top: 1em;
+  text-align: center;
+}
+
 #content {
-  padding: 10px 0px 0px 0px;
-}
-
-.served_message {
+  padding: 10px 3px 10px 3px;
   font-weight: 300;
+  width: 100%;
 }
 
-.served_stats {
+.iconlabel {
   font-weight: 500;
 }
 
-#served_tag {
+.iconlabel i {
+  vertical-align: middle;
+}
+
+.iconlabel span {
+  vertical-align: middle;
+}
+
+.labelicon {
+  font-weight: 500;
+}
+
+.labelicon i {
+  vertical-align: middle;
+}
+
+.labelicon span {
+  vertical-align: middle;
+}
+
+.navbar {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.navbar i {
+  font-size: 30px;
+}
+
+.navbar .nav-button {
+  margin-top: 10px;
+}
+
+.navbar .nav-button .nav-label {
+  font-size: 8pt;
+  line-height: 1rem;
+}
+
+.navbar .tabs {
+  background: transparent;
+  height: 125%;
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+.navbar .tabs .tab {
+  height: 100%;
+}
+
+.navbar .tabs .tab a {
+  color: white;
+  position: relative;
+}
+
+.navbar .tabs .tab a:hover {
+  color: white;
+}
+
+.preloader {
+  margin-top: 80px;
+}
+
+.served-message {
+  font-weight: 300;
+}
+
+.served-stats {
+  font-weight: 500;
+}
+
+#served-tag {
   display: table-cell;
   font-size: 8pt;
   text-align: right;
@@ -23,12 +100,12 @@
   font-weight: 300;
 }
 
-#title_bar {
+#title-bar {
   padding: 3px;
   position: relative;
 }
 
-#title_bar>div {
+#title-bar > div {
   display: table;
   width: 100%;
 }

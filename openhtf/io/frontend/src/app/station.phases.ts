@@ -15,7 +15,12 @@
 
 declare var $: any;  // Global provided by the jquery package.
 
-import {Component, Input, OnInit} from 'angular2/core';
+import {Component,
+        Injectable,
+        Input,
+        OnInit,
+        Pipe,
+        PipeTransform} from 'angular2/core';
 
 import {
   StatusToDark,
@@ -23,11 +28,56 @@ import {
   FirstEltOrBlank,
   MeasToPassFail,
   ObjectToArray,
+  ObjectToUl,
   OutcomeToColor,
   StatusToColor
 } from './utils';
 import 'file?name=/styles/station.phases.css!./station.phases.css';
 import 'file?name=/templates/station.phases.html!./station.phases.html';
+
+
+/** A pipe to stringify measurement collections into html elements. **/
+@Pipe({name: 'measToHtml', pure: false})
+export class MeasToHtml implements PipeTransform {
+  stringify(measurements: any): string {
+    if (measurements == undefined || measurements == null) {
+      return '';
+    }
+    let outcome = 'PASS';
+    let result = `
+      <table class="measurement-listing white-text">
+        <tr class="header-row">
+          <td>measurement name</td>
+          <td>validator(s)</td>
+          <td>value</td>
+          <td class="outcome">outcome</td>
+        </tr>`;
+    Object.keys(measurements).forEach(key => {
+      let validators = measurements[key].validators || '';
+      let value = measurements[key].measured_value || '';
+      if (typeof value == 'object') {
+        let new_value = '';
+        Object.keys(value).forEach(idx => {
+          new_value += `(${value[idx]}), `;
+        })
+        value = new_value.slice(0, -2);
+      }
+      let outcome = measurements[key].outcome;
+      result += `<tr class="measurement">
+          <td class="name">${key}</td>
+          <td class="validator">${validators}</td>
+          <td class="value">${value}</td>
+          <td class="outcome">${outcome}</td>
+        </tr>`;
+    })
+    result += '</table>';
+    return result;
+  }
+
+  transform(measurements: any): string {
+    return this.stringify(measurements);
+  }
+}
 
 
 /** The PhaseListing view component. **/
@@ -39,7 +89,9 @@ import 'file?name=/templates/station.phases.html!./station.phases.html';
           StatusToSuperDark,
           FirstEltOrBlank,
           MeasToPassFail,
+          MeasToHtml,
           ObjectToArray,
+          ObjectToUl,
           OutcomeToColor,
           StatusToColor,]
 })

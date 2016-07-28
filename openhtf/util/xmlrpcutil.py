@@ -74,11 +74,11 @@ class TimeoutProxyMixin(object):
 class LockedProxyMixin(object):
   """A ServerProxy that locks calls to methods."""
   def __init__(self, *args, **kwargs):
-    super(LockedServerProxyMixin, self).__init__(*args, **kwargs)
+    super(LockedProxyMixin, self).__init__(*args, **kwargs)
     self._lock = threading.Lock()
 
   def __getattr__(self, attr):
-    method = super(LockedServerProxyMixin, self).__getattr__(attr)
+    method = super(LockedProxyMixin, self).__getattr__(attr)
     if callable(method):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _Wrapper(*args):

@@ -567,6 +567,7 @@ class StationApi(object):
         'status': state_dict['status'].name,
         'test_record':
             xmlrpclib.Binary(pickle.dumps(state_dict['test_record'])),
+        'plugs': state_dict['plugs'],
         'running_phase_state':
             data.ConvertToBaseTypes(state_dict['running_phase_state'])
     }
@@ -697,7 +698,6 @@ class StationApi(object):
             'RPC:wait_for_update() -> short-circuited wait (remote was blank)')
       else:
         log_msg = ['RPC:wait_for_update() -> short-circuited wait, diff:']
-        #import pdb; pdb.set_trace()
         log_msg.extend(
             data.pprint_diff(remote_state_dict, state_dict_counts,
                              'remote_state', 'local_state'))

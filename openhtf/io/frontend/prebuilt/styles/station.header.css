@@ -2,29 +2,26 @@
   display: table-cell;
 }
 
+#cell-selection {
+  color: #303030;
+}
+
+#cell-selection .tabs .tab a {
+  color: blue;
+}
+
 .countdown {
   display: table-cell;
   background: #303030;
   border-radius: 5px;
   color: #e0e0e0;
   padding: 0px 5px 0px 5px;
-  font-size: 21px;
-  font-weight: 600;
+  font-size: 10pt;
+  font-weight: 500;
 }
 
 .left {
   display: table;
-}
-
-.navbar i {
-  font-size: 30px;
-}
-
-.navbar > div {
-  display: inline-block;
-  font-size: 8pt;
-  padding: 3px 10px 3px 10px;
-  text-align: center;
 }
 
 .right {
@@ -44,9 +41,13 @@
 }
 
 .station-id-area .station-id-label {
-  font-size: 18pt;
+  font-size: 14pt;
 }
 
 .station-id-area .socket-label {
-  font-size: 8pt;
+  font-size: 10pt;
+}
+
+:host >>> .indicator {
+  height: 5px;
 }

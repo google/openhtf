@@ -50,8 +50,8 @@
 
 .test-status-tag {
   display: table-cell;
-  font-size: 30pt;
-  font-weight: 600;
+  font-size: 24pt;
+  font-weight: 500;
   text-align: right;
   vertical-align: middle;
   width: 30%;
