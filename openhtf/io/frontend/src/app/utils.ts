@@ -41,6 +41,7 @@ export class SimplifyStatus extends MapPipe {
     'WAITING_FOR_TEST_START': 'WAITING',
     'STOP_WAIT': 'WAITING',
     'TIMEOUT': 'ERROR',
+    'ABORTED': 'ERROR',
   };
 }
 
@@ -122,18 +123,17 @@ export class LoggingLevelToColor extends MapPipe {
 /** A pipe for turning an Object into something Angular2 can loop over. **/
 @Pipe({name: 'objectToArray', pure: false})
 export class ObjectToArray implements PipeTransform {
-  result: any[];
 
   transform(input: any): any {
-    this.result = [];
+    let result = [];
     if (input == undefined || input == null) {
-      return this.result
+      return result
     }
     let keys = Object.keys(input);
     keys.forEach(key => {
-      this.result.push({ 'key': key, 'value': input[key] });
+      result.push({ 'key': key, 'value': input[key] });
     });
-    return this.result;
+    return result;
   }
 }
 
