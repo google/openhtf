@@ -352,7 +352,7 @@ class Station(object):
   update the local state.
 
   The 'reachable' attribute can be used as a lightweight check if the host is
-  currently responding to RPC requests (
+  currently responding to RPC requests.
   """
 
   STATION_MAP = {}  # Map (host, port) to Station instance.
