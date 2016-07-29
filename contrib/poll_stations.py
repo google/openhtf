@@ -38,8 +38,6 @@ import sys
 import threading
 import time
 
-# TODO(madsci): Set log level from flags.
-logging.basicConfig(level=logging.INFO)
 
 from openhtf.io import station_api
 from openhtf.util import threads
@@ -199,6 +197,8 @@ class StationList(object):
 
 
 if __name__ == '__main__':
+  # TODO(madsci): Set log level from flags.
+  logging.basicConfig(level=logging.INFO)
   station_list = StationList()
   clear_screen()
   print('Waiting for stations...')
