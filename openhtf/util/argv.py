@@ -35,7 +35,10 @@ class StoreInModule(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if hasattr(self, '_proxy'):
             values = self._proxy(parser, namespace, values)
-        base, mod = self._tgt_mod.rsplit('.', 1)
-        module = getattr(__import__(base, fromlist=[mod]), mod)
+        if '.' in self._tgt_mod:
+          base, mod = self._tgt_mod.rsplit('.', 1)
+          module = getattr(__import__(base, fromlist=[mod]), mod)
+        else:
+          module = __import__(self._tgt_mod)
         setattr(module, self._tgt_attr, values)
 
