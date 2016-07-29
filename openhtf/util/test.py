@@ -272,13 +272,19 @@ def patch_plugs(**mock_plugs):
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
     for plug_arg_name, plug_fullname in mock_plugs.iteritems():
-      try:
-        plug_module, plug_typename = plug_fullname.rsplit('.', 1)
-        plug_type = getattr(sys.modules[plug_module], plug_typename)
-      except Exception:
-        logging.error("Invalid plug type specification %s='%s'",
-                      plug_arg_name, plug_fullname)
-        raise
+      if isinstance(plug_fullname, basestring):
+        try:
+          plug_module, plug_typename = plug_fullname.rsplit('.', 1)
+          plug_type = getattr(sys.modules[plug_module], plug_typename)
+        except Exception:
+          logging.error("Invalid plug type specification %s='%s'",
+                        plug_arg_name, plug_fullname)
+          raise
+      elif isinstance(plug_fullname, plugs.BasePlug):
+        plug_type = plug_fullname
+      else:
+        raise ValueError('Invalid plug type specification %s="%s"' % (
+            plug_arg_name, plug_fullname))
       plug_mock = mock.create_autospec(plug_type, spec_set=True, instance=True)
       plug_typemap[plug_type] = plug_mock
       plug_kwargs[plug_arg_name] = plug_mock
