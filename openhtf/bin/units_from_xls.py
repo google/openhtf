@@ -108,7 +108,7 @@ ALL_UNITS = []
 # by a known dimension (such as a ratio)
 NO_DIMENSION = UnitDescriptor('No dimension', 'NDL', None)
 ALL_UNITS.append(NO_DIMENSION)
-NONE = NO_DIMENSION
+NONE = UnitDescriptor('None', None, None)
 '''
 
 POST = '''
