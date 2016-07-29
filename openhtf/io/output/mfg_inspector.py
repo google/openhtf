@@ -230,7 +230,7 @@ def _ExtractParameters(record, testrun, used_parameter_names):
         testrun_param.status = test_runs_pb2.FAIL
       if measurement.docstring:
         testrun_param.description = measurement.docstring
-      if measurement.units:
+      if measurement.units and measurement.units.code in UOM_CODE_MAP:
         testrun_param.unit_code = UOM_CODE_MAP[measurement.units.code]
 
       if name not in phase.measured_values:
