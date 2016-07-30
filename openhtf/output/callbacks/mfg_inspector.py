@@ -36,14 +36,14 @@ import zlib
 
 import httplib2
 import oauth2client.client
-from openhtf.io import output
-from openhtf.io.output import json_factory
-from openhtf.io.proto import guzzle_pb2
-from openhtf.io.proto import test_runs_pb2
-from openhtf.io.proto import units_pb2
 
-from openhtf.io import test_record
-from openhtf.util import measurements
+from openhtf.core import measurements
+from openhtf.core import test_record
+from openhtf.output import callbacks
+from openhtf.output.callbacks import json_factory
+from openhtf.output.proto import guzzle_pb2
+from openhtf.output.proto import test_runs_pb2
+from openhtf.output.proto import units_pb2
 from openhtf.util import validators
 
 
@@ -342,7 +342,7 @@ def _test_run_from_test_record(record):
   return testrun
 
 
-class OutputToTestRunProto(output.OutputToFile):
+class OutputToTestRunProto(callbacks.OutputToFile):
   """Return an output callback that writes mfg-inspector TestRun Protos.
 
   Example filename_patterns might be:

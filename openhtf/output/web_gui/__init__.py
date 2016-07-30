@@ -61,14 +61,11 @@ import tornado.escape
 import tornado.ioloop
 import tornado.web
 
-from openhtf import conf
 from openhtf import plugs
-from openhtf.io import station_api
-from openhtf.io.http_api import PING_STRING
-from openhtf.io.http_api import PING_RESPONSE_KEY
+from openhtf.core import station_api
 from openhtf.util import classproperty
+from openhtf.util import conf
 from openhtf.util import logs
-from openhtf.util import multicast
 from openhtf.util.data import convert_to_base_types
 
 

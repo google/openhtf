@@ -23,11 +23,11 @@ import cPickle as pickle
 import os.path
 import unittest
 
-import openhtf.conf as conf
 import openhtf.util as util
 
 from openhtf.io import output
 from openhtf.names import *
+from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import units
 

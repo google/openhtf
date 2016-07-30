@@ -26,7 +26,7 @@ sys.argv.extend([
 import os.path
 import unittest
 
-from openhtf import conf
+from openhtf.util import conf
 
 conf.declare('flag_key')
 conf.declare('other_flag')

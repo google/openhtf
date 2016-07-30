@@ -75,10 +75,10 @@ import xmlrpclib
 import mutablerecords
 
 import openhtf
-from openhtf import conf
-from openhtf import history
 from openhtf import util
-from openhtf.exe import test_state
+from openhtf.core import history
+from openhtf.core import test_state
+from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import multicast
 from openhtf.util import threads

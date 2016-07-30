@@ -23,7 +23,7 @@ import logging
 import sys
 import threading
 
-from openhtf import conf
+from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import threads
 

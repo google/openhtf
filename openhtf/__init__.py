@@ -33,21 +33,30 @@ import mutablerecords
 
 from enum import Enum
 
-from openhtf import conf
-from openhtf import exe
-from openhtf import history
+from openhtf import core
 from openhtf import plugs
 from openhtf import util
-from openhtf.exe import phase_executor
-from openhtf.exe import triggers
-from openhtf.io import station_api
-from openhtf.io import test_record
-from openhtf.io import user_input
+from openhtf.core import history
+from openhtf.core import phase_executor
+from openhtf.core import station_api
+from openhtf.core import test_record
+from openhtf.core import triggers
+from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import measurements
+from openhtf.util import user_input
 
+
+__all__ = sys.modules['openhtf'].__dict__.setdefault('__all__', []).extend([
+  'openhtf.util.units',
+  'openhtf.core.measurements.Measurement',
+  'openhtf.core.measurements.measures',
+  'openhtf.core.monitors.monitors',
+  'openhtf.core.triggers',
+  'openhtf.plugs.plug',
+])
 
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
@@ -216,7 +225,7 @@ class Test(object):
       self._test_desc.metadata['config'] = conf._asdict()
       self.last_run_time_millis = util.time_millis()
 
-      self._executor = exe.TestExecutor(
+      self._executor = core.TestExecutor(
           self._test_desc, test_start, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self._executor.start()
@@ -329,6 +338,8 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
       if value is not None:
         setattr(phase.options, attr, value)
     return phase
+
+TestPhase = PhaseOptions
 
 
 class PhasePlug(mutablerecords.Record(

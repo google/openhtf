@@ -39,7 +39,7 @@ configuration values for individual tests.  This can be accomplished with the
 
 A few isolated examples, also see test/util/test_test.py for some usage:
 
-  from openhtf import conf
+  from openhtf.util import conf
   from openhtf.util import test
 
   import mytest  # Contains phases under test.
@@ -122,12 +122,12 @@ import unittest
 import mock
 
 import openhtf
-from openhtf import conf
 from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
 from openhtf.exe import test_state
 from openhtf.io import test_record
+from openhtf.util import conf
 from openhtf.util import measurements
 
 

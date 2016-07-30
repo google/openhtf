@@ -1,18 +1,21 @@
 """Module for outputting test record to JSON-formatted files."""
 
+
 import base64
 from json import JSONEncoder
-from openhtf.io import output
+
+from openhtf.output import callbacks
 from openhtf.util import data
 
-class OutputToJSON(output.OutputToFile):
+
+class OutputToJSON(callbacks.OutputToFile):
   """Return an output callback that writes JSON Test Records.
   Example filename_patterns might be:
     '/data/test_records/{dut_id}.{metadata[test_name]}.json', indent=4)) or
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
-    test.add_output_callback(openhtf.OutputToJson(
+    test.add_output_callback(openhtf.output.callbacks.OutputToJson(
         '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
 
   Args:

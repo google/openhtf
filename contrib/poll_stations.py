@@ -39,7 +39,7 @@ import threading
 import time
 
 
-from openhtf.io import station_api
+from openhtf.core import station_api
 from openhtf.util import threads
 
 

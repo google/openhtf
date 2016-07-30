@@ -29,7 +29,7 @@ TestStart:
 
 import logging
 
-from openhtf.io import user_input
+from openhtf.util import user_input
 
 _LOG = logging.getLogger(__name__)
 

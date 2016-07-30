@@ -128,41 +128,61 @@ If you're adding a new module or feature, put some thought into where it best
 fits in based on what it does.
 
 ```
-  .-----------------.
-  |     openhtf     |
-  |-----------------|
-  | Python package. |
-  '-----------------'
-          |
-          |    .---------------------------------.
-          |    |              conf               |
-          |--->|---------------------------------|
-          |    | Reads and stores configuration. |
-          |    '---------------------------------'
-          |
-          |    .-------------------------.
-          |    |           exe           |
-          |--->|-------------------------|
-          |    | Manages test execution. |
-          |    '-------------------------'
-          |
-          |    .----------------------------------------.
-          |    |                   io                   |
-          |--->|----------------------------------------|
-          |    | Manages UI, logging, and test records. |
-          |    '----------------------------------------'
-          |
-          |    .---------------------------------------------------.
-          |    |                       plugs                       |
-          |--->|---------------------------------------------------|
-          |    | Extensions for interfacing with various hardware. |
-          |    '---------------------------------------------------'
-          |
-          |    .-----------------------------------.
-          |    |               util                |
-          '--->|-----------------------------------|
-               | Utility functions and misc tools. |
-               '-----------------------------------'
+  openhtf
+    |
+    | Repository root directory.
+    |
+    |
+    |-> bin
+    |
+    |     Standalone tools and scripts to help manage the codebase.
+    |
+    |
+    |-> contrib
+    |
+    |     Standalone scripts that use the OpenHTF package. Nothing in the
+    |     OpenHTF package should depend on these.
+    |
+    |
+    |-> examples
+    |
+    |     Example OpenHTF tests and plugs.
+    |
+    |
+    |-> openhtf
+    |     |
+    |     |  The OpenHTF Python package.
+    |     |
+    |     |-> core
+    |     |
+    |     |     Framework internals that manage test state and execution.
+    |     |     The contents of this submodule shouldn't normally need to be
+    |     |     accessed from outside the package.
+    |     |
+    |     |
+    |     |-> output
+    |     |
+    |     |     Manages the framework's output, including UI, logging, and test
+    |     |     records.
+    |     |
+    |     |
+    |     |-> plugs
+    |     |
+    |     |     Extensions for interfacing with various hardware, such as test
+    |     |     equipment and DUT's.
+    |     |
+    |     |
+    |     '-> util
+    | 
+    |           Generic utility functions and miscellaneous tools.
+    |           The contents of this submodule should be general enough to be 
+    |           useable outside of OpenHTF, meaning it should not be dependent 
+    |           on other code in the OpenHTF package.
+    |
+    |
+    '-> test
+
+          Unittest code.
 ```
 
 
