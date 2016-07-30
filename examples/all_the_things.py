@@ -22,36 +22,33 @@ import json
 import os
 import time
 
-import example_plug
-import openhtf
-
-from openhtf.io import output
-from openhtf.io.output import json_factory
-from openhtf.io.output import mfg_inspector
-from openhtf.names import *
-# Uncomment for mfg-inspector output, requires setup.py build_proto.
-#from openhtf.io.output import mfg_inspector
-from openhtf.plugs import user_input
+import openhtf as htf
 from openhtf.util import units
+from openhtf.util import user_input
+
+import example_plug
 
 
-@plug(example=example_plug.ExamplePlug)
+PROMPT_MGR = user_input.get_prompt_manager()
+
+
+@htf.plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
   time.sleep(.2)
   return example.increment()
 
 
-@measures(
-    Measurement('unset_meas'),
-    Measurement(
+@htf.measures(
+    htf.Measurement('unset_meas'),
+    htf.Measurement(
         'widget_type').matches_regex(r'.*Widget$').doc(
             '''This measurement tracks the type of widgets.'''),
-    Measurement(
+    htf.Measurement(
         'widget_color').doc('Color of the widget'),
-    Measurement('widget_size').in_range(1, 4))
-@plug(example=example_plug.ExamplePlug)
-@plug(prompts=user_input.UserInput)
-def hello_world(test, example, prompts):
+    htf.Measurement('widget_size').in_range(1, 4))
+@htf.plug(example=example_plug.ExamplePlug)
+@htf.plug(prompts=user_input.UserInput)
+def hello_world(test, example):
   """A hello world test phase."""
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.prompt(
@@ -64,11 +61,11 @@ def hello_world(test, example, prompts):
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@TestPhase(timeout_s=10)
-@measures(
-    *(Measurement(
+@htf.TestPhase(timeout_s=10)
+@htf.measures(
+    *(htf.Measurement(
         'level_%s' % i) for i in ['none', 'some', 'all']))
-@monitors('monitor_measurement', example_monitor)
+@htf.monitors('monitor_measurement', example_monitor)
 def set_measurements(test):
   """Test phase that sets a measurement."""
   test.measurements.level_none = 0
@@ -79,10 +76,10 @@ def set_measurements(test):
   time.sleep(1)
 
 
-@measures(
-    Measurement('unset_dims').with_dimensions(units.HERTZ),
-    Measurement('dimensions').with_dimensions(units.HERTZ),
-    Measurement('lots_of_dims').with_dimensions(
+@htf.measures(
+    htf.Measurement('unset_dims').with_dimensions(units.HERTZ),
+    htf.Measurement('dimensions').with_dimensions(units.HERTZ),
+    htf.Measurement('lots_of_dims').with_dimensions(
         units.HERTZ, units.SECOND, units.RADIAN))
 def dimensions(test):
   for dim in range(5):
@@ -100,19 +97,23 @@ def teardown(test):
 
 
 if __name__ == '__main__':
-  test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
+  test = htf.Test(hello_world, set_measurements, dimensions, attachments,
       # Some metadata fields, these in particular are used by mfg-inspector,
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.add_output_callbacks(output.OutputToFile(
+  test.add_output_callbacks(htf.output.callbacks.OutputToFile(
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
   test.add_output_callbacks(
-      json_factory.OutputToJSON(
+      htf.output.callbacks.json_factory.OutputToJSON(
           './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
           indent=4))
-  #test.add_output_callbacks(mfg_inspector.OutputToTestRunProto(
+  
+  # Example of how to output to testrun protobuf format.
+  #test.add_output_callbacks(
+  #  htf.output.callbacks.mfg_inspector.OutputToTestRunProto(
   #    './{dut_id}.{start_time_millis}.pb'))
+  
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it

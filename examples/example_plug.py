@@ -18,8 +18,8 @@
 
 import time
 
-import openhtf.conf as conf
 import openhtf.plugs as plugs
+from openhtf.util import conf
 
 
 conf.declare('example_plug_increment_size', default_value=1,

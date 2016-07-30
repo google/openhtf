@@ -166,8 +166,8 @@ import yaml
 
 import mutablerecords
 
-from openhtf.util import argv
-from openhtf.util import threads
+import argv
+import threads
 
 # If provided, --config-file will cause the given file to be load()ed when the
 # conf module is initially imported.

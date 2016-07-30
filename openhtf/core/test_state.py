@@ -38,10 +38,10 @@ import mutablerecords
 
 import openhtf
 
-from openhtf import conf
 from openhtf import plugs
 from openhtf import util
-from openhtf.io import test_record
+from openhtf.core import test_record
+from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import measurements
 from openhtf.util import threads

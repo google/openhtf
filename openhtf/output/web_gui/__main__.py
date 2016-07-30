@@ -21,8 +21,8 @@ import argparse
 import logging
 import signal
 
-import openhtf.io.frontend
-from openhtf import conf
+import openhtf.output.web_gui
+from openhtf.util import conf
 from openhtf.util import logs
 
 
@@ -30,10 +30,10 @@ _LOG = logging.getLogger(__name__)
 
 
 def main():
-  """Start the frontend."""
-  parser = argparse.ArgumentParser(description='OpenHTF web frontend server.',
+  """Start the web gui."""
+  parser = argparse.ArgumentParser(description='OpenHTF web gui server.',
                                    parents=[conf.ARG_PARSER],
-                                   prog='python -m openhtf.io.frontend')
+                                   prog='python -m openhtf.output.web_gui')
   parser.add_argument('--port', type=int, default=12000,
                       help='Port on which to serve the frontend.')
   parser.add_argument('--discovery_interval_s', type=int, default=3,
@@ -46,10 +46,10 @@ def main():
 
   logs.setup_logger()
 
-  web_server = openhtf.io.frontend.WebGuiServer(args.discovery_interval_s,
-                                                args.disable_discovery,
-                                                args.port,
-                                                args.dev)
+  web_server = openhtf.output.web_gui.WebGuiServer(args.discovery_interval_s,
+                                                   args.disable_discovery,
+                                                   args.port,
+                                                   args.dev)
 
   def sigint_handler(*dummy):
     """Handle SIGINT by stopping running executor and handler."""
@@ -57,7 +57,7 @@ def main():
     web_server.stop()
   signal.signal(signal.SIGINT, sigint_handler)
 
-  print('Starting openhtf web server on http://localhost:%s.' % args.port)
+  print('Starting openhtf web gui server on http://localhost:%s.' % args.port)
   web_server.start()
 
 

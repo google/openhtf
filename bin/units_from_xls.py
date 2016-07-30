@@ -176,8 +176,8 @@ def main():
   parser.add_argument(
       '--outfile',
       type=str,
-      default=os.path.join(os.path.dirname(__file__), os.path.pardir, 'util',
-                           'units.py'),
+      default=os.path.join(os.path.dirname(__file__), os.path.pardir,
+                           'openhtf','util', 'units.py'),
       help='where to put the generated .py file.')
   args = parser.parse_args()
 

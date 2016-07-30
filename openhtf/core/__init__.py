@@ -23,13 +23,12 @@ from enum import Enum
 import contextlib2 as contextlib
 
 import openhtf
-from openhtf import conf
 from openhtf import plugs
 from openhtf import util
-from openhtf.exe import phase_executor
-from openhtf.exe import test_state
-from openhtf.io import test_record
-from openhtf.io import user_input
+from openhtf.core import phase_executor
+from openhtf.core import test_record
+from openhtf.core import test_state
+from openhtf.util import conf
 from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)

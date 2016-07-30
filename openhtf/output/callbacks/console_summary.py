@@ -3,8 +3,8 @@
 import os
 import sys
 
-from openhtf.io import test_record
-from openhtf.util import measurements as measurement
+from openhtf.core import test_record
+from openhtf.core import measurements as meas_module
 
 
 class ConsoleSummary():
@@ -48,7 +48,7 @@ class ConsoleSummary():
         measurements = phase.measurements
         for key in measurements:
           result = measurements[key]
-          if result.outcome == measurement.Outcome.FAIL:
+          if result.outcome == meas_module.Outcome.FAIL:
             if new_phase:
               output_lines.append('failed phase: %s [ran for %.2f sec]' %
                                   (phase.name, phase_time_sec))
