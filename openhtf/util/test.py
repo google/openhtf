@@ -53,9 +53,9 @@ A few isolated examples, also see test/util/test_test.py for some usage:
     def test_first_phase(self):
       phase_record = yield mytest.first_phase
       # Check a measurement value.
-      self.assert_measured(phase_record, 'my_measurement', 'value')
+      self.assertMeasured(phase_record, 'my_measurement', 'value')
       # Check that the measurement outcome was PASS.
-      self.assert_measurement_pass(phase_record, 'my_measurement')
+      self.assertMeasurementPass(phase_record, 'my_measurement')
 
     @test.patch_plugs(mock_my_plug='my_plug.MyPlug')
     def test_second_phase(self, mock_my_plug):  # arg must match keyword above.
@@ -71,7 +71,7 @@ A few isolated examples, also see test/util/test_test.py for some usage:
 
       # Apply assertions to the output, probably using utility methods on self,
       # see below for an exhaustive list of such utility assertions.
-      self.assert_phase_continue(phase_record)
+      self.assertPhaseContinue(phase_record)
 
       # You can apply any assertions on the mocked plug here.
       mock_my_plug.measure_voltage.assert_called_once_with()
@@ -87,28 +87,28 @@ A few isolated examples, also see test/util/test_test.py for some usage:
 
       # Some utility assertions are provided for operating on test records (see
       # below for a full list).
-      self.assert_test_pass(test_rec)
+      self.assertTestPass(test_rec)
 
 List of assertions that can be used with PhaseRecord results:
 
-  assert_phase_continue(phase_record)
-  assert_phase_repeat(phase_record)
-  assert_phase_stop(phase_record)
-  assert_phase_error(phase_record, exc_type=None)
+  assertPhaseContinue(phase_record)
+  assertPhaseRepeat(phase_record)
+  assertPhaseStop(phase_record)
+  assertPhaseError(phase_record, exc_type=None)
 
 List of assertions that can be used with TestRecord results:
 
-  assert_test_pass(test_rec)
-  assert_test_fail(test_rec)
-  assert_test_error(test_rec, exc_type=None)
-  assert_test_outcome_code(test_rec, code)
+  assertTestPass(test_rec)
+  assertTestFail(test_rec)
+  assertTestError(test_rec, exc_type=None)
+  assertTestOutcomeCode(test_rec, code)
 
 List of assertions that can be used with either PhaseRecords or TestRecords:
 
-  assert_measured(phase_or_test_rec, measurement, value=mock.ANY)
-  assert_not_measured(phase_or_test_rec, measurement)
-  assert_measurement_pass(phase_or_test_rec, measurement)
-  assert_measurement_fail(phase_or_test_rec, measurement)
+  assertMeasured(phase_or_test_rec, measurement, value=mock.ANY)
+  assertNotMeasured(phase_or_test_rec, measurement)
+  assertMeasurementPass(phase_or_test_rec, measurement)
+  assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
 import collections
@@ -122,7 +122,6 @@ import unittest
 import mock
 
 import openhtf
-
 from openhtf import conf
 from openhtf import plugs
 from openhtf import util
@@ -167,6 +166,7 @@ class PhaseOrTestIterator(collections.Iterator):
                                        plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
       self.plug_manager.update_plug(plug_type, plug_value)
+
 
   @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
@@ -312,7 +312,7 @@ def patch_plugs(**mock_plugs):
 
 class TestCase(unittest.TestCase):
 
-  def _assert_phase_or_test_record(func):
+  def _AssertPhaseOrTestRecord(func):
     """Decorator for automatically invoking self.assertTestPhases when needed.
 
     This allows assertions to apply to a single phase or "any phase in the test"
@@ -345,18 +345,18 @@ class TestCase(unittest.TestCase):
 
   ##### TestRecord Assertions #####
 
-  def assert_test_pass(self, test_rec):
+  def assertTestPass(self, test_rec):
     self.assertEquals(test_record.Outcome.PASS, test_rec.outcome)
 
-  def assert_test_fail(self, test_rec):
+  def assertTestFail(self, test_rec):
     self.assertEquals(test_record.Outcome.FAIL, test_rec.outcome)
 
-  def assert_test_error(self, test_rec, exc_type=None):
+  def assertTestError(self, test_rec, exc_type=None):
     self.assertEquals(test_record.Outcome.ERROR, test_rec.outcome)
     if exc_type:
-      self.assert_phase_error(test_rec.phases[-1], exc_type)
+      self.assertPhaseError(test_rec.phases[-1], exc_type)
 
-  def assert_test_outcome_code(self, test_rec, code):
+  def assertTestOutcomeCode(self, test_rec, code):
     """Assert that the given code is in some OutcomeDetails in the record."""
     self.assertTrue(
         any(details.code == code for details in test_rec.outcome_details),
@@ -364,18 +364,18 @@ class TestCase(unittest.TestCase):
 
   ##### PhaseRecord Assertions #####
 
-  def assert_phase_continue(self, phase_record):
+  def assertPhaseContinue(self, phase_record):
     if phase_record.result.phase_result is not None:
       self.assertIs(openhtf.PhaseResult.CONTINUE,
                     phase_record.result.phase_result)
 
-  def assert_phase_repeat(self, phase_record):
+  def assertPhaseRepeat(self, phase_record):
     self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
 
-  def assert_phase_stop(self, phase_record):
+  def assertPhaseStop(self, phase_record):
     self.assertIs(openhtf.PhaseResult.STOP, phase_record.result.phase_result)
 
-  def assert_phase_error(self, phase_record, exc_type=None):
+  def assertPhaseError(self, phase_record, exc_type=None):
     self.assertTrue(phase_record.result.raised_exception,
                     'Phase did not raise an exception')
     if exc_type:
@@ -385,7 +385,7 @@ class TestCase(unittest.TestCase):
 
   ##### Measurement Assertions #####
 
-  def assert_not_measured(self, phase_or_test_record, measurement):
+  def assertNotMeasured(self, phase_or_test_record, measurement):
     def _check_phase(phase_record, strict=False):
       if strict:
         self.assertIn(measurement, phase_record.measurements)
@@ -399,12 +399,12 @@ class TestCase(unittest.TestCase):
     if isinstance(phase_or_test_record, test_record.PhaseRecord):
       _check_phase(phase_or_test_record, True)
     else:
-      # Check *all* phases (not *any* like _assert_phase_or_test_record).
+      # Check *all* phases (not *any* like _AssertPhaseOrTestRecord).
       for phase_record in phase_or_test_record.phases:
         _check_phase(phase_record)
 
-  @_assert_phase_or_test_record
-  def assert_measured(self, phase_record, measurement, value=mock.ANY):
+  @_AssertPhaseOrTestRecord
+  def assertMeasured(self, phase_record, measurement, value=mock.ANY):
     self.assertTrue(
         phase_record.measurements[measurement].measured_value.is_value_set,
         'Measurement %s not set' % measurement)
@@ -415,14 +415,14 @@ class TestCase(unittest.TestCase):
           (measurement, value,
            phase_record.measurements[measurement].measured_value.value))
 
-  @_assert_phase_or_test_record
-  def assert_measurement_pass(self, phase_record, measurement):
-    self.assert_measured(phase_record, measurement)
+  @_AssertPhaseOrTestRecord
+  def assertMeasurementPass(self, phase_record, measurement):
+    self.assertMeasured(phase_record, measurement)
     self.assertIs(measurements.Outcome.PASS,
                   phase_record.measurements[measurement].outcome)
 
-  @_assert_phase_or_test_record
-  def assert_measurement_fail(self, phase_record, measurement):
-    self.assert_measured(phase_record, measurement)
+  @_AssertPhaseOrTestRecord
+  def assertMeasurementFail(self, phase_record, measurement):
+    self.assertMeasured(phase_record, measurement)
     self.assertIs(measurements.Outcome.FAIL,
                   phase_record.measurements[measurement].outcome)

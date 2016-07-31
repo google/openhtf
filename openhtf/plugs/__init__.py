@@ -207,7 +207,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
       return
 
   @classmethod
-  def discover(cls, host, port):
+  def discover(cls, host, port, timeout_s=xmlrpcutil.DEFAULT_PROXY_TIMEOUT_S):
     """Discover what plugs are available at host, port, yielding them.
 
     timeout_s only applies to the discovery.  To set a timeout on the resulting
@@ -339,7 +339,7 @@ class PlugManager(object):
 
       for attr in dir(a_plug):
         if (not attr.startswith('_') and
-            attr not in {'tearDown', 'tearDown'} and
+            attr != 'tearDown' and
             attr not in a_plug.disable_remote_attrs):
           server.register_function(
               getattr(a_plug, attr), name='.'.join(('plugs', name, attr)))

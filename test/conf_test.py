@@ -117,7 +117,7 @@ class TestConf(unittest.TestCase):
 
   def test_multiple_declaration(self):
     conf.declare('multiple')
-    with self.assertRaises(conf.KeyAlreadydeclaredError):
+    with self.assertRaises(conf.KeyAlreadyDeclaredError):
       conf.declare('multiple')
 
   def test_invalid_key(self):

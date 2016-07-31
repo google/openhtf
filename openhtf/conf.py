@@ -33,7 +33,7 @@ and description are optional:
                default_value=3.14159,
                description='Intermix constant calibrated for our warp core.')
 
-declared keys can be accessed directly as attributes of the conf module.  To
+Declared keys can be accessed directly as attributes of the conf module.  To
 avoid naming conflicts, configuration keys must begin with a lowercase letter.
 They may also be accessed by treating the conf module as a dictionary, but this
 method is discouraged and should only be used in favor of getattr().
@@ -194,7 +194,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
   class ConfigurationInvalidError(Exception):
     """Indicates the configuration format was invalid or couldn't be read."""
 
-  class KeyAlreadydeclaredError(Exception):
+  class KeyAlreadyDeclaredError(Exception):
     """Indicates that a configuration key was already declared."""
 
   class UndeclaredKeyError(Exception):
@@ -328,7 +328,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       raise self.InvalidKeyError(
           'Invalid key name, must begin with a lowercase letter', name)
     if name in self._declarations:
-      raise self.KeyAlreadydeclaredError(
+      raise self.KeyAlreadyDeclaredError(
           'Configuration key already declared', name)
     self._declarations[name] = self.Declaration(
         name, description=description, **kwargs)
