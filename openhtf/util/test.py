@@ -250,6 +250,13 @@ def patch_plugs(**mock_plugs):
 
       # Do some assertions to make sure our plug was used correctly.
       my_plug_mock.do_something.assert_called_with(10)
+
+    # Passing in the plug class itself also works and can be beneficial
+    # when the module path is long.
+    @test.patch_plugs(my_plug_mock=my_plug_module.MyPlug)
+    def test_my_phase_again(self, my_plug_mock):
+      pass
+    
   """
   def test_wrapper(test_func):
     plug_argspec = inspect.getargspec(test_func)
