@@ -638,9 +638,9 @@ class StationApi(object):
 
     Args:
       test_uid: Test UID for which to wait on an update.
-      remote_state_dict: Current RemoteState that we have for the test, as a dict,
-          with phases and log_records swapped out for counts instead of the
-          actual records themselves.
+      remote_state_dict: Current RemoteState that we have for the test, as a
+          dict, with phases and log_records swapped out for counts instead of
+          the actual records themselves.
       timeout_s: Number of seconds to wait for an update before giving up.
 
     Returns:
@@ -676,7 +676,8 @@ class StationApi(object):
     state_dict, event = state.asdict_with_event()
     # Make a copy with phase/log record counts swapped out for comparison with
     # remote_state_dict.
-    state_dict_counts = dict(state_dict)
+    state_dict_counts = {
+        k: v for k, v in state_dict.iteritems() if k != 'plugs'}
     state_dict_counts['test_record'] = mutablerecords.CopyRecord(
         state_dict_counts['test_record'])
     state_dict_counts['test_record'].phases = len(

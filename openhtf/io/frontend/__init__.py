@@ -96,7 +96,7 @@ class TestWatcher(threading.Thread):
     wait_timeout_s: Seconds to wait for an update before timeout and retry.
   """
   daemon = True
-  DEFAULT_WAIT_TIMEOUT_S = 5
+  DEFAULT_WAIT_TIMEOUT_S = 5000
 
   def __init__(self, hostport, test, callback,
                wait_timeout_s=DEFAULT_WAIT_TIMEOUT_S):
