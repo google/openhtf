@@ -287,7 +287,7 @@ def patch_plugs(**mock_plugs):
           logging.error("Invalid plug type specification %s='%s'",
                         plug_arg_name, plug_fullname)
           raise
-      elif isinstance(plug_fullname, plugs.BasePlug):
+      elif issubclass(plug_fullname, plugs.BasePlug):
         plug_type = plug_fullname
       else:
         raise ValueError('Invalid plug type specification %s="%s"' % (
