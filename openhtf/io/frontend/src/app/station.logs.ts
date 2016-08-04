@@ -13,9 +13,7 @@
 // limitations under the License.
 
 
-declare var $;  // Global provided by the jquery package.
-
-import {Component, Input, OnInit} from 'angular2/core';
+import {Component, Input} from 'angular2/core';
 
 import {LoggingLevelToColor} from './utils';
 import 'file?name=/styles/station.logs.css!./station.logs.css';
@@ -42,10 +40,6 @@ import 'file?name=/styles/station.logs.css!./station.logs.css';
   styleUrls: ['styles/station.logs.css'],
   pipes: [LoggingLevelToColor]
 })
-export class Logs implements OnInit {
+export class Logs {
   @Input() log_records: any[];
-
-  ngOnInit() {
-    // $('ul.tabs').tabs();
-  }
 }

@@ -396,6 +396,9 @@ class PhaseDescriptor(mutablerecords.Record(
     return new_info
 
   def __call__(self, test_state):
+    """ Args:
+          test_state: A TestState object (see test_state.py).
+    """
     kwargs = dict(self.extra_kwargs)
     kwargs.update(test_state.plug_manager.ProvidePlugs(
         (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
@@ -418,13 +421,6 @@ class TestApi(collections.namedtuple('TestApi', [
   """Class passed to test phases as the first argument.
 
   Attributes:
-    attachments: Dict mapping attachment name to test_record.Attachment
-        instance containing the data that was attached (and the MIME type
-        that was assumed based on extension, if any).  Only attachments
-        that have been attached in the current phase show up here, and this
-        attribute should not be modified directly, use TestApi.attach() or
-        TestApi.attach_from_file() instead.
-
     dut_id: This attribute provides getter and setter access to the DUT ID
         of the device under test by the currently running openhtf.Test.  A
         non-empty DUT ID *must* be set by the end of a test, or no output
@@ -447,17 +443,16 @@ class TestApi(collections.namedtuple('TestApi', [
         resets for every invokation of Execute() on an openhtf.Test).  This
         can be used for any test-wide state you need to persist across phases.
         Use this with caution, however, as it is not persisted in the output
-        TestRecord or displayed on the web frontend in any way.     
+        TestRecord or displayed on the web frontend in any way.
 
     test_record: A reference to the output TestRecord for the currently
         running openhtf.Test.  Direct access to this attribute is *strongly*
         discouraged, but provided as a catch-all for interfaces not otherwise
         provided by TestApi.  If you find yourself using this, please file a
         feature request for an alternative at:
-          https://github.com/google/openhtf/issues/new    
+          https://github.com/google/openhtf/issues/new
 
   Callable Attributes:
-
     attach: Attach binary data to the test, see TestState.attach().
 
     attach_from_file: Attach binary data from a file, see
@@ -466,6 +461,14 @@ class TestApi(collections.namedtuple('TestApi', [
     notify_update: Notify any frontends of an interesting update.  Typically
         this is automatically called internally when interesting things happen,
         but it can be called by the user (takes no args).
+
+  Read-only Attributes:
+    attachments: Dict mapping attachment name to test_record.Attachment
+        instance containing the data that was attached (and the MIME type
+        that was assumed based on extension, if any).  Only attachments
+        that have been attached in the current phase show up here, and this
+        attribute should not be modified directly; use TestApi.attach() or
+        TestApi.attach_from_file() instead.
   """
   @property
   def dut_id(self):

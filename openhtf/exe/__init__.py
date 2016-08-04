@@ -116,7 +116,7 @@ class TestExecutor(threads.KillableThread):
       # self._lock while we do this, or else calls to stop() will deadlock.
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
-      self.test_state.TestStarted(self._wait_for_test_start())
+      self.test_state.mark_test_started(self._wait_for_test_start())
       self.test_state.plug_manager.InitializePlugs()
 
       with self._lock:

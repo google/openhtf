@@ -17,7 +17,6 @@ StoreInModule:
 """
 
 import argparse
-import sys
 
 
 def ModuleParser():

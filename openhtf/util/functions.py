@@ -47,7 +47,7 @@ def CallOnce(func):
 def CallAtMostEvery(seconds, count=1):
   """Call the decorated function at most count times every seconds seconds.
 
-  The decorated function will sleep to ensure that at most count invokations
+  The decorated function will sleep to ensure that at most count invocations
   occur within any 'seconds' second window.
   """
   def Decorator(func):

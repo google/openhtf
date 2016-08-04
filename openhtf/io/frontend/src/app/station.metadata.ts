@@ -13,9 +13,7 @@
 // limitations under the License.
 
 
-declare var $;  // Global provided by the jquery package.
-
-import {Component, Input, OnInit} from 'angular2/core';
+import {Component, Input} from 'angular2/core';
 
 import {LoggingLevelToColor, ObjectToUl} from './utils';
 import 'file?name=/styles/station.metadata.css!./station.metadata.css';
@@ -39,10 +37,6 @@ import 'file?name=/styles/station.metadata.css!./station.metadata.css';
   styleUrls: ['styles/station.metadata.css'],
   pipes: [LoggingLevelToColor, ObjectToUl]
 })
-export class Metadata implements OnInit {
+export class Metadata {
   @Input() metadata: any;
-
-  ngOnInit() {
-    // $('ul.tabs').tabs();
-  }
 }

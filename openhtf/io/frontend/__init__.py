@@ -195,6 +195,13 @@ class PubSub(sockjs.tornado.SockJSConnection):
   """Generic pub/sub based on SockJS connections."""
 
   @classproperty
+  def _lock(cls):
+    """Ensure subclasses don't share subscriber locks by forcing override."""
+    raise AttributeError(
+        'The PubSub class should not be instantiated directly. '
+        'Instead, subclass it and override the _lock attribute.')
+
+  @classproperty
   def subscribers(cls):
     """Ensure subclasses don't share subscribers by forcing override."""
     raise AttributeError(
@@ -211,18 +218,21 @@ class PubSub(sockjs.tornado.SockJSConnection):
                      clients for whom the function returns True will have the
                      message sent to them.
     """
-    for client in cls.subscribers:
-      if (not client_filter) or client_filter(client):
-        client.send(message)
+    with cls._lock:
+      for client in cls.subscribers:
+        if (not client_filter) or client_filter(client):
+          client.send(message)
 
   def on_open(self, info):
     _LOG.debug('New subscriber from %s.', info.ip)
-    self.subscribers.add(self)
+    with self._lock:
+      self.subscribers.add(self)
     self.on_subscribe(info)
 
   def on_close(self):
     _LOG.debug('A client unsubscribed.')
-    self.subscribers.remove(self)
+    with self._lock:
+      self.subscribers.remove(self)
     self.on_unsubscribe()
 
   def on_subscribe(self, info):
@@ -236,8 +246,9 @@ class PubSub(sockjs.tornado.SockJSConnection):
 
 class DashboardPubSub(PubSub):
   """Pub/sub for publishing dashboard updates to subscribers."""
-  subscribers = set()
   _last_serialization = None
+  _lock = threading.Lock()
+  subscribers = set()
 
   @classmethod
   def publish_discovery_update(cls, stations):
@@ -262,8 +273,9 @@ class DashboardPubSub(PubSub):
 
 class StationPubSub(PubSub):
   """Pub/sub for publishing station/test updates to clients."""
-  subscribers = set()
   subscriber_to_hostport_map = {}
+  _lock = threading.Lock()
+  subscribers = set()
 
   def __init__(self, store, *args, **kwargs):
     super(StationPubSub, self).__init__(*args, **kwargs)
