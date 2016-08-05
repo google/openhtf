@@ -200,6 +200,11 @@ class RemoteState(collections.namedtuple('RemoteState', [
         running_phase_state and RemotePhase(**running_phase_state))
 
 
+class StateCacheInfo(collections.namedtuple('StateCacheInfo', [
+    'num_phases', 'num_log_entries', 'state'])):
+  """Some basic info about the cached state."""
+
+
 class RemoteTest(mutablerecords.Record('RemoteTest', [
     # Internal references for providing a more programmatic interface.
     'proxy_factory', 'shared_proxy', '_cached_history',
@@ -207,7 +212,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     'test_uid', 'test_name',
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
-    # Cache last known state so we can detect deltas.
+    # Cache last known state (a RemoteState) so we can detect deltas.
     'cached_state': None})):
 
   def __hash__(self):
@@ -225,10 +230,10 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
   def state_cache_info(self):
     state = self.cached_state
     if not state or not state.test_record:
-      return 0, 0, state
-    return (len(state.test_record.phases),
-            len(state.test_record.log_records),
-            state)
+      return StateCacheInfo(0, 0, state)
+    return StateCacheInfo(len(state.test_record.phases),
+                          len(state.test_record.log_records),
+                          state)
 
   def __str__(self):
     # Use cached_state because accessing self.state triggers an RPC, and
@@ -242,7 +247,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
             '%a@%H:%M:%S', time.localtime(self.last_run_time_millis / 1000)))
 
   @property
-  def cached_state_and_swapped_dict(self):
+  def cached_state_summary(self):
     """Get our cached state as a dict, with phases/records swapped out.
 
     Returns:
@@ -276,7 +281,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     timeout occurred is to check the return value against the previous value
     of cached_state for a change.
     """
-    cached_state, swapped_dict = self.cached_state_and_swapped_dict
+    cached_state, swapped_dict = self.cached_state_summary
     try:
       remote_state_dict = self.proxy_factory(timeout_s + 1).wait_for_update(
           self.test_uid, swapped_dict, timeout_s)
@@ -294,7 +299,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
   @property
   @StationUnreachableError.reraise_socket_error
   def state(self):
-    cached_state, swapped_dict = self.cached_state_and_swapped_dict
+    cached_state, swapped_dict = self.cached_state_summary
     remote_state_dict = self.shared_proxy.get_test_state(
         self.test_uid, swapped_dict and swapped_dict['test_record'])
     self.cached_state = (
