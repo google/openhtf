@@ -56,10 +56,14 @@ class TestExecutor(threads.KillableThread):
 
     # Force teardown function timeout, otherwise we can hang for a long time
     # when shutting down, such as in response to a SIGINT.
+    timeout_s = conf.teardown_timeout_s
+    if hasattr(teardown_function, 'timeout_s'):
+      timeout_s = teardown_function.timeout_s
+
     self._teardown_function = (
         teardown_function and
         openhtf.PhaseDescriptor.WrapOrCopy(
-            teardown_function, timeout_s=conf.teardown_timeout_s))
+            teardown_function, timeout_s=timeout_s))
         
     self._test_descriptor = test_descriptor
     self._test_start = test_start

@@ -45,8 +45,8 @@ Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])
 class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
   """Encapsulate attachment data and guessed MIME type."""
   @property
-  def sha256(self):
-    return hashlib.sha256(self.data).hexdigest()
+  def sha1(self):
+    return hashlib.sha1(self.data).hexdigest()
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init

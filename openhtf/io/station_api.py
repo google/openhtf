@@ -167,7 +167,7 @@ class RemotePhase(collections.namedtuple('RemotePhase', [
 
   See PhaseState._asdict() in exe/test_state.py for attribute details.
 
-  Notably, 'attachments' is a dict mapping name to sha256 hash of the
+  Notably, 'attachments' is a dict mapping name to sha1 hash of the
   attachment's data, not the actual attachment data itself.
   """
 
@@ -257,21 +257,20 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     phases and log records.
     """
     cached_state = self.cached_state
-    swapped_dict = None
 
-    # Make a copy so we can swap out phases and logs with counts instead.
-    if cached_state:
-      state = cached_state._replace(
-          test_record=mutablerecords.CopyRecord(cached_state.test_record))
-      state.test_record.phases = len(state.test_record.phases)
-      state.test_record.log_records = len(state.test_record.log_records)
-      swapped_dict = {
-          'status': state.status.name,
-          'running_phase_state':
-              data.ConvertToBaseTypes(state.running_phase_state),
-          'test_record': xmlrpclib.Binary(pickle.dumps(state.test_record)),
-      }
-    return cached_state, swapped_dict
+    if not cached_state:
+      return None, None
+
+    test_record = mutablerecords.CopyRecord(
+        cached_state.test_record,
+        phases=len(test_record.phases),
+        log_records=len(test_record.log_records))
+
+    return cached_state, {
+        'status': cached_state.status.name,
+        'running_phase_state': data.ConvertToBaseTypes(
+            cached_state.running_phase_state),
+        'test_record': xmlrpclib.Binary(pickle.dumps(test_record))}
 
   def wait_for_update(self, timeout_s=1):
     """Block until there's new state data available, or timeout.
@@ -281,10 +280,10 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     timeout occurred is to check the return value against the previous value
     of cached_state for a change.
     """
-    cached_state, swapped_dict = self.cached_state_summary
+    cached_state, summary_dict = self.cached_state_summary
     try:
       remote_state_dict = self.proxy_factory(timeout_s + 1).wait_for_update(
-          self.test_uid, swapped_dict, timeout_s)
+          self.test_uid, summary_dict, timeout_s)
     except xmlrpclib.Fault as fault:
       # TODO(madsci): This is a super kludge, eventually implement the
       # ReraisingMixin for ServerProxy, but that's hard, so do this for now.
@@ -299,9 +298,9 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
   @property
   @StationUnreachableError.reraise_socket_error
   def state(self):
-    cached_state, swapped_dict = self.cached_state_summary
+    cached_state, summary_dict = self.cached_state_summary
     remote_state_dict = self.shared_proxy.get_test_state(
-        self.test_uid, swapped_dict and swapped_dict['test_record'])
+        self.test_uid, summary_dict and summary_dict['test_record'])
     self.cached_state = (
         remote_state_dict and RemoteState(cached_state, **remote_state_dict))
     return self.cached_state
@@ -364,6 +363,8 @@ class Station(object):
   STATION_LOCK = threading.Lock()
 
   def __new__(cls, host, station_api_port, station_info, proxy=None):
+    # Thread-safe way to ensure only one Station for this key is ever generated.
+    # Lock is released at the end of __init__().
     cls.STATION_LOCK.acquire()
     return cls.STATION_MAP.setdefault(
         (host, station_api_port), super(Station, cls).__new__(cls))
@@ -393,6 +394,7 @@ class Station(object):
     # it creates a new ServerProxy object each time, avoiding the danger of
     # blocking short requests with long-running ones.
     self._shared_proxy = proxy or self.make_proxy()
+    # Lock was acquired at the beginning of __new__().
     self.STATION_LOCK.release()
 
   def __hash__(self):
@@ -524,7 +526,9 @@ class StationApi(object):
   UID = '%s:%s' % (os.getpid(), util.TimeMillis())
 
   def get_station_info(self):
-    """Obtain dict required to make a StationInfo for this station."""
+    """Obtain dict required to make a StationInfo for this station.
+
+    See StationInfo namedtuple above for explanation of the returned fields."""
     _LOG.debug('RPC:get_station_info() -> %s:%s', conf.station_id, self.UID)
     return {
         'station_id': conf.station_id,
@@ -628,6 +632,23 @@ class StationApi(object):
     return test_state.plug_manager.wait_for_plug_update(
         plug_type_name, current_state, timeout_s)
 
+  def _summary_for_state(self, state):
+    """Return a dict for state with counts swapped in for phase/log records."""
+    state_dict, event = state.asdict_with_event()
+    
+    state_dict_summary = {
+        k: v for k, v in state_dict.iteritems() if k != 'plugs'}
+    state_dict_summary['test_record'] = mutablerecords.CopyRecord(
+        state_dict_summary['test_record'])
+    state_dict_summary['test_record'].phases = len(
+        state_dict_summary['test_record'].phases)
+    state_dict_summary['test_record'].log_records = len(
+        state_dict_summary['test_record'].log_records)
+    state_dict_summary['running_phase_state'] = data.ConvertToBaseTypes(
+        state_dict_summary['running_phase_state'], tuple_type=list)
+
+    return state_dict_summary
+
   def wait_for_update(self, test_uid, remote_state_dict, timeout_s):
     """Long-poll RPC that blocks until there is new information available.
 
@@ -678,19 +699,7 @@ class StationApi(object):
           'RPC:wait_for_update() -> short-circuited wait (local was blank)')
       return self._serialize_state_dict(state._asdict())
 
-    state_dict, event = state.asdict_with_event()
-    # Make a copy with phase/log record counts swapped out for comparison with
-    # remote_state_dict.
-    state_dict_counts = {
-        k: v for k, v in state_dict.iteritems() if k != 'plugs'}
-    state_dict_counts['test_record'] = mutablerecords.CopyRecord(
-        state_dict_counts['test_record'])
-    state_dict_counts['test_record'].phases = len(
-        state_dict_counts['test_record'].phases)
-    state_dict_counts['test_record'].log_records = len(
-        state_dict_counts['test_record'].log_records)
-    state_dict_counts['running_phase_state'] = data.ConvertToBaseTypes(
-        state_dict_counts['running_phase_state'], tuple_type=list)
+    state_dict_summary = self._summary_for_state(state)
 
     # Deserialize the RemoteState fields for comparison.
     remote_state_dict = remote_state_dict and {
@@ -698,14 +707,14 @@ class StationApi(object):
         'test_record': pickle.loads(remote_state_dict['test_record'].data),
         'running_phase_state': remote_state_dict['running_phase_state'],
     }
-    if state_dict_counts != remote_state_dict:
+    if state_dict_summary != remote_state_dict:
       if not remote_state_dict:
         _LOG.debug(
             'RPC:wait_for_update() -> short-circuited wait (remote was blank)')
-      else:
+      elif _LOG.isEnabledFor(logging.DEBUG):
         log_msg = ['RPC:wait_for_update() -> short-circuited wait, diff:']
         log_msg.extend(
-            data.pprint_diff(remote_state_dict, state_dict_counts,
+            data.pprint_diff(remote_state_dict, state_dict_summary,
                              'remote_state', 'local_state'))
         _LOG.debug('\n'.join(log_msg))
 
@@ -798,19 +807,16 @@ class ApiServer(threading.Thread):
 
 # Singleton instances.
 STATION_API = StationApi()
-API_SERVER = None
+API_SERVER = ApiServer()
 
 def start_server():
-  # TODO(madsci): Blech, fix this. Suggestions?
-  global API_SERVER
-  if not API_SERVER and conf.station_api_port or conf.enable_station_discovery:
+  if not API_SERVER.isAlive() and (conf.station_api_port or
+      conf.enable_station_discovery):
     _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
                conf.station_api_port and int(conf.station_api_port),
                'en' if conf.enable_station_discovery else 'dis')
-    API_SERVER = ApiServer()
     API_SERVER.start()
 
 def stop_server():
-  if API_SERVER:
-    _LOG.debug('Stopping Station API server.')
-    API_SERVER.stop()
+  _LOG.debug('Stopping Station API server.')
+  API_SERVER.stop()

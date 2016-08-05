@@ -317,7 +317,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
         'start_time_millis': 0, # long(self.phase_record.start_time_millis),
         # We only serialize attachment hashes, they can be large.
         'attachments': {
-            name: attachment.sha256 for name, attachment in
+            name: attachment.sha1 for name, attachment in
             self.attachments.iteritems()
         },
         # Measurements have their own _asdict() implementation.

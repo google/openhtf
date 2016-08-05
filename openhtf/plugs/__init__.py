@@ -236,7 +236,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
       if plug_name not in seen:
         seen.add(plug_name)
         # Skip 'plugs.' prefix for URLs.
-        yield (functools.partial(cls, host, port, plug_name), plug_name[6:])
+        yield (functools.partial(cls, host, port, plug_name), plug_name)
 
 
 def plug(update_kwargs=True, **plugs):

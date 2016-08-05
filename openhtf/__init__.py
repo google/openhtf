@@ -396,8 +396,19 @@ class PhaseDescriptor(mutablerecords.Record(
     return new_info
 
   def __call__(self, test_state):
-    """ Args:
-          test_state: A TestState object (see test_state.py).
+    """Invoke this Phase, passing in the appropriate args.
+
+    By default, an openhtf.TestApi is passed as the first positional arg, but if
+    the 'requires_state' option is set, then a test_state.TestState is passed
+    instead. If no positional args are expected, then neither is passed in. In
+    any case, keyword args are passed in based on extra_kwargs, set via
+    WithArgs(), combined with plugs (plugs override extra_kwargs).
+
+    Args:
+      test_state: test_state.TestState for the currently executing Test.
+
+    Returns:
+      The return value from calling the underlying function.
     """
     kwargs = dict(self.extra_kwargs)
     kwargs.update(test_state.plug_manager.ProvidePlugs(
@@ -458,9 +469,10 @@ class TestApi(collections.namedtuple('TestApi', [
     attach_from_file: Attach binary data from a file, see
         TestState.attach_from_file().
 
-    notify_update: Notify any frontends of an interesting update.  Typically
+    notify_update: Notify any frontends of an interesting update. Typically
         this is automatically called internally when interesting things happen,
-        but it can be called by the user (takes no args).
+        but it can be called by the user (takes no args), for instance if
+        modifying test_record directly.
 
   Read-only Attributes:
     attachments: Dict mapping attachment name to test_record.Attachment
