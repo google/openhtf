@@ -40,10 +40,10 @@ import openhtf
 
 from openhtf import plugs
 from openhtf import util
+from openhtf.core import measurements
 from openhtf.core import test_record
 from openhtf.util import conf
 from openhtf.util import logs
-from openhtf.util import measurements
 from openhtf.util import threads
 
 conf.declare('allow_unset_measurements', default_value=False, description=\
