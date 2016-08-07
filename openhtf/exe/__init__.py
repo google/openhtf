@@ -148,6 +148,10 @@ class TestExecutor(threads.KillableThread):
         self._test_state = self._MakeTestState(dut_id, suppressor)
         executor = self._MakePhaseExecutor(exit_stack, suppressor)
 
+        if self._teardown_function:
+          exit_stack.callback(executor._ExecuteOnePhase, \
+            self._teardown_function, skip_record=True)
+
       # Everything is set, set status and begin test execution.  Note we don't
       # protect this with a try: block because the PhaseExecutor handles any
       # exceptions from test code.  Any exceptions here are caused by the
@@ -214,5 +218,5 @@ class TestExecutor(threads.KillableThread):
     else:
       self._test_state.SetStateFinished()
     # Run teardown function.
-    if self._teardown_function:
-      executor._ExecuteOnePhase(self._teardown_function, skip_record=True)
+    #if self._teardown_function:
+    #  executor._ExecuteOnePhase(self._teardown_function, skip_record=True)
