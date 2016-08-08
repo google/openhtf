@@ -31,6 +31,7 @@ from openhtf.io.output import mfg_inspector
 from openhtf.names import *
 # Uncomment for mfg-inspector output, requires setup.py build_proto.
 #from openhtf.io.output import mfg_inspector
+from openhtf.plugs import user_input
 from openhtf.util import units
 
 
@@ -49,10 +50,11 @@ def example_monitor(example):
         'widget_color').Doc('Color of the widget'),
     Measurement('widget_size').InRange(1, 4))
 @plug(example=example_plug.ExamplePlug)
-def hello_world(test, example):
+@plug(prompts=user_input.UserInput)
+def hello_world(test, example, prompts):
   """A hello world test phase."""
   test.logger.info('Hello World!')
-  test.measurements.widget_type = prompts.DisplayPrompt(
+  test.measurements.widget_type = prompts.prompt(
       'What\'s the widget type?', text_input=True)
   if test.measurements.widget_type == 'raise':
     raise Exception()
@@ -121,4 +123,4 @@ if __name__ == '__main__':
   #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
   test.Configure(teardown_function=teardown)
-  test.Execute(test_start=triggers.PromptForTestStart())
+  test.Execute(test_start=user_input.prompt_for_test_start())

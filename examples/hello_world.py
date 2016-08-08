@@ -34,6 +34,7 @@ from openhtf.io.output import json_factory
 # your namespace, you can manually import just the things you want, this
 # is just a convenience.  See names.py for an exhaustive list.
 from openhtf.names import *
+from openhtf.plugs import user_input
 
 
 # The @measures annotation notifies the OpenHTF framework that this test
@@ -84,4 +85,4 @@ if __name__ == '__main__':
   # not provided, the test will start immediately and assume the DUT ID will
   # be set later (OpenHTF will raise an exception when the test completes if
   # a DUT ID has not been set).
-  test.Execute(test_start=triggers.PromptForTestStart())
+  test.Execute(test_start=user_input.prompt_for_test_start())
