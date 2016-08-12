@@ -243,7 +243,7 @@ class PromptHandler(tornado.web.RequestHandler):
   def post(self, host, port, prompt_id):
     msg = json.JSONEncoder().encode(
         {'id': prompt_id, 'response': self.request.body})
-    self.store[host, port].Notify(msg)
+    self.store[host, int(port)].Notify(msg)
 
 
 def main(argv):
