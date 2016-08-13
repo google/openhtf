@@ -219,7 +219,8 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
   # pylint: enable=invalid-name,bad-super-call,too-few-public-methods
 
   __slots__ = ('_logger', '_lock', '_modules', '_declarations',
-               '_flag_values', '_flags', '_loaded_values', 'ARG_PARSER')
+               '_flag_values', '_flags', '_loaded_values', 'ARG_PARSER',
+               '__name__')
 
   def __init__(self, logger, lock, parser, **kwargs):
     """Initializes the configuration state.

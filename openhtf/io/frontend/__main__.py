@@ -76,6 +76,8 @@ conf.Declare('stations',
              default_value=[],
              description='List of manually declared stations.')
 
+#pylint: disable = W0221,W0223
+
 
 class Station(object):
   """Represents a station seen on the local network.
@@ -153,6 +155,7 @@ class StationStore(threading.Thread):
     self._disable_discovery = disable_discovery
     self._stop_event = threading.Event()
     self.stations = {}
+
 
     for station in conf.stations:
       hostport = (station['host'], int(station['port']))
