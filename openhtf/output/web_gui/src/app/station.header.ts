@@ -15,9 +15,13 @@
 
 declare var $: any;  // Global provided by the jquery package.
 
-import {Component, Input, OnInit} from 'angular2/core';
+import {
+  Component, 
+  Input, 
+  OnInit
+} from 'angular2/core';
 
-import {Countdown} from './utils';
+
 import 'file?name=/styles/station.header.css!./station.header.css';
 import 'file?name=/templates/station.header.html!./station.header.html';
 
@@ -27,8 +31,9 @@ import 'file?name=/templates/station.header.html!./station.header.html';
   styleUrls: ['styles/station.header.css']
 })
 export class StationHeader implements OnInit {
-  @Input() countdown: Countdown;
   @Input() stationInfo: any;
+  @Input() plugins: any[];
+  
 
   /**
    * Executed when this component's properties change.
@@ -36,6 +41,7 @@ export class StationHeader implements OnInit {
    */
   ngOnInit() {
     $('.navbar .indicator').addClass("blue lighten-1");
-    $(".dropdown-button").dropdown();
+    $('.history-nav').hide();
   }
+
 }

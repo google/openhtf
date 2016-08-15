@@ -5,16 +5,22 @@
         <div class="dutID">
           {{dutID || '---'}}
         </div>
-        <div>
-          <span class="label">start time: </span>
-          {{startTime && (startTime | date:'medium') || '---'}}
-        </div>
-        <div>
-          <span class="label">end time: </span>
-          {{endTime && (endTime | date:'medium') || '---'}}
+        <div *ngIf="!isSummary">
+          <div>
+            <span class="label">start time: </span>
+            {{startTime && (startTime | date:'medium') || '---'}}
+          </div>
+          <div>
+            <span class="label">end time: </span>
+            {{endTime && (endTime | date:'medium') || '---'}}
+          </div>
+          <div>
+            <span class="label">duration: </span>
+            {{(((endTime || currentMillis) - (startTime || currentMillis)) / 1000 | number:['1.0-0'])}}s
+          </div>
         </div>
     </div>
-    <div class="test-header-nav">
+    <div class="test-header-nav" *ngIf="!isSummary">
       <ul class="tabs">
         <li class="tab">
           <a href="#phases">
@@ -44,9 +50,10 @@
     </div>
     <div class="test-status-tag">
       {{status | simplifyStatus}}
-        <div class="duration" *ngIf="startTime">
-          {{(((endTime || currentMillis) - startTime) / 1000 | number:['1.0-0'])}}s
-        </div>
+      <div *ngIf="canStar">
+        <i class="material-icons" (click)="toggleStar($event)" *ngIf="starred">star</i>
+        <i class="material-icons" (click)="toggleStar($event)" *ngIf="!starred">star_border</i>
+      </div>
     </div>
   </div>
 </div>

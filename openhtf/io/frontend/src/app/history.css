@@ -1,0 +1,44 @@
+#dashboard {
+  padding: 0px 12px 0px 12px;
+}
+
+.card {
+  display: inline-block;
+  margin-right: 20px;
+  padding: 8px;
+}
+
+.cardfooter {
+  display: table;
+  font-size: 14pt;
+  min-width: 16ch;
+  max-width: 40ch;
+  width: 100%;
+}
+
+.details {
+  font-size: 10pt;
+}
+
+.leftcell {
+  display: table-cell;
+  vertical-align: bottom;
+}
+
+.rightcell {
+  display: table-cell;
+  text-align: right;
+  vertical-align: bottom;
+}
+
+.station-name {
+  font-size: 12pt;
+}
+
+.star {
+  vertical-align: bottom;
+}
+
+.unreachable-label {
+  font-size: 8pt;
+}

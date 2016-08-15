@@ -54,6 +54,7 @@ import signal
 import socket
 import sys
 import threading
+import importlib
 
 import requests
 import sockjs.tornado
@@ -327,7 +328,7 @@ class WebGuiServer(tornado.web.Application):
     def get(self):
       self.render('index.html', host=socket.gethostname(), port=self.port)
 
-  def __init__(self, discovery_interval_s, disable_discovery, http_port,
+  def __init__(self, discovery_interval_s, disable_discovery, http_port, plugins = [],
                dev_mode=False):
     self.store = StationStore(
         discovery_interval_s, disable_discovery,
@@ -343,9 +344,37 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:(?:[0-9]{1,3}\.){3}[0-9]{1,3})/(?:[0-9]{1,5})(?:/*)',
          self.MainHandler, {'port': http_port}),
-        (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path}),
-        (r'/(styles\.css)', tornado.web.StaticFileHandler, {'path': path}),
+        (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path})
     ] + dash_router.urls + station_router.urls
+
+    #Add plugins into handler_routes
+    if type(plugins) == list:
+      for name in plugins:
+        try:
+          #Import plugin package
+          plugin_module = importlib.import_module(name)
+          handler,deps = plugin_module.handler
+
+          #Add in handler dependencies 
+          dep_dict = {}
+          for dep in deps:
+            if dep == 'station_store':
+              dep_dict['station_store'] = self.store
+            elif dep == 'host':
+              dep_dict['host'] = socket.gethostname()
+            elif dep == 'port':
+              dep_dict['port'] = http_port
+            elif dep == 'path':
+              dep_dict['path'] = path
+            else: 
+              print("Unable to find dependancy "+dep)
+
+          #Add completed route to handler_routes
+          handler.append(dep_dict)
+          handler_routes.append(tuple(handler))
+        except:
+          print("Error: Unable to add "+name+" plugin.")
+
     super(WebGuiServer, self).__init__(
         handler_routes, template_path=path, static_path=path, debug=dev_mode)
     self.listen(http_port)

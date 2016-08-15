@@ -51,3 +51,7 @@
 :host >>> .indicator {
   height: 5px;
 }
+
+.history-nav{
+  margin-top: 23px;
+}

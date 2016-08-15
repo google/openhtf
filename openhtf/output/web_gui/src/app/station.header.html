@@ -2,23 +2,22 @@
 <div class="station-header">
   <div class="left">
     <div class="cardholder">
-    <!-- TODO(jethier): Indicate station online/offline status with color here 
-                        and possibly an "offline" tag after the name if the
-                        station is offline. -->
       <div class="card blue lighten-1 white-text">
-        <div class="navbar"><ul class="tabs">
+        <div class="navbar"><ul class="tabs main">
           <li class="tab"><a href="#current">
             <div class="nav-button">
               <div><i class="material-icons">bookmark</i></div>
               <div class="nav-label">CURRENT</div>
             </div>
           </a></li>
-          <li class="tab"><a href="#history">
-            <div class="nav-button">
-              <div><i class="material-icons">history</i></div>
-              <div class="nav-label">HISTORY</div>
-            </div>
-          </a></li>
+          <li class="tab" *ngFor="let plug of plugins">
+            <a href="#{{plug.tag}}">
+              <div class="nav-button">
+                <div><i class="material-icons">{{plug.icon || 'extension'}}</i></div>
+                <div class="nav-label">{{plug.label}}</div>
+              </div>
+            </a>
+          </li> 
         </ul></div>
       </div>
     </div>
@@ -37,5 +36,21 @@
          class="countdown">
       {{(countdown.millisRemaining / 1000) | number:['2.0-0']}}
     </div>
+  </div>
+  <!-- Tabs for Scout History plugin - will only show when on History tab -->
+  <div class="history-nav right">
+    <div class="navbar"><ul class="tabs">
+      <li class="tab"><a href="#testList">
+        <div class="nav-button">
+          <div><i class="material-icons blue-text text-lighten-1">toc</i></div>
+        </div>
+      </a></li>
+      <li class="tab"><a href="#starred">
+        <div class="nav-button">
+          <div><i class="material-icons blue-text text-lighten-1">star</i></div>
+        </div>
+      </a></li>
+    </ul></div>
+
   </div>
 </div>
