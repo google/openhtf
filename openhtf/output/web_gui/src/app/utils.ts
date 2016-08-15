@@ -62,6 +62,17 @@ export class StatusToColor extends MapPipe {
   };
 }
 
+/** A Pipe for turning status codes into materialize-css color classes.**/
+@Pipe({name: 'statusToTextColor'})
+export class StatusToTextColor extends MapPipe {
+  map = {
+    'PASS': 'green-text text-lighten-1',
+    'FAIL': 'red-text text-lighten-1',
+    'ERROR': 'yellow-text text-darken-3',
+  };
+}
+
+
 
 /** A Pipe for darkening status colors. **/
 @Pipe({name: 'statusToDark'})

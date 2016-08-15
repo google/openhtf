@@ -65,6 +65,8 @@ export class DashboardService extends SubscriptionService {
    * Open the sockjs connection. Attempt to reconnect after timeout.
    */
   onmessage(msg) {
-    this.updateListings(JSON.parse(msg.data));
+    if(typeof msg !== "undefined"){
+      this.updateListings(JSON.parse(msg.data));
+    }
   }
 }

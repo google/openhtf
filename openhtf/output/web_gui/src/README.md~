@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # OpenHTF Web GUI Client
 
 OpenHTF's web GUI client is an [Angular2](https://angular.io/) app written in
@@ -12,7 +13,7 @@ updated (with the contents of `dist/`) by doing `npm run update_prebuilt`.
 
 The web GUI client's main entry point is `app/main.ts`, and the app is set up
 to be loaded into the `<app>` element in `app/index.html`.
-
+=======
 # How to write a Plugin! 
 
 It is a truth universally acknowledged that an application with infinite 
@@ -147,4 +148,4 @@ npm run build
    ... 
 python -m openhtf.output.web_gui
 ```
-
+>>>>>>> 0d8d803... Plugin interface and example plugin

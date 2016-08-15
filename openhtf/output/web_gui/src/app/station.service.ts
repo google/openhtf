@@ -96,23 +96,25 @@ export class StationService extends SubscriptionService {
    *                  state: A serialized OpenHTF RemoteState instance.
    */
   onmessage(msg) {
-    this.reachable = true;
-    let parsedData = JSON.parse(msg.data);
-    let test_uid = parsedData.test_uid, state = parsedData.state;
-    if (!state) {
-      console.warn('Received an empty state update.');
-      return;
-    }
-    if (this.stationInfo.station_id != state.test_record.station_id) {
-      if (this.stationInfo.station_id == this.UNKNOWN_STATION_ID) {
-        this.stationInfo.station_id = state.test_record.station_id;
-      } else {
-        console.warn(
-            `Received a station_id that doesn't match the previous one: ` +
-            `${state.test_record.station_id}.`);
+    if(typeof msg !== "undefined"){
+      this.reachable = true;
+      let parsedData = JSON.parse(msg.data);
+      let test_uid = parsedData.test_uid, state = parsedData.state;
+      if (!state) {
+        console.warn('Received an empty state update.');
+        return;
       }
+      if (this.stationInfo.station_id != state.test_record.station_id) {
+        if (this.stationInfo.station_id == this.UNKNOWN_STATION_ID) {
+          this.stationInfo.station_id = state.test_record.station_id;
+        } else {
+          console.warn(
+              `Received a station_id that doesn't match the previous one: ` +
+              `${state.test_record.station_id}.`);
+        }
+      }
+      this.updateTest(test_uid, state);
     }
-    this.updateTest(test_uid, state);
   }
 
   onunsubscribe() {

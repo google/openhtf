@@ -58,10 +58,10 @@
 }
 
 
-.test-status-tag .duration {
+/*.test-vitals .duration {
   font-size: 12px;
   font-weight: 400;
-}
+}*/
 
 .test-vitals {
   display: table-cell;
