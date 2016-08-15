@@ -1,27 +1,38 @@
 <!-- Template for the Station component; top level of the Station view. -->
-<div>
+<div id="station">
   <station-header [countdown]="countdown"
-                  [state]="stationState"
-                  [ip]="ip"
-                  [port]="port">
+                  [stationInfo]="stationInfo">
   </station-header>
-  <div class="currentTab">
-    <prompt [framework]="stationState?.framework"></prompt>
-    <test-header
-      [dutID]="stationState?.test?.record?.dut_id"
-      [startTime]="stationState?.test?.record?.start_time_millis"
-      [endTime]="stationState?.test?.record?.end_time_millis"
-      [currentMillis]="currentMillis"
-      [status]="stationState?.test?.record?.outcome
-                || stationState?.framework?.status || 'OFFLINE'">
-    </test-header>
-    <phase-listing id="phases" [state]="stationState"
-                               [currentMillis]="currentMillis">
-    </phase-listing>
-    <logs id="logs" [test]="stationState?.test">
-    </logs>
-    <metadata id="metadata" [test]="stationState?.test">
-    </metadata>
+  <div class="currentTab" id="current">
+    <div *ngIf="tests.length == 0" class="big-message">
+      No tests available for display.
+    </div>
+    <div *ngFor="let test of tests">
+      <div class="test">
+        <test-header
+          [dutID]="test.test_record?.dut_id"
+          [startTime]="test.test_record?.start_time_millis"
+          [endTime]="test.test_record?.end_time_millis"
+          [currentMillis]="currentMillis"
+          [status]="test.test_record?.outcome
+                    || test.status || 'OFFLINE'">
+        </test-header>
+        <div class="test-content">
+          <phase-listing id="phases" [state]="test"
+                                     [currentMillis]="currentMillis">
+          </phase-listing>
+          <logs id="logs" [log_records]="test.test_record?.log_records">
+          </logs>
+          <metadata id="metadata" [metadata]="test.test_record.metadata">
+          </metadata>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="history">
+    <div class="big-message">
+      History feature coming soon!
+    </div>
   </div>
   <!-- TODO(jethier): Iterate over included station-level plugins and display
                       them here. Also need to wire them to tabs. -->

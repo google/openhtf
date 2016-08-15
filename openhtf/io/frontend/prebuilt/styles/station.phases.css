@@ -2,41 +2,46 @@
   font-weight: 300;
 }
 
-.header-row td {
+:host >>> .header-row td {
   font-size: 12px;
   font-weight: 300;
   padding: .3em 1em .5em 1em;
 }
 
-.header-row .outcome {
+:host >>> .header-row .outcome {
   text-align: right;
 }
 
-.measurement .name {
+:host >>> .measurement .name {
   border-bottom-left-radius: .3em;
   border-top-left-radius: .3em;
 }
 
-.measurement .outcome {
+:host >>> .measurement .outcome {
   border-bottom-right-radius: .3em;
   border-top-right-radius: .3em;
   font-weight: 600;
   text-align: right;
 }
 
-.measurement td {
+:host >>> .measurement .value {
+  max-width: 300px;
+  overflow-x: hidden;
+}
+
+:host >>> .measurement td {
   border-radius: 0;
   padding: .3em 1em .3em 1em;
 }
 
-.measurement-container {
-  text-align: center;
+:host >>> .measurement-container {
+  text-align: left;
   padding-top: 4px;
   padding-bottom: 4px;
   width: 100%;
 }
 
-.measurement-listing {
+:host >>> .measurement-listing {
   border-collapse: separate;
   border-spacing: 0px .3em;
   font-size: 14px;

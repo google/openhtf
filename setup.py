@@ -110,12 +110,13 @@ build.sub_commands.insert(0, ('build_proto', None))
 INSTALL_REQUIRES = [
     'contextlib2==0.5.1',
     'enum34==1.1.2',
-    'mutablerecords==0.2.9',
+    'mutablerecords==0.3.0',
     'oauth2client==1.5.2',
     'protobuf==2.6.1',
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
     'requests==2.9.1',
+    'sockjs-tornado==1.0.3',
     'tornado==4.3',
     'xlrd==1.0.0',
 ]
@@ -151,6 +152,7 @@ class PyTestCommand(test):
       cov = ' --cov openhtf ' + outputs
 
     sys.argv = [sys.argv[0]]
+    print('invoking pytest.main with %s' % (self.pytest_args + cov))
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
@@ -182,6 +184,7 @@ setup(
     ],
     tests_require=[
         'mock>=2.0.0',
-        'pytest==2.8.7',
+        'pytest>=2.9.2',
+        'pytest-cov>=2.2.1',
     ],
 )

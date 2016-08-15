@@ -27,9 +27,8 @@ and to optionally provide unit, type, and validation information.  Measurements
 are attached to Test Phases using the @measurements.measures() decorator.
 
 When measurements are output by the OpenHTF framework, the Measurement objects
-are serialized into the 'measurements' field on the PhaseRecord, and the values
-themselves are similarly output in the 'measured_values' field on the
-PhaseRecord.  See test_record.py for more information.
+are serialized into the 'measurements' field on the PhaseRecord, which contain
+both descriptor fields, outcome (PASS/FAIL/UNSET), and the values themselves.
 
 Validation of undimensioned measurements happens when they are set, so that
 users of the HTTP API can see PASS/FAIL outcome on those measurements
@@ -106,7 +105,8 @@ class Measurement(  # pylint: disable=no-init
     mutablerecords.Record(
         'Measurement', ['name'],
         {'units': None, 'dimensions': None, 'docstring': None,
-         'validators': list, 'outcome': Outcome.UNSET})):
+         '_notification_cb': None, 'validators': list, 'outcome': Outcome.UNSET,
+         'measured_value': None})):
   """Record encapsulating descriptive data for a measurement.
 
   This record includes an _asdict() method so it can be easily output.  Output
@@ -120,7 +120,54 @@ class Measurement(  # pylint: disable=no-init
     dimensions: Tuple of UOM codes for units of dimensions.
     validators: List of callable validator objects to perform pass/fail checks.
     outcome: One of the Outcome() enumeration values, starting at UNSET.
+    measured_value: An instance of MeasuredValue or DimensionedMeasuredValue
+      containing the value(s) of this Measurement that have been set, if any.
   """
+
+  def __init__(self, name, **kwargs):
+    super(Measurement, self).__init__(name, **kwargs)
+    self._initialize_value()
+
+  def _initialize_value(self):
+    if self.measured_value and self.measured_value.is_value_set:
+      raise ValueError('Cannot update a Measurement once a value is set.')
+
+    if self.dimensions:
+      self.measured_value = DimensionedMeasuredValue(
+          self.name, len(self.dimensions))
+    else:
+      self.measured_value = MeasuredValue(self.name)
+
+  def __setattr__(self, attr, value):
+    super(Measurement, self).__setattr__(attr, value)
+    # When dimensions changes, we may need to update our measured_value type.
+    if attr == 'dimensions':
+      self._initialize_value()
+
+  def __setstate__(self, state):
+    """Set this record's state during unpickling.
+
+    This override is necessary to ensure that the the _initialize_value check
+    is skipped during unpickling.
+    """
+    dimensions = state.pop('dimensions')
+    super(Measurement, self).__setstate__(state)
+    object.__setattr__(self, 'dimensions', dimensions)
+
+  def set_notification_callback(self, notification_cb):
+    """Set the notifier we'll call when measurements are set."""
+    self._notification_cb = notification_cb
+    if not notification_cb and self.dimensions:
+      self.measured_value.notify_value_set = None
+    return self
+
+  def notify_value_set(self):
+    if self.dimensions:
+      self.outcome = Outcome.PARTIALLY_SET
+    else:
+      self.validate()
+    if self._notification_cb:
+      self._notification_cb()
 
   def Doc(self, docstring):
     """Set this Measurement's docstring, returns self for chaining."""
@@ -155,7 +202,7 @@ class Measurement(  # pylint: disable=no-init
     return self
 
   def WithArgs(self, **kwargs):
-    """Creates a new Measurement, see openhtf.PhaseInfo.WithArgs."""
+    """Creates a new Measurement, see openhtf.PhaseDescriptor.WithArgs."""
     new_meas = mutablerecords.CopyRecord(self)
     if '{' in new_meas.name:
       formatter = lambda x: x.format(**kwargs) if x else x
@@ -179,10 +226,10 @@ class Measurement(  # pylint: disable=no-init
       return self.WithValidator(getattr(validators, attr)(*args, **kwargs))
     return _WithValidator
 
-  def Validate(self, value):
+  def validate(self):
     """Validate this measurement and update its 'outcome' field."""
     # PASS if all our validators return True, otherwise FAIL.
-    if all(v(value) for v in self.validators):
+    if all(v(self.measured_value.value) for v in self.validators):
       self.outcome = Outcome.PASS
     else:
       self.outcome = Outcome.FAIL
@@ -194,6 +241,9 @@ class Measurement(  # pylint: disable=no-init
         'name': self.name,
         'outcome': self.outcome,
     }
+    if self.measured_value.is_value_set:
+      retval['measured_value'] = self.measured_value.value
+
     if len(self.validators):
       retval['validators'] = [str(v) for v in self.validators]
     for attr in ('units', 'dimensions', 'docstring'):
@@ -201,15 +251,10 @@ class Measurement(  # pylint: disable=no-init
         retval[attr] = getattr(self, attr)
     return retval
 
-  def MakeUnsetValue(self):
-    """Create an unset MeasuredValue for this measurement."""
-    if self.dimensions:
-      return DimensionedMeasuredValue(self.name, len(self.dimensions), self)
-    else:
-      return MeasuredValue(self.name, self)
 
-
-class MeasuredValue(object):
+class MeasuredValue(
+    mutablerecords.Record('MeasuredValue', ['name'],
+                          {'stored_value': None, 'is_value_set': False})):
   """Class encapsulating actual values measured.
 
   Note that this is really just a value wrapper with some sanity checks.  See
@@ -223,23 +268,26 @@ class MeasuredValue(object):
   on both of them.
   """
 
-  def __init__(self, name, measurement):
-    self.name = name
-    self.measurement = measurement
-    self.stored_value = None
-    # Track this so we can differentiate between unset and set-to-None.
-    self.value_set = False
+  def __str__(self):
+    return str(self.value) if self.is_value_set else 'UNSET'
+
+  def __eq__(self, other):
+    return (type(self) == type(other) and self.name == other.name and
+            self.is_value_set == other.is_value_set and
+            self.stored_value == other.stored_value)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
   @property
   def value(self):
-    if not self.value_set:
+    if not self.is_value_set:
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return self.stored_value
 
-  @value.setter
-  def value(self, value):
+  def set(self, value):
     """Set the value for this measurement, with some sanity checks."""
-    if self.value_set:
+    if self.is_value_set:
       # While we want to *allow* re-setting previously set measurements, we'd
       # rather promote the use of multidimensional measurements instead of
       # discarding data, so we make this somewhat chatty.
@@ -250,23 +298,27 @@ class MeasuredValue(object):
     if value is None:
       _LOG.warning('Measurement %s is set to None', self.name)
     self.stored_value = value
-    self.value_set = True
-    self.measurement.Validate(self.value)
+    self.is_value_set = True
 
 
-class DimensionedMeasuredValue(object):
+class DimensionedMeasuredValue(mutablerecords.Record(
+    'DimensionedMeasuredValue', ['name', 'num_dimensions'],
+    {'notify_value_set': None, 'value_dict': collections.OrderedDict})):
   """Class encapsulating actual values measured.
 
   See the MeasuredValue class docstring for more info.  This class provides a
   dict-like interface for indexing into dimensioned measurements.
   """
+  def __str__(self):
+    return str(self.value) if self.is_value_set else 'UNSET'
 
-  def __init__(self, name, num_dimensions, measurement):
-    assert num_dimensions > 0, 'Must have 1 or more dimensions'
-    self.name = name
-    self.num_dimensions = num_dimensions
-    self.measurement = measurement
-    self.value_dict = collections.OrderedDict()
+  def with_notify(self, notify_value_set):
+    self.notify_value_set = notify_value_set
+    return self
+
+  @property
+  def is_value_set(self):
+    return len(self.value_dict) > 0
 
   def __iter__(self):  # pylint: disable=invalid-name
     """Iterate over items, allows easy conversion to a dict."""
@@ -289,7 +341,8 @@ class DimensionedMeasuredValue(object):
           'Overriding previous measurement %s[%s] value of %s with %s',
           self.name, coordinates, self.value_dict[coordinates], value)
     self.value_dict[coordinates] = value
-    self.measurement.outcome = Outcome.PARTIALLY_SET
+    if self.notify_value_set:
+      self.notify_value_set()
 
   def __getitem__(self, coordinates):  # pylint: disable=invalid-name
     # Wrap single dimensions in a tuple so we can assume value_dict keys are
@@ -304,15 +357,16 @@ class DimensionedMeasuredValue(object):
 
     Returns:
       A list of tuples; the last element of each tuple will be the measured
-    value, the other elements will be the assocated coordinates.  The tuples
-    are output in the order in which they were set.
+      value, the other elements will be the assocated coordinates.  The tuples
+      are output in the order in which they were set.
     """
+    if not self.is_value_set:
+      raise MeasurementNotSetError('Measurement not yet set', self.name)
     return [dimensions + (value,) for dimensions, value in
             self.value_dict.iteritems()]
 
 
-class Collection(mutablerecords.Record('Collection', ['_measurements'],
-                                       {'_values': dict})):
+class Collection(mutablerecords.Record('Collection', ['_measurements'])):
   """Encapsulates a collection of measurements.
 
   This collection can have measurement values retrieved and set via getters and
@@ -363,7 +417,8 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
 
   def __iter__(self):  # pylint: disable=invalid-name
     """Extract each MeasurementValue's value."""
-    return ((key, val.value) for key, val in self._values.iteritems())
+    return ((key, meas.measured_value.value)
+            for key, meas in self._measurements.iteritems())
 
   def __setattr__(self, name, value):  # pylint: disable=invalid-name
     self[name] = value
@@ -376,24 +431,18 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'],
     if self._measurements[name].dimensions:
       raise InvalidDimensionsError(
           'Cannot set dimensioned measurement without indices')
-    if name not in self._values:
-      self._values[name] = self._measurements[name].MakeUnsetValue()
-    self._values[name].value = value
+    self._measurements[name].measured_value.set(value)
+    self._measurements[name].notify_value_set()
 
   def __getitem__(self, name):  # pylint: disable=invalid-name
     self._AssertValidKey(name)
 
-    # __getitem__ is used to set dimensioned values via __setitem__ on the
-    # DimensionedMeasuredValue object, so we can't do any checking here.
     if self._measurements[name].dimensions:
-      if name not in self._values:
-        self._values[name] = self._measurements[name].MakeUnsetValue()
-      return self._values[name]
+      return self._measurements[name].measured_value.with_notify(
+          self._measurements[name].notify_value_set)
 
-    # For regular measurements, however, we can check that it's been set.
-    if name not in self._values:
-      raise MeasurementNotSetError('Measurement not yet set', name)
-    return self._values[name].value
+    # Return the MeasuredValue's value, MeasuredValue will raise if not set.
+    return self._measurements[name].measured_value.value
 
 
 def measures(*measurements, **kwargs):
@@ -436,7 +485,7 @@ def measures(*measurements, **kwargs):
   # 'measurements' is guaranteed to be a list of Measurement objects here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
-    phase = openhtf.PhaseInfo.WrapOrCopy(wrapped_phase)
+    phase = openhtf.PhaseDescriptor.WrapOrCopy(wrapped_phase)
     duplicate_names = (set(m.name for m in measurements) &
                        set(m.name for m in phase.measurements))
     if duplicate_names:

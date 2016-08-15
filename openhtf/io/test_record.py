@@ -17,6 +17,7 @@
 
 
 import collections
+import hashlib
 import inspect
 import logging
 import os
@@ -35,17 +36,23 @@ class InvalidMeasurementDimensions(Exception):
   """Raised when a measurement is taken with the wrong number of dimensions."""
 
 
-Attachment = collections.namedtuple('Attachment', 'data mimetype')
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
-Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT'])
+Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])
 # LogRecord is in openhtf.util.logs.LogRecord.
+
+
+class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
+  """Encapsulate attachment data and guessed MIME type."""
+  @property
+  def sha1(self):
+    return hashlib.sha1(self.data).hexdigest()
 
 
 class TestRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
-        {'start_time_millis': util.TimeMillis, 'end_time_millis': None,
+        {'start_time_millis': None, 'end_time_millis': None,
          'outcome': None, 'outcome_details': list,
          'code_info': None,
          'metadata': dict,
@@ -65,20 +72,24 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
 class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
     mutablerecords.Record(
         'PhaseRecord', ['name', 'codeinfo'],
-        {'measurements': None, 'measured_values': None,
+        {'measurements': None,
          'start_time_millis': None, 'end_time_millis': None,
-         'attachments': dict, 'result': None, 'docstring': None})):
+         'attachments': dict, 'result': None})):
   """The record of a single run of a phase.
 
   Measurement metadata (declarations) and values are stored in separate
   dictionaries, each of which map measurement name to the respective object.  In
-  the case of the measurements field, those objects are measurements.Declaration
-  instances.  In the case of measured_values, the objects stored are either
-  single values (in the case of dimensionless measurements) or lists of value
-  tuples (in the case of dimensioned measurements).
+  the case of the measurements field, those objects are measurements.Measurement
+  instances.  The 'value' attribute of each of those instances is an instance of
+  measurments.MeasuredValue, which contains either a single value, or a list of
+  values in the case of a dimensioned measurement.
 
   See measurements.Record.GetValues() for more information.
   """
+
+  @classmethod
+  def FromDescriptor(cls, phase_desc):
+    return cls(phase_desc.name, phase_desc.code_info)
 
 
 def _GetSourceSafely(obj):
