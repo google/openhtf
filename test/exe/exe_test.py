@@ -47,25 +47,24 @@ def phase_two(test, test_plug):
   print 'phase_two completed'
 
 
-class TestOpenhtf(unittest.TestCase):
+class TestExecutor(unittest.TestCase):
 
   def __init__(self, unittest_name):
-    super(TestOpenhtf, self).__init__(unittest_name)
+    super(TestExecutor, self).__init__(unittest_name)
 
   def setUp(self):
     self.test_plug_type = UnittestPlug
-    conf.Load(target_name='unittest_openhtf', test_start='frontend_serial')
 
   def test_plug_map(self):
     test = openhtf.Test(phase_one, phase_two)
-    self.assertIn(self.test_plug_type, test.data.plug_types)
+    self.assertIn(self.test_plug_type, test.descriptor.plug_types)
 
   # Mock test execution.
   def testTestExecutor(self):
     mock_starter = mock.Mock(spec=exe.TestExecutor)
-    mock_starter.Start()
-    mock_starter.Wait()
-    mock_starter.Stop()
+    mock_starter.start()
+    mock_starter.wait()
+    mock_starter.stop()
 
   def testClassString(self):
     check_list = ['PhaseExecutorThread', 'phase_one']

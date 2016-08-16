@@ -18,6 +18,7 @@
 import argparse
 import collections
 import copy
+import functools
 import inspect
 import itertools
 import json
@@ -26,6 +27,7 @@ import signal
 import socket
 import sys
 import threading
+import weakref
 
 import mutablerecords
 
@@ -37,9 +39,10 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.exe import phase_executor
 from openhtf.exe import triggers
-from openhtf.io import http_api
+from openhtf.io import station_api
 from openhtf.io import test_record
 from openhtf.io import user_input
+from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import measurements
@@ -56,8 +59,16 @@ __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
 
 
+class UnrecognizedTestUidError(Exception):
+  """Raised when information is requested about an unknown Test UID."""
+
+
 class InvalidTestPhaseError(Exception):
   """Raised when an invalid method is decorated."""
+
+
+class InvalidTestStateError(Exception):
+  """Raised when an operation is attempted in an invalid state."""
 
 
 class Test(object):
@@ -77,50 +88,84 @@ class Test(object):
   .Execute()'d in a separate thread.
   """
 
+  TEST_INSTANCES = weakref.WeakValueDictionary()
+
   def __init__(self, *phases, **metadata):
+    # Some sanity checks on special metadata keys we automatically fill in.
+    if 'config' in metadata:
+      raise KeyError(
+          'Invalid metadata key "config", it will be automatically populated.')
+
+    self.created_time_millis = util.TimeMillis()
+    self.last_run_time_millis = None
     code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
+    self._test_desc = TestDescriptor(self.uid, phases, code_info, metadata)
     self._test_options = TestOptions()
-    self._test_data = TestData(phases, metadata=metadata, code_info=code_info)
-    self._test_data.metadata['config'] = conf._asdict()
     self._lock = threading.Lock()
     self._executor = None
+
     # Make sure Configure() gets called at least once before Execute().  The
     # user might call Configure() again to override options, but we don't want
     # to force them to if they want to use defaults.  For default values, see
     # the class definition of TestOptions.
-    self.Configure()
-    # TODO(madsci): Fix this to play nice with multiple Test instances.
-    signal.signal(signal.SIGINT, self.StopFromSigInt)
+    if 'test_name' in metadata:
+      # Allow legacy metadata key for specifying test name.
+      self.Configure(name=metadata['test_name'])
+    else:
+      self.Configure()
 
-  def AddOutputCallback(self, callback):
-    """DEPRECATED: Use AddOutputCallbacks() instead."""
-    # TODO(madsci): Remove this before we push to PyPI, here for transitionary
-    # purposes.
-    raise AttributeError(
-        'DEPRECATED, use AddOutputCallbacks() instead of AddOutputCallback()')
+    self.TEST_INSTANCES[self.uid] = self
+    # This is a noop if the server is already running, otherwise start it now
+    # that we have at least one Test instance.
+    station_api.start_server()
+
+  @classmethod
+  def state_by_uid(cls, test_uid):
+    """Get TestState of a test by UID.
+
+    Returns: TestState of currently running test, given by test_uid.
+
+    Raises:
+      UnrecognizedTestUidError: If the test_uid is not recognized.
+    """
+    test = cls.TEST_INSTANCES.get(test_uid)
+    if not test:
+      raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
+    return test.state
+
+  @property
+  def uid(self):
+    """Return a unique identifier for this Test instance.
+
+    Note that this identifier must be unique across Python invokations, so the
+    station_api UID is used as a prefix to guarantee that.  Test UID's need not
+    be unique across different hosts.
+    """
+    return '%s:%s' % (station_api.STATION_API.UID, id(self))
+
+  @property
+  def descriptor(self):
+    """Static data about this test, does not change across Execute() calls."""
+    return self._test_desc
+
+  @property
+  def state(self):
+    """Transient state info about the currently executing test, or None."""
+    with self._lock:
+      if self._executor:
+        return self._executor.test_state
+
+  def GetOption(self, option):
+    return getattr(self._test_options, option)
 
   def AddOutputCallbacks(self, *callbacks):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def OutputTestRecord(self, record):
-    """Feed the record of this test to all output modules."""
-    for output_cb in self._test_options.output_callbacks:
-      try:
-        output_cb(record)
-      except Exception:
-        _LOG.exception(
-            'Output callback %s errored out; continuing anyway', output_cb)
-
-  @property
-  def data(self):
-    return self._test_data
-
   def Configure(self, **kwargs):
     """Update test-wide configuration options.
 
     Valid kwargs:
-      http_port: Port on which to run the http_api, or None to disable.
       output_callbacks: List of output callbacks to run, typically it's better
           to use AddOutputCallbacks(), but you can pass [] here to reset them.
       teardown_function: Function to run at teardown.  We pass the same
@@ -133,89 +178,100 @@ class Test(object):
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
-  def StopFromSigInt(self, *_):
-    """Stop test execution as abruptly as we can, only in response to SIGINT."""
-    _LOG.error('Received SIGINT.')
-    with self._lock:
-      _LOG.error('Stopping Test due to SIGINT')
-      if self._executor:
-        # TestState str()'s nicely to a descriptive string, so let's log that
-        # just for good measure.
-        _LOG.error('Test state: %s', self._executor.GetState())
-        self._executor.Stop()
-        self._executor = None
+  @classmethod
+  def HandleSigInt(cls, *_):
+    if cls.TEST_INSTANCES:
+      _LOG.error('Received SIGINT, stopping all tests.')
+      for test in cls.TEST_INSTANCES.values():
+        test.StopFromSigInt()
+    station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.
     raise KeyboardInterrupt()
 
-  def Execute(self, test_start=None, loop=None):
+  def StopFromSigInt(self):
+    """Stop test execution as abruptly as we can, only in response to SIGINT."""
+    with self._lock:
+      _LOG.error('Stopping %s due to SIGINT', self)
+      if self._executor:
+        # TestState str()'s nicely to a descriptive string, so let's log that
+        # just for good measure.
+        _LOG.error('Test state: %s', self._executor.test_state)
+        self._executor.stop()
+
+  def Execute(self, test_start=None):
     """Starts the framework and executes the given test.
 
     Args:
       test_start: Trigger for starting the test, defaults to not setting the DUT
           serial number.
-      loop: DEPRECATED
     """
-    # TODO(madsci): Remove this after a transitionary period.
-    if loop is not None:
-      raise ValueError(
-          'DEPRECATED. Looping is no longer natively supported by OpenHTF, '
-          'use a while True: loop around Test.Execute() instead.')
-
-    # We have to lock this section to ensure we don't call
-    # TestExecutor.StopFromSigInt() in self.Stop() between instantiating it and
-    # .Start()'ing it.
+    # Lock this section so we don't .stop() the executor between instantiating
+    # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
-      self._executor = exe.TestExecutor(self._test_data, plugs.PlugManager(),
-                                        self._test_options.teardown_function)
-      _LOG.info('Executing test: %s', self.data.code_info.name)
-      self._executor.SetTestStart(test_start)
-      http_server = None
-      if self._test_options.http_port:
-        http_server = http_api.Server(
-            self._executor, self._test_options.http_port)
-        http_server.Start()
+      # Sanity check to make sure someone isn't doing something weird like
+      # trying to Execute() the same test twice in two separate threads.  We
+      # hold the lock between here and Start()'ing the executor to guarantee
+      # that only one thread is successfully executing the test.
+      if self._executor:
+        raise InvalidTestStateError('Test already running', self._executor)
 
-      self._executor.Start()
+      # Snapshot some things we care about and store them.
+      self._test_desc.metadata['test_name'] = self._test_options.name
+      self._test_desc.metadata['config'] = conf._asdict()
+      self.last_run_time_millis = util.TimeMillis()
+
+      self._executor = exe.TestExecutor(
+          self._test_desc, test_start, self._test_options.teardown_function)
+      _LOG.info('Executing test: %s', self.descriptor.code_info.name)
+      self._executor.start()
 
     try:
-      self._executor.Wait()
+      self._executor.wait()
     finally:
-      # If the framework doesn't transition from INITIALIZING to EXECUTING
-      # then test state isn't set and there's no record to output.
-      if self._executor and self._executor.GetState():
-        record = self._executor.GetState().GetFinishedRecord()
-        self.OutputTestRecord(record)
-      if http_server:
-        http_server.Stop()
-      self._executor = None
+      try:
+        final_state = self._executor.finalize()
+
+        _LOG.debug('Test completed for %s, saving to history and outputting.',
+                   final_state.test_record.metadata['test_name'])
+        for output_cb in (self._test_options.output_callbacks +
+                          [functools.partial(history.append_record, self.uid)]):
+          try:
+            output_cb(final_state.test_record)
+          except Exception:
+            _LOG.exception(
+                'Output callback %s raised; continuing anyway', output_cb)
+      finally:
+        self._executor = None
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
-    'http_port': http_api.DEFAULT_HTTP_PORT,
+    'name': 'OpenHTF Test',
     'output_callbacks': list,
     'teardown_function': None,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults."""
 
 
-class TestData(collections.namedtuple(
-    'TestData', ['phases', 'code_info', 'metadata'])):
+class TestDescriptor(collections.namedtuple(
+    'TestDescriptor', ['uid', 'phases', 'code_info', 'metadata'])):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
   by the framework along the way.
 
   Attributes:
-    phases: The phases to execute for this test.
+    uid: Test UID for this Test.
+    phases: The phases to execute for this Test.
     metadata: Any metadata that should be associated with test records.
-    code_info: Information about the module that created the test.
+    code_info: Information about the module that created the Test.
   """
 
-  def __new__(cls, phases, code_info, metadata):
-    phases = [PhaseInfo.WrapOrCopy(phase) for phase in phases]
-    return super(TestData, cls).__new__(cls, phases, code_info, metadata)
+  def __new__(cls, uid, phases, code_info, metadata):
+    phases = [PhaseDescriptor.WrapOrCopy(phase) for phase in phases]
+    return super(TestDescriptor, cls).__new__(
+        cls, uid, phases, code_info, metadata)
 
   @property
   def plug_types(self):
@@ -246,14 +302,17 @@ def CreateArgParser(add_help=False):
 PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
 
 
-class PhaseOptions(mutablerecords.Record(
-    'PhaseOptions', [], {'timeout_s': None, 'run_if': None})):
+class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
+    'timeout_s': None, 'run_if': None, 'requires_state': None})):
   """Options used to override default test phase behaviors.
 
   Attributes:
     timeout_s: Timeout to use for the phase, in seconds.
-    run_if: Callback that decides whether to run the phase or not.  The
-      callback will be passed the phase_data the phase would be run with.
+    run_if: Callback that decides whether to run the phase or not.
+    requires_state: If True, pass the whole TestState into the first argument,
+        otherwise only the TestApi will be passed in.  This is useful if a
+        phase needs to wrap another phase for some reason, as
+        PhaseDescriptors can only be invoked with a TestState instance.
 
   Example Usage:
     @PhaseOptions(timeout_s=1)
@@ -261,8 +320,15 @@ class PhaseOptions(mutablerecords.Record(
       pass
   """
 
+  def update(self, **kwargs):
+    for k, v in kwargs.iteritems():
+      if k not in self.__slots__:
+        raise AttributeError('Type %s does not have attribute %s' % (
+            type(self).__name__, k))
+      setattr(self, k, v)
+
   def __call__(self, phase_func):
-    phase = PhaseInfo.WrapOrCopy(phase_func)
+    phase = PhaseDescriptor.WrapOrCopy(phase_func)
     for attr in self.__slots__:
       value = getattr(self, attr)
       if value is not None:
@@ -275,14 +341,14 @@ class PhasePlug(mutablerecords.Record(
   """Information about the use of a plug in a phase."""
 
 
-class PhaseInfo(mutablerecords.Record(
-    'PhaseInfo', ['func', 'code_info'],
+class PhaseDescriptor(mutablerecords.Record(
+    'PhaseDescriptor', ['func', 'code_info'],
     {'options': PhaseOptions, 'plugs': list, 'measurements': list,
      'extra_kwargs': dict})):
   """Phase function and related information.
 
   Attributes:
-    func: Function to be called (with phase_data as first argument).
+    func: Function to be called (with TestApi as first argument).
     code_info: Info about the source code of func.
     options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
@@ -290,22 +356,27 @@ class PhaseInfo(mutablerecords.Record(
   """
 
   @classmethod
-  def WrapOrCopy(cls, func):
-    """Return a new PhaseInfo from the given function or instance.
+  def WrapOrCopy(cls, func, **options):
+    """Return a new PhaseDescriptor from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different
     options, plugs, measurements, etc.
 
     Args:
-      func: A phase function or PhaseInfo instance.
+      func: A phase function or PhaseDescriptor instance.
+      **options: Options to update on the result.
 
     Returns:
-      A new PhaseInfo object.
+      A new PhaseDescriptor object.
     """
-    if not isinstance(func, cls):
-      func = cls(func, test_record.CodeInfo.ForFunction(func))
-    # We want to copy so that a phase can be reused with different options, etc.
-    return mutablerecords.CopyRecord(func)
+    if isinstance(func, cls):
+      # We want to copy so that a phase can be reused with different options
+      # or kwargs.  See WithArgs() below for more details.
+      retval = mutablerecords.CopyRecord(func)
+    else:
+      retval = cls(func, test_record.CodeInfo.ForFunction(func))
+    retval.options.update(**options)
+    return retval
 
   @property
   def name(self):
@@ -324,16 +395,105 @@ class PhaseInfo(mutablerecords.Record(
     new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
     return new_info
 
-  def __call__(self, phase_data):
+  def __call__(self, test_state):
+    """Invoke this Phase, passing in the appropriate args.
+
+    By default, an openhtf.TestApi is passed as the first positional arg, but if
+    the 'requires_state' option is set, then a test_state.TestState is passed
+    instead. If no positional args are expected, then neither is passed in. In
+    any case, keyword args are passed in based on extra_kwargs, set via
+    WithArgs(), combined with plugs (plugs override extra_kwargs).
+
+    Args:
+      test_state: test_state.TestState for the currently executing Test.
+
+    Returns:
+      The return value from calling the underlying function.
+    """
     kwargs = dict(self.extra_kwargs)
-    kwargs.update(phase_data.plug_manager.ProvidePlugs(
+    kwargs.update(test_state.plug_manager.ProvidePlugs(
         (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
-    # Pass in phase_data if it takes *args, or **kwargs with at least 1
+    # Pass in test_api if the phase takes *args, or **kwargs with at least 1
     # positional, or more positional args than we have keyword args.
     if arg_info.varargs or (arg_info.keywords and len(arg_info.args) >= 1) or (
         len(arg_info.args) > len(kwargs)):
-      # Underlying function has room for phase_data as an arg. If it doesn't
+      # Underlying function has room for test_api as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
-      return self.func(phase_data, **kwargs)
+      return self.func(
+          test_state if self.options.requires_state else test_state.test_api,
+          **kwargs)
     return self.func(**kwargs)
+
+
+class TestApi(collections.namedtuple('TestApi', [
+    'logger', 'state', 'test_record', 'measurements', 'attachments',
+    'attach', 'attach_from_file', 'notify_update'])):
+  """Class passed to test phases as the first argument.
+
+  Attributes:
+    dut_id: This attribute provides getter and setter access to the DUT ID
+        of the device under test by the currently running openhtf.Test.  A
+        non-empty DUT ID *must* be set by the end of a test, or no output
+        will be produced.  It may be set via return value from a callable
+        test_start argument to openhtf.Test.Execute(), or may be set in a
+        test phase via this attribute.
+
+    logger: A Python Logger instance that can be used to log to the resulting
+        TestRecord.  This object supports all the usual log levels, and
+        outputs to stdout (configurable) and the frontend via the Station
+        API, if it's enabled, in addition to the 'log_records' attribute
+        of the final TestRecord output by the running test.
+
+    measurements: A measurements.Collection object used to get/set
+        measurement values.  See util/measurements.py for more implementation
+        details, but in the simple case, set measurements directly as
+        attributes on this object (see examples/measurements.py for examples).
+
+    state: A dict (initially empty) that is persisted across test phases (but
+        resets for every invokation of Execute() on an openhtf.Test).  This
+        can be used for any test-wide state you need to persist across phases.
+        Use this with caution, however, as it is not persisted in the output
+        TestRecord or displayed on the web frontend in any way.
+
+    test_record: A reference to the output TestRecord for the currently
+        running openhtf.Test.  Direct access to this attribute is *strongly*
+        discouraged, but provided as a catch-all for interfaces not otherwise
+        provided by TestApi.  If you find yourself using this, please file a
+        feature request for an alternative at:
+          https://github.com/google/openhtf/issues/new
+
+  Callable Attributes:
+    attach: Attach binary data to the test, see TestState.attach().
+
+    attach_from_file: Attach binary data from a file, see
+        TestState.attach_from_file().
+
+    notify_update: Notify any frontends of an interesting update. Typically
+        this is automatically called internally when interesting things happen,
+        but it can be called by the user (takes no args), for instance if
+        modifying test_record directly.
+
+  Read-only Attributes:
+    attachments: Dict mapping attachment name to test_record.Attachment
+        instance containing the data that was attached (and the MIME type
+        that was assumed based on extension, if any).  Only attachments
+        that have been attached in the current phase show up here, and this
+        attribute should not be modified directly; use TestApi.attach() or
+        TestApi.attach_from_file() instead.
+  """
+  @property
+  def dut_id(self):
+    return self.test_record.dut_id
+
+  @dut_id.setter
+  def dut_id(self, dut_id):
+    if self.test_record.dut_id:
+      self.logger.warning('Overriding previous DUT ID "%s" with "%s".',
+                          self.test_record.dut_id, dut_id)
+    self.test_record.dut_id = dut_id
+    self.notify_update()
+
+
+# Register signal handler to stop all tests on SIGINT.
+signal.signal(signal.SIGINT, Test.HandleSigInt)

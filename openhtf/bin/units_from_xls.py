@@ -109,7 +109,6 @@ ALL_UNITS = []
 NO_DIMENSION = UnitDescriptor('No dimension', 'NDL', None)
 ALL_UNITS.append(NO_DIMENSION)
 NONE = UnitDescriptor('None', None, None)
-ALL_UNITS.append(NONE)
 '''
 
 POST = '''

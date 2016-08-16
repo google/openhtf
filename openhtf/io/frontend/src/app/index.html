@@ -13,20 +13,34 @@
   <base href="/">
   <body>
     <div class="nav-wrapper blue lighten-1 white-text">
-      <div id="title_bar">
+      <div id="title-bar">
         <div>
         <div id="title">
           <a href="/" class="white-text">OpenHTF</a>
         </div>
-          <div id="served_tag">
-            <span class="served_message">frontend served on </span>
-            <span class="served_stats">{{host}}:{{port}}</span>
+          <div id="served-tag">
+            <span class="served-message">web gui served on </span>
+            <span class="served-stats">{{host}}:{{port}}</span>
           </div>
         </div>
       </div>
     </div>
     <div id="content" class="container">
-      <app>loading...</app>
+      <app>
+        <div class="preloader center-align">
+        <div class="preloader-wrapper big active">
+          <div class="spinner-layer spinner-blue-only">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div><div class="gap-patch">
+              <div class="circle"></div>
+            </div><div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </app>
     </div>
   </body>
 </html>

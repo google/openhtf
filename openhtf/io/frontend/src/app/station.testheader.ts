@@ -19,6 +19,7 @@ import {
   Component,
   Input,
   OnChanges,
+  OnInit,
   SimpleChange
 } from 'angular2/core';
 
@@ -46,6 +47,17 @@ export class TestHeader implements OnChanges {
   constructor() {
     this.indicatorColorPipe = new StatusToColor();
     this.indicatorStatusPipe = new SimplifyStatus();
+  }
+
+  ngOnInit() {
+    $('.test-content').hide()
+    setTimeout(() => {
+      $('.test-header .tabs').tabs();
+      let status = this.indicatorStatusPipe.transform(this.status);
+      let color_class = this.indicatorColorPipe.transform(status);
+      $('.test-header-nav .indicator').addClass(color_class);
+      $('.test-content').show()
+    }, 100); // Timing hacks to make materialize-css play nice with Angular2.
   }
 
   /**

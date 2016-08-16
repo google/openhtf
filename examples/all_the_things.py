@@ -24,18 +24,20 @@ import time
 
 import example_plug
 import openhtf
-import openhtf.io.output as output
 
+from openhtf.io import output
 from openhtf.io.output import json_factory
 from openhtf.io.output import mfg_inspector
 from openhtf.names import *
 # Uncomment for mfg-inspector output, requires setup.py build_proto.
 #from openhtf.io.output import mfg_inspector
+from openhtf.plugs import user_input
 from openhtf.util import units
 
 
 @plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
+  time.sleep(.2)
   return example.Increment()
 
 
@@ -48,10 +50,11 @@ def example_monitor(example):
         'widget_color').Doc('Color of the widget'),
     Measurement('widget_size').InRange(1, 4))
 @plug(example=example_plug.ExamplePlug)
-def hello_world(test, example):
+@plug(prompts=user_input.UserInput)
+def hello_world(test, example, prompts):
   """A hello world test phase."""
   test.logger.info('Hello World!')
-  test.measurements.widget_type = prompts.DisplayPrompt(
+  test.measurements.widget_type = prompts.prompt(
       'What\'s the widget type?', text_input=True)
   if test.measurements.widget_type == 'raise':
     raise Exception()
@@ -89,11 +92,13 @@ def dimensions(test):
 
 
 def attachments(test):
-  test.Attach('test_attachment', 'This is test attachment data.')
-  test.AttachFromFile('example_attachment.txt')
+  test.attach('test_attachment', 'This is test attachment data.')
+  test.attach_from_file('example_attachment.txt')
+
 
 def teardown(test):
   test.logger.info('Running teardown')
+
 
 if __name__ == '__main__':
   test = openhtf.Test(hello_world, set_measurements, dimensions, attachments,
@@ -101,13 +106,14 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
+  test.AddOutputCallbacks(output.OutputToFile(
+      './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
   test.AddOutputCallbacks(
       json_factory.OutputToJSON(
           './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
           indent=4))
-  test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
-      './{dut_id}.{start_time_millis}.pb'))
-
+  #test.AddOutputCallbacks(mfg_inspector.OutputToTestRunProto(
+  #    './{dut_id}.{start_time_millis}.pb'))
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
@@ -116,5 +122,5 @@ if __name__ == '__main__':
   #  with open('my_private_key.json', 'r') as json_file:
   #    test.AddOutputCallbacks(output.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
-  test.Configure(http_port=None, teardown_function=teardown)
-  test.Execute(test_start=triggers.PromptForTestStart())
+  test.Configure(teardown_function=teardown)
+  test.Execute(test_start=user_input.prompt_for_test_start())

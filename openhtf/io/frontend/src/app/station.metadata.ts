@@ -24,13 +24,13 @@ import 'file?name=/styles/station.metadata.css!./station.metadata.css';
   selector: 'metadata',
   template: `
     <div class="meta-listing">
-      <div *ngIf="!test?.record?.metadata"
-           class="center-align grey-text">
-        <h5>Test metadata is currently unpopulated.</h5>
+      <div *ngIf="!metadata"
+           class="big-message">
+        Test metadata is currently unpopulated.
       </div>
-      <div *ngIf="test?.record?.metadata"
+      <div *ngIf="metadata"
            class="{{20 | loggingLevelToColor}}"
-           [innerHTML]="test.record.metadata | objectToUl">
+           [innerHTML]="metadata | objectToUl">
       </div>
     </div>
   `,
@@ -38,5 +38,5 @@ import 'file?name=/styles/station.metadata.css!./station.metadata.css';
   pipes: [LoggingLevelToColor, ObjectToUl]
 })
 export class Metadata {
-  @Input() test: any;
+  @Input() metadata: any;
 }
