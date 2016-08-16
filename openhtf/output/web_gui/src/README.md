@@ -30,25 +30,26 @@ make calls to the backend Tornado server to request information.
 ### Backend Structure
 
 Everything adding to the backend goes in the __init__.py module! It requires 
-three main parts: 
+two main parts: 
 
-#### Handler Variable
+#### Tornado Handler and Handlers Variable
 
-This tuple is what OpenHTF will use to configure and add your tornado handler. 
-A simple example: 
+If you need to pull information from the backend, then you need to create a 
+Tornado Handler to service it. Some required functions: 
+- get() - Will return data requested when URL is called. Can take 
+arguments that refer to capture groups specified in the regex URL section 
+of the handlers variable. 
+- initialize() - Will initialize any variables you request from the backend. 
+Must contain the following arguments: station_store, host, port, path. 
+
+The handlers variable list is what OpenHTF will use to configure and add your 
+tornado handler. A simple example: 
 ```
-handler=([r'/example/', ExampleHandler],
-		 ['host','port'])
+handlers=[(r'/example/', ExampleHandler),
+		 (r'/example2/', ExampleHandler2)]
 ```
-The tuple consists of two parts: 
-- A list containing the regex for the URL you need served, and the name 
-of the handler to serve it to 
-- A list of backend dependencies needed in your handler, an empty list 
-if none needed. Currently, you can get references to the:
-	- station store
-	- host
-	- port
-	- path
+The list consists tuples containing the regex for the URL you need served, 
+and the name of the handler to serve it to.
 
 #### Configs Variable 
 
@@ -66,17 +67,6 @@ configs={
 - label: The label for the tab for your plugin
 - icon: Optional, but refers to the icon from Material Icons that you want
 on your tab. (replace any spaces with underscores)
-
-#### Tornado Handler
-
-If you need to pull information from the backend, then you need to create a 
-Tornado Handler to service it. Some required functions: 
-	- get() - Will return data requested when URL is called. Can take 
-	arguments that refer to capture groups specified in the regex URL section 
-	of the handler variable. 
-	- initialize() - Will initialize any variables you request from the backend. 
-	Arguments should match the dependency list in the handler variable; function 
-	not needed if dependency list is empty.
 
 ### Frontend Structure
 

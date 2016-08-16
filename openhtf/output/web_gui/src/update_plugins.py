@@ -99,20 +99,18 @@ import 'file?name=/styles/station.css!./station.css';
 import 'file?name=/templates/station.html!./station.html';
 """
 
-mid1_ts='''
+post_ts="""
 
 /** Station view component. **/
-@Component({
+@Component({{
   selector: 'station',
   templateUrl: 'templates/station.html',
   styleUrls: ['styles/station.css'],
   pipes: [ObjectToArray],
-  directives: [StationHeader, Prompt, TestHeader, PhaseListing, Logs, Metadata, '''
-
-mid2_ts='''],
+  directives: [StationHeader, Prompt, TestHeader, PhaseListing, Logs, Metadata, {plugin_classes}],
   providers: [StationService]
-})
-export class Station implements OnDestroy, OnInit {
+}})
+export class Station implements OnDestroy, OnInit {{
   private stationInfo: any;
   private currentMillis: number;
   private currentMillisJob: number;
@@ -123,45 +121,43 @@ export class Station implements OnDestroy, OnInit {
    * Create a Station view component.
    */
   constructor(private routeParams: RouteParams,
-              private stationService: StationService) {
-    this.currentMillis = setInterval(() => {
+              private stationService: StationService) {{
+    this.currentMillis = setInterval(() => {{
       this.currentMillis = Date.now();
-    }, 250);
+    }}, 250);
     //This line is automatically generated, can be very long
-    this.plugins='''
-
-post_ts=''';
-  }
+    this.plugins={plugin_configs};
+  }}
 
   /**
    * Set up the view component on initialization.
    */
-  public ngOnInit(): any{
+  public ngOnInit(): any{{
     //Setting function to make tabs in history view work correctly
-    $('station-header ul.tabs').tabs({'onShow': function(tab){
-      if (tab.selector == '#history-header'){
+    $('station-header ul.tabs').tabs({{'onShow': function(tab){{
+      if (tab.selector == '#history-header'){{
         $('.history-nav').show();
-      } else if (tab.selector != '#testList' && tab.selector != '#starred'){
+      }} else if (tab.selector != '#testList' && tab.selector != '#starred'){{
         $('.history-nav').hide();
-      }
-    }});
+      }}
+    }}}});
     this.stationService.setHostPort(this.routeParams.get('host'),
                                     this.routeParams.get('port'));
     this.stationService.subscribe();
     this.stationInfo = this.stationService.getStationInfo();
     this.tests = this.stationService.getTests();
-  }
+  }}
 
   /**
    * Tear down the view component when navigating away.
    */
-  public ngOnDestroy() {
+  public ngOnDestroy() {{
     this.stationService.unsubscribe();
     clearInterval(this.currentMillisJob);
-  }
+  }}
 
-}
-'''
+}}
+"""
 
 def add_html(tag):
   '''Returns html for individual plugin content 
@@ -231,12 +227,8 @@ def main():
     new_file.write(pre_ts)
     for config in config_list:
       new_file.write("import {"+config['class']+"} from '../dist/plugin/"+config['name']+"/main';\n")
-    new_file.write(mid1_ts)
-    for config in config_list:
-      new_file.write(config['class']+",")
-    new_file.write(mid2_ts)
-    new_file.write(str(config_list))
-    new_file.write(post_ts)
+    class_list = "".join(config['class']+"," for config in config_list)
+    new_file.write(post_ts.format(plugin_classes = class_list, plugin_configs = str(config_list)))
     new_file.flush()
 
   if os.path.exists("./app/station.ts"):
