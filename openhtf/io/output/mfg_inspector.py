@@ -115,6 +115,7 @@ def _PopulateHeader(record, testrun):
   for phase in record.phases:
     testrun_phase = testrun.phases.add()
     testrun_phase.name = phase.name
+    testrun_phase.description = phase.codeinfo.sourcecode
     testrun_phase.timing.start_time_millis = phase.start_time_millis 
     testrun_phase.timing.end_time_millis = phase.end_time_millis 
   if 'config' in record.metadata:
@@ -213,12 +214,6 @@ def _ExtractParameters(record, testrun, used_parameter_names):
   """
   mangled_parameters = {}
   for phase in record.phases:
-    testrun_phase = testrun.phases.add()
-    testrun_phase.name = phase.name
-    testrun_phase.description = phase.codeinfo.sourcecode
-    testrun_phase.timing.start_time_millis = phase.start_time_millis
-    testrun_phase.timing.end_time_millis = phase.end_time_millis
-
     _ExtractAttachments(phase, testrun, used_parameter_names)
     for name, measurement in sorted(phase.measurements.items()):
       tr_name = _EnsureUniqueParameterName(name, used_parameter_names)
