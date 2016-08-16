@@ -353,8 +353,8 @@ class WebGuiServer(tornado.web.Application):
         #Import plugin package
         plugin_module = importlib.import_module(plugin)
         handlers = plugin_module.handlers
-      except Exception, e:
-        print("Error: Unable to add "+plugin+" plugin: "+str(e))
+      except (ImportError, AttributeError) as error:
+        _LOG.warning("Error: Unable to add "+plugin+" plugin: "+str(error))
         continue
 
       for handler in handlers:
