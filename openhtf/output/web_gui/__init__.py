@@ -328,7 +328,7 @@ class WebGuiServer(tornado.web.Application):
     def get(self):
       self.render('index.html', host=socket.gethostname(), port=self.port)
 
-  def __init__(self, discovery_interval_s, disable_discovery, http_port, plugins = [],
+  def __init__(self, discovery_interval_s, disable_discovery, http_port, plugins = None,
                dev_mode=False):
     self.store = StationStore(
         discovery_interval_s, disable_discovery,
@@ -348,32 +348,22 @@ class WebGuiServer(tornado.web.Application):
     ] + dash_router.urls + station_router.urls
 
     #Add plugins into handler_routes
-    if type(plugins) == list:
-      for name in plugins:
-        try:
-          #Import plugin package
-          plugin_module = importlib.import_module(name)
-          handler,deps = plugin_module.handler
+    for plugin in list(plugins or []):
+      try:
+        #Import plugin package
+        plugin_module = importlib.import_module(plugin)
+        handlers = plugin_module.handlers
+      except Exception, e:
+        print("Error: Unable to add "+plugin+" plugin: "+str(e))
+        continue
 
-          #Add in handler dependencies 
-          dep_dict = {}
-          for dep in deps:
-            if dep == 'station_store':
-              dep_dict['station_store'] = self.store
-            elif dep == 'host':
-              dep_dict['host'] = socket.gethostname()
-            elif dep == 'port':
-              dep_dict['port'] = http_port
-            elif dep == 'path':
-              dep_dict['path'] = path
-            else: 
-              print("Unable to find dependancy "+dep)
+      for handler in handlers:
+        #Add in handler dependencies 
+        dep_dict = {'station_store': self.store, 'host': socket.gethostname(),
+                    'port': http_port, 'path': path}
 
-          #Add completed route to handler_routes
-          handler.append(dep_dict)
-          handler_routes.append(tuple(handler))
-        except:
-          print("Error: Unable to add "+name+" plugin.")
+        #Add completed route to handler_routes
+        handler_routes.append(handler + (dep_dict,))
 
     super(WebGuiServer, self).__init__(
         handler_routes, template_path=path, static_path=path, debug=dev_mode)
