@@ -5,7 +5,7 @@ import json
 
 class ExampleHandler(tornado.web.RequestHandler):
 
-	def initialize(self, host, port):
+	def initialize(self, station_store, host, port, path):
 		self.host = host
 		self.port = port
 
@@ -14,8 +14,7 @@ class ExampleHandler(tornado.web.RequestHandler):
 		self.write(json.JSONEncoder().encode(example_dict))
 
 
-handler=([r'/example/(.*)', ExampleHandler],
-		 ['host','port'])
+handlers=[(r'/example/(.*)', ExampleHandler)]
 
 configs={'class':'ExamplePlugin',
 		 'tag':'example-plugin',
