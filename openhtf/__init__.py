@@ -395,6 +395,24 @@ class PhaseDescriptor(mutablerecords.Record(
     new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
     return new_info
 
+  def WithPlugs(self, **plugs):
+    """Substitute plugs for placeholders for this phase."""
+    # Make a copy so we can have multiple of the same phase with different plugs
+    # in the same test.
+    new_info = mutablerecords.CopyRecord(self)
+    for plug_name, plug_class in plugs.items():
+      matching_plugs = [p for p in self.plugs if p.name == plug_name
+          and isinstance(p.cls, plugs.BasePlug.Placeholder)]
+      if not matching_plugs:
+        raise InvalidPlugError('No plug named %s required for phase %s' %
+            (plug_name, self.func.__name__))
+      for matching_plug in matching_plugs:
+        assert issubclass(plug_class, matching_plug.cls.__class__)
+        matching_plug.cls = plug_class
+    
+    new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
+    return new_info
+
   def __call__(self, test_state):
     """Invoke this Phase, passing in the appropriate args.
 

@@ -142,6 +142,25 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
   # Allow explicitly disabling remote access to specific attributes.
   disable_remote_attrs = set()
 
+  class Placeholder(object):
+    """Placeholder for a specific plug to be provided before test execution"""
+    def __init__(self, cls):
+      self.cls = cls
+
+  @classmethod
+  def placeholder(cls):
+    return cls.Placeholder(cls)
+
+  @classmethod
+  def create_subclass(cls, subclass_name, *args, **kwargs):
+    """Creates a subclass of the plug and passes args and kwargs."""
+    def subclass__init__(subclass_self):
+        cls.__init__(subclass_self, *args, **kwargs)
+
+    name = '_'.join(cls.__name, subclass_name)
+    subclass = type(name, (cls, ), {'__init__': subclass__init__})
+    return subclass
+
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
 
