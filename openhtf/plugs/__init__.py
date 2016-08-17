@@ -128,6 +128,18 @@ class DuplicatePlugError(Exception):
 class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
+class BasePlugMetaclass(type):
+  """Metaclass for Baseplug to allow us to define plug class equivalance"""
+  def __hash__(cls):
+    # TODO(kdsudac): revisit before release, need to think through and verify
+    # how exactly to specify plug class equivalance
+    return hash((cls.__module__, cls.__name__))
+
+  def __eq__(cls, other):
+    if type(cls) != type(other):
+      return False
+
+    return hash(cls)  == hash(other)
 
 class BasePlug(object): # pylint: disable=too-few-public-methods
   """All plug types must subclass this type.
@@ -137,6 +149,7 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
         doesn't appear here), and is the same logger as passed into test
         phases via TestApi.
   """
+  __metaclass__ = BasePlugMetaclass
   # Override this to True in subclasses to support remote Plug access.
   enable_remote = False
   # Allow explicitly disabling remote access to specific attributes.
@@ -157,7 +170,7 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     def subclass__init__(subclass_self):
         cls.__init__(subclass_self, *args, **kwargs)
 
-    name = '_'.join(cls.__name, subclass_name)
+    name = '_'.join([cls.__name__, subclass_name])
     subclass = type(name, (cls, ), {'__init__': subclass__init__})
     return subclass
 
