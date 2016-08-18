@@ -238,7 +238,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
         # Just a plain ol' value.
         if isinstance(value, numbers.Number):
           testrun_param.numeric_value = float(value)
-        else:
+        elif value is not None:
           testrun_param.text_value = str(value)
         # Check for validators we know how to translate.
         for validator in measurement.validators:
