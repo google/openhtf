@@ -100,6 +100,7 @@ self._my_config having a value of 'my_config_value'.
 
 import collections
 import functools
+import inspect
 import logging
 import threading
 import time
@@ -291,7 +292,8 @@ def plug(update_kwargs=True, **plugs):
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
   for plug in plugs.itervalues():
-    if not issubclass(plug, BasePlug):
+    is_placeholder = isinstance(plug, BasePlug.Placeholder)
+    if not (is_placeholder or issubclass(plug, BasePlug)):
       raise InvalidPlugError(
           'Plug %s is not a subclass of plugs.BasePlug' % plug)
 
