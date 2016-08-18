@@ -30,6 +30,7 @@ from openhtf import util
 from openhtf.util import logs
 
 _LOG = logging.getLogger(__name__)
+CAPTURE_SOURCE_CODE = True  # Override before creating an openhtf.Test()
 
 
 class InvalidMeasurementDimensions(Exception):
@@ -93,6 +94,8 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
 
 
 def _GetSourceSafely(obj):
+  if not CAPTURE_SOURCE_CODE:
+    return ''
   try:
     return inspect.getsource(obj)
   except Exception:
