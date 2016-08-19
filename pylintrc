@@ -12,7 +12,8 @@ profile=no
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
-ignore=CVS,guzzle_pb2.py,test_runs_pb2.py,units_pb2.py
+ignore=CVS
+ignore-patterns=.*_pb2.py
 
 # Pickle collected data for later comparisons.
 persistent=yes
@@ -41,7 +42,7 @@ load-plugins=pylint_plugins.conf_plugin,pylint_plugins.mutablerecords_plugin,pyl
 
 # Supress all import errors until SublimeLinter-pylint gets virtualenv support.
 # Supress errors about locally defined disables.
-disable=import-error,I0011,W0223,W0212
+disable=import-error,I0011,abstractmethod,protected-access,too-few-public-methods
 
 
 [REPORTS]

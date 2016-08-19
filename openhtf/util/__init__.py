@@ -91,6 +91,7 @@ class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
   """
 
 
+# TODO(jethier): Add a pylint plugin to avoid the no-self-argument for this.
 class classproperty(object):
   """Exactly what it sounds like.
 
