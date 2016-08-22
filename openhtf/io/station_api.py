@@ -263,8 +263,8 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
     test_record = mutablerecords.CopyRecord(
         cached_state.test_record,
-        phases=len(test_record.phases),
-        log_records=len(test_record.log_records))
+        phases=len(cached_state.test_record.phases),
+        log_records=len(cached_state.test_record.log_records))
 
     return cached_state, {
         'status': cached_state.status.name,
@@ -632,10 +632,9 @@ class StationApi(object):
     return test_state.plug_manager.wait_for_plug_update(
         plug_type_name, current_state, timeout_s)
 
-  def _summary_for_state(self, state):
+  @staticmethod
+  def _summary_for_state_dict(cls, state_dict):
     """Return a dict for state with counts swapped in for phase/log records."""
-    state_dict, event = state.asdict_with_event()
-    
     state_dict_summary = {
         k: v for k, v in state_dict.iteritems() if k != 'plugs'}
     state_dict_summary['test_record'] = mutablerecords.CopyRecord(
@@ -699,7 +698,8 @@ class StationApi(object):
           'RPC:wait_for_update() -> short-circuited wait (local was blank)')
       return self._serialize_state_dict(state._asdict())
 
-    state_dict_summary = self._summary_for_state(state)
+    state_dict, update_event = state.asdict_with_event()
+    state_dict_summary = self._summary_for_state_dict(state_dict)
 
     # Deserialize the RemoteState fields for comparison.
     remote_state_dict = remote_state_dict and {
@@ -726,7 +726,7 @@ class StationApi(object):
     # If we get here, then the remote side is already up-to-date, so we wait
     # for there to be new information available.  We rely on the TestState
     # object itself to notify us when this is the case.
-    if not event.wait(timeout_s):
+    if not update_event.wait(timeout_s):
       _LOG.debug('RPC:wait_for_update() -> timeout after %s seconds', timeout_s)
       raise UpdateTimeout('No new information before timeout.', timeout_s)
 
