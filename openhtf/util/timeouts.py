@@ -421,7 +421,7 @@ def execute_after_delay(time_s, func, *args, **kwargs):
     thread.start()
 
 
-class retry_helper(object):  # pylint: disable=too-few-public-methods
+class retry_helper(object):
   """A helper with to simplify retrying.
 
   Attributes:

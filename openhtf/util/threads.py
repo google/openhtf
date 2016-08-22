@@ -106,7 +106,7 @@ class KillableThread(ExceptionSafeThread):
     return isinstance(exception, ThreadTerminationError)
 
 
-class NoneByDefaultThreadLocal(threading.local):  # pylint: disable=too-few-public-methods
+class NoneByDefaultThreadLocal(threading.local):
   """Makes thread local a bit easier to use by returning None by default.
 
   In general thread local sucks since you set a property on one thread and it

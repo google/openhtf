@@ -460,7 +460,7 @@ class AbstractFilesyncTransport(object):
     return self.RECV_MSG_TYPE(*raw_message)
 
 
-class FilesyncMessageTypes(object):  # pylint: disable=too-few-public-methods
+class FilesyncMessageTypes(object):
   """Container for the various message types used by the Filesync protocol.
 
   These message types correspond roughly to the struct types contained within

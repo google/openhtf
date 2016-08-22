@@ -129,7 +129,7 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
-class BasePlug(object): # pylint: disable=too-few-public-methods
+class BasePlug(object):
   """All plug types must subclass this type.
 
   Attributes:

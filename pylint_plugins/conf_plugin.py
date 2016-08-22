@@ -23,11 +23,9 @@ def __init__(self):
   pass
 
 
-class SavedInfo(object):
-  """Stash the info needed to properly understand conf usage."""
-  conf_node = None  # AST node representing the conf module.
-  conf_locals = {}
-  current_root = None
+CONF_NODE = None  # AST node representing the conf module.
+CONF_LOCALS = {}
+CURRENT_ROOT = None
 
 
 def transform_declare(node):
@@ -38,11 +36,11 @@ def transform_declare(node):
           and node.func.attrname == 'declare'):
     return
 
-  if SavedInfo.conf_node:
+  if CONF_NODE:
     # Keep track of the current root, refreshing the locals if it changes.
-    if not SavedInfo.current_root or SavedInfo.current_root != node.root():
-      SavedInfo.current_root = node.root()
-      SavedInfo.conf_node.locals = SavedInfo.conf_locals
+    if not CURRENT_ROOT or CURRENT_ROOT != node.root():
+      CURRENT_ROOT = node.root()
+      CONF_NODE.locals = CONF_LOCALS
 
     # Add the conf attribute to the module's locals.
     conf_key_name = None
@@ -56,7 +54,7 @@ def transform_declare(node):
           break
       assert conf_key_name != None, "Invalid conf.declare() syntax"
 
-    SavedInfo.conf_node.locals[conf_key_name] = [None]
+    CONF_NODE.locals[conf_key_name] = [None]
 
 
 def transform_conf_module(cls):
@@ -66,8 +64,8 @@ def transform_conf_module(cls):
     cls._locals.update(cls.locals['Configuration'][0].locals)
 
     # Store reference to this node for future use.
-    SavedInfo.conf_node = cls
-    SavedInfo.conf_locals.update(cls.locals)
+    CONF_NODE = cls
+    CONF_LOCALS.update(cls.locals)
 
 
 def register(linter):

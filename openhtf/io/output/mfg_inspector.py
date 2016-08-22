@@ -342,7 +342,7 @@ def _test_run_from_test_record(record):
   return testrun
 
 
-class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-public-methods
+class OutputToTestRunProto(output.OutputToFile):
   """Return an output callback that writes mfg-inspector TestRun Protos.
 
   Example filename_patterns might be:
@@ -371,7 +371,7 @@ class OutputToTestRunProto(output.OutputToFile):  # pylint: disable=too-few-publ
     return _test_run_from_test_record(test_record_obj).SerializeToString()
 
 
-class UploadToMfgInspector(object):  # pylint: disable=too-few-public-methods
+class UploadToMfgInspector(object):
   """Generate a mfg-inspector TestRun proto and upload it.
 
   Create an output callback to upload to mfg-inspector.com using the given

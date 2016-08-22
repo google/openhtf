@@ -83,7 +83,6 @@ def _open_usb_handle(**kwargs):
   return local_usb.LibUsbHandle.open(serial_number=serial, **kwargs)
 
 
-# pylint: disable=too-few-public-methods
 class FastbootPlug(plugs.BasePlug):
   """Plug that provides fastboot."""
 

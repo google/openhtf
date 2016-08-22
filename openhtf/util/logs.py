@@ -131,7 +131,7 @@ def log_once(log_func, msg, *args, **kwargs):
     _LOGONCE_SEEN.add(msg)
 
 
-class MacAddressLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
+class MacAddressLogFilter(logging.Filter):
   """A filter which redacts mac addresses if it sees one."""
 
   MAC_REPLACE_RE = re.compile(r"""

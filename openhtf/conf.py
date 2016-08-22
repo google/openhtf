@@ -206,7 +206,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
   class UnsetKeyError(Exception):
     """Raised when a key value is requested but we have no value for it."""
 
-  # pylint: disable=invalid-name,bad-super-call,too-few-public-methods
+  # pylint: disable=invalid-name,bad-super-call
   class Declaration(mutablerecords.Record(
       'Declaration', ['name'], {
           'description': None, 'default_value': None, 'has_default': False})):
@@ -216,7 +216,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       # Track this separately to allow for None as a default value, override
       # any value that was passed in explicitly - don't do that.
       self.has_default = 'default_value' in kwargs
-  # pylint: enable=invalid-name,bad-super-call,too-few-public-methods
+  # pylint: enable=invalid-name,bad-super-call
 
   __slots__ = ('_logger', '_lock', '_modules', '_declarations',
                '_flag_values', '_flags', '_loaded_values', 'ARG_PARSER',

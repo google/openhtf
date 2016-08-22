@@ -4237,7 +4237,7 @@ SECOND = SECOND_UNIT_OF_TIME
 
 # pylint: enable=line-too-long
 
-class UnitLookup(object):  # pylint: disable=too-few-public-methods
+class UnitLookup(object):
   """Facilitates user-friendly access to units."""
   def __init__(self, lookup):
     self._lookup = lookup
