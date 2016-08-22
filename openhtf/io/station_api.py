@@ -632,7 +632,7 @@ class StationApi(object):
     return test_state.plug_manager.wait_for_plug_update(
         plug_type_name, current_state, timeout_s)
 
-  @classmethod
+  @staticmethod
   def _summary_for_state_dict(cls, state_dict):
     """Return a dict for state with counts swapped in for phase/log records."""
     state_dict_summary = {
@@ -698,7 +698,7 @@ class StationApi(object):
           'RPC:wait_for_update() -> short-circuited wait (local was blank)')
       return self._serialize_state_dict(state._asdict())
 
-    state_dict, event = state.asdict_with_event()
+    state_dict, update_event = state.asdict_with_event()
     state_dict_summary = self._summary_for_state_dict(state_dict)
 
     # Deserialize the RemoteState fields for comparison.
@@ -726,7 +726,7 @@ class StationApi(object):
     # If we get here, then the remote side is already up-to-date, so we wait
     # for there to be new information available.  We rely on the TestState
     # object itself to notify us when this is the case.
-    if not event.wait(timeout_s):
+    if not update_event.wait(timeout_s):
       _LOG.debug('RPC:wait_for_update() -> timeout after %s seconds', timeout_s)
       raise UpdateTimeout('No new information before timeout.', timeout_s)
 
