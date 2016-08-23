@@ -128,7 +128,7 @@ class TestState(object):
                 self.notify_update))
 
   @contextlib.contextmanager
-  def running_phase_context(self, phase_desc, output_record=True):
+  def running_phase_context(self, phase_desc):
     """Create a context within which a single phase is running.
 
     Yields a PhaseState object for tracking transient state during the
@@ -146,11 +146,10 @@ class TestState(object):
         self.notify_update()  # New phase started.
         yield self.running_phase_state
     finally:
-      if output_record:
-        # Clear notification callbacks so we can serialize measurements.
-        for meas in self.running_phase_state.measurements.values():
-          meas.set_notification_callback(None)
-        self.test_record.phases.append(self.running_phase_state.phase_record)
+      # Clear notification callbacks so we can serialize measurements.
+      for meas in self.running_phase_state.measurements.values():
+        meas.set_notification_callback(None)
+      self.test_record.phases.append(self.running_phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
 
