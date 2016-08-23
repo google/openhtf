@@ -104,3 +104,27 @@ class classproperty(object):
 
   def __get__(self, instance, owner):
     return self._func(owner)
+
+
+def format_string(target, **kwargs):
+  """Formats a string in any of three ways (or not at all).
+
+  Args:
+    target: The target string to format. This can be a function that takes a
+        dict as its only argument, a string with {}- or %-based formatting, or
+        a basic string with none of those. In the latter case, the string is
+        returned as-is, but in all other cases the string is formatted (or the
+        callback called) with the given kwargs.
+        If this is None (or otherwise falsey), it is returned immediately.
+    **kwargs: The arguments to use for formatting.
+        Passed to string.format, %, or target if it's callable.
+  """
+  if not target:
+    return target
+  if callable(target):
+    return target(kwargs)
+  if '{' in target:
+    return target.format(**kwargs)
+  if '%' in target:
+    return target % kwargs
+  return target

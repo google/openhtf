@@ -29,6 +29,7 @@ def normal_test_phase(test):
   return 'return value'
 
 
+@openhtf.PhaseOptions(name='func-name({input[0]})')
 def extra_arg_func(input=None):
   return input
 
@@ -62,9 +63,13 @@ class TestPhaseDescriptor(unittest.TestCase):
       phase = phase.with_args(input='input arg')
       result = phase(self._phase_data)
       self.assertEqual('input arg', result)
+      self.assertEqual('func-name(i)', phase.name)
 
-      second_phase = phase.with_args(input='second input')
+      # Must do with_args() on the original phase, otherwise it has already been
+      # formatted and the format-arg information is lost.
+      second_phase = extra_arg_func.with_args(input='second input')
       first_result = phase(self._phase_data)
       second_result = second_phase(self._phase_data)
       self.assertEqual('input arg', first_result)
       self.assertEqual('second input', second_result)
+      self.assertEqual('func-name(s)', second_phase.name)
