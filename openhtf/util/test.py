@@ -184,9 +184,10 @@ class PhaseOrTestIterator(collections.Iterator):
       try:
         phase_state.result = phase_executor.PhaseOutcome(
             phase_desc(test_state_))
-      except Exception as exc:  # pylint:disable=broad-except
+      except Exception:  # pylint:disable=broad-except
         logging.exception('Exception executing phase %s', phase_desc.name)
-        phase_state.result = phase_executor.PhaseOutcome(exc)
+        phase_state.result = phase_executor.PhaseOutcome(
+            phase_executor.ExceptionInfo(*sys.exc_info()))
 
     return phase_state.phase_record
 
@@ -379,7 +380,7 @@ class TestCase(unittest.TestCase):
     self.assertTrue(phase_record.result.raised_exception,
                     'Phase did not raise an exception')
     if exc_type:
-      self.assertIsInstance(phase_record.result.phase_result, exc_type,
+      self.assertIsInstance(phase_record.result.phase_result.exc_val, exc_type,
                             'Raised exception %r is not a subclass of %r' %
                             (phase_record.result.phase_result, exc_type))
 

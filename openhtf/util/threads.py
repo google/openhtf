@@ -18,6 +18,7 @@
 import ctypes
 import functools
 import logging
+import sys
 import threading
 
 _LOG = logging.getLogger(__name__)
@@ -57,8 +58,8 @@ class ExceptionSafeThread(threading.Thread):
   def run(self):
     try:
       self._thread_proc()
-    except Exception as exception:  # pylint: disable=broad-except
-      if not self._thread_exception(exception):
+    except Exception:  # pylint: disable=broad-except
+      if not self._thread_exception(*sys.exc_info()):
         logging.exception('Thread raised an exception: %s', self.name)
         raise
     finally:
@@ -71,7 +72,7 @@ class ExceptionSafeThread(threading.Thread):
   def _thread_finished(self):
     """The method called once _thread_proc has finished."""
 
-  def _thread_exception(self, exception):
+  def _thread_exception(self, exc_type, exc_val, exc_tb):
     """The method called if _thread_proc raises an exception.
 
     To suppress the exception, return True from this method.
@@ -101,9 +102,9 @@ class KillableThread(ExceptionSafeThread):
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
       raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
 
-  def _thread_exception(self, exception):
+  def _thread_exception(self, exc_type, exc_val, exc_tb):
     """Suppress the exception when we're kill()'d."""
-    return isinstance(exception, ThreadTerminationError)
+    return exc_type is ThreadTerminationError
 
 
 class NoneByDefaultThreadLocal(threading.local):

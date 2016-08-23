@@ -62,6 +62,7 @@ class PlugsTest(test.TestCase):
   def setUp(self):
     self.logger = object()
     self.plug_manager = plugs.PlugManager({AdderPlug}, self.logger)
+    AdderPlug.INSTANCE_COUNT = 0
 
   def tearDown(self):
     self.plug_manager.tear_down_plugs()

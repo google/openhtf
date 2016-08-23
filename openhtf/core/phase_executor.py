@@ -34,6 +34,7 @@ framework.
 
 import collections
 import logging
+import traceback
 
 import openhtf
 from openhtf.util import argv
@@ -48,6 +49,16 @@ ARG_PARSER.add_argument(
     help='Test phase timeout in seconds')
 
 _LOG = logging.getLogger(__name__)
+
+
+class ExceptionInfo(collections.namedtuple(
+    'ExceptionInfo', ['exc_type', 'exc_val', 'exc_tb'])):
+  def _asdict(self):
+    return {
+        'exc_type': str(self.exc_type),
+        'exc_val': self.exc_val,
+        'exc_tb': ''.join(traceback.format_exception(*self)),
+    }
 
 
 class InvalidPhaseResultError(Exception):
@@ -75,7 +86,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   """
   def __init__(self, phase_result):
     if (phase_result is not None and
-        not isinstance(phase_result, (openhtf.PhaseResult, Exception)) and
+        not isinstance(phase_result, (openhtf.PhaseResult, ExceptionInfo)) and
         not isinstance(phase_result, threads.ThreadTerminationError)):
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
     super(PhaseOutcome, self).__init__(phase_result)
@@ -89,7 +100,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   def raised_exception(self):
     """True if the phase in question raised an exception."""
     return isinstance(self.phase_result, (
-        Exception, threads.ThreadTerminationError))
+        ExceptionInfo, threads.ThreadTerminationError))
 
   @property
   def is_terminal(self):
@@ -123,8 +134,8 @@ class PhaseExecutorThread(threads.KillableThread):
     # set to the InvalidPhaseResultError in _thread_exception instead.
     self._phase_outcome = PhaseOutcome(phase_return)
 
-  def _thread_exception(self, exc):
-    self._phase_outcome = PhaseOutcome(exc)
+  def _thread_exception(self, *args):
+    self._phase_outcome = PhaseOutcome(ExceptionInfo(*args))
     self._test_state.logger.exception('Phase %s raised an exception', self.name)
 
   def join_or_die(self):
