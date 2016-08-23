@@ -87,7 +87,6 @@ class TestMeasurements(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    conf.load(station_id='measurements_test', station_api_port=None)
     if not cls.UPDATE_OUTPUT:
       with open(RECORD_FILENAME, 'rb') as picklefile:
         cls.record = pickle.load(picklefile)
@@ -96,6 +95,7 @@ class TestMeasurements(unittest.TestCase):
     """Creating a measurement with invalid units should raise."""
     self.assertRaises(TypeError, htf.Measurement('bad_units').with_units, 1701)
 
+  @conf.save_and_restore(station_id='measurements_test', station_api_port=None)
   def test_measurements(self):
     result = util.NonLocalResult()
     def _save_result(test_record):
