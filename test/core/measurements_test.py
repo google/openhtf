@@ -25,8 +25,8 @@ import unittest
 
 import openhtf.util as util
 
-from openhtf.io import output
-from openhtf.names import *
+import openhtf as htf
+from openhtf.output import callbacks
 from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import units
@@ -41,18 +41,18 @@ RECORD_FILENAME = os.path.join(
 
 # Phases copied from the measurements example in examples/, because they
 # cover the various ways a user might use measurements.
-@measures(Measurement('hello_world_measurement'))
+@htf.measures(htf.Measurement('hello_world_measurement'))
 def hello_phase(test):
   test.measurements.hello_world_measurement = 'Hello!'
 
 
-@measures('hello_again_measurement')
+@htf.measures('hello_again_measurement')
 def again_phase(test):
   test.measurements.hello_again_measurement = 'Again!'
 
 
-@measures('first_measurement', 'second_measurement')
-@measures(Measurement('third'), Measurement('fourth'))
+@htf.measures('first_measurement', 'second_measurement')
+@htf.measures(htf.Measurement('third'), htf.Measurement('fourth'))
 def lots_of_measurements(test):
   test.measurements.first_measurement = 'First!'
   test.measurements['second_measurement'] = 'Second :('
@@ -60,22 +60,22 @@ def lots_of_measurements(test):
     test.measurements[measurement] = measurement + ' is the best!'
 
 
-@measures(Measurement('validated_measurement').InRange(0, 10).doc(
+@htf.measures(htf.Measurement('validated_measurement').in_range(0, 10).doc(
     'This measurement is validated.').with_units(units.SECOND))
 def measure_seconds(test):
   test.measurements.validated_measurement = 5
 
 
-@measures(Measurement('dimensioned_measurement').with_dimensions(
+@htf.measures(htf.Measurement('dimensioned_measurement').with_dimensions(
     units.SECOND, units.HERTZ))
-@measures('unset_dimensions', dimensions=(units.SECOND, units.HERTZ))
+@htf.measures('unset_dimensions', dimensions=(units.SECOND, units.HERTZ))
 def measure_dimensions(test):
   test.measurements.dimensioned_measurement[1, 2] = 5
 
 
-@measures('inline_kwargs', docstring='This measurement is declared inline!',
+@htf.measures('inline_kwargs', docstring='This measurement is declared inline!',
           units=units.HERTZ, validators=[util.validators.InRange(0, 10)])
-@measures('another_inline', docstring='Because why not?')
+@htf.measures('another_inline', docstring='Because why not?')
 def inline_phase(test):
   test.measurements.inline_kwargs = 15
   test.measurements.another_inline = 'This one is unvalidated.'
@@ -94,18 +94,18 @@ class TestMeasurements(unittest.TestCase):
 
   def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
-    self.assertRaises(TypeError, Measurement('bad_units').with_units, 1701)
+    self.assertRaises(TypeError, htf.Measurement('bad_units').with_units, 1701)
 
   def test_measurements(self):
     result = util.NonLocalResult()
     def _save_result(test_record):
       result.result = test_record
-    Test.uid = 'UNITTEST:MOCK:UID'
-    test = Test(hello_phase, again_phase, lots_of_measurements, measure_seconds,
-                measure_dimensions, inline_phase)
+    htf.Test.uid = 'UNITTEST:MOCK:UID'
+    test = htf.Test(hello_phase, again_phase, lots_of_measurements,
+                    measure_seconds, measure_dimensions, inline_phase)
 
     if self.UPDATE_OUTPUT:
-      test.add_output_callbacks(output.OutputToFile(RECORD_FILENAME))
+      test.add_output_callbacks(callbacks.OutputToFile(RECORD_FILENAME))
     else:
       test.add_output_callbacks(_save_result)
     test.execute(test_start=lambda: 'TestDUT')

@@ -48,6 +48,10 @@ class TestConf(unittest.TestCase):
   BAD_FORMAT = os.path.join(os.path.dirname(__file__), 'bad_config.txt')
   NOT_A_DICT = os.path.join(os.path.dirname(__file__), 'bad_config.yaml')
 
+  def setUp(self):
+    flags, _ = conf.ARG_PARSER.parse_known_args()
+    conf.load_flag_values(flags)
+
   def tearDown(self):
     conf._flags.config_file = None
     conf.reset()

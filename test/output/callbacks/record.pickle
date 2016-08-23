@@ -1,7 +1,7 @@
 ccopy_reg
 _reconstructor
 p1
-(copenhtf.io.test_record
+(copenhtf.core.test_record
 TestRecord
 p2
 c__builtin__
@@ -13,7 +13,7 @@ S'phases'
 p6
 (lp7
 g1
-(copenhtf.io.test_record
+(copenhtf.core.test_record
 PhaseRecord
 p8
 g3
@@ -21,7 +21,7 @@ NtRp9
 (dp10
 S'start_time_millis'
 p11
-I1469817110391
+I1471981967850
 sS'attachments'
 p12
 (dp13
@@ -31,7 +31,7 @@ p14
 S'widget_type'
 p16
 g1
-(copenhtf.util.measurements
+(copenhtf.core.measurements
 Measurement
 p17
 g3
@@ -72,7 +72,7 @@ sbasS'units'
 p34
 NsS'outcome'
 p35
-copenhtf.util.measurements
+copenhtf.core.measurements
 Outcome
 p36
 (I1
@@ -80,7 +80,7 @@ tRp37
 sS'measured_value'
 p38
 g1
-(copenhtf.util.measurements
+(copenhtf.core.measurements
 MeasuredValue
 p39
 g3
@@ -203,11 +203,11 @@ I3
 sbsg45
 NsbssS'end_time_millis'
 p72
-I1469817112560
+I1471981972676
 sS'result'
 p73
 g1
-(copenhtf.exe.phase_executor
+(copenhtf.core.phase_executor
 PhaseOutcome
 p74
 c__builtin__
@@ -222,7 +222,7 @@ ttRp78
 sS'codeinfo'
 p79
 g1
-(copenhtf.io.test_record
+(copenhtf.core.test_record
 CodeInfo
 p80
 g3
@@ -236,7 +236,7 @@ S'hello_world'
 p84
 sS'sourcecode'
 p85
-S'@measures(\n    Measurement(\'unset_meas\'),\n    Measurement(\n        \'widget_type\').MatchesRegex(r\'.*Widget$\').Doc(\n            \'\'\'This measurement tracks the type of widgets.\'\'\'),\n    Measurement(\n        \'widget_color\').Doc(\'Color of the widget\'),\n    Measurement(\'widget_size\').InRange(1, 4))\n@plug(example=example_plug.ExamplePlug)\ndef hello_world(test, example):\n  """A hello world test phase."""\n  test.logger.info(\'Hello World!\')\n  test.measurements.widget_type = prompts.DisplayPrompt(\n      \'What\\\'s the widget type?\', text_input=True)\n  if test.measurements.widget_type == \'raise\':\n    raise Exception()\n  test.measurements.widget_color = \'Black\'\n  test.measurements.widget_size = 3\n  test.logger.info(\'Plug value: %s\', example.Increment())\n'
+S'@htf.measures(\n    htf.Measurement(\'unset_meas\'),\n    htf.Measurement(\n        \'widget_type\').matches_regex(r\'.*Widget$\').doc(\n            \'\'\'This measurement tracks the type of widgets.\'\'\'),\n    htf.Measurement(\n        \'widget_color\').doc(\'Color of the widget\'),\n    htf.Measurement(\'widget_size\').in_range(1, 4))\n@htf.plug(example=example_plug.ExamplePlug)\n@htf.plug(prompts=user_input.UserInput)\ndef hello_world(test, example, prompts):\n  """A hello world test phase."""\n  test.logger.info(\'Hello World!\')\n  test.measurements.widget_type = prompts.prompt(\n      \'What\\\'s the widget type?\', text_input=True)\n  if test.measurements.widget_type == \'raise\':\n    raise Exception()\n  test.measurements.widget_color = \'Black\'\n  test.measurements.widget_size = 3\n  test.logger.info(\'Plug value: %s\', example.increment())\n'
 p86
 sbsg20
 g84
@@ -246,7 +246,7 @@ g3
 NtRp87
 (dp88
 g11
-I1469817112562
+I1471981972678
 sg12
 (dp89
 sg14
@@ -277,7 +277,7 @@ sg35
 g37
 sg38
 g1
-(copenhtf.util.measurements
+(copenhtf.core.measurements
 DimensionedMeasuredValue
 p98
 g3
@@ -290,19 +290,19 @@ OrderedDict
 p102
 ((lp103
 (lp104
-(F200.5770206451416
+(F200.88601112365723
 tp105
 aI1
 aa(lp106
-(F1000.615119934082
+(F1000.6160736083984
 tp107
 aI2
 aa(lp108
-(F2000.8540153503418
+(F2000.6470680236816
 tp109
 aI3
 aa(lp110
-(F3000.8180141448975
+(F3000.6759166717529
 tp111
 aI4
 aatRp112
@@ -413,7 +413,7 @@ sg43
 I8
 sbsg45
 Nsbssg72
-I1469817115584
+I1471981975700
 sg73
 g1
 (g74
@@ -433,7 +433,7 @@ sg20
 S'set_measurements'
 p142
 sg85
-S'    @openhtf.PhaseOptions(requires_state=True)\n    @plugs.plug(update_kwargs=False, **monitor_plugs)\n    @measurements.measures(\n        measurements.Measurement(measurement_name).WithUnits(\n            units).WithDimensions(uom.MILLISECOND))\n    @functools.wraps(phase_desc.func)\n    def MonitoredPhaseFunc(test_state, *args, **kwargs):\n      # Start monitor thread, it will run monitor_desc periodically.\n      monitor_thread = _MonitorThread(\n          measurement_name, monitor_desc, phase_desc.extra_kwargs, test_state,\n          poll_interval_ms)\n      monitor_thread.start()\n      try:\n        return phase_desc(test_state, *args, **kwargs)\n      finally:\n        monitor_thread.Kill()\n'
+S'    @openhtf.PhaseOptions(requires_state=True)\n    @plugs.plug(update_kwargs=False, **monitor_plugs)\n    @measurements.measures(\n        measurements.Measurement(measurement_name).with_units(\n            units).with_dimensions(uom.MILLISECOND))\n    @functools.wraps(phase_desc.func)\n    def monitored_phase_func(test_state, *args, **kwargs):\n      # Start monitor thread, it will run monitor_desc periodically.\n      monitor_thread = _MonitorThread(\n          measurement_name, monitor_desc, phase_desc.extra_kwargs, test_state,\n          poll_interval_ms)\n      monitor_thread.start()\n      try:\n        return phase_desc(test_state, *args, **kwargs)\n      finally:\n        monitor_thread.kill()\n'
 p143
 sbsg20
 g142
@@ -443,7 +443,7 @@ g3
 NtRp144
 (dp145
 g11
-I1469817115584
+I1471981975702
 sg12
 (dp146
 sg14
@@ -633,7 +633,7 @@ g166
 ttRp202
 tp203
 sbssg72
-I1469817115587
+I1471981975704
 sg73
 g1
 (g74
@@ -650,7 +650,7 @@ g21
 Nsg20
 g45
 sg85
-S"@measures(\n    Measurement('unset_dims').WithDimensions(units.HERTZ),\n    Measurement('dimensions').WithDimensions(units.HERTZ),\n    Measurement('lots_of_dims').WithDimensions(\n        units.HERTZ, units.SECOND, units.RADIAN))\ndef dimensions(test):\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):\n    test.measurements.lots_of_dims[x, y, z] = x + y + z\n"
+S"@htf.measures(\n    htf.Measurement('unset_dims').with_dimensions(units.HERTZ),\n    htf.Measurement('dimensions').with_dimensions(units.HERTZ),\n    htf.Measurement('lots_of_dims').with_dimensions(\n        units.HERTZ, units.SECOND, units.RADIAN))\ndef dimensions(test):\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):\n    test.measurements.lots_of_dims[x, y, z] = x + y + z\n"
 p207
 sbsg20
 g45
@@ -660,13 +660,13 @@ g3
 NtRp208
 (dp209
 g11
-I1469817115587
+I1471981975705
 sg12
 (dp210
 S'test_attachment'
 p211
 g1
-(copenhtf.io.test_record
+(copenhtf.core.test_record
 Attachment
 p212
 g75
@@ -686,7 +686,7 @@ ttRp218
 ssg14
 (dp219
 sg72
-I1469817115604
+I1471981975721
 sg73
 g1
 (g74
@@ -708,12 +708,12 @@ p223
 sbsg20
 g12
 sbasg11
-I1469817110389
+I1471981967848
 sS'outcome_details'
 p224
 (lp225
 sg72
-I1469817115604
+I1471981975722
 sS'station_id'
 p226
 S'jethier.mtv.corp.google.com'
@@ -736,7 +736,7 @@ sg20
 S'all_the_things.py'
 p234
 sg85
-S'# Copyright 2014 Google Inc. All Rights Reserved.\n\n# Licensed under the Apache License, Version 2.0 (the "License");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n\n#     http://www.apache.org/licenses/LICENSE-2.0\n\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an "AS IS" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n"""Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py\n"""\n\nimport json\nimport os\nimport time\n\nimport example_plug\nimport openhtf\n\nfrom openhtf.io import output\nfrom openhtf.io.output import json_factory\nfrom openhtf.io.output import mfg_inspector\nfrom openhtf.names import *\n# Uncomment for mfg-inspector output, requires setup.py build_proto.\n#from openhtf.io.output import mfg_inspector\nfrom openhtf.util import units\n\n\n@plug(example=example_plug.ExamplePlug)\ndef example_monitor(example):\n  time.sleep(.2)\n  return example.Increment()\n'
+S'# Copyright 2014 Google Inc. All Rights Reserved.\n\n# Licensed under the Apache License, Version 2.0 (the "License");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n\n#     http://www.apache.org/licenses/LICENSE-2.0\n\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an "AS IS" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n"""Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py\n"""\n\nimport json\nimport os\nimport time\n\nimport openhtf as htf\nfrom openhtf.output.callbacks import OutputToFile\nfrom openhtf.output.callbacks.json_factory import OutputToJSON\n# Uncomment the following line for Testrun output.\n# from openhtf.output.callbacks.mfg_inspector import OutputToTestRunProto\nfrom openhtf.plugs import user_input\nfrom openhtf.util import units\n\nimport example_plug\n\n\n@htf.plug(example=example_plug.ExamplePlug)\ndef example_monitor(example):\n  time.sleep(.2)\n  return example.increment()\n'
 p235
 sbsS'log_records'
 p236
@@ -747,12 +747,12 @@ LogRecord
 p238
 g75
 (I20
-S'openhtf.test_record.19894:1469817107163:140397771233168'
+S'openhtf.test_record.25870:1471981964613:140039026113872'
 p239
 S'all_the_things.py'
 p240
 I54
-I1469817110391
+I1471981967851
 VHello World!
 p241
 ttRp242
@@ -763,7 +763,7 @@ g75
 g239
 g240
 I61
-I1469817112550
+I1471981972631
 VPlug value: 0
 p243
 ttRp244
@@ -774,13 +774,13 @@ g75
 g239
 S'test_state.py'
 p245
-I272
-I1469817115604
+I279
+I1471981975721
 VFinishing test execution normally with outcome FAIL.
 p246
 ttRp247
 asg35
-copenhtf.io.test_record
+copenhtf.core.test_record
 Outcome
 p248
 (I2
@@ -807,13 +807,13 @@ I00
 sS'teardown_timeout_s'
 p259
 I3
-sS'station_api_bind_address'
+sS'example_plug_increment_size'
 p260
-S'0.0.0.0'
-p261
-sS'example_plug_increment'
-p262
 I1
+sS'station_api_bind_address'
+p261
+S'0.0.0.0'
+p262
 sg226
 g227
 sS'station_discovery_string'

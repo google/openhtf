@@ -124,11 +124,11 @@ import mock
 import openhtf
 from openhtf import plugs
 from openhtf import util
-from openhtf.exe import phase_executor
-from openhtf.exe import test_state
-from openhtf.io import test_record
+from openhtf.core import measurements
+from openhtf.core import phase_executor
+from openhtf.core import test_record
+from openhtf.core import test_state
 from openhtf.util import conf
-from openhtf.util import measurements
 
 
 class InvalidTestError(Exception):

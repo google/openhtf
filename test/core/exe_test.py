@@ -18,9 +18,9 @@ import time
 import mock
 
 import openhtf
-from openhtf import exe
-from openhtf import conf
+from openhtf import core
 from openhtf import plugs
+from openhtf.util import conf
 
 
 class UnittestPlug(plugs.BasePlug):
@@ -61,14 +61,14 @@ class TestExecutor(unittest.TestCase):
 
   # Mock test execution.
   def test_test_executor(self):
-    mock_starter = mock.Mock(spec=exe.TestExecutor)
+    mock_starter = mock.Mock(spec=core.TestExecutor)
     mock_starter.start()
     mock_starter.wait()
     mock_starter.stop()
 
   def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
-    phase_thread = exe.phase_executor.PhaseExecutorThread(phase_one, ' ')
+    phase_thread = core.phase_executor.PhaseExecutorThread(phase_one, ' ')
     name = str(phase_thread)
     found = True
     for item in check_list:

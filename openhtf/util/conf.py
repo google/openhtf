@@ -239,17 +239,27 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     self._modules = kwargs
     self._declarations = {}
     self.ARG_PARSER = parser
-
+    
     # Parse just the flags we care about, since this happens at import time.
     self._flags, _ = parser.parse_known_args()
-
-    # Populate flag_values from flags now.
     self._flag_values = {}
-    for keyval in self._flags.config_value:
-      self._flag_values.setdefault(*keyval.split('=', 1))
+    
+    # Populate flag_values from flags now.
+    self.load_flag_values()
 
     # Initialize self._loaded_values and load from --config-file if it's set.
     self.reset()
+  
+  def load_flag_values(self, flags=None):
+    """Load flag values given from command line flags.
+
+    Args:
+      flags: An argparse Namespace containing the command line flags.
+    """
+    if flags is None:
+      flags = self._flags
+    for keyval in flags.config_value:
+      self._flag_values.setdefault(*keyval.split('=', 1))
 
   @staticmethod
   def _is_valid_key(key):

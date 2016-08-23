@@ -39,9 +39,9 @@ from cStringIO import StringIO
 
 import google.protobuf.text_format as text_format
 
-from openhtf.io.output import json_factory
-from openhtf.io.output import mfg_inspector
-from openhtf.io.proto import test_runs_pb2
+from openhtf.output.callbacks import json_factory
+from openhtf.output.callbacks import mfg_inspector
+from openhtf.output.proto import test_runs_pb2
 from openhtf.util import data
 
 

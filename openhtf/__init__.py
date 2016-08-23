@@ -37,26 +37,19 @@ from openhtf import core
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import history
+from openhtf.core.measurements import Measurement, measures
+from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import triggers
+from openhtf.plugs import user_input, plug
 from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
-from openhtf.util import measurements
-from openhtf.util import user_input
+from openhtf.util import units
 
-
-__all__ = sys.modules['openhtf'].__dict__.setdefault('__all__', []).extend([
-  'openhtf.util.units',
-  'openhtf.core.measurements.Measurement',
-  'openhtf.core.measurements.measures',
-  'openhtf.core.monitors.monitors',
-  'openhtf.core.triggers',
-  'openhtf.plugs.plug',
-])
 
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)

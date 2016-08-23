@@ -51,7 +51,7 @@ import time
 
 import openhtf
 from openhtf import plugs
-from openhtf.util import measurements
+from openhtf.core import measurements
 from openhtf.util import threads
 from openhtf.util import units as uom
 

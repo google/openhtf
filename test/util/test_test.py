@@ -17,7 +17,7 @@ import unittest
 import openhtf
 
 from openhtf import plugs
-from openhtf.util import measurements
+from openhtf.core import measurements
 from openhtf.util import test
 from openhtf.util import validators
 

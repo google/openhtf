@@ -17,7 +17,7 @@ import time
 import mock
 
 from openhtf import plugs
-from openhtf.util import monitors
+from openhtf.core import monitors
 
 
 class EmptyPlug(plugs.BasePlug):
