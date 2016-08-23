@@ -75,7 +75,7 @@ Plugs will often need to use configuration values.  The recommended way
 of doing this is with the conf.inject_positional_args decorator:
 
   from openhtf import plugs
-  from openhtf import conf
+  from openhtf.util import conf
 
   conf.declare('my_config_key', default_value='my_config_value')
 
@@ -109,7 +109,7 @@ import mutablerecords
 import sockjs.tornado
 
 import openhtf
-from openhtf import conf
+from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
