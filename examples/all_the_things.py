@@ -29,9 +29,6 @@ from openhtf.util import user_input
 import example_plug
 
 
-PROMPT_MGR = user_input.get_prompt_manager()
-
-
 @htf.plug(example=example_plug.ExamplePlug)
 def example_monitor(example):
   time.sleep(.2)
