@@ -30,35 +30,40 @@ CURRENT_ROOT = None
 
 def transform_declare(node):
   """Transform conf.declare calls by stashing the declared names."""
+  global CURRENT_ROOT
+
   if not (isinstance(node.func, astroid.Attribute)
           and isinstance(node.func.expr, astroid.Name)
           and node.func.expr.name == 'conf'
           and node.func.attrname == 'declare'):
     return
 
+  conf_key_name = None
+  if node.args:
+    conf_key_name = node.args[0].value
+  else:
+    for keyword in node.keywords:
+      if keyword.arg == 'name':
+        # Assume the name is an astroid.Const(str), so it has a str value.
+        conf_key_name = keyword.value.value
+        break
+    assert conf_key_name != None, "Invalid conf.declare() syntax"
+
   if CONF_NODE:
     # Keep track of the current root, refreshing the locals if it changes.
     if not CURRENT_ROOT or CURRENT_ROOT != node.root():
       CURRENT_ROOT = node.root()
       CONF_NODE.locals = CONF_LOCALS
+      CONF_NODE.locals[conf_key_name] = [None]
 
-    # Add the conf attribute to the module's locals.
-    conf_key_name = None
-    if node.args:
-      conf_key_name = node.args[0].value
-    else:
-      for keyword in node.keywords:
-        if keyword.arg == 'name':
-          # Assume the name is an astroid.Const(str), so it has a str value.
-          conf_key_name = keyword.value.value
-          break
-      assert conf_key_name != None, "Invalid conf.declare() syntax"
-
-    CONF_NODE.locals[conf_key_name] = [None]
+  else:
+    CONF_LOCALS[conf_key_name] = [None]
 
 
 def transform_conf_module(cls):
   """Transform usages of the conf module by updating locals."""
+  global CONF_NODE
+
   if cls.name == 'openhtf.conf':
     # Put all the attributes in Configuration into the openhtf.conf node.
     cls._locals.update(cls.locals['Configuration'][0].locals)
