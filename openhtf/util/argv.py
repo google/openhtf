@@ -20,24 +20,24 @@ import argparse
 
 
 def ModuleParser():
-    return argparse.ArgumentParser(add_help=False)
+  return argparse.ArgumentParser(add_help=False)
 
 
 class StoreInModule(argparse.Action):
 
-    def __init__(self, *args, **kwargs):
-        self._tgt_mod, self._tgt_attr = kwargs.pop('target').rsplit('.', 1)
-        proxy_cls = kwargs.pop('proxy', None)
-        if proxy_cls is not None:
-            self._proxy = proxy_cls(*args, **kwargs)
-        super(StoreInModule, self).__init__(*args, **kwargs)
+  def __init__(self, *args, **kwargs):
+    self._tgt_mod, self._tgt_attr = kwargs.pop('target').rsplit('.', 1)
+    proxy_cls = kwargs.pop('proxy', None)
+    if proxy_cls is not None:
+      self._proxy = proxy_cls(*args, **kwargs)
+    super(StoreInModule, self).__init__(*args, **kwargs)
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        if hasattr(self, '_proxy'):
-            values = self._proxy(parser, namespace, values)
-        if '.' in self._tgt_mod:
-          base, mod = self._tgt_mod.rsplit('.', 1)
-          module = getattr(__import__(base, fromlist=[mod]), mod)
-        else:
-          module = __import__(self._tgt_mod)
-        setattr(module, self._tgt_attr, values)
+  def __call__(self, parser, namespace, values, option_string=None):
+    if hasattr(self, '_proxy'):
+      values = self._proxy(parser, namespace, values)
+    if '.' in self._tgt_mod:
+      base, mod = self._tgt_mod.rsplit('.', 1)
+      module = getattr(__import__(base, fromlist=[mod]), mod)
+    else:
+      module = __import__(self._tgt_mod)
+    setattr(module, self._tgt_attr, values)

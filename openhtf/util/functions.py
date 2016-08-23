@@ -20,7 +20,7 @@ import inspect
 import time
 
 
-def CallOnce(func):
+def call_once(func):
   """Decorate a function to only allow it to be called once.
 
   Note that it doesn't make sense to only call a function once if it takes
@@ -32,25 +32,25 @@ def CallOnce(func):
     raise ValueError('Can only decorate functions with no args', func, argspec)
 
   @functools.wraps(func)
-  def _Wrapper():
+  def _wrapper():
     # If we haven't been called yet, actually invoke func and save the result.
-    if not _Wrapper.HasRun():
-      _Wrapper.MarkAsRun()
-      _Wrapper.return_value = func()
-    return _Wrapper.return_value
+    if not _wrapper.HasRun():
+      _wrapper.MarkAsRun()
+      _wrapper.return_value = func()
+    return _wrapper.return_value
 
-  _Wrapper.has_run = False
-  _Wrapper.HasRun = lambda: _Wrapper.has_run
-  _Wrapper.MarkAsRun = lambda: setattr(_Wrapper, 'has_run', True)
-  return _Wrapper
+  _wrapper.has_run = False
+  _wrapper.HasRun = lambda: _wrapper.has_run
+  _wrapper.MarkAsRun = lambda: setattr(_wrapper, 'has_run', True)
+  return _wrapper
 
-def CallAtMostEvery(seconds, count=1):
+def call_at_most_every(seconds, count=1):
   """Call the decorated function at most count times every seconds seconds.
 
   The decorated function will sleep to ensure that at most count invocations
   occur within any 'seconds' second window.
   """
-  def Decorator(func):
+  def decorator(func):
     try:
       call_history = getattr(func, '_call_history')
     except AttributeError:
@@ -58,7 +58,7 @@ def CallAtMostEvery(seconds, count=1):
       setattr(func, '_call_history', call_history)
 
     @functools.wraps(func)
-    def _Wrapper(*args, **kwargs):
+    def _wrapper(*args, **kwargs):
       current_time = time.time()
       window_count = sum(ts > current_time - seconds for ts in call_history)
       if window_count >= count:
@@ -69,5 +69,5 @@ def CallAtMostEvery(seconds, count=1):
       # Append this call, deque will automatically trim old calls using maxlen.
       call_history.append(time.time())
       return func(*args, **kwargs)
-    return _Wrapper
-  return Decorator
+    return _wrapper
+  return decorator

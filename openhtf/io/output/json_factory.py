@@ -2,7 +2,6 @@
 
 import base64
 from json import JSONEncoder
-from openhtf.exe import test_state
 from openhtf.io import output
 from openhtf.util import data
 
@@ -13,7 +12,7 @@ class OutputToJSON(output.OutputToFile):
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
-    test.AddOutputCallback(openhtf.OutputToJson(
+    test.add_output_callback(openhtf.OutputToJson(
         '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
 
   Args:
@@ -30,17 +29,17 @@ class OutputToJSON(output.OutputToFile):
     super(OutputToJSON, self).__init__(filename_pattern)
     self.inline_attachments = inline_attachments
     self.json_encoder = JSONEncoder(**kwargs)
- 
+
   def serialize_test_record(self, test_record):
     return self.json_encoder.encode(self.convert_to_dict(test_record))
-  
+
   def convert_to_dict(self, test_record):
     if self.inline_attachments:
-      as_dict = data.ConvertToBaseTypes(test_record)
+      as_dict = data.convert_to_base_types(test_record)
       for phase in as_dict['phases']:
         for value in phase['attachments'].itervalues():
           value['data'] = base64.standard_b64encode(value['data'])
     else:
-      as_dict = data.ConvertToBaseTypes(test_record,
-                                        ignore_keys=('attachments',))
+      as_dict = data.convert_to_base_types(test_record,
+                                           ignore_keys=('attachments',))
     return as_dict

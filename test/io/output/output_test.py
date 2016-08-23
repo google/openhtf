@@ -45,7 +45,7 @@ from openhtf.io.proto import test_runs_pb2
 from openhtf.util import data
 
 
-def _LocalFilename(filename):
+def _local_filename(filename):
   """Get an absolute path to filename in the same directory as this module."""
   return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
@@ -55,31 +55,31 @@ class TestOutput(unittest.TestCase):
   UPDATE_OUTPUT = False
 
   @classmethod
-  def setUpClass(cls):
+  def setUp(cls):
     # Load input testrun from pickled file.
-    with open(_LocalFilename('record.pickle'), 'rb') as picklefile:
+    with open(_local_filename('record.pickle'), 'rb') as picklefile:
       cls.record = pickle.load(picklefile)
 
     # Load our canonical 'correct' outputs from files.
-    with open(_LocalFilename('record.json'), 'rb') as jsonfile:
+    with open(_local_filename('record.json'), 'rb') as jsonfile:
       cls.json = jsonfile.read()
-    with open(_LocalFilename('record.testrun'), 'rb') as testrunfile:
+    with open(_local_filename('record.testrun'), 'rb') as testrunfile:
       cls.testrun = test_runs_pb2.TestRun.FromString(testrunfile.read())
 
-  def testJson(self):
+  def test_json(self):
     json_output = StringIO()
     json_factory.OutputToJSON(json_output, sort_keys=True, indent=2)(self.record)
     if self.UPDATE_OUTPUT:
-      with open(_LocalFilename('record.json'), 'wb') as jsonfile:
+      with open(_local_filename('record.json'), 'wb') as jsonfile:
         jsonfile.write(json_output.getvalue())
     else:
       self.assertTrue(data.equals_log_diff(self.json, json_output.getvalue()))
 
-  def testTestrun(self):
+  def test_testrun(self):
     testrun_output = StringIO()
     mfg_inspector.OutputToTestRunProto(testrun_output)(self.record)
     if self.UPDATE_OUTPUT:
-      with open(_LocalFilename('record.testrun'), 'wb') as testrunfile:
+      with open(_local_filename('record.testrun'), 'wb') as testrunfile:
         testrunfile.write(testrun_output.getvalue())
     else:
       actual = test_runs_pb2.TestRun.FromString(testrun_output.getvalue())
@@ -87,6 +87,6 @@ class TestOutput(unittest.TestCase):
           text_format.MessageToString(self.testrun),
           text_format.MessageToString(actual)))
 
-  def testUpdateOutput(self):
+  def test_update_output(self):
     """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
     assert not self.UPDATE_OUTPUT, 'Change UPDATE_OUTPUT back to False!'

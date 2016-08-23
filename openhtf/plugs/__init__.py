@@ -21,13 +21,13 @@ teardown of the objects.
 
 Test phases can be decorated as using Plug objects, which then get passed
 into the test via parameters.  Plugs are all instantiated at the
-beginning of a test, and all plugs' TearDown() methods are called at the
+beginning of a test, and all plugs' tearDown() methods are called at the
 end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 
 If the Station API is enabled, then the _asdict() method of plugs may be
 called in a tight loop to detect state updates.  Since _asdict() may incur
-significant overhead, it's recommended to use functions.CallAtMostEvery()
+significant overhead, it's recommended to use functions.call_at_most_every()
 to limit the rate at which _asdict() is called.  As an additional
 consideration, a separate thread calling _asdict() implies that Plugs must
 be thread-safe if Station API is enabled (at least, calls to _asdict() must
@@ -46,7 +46,7 @@ Example implementation of a plug:
     def DoSomething(self):
       print '%s doing something!' % type(self).__name__
 
-    def TearDown(self):
+    def tearDown(self):
       # This method is optional.  If implemented, it will be called at the end
       # of the test.
       print 'Tearing down %s!' % type(self).__name__
@@ -72,17 +72,17 @@ would see the output (with other framework logs before and after):
   Tearing down ExamplePlug!
 
 Plugs will often need to use configuration values.  The recommended way
-of doing this is with the conf.InjectPositionalArgs decorator:
+of doing this is with the conf.inject_positional_args decorator:
 
   from openhtf import plugs
   from openhtf import conf
 
-  conf.Declare('my_config_key', default_value='my_config_value')
+  conf.declare('my_config_key', default_value='my_config_value')
 
   class ExamplePlug(plugs.BasePlug):
     '''A plug that requires some configuration.'''
 
-    @conf.InjectPositionalArgs
+    @conf.inject_positional_args
     def __init__(self, my_config_key)
       self._my_config = my_config_key
 
@@ -100,6 +100,7 @@ self._my_config having a value of 'my_config_value'.
 
 import collections
 import functools
+import json
 import logging
 import threading
 import time
@@ -124,12 +125,11 @@ class PlugOverrideError(Exception):
 class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
-
 class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
-class BasePlug(object): # pylint: disable=too-few-public-methods
+class BasePlug(object):
   """All plug types must subclass this type.
 
   Attributes:
@@ -150,13 +150,13 @@ class BasePlug(object): # pylint: disable=too-few-public-methods
     PlugManager (if the Station API is enabled, which is the default).
 
     Note this method is called in a tight loop, it is recommended that you
-    decorate it with functions.CallAtMostEvery() to limit the frequency at
+    decorate it with functions.call_at_most_every() to limit the frequency at
     which updates happen (pass a number of seconds to it to limit samples to
     once per that number of seconds).
     """
     return {}
 
-  def TearDown(self):
+  def tearDown(self):
     """This method is called automatically at the end of each Test execution."""
     pass
 
@@ -222,7 +222,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     This is so that the yielded tuples may be easily passed to sockjs a la:
         sockjs.tornado.SockJSRouter(*result)
     """
-    proxy = xmlrpcutil.TimeoutProxyMixin((host, port), **kwargs)
+    proxy = xmlrpcutil.TimeoutProxyMixin((host, port))
     seen = set()
     for method in proxy.system.listMethods():
       if not method.startswith('plugs.'):
@@ -258,10 +258,10 @@ def plug(update_kwargs=True, **plugs):
   Raises:
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
-  for plug in plugs.itervalues():
-    if not issubclass(plug, BasePlug):
+  for a_plug in plugs.itervalues():
+    if not issubclass(a_plug, BasePlug):
       raise InvalidPlugError(
-          'Plug %s is not a subclass of plugs.BasePlug' % plug)
+          'Plug %s is not a subclass of plugs.BasePlug' % a_plug)
 
   def result(func):
     """Wrap the given function and return the wrapper.
@@ -277,14 +277,14 @@ def plug(update_kwargs=True, **plugs):
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-    phase_desc = openhtf.PhaseDescriptor.WrapOrCopy(func)
+    phase_desc = openhtf.PhaseDescriptor.wrap_or_copy(func)
     duplicates = frozenset(p.name for p in phase_desc.plugs) & frozenset(plugs)
     if duplicates:
       raise DuplicatePlugError(
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
     phase_desc.plugs.extend([
-        openhtf.PhasePlug(name, plug, update_kwargs=update_kwargs)
-        for name, plug in plugs.iteritems()])
+        openhtf.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
+        for name, a_plug in plugs.iteritems()])
     return phase_desc
   return result
 
@@ -293,7 +293,7 @@ class PlugManager(object):
   """Class to manage the lifetimes of plugs.
 
   This class handles instantiation of plugs at test start and calling
-  TearDown() on all plugs when the test completes.  It is used by
+  tearDown() on all plugs when the test completes.  It is used by
   the executor, and should not be instantiated outside the framework itself.
 
   Note this class is not thread-safe.  It should only ever be used by the
@@ -318,7 +318,7 @@ class PlugManager(object):
             'xmlrpc_port': self._xmlrpc_server and
                            self._xmlrpc_server.socket.getsockname()[1]}
 
-  def _InitializeRpcServer(self):
+  def _initialize_rpc_server(self):
     """Initialize and start an XMLRPC server for current plug types.
 
     If any plugs we currently know about have enable_remote set True, then
@@ -333,16 +333,16 @@ class PlugManager(object):
     """
     server = xmlrpcutil.SimpleThreadedXmlRpcServer((
         conf.station_api_bind_address, 0))
-    for name, plug in self._plugs_by_name.iteritems():
-      if not plug.enable_remote:
+    for name, a_plug in self._plugs_by_name.iteritems():
+      if not a_plug.enable_remote:
         continue
 
-      for attr in dir(plug):
+      for attr in dir(a_plug):
         if (not attr.startswith('_') and
-            attr not in {'TearDown', 'tear_down'} and
-            attr not in plug.disable_remote_attrs):
+            attr != 'tearDown' and
+            attr not in a_plug.disable_remote_attrs):
           server.register_function(
-              getattr(plug, attr), name='.'.join(('plugs', name, attr)))
+              getattr(a_plug, attr), name='.'.join(('plugs', name, attr)))
 
     if server.system_listMethods():
       if self._xmlrpc_server:
@@ -355,7 +355,7 @@ class PlugManager(object):
       server_thread.start()
       self._xmlrpc_server = server
 
-  def InitializePlugs(self, plug_types=None):
+  def initialize_plugs(self, plug_types=None):
     """Instantiate required plugs.
 
     Instantiates known plug types and saves the instances in self._plugs_by_type
@@ -381,12 +381,12 @@ class PlugManager(object):
           setattr(plug_instance, 'logger', self._logger)
       except Exception:  # pylint: disable=broad-except
         _LOG.error('Exception insantiating plug type %s', plug_type)
-        self.TearDownPlugs()
+        self.tear_down_plugs()
         raise
-      self.UpdatePlug(plug_type, plug_instance)
-    self._InitializeRpcServer()
+      self.update_plug(plug_type, plug_instance)
+    self._initialize_rpc_server()
 
-  def UpdatePlug(self, plug_type, plug_value):
+  def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.
 
     Safely tears down the old instance if one was already created, but that's
@@ -399,23 +399,23 @@ class PlugManager(object):
     """
     self._plug_types.add(plug_type)
     if plug_type in self._plugs_by_type:
-      self._plugs_by_type[plug_type].TearDown()
+      self._plugs_by_type[plug_type].tearDown()
     self._plugs_by_type[plug_type] = plug_value
     self._plugs_by_name[
         '.'.join((plug_type.__module__, plug_type.__name__))] = plug_value
 
-  def ProvidePlugs(self, plug_name_map):
+  def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
     return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}
 
-  def TearDownPlugs(self):
-    """Call TearDown() on all instantiated plugs.
+  def tear_down_plugs(self):
+    """Call tearDown() on all instantiated plugs.
 
-    Note that InitializePlugs must have been called before calling
-    this method, and InitializePlugs must be called again after calling
+    Note that initialize_plugs must have been called before calling
+    this method, and initialize_plugs must be called again after calling
     this method if you want to access the plugs attribute again.
 
-    Any exceptions in TearDown() methods are logged, but do not get raised
+    Any exceptions in tearDown() methods are logged, but do not get raised
     by this method.
     """
     if self._xmlrpc_server:
@@ -424,11 +424,11 @@ class PlugManager(object):
       self._xmlrpc_server = None
 
     _LOG.debug('Tearing down all plugs.')
-    for plug in self._plugs_by_type.itervalues():
+    for a_plug in self._plugs_by_type.itervalues():
       try:
-        plug.TearDown()
+        a_plug.tearDown()
       except Exception:  # pylint: disable=broad-except
-        _LOG.warning('Exception calling TearDown on %s:', plug, exc_info=True)
+        _LOG.warning('Exception calling tearDown on %s:', a_plug, exc_info=True)
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
@@ -446,9 +446,9 @@ class PlugManager(object):
     """
     if plug_type_name not in self._plugs_by_name:
       raise InvalidPlugError('Unknown plug name "%s"' % plug_type_name)
-    plug = self._plugs_by_name[plug_type_name]
-    timeout = timeouts.PolledTimeout.FromSeconds(timeout_s)
-    while not timeout.HasExpired():
-      new_state = plug._asdict()
+    plug_instance = self._plugs_by_name[plug_type_name]
+    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
+    while not timeout.has_expired():
+      new_state = plug_instance._asdict()
       if new_state != current_state:
         return new_state

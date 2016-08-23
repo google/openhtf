@@ -71,7 +71,7 @@ class PromptManager(object):
     self._response = None
     self._cond = threading.Condition()
 
-  def DisplayPrompt(self, message, text_input=False, timeout_s=None):
+  def display_prompt(self, message, text_input=False, timeout_s=None):
     """Prompt for a user response by showing the message.
 
     Args:
@@ -94,17 +94,17 @@ class PromptManager(object):
                  ', Timeout: %s sec' % timeout_s if timeout_s else '')
 
       console_prompt = ConsolePrompt(
-          message, functools.partial(self.Respond, self.prompt.id))
+          message, functools.partial(self.respond, self.prompt.id))
       console_prompt.start()
       self._cond.wait(timeout_s)
-      console_prompt.Stop()
+      console_prompt.stop()
       self.prompt = None
       if self._response is None:
         self.prompt = None
         raise PromptUnansweredError
       return self._response
 
-  def Respond(self, prompt_id, response):
+  def respond(self, prompt_id, response):
     """Respond to the prompt that has the given ID.
 
     If there is no active prompt or the prompt id being responded to doesn't
@@ -136,7 +136,7 @@ class ConsolePrompt(threading.Thread):
     self._callback = callback
     self._stopped = False
 
-  def Stop(self):
+  def stop(self):
     """Mark this ConsolePrompt as stopped.
 
     If this prompt was already stopped, do nothing.

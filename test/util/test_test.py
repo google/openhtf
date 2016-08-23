@@ -47,7 +47,7 @@ def test_phase(phase_data, my_plug):
   phase_data.measurements.othr_measurement = 0xDEAD
   phase_data.measurements.passes = 5
   phase_data.measurements.fails = 20
-  phase_data.test_record.AddOutcomeDetails(0xBED)
+  phase_data.test_record.add_outcome_details(0xBED)
 
 
 def raising_phase(phase_data):

@@ -34,7 +34,7 @@ Some constraints on measurements:
 
   - Measurement names must be valid python variable names.  This is mostly for
     sanity, but also ensures you can access them via attribute access in phases.
-    This applies *after* any WithArgs() substitution (not covered in this
+    This applies *after* any with_args() substitution (not covered in this
     tutorial, see the phases.py example for more details).
 
   - You cannot declare the same measurement name multiple times on the same
@@ -61,13 +61,13 @@ from openhtf.names import *
 
 # Simple example of measurement use, similar to hello_world.py usage.
 @measures(Measurement('hello_world_measurement'))
-def HelloPhase(test):
+def hello_phase(test):
   test.measurements.hello_world_measurement = 'Hello!'
 
 
 # An alternative simpler syntax that creates the Measurement for you.
 @measures('hello_again_measurement')
-def AgainPhase(test):
+def again_phase(test):
   test.measurements.hello_again_measurement = 'Again!'
 
 
@@ -79,7 +79,7 @@ def AgainPhase(test):
 # measurements, and then one or two with more complex declarations (see below).
 @measures('first_measurement', 'second_measurement')
 @measures(Measurement('third'), Measurement('fourth'))
-def LotsOfMeasurements(test):
+def lots_of_measurements(test):
   test.measurements.first_measurement = 'First!'
   # Measurements can also be access via indexing rather than attributes.
   test.measurements['second_measurement'] = 'Second :('
@@ -93,8 +93,8 @@ def LotsOfMeasurements(test):
 # describing the measurement.  Validators can get quite complex, for more
 # details, see the validators.py example.
 @measures(Measurement('validated_measurement').InRange(0, 10).Doc(
-    'This measurement is validated.').WithUnits(units.SECOND))
-def MeasureSeconds(test):
+    'This measurement is validated.').with_units(units.SECOND))
+def measure_seconds(test):
   # The 'outcome' of this measurement in the test_record result will be a PASS
   # because its value passes the validator specified (0 <= 5 <= 10).
   test.measurements.validated_measurement = 5
@@ -108,7 +108,7 @@ def MeasureSeconds(test):
 @measures('inline_kwargs', docstring='This measurement is declared inline!',
           units=units.HERTZ, validators=[validators.InRange(0, 10)])
 @measures('another_inline', docstring='Because why not?')
-def InlinePhase(test):
+def inline_phase(test):
   # This measurement will have an outcome of FAIL, because the set value of 15
   # will not pass the 0 <= x <= 10 validator.
   test.measurements.inline_kwargs = 15
@@ -120,17 +120,17 @@ def InlinePhase(test):
 
 if __name__ == '__main__':
   # We instantiate our OpenHTF test with the phases we want to run as args.
-  test = Test(HelloPhase, AgainPhase, LotsOfMeasurements, MeasureSeconds,
-              InlinePhase)
+  test = Test(hello_phase, again_phase, lots_of_measurements, measure_seconds,
+              inline_phase)
 
   # In order to view the result of the test, we have to output it somewhere,
   # and a local JSON file is a convenient way to do this.  Custom output
   # mechanisms can be implemented, but for now we'll just keep it simple.
   # This will always output to the same ./measurements.json file, formatted
   # slightly for human readability.
-  test.AddOutputCallbacks(
+  test.add_output_callbacks(
       json_factory.OutputToJSON('./measurements.json', indent=2))
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.
-  test.Execute(test_start=lambda: 'MyDutId')
+  test.execute(test_start=lambda: 'MyDutId')

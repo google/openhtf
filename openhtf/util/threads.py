@@ -26,15 +26,15 @@ class ThreadTerminationError(SystemExit):
   """Sibling of SystemExit, but specific to thread termination."""
 
 
-def Loop(_=None, force=False):   # pylint: disable=invalid-name
+def loop(_=None, force=False):   # pylint: disable=invalid-name
   """Causes a function to loop indefinitely."""
   if not force:
     raise AttributeError(
-        'threads.Loop() is DEPRECATED.  If you really like this and want to '
+        'threads.loop() is DEPRECATED.  If you really like this and want to '
         'keep it, file an issue at https://github.com/google/openhtf/issues '
-        'and use it as @Loop(force=True) for now.')
+        'and use it as @loop(force=True) for now.')
 
-  def RealLoop(fn):
+  def real_loop(fn):
     @functools.wraps(fn)
     def _proc(*args, **kwargs):
       """Wrapper to return."""
@@ -43,7 +43,7 @@ def Loop(_=None, force=False):   # pylint: disable=invalid-name
     _proc.once = fn  # way for tests to invoke the function once
                      # you may need to pass in "self" since this may be unbound.
     return _proc
-  return RealLoop
+  return real_loop
 
 
 class ExceptionSafeThread(threading.Thread):
@@ -56,23 +56,23 @@ class ExceptionSafeThread(threading.Thread):
 
   def run(self):
     try:
-      self._ThreadProc()
-    except Exception as exception:
-      if not self._ThreadException(exception):
+      self._thread_proc()
+    except Exception as exception:  # pylint: disable=broad-except
+      if not self._thread_exception(exception):
         logging.exception('Thread raised an exception: %s', self.name)
         raise
     finally:
-      self._ThreadFinished()
+      self._thread_finished()
       _LOG.debug('Thread finished: %s', self.name)
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     """The method called when executing the thread."""
 
-  def _ThreadFinished(self):
-    """The method called once _ThreadProc has finished."""
+  def _thread_finished(self):
+    """The method called once _thread_proc has finished."""
 
-  def _ThreadException(self, exception):
-    """The method called if _ThreadProc raises an exception.
+  def _thread_exception(self, exception):
+    """The method called if _thread_proc raises an exception.
 
     To suppress the exception, return True from this method.
     """
@@ -84,12 +84,12 @@ class KillableThread(ExceptionSafeThread):
   Based on recipe available at http://tomerfiliba.com/recipes/Thread2/
   """
 
-  def Kill(self):
+  def kill(self):
     """Terminates the current thread by raising an error."""
     if self.is_alive():
-      self.AsyncRaise(ThreadTerminationError)
+      self.async_raise(ThreadTerminationError)
 
-  def AsyncRaise(self, exc_type):
+  def async_raise(self, exc_type):
     """Raise the exception."""
     assert self.is_alive(), 'Only running threads have a thread identity'
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
@@ -101,12 +101,12 @@ class KillableThread(ExceptionSafeThread):
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
       raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
 
-  def _ThreadException(self, exception):
-    """Suppress the exception when we're Kill()'d."""
+  def _thread_exception(self, exception):
+    """Suppress the exception when we're kill()'d."""
     return isinstance(exception, ThreadTerminationError)
 
 
-class NoneByDefaultThreadLocal(threading.local):  # pylint: disable=too-few-public-methods
+class NoneByDefaultThreadLocal(threading.local):
   """Makes thread local a bit easier to use by returning None by default.
 
   In general thread local sucks since you set a property on one thread and it
@@ -119,7 +119,7 @@ class NoneByDefaultThreadLocal(threading.local):  # pylint: disable=too-few-publ
     return None
 
 
-def Synchronized(func):  # pylint: disable=invalid-name
+def synchronized(func):  # pylint: disable=invalid-name
   """Hold self._lock while executing func."""
   @functools.wraps(func)
   def synchronized_method(self, *args, **kwargs):

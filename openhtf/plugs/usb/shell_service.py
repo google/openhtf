@@ -33,11 +33,11 @@ until they are closed explicitly.  This means there's no point in keeping a
 stream around ShellService, we need to keep an AdbConnection around instead.
 
 Some examples of how to use this service:
-  adb_cnxn = adb_protocol.AdbConnection.Connect(my_transport)
+  adb_cnxn = adb_protocol.AdbConnection.connect(my_transport)
   shell = shell_service.ShellService(adb_cnxn)
 
   # Run a simple command.
-  output = shell.Command('echo foo')
+  output = shell.command('echo foo')
   # output == 'foo\r\n'
 
   # Run a command that outputs binary data, like recording a minute of audio.
@@ -45,16 +45,16 @@ Some examples of how to use this service:
 
   # Run a command in the background, do some other stuff, then read the
   # command's output, waiting on it to complete.
-  cmd = shell.AsyncCommand('echo foo; sleep 10')
-  bar = shell.Command('echo bar')
-  foo = cmd.Wait()
-  baz = shell.Command('echo baz')
+  cmd = shell.async_command('echo foo; sleep 10')
+  bar = shell.command('echo bar')
+  foo = cmd.wait()
+  baz = shell.command('echo baz')
 
   # A version using a with context to do the same thing:
-  with shell.AsyncCommand('echo foo; sleep 10') as c:
-    bar = shell.Command('echo bar')
-    foo = c.Wait()
-  baz = shell.Command('echo baz')
+  with shell.async_command('echo foo; sleep 10') as c:
+    bar = shell.command('echo bar')
+    foo = c.wait()
+  baz = shell.command('echo baz')
 
   # Run a command in the background while we do some other stuff, save the
   # output to a StringIO buffer so we can access it later.  Use a context to
@@ -85,7 +85,7 @@ class AsyncCommandHandle(object):
   read from stdin and written to the command's stdin, and output from the
   command is written to stdout. If stdin is None, no input is written to the
   command.  If stdout is None, the output from the command is buffered
-  internally, and will be returned from a call to Wait() - see the Wait() method
+  internally, and will be returned from a call to wait() - see the wait() method
   for details.
 
   You can tell if a stream was closed locally by checking the
@@ -95,14 +95,14 @@ class AsyncCommandHandle(object):
   """
 
   def __init__(self, stream, stdin, stdout, timeout, is_raw):  #pylint: disable=too-many-arguments
-    """Create a handle to use for interfacing with an AsyncCommand.
+    """Create a handle to use for interfacing with an async_command.
 
     Args:
       stream: Stream to use for communicating with the running command.
       stdin: File-like object to use for reading stdin for the command, can be
         None, in which case no input is sent to the command.
       stdout: File-like object to use for writing output of the command to, can
-        be None, in which case output can be obtained by calling Wait().
+        be None, in which case output can be obtained by calling wait().
       timeout: timeouts.PolledTimeout to use for the command.
       is_raw: If True, we'll do reads from stdin, otherwise we do readlines
         instead to play nicer with potential interactive uses (read doesn't
@@ -115,20 +115,20 @@ class AsyncCommandHandle(object):
     self.stdout = stdout or cStringIO.StringIO()
     self.force_closed_or_timeout = False
 
-    self.reader_thread = threading.Thread(target=self._ReaderThread)
+    self.reader_thread = threading.Thread(target=self._reader_thread_proc)
     self.reader_thread.daemon = True
     self.reader_thread.start()
 
     if stdin:
-      self.writer_thread = threading.Thread(target=self._WriterThread,
+      self.writer_thread = threading.Thread(target=self._writer_thread_proc,
                                             args=(is_raw,))
       self.writer_thread.daemon = True
       self.writer_thread.start()
 
     # Close ourselves after timeout expires, ignored if timeout won't expire.
-    timeouts.ExecuteAfterDelay(timeout, self.Close)
+    timeouts.execute_after_delay(timeout, self.close)
 
-  def _WriterThread(self, is_raw):
+  def _writer_thread_proc(self, is_raw):
     """Write as long as the stream is not closed."""
     # If we're not in raw mode, do line-buffered reads to play nicer with
     # potential interactive uses, max of MAX_ADB_DATA, since anything we write
@@ -138,12 +138,12 @@ class AsyncCommandHandle(object):
     # operations to raise.  Since we're in a separate thread, it'll just get
     # ignored, which is what we want.
     reader = self.stdin.read if is_raw else self.stdin.readline
-    while not self.stream.IsClosed():
-      self.stream.Write(reader(adb_protocol.MAX_ADB_DATA))
+    while not self.stream.is_closed():
+      self.stream.write(reader(adb_protocol.MAX_ADB_DATA))
 
-  def _ReaderThread(self):
+  def _reader_thread_proc(self):
     """Read until the stream is closed."""
-    for data in self.stream.ReadUntilClose():
+    for data in self.stream.read_until_close():
       if self.stdout is not None:
         self.stdout.write(data)
 
@@ -153,19 +153,19 @@ class AsyncCommandHandle(object):
   def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
     if exc_type:
       return False
-    self.Wait()
+    self.wait()
     return True
 
-  def Close(self):
+  def close(self):
     """Close this handle immediately - you may lose output."""
     self.force_closed_or_timeout = True
-    self.stream.Close()
+    self.stream.close()
 
-  def IsDone(self):
+  def is_done(self):
     """Return True if this command has completed."""
-    return self.stream.IsClosed()
+    return self.stream.is_closed()
 
-  def Wait(self, timeout_ms=None):
+  def wait(self, timeout_ms=None):
     """Block until this command has completed.
 
     Args:
@@ -178,9 +178,9 @@ class AsyncCommandHandle(object):
     timeout expired before the command completed.  Be careful to check the
     return value explicitly for None, as the output may be ''.
     """
-    closed = timeouts.LoopUntilTimeoutOrTrue(
-        timeouts.PolledTimeout.FromMillis(timeout_ms),
-        self.stream.IsClosed, .1)
+    closed = timeouts.loop_until_timeout_or_true(
+        timeouts.PolledTimeout.from_millis(timeout_ms),
+        self.stream.is_closed, .1)
     if closed:
       if hasattr(self.stdout, 'getvalue'):
         return self.stdout.getvalue()
@@ -199,7 +199,7 @@ class ShellService(object):
     self.adb_connection = adb_connection
 
   @staticmethod
-  def _ToRawCommand(command):
+  def _to_raw_command(command):
     """Convert the command to a raw signal."""
     # Android doesn't have stty, so we manually do the ioctl (yuck).  This ioctl
     # is a TCSETA (0x5403) with the following flags set:
@@ -219,19 +219,19 @@ class ShellService(object):
             '0 0x3 0x1c 0x7f 0x15 0x4 0xff '  # Control characters
             '&>/dev/null;%s' % command)
 
-  def Command(self, command, raw=False, timeout_ms=None):
+  def command(self, command, raw=False, timeout_ms=None):
     """Run the given command and return the output."""
-    return ''.join(self.StreamingCommand(command, raw, timeout_ms))
+    return ''.join(self.streaming_command(command, raw, timeout_ms))
 
-  def StreamingCommand(self, command, raw=False, timeout_ms=None):
+  def streaming_command(self, command, raw=False, timeout_ms=None):
     """Run the given command and yield the output as we receive it."""
     if raw:
-      command = self._ToRawCommand(command)
-    return self.adb_connection.StreamingCommand('shell', command, timeout_ms)
+      command = self._to_raw_command(command)
+    return self.adb_connection.streaming_command('shell', command, timeout_ms)
 
   # pylint: disable=too-many-arguments
-  def AsyncCommand(self, command, stdin=None, stdout=None, raw=False,
-                   timeout_ms=None):
+  def async_command(self, command, stdin=None, stdout=None, raw=False,
+                    timeout_ms=None):
     """Run the given command on the device asynchronously.
 
     Input will be read from stdin, output written to stdout.  ADB doesn't
@@ -246,7 +246,7 @@ class ShellService(object):
         be None, in which case nothing will be written to the command's stdin.
       stdout: File-like object to write the command's output to.  Can be None,
         in which case the command's output will be buffered internally, and can
-        be access via the return value of Wait().
+        be access via the return value of wait().
       raw: If True, run the command as per RawCommand (see above).
       timeout_ms: Timeout for the command, in milliseconds.
 
@@ -258,10 +258,10 @@ class ShellService(object):
       AdbStreamUnavailableError: If the remote devices doesn't support the
         shell: service.
     """
-    timeout = timeouts.PolledTimeout.FromMillis(timeout_ms)
+    timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     if raw:
-      command = self._ToRawCommand(command)
-    stream = self.adb_connection.OpenStream('shell:%s' % command, timeout)
+      command = self._to_raw_command(command)
+    stream = self.adb_connection.open_stream('shell:%s' % command, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
           '%s does not support service: shell', self)
@@ -273,6 +273,6 @@ class ShellService(object):
   # pylint: enable=too-many-arguments
 
   @classmethod
-  def UsingConnection(cls, adb_connection):
+  def using_connection(cls, adb_connection):
     """Factory method to match the interface of FilesyncService."""
     return cls(adb_connection)

@@ -29,7 +29,7 @@ from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
-conf.Declare('max_history_size_mb', default_value=256)
+conf.declare('max_history_size_mb', default_value=256)
 
 
 class HistorySyncError(Exception):
@@ -68,14 +68,14 @@ class TestHistory(object):
   def pop(self):
     """Pop the oldest record and return the test_uid it was associated with."""
     popped_entry = self.entries.pop()
-    self.entry_bytes -= data.TotalSize(popped_entry)
+    self.entry_bytes -= data.total_size(popped_entry)
     return popped_entry.test_uid
 
   def append(self, test_uid, record):
     """Append a new record associated with the given test uid."""
     entry = HistoryEntry(test_uid, record)
     self.entries.appendleft(entry)
-    self.entry_bytes += data.TotalSize(entry)
+    self.entry_bytes += data.total_size(entry)
 
 
 class History(object):
@@ -93,7 +93,7 @@ class History(object):
         (self.all_tests_history.size_mb * 1024.0 * 1024.0) +
         sys.getsizeof(self.per_test_history) +
         sum(sys.getsizeof(test) for test in self.per_test_history)) /
-        (1024.0 * 1024.0))
+            (1024.0 * 1024.0))
 
   def _maybe_evict(self):
     size_mb = self.size_mb
@@ -119,7 +119,7 @@ class History(object):
 
     _LOG.debug('Done evicting, history now %.2f MB', size_mb)
 
-  @threads.Synchronized
+  @threads.synchronized
   def append_record(self, test_uid, record):
     """Append the given record for the given test UID to the history.
 
@@ -136,13 +136,13 @@ class History(object):
     self.per_test_history[test_uid].append(test_uid, record)
     self.all_tests_history.append(test_uid, record)
 
-  @threads.Synchronized
+  @threads.synchronized
   def for_test_uid(self, test_uid, start_after_millis=0):
     """Copy history for the given test UID."""
     return list(entry.record for entry in self.per_test_history[test_uid]
                 if entry.record.start_time_millis > start_after_millis)
 
-  @threads.Synchronized
+  @threads.synchronized
   def last_start_time(self, test_uid):
     """Get the most recent start time for the given test UID.
 
@@ -160,6 +160,7 @@ class History(object):
 # will need to create multiple instances itself, however, since it tracks
 # multiple stations at once.
 HISTORY = History()
+# pylint: disable=invalid-name
 append_record = HISTORY.append_record
 for_test_uid = HISTORY.for_test_uid
 last_start_time = HISTORY.last_start_time

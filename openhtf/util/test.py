@@ -35,7 +35,7 @@ separate your test into separate decorated test* methods in your test case
 
 Lastly, while not implemented here, it's common to need to temporarily alter
 configuration values for individual tests.  This can be accomplished with the
-@conf.SaveAndRestore decorator (see docs in conf.py, examples below).
+@conf.save_and_restore decorator (see docs in conf.py, examples below).
 
 A few isolated examples, also see test/util/test_test.py for some usage:
 
@@ -48,8 +48,8 @@ A few isolated examples, also see test/util/test_test.py for some usage:
 
     # Decorate the test* method with this to be able to yield a phase to run it.
     @test.yields_phases
-    # Decorate with conf.SaveAndRestore to temporarily set conf values.
-    @conf.SaveAndRestore(phase_variance='test_phase_variance')
+    # Decorate with conf.save_and_restore to temporarily set conf values.
+    @conf.save_and_restore(phase_variance='test_phase_variance')
     def test_first_phase(self):
       phase_record = yield mytest.first_phase
       # Check a measurement value.
@@ -120,10 +120,8 @@ import types
 import unittest
 
 import mock
-import mutablerecords
 
 import openhtf
-
 from openhtf import conf
 from openhtf import plugs
 from openhtf import util
@@ -164,20 +162,20 @@ class PhaseOrTestIterator(collections.Iterator):
     # Make sure we initialize any plugs, this will ignore any that have already
     # been initialized.
     plug_types = list(plug_types)
-    self.plug_manager.InitializePlugs(plug_cls for plug_cls in plug_types if
-                                      plug_cls not in self.mock_plugs)
+    self.plug_manager.initialize_plugs(plug_cls for plug_cls in plug_types if
+                                       plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.UpdatePlug(plug_type, plug_value)
+      self.plug_manager.update_plug(plug_type, plug_value)
 
 
-  @conf.SaveAndRestore(station_api_port=None, enable_station_discovery=False)
+  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
     with mock.patch(
-          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test_state_ = test_state.TestState(openhtf.TestDescriptor(
           'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
 
@@ -186,28 +184,28 @@ class PhaseOrTestIterator(collections.Iterator):
       try:
         phase_state.result = phase_executor.PhaseOutcome(
             phase_desc(test_state_))
-      except Exception as exc:
+      except Exception as exc:  # pylint:disable=broad-except
         logging.exception('Exception executing phase %s', phase_desc.name)
         phase_state.result = phase_executor.PhaseOutcome(exc)
 
     return phase_state.phase_record
 
-  @conf.SaveAndRestore(station_api_port=None, enable_station_discovery=False)
+  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
     for plug_type, plug_value in self.mock_plugs.iteritems():
-      self.plug_manager.UpdatePlug(plug_type, plug_value)
+      self.plug_manager.update_plug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
     record_saver = util.NonLocalResult()
-    test.AddOutputCallbacks(
+    test.add_output_callbacks(
         lambda record: setattr(record_saver, 'result', record))
 
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch(
-          'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test.Execute(test_start=lambda: 'TestDutId')
+        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+      test.execute(test_start=lambda: 'TestDutId')
 
     return record_saver.result
 
@@ -221,7 +219,7 @@ class PhaseOrTestIterator(collections.Iterator):
           'individual test phases', phase_or_test)
     else:
       self.last_result = self._handle_phase(
-          openhtf.PhaseDescriptor.WrapOrCopy(phase_or_test))
+          openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
     return phase_or_test, self.last_result
 
 
@@ -334,7 +332,7 @@ class TestCase(unittest.TestCase):
           try:
             func(self, phase_record, *args)
             break
-          except Exception:
+          except Exception:  # pylint: disable=broad-except
             exc_info = sys.exc_info()
         else:
           if exc_info:
@@ -409,7 +407,7 @@ class TestCase(unittest.TestCase):
   def assertMeasured(self, phase_record, measurement, value=mock.ANY):
     self.assertTrue(
         phase_record.measurements[measurement].measured_value.is_value_set,
-       'Measurement %s not set' % measurement)
+        'Measurement %s not set' % measurement)
     if value is not mock.ANY:
       self.assertEquals(
           value, phase_record.measurements[measurement].measured_value.value,

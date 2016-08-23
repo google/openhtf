@@ -25,13 +25,13 @@ from openhtf import plugs
 
 class UnittestPlug(plugs.BasePlug):
 
-  def SetupCap(self):
+  def setup_cap(self):
     print 'Set up the plugs instance.'
 
-  def TearDownCap(self):
+  def tear_down_cap(self):
     print 'Tear down the plugs instance.'
 
-  def DoStuff(self):
+  def do_stuff(self):
     print 'Plugs-specific functionality.'
 
 
@@ -60,13 +60,13 @@ class TestExecutor(unittest.TestCase):
     self.assertIn(self.test_plug_type, test.descriptor.plug_types)
 
   # Mock test execution.
-  def testTestExecutor(self):
+  def test_test_executor(self):
     mock_starter = mock.Mock(spec=exe.TestExecutor)
     mock_starter.start()
     mock_starter.wait()
     mock_starter.stop()
 
-  def testClassString(self):
+  def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
     phase_thread = exe.phase_executor.PhaseExecutorThread(phase_one, ' ')
     name = str(phase_thread)

@@ -16,7 +16,7 @@ module, and will typically be a type, instances of which are callable:
       return value < self.limit
 
   # Name defaults to the validator's __name__ attribute unless overridden.
-  validators.Register(MyLessThanValidator, name='LessThan')
+  validators.register(MyLessThanValidator, name='LessThan')
 
   # Now you can refer to the validator by name directly on measurements.
   @measurements.measures(
@@ -25,13 +25,13 @@ module, and will typically be a type, instances of which are callable:
     test.measurements.my_measurement = 5  # Will have outcome 'FAIL'
 
 For simpler validators, you don't need to register them at all, you can
-simply attach them to the Measurement with the .WithValidator() method:
+simply attach them to the Measurement with the .with_validator() method:
 
   def LessThan4(value):
     return value < 4
 
   @measurements.measures(
-      measurements.Measurement('my_measurement).WithValidator(LessThan4))
+      measurements.Measurement('my_measurement).with_validator(LessThan4))
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will also 'FAIL'
 
@@ -40,7 +40,7 @@ Notes:
 Note the extra level of indirection when registering a validator. This allows
 you to parameterize your validator (like in the LessThan example) when it is
 being applied to the measurement.  If you don't need this level of indirection,
-it's recommended that you simply use .WithValidator() instead.
+it's recommended that you simply use .with_validator() instead.
 
 Also note the validator will be str()'d in the output, so if you want a
 meaningful description of what it does, you should implement a __str__ method.
@@ -60,7 +60,7 @@ class Validators(object):
     self.modules = modules
     self._validators = {}
 
-  def Register(self, validator, name=None):
+  def register(self, validator, name=None):
     name = name or validator.__name__
     if hasattr(self, name):
       raise ValueError('Duplicate validator name', name)
@@ -85,7 +85,6 @@ class Validators(object):
       self.maximum = maximum
 
     def __call__(self, value):
-      # pylint: disable=g-import-not-at-top
       import math
       # Check for nan
       if math.isnan(value):
@@ -117,11 +116,13 @@ class Validators(object):
     def __ne__(self, other):
       return not self == other
 
-  def Equals(self, value):
+  in_range = InRange  # pylint: disable=invalid-name
+
+  def equals(self, value):
     if isinstance(value, self.modules['numbers'].Number):
       return self.InRange(minimum=value, maximum=value)
     else:
-      return self.MatchesRegex(self.modules['re'].escape(value))
+      return self._matches_regex(self.modules['re'].escape(value))
 
   class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
@@ -147,7 +148,7 @@ class Validators(object):
 
   # We have to use our saved reference to the re module because this module
   # has lost all references by the sys.modules replacement and has been gc'd.
-  def MatchesRegex(self, regex):
+  def matches_regex(self, regex):
     return self.RegexMatcher(regex, self.modules['re'].compile(regex))
 
 sys.modules[__name__] = Validators(sys.modules)

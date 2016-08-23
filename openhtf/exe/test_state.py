@@ -26,14 +26,14 @@ invokation of an openhtf.Test instance.
 
 import contextlib
 import copy
-import json
 import logging
+import socket
 import threading
 import weakref
 
+import mimetypes
 from enum import Enum
 
-import mimetypes
 import mutablerecords
 
 import openhtf
@@ -42,13 +42,19 @@ from openhtf import conf
 from openhtf import plugs
 from openhtf import util
 from openhtf.io import test_record
-from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import measurements
 from openhtf.util import threads
 
-conf.Declare('allow_unset_measurements', default_value=False, description=
-    'If True, unset measurements do not cause Tests to FAIL.')
+conf.declare('allow_unset_measurements', default_value=False, description=\
+  'If True, unset measurements do not cause Tests to FAIL.')
+# All tests require a station_id.  This can be via the --config-file
+# automatically loaded by OpenHTF, provided explicitly to the config with
+# conf.load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
+# with conf.load_from_dict({..., 'station_id': 'My_Station'}).  If none of those
+# are provided then we'll fall back to the machine's hostname.
+conf.declare('station_id', 'The name of this test station',
+             default_value=socket.gethostname())
 
 _LOG = logging.getLogger(__name__)
 
@@ -94,7 +100,7 @@ class TestState(object):
         dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
-    self.logger = logs.InitializeRecordLogger(
+    self.logger = logs.initialize_record_logger(
         test_desc.uid, self.test_record, self.notify_update)
     self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
     self.running_phase_state = None
@@ -114,11 +120,12 @@ class TestState(object):
     running_phase_state = self.running_phase_state
     return (running_phase_state and
             openhtf.TestApi(
-        self.logger, self.user_defined_state, self.test_record,
-        measurements.Collection(running_phase_state.measurements),
-        running_phase_state.attachments,
-        running_phase_state.attach, running_phase_state.attach_from_file,
-        self.notify_update))
+                self.logger, self.user_defined_state, self.test_record,
+                measurements.Collection(running_phase_state.measurements),
+                running_phase_state.attachments,
+                running_phase_state.attach,
+                running_phase_state.attach_from_file,
+                self.notify_update))
 
   @contextlib.contextmanager
   def running_phase_context(self, phase_desc, output_record=True):
@@ -132,7 +139,7 @@ class TestState(object):
     currently running phase.
     """
     assert not self.running_phase_state, 'Phase already running!'
-    self.running_phase_state = PhaseState.FromDescriptor(
+    self.running_phase_state = PhaseState.from_descriptor(
         phase_desc, self.notify_update)
     try:
       with self.running_phase_state.record_timing_context:
@@ -155,7 +162,7 @@ class TestState(object):
         'running_phase_state': self.running_phase_state,
     }
 
-  @threads.Synchronized
+  @threads.synchronized
   def asdict_with_event(self):
     """Get a dict representation of this test's state and an update event.
 
@@ -168,7 +175,7 @@ class TestState(object):
     self._update_events.add(event)
     return self._asdict(), event
 
-  @threads.Synchronized
+  @threads.synchronized
   def notify_update(self):
     """Notify any update events that there was an update."""
     for event in self._update_events:
@@ -189,7 +196,7 @@ class TestState(object):
     """
     return self.running_phase_state and self.running_phase_state.name
 
-  def SetStatusFromPhaseOutcome(self, phase_outcome):
+  def set_status_from_phase_outcome(self, phase_outcome):
     """Set our internal state based on the given phase outcome.
 
     Args:
@@ -204,7 +211,7 @@ class TestState(object):
                         'exception, outcome ERROR.')
       code = str(type(phase_outcome.phase_result).__name__)
       description = str(phase_outcome.phase_result).decode('utf8', 'replace')
-      self.test_record.AddOutcomeDetails(code, description)
+      self.test_record.add_outcome_details(code, description)
       self.finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:
       self.logger.debug('Finishing test execution early due to phase '
@@ -217,9 +224,9 @@ class TestState(object):
       self.finalize(test_record.Outcome.ABORTED)
 
     if self.is_finalized != phase_outcome.is_terminal:
-      raise exe.TestExecutionError(
+      raise openhtf.InvalidTestStateError(
           'Unexpected finalized state (%s) after PhaseOutcome %s.',
-          self.is_finalized, phase_outcome) 
+          self.is_finalized, phase_outcome)
     return self.is_finalized
 
   def mark_test_started(self, dut_id):
@@ -227,7 +234,7 @@ class TestState(object):
     assert self._status == self.Status.WAITING_FOR_TEST_START
     # This might still be None; it's the value returned by test_start.
     self.test_record.dut_id = dut_id
-    self.test_record.start_time_millis = util.TimeMillis()
+    self.test_record.start_time_millis = util.time_millis()
     self.notify_update()
 
   def set_status_running(self):
@@ -278,7 +285,7 @@ class TestState(object):
 
     # The test is done at this point, no further updates to test_record.
     self.logger.handlers = []
-    self.test_record.end_time_millis = util.TimeMillis()
+    self.test_record.end_time_millis = util.time_millis()
     self._status = self.Status.COMPLETED
     self.notify_update()
 
@@ -303,10 +310,10 @@ class PhaseState(mutablerecords.Record('PhaseState', [
   """
 
   @classmethod
-  def FromDescriptor(cls, phase_desc, notify_cb):
+  def from_descriptor(cls, phase_desc, notify_cb):
     return cls(
         phase_desc.name,
-        test_record.PhaseRecord.FromDescriptor(phase_desc),
+        test_record.PhaseRecord.from_descriptor(phase_desc),
         {measurement.name:
              copy.deepcopy(measurement).set_notification_callback(notify_cb)
          for measurement in phase_desc.measurements})
@@ -384,7 +391,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     This method performs some pre-phase setup on self (for measurements), and
     records the start and end time based on when the context is entered/exited.
     """
-    self.phase_record.start_time_millis = util.TimeMillis()
+    self.phase_record.start_time_millis = util.time_millis()
 
     try:
       yield
@@ -405,4 +412,4 @@ class PhaseState(mutablerecords.Record('PhaseState', [
 
       # Fill out final values for the PhaseRecord.
       self.phase_record.measurements = validated_measurements
-      self.phase_record.end_time_millis = util.TimeMillis()
+      self.phase_record.end_time_millis = util.time_millis()

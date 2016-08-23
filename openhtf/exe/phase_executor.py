@@ -36,7 +36,6 @@ import collections
 import logging
 
 import openhtf
-from openhtf.io import test_record
 from openhtf.util import argv
 from openhtf.util import threads
 
@@ -113,7 +112,7 @@ class PhaseExecutorThread(threads.KillableThread):
     self._test_state = test_state
     self._phase_outcome = None
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     """Execute the encompassed phase and save the result."""
     # Call the phase, save the return value, or default it to CONTINUE.
     phase_return = self._phase_desc(self._test_state)
@@ -121,14 +120,14 @@ class PhaseExecutorThread(threads.KillableThread):
       phase_return = openhtf.PhaseResult.CONTINUE
 
     # If phase_return is invalid, this will raise, and _phase_outcome will get
-    # set to the InvalidPhaseResultError in _ThreadException instead.
+    # set to the InvalidPhaseResultError in _thread_exception instead.
     self._phase_outcome = PhaseOutcome(phase_return)
 
-  def _ThreadException(self, exc):
+  def _thread_exception(self, exc):
     self._phase_outcome = PhaseOutcome(exc)
     self._test_state.logger.exception('Phase %s raised an exception', self.name)
 
-  def JoinOrDie(self):
+  def join_or_die(self):
     """Wait for thread to finish, return a PhaseOutcome with its response."""
     if self._phase_desc.options.timeout_s is not None:
       self.join(self._phase_desc.options.timeout_s)
@@ -141,7 +140,7 @@ class PhaseExecutorThread(threads.KillableThread):
 
     # Check for timeout, indicated by None for PhaseOutcome.phase_result.
     if self.is_alive():
-      self.Kill()
+      self.kill()
       return PhaseOutcome(None)
 
     # Phase was killed.
@@ -181,7 +180,7 @@ class PhaseExecutor(object):
           if outcome.is_terminal and teardown_func:
             self._execute_one_phase(teardown_func, output_record=False)
           yield outcome
-  
+
           # If we're done with this phase, skip to the next one.
           if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
             break
@@ -195,7 +194,7 @@ class PhaseExecutor(object):
   def _execute_one_phase(self, phase_desc, output_record=True):
     """Executes the given phase, returning a PhaseOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
-    if phase_desc.options.run_if and not phase.options.run_if():
+    if phase_desc.options.run_if and not phase_desc.options.run_if():
       _LOG.info('Phase %s skipped due to run_if returning falsey.',
                 phase_desc.name)
       return
@@ -206,7 +205,7 @@ class PhaseExecutor(object):
       phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      phase_state.result = phase_thread.JoinOrDie()
+      phase_state.result = phase_thread.join_or_die()
 
     _LOG.debug('Phase finished with result %s', phase_state.result)
     return phase_state.result
@@ -219,4 +218,4 @@ class PhaseExecutor(object):
     """
     current_phase_thread = self._current_phase_thread
     if current_phase_thread:
-      current_phase_thread.Kill()
+      current_phase_thread.kill()

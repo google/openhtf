@@ -74,11 +74,6 @@ import xmlrpclib
 
 import mutablerecords
 
-# Fix for xmlrpclib to use <i8> for longs instead of <int>, because our
-# timestamps are in millis, which are too big for 4-byte ints.
-xmlrpclib.Marshaller.dispatch[long] = (
-    lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
-
 import openhtf
 from openhtf import conf
 from openhtf import history
@@ -90,21 +85,26 @@ from openhtf.util import threads
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
 
+# Fix for xmlrpclib to use <i8> for longs instead of <int>, because our
+# timestamps are in millis, which are too big for 4-byte ints.
+xmlrpclib.Marshaller.dispatch[long] = (
+    lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
+
 _LOG = logging.getLogger(__name__)
 
 # We export this so external users (ie the frontend server) know what key
 # to use for station discovery, even if it's overridden in the config.
 DEFAULT_DISCOVERY_STRING = 'OPENHTF_DISCOVERY'
 
-conf.Declare('enable_station_discovery', default_value=True)
-conf.Declare('station_api_bind_address', default_value='0.0.0.0')
-conf.Declare('station_api_port', default_value=8888)
-conf.Declare('station_discovery_string', default_value=DEFAULT_DISCOVERY_STRING)
+conf.declare('enable_station_discovery', default_value=True)
+conf.declare('station_api_bind_address', default_value='0.0.0.0')
+conf.declare('station_api_port', default_value=8888)
+conf.declare('station_discovery_string', default_value=DEFAULT_DISCOVERY_STRING)
 
 # These have defaults in util.multicast, we'll use those if not set.
-conf.Declare('station_discovery_address')
-conf.Declare('station_discovery_port')
-conf.Declare('station_discovery_ttl')
+conf.declare('station_discovery_address')
+conf.declare('station_discovery_port')
+conf.declare('station_discovery_ttl')
 
 # Build multicast kwargs based on conf, otherwise use defaults.
 MULTICAST_KWARGS = lambda: {
@@ -212,8 +212,8 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     'test_uid', 'test_name',
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
-    # Cache last known state (a RemoteState) so we can detect deltas.
-    'cached_state': None})):
+        # Cache last known state (a RemoteState) so we can detect deltas.
+        'cached_state': None})):
 
   def __hash__(self):
     return hash((self.test_uid, self.created_time_millis))
@@ -268,7 +268,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
 
     return cached_state, {
         'status': cached_state.status.name,
-        'running_phase_state': data.ConvertToBaseTypes(
+        'running_phase_state': data.convert_to_base_types(
             cached_state.running_phase_state),
         'test_record': xmlrpclib.Binary(pickle.dumps(test_record))}
 
@@ -327,7 +327,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
                self.test_uid, last_start_time, len(new_history))
 
     for pickled_record in new_history:
-      self._cached_history.append_record(
+      self._cached_history.APPEND_RECORD(
           self.test_uid, pickle.loads(pickled_record.data))
     return self.cached_history
 
@@ -462,7 +462,7 @@ class Station(object):
     return cls(host, port, station_info, proxy)
 
   @property
-  @threads.Synchronized
+  @threads.synchronized
   def reachable(self):
     """Returns True if the station is reachable, also updates StationInfo."""
     try:
@@ -507,7 +507,7 @@ class Station(object):
           ctime_millis != self.cached_tests[test_uid].created_time_millis):
         try:
           updated_tests[test_uid] = RemoteTest(
-            self.make_proxy, self._shared_proxy, self._history, **test_dict)
+              self.make_proxy, self._shared_proxy, self._history, **test_dict)
         except Exception as e:
           # TODO(madsci): catch real exceptions here.
           import pdb; pdb.set_trace()
@@ -523,7 +523,7 @@ class Station(object):
 
 class StationApi(object):
 
-  UID = '%s:%s' % (os.getpid(), util.TimeMillis())
+  UID = '%s:%s' % (os.getpid(), util.time_millis())
 
   def get_station_info(self):
     """Obtain dict required to make a StationInfo for this station.
@@ -553,7 +553,7 @@ class StationApi(object):
     """
     retval = [{
         'test_uid': test.uid,
-        'test_name': test.GetOption('name'),
+        'test_name': test.get_option('name'),
         'created_time_millis': long(test.created_time_millis),
         'last_run_time_millis':
             test.last_run_time_millis and long(test.last_run_time_millis),
@@ -578,7 +578,7 @@ class StationApi(object):
             xmlrpclib.Binary(pickle.dumps(state_dict['test_record'])),
         'plugs': state_dict['plugs'],
         'running_phase_state':
-            data.ConvertToBaseTypes(state_dict['running_phase_state'])
+            data.convert_to_base_types(state_dict['running_phase_state'])
     }
 
   def get_test_state(self, test_uid, remote_record):
@@ -781,7 +781,7 @@ class ApiServer(threading.Thread):
       # enable_station_discovery is set.
       if conf.enable_station_discovery:
         self.multicast_listener = multicast.MulticastListener(
-            self.multicast_response,  **MULTICAST_KWARGS())
+            self.multicast_response, **MULTICAST_KWARGS())
         _LOG.debug(
             'Listening for multicast discovery at %s:%s',
             self.multicast_listener.address, self.multicast_listener.port)

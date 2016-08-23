@@ -18,10 +18,11 @@
 import binascii
 import collections
 import cStringIO
-import gflags
 import logging
 import os
 import struct
+
+import gflags
 
 from . import usb_exceptions
 
@@ -53,7 +54,7 @@ class FastbootProtocol(object):
     """This instance's USB handle."""
     return self.usb
 
-  def SendCommand(self, command, arg=None):
+  def send_command(self, command, arg=None):
     """Sends a command to the device.
 
     Args:
@@ -62,9 +63,9 @@ class FastbootProtocol(object):
     """
     if arg is not None:
       command = '%s:%s' % (command, arg)
-    self._Write(cStringIO.StringIO(command), len(command))
+    self._write(cStringIO.StringIO(command), len(command))
 
-  def HandleSimpleResponses(
+  def handle_simple_responses(
       self, timeout_ms=None, info_cb=DEFAULT_MESSAGE_CALLBACK):
     """Accepts normal responses from the device.
 
@@ -75,12 +76,12 @@ class FastbootProtocol(object):
     Returns:
       OKAY packet's message.
     """
-    return self._AcceptResponses('OKAY', info_cb, timeout_ms=timeout_ms)
+    return self._accept_responses('OKAY', info_cb, timeout_ms=timeout_ms)
 
   # pylint: disable=too-many-arguments
-  def HandleDataSending(self, source_file, source_len,
-                        info_cb=DEFAULT_MESSAGE_CALLBACK,
-                        progress_callback=None, timeout_ms=None):
+  def handle_data_sending(self, source_file, source_len,
+                          info_cb=DEFAULT_MESSAGE_CALLBACK,
+                          progress_callback=None, timeout_ms=None):
     """Handles the protocol for sending data to the device.
 
     Arguments:
@@ -100,7 +101,7 @@ class FastbootProtocol(object):
     Returns:
       OKAY packet's message.
     """
-    accepted_size = self._AcceptResponses(
+    accepted_size = self._accept_responses(
         'DATA', info_cb, timeout_ms=timeout_ms)
 
     accepted_size = binascii.unhexlify(accepted_size[:8])
@@ -109,12 +110,12 @@ class FastbootProtocol(object):
       raise usb_exceptions.FastbootTransferError(
           'Device refused to download %s bytes of data (accepts %s bytes)',
           source_len, accepted_size)
-    self._Write(source_file, accepted_size, progress_callback)
-    return self._AcceptResponses('OKAY', info_cb, timeout_ms=timeout_ms)
+    self._write(source_file, accepted_size, progress_callback)
+    return self._accept_responses('OKAY', info_cb, timeout_ms=timeout_ms)
 
   # pylint: enable=too-many-arguments
 
-  def _AcceptResponses(self, expected_header, info_cb, timeout_ms=None):
+  def _accept_responses(self, expected_header, info_cb, timeout_ms=None):
     """Accepts responses until the expected header or a FAIL.
 
     Arguments:
@@ -131,7 +132,7 @@ class FastbootProtocol(object):
       OKAY packet's message.
     """
     while True:
-      response = self.usb.Read(64, timeout_ms=timeout_ms)
+      response = self.usb.read(64, timeout_ms=timeout_ms)
       header = response[:4]
       remaining = response[4:]
 
@@ -151,7 +152,7 @@ class FastbootProtocol(object):
         raise usb_exceptions.FastbootInvalidResponse(
             'Got unknown header %s and response %s', header, remaining)
 
-  def _HandleProgress(self, total, progress_callback):  # pylint: disable=no-self-use
+  def _handle_progress(self, total, progress_callback):  # pylint: disable=no-self-use
     """Calls the callback with the current progress and total ."""
     current = 0
     while True:
@@ -163,15 +164,15 @@ class FastbootProtocol(object):
                        progress_callback)
         continue
 
-  def _Write(self, data, length, progress_callback=None):
+  def _write(self, data, length, progress_callback=None):
     """Sends the data to the device, tracking progress with the callback."""
     if progress_callback:
-      progress = self._HandleProgress(length, progress_callback)
+      progress = self._handle_progress(length, progress_callback)
       progress.next()
     while length:
       tmp = data.read(FLAGS.fastboot_download_chunk_size_kb * 1024)
       length -= len(tmp)
-      self.usb.Write(tmp)
+      self.usb.write(tmp)
 
       if progress_callback:
         progress.send(len(tmp))
@@ -195,19 +196,19 @@ class FastbootCommands(object):
     """This instance's USB handle."""
     return self._usb
 
-  def Close(self):
+  def close(self):
     """Close the USB handle."""
-    self._usb.Close()
+    self._usb.close()
 
-  def _SimpleCommand(self, command, arg=None, **kwargs):
+  def _simple_command(self, command, arg=None, **kwargs):
     """Send a simple command."""
-    self._protocol.SendCommand(command, arg)
-    return self._protocol.HandleSimpleResponses(**kwargs)
+    self._protocol.send_command(command, arg)
+    return self._protocol.handle_simple_responses(**kwargs)
 
   # pylint: disable=too-many-arguments
-  def FlashFromFile(self, partition, source_file, source_len=0,
-                    info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None,
-                    timeout_ms=None):
+  def flash_from_file(self, partition, source_file, source_len=0,
+                      info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None,
+                      timeout_ms=None):
     """Flashes a partition from the file on disk.
 
     Args:
@@ -224,16 +225,16 @@ class FastbootCommands(object):
     if source_len == 0:
       # Fall back to stat.
       source_len = os.stat(source_file).st_size
-    download_response = self.Download(
+    download_response = self.download(
         source_file, source_len=source_len, info_cb=info_cb,
         progress_callback=progress_callback)
-    flash_response = self.Flash(partition, info_cb=info_cb,
+    flash_response = self.flash(partition, info_cb=info_cb,
                                 timeout_ms=timeout_ms)
     return download_response + flash_response
 
   # pylint: enable=too-many-arguments
 
-  def Download(self, source_file, source_len=0,
+  def download(self, source_file, source_len=0,
                info_cb=DEFAULT_MESSAGE_CALLBACK, progress_callback=None):
     """Downloads a file to the device.
 
@@ -261,11 +262,11 @@ class FastbootCommands(object):
       source_file = cStringIO.StringIO(data)
       source_len = len(data)
 
-    self._protocol.SendCommand('download', '%08x' % source_len)
-    return self._protocol.HandleDataSending(
+    self._protocol.send_command('download', '%08x' % source_len)
+    return self._protocol.handle_data_sending(
         source_file, source_len, info_cb, progress_callback=progress_callback)
 
-  def Flash(self, partition, timeout_ms=None, info_cb=DEFAULT_MESSAGE_CALLBACK):
+  def flash(self, partition, timeout_ms=None, info_cb=DEFAULT_MESSAGE_CALLBACK):
     """Flashes the last downloaded file to the given partition.
 
     Args:
@@ -276,14 +277,14 @@ class FastbootCommands(object):
     Returns:
       Response to a download request, normally nothing.
     """
-    return self._SimpleCommand('flash', arg=partition, info_cb=info_cb,
-                               timeout_ms=timeout_ms)
+    return self._simple_command('flash', arg=partition, info_cb=info_cb,
+                                timeout_ms=timeout_ms)
 
-  def Erase(self, partition, timeout_ms=None):
+  def erase(self, partition, timeout_ms=None):
     """Erases the given partition."""
-    self._SimpleCommand('erase', arg=partition, timeout_ms=timeout_ms)
+    self._simple_command('erase', arg=partition, timeout_ms=timeout_ms)
 
-  def Getvar(self, var, info_cb=DEFAULT_MESSAGE_CALLBACK):
+  def get_var(self, var, info_cb=DEFAULT_MESSAGE_CALLBACK):
     """Returns the given variable's definition.
 
     Args:
@@ -292,9 +293,9 @@ class FastbootCommands(object):
     Returns:
       Value of var according to the current bootloader.
     """
-    return self._SimpleCommand('getvar', arg=var, info_cb=info_cb)
+    return self._simple_command('getvar', arg=var, info_cb=info_cb)
 
-  def Oem(self, command, timeout_ms=None, info_cb=DEFAULT_MESSAGE_CALLBACK):
+  def oem(self, command, timeout_ms=None, info_cb=DEFAULT_MESSAGE_CALLBACK):
     """Executes an OEM command on the device.
 
     Args:
@@ -304,14 +305,14 @@ class FastbootCommands(object):
     Returns:
       The final response from the device.
     """
-    return self._SimpleCommand(
+    return self._simple_command(
         'oem %s' % command, timeout_ms=timeout_ms, info_cb=info_cb)
 
-  def Continue(self):
+  def continue_(self):
     """Continues execution past fastboot into the system."""
-    return self._SimpleCommand('continue')
+    return self._simple_command('continue')
 
-  def Reboot(self, target_mode=None, timeout_ms=None):
+  def reboot(self, target_mode=None, timeout_ms=None):
     """Reboots the device.
 
     Args:
@@ -321,9 +322,9 @@ class FastbootCommands(object):
     Returns:
         Usually the empty string. Depends on the bootloader and the target_mode.
     """
-    return self._SimpleCommand('reboot', arg=target_mode, timeout_ms=timeout_ms)
+    return self._simple_command('reboot', arg=target_mode,
+                                timeout_ms=timeout_ms)
 
-  def RebootBootloader(self, timeout_ms=None):
+  def reboot_bootloader(self, timeout_ms=None):
     """Reboots into the bootloader, usually equiv to Reboot('bootloader')."""
-    return self._SimpleCommand('reboot-bootloader', timeout_ms=timeout_ms)
-
+    return self._simple_command('reboot-bootloader', timeout_ms=timeout_ms)

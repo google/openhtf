@@ -23,7 +23,7 @@ from pkg_resources import get_distribution, DistributionNotFound
 import mutablerecords
 
 
-def LogEveryNToLogger(n, logger, level, message, *args):  # pylint: disable=invalid-name
+def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable=invalid-name
   """Logs the given message every n calls to a logger.
 
   Args:
@@ -46,12 +46,12 @@ def LogEveryNToLogger(n, logger, level, message, *args):  # pylint: disable=inva
   return lambda: next(gen)
 
 
-def LogEveryN(n, level, message, *args):  # pylint: disable=invalid-name
-  """Logs a message every n calls. See LogEveryNToLogger."""
-  return LogEveryNToLogger(n, None, level, message, *args)
+def log_every_n(n, level, message, *args):  # pylint: disable=invalid-name
+  """Logs a message every n calls. See _log_every_n_to_logger."""
+  return _log_every_n_to_logger(n, None, level, message, *args)
 
 
-def TimeMillis():  # pylint: disable=invalid-name
+def time_millis():  # pylint: disable=invalid-name
   """The time in milliseconds."""
   return int(time.time() * 1000)
 
@@ -75,8 +75,8 @@ def get_version():
 class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
   """Holds a single result as a nonlocal variable.
 
-  Comparable to using Python 3's nonlocal keyword, it allows an inner function to
-  set the value in an outer function's namespace:
+  Comparable to using Python 3's nonlocal keyword, it allows an inner function
+  to set the value in an outer function's namespace:
 
   def WrappingFunction():
     x = NonLocalResult()
@@ -91,6 +91,7 @@ class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
   """
 
 
+# TODO(jethier): Add a pylint plugin to avoid the no-self-argument for this.
 class classproperty(object):
   """Exactly what it sounds like.
 

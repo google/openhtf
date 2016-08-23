@@ -22,28 +22,28 @@ import openhtf.conf as conf
 import openhtf.plugs as plugs
 
 
-conf.Declare('example_plug_increment', default_value=1,
-             description='Increment constant for example plug.')
+conf.declare('example_plug_increment_size', default_value=1,
+             description='increment constant for example plug.')
 
 
 class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
   """Example of a simple plug.
 
-  This plug simply keeps a value and increments it each time Increment() is
+  This plug simply keeps a value and increments it each time increment() is
   called.  You'll notice a few paradigms here:
 
-    - @conf.InjectPositionalArgs
+    - @conf.inject_positional_args
       This is generally a good way to pass in any configuration that your
       plug needs, such as an IP address or serial port to connect to.  If
       You want to use your plug outside of the OpenHTF framework, you can
       still manually instantiate it, but you must pass the arguments by
-      keyword (as a side effect of the way InjectPositionalArgs is
+      keyword (as a side effect of the way inject_positional_args is
       implemented).
 
       For example, if you had no openhtf.conf loaded, you could do this:
         my_plug = ExamplePlug(example_plug_increment=4)
 
-    - TearDown()
+    - tearDown()
       This method will be called automatically by the OpenHTF framework at
       the end of test execution.  Here is a good place to do any close()
       calls or similar resource cleanup that you need to do.  In this case,
@@ -58,26 +58,26 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
       don't have to do anything special to maintain state within a plug
       across phases.
 
-      This does imply, however, that if you *want* per-phase TearDown()
+      This does imply, however, that if you *want* per-phase tearDown()
       semantics, you have to implement them manually.  The recommended
       way to do this is to make your plug support Python's context
       manager interface (__enter__ and __exit__), and then access it via
       a with: block at the beginning of every phase where it is used.
   """
 
-  @conf.InjectPositionalArgs
-  def __init__(self, example_plug_increment):
-    self.increment = example_plug_increment
+  @conf.inject_positional_args
+  def __init__(self, example_plug_increment_size):
+    self.increment_size = example_plug_increment_size
     self.value = 0
 
   def __str__(self):
     return '<%s: %s>' % (type(self).__name__, self.value)
 
-  def TearDown(self):
+  def tearDown(self):
     """Tear down the plug instance."""
     self.logger.info('Tearing down %s', self)
 
-  def Increment(self):
+  def increment(self):
     """Increment our value, return the previous value."""
-    self.value += self.increment
-    return self.value - self.increment
+    self.value += self.increment_size
+    return self.value - self.increment_size

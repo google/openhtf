@@ -34,8 +34,8 @@ from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
-conf.Declare('teardown_timeout_s', default_value=3, description=
-    'Timeout (in seconds) for test teardown functions.')
+conf.declare('teardown_timeout_s', default_value=3, description=
+             'Timeout (in seconds) for test teardown functions.')
 
 
 class TestExecutionError(Exception):
@@ -62,9 +62,9 @@ class TestExecutor(threads.KillableThread):
 
     self._teardown_function = (
         teardown_function and
-        openhtf.PhaseDescriptor.WrapOrCopy(
+        openhtf.PhaseDescriptor.wrap_or_copy(
             teardown_function, timeout_s=timeout_s))
-        
+
     self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._lock = threading.Lock()
@@ -76,7 +76,7 @@ class TestExecutor(threads.KillableThread):
     with self._lock:
       if self._exit_stack:
         self._exit_stack.close()
-    self.Kill()
+    self.kill()
 
   def finalize(self):
     """Finalize test execution and output resulting record to callbacks.
@@ -90,13 +90,12 @@ class TestExecutor(threads.KillableThread):
     """
     if not self.test_state:
       raise TestStopError('Test Stopped.')
-
     if not self.test_state.is_finalized:
       self.test_state.logger.info('Finishing test with outcome ABORTED.')
       self.test_state.finalize(test_record.Outcome.ABORTED)
 
     return self.test_state
-    
+
   def wait(self):
     """Waits until death."""
     try:
@@ -105,7 +104,7 @@ class TestExecutor(threads.KillableThread):
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
 
-  def _ThreadProc(self):
+  def _thread_proc(self):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
@@ -121,7 +120,7 @@ class TestExecutor(threads.KillableThread):
       # Create plugs while we're here because that may also take a while and
       # we don't want to hold self._lock while we wait.
       self.test_state.mark_test_started(self._wait_for_test_start())
-      self.test_state.plug_manager.InitializePlugs()
+      self.test_state.plug_manager.initialize_plugs()
 
       with self._lock:
         if not self._exit_stack:
@@ -129,11 +128,11 @@ class TestExecutor(threads.KillableThread):
           # call to stop() and we ended up resuming execution here but the
           # exit stack was already cleared, bail.  Try to tear down plugs on a
           # best-effort basis.
-          self.test_state.plug_manager.TearDownPlugs()
+          self.test_state.plug_manager.tear_down_plugs()
           raise TestStopError('Test Stopped.')
 
         # Tear down plugs first, then output test record.
-        exit_stack.callback(self.test_state.plug_manager.TearDownPlugs)
+        exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
 
         # Perform initialization of some top-level stuff we need.
         executor = self._make_phase_executor(exit_stack)
@@ -164,7 +163,7 @@ class TestExecutor(threads.KillableThread):
     try:
       for phase_outcome in executor.execute_phases(
           self._test_descriptor.phases, self._teardown_function):
-        if self.test_state.SetStatusFromPhaseOutcome(phase_outcome):
+        if self.test_state.set_status_from_phase_outcome(phase_outcome):
           break
       else:
         self.test_state.finalize()

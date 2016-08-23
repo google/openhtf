@@ -28,17 +28,17 @@ import unittest
 
 from openhtf import conf
 
-conf.Declare('flag_key')
-conf.Declare('other_flag')
-conf.Declare('json_test_key')
-conf.Declare('yaml_test_key')
-conf.Declare('overridden_key')
-conf.Declare('none_default', default_value=None)
-conf.Declare('string_default', default_value='default')
-conf.Declare('no_default')
+conf.declare('flag_key')
+conf.declare('other_flag')
+conf.declare('json_test_key')
+conf.declare('yaml_test_key')
+conf.declare('overridden_key')
+conf.declare('none_default', default_value=None)
+conf.declare('string_default', default_value='default')
+conf.declare('no_default')
 
 
-def tearDownModule():
+def tear_down_module():
     sys.argv = _old_argv
 
 
@@ -50,43 +50,43 @@ class TestConf(unittest.TestCase):
 
   def tearDown(self):
     conf._flags.config_file = None
-    conf.Reset()
+    conf.reset()
 
-  def testYamlConfig(self):
+  def test_yaml_config(self):
     with open(self.YAML_FILENAME, 'rb') as yamlfile:
       conf._flags.config_file = yamlfile
-      conf.Reset()
+      conf.reset()
     self.assertEquals('yaml_test_value', conf.yaml_test_key)
 
-  def testLoadOverride(self):
-    conf.Load(overridden_key='overridden_value')
-    conf.Load(overridden_key='new_value')
+  def test_load_override(self):
+    conf.load(overridden_key='overridden_value')
+    conf.load(overridden_key='new_value')
     self.assertEquals('new_value', conf.overridden_key)
 
-  def testLoadNoOverride(self):
-    conf.Load(overridden_key='overridden_value')
-    conf.Load(overridden_key='new_value', _override=False)
+  def test_load_no_override(self):
+    conf.load(overridden_key='overridden_value')
+    conf.load(overridden_key='new_value', _override=False)
     self.assertEquals('overridden_value', conf.overridden_key)
 
-  def testLoadFromDict(self):
-    conf.LoadFromDict({'overridden_key': 'new_value'})
+  def test_load_from_dict(self):
+    conf.load_from_dict({'overridden_key': 'new_value'})
     self.assertEquals('new_value', conf.overridden_key)
 
-  def testDefaults(self):
+  def test_defaults(self):
     self.assertEquals('default', conf.string_default)
     self.assertIsNone(conf.none_default)
     with self.assertRaises(conf.UnsetKeyError):
       conf.no_default
 
-  def testFlagValues(self):
+  def test_flag_values(self):
     self.assertEquals('flag_value', conf.flag_key)
     self.assertEquals('other_value', conf.other_flag)
     # Make sure flag value takes precedence, even if a value is loaded.
-    conf.Load(flag_key='loaded_value')
+    conf.load(flag_key='loaded_value')
     self.assertEquals('flag_value', conf.flag_key)
 
-  def testAsDict(self):
-    conf.Load(station_id='station_id')
+  def test_as_dict(self):
+    conf.load(station_id='station_id')
     self.assertEquals({
         'flag_key': 'flag_value',
         'enable_station_discovery': True,
@@ -101,85 +101,85 @@ class TestConf(unittest.TestCase):
         'teardown_timeout_s': 3,
         'max_history_size_mb': 256}, conf._asdict())
 
-  def testUndeclared(self):
+  def test_undeclared(self):
     with self.assertRaises(conf.UndeclaredKeyError):
       conf.undeclared
 
-  def testWeirdAttribute(self):
+  def test_weird_attribute(self):
     with self.assertRaises(AttributeError):
       conf._dont_do_this
     with self.assertRaises(AttributeError):
       conf._dont_do_this_either = None
 
-  def testCantSetViaAttribute(self):
+  def test_cant_set_via_attribute(self):
     with self.assertRaises(AttributeError):
       conf.overridden_key = None
 
-  def testMultipleDeclaration(self):
-    conf.Declare('multiple')
+  def test_multiple_declaration(self):
+    conf.declare('multiple')
     with self.assertRaises(conf.KeyAlreadyDeclaredError):
-      conf.Declare('multiple')
+      conf.declare('multiple')
 
-  def testInvalidKey(self):
+  def test_invalid_key(self):
     with self.assertRaises(conf.InvalidKeyError):
-      conf.Declare('_invalid')
+      conf.declare('_invalid')
     with self.assertRaises(conf.InvalidKeyError):
-      conf.Declare('Invalid')
+      conf.declare('Invalid')
 
-  def testBadConfigFile(self):
+  def test_bad_config_file(self):
     with open(self.NOT_A_DICT, 'rb') as yamlfile:
       conf._flags.config_file = yamlfile
       with self.assertRaises(conf.ConfigurationInvalidError):
-        conf.Reset()
+        conf.reset()
 
     with open(self.BAD_FORMAT, 'rb') as yamlfile:
       conf._flags.config_file = yamlfile
       with self.assertRaises(conf.ConfigurationInvalidError):
-        conf.Reset()
+        conf.reset()
 
-  def testSaveAndRestore(self):
-    @conf.SaveAndRestore
-    def ModifiesConf():
-      conf.Load(string_default='modified')
+  def test_save_and_restore(self):
+    @conf.save_and_restore
+    def modifies_conf():
+      conf.load(string_default='modified')
       self.assertEquals('modified', conf.string_default)
 
     self.assertEquals('default', conf.string_default)
-    ModifiesConf()
+    modifies_conf()
     self.assertEquals('default', conf.string_default)
 
-  def testSaveAndRestoreKwargs(self):
-    @conf.SaveAndRestore(string_default='modified')
-    def ModifiesConf():
+  def test_save_and_restore_kwargs(self):
+    @conf.save_and_restore(string_default='modified')
+    def modifies_conf():
       self.assertEquals('modified', conf.string_default)
 
     self.assertEquals('default', conf.string_default)
-    ModifiesConf()
+    modifies_conf()
     self.assertEquals('default', conf.string_default)
 
-  def testInjectPositionalArgs(self):
-    @conf.InjectPositionalArgs
-    def TestFunction(string_default, no_default, not_declared):
+  def test_inject_positional_args(self):
+    @conf.inject_positional_args
+    def test_function(string_default, no_default, not_declared):
       self.assertEquals('default', string_default)
       self.assertEquals('passed_value', no_default)
       self.assertEquals('not_declared', not_declared)
 
-    TestFunction(no_default='passed_value', not_declared='not_declared')
+    test_function(no_default='passed_value', not_declared='not_declared')
 
-  def testInjectPositionalArgsOverrides(self):
-    @conf.InjectPositionalArgs
-    def TestFunction(string_default, none_default='new_default'):
+  def test_inject_positional_args_overrides(self):
+    @conf.inject_positional_args
+    def test_function(string_default, none_default='new_default'):
       # Make sure when we pass a kwarg, it overrides the config value.
       self.assertEquals('overridden', string_default)
       # Make sure kwargs don't come from config, only positional args.
       self.assertEquals('new_default', none_default)
 
-    TestFunction(string_default='overridden')
+    test_function(string_default='overridden')
 
-  def testInjectPositionalArgsClass(self):
-    class TestClass(object):
-      @conf.InjectPositionalArgs
+  def test_inject_positional_args_class(self):
+    class test_class(object):
+      @conf.inject_positional_args
       def __init__(self, string_default):
         self.string_default = string_default
 
-    instance = TestClass()
+    instance = test_class()
     self.assertEquals('default', instance.string_default)

@@ -104,11 +104,11 @@ class LibUsbHandle(usb_handle.UsbHandle):
     self._handle = handle
     self._interface_number = iface_number
 
-  def IsClosed(self):
+  def is_closed(self):
     return self._handle is None
 
   @staticmethod
-  def _DeviceToSysfsPath(device):
+  def _device_to_sysfs_path(device):
     """Convert device to corresponding sysfs path."""
     return '%s-%s' % (
         device.getBusNumber(),
@@ -117,32 +117,32 @@ class LibUsbHandle(usb_handle.UsbHandle):
   @property
   def port_path(self):
     """A string of the physical port of this device, like 'X-X.X.X'."""
-    return self._DeviceToSysfsPath(self._device)
+    return self._device_to_sysfs_path(self._device)
 
-  @usb_handle.RequiresOpenHandle
-  def Read(self, length, timeout_ms=None):
+  @usb_handle.requires_open_handle
+  def read(self, length, timeout_ms=None):
     try:
       return self._handle.bulkRead(
           self._read_endpoint, length,
-          timeout=self._TimeoutOrDefault(timeout_ms))
+          timeout=self._timeout_or_default(timeout_ms))
     except libusb1.USBError as exception:
       raise usb_exceptions.UsbReadFailedError(
           exception, '%s failed read (timeout %sms)', self,
-          self._TimeoutOrDefault(timeout_ms))
+          self._timeout_or_default(timeout_ms))
 
-  @usb_handle.RequiresOpenHandle
-  def Write(self, data, timeout_ms=None):
+  @usb_handle.requires_open_handle
+  def write(self, data, timeout_ms=None):
     try:
       return self._handle.bulkWrite(
           self._write_endpoint, data,
-          timeout=self._TimeoutOrDefault(timeout_ms))
+          timeout=self._timeout_or_default(timeout_ms))
     except libusb1.USBError as exception:
       raise usb_exceptions.UsbWriteFailedError(
           exception, '%s failed write (timeout %sms)', self,
-          self._TimeoutOrDefault(timeout_ms))
+          self._timeout_or_default(timeout_ms))
 
-  def Close(self):
-    if self.IsClosed():
+  def close(self):
+    if self.is_closed():
       return
 
     try:
@@ -154,9 +154,9 @@ class LibUsbHandle(usb_handle.UsbHandle):
       self._handle = None
 
   @classmethod
-  def Open(cls, **kwargs):
-    """See IterOpen, but raises if multiple or no matches found."""
-    handle_iter = cls.IterOpen(**kwargs)
+  def open(cls, **kwargs):
+    """See iter_open, but raises if multiple or no matches found."""
+    handle_iter = cls.iter_open(**kwargs)
 
     try:
       handle = next(handle_iter)
@@ -172,15 +172,15 @@ class LibUsbHandle(usb_handle.UsbHandle):
       return handle
 
     # We have more than one device, close the ones we opened and bail.
-    handle.Close()
-    multiple_handle.Close()
+    handle.close()
+    multiple_handle.close()
     raise usb_exceptions.MultipleInterfacesFoundError(kwargs)
 
   # pylint: disable=too-many-arguments
   @classmethod
-  def IterOpen(cls, name=None, interface_class=None, interface_subclass=None,
-               interface_protocol=None, serial_number=None, port_path=None,
-               default_timeout_ms=None):
+  def iter_open(cls, name=None, interface_class=None, interface_subclass=None,
+                interface_protocol=None, serial_number=None, port_path=None,
+                default_timeout_ms=None):
     """Find and yield locally connected devices that match.
 
     Note that devices are opened (and interfaces claimd) as they are yielded.
@@ -218,7 +218,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
           continue
 
         if (port_path is not None and
-            cls._DeviceToSysfsPath(device) != port_path):
+            cls._device_to_sysfs_path(device) != port_path):
           continue
 
         for setting in device.iterSettings():

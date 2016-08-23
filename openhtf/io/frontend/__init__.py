@@ -62,13 +62,14 @@ import tornado.ioloop
 import tornado.web
 
 from openhtf import conf
+from openhtf import plugs
 from openhtf.io import station_api
 from openhtf.io.http_api import PING_STRING
 from openhtf.io.http_api import PING_RESPONSE_KEY
 from openhtf.util import classproperty
 from openhtf.util import logs
 from openhtf.util import multicast
-from openhtf.util.data import ConvertToBaseTypes
+from openhtf.util.data import convert_to_base_types
 
 
 _LOG = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
 BUILD_PATH = os.path.join(os.path.dirname(__file__), 'src', 'dist')
 PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
 
-conf.Declare('stations',
+conf.declare('stations',
              default_value=[],
              description='List of manually declared stations.')
 
@@ -119,8 +120,8 @@ class TestWatcher(threading.Thread):
             self._test.wait_for_update(timeout_s=self._wait_timeout_s))
       except socket.error:
         _LOG.debug('Station at %s went unreachable. Ending monitoring of '
-                     'remote test %s (%s).',
-                     self._hostport, self._test.test_name, self._test.test_uid)
+                   'remote test %s (%s).',
+                   self._hostport, self._test.test_name, self._test.test_uid)
         return
 
 
@@ -195,14 +196,14 @@ class PubSub(sockjs.tornado.SockJSConnection):
   """Generic pub/sub based on SockJS connections."""
 
   @classproperty
-  def _lock(cls):
+  def _lock(cls):  # pylint: disable=no-self-argument
     """Ensure subclasses don't share subscriber locks by forcing override."""
     raise AttributeError(
         'The PubSub class should not be instantiated directly. '
         'Instead, subclass it and override the _lock attribute.')
 
   @classproperty
-  def subscribers(cls):
+  def subscribers(cls):  # pylint: disable=no-self-argument
     """Ensure subclasses don't share subscribers by forcing override."""
     raise AttributeError(
         'The PubSub class should not be instantiated directly. '
@@ -286,7 +287,7 @@ class StationPubSub(PubSub):
     """Construct a message for publishing."""
     return json.dumps({
         'test_uid': test_uid,
-        'state': ConvertToBaseTypes(remote_state)
+        'state': convert_to_base_types(remote_state)
     })
 
   @classmethod
@@ -323,7 +324,7 @@ class WebGuiServer(tornado.web.Application):
     """Main handler for OpenHTF frontend app.
 
     Serves the index page; the main entry point for the client app."""
-    def initialize(self, port):
+    def initialize(self, port):  # pylint: disable=arguments-differ
       self.port = port
 
     def get(self):

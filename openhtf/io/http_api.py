@@ -70,16 +70,16 @@ class Server(object):
                     multicast.MulticastListener(
                         multicast_response, **(multicast_info or {}))]
 
-  def Start(self):
+  def start(self):
     """Start all service threads."""
     for server in self.servers:
       server.start()
 
-  def Stop(self):
+  def stop(self):
     """Stop all service threads."""
     for server in self.servers:
       while server.is_alive():
-        server.Stop()
+        server.stop()
         server.join(self.KILL_TIMEOUT_S)
 
 
@@ -107,24 +107,25 @@ class HTTPServer(threading.Thread):
                  self.log_date_time_string(),
                  msg_format%args)
 
-    def do_GET(self):  # pylint: disable=invalid-name
+    def do_get(self):  # pylint: disable=invalid-name
       """Reply with a JSON representation of the current framwork and test
       states.
       """
-      result = {'test': data.ConvertToBaseTypes(self.executor.GetState(),
-                                                ignore_keys=('plug_manager',)),
-                'framework': data.ConvertToBaseTypes(self.executor)}
+      result = {'test': data.convert_to_base_types(
+          self.executor.get_state(),
+          ignore_keys=('plug_manager',)),
+                'framework': data.convert_to_base_types(self.executor)}
       self.send_response(200)
       self.end_headers()
       self.wfile.write(json.dumps(result))
-      command, path, version = self.requestline.split()
+      #command, path, version = self.requestline.split()
 
-    def do_POST(self):  # pylint: disable=invalid-name
+    def do_post(self):  # pylint: disable=invalid-name
       """Parse a prompt response and send it to the PromptManager."""
       length = int(self.headers.getheader('content-length'))
       raw = self.rfile.read(length)
       request = json.loads(raw)
-      result = user_input.get_prompt_manager().Respond(
+      result = user_input.get_prompt_manager().respond(
           uuid.UUID((request['id'])), request['response'])
       self.send_response(200)
       self.end_headers()
@@ -134,7 +135,7 @@ class HTTPServer(threading.Thread):
         self.wfile.write(PROMPT_NACK)
 
 
-  def Stop(self):
+  def stop(self):
     """Stop the HTTP server."""
     if self._server:
       self._server.shutdown()

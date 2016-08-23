@@ -26,7 +26,6 @@ import mutablerecords
 
 from enum import Enum
 
-from openhtf import util
 from openhtf.util import logs
 
 _LOG = logging.getLogger(__name__)
@@ -49,7 +48,7 @@ class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
     return hashlib.sha1(self.data).hexdigest()
 
 
-class TestRecord(  # pylint: disable=too-few-public-methods,no-init
+class TestRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
         {'start_time_millis': None, 'end_time_millis': None,
@@ -59,7 +58,7 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
          'phases': list, 'log_records': list})):
   """The record of a single run of a test."""
 
-  def AddOutcomeDetails(self, code, description=''):
+  def add_outcome_details(self, code, description=''):
     """Adds a code with optional description to this record's outcome_details.
 
     Args:
@@ -69,7 +68,7 @@ class TestRecord(  # pylint: disable=too-few-public-methods,no-init
     self.outcome_details.append(OutcomeDetails(code, description))
 
 
-class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
+class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'PhaseRecord', ['name', 'codeinfo'],
         {'measurements': None,
@@ -88,15 +87,15 @@ class PhaseRecord(  # pylint: disable=too-few-public-methods,no-init
   """
 
   @classmethod
-  def FromDescriptor(cls, phase_desc):
+  def from_descriptor(cls, phase_desc):
     return cls(phase_desc.name, phase_desc.code_info)
 
 
-def _GetSourceSafely(obj):
+def _get_source_safely(obj):
   try:
     return inspect.getsource(obj)
-  except Exception:
-    logs.LogOnce(
+  except Exception:  # pylint: disable=broad-except
+    logs.log_once(
         _LOG.warning,
         'Unable to load source code for %s. Only logging this once.', obj)
     return ''
@@ -107,17 +106,17 @@ class CodeInfo(mutablerecords.Record(
   """Information regarding the running tester code."""
 
   @classmethod
-  def ForModuleFromStack(cls, levels_up=1):
+  def for_module_from_stack(cls, levels_up=1):
     # levels_up is how many frames up to go:
     #  0: This function (useless).
     #  1: The function calling this (likely).
     #  2+: The function calling 'you' (likely in the framework).
     frame, filename = inspect.stack(context=0)[levels_up][:2]
     module = inspect.getmodule(frame)
-    source = _GetSourceSafely(frame)
+    source = _get_source_safely(frame)
     return cls(os.path.basename(filename), inspect.getdoc(module), source)
 
   @classmethod
-  def ForFunction(cls, func):
-    source = _GetSourceSafely(func)
+  def for_function(cls, func):
+    source = _get_source_safely(func)
     return cls(func.__name__, inspect.getdoc(func), source)

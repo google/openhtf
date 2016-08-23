@@ -32,12 +32,12 @@ FLUSH_READ_SIZE = 1024 * 64
 _LOG = logging.getLogger(__name__)
 
 
-def RequiresOpenHandle(method):  # pylint: disable=invalid-name
+def requires_open_handle(method):  # pylint: disable=invalid-name
   """Decorator to ensure a handle is open for certain methods.
 
   Subclasses should decorate their Read() and Write() with this rather than
   checking their own internal state, keeping all "is this handle open" logic
-  in IsClosed().
+  in is_closed().
 
   Args:
     method: A class method on a subclass of UsbHandle
@@ -52,7 +52,7 @@ def RequiresOpenHandle(method):  # pylint: disable=invalid-name
   @functools.wraps(method)
   def wrapper_requiring_open_handle(self, *args, **kwargs):
     """The wrapper to be returned."""
-    if self.IsClosed():
+    if self.is_closed():
       raise usb_exceptions.HandleClosedError()
     return method(self, *args, **kwargs)
   return wrapper_requiring_open_handle
@@ -73,7 +73,7 @@ class UsbHandle(object):
   a Bulk or Interrupt transfer.
 
   It is recommended that subclasses implement the following Open() and
-  IterOpen() classmethods:
+  iter_open() classmethods:
     Open():
       Minimum Args:
         interface_class: USB interface_class to match
@@ -90,7 +90,7 @@ class UsbHandle(object):
         MultipleInterfacesFoundError: If multiple interfaces were found that
       match the given criteria.
 
-    IterOpen():
+    iter_open():
       Same Args as Open(), but instead of returning a UsbHandle, yields
     UsbHandle instances for all matching connected devices.
 
@@ -118,30 +118,31 @@ class UsbHandle(object):
     self._default_timeout_ms = default_timeout_ms or DEFAULT_TIMEOUT_MS
 
   def __del__(self):  # pylint: disable=invalid-name
-    if not self.IsClosed():
+    if not self.is_closed():
       _LOG.error('!!!!!USB!!!!! %s not closed!', type(self).__name__)
 
   def __str__(self):
-    return '<%s: (%s %s)>' % (type(self).__name__, self.name, self.serial_number)
+    return '<%s: (%s %s)>' % (type(self).__name__, self.name,
+                              self.serial_number)
   __repr__ = __str__
 
-  def _TimeoutOrDefault(self, timeout_ms):
+  def _timeout_or_default(self, timeout_ms):
     """Specify a timeout or take the default."""
     return int(timeout_ms if timeout_ms is not None
                else self._default_timeout_ms)
 
-  def FlushBuffers(self):
+  def flush_buffers(self):
     """Default implementation, calls Read() until it blocks."""
     while True:
       try:
-        self.Read(FLUSH_READ_SIZE, timeout_ms=10)
+        self.read(FLUSH_READ_SIZE, timeout_ms=10)
       except usb_exceptions.LibusbWrappingError as exception:
-        if exception.IsTimeout():
+        if exception.is_timeout():
           break
         raise
 
   @abc.abstractmethod
-  def Read(self, length, timeout_ms=None):
+  def read(self, length, timeout_ms=None):
     """Perform a USB Read on this interface, return the result.
 
     Implementors should call self._EnsureOpen() first, then perform any
@@ -160,7 +161,7 @@ class UsbHandle(object):
     """
 
   @abc.abstractmethod
-  def Write(self, data, timeout_ms=None):
+  def write(self, data, timeout_ms=None):
     """Perform a USB Write on this interface.
 
     Implementors should call self._EnsureOpen() first, then perform any
@@ -176,7 +177,7 @@ class UsbHandle(object):
     """
 
   @abc.abstractmethod
-  def Close(self):
+  def close(self):
     """Close this handle and release any associated resources.
 
     Other methods must not be called after calling Close().  This method must
@@ -184,5 +185,5 @@ class UsbHandle(object):
     """
 
   @abc.abstractmethod
-  def IsClosed(self):
+  def is_closed(self):
     """Returns True if this handle has been closed, False otherwise."""
