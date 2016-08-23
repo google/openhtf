@@ -166,32 +166,37 @@ class PhaseExecutor(object):
 
     Args:
       phases: List of phases to execute.
+      teardown_func: 
 
     Yields:
       PhaseOutcome instance that wraps the phase return value (or exception).
     """
-    for phase in phases:
-      while True:
-        outcome = self._execute_one_phase(phase)
-        if outcome:
-          # We have to run the teardown_func *before* we yield the outcome,
-          # because yielding the outcome results in the state being finalized
-          # in the case of a terminal outcome.
-          if outcome.is_terminal and teardown_func:
-            self._execute_one_phase(teardown_func, output_record=False)
-          yield outcome
+    try:
+      for phase in phases:
+        while True:
+          outcome = self._execute_one_phase(phase)
+          if outcome:
+            # We have to run the teardown_func *before* we yield the outcome,
+            # because yielding the outcome results in the state being finalized
+            # in the case of a terminal outcome.
+            if outcome.is_terminal and teardown_func:
+              self._execute_one_phase(teardown_func)
+            yield outcome
 
-          # If we're done with this phase, skip to the next one.
-          if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
+            # If we're done with this phase, skip to the next one.
+            if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
+              break
+          else:
+            # run_if was falsey, just skip this phase.
             break
-        else:
-          # run_if was falsey, just skip this phase.
-          break
-    # If all phases complete with no terminal outcome, we end up here.
-    if teardown_func:
-      self._execute_one_phase(teardown_func, output_record=False)
+      if teardown_func:
+        self._execute_one_phase(teardown_func)
+    except (KeyboardInterrupt, SystemExit):
+      if teardown_func:
+        self._execute_one_phase(teardown_func)
+      raise
 
-  def _execute_one_phase(self, phase_desc, output_record=True):
+  def _execute_one_phase(self, phase_desc):
     """Executes the given phase, returning a PhaseOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
@@ -199,8 +204,7 @@ class PhaseExecutor(object):
                 phase_desc.name)
       return
 
-    with self.test_state.running_phase_context(
-        phase_desc, output_record) as phase_state:
+    with self.test_state.running_phase_context(phase_desc) as phase_state:
       _LOG.info('Executing phase %s', phase_desc.name)
       phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
       phase_thread.start()
