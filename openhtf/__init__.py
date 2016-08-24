@@ -412,18 +412,19 @@ class PhaseDescriptor(mutablerecords.Record(
     new_info = mutablerecords.CopyRecord(self)
     
     for plug_name, plug_class in subplugs.items():
-      matches = [(i, p) for i, p in enumerate(self.plugs) 
+      placeholders = [(i, p) for i, p in enumerate(self.plugs) 
           if p.name == plug_name 
           and isinstance(p.cls, plugs.BasePlug.Placeholder)]
-      if not matches:
+      if not placeholders:
         raise plugs.InvalidPlugError('No plug named %s required for phase %s' %
             (plug_name, self.func.__name__))
-      for i, match in matches:
+      for i, placeholder in placeholders:
         assert issubclass(plug_class, match.cls.cls)
         new_info.plugs[i] = PhasePlug(
-          match.name,
-          plug_class,
-          update_kwargs=match.update_kwargs)
+            placeholder.name,
+            plug_class,
+            update_kwargs=placeholder.update_kwargs)
+
     return new_info
 
   def __call__(self, test_state):

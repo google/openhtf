@@ -33,7 +33,7 @@ import openhtf as htf
 from openhtf import plugs
 
 class PingPlug(plugs.BasePlug):
-
+  enable_remote = True
   host = None
   def __init__(self):
     assert self.host is not None
