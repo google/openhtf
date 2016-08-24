@@ -38,7 +38,7 @@ This server has two ways of knowing which stations to track:
 To start the frontend server, invoke python with the -m flag in a python
 environment where openhtf is installed:
 
-$ python -m openhtf.io.frontend
+$ python -m openhtf.output.web_gui
 
 To access the frontend once it's running, simply point a web browser at the
 frontend server.
