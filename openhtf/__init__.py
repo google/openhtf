@@ -33,27 +33,23 @@ import mutablerecords
 
 from enum import Enum
 
-from openhtf import conf
-from openhtf import exe
+from openhtf import core
 from openhtf import plugs
 from openhtf import util
-from openhtf.exe import phase_executor
-from openhtf.exe import triggers
-from openhtf.io import station_api
-from openhtf.io import test_record
-from openhtf.io import user_input
+from openhtf.core import history
+from openhtf.core.measurements import Measurement, measures
+from openhtf.core.monitors import monitors
+from openhtf.core import phase_executor
+from openhtf.core import station_api
+from openhtf.core import test_record
+from openhtf.core import triggers
+from openhtf.plugs import user_input, plug
+from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
-from openhtf.util import measurements
+from openhtf.util import units
 
-# All tests require a station_id.  This can be via the --config-file
-# automatically loaded by OpenHTF, provided explicitly to the config with
-# conf.Load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
-# with conf.LoadFromDict({..., 'station_id': 'My_Station'}).  If none of those
-# are provided then we'll fall back to the machine's hostname.
-conf.Declare('station_id', 'The name of this test station',
-             default_value=socket.gethostname())
 
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
@@ -82,10 +78,10 @@ class Test(object):
     def PhaseTwo(test):
       # Analyze widget integration status
 
-    Test(PhaseOne, PhaseTwo).Execute()
+    Test(PhaseOne, PhaseTwo).execute()
 
   Note that Test() objects *must* be created in the main thread, but can be
-  .Execute()'d in a separate thread.
+  .execute()'d in a separate thread.
   """
 
   TEST_INSTANCES = weakref.WeakValueDictionary()
@@ -96,23 +92,23 @@ class Test(object):
       raise KeyError(
           'Invalid metadata key "config", it will be automatically populated.')
 
-    self.created_time_millis = util.TimeMillis()
+    self.created_time_millis = util.time_millis()
     self.last_run_time_millis = None
-    code_info = test_record.CodeInfo.ForModuleFromStack(levels_up=2)
+    code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
     self._test_desc = TestDescriptor(self.uid, phases, code_info, metadata)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
 
-    # Make sure Configure() gets called at least once before Execute().  The
-    # user might call Configure() again to override options, but we don't want
+    # Make sure configure() gets called at least once before Execute().  The
+    # user might call configure() again to override options, but we don't want
     # to force them to if they want to use defaults.  For default values, see
     # the class definition of TestOptions.
     if 'test_name' in metadata:
       # Allow legacy metadata key for specifying test name.
-      self.Configure(name=metadata['test_name'])
+      self.configure(name=metadata['test_name'])
     else:
-      self.Configure()
+      self.configure()
 
     self.TEST_INSTANCES[self.uid] = self
     # This is a noop if the server is already running, otherwise start it now
@@ -155,42 +151,42 @@ class Test(object):
       if self._executor:
         return self._executor.test_state
 
-  def GetOption(self, option):
+  def get_option(self, option):
     return getattr(self._test_options, option)
 
-  def AddOutputCallbacks(self, *callbacks):
+  def add_output_callbacks(self, *callbacks):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def Configure(self, **kwargs):
+  def configure(self, **kwargs):
     """Update test-wide configuration options.
 
     Valid kwargs:
       output_callbacks: List of output callbacks to run, typically it's better
-          to use AddOutputCallbacks(), but you can pass [] here to reset them.
+          to use add_output_callbacks(), but you can pass [] here to reset them.
       teardown_function: Function to run at teardown.  We pass the same
           arguments to it as a phase.
     """
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
-    CreateArgParser(add_help=True).parse_known_args()
-    logs.SetupLogger()
+    create_arg_parser(add_help=True).parse_known_args()
+    logs.setup_logger()
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
 
   @classmethod
-  def HandleSigInt(cls, *_):
+  def handle_sig_int(cls, *_):
     if cls.TEST_INSTANCES:
       _LOG.error('Received SIGINT, stopping all tests.')
       for test in cls.TEST_INSTANCES.values():
-        test.StopFromSigInt()
+        test.stop_from_sig_int()
     station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.
     raise KeyboardInterrupt()
 
-  def StopFromSigInt(self):
+  def stop_from_sig_int(self):
     """Stop test execution as abruptly as we can, only in response to SIGINT."""
     with self._lock:
       _LOG.error('Stopping %s due to SIGINT', self)
@@ -200,7 +196,7 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.test_state)
         self._executor.stop()
 
-  def Execute(self, test_start=None):
+  def execute(self, test_start=None):
     """Starts the framework and executes the given test.
 
     Args:
@@ -220,12 +216,13 @@ class Test(object):
       # Snapshot some things we care about and store them.
       self._test_desc.metadata['test_name'] = self._test_options.name
       self._test_desc.metadata['config'] = conf._asdict()
-      self.last_run_time_millis = util.TimeMillis()
+      self.last_run_time_millis = util.time_millis()
 
-      self._executor = exe.TestExecutor(
+      self._executor = core.TestExecutor(
           self._test_desc, test_start, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self._executor.start()
+
 
     try:
       self._executor.wait()
@@ -239,7 +236,7 @@ class Test(object):
                           [functools.partial(history.append_record, self.uid)]):
           try:
             output_cb(final_state.test_record)
-          except Exception:
+          except Exception:  # pylint: disable=broad-except
             _LOG.exception(
                 'Output callback %s raised; continuing anyway', output_cb)
       finally:
@@ -269,7 +266,7 @@ class TestDescriptor(collections.namedtuple(
   """
 
   def __new__(cls, uid, phases, code_info, metadata):
-    phases = [PhaseDescriptor.WrapOrCopy(phase) for phase in phases]
+    phases = [PhaseDescriptor.wrap_or_copy(phase) for phase in phases]
     return super(TestDescriptor, cls).__new__(
         cls, uid, phases, code_info, metadata)
 
@@ -279,13 +276,13 @@ class TestDescriptor(collections.namedtuple(
     return {plug.cls for phase in self.phases for plug in phase.plugs}
 
 
-def CreateArgParser(add_help=False):
+def create_arg_parser(add_help=False):
   """Creates an argparse.ArgumentParser for parsing command line flags.
 
   If you want to add arguments, create your own with this as a parent:
 
   >>> parser = argparse.ArgumentParser(
-          'My args title', parents=[openhtf.CreateArgParser()])
+          'My args title', parents=[openhtf.create_arg_parser()])
   >>> parser.parse_args()
   """
   return argparse.ArgumentParser('OpenHTF-based testing', parents=[
@@ -321,19 +318,21 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
   """
 
   def update(self, **kwargs):
-    for k, v in kwargs.iteritems():
-      if k not in self.__slots__:
+    for key, value in kwargs.iteritems():
+      if key not in self.__slots__:
         raise AttributeError('Type %s does not have attribute %s' % (
-            type(self).__name__, k))
-      setattr(self, k, v)
+            type(self).__name__, key))
+      setattr(self, key, value)
 
   def __call__(self, phase_func):
-    phase = PhaseDescriptor.WrapOrCopy(phase_func)
+    phase = PhaseDescriptor.wrap_or_copy(phase_func)
     for attr in self.__slots__:
       value = getattr(self, attr)
       if value is not None:
         setattr(phase.options, attr, value)
     return phase
+
+TestPhase = PhaseOptions
 
 
 class PhasePlug(mutablerecords.Record(
@@ -356,7 +355,7 @@ class PhaseDescriptor(mutablerecords.Record(
   """
 
   @classmethod
-  def WrapOrCopy(cls, func, **options):
+  def wrap_or_copy(cls, func, **options):
     """Return a new PhaseDescriptor from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different
@@ -371,10 +370,10 @@ class PhaseDescriptor(mutablerecords.Record(
     """
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
-      # or kwargs.  See WithArgs() below for more details.
+      # or kwargs.  See with_args() below for more details.
       retval = mutablerecords.CopyRecord(func)
     else:
-      retval = cls(func, test_record.CodeInfo.ForFunction(func))
+      retval = cls(func, test_record.CodeInfo.for_function(func))
     retval.options.update(**options)
     return retval
 
@@ -386,13 +385,13 @@ class PhaseDescriptor(mutablerecords.Record(
   def doc(self):
     return self.func.__doc__
 
-  def WithArgs(self, **kwargs):
+  def with_args(self, **kwargs):
     """Send these keyword-arguments to the phase when called."""
     # Make a copy so we can have multiple of the same phase with different args
     # in the same test.
     new_info = mutablerecords.CopyRecord(self)
     new_info.extra_kwargs.update(kwargs)
-    new_info.measurements = [m.WithArgs(**kwargs) for m in self.measurements]
+    new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
   def WithPlugs(self, **subplugs):
@@ -432,7 +431,7 @@ class PhaseDescriptor(mutablerecords.Record(
       The return value from calling the underlying function.
     """
     kwargs = dict(self.extra_kwargs)
-    kwargs.update(test_state.plug_manager.ProvidePlugs(
+    kwargs.update(test_state.plug_manager.provide_plugs(
         (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
     arg_info = inspect.getargspec(self.func)
     # Pass in test_api if the phase takes *args, or **kwargs with at least 1
@@ -517,4 +516,4 @@ class TestApi(collections.namedtuple('TestApi', [
 
 
 # Register signal handler to stop all tests on SIGINT.
-signal.signal(signal.SIGINT, Test.HandleSigInt)
+signal.signal(signal.SIGINT, Test.handle_sig_int)

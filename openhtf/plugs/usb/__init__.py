@@ -1,3 +1,4 @@
+
 # Copyright 2014 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,18 +32,19 @@ import logging
 import time
 
 import openhtf.plugs as plugs
-from openhtf import conf
 from openhtf.plugs.usb import adb_device
 from openhtf.plugs.usb import fastboot_device
 from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.plugs import cambrionix
+from openhtf.triggers import prompt_for_test_start
+from openhtf.util import conf
 
 _LOG = logging.getLogger(__name__)
 
-conf.Declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
-conf.Declare('remote_usb', 'ethersync or other')
-conf.Declare('ethersync', 'ethersync configuration')
+conf.declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
+conf.declare('remote_usb', 'ethersync or other')
+conf.declare('ethersync', 'ethersync configuration')
 
 def _open_usb_handle(**kwargs):
   """Open a UsbHandle subclass, based on configuration.
@@ -72,26 +74,25 @@ def _open_usb_handle(**kwargs):
       try:
         mac_addr = device['mac_addr']
         port = device['plug_port']
-      except (KeyError,TypeError):
+      except (KeyError, TypeError):
         raise ValueError('Ethersync needs mac_addr and plug_port to be set')
       else:
         ethersync = cambrionix.EtherSync(mac_addr)
-        serial = ethersync.GetUSBSerial(port)
+        serial = ethersync.get_usb_serial(port)
 
-  return local_usb.LibUsbHandle.Open(serial_number=serial, **kwargs)
+  return local_usb.LibUsbHandle.open(serial_number=serial, **kwargs)
 
 
-# pylint: disable=too-few-public-methods
 class FastbootPlug(plugs.BasePlug):
   """Plug that provides fastboot."""
 
   def __new__(cls):
-    device = fastboot_device.FastbootDevice.Connect(
+    device = fastboot_device.FastbootDevice.connect(
         _open_usb_handle(
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
             interface_protocol=fastboot_device.PROTOCOL))
-    device.TearDown = device.Close  # pylint: disable=invalid-name
+    device.tearDown = device.close  # pylint: disable=invalid-name
     return device
 
 
@@ -103,13 +104,13 @@ class AdbPlug(plugs.BasePlug):
     if conf.libusb_rsa_key:
       kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
 
-    device = adb_device.AdbDevice.Connect(
+    device = adb_device.AdbDevice.connect(
         _open_usb_handle(
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),
         **kwargs)
-    device.TearDown = device.Close  # pylint: disable=invalid-name
+    device.tearDown = device.close  # pylint: disable=invalid-name
     return device
 
 
@@ -117,7 +118,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
   """Test start and stop triggers for Android devices."""
 
   @classmethod
-  def _TryOpen(cls):
+  def _try_open(cls):
     """Try to open a USB handle."""
     handle = None
     for usb_cls, subcls, protocol in [(adb_device.CLASS,
@@ -127,7 +128,7 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
                                        fastboot_device.SUBCLASS,
                                        fastboot_device.PROTOCOL)]:
       try:
-        handle = local_usb.LibUsbHandle.Open(
+        handle = local_usb.LibUsbHandle.open(
             serial_number=cls.serial_number,
             interface_class=usb_cls,
             interface_subclass=subcls,
@@ -140,26 +141,26 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
         _LOG.warning('Multiple Android devices found, ignoring!')
       finally:
         if handle:
-          handle.Close()
+          handle.close()
     return False
 
   @classmethod
-  def TestStartFrontend(cls):
+  def test_start_frontend(cls):
     """Start when frontend event comes, but get serial from USB."""
-    PromptForTestStart('Connect Android device and press ENTER.',
-                       text_input=False)()
-    return cls.TestStart()
+    prompt_for_test_start('Connect Android device and press ENTER.',
+                          text_input=False)()
+    return cls.test_start()
 
   @classmethod
-  def TestStart(cls):
+  def test_start(cls):
     """Returns serial when the test is ready to start."""
-    while not cls._TryOpen():
+    while not cls._try_open():
       time.sleep(1)
     return cls.serial_number
 
   @classmethod
-  def TestStop(cls):
+  def test_stop(cls):
     """Returns True when the test is completed and can restart."""
-    while cls._TryOpen():
+    while cls._try_open():
       time.sleep(1)
     cls.serial_number = None

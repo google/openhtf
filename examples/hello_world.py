@@ -27,21 +27,21 @@ TODO(someone): Write an output example.
 For more information on output, see the output.py example.
 """
 
-# Import this output mechanism as it's the specific one we want to use.
-from openhtf.io.output import json_factory
+# Import openhtf with an abbreviated name, as we'll be using a bunch of stuff
+# from it throughout our test scripts. See __all__ at the top of
+# openhtf/__init__.py for details on what's in top-of-module namespace.
+import openhtf as htf
 
-# Import a handful of useful names.  If you're worried about polluting
-# your namespace, you can manually import just the things you want, this
-# is just a convenience.  See names.py for an exhaustive list.
-from openhtf.names import *
+# Import this output mechanism as it's the specific one we want to use.
+from openhtf.output.callbacks import json_factory
+
 from openhtf.plugs import user_input
 
-
-# The @measures annotation notifies the OpenHTF framework that this test
+# The @htf.measures annotation notifies the OpenHTF framework that this test
 # phase will be taking a measurement that we'd like to call
 # 'hello_world_measurement'.  Measurements can be accessed and set via
 # the 'test' object, always passed as the first argument to test phases.
-@measures(Measurement('hello_world_measurement'))
+@htf.measures(htf.Measurement('hello_world_measurement'))
 def hello_world(test):
   """A hello world test phase."""
   # At the heart of an OpenHTF test script are the test phases, such as
@@ -68,21 +68,21 @@ if __name__ == '__main__':
   # Multiple phases would be passed as additional args, and additional
   # keyword arguments may be passed as well.  See other examples for more
   # complex uses.
-  test = Test(hello_world)
+  test = htf.Test(hello_world)
 
   # In order to view the result of the test, we have to output it somewhere,
   # and a local JSON file is a convenient way to do this.  Custom output
   # mechanisms can be implemented, but for now we'll just keep it simple.
   # This will always output to the same ./hello_world.json file, formatted
   # slightly for human readability.
-  test.AddOutputCallbacks(
+  test.add_output_callbacks(
       json_factory.OutputToJSON('./{dut_id}.hello_world.json', indent=2))
 
-  # PromptForTestStart prompts the operator for a DUT ID, a unique identifier
+  # prompt_for_test_start prompts the operator for a DUT ID, a unique identifier
   # for the DUT (Device Under Test).  OpenHTF requires that a DUT ID is set
   # each time a test is executed.  It may be set programmatically, but the
   # simplest way to get one is to prompt the user for it.  If test_start is
   # not provided, the test will start immediately and assume the DUT ID will
   # be set later (OpenHTF will raise an exception when the test completes if
   # a DUT ID has not been set).
-  test.Execute(test_start=user_input.prompt_for_test_start())
+  test.execute(test_start=user_input.prompt_for_test_start())

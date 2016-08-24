@@ -21,9 +21,9 @@ from openhtf.util import logs
 
 class TestLogs(unittest.TestCase):
 
-  def testLogOnce(self):
+  def test_log_once(self):
     mock_log = mock.Mock()
     for _ in xrange(10):
-      logs.LogOnce(mock_log, 'Message 1', 'arg1')
+      logs.log_once(mock_log, 'Message 1', 'arg1')
 
     assert mock_log.call_count == 1

@@ -39,20 +39,20 @@ class AdderPlug(plugs.BasePlug):
     self.number += 1
     return self.number
 
-  def TearDown(self):
+  def tearDown(self):
     self.state = 'TORN DOWN'
 
 
 class TearDownRaisesPlug1(plugs.BasePlug):
   TORN_DOWN = False
-  def TearDown(self):
+  def tearDown(self):
     type(self).TORN_DOWN = True
     raise Exception()
 
 
 class TearDownRaisesPlug2(plugs.BasePlug):
   TORN_DOWN = False
-  def TearDown(self):
+  def tearDown(self):
     type(self).TORN_DOWN = True
     raise Exception()
 
@@ -62,26 +62,27 @@ class PlugsTest(test.TestCase):
   def setUp(self):
     self.logger = object()
     self.plug_manager = plugs.PlugManager({AdderPlug}, self.logger)
+    AdderPlug.INSTANCE_COUNT = 0
 
   def tearDown(self):
-    self.plug_manager.TearDownPlugs()
+    self.plug_manager.tear_down_plugs()
 
   def test_base_plug(self):
     plug = plugs.BasePlug()
     self.assertEquals({}, plug._asdict())
-    plug.TearDown()
+    plug.tearDown()
 
   def test_initialize(self):
     self.assertEquals(0, AdderPlug.INSTANCE_COUNT)
-    self.plug_manager.InitializePlugs()
+    self.plug_manager.initialize_plugs()
     self.assertEquals(1, AdderPlug.INSTANCE_COUNT)
-    self.plug_manager.InitializePlugs()
+    self.plug_manager.initialize_plugs()
     self.assertEquals(1, AdderPlug.INSTANCE_COUNT)
-    self.plug_manager.InitializePlugs({AdderPlug})
+    self.plug_manager.initialize_plugs({AdderPlug})
     self.assertEquals(1, AdderPlug.INSTANCE_COUNT)
     self.assertIs(
         AdderPlug.LAST_INSTANCE,
-        self.plug_manager.ProvidePlugs(
+        self.plug_manager.provide_plugs(
             (('adder_plug', AdderPlug),))['adder_plug'])
     self.assertItemsEqual(
         {'plug_states': {'plugs_test.AdderPlug': {'number': 0}},
@@ -107,14 +108,14 @@ class PlugsTest(test.TestCase):
 
   def test_tear_down_raises(self):
     """Test that all plugs get torn down even if some raise."""
-    self.plug_manager.InitializePlugs({
+    self.plug_manager.initialize_plugs({
       TearDownRaisesPlug1, TearDownRaisesPlug2})
-    self.plug_manager.TearDownPlugs()
+    self.plug_manager.tear_down_plugs()
     self.assertTrue(TearDownRaisesPlug1.TORN_DOWN)
     self.assertTrue(TearDownRaisesPlug2.TORN_DOWN)
 
   def test_plug_updates(self):
-    self.plug_manager.InitializePlugs({AdderPlug})
+    self.plug_manager.initialize_plugs({AdderPlug})
     update = self.plug_manager.wait_for_plug_update(
         'plugs_test.AdderPlug', {}, .001)
     self.assertEquals({'number': 0}, update)
@@ -133,11 +134,11 @@ class PlugsTest(test.TestCase):
 
   def test_invalid_plug(self):
     with self.assertRaises(plugs.InvalidPlugError):
-      self.plug_manager.InitializePlugs({object})
+      self.plug_manager.initialize_plugs({object})
     with self.assertRaises(plugs.InvalidPlugError):
       plugs.plug(adder_plug=object)
     with self.assertRaises(plugs.InvalidPlugError):
-      self.plug_manager.InitializePlugs({
+      self.plug_manager.initialize_plugs({
           type('BadPlug', (plugs.BasePlug,), {'logger': None})})
     with self.assertRaises(plugs.InvalidPlugError):
       self.plug_manager.wait_for_plug_update('invalid', {}, 0)

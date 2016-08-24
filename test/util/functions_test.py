@@ -31,37 +31,37 @@ class MockTime(object):
 
 class TestFunctions(unittest.TestCase):
 
-  def testCallOnceFailsWithArgs(self):
+  def test_call_once_fails_with_args(self):
     with self.assertRaises(ValueError):
-      @functions.CallOnce
-      def HasArgs(x):
+      @functions.call_once
+      def has_args(x):
         pass
 
     with self.assertRaises(ValueError):
-      @functions.CallOnce
-      def HasArgs(*args):
+      @functions.call_once
+      def has_args(*args):
         pass
 
     with self.assertRaises(ValueError):
-      @functions.CallOnce
-      def HasArgs(**kwargs):
+      @functions.call_once
+      def has_args(**kwargs):
         pass
 
-  def testCallOnce(self):
+  def test_call_once(self):
     calls = []
-    @functions.CallOnce
-    def CanOnlyCallOnce():
+    @functions.call_once
+    def can_only_call_once():
       calls.append(None)
       return 1
 
-    assert CanOnlyCallOnce() == 1
-    assert CanOnlyCallOnce() == 1
+    assert can_only_call_once() == 1
+    assert can_only_call_once() == 1
     assert len(calls) == 1
 
   @mock.patch('openhtf.util.functions.time', new_callable=MockTime)
   def testCallAtMostEvery(self, mock_time):
     call_times = []
-    @functions.CallAtMostEvery(5)
+    @functions.call_at_most_every(5)
     def CallOnceEveryFiveSeconds():
       call_times.append(mock_time.time())
     for _ in xrange(100):

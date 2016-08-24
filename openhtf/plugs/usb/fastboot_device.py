@@ -42,11 +42,11 @@ class FastbootDevice(object):
     """Return our USB handle."""
     return self._protocol.usb_handle
 
-  def SetBootconfig(self, name, value):
+  def set_boot_config(self, name, value):
     """Set the boot configuration."""
-    self.Oem('bootconfig %s %s' % (name, value))
+    self.oem('bootconfig %s %s' % (name, value))
 
-  def GetBootconfig(self, name, info_cb=None):
+  def get_boot_config(self, name, info_cb=None):
     """Get bootconfig, either as full dict or specific value for key."""
     result = {}
     def default_info_cb(msg):
@@ -56,17 +56,17 @@ class FastbootDevice(object):
       key, value = msg.message.split(':', 1)
       result[key.strip()] = value.strip()
     info_cb = info_cb or default_info_cb
-    final_result = self.Oem('bootconfig %s' % name, info_cb=info_cb)
+    final_result = self.oem('bootconfig %s' % name, info_cb=info_cb)
     # Return INFO messages before the final OKAY message.
     if name in result:
       return result[name]
     return final_result
 
-  def Lock(self):
+  def lock(self):
     """Lock the device."""
-    self.Oem('lock', timeout_ms=1000)
+    self.oem('lock', timeout_ms=1000)
 
-  def Close(self):
+  def close(self):
     """Close the device."""
     if self._protocol:
       self.__getattr__('Close')()
@@ -96,7 +96,7 @@ class FastbootDevice(object):
     return val
 
   @classmethod
-  def Connect(cls, usb_handle, **kwargs):
+  def connect(cls, usb_handle, **kwargs):
     """Connect to the device.
 
     Args:
@@ -111,14 +111,13 @@ class FastbootDevice(object):
 
 def _retry_usb_function(count, func, *args, **kwargs):
   """Helper function to retry USB."""
-  helper = timeouts.RetryHelper(count)
+  helper = timeouts.retry_helper(count)
   while True:
     try:
       return func(*args, **kwargs)
     except usb_exceptions.CommonUsbError:
-      if not helper.RetryIfPossible():
+      if not helper.retry_if_possible():
         raise
       time.sleep(0.1)
     else:
       break
-

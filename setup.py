@@ -36,7 +36,7 @@ class CleanCommand(clean):
     targets = [
         './dist',
         './*.egg-info',
-        './openhtf/io/proto/*_pb2.py',
+        './openhtf/output/proto/*_pb2.py',
         './openhtf/**/*.pyc',
     ]
     os.system('shopt -s globstar; rm -vrf %s' % ' '.join(targets))
@@ -68,8 +68,8 @@ class BuildProtoCommand(Command):
 
     self.protoc = os.path.join(prefix, 'bin', 'protoc')
     self.protodir = os.path.join(prefix, 'include')
-    self.indir = os.path.join(os.getcwd(), 'openhtf', 'io', 'proto')
-    self.outdir = os.path.join(os.getcwd(), 'openhtf', 'io', 'proto')
+    self.indir = os.path.join(os.getcwd(), 'openhtf', 'output', 'proto')
+    self.outdir = os.path.join(os.getcwd(), 'openhtf', 'output', 'proto')
 
   def finalize_options(self):
     pass
@@ -158,7 +158,7 @@ class PyTestCommand(test):
 
 setup(
     name='openhtf',
-    version='0.9',
+    version='1.0.0',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
     author_email='madsci@google.com',

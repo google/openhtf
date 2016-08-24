@@ -5,7 +5,7 @@
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-#init-hook=
+init-hook='import sys; sys.path.append("./")'
 
 # Profiled execution.
 profile=no
@@ -13,14 +13,14 @@ profile=no
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
 ignore=CVS
+ignore-patterns=.*_pb2.py
 
 # Pickle collected data for later comparisons.
 persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=
-
+load-plugins=pylint_plugins.conf_plugin,pylint_plugins.mutablerecords_plugin,pylint_plugins.validate_plugin
 
 [MESSAGES CONTROL]
 
@@ -42,7 +42,7 @@ load-plugins=
 
 # Supress all import errors until SublimeLinter-pylint gets virtualenv support.
 # Supress errors about locally defined disables.
-disable=import-error,I0011
+disable=import-error,I0011,too-few-public-methods
 
 
 [REPORTS]
@@ -106,7 +106,7 @@ required-attributes=
 bad-functions=map,filter,apply,input
 
 # Regular expression which should only match correct module names
-module-rgx=[a-z_][a-z0-9][a-z0-9_]{1,30}$
+module-rgx=[a-z_][a-z_][a-z0-9][a-z0-9_]{1,30}$
 
 # Regular expression which should only match correct module level names
 const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
@@ -119,10 +119,10 @@ function-rgx=[a-z_][a-z0-9][a-z0-9_]{0,30}$
 
 # Regular expression which should only match correct method names
 # method-rgx=[a-z_][a-z0-9_]{2,30}$
-method-rgx=[a-z_][a-z0-9_]{2,30}$
+method-rgx=([a-z_][a-z0-9_]{2,30}$|(\btearDown\b)|(\bsetUp\b))
 
 # Regular expression which should only match correct instance attribute names
-attr-rgx=[a-z_][a-z0-9][a-z0-9_]{0,30}$
+attr-rgx=([a-z_][a-z0-9][a-z0-9_]{0,30}$|(\btearDown\b)|(\bsetUp\b))
 
 # Regular expression which should only match correct argument names
 argument-rgx=[a-z_][a-z0-9][a-z0-9_]{0,30}$

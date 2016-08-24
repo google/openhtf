@@ -41,18 +41,19 @@ message entity.  See adb_protocol.py for the stateful components.
 """
 
 import collections
-import gflags
 import logging
 import string
 import struct
 import threading
+
+import gflags
 
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
 
 gflags.DEFINE_boolean('adb_message_log', False,
                       'Set to True to save all incoming and outgoing '
-                      'AdbMessages and print them on Close().')
+                      'AdbMessages and print them on close().')
 FLAGS = gflags.FLAGS
 _LOG = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class RawAdbMessage(collections.namedtuple('RawAdbMessage',
                                             'magic'])):
   """Helper class for handling the struct -> AdbMessage mapping."""
 
-  def ToAdbMessage(self, data):
+  def to_adb_message(self, data):
     """Turn the data into an ADB message."""
     message = AdbMessage(AdbMessage.WIRE_TO_CMD.get(self.cmd),
                          self.arg0, self.arg1, data)
@@ -91,7 +92,7 @@ class AdbTransportAdapter(object):
   work on AdbMessage instances, not arbitrary data, so it can't quite be
   dropped in anywhere a Transport is used.
 
-  This class maintains its own lock so that multiple threads can read
+  This class maintains its own Lock so that multiple threads can read
   AdbMessages from the same underlying transport without stealing each
   other's headers/data.
   """
@@ -106,11 +107,11 @@ class AdbTransportAdapter(object):
     trans = str(self._transport)
     return '<%s: (%s)' % (type(self).__name__, trans[1:])
 
-  def Close(self):
+  def close(self):
     """Close the connection."""
-    self._transport.Close()
+    self._transport.close()
 
-  def WriteMessage(self, message, timeout):
+  def write_message(self, message, timeout):
     """Send the given message over this transport.
 
     Args:
@@ -119,19 +120,19 @@ class AdbTransportAdapter(object):
         instance of timeouts.PolledTimeout.
     """
     with self._writer_lock:
-      self._transport.Write(message.header, timeout.remaining_ms)
+      self._transport.write(message.header, timeout.remaining_ms)
 
       # Use any remaining time to send the data.  Note that if we get this far,
       # we always at least try to send the data (with a minimum of 10ms timeout)
       # because we don't want the remote end to get out of sync because we sent
       # a header but no data.
-      if timeout.HasExpired():
+      if timeout.has_expired():
         _LOG.warning('Timed out between AdbMessage header and data, sending '
                      'data anyway with 10ms timeout')
-        timeout = timeouts.PolledTimeout.FromMillis(10)
-      self._transport.Write(message.data, timeout.remaining_ms)
+        timeout = timeouts.PolledTimeout.from_millis(10)
+      self._transport.write(message.data, timeout.remaining_ms)
 
-  def ReadMessage(self, timeout):
+  def read_message(self, timeout):
     """Read an AdbMessage from this transport.
 
     Args:
@@ -149,7 +150,7 @@ class AdbTransportAdapter(object):
         entire message, specifically between reading header and data packets.
     """
     with self._reader_lock:
-      raw_header = self._transport.Read(
+      raw_header = self._transport.read(
           struct.calcsize(AdbMessage.HEADER_STRUCT_FORMAT),
           timeout.remaining_ms)
       if not raw_header:
@@ -164,18 +165,18 @@ class AdbTransportAdapter(object):
             AdbMessage.HEADER_STRUCT_FORMAT, raw_header, exception)
 
       if raw_message.data_length > 0:
-        if timeout.HasExpired():
+        if timeout.has_expired():
           _LOG.warning('Timed out between AdbMessage header and data, reading '
                        'data anyway with 10ms timeout')
-          timeout = timeouts.PolledTimeout.FromMillis(10)
-        data = self._transport.Read(raw_message.data_length,
+          timeout = timeouts.PolledTimeout.from_millis(10)
+        data = self._transport.read(raw_message.data_length,
                                     timeout.remaining_ms)
       else:
         data = ''
 
-      return raw_message.ToAdbMessage(data)
+      return raw_message.to_adb_message(data)
 
-  def ReadUntil(self, expected_commands, timeout):
+  def read_until(self, expected_commands, timeout):
     """Read AdbMessages from this transport until we get an expected command.
 
     The ADB protocol specifies that before a successful CNXN handshake, any
@@ -196,8 +197,8 @@ class AdbTransportAdapter(object):
       AdbProtocolError: If timeout expires between reads, this can happen
         if we are getting spammed with unexpected commands.
     """
-    msg = timeouts.LoopUntilTimeoutOrValid(
-        timeout, lambda: self.ReadMessage(timeout),
+    msg = timeouts.loop_until_timeout_or_valid(
+        timeout, lambda: self.read_message(timeout),
         lambda m: m.command in expected_commands, 0)
     if msg.command not in expected_commands:
       raise usb_exceptions.AdbTimeoutError(
@@ -214,20 +215,20 @@ class DebugAdbTransportAdapter(AdbTransportAdapter):
     self.messages = []
     _LOG.debug('%s logging messages', self)
 
-  def Close(self):
+  def close(self):
     _LOG.debug('%s logged messages:', self)
     for message in self.messages:
       _LOG.debug(message)
-    super(DebugAdbTransportAdapter, self).Close()
+    super(DebugAdbTransportAdapter, self).close()
 
-  def ReadMessage(self, timeout):
-    message = super(DebugAdbTransportAdapter, self).ReadMessage(timeout)
+  def read_message(self, timeout):
+    message = super(DebugAdbTransportAdapter, self).read_message(timeout)
     self.messages.append('READING: %s' % message)
     return message
 
-  def WriteMessage(self, message, timeout):
+  def write_message(self, message, timeout):
     self.messages.append('WRITING: %s' % message)
-    super(DebugAdbTransportAdapter, self).WriteMessage(message, timeout)
+    super(DebugAdbTransportAdapter, self).write_message(message, timeout)
 
 
 class AdbMessage(object):
