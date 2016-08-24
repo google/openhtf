@@ -16,7 +16,7 @@
 
 Run with (your virtualenv must be activated first):
 
-  python dynamic_plugs.py
+  python with_plugs.py
 
 Afterwards, take a look at the hello_world.json output file.  This will
 give you a basic idea of what a minimal test outputs.
@@ -29,20 +29,14 @@ For more information on output, see the output.py example.
 import subprocess
 import time
 
-# Import this output mechanism as it's the specific one we want to use.
-from openhtf.io.output import json_factory
+import openhtf as htf
 from openhtf import plugs
-
-# Import a handful of useful names.  If you're worried about polluting
-# your namespace, you can manually import just the things you want, this
-# is just a convenience.  See names.py for an exhaustive list.
-from openhtf.names import *
-
 
 class PingPlug(plugs.BasePlug):
 
-  def __init__(self, host):
-    self.host = host
+  host = None
+  def __init__(self):
+    assert self.host is not None
 
   def get_command(self, count):
     return [
@@ -57,9 +51,23 @@ class PingPlug(plugs.BasePlug):
     print "running: %s" % command
     return subprocess.call(command)
 
+class PingGoogle(PingPlug):
+  host = 'google.com'
 
-@plug(pinger=PingPlug.placeholder())
-@measures('total_time', 'retcode')
+class PingDnsA(PingPlug):
+  host = '8.8.8.8'
+
+class PingDnsB(PingPlug):
+  host = '8.8.4.4'
+
+class PingExample(PingPlug):
+  host = 'example.com'
+
+class PingCnn(PingPlug):
+  host = 'cnn.com'
+
+@plugs.plug(pinger=PingPlug.placeholder())
+@htf.measures('total_time', 'retcode')
 def MainTestPhase(test, pinger, count):
   start = time.time()
   retcode = pinger.run(count)
@@ -67,33 +75,27 @@ def MainTestPhase(test, pinger, count):
   test.measurements.total_time = elapsed
   test.measurements.retcode = retcode
 
+
+
 if __name__ == '__main__':
   # We instantiate our OpenHTF test with the phases we want to run as args.
-  hosts = [
-    'google.com',
-    '8.8.8.8',
-    '8.8.4.4',
-    'example.com',
-    'cnn.com'
+  ping_plugs = [
+    PingGoogle,
+    PingDnsA,
+    PingDnsB,
+    PingExample,
+    PingCnn
   ]
   counts = [3, 5, 10]
   phases = []
-  for host in hosts:
+  for ping_plug in ping_plugs:
     for count in counts:
       phases.append(MainTestPhase
-          .WithArgs(count=count)
-          .WithPlugs(pinger=PingPlug.create_subclass(host, host)))
+          .with_args(count=count)
+          .WithPlugs(pinger=ping_plug))
 
-  test = Test(*phases)
-
-  # In order to view the result of the test, we have to output it somewhere,
-  # and a local JSON file is a convenient way to do this.  Custom output
-  # mechanisms can be implemented, but for now we'll just keep it simple.
-  # This will always output to the same ./measurements.json file, formatted
-  # slightly for human readability.
-  test.AddOutputCallbacks(
-      json_factory.OutputToJSON('./dynamic_plugs.json', indent=2))
+  test = htf.Test(*phases)
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.
-  test.Execute(test_start=lambda: 'MyDutId')
+  test.execute(test_start=lambda: 'MyDutId')
