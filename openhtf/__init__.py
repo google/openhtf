@@ -413,14 +413,16 @@ class PhaseDescriptor(mutablerecords.Record(
     
     for substitute_name, substitute_class in subplugs.iteritems():
       # self.plugs contains PhasePlug so enumerate and unpack
-      for i, (original_name, substitute_class) in enumerate(self.plugs):
+      for i, original_plug in enumerate(self.plugs):
+        original_name = original_plug.name
+        original_class = original_plug.cls
         if (original_name == substitute_name
-            and isinstance(substitute_class, plugs.PlugPlaceholder)
-            and issubclass(substitute_class, original_class.base_class):
+            and isinstance(original_class, plugs.PlugPlaceholder)
+            and issubclass(substitute_class, original_class.base_class)):
           new_info.plugs[i] = PhasePlug(
               substitute_name,
               substitute_class,
-              update_kwargs=placeholder.update_kwargs)
+              update_kwargs=original_plug.update_kwargs)
           break
       else:
         raise plugs.InvalidPlugError(
