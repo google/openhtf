@@ -28,6 +28,24 @@
       <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
       <div class="measurement-container"
            [innerHTML]="phase.measurements | measToHtml">
+        <!-- <table class="measurement-listing white-text">
+          <tr class="header-row">
+            <td>measurement name</td>
+            <td>validator(s)</td>
+            <td>value</td>
+            <td class="outcome">outcome</td>
+          </tr>
+          <tr *ngFor="let meas of phase.measurements | objectToArray" class="measurement {{phase.measurements | measToPassFail | statusToSuperDark}}">
+            <td class="name">{{meas.key}}</td>
+            <td class="validator">
+              {{meas.value.validators | firstEltOrBlank}}
+            </td>
+            <td class="value">
+              {{meas.value.measured_value || ''}}
+            </td>
+            <td class="outcome {{meas.value.outcome | outcomeToColor}}">{{meas.value.outcome}}</td>
+          </tr>
+        </table> -->
       </div>
     </div>
   </li>
@@ -53,6 +71,24 @@
       <p *ngIf="state?.running_phase_state?.docstring" class="docstring">{{state.running_phase_state.docstring}}</p>
       <div class="measurement-container"
            [innerHTML]="state.running_phase_state?.measurements | measToHtml">
+        <!-- <table class="measurement-listing white-text">
+          <tr class="header-row">
+            <td>measurement name</td>
+            <td>validator(s)</td>
+            <td>value</td>
+            <td class="outcome">outcome</td>
+          </tr>
+          <tr *ngFor="let meas of state.running_phase_state?.measurements | objectToArray" class="measurement {{'RUNNING' | statusToSuperDark}}">
+            <td class="name">{{meas.key}}</td>
+            <td class="validator">
+              {{meas.value.validators | firstEltOrBlank}}
+            </td>
+            <td class="value">
+              {{state.running_phase_state?.measurements[meas.key].measured_value || ''}}
+            </td>
+            <td class="outcome {{meas.value.outcome | outcomeToColor}}">{{meas.value.outcome}}</td>
+          </tr>
+        </table> -->
       </div>
     </div>
   </li>
