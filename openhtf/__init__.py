@@ -405,26 +405,29 @@ class PhaseDescriptor(mutablerecords.Record(
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
-  def WithPlugs(self, **subplugs):
+  def with_plugs(self, **subplugs):
     """Substitute plugs for placeholders for this phase."""
     # Make a copy so we can have multiple of the same phase with different plugs
     # in the same test.
     new_info = mutablerecords.CopyRecord(self)
     
-    for plug_name, plug_class in subplugs.items():
-      placeholders = [(i, p) for i, p in enumerate(self.plugs) 
-          if p.name == plug_name 
-          and isinstance(p.cls, plugs.BasePlug.Placeholder)]
-      if not placeholders:
-        raise plugs.InvalidPlugError('No plug named %s required for phase %s' %
-            (plug_name, self.func.__name__))
-      for i, placeholder in placeholders:
-        assert issubclass(plug_class, match.cls.cls)
-        new_info.plugs[i] = PhasePlug(
-            placeholder.name,
-            plug_class,
-            update_kwargs=placeholder.update_kwargs)
-
+    for substitute_name, substitute_class in subplugs.iteritems():
+      # self.plugs contains PhasePlug so enumerate and unpack
+      for i, (original_name, substitute_class) in enumerate(self.plugs):
+        if (original_name == substitute_name
+            and isinstance(substitute_class, plugs.PlugPlaceholder)
+            and issubclass(substitute_class, original_class.base_class):
+          new_info.plugs[i] = PhasePlug(
+              substitute_name,
+              substitute_class,
+              update_kwargs=placeholder.update_kwargs)
+          break
+      else:
+        raise plugs.InvalidPlugError(
+            'Could not find valid placeholder for substitute plug %s'
+            'required for phase %s' %
+            (substitute_name, self.func.__name__))
+        
     return new_info
 
   def __call__(self, test_state):
