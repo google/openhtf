@@ -23,8 +23,12 @@ import os
 import time
 
 import openhtf as htf
+from openhtf.output.callbacks import OutputToFile
+from openhtf.output.callbacks import json_factory
+# Uncomment the following import for mfg-insepctor output.
+# from openhtf.output.callbacks import mfg_inspector
+from openhtf.plugs import user_input
 from openhtf.util import units
-from openhtf.util import user_input
 
 import example_plug
 
@@ -45,7 +49,7 @@ def example_monitor(example):
     htf.Measurement('widget_size').in_range(1, 4))
 @htf.plug(example=example_plug.ExamplePlug)
 @htf.plug(prompts=user_input.UserInput)
-def hello_world(test, example):
+def hello_world(test, example, prompts):
   """A hello world test phase."""
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.prompt(
@@ -99,16 +103,14 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.add_output_callbacks(htf.output.callbacks.OutputToFile(
+  test.add_output_callbacks(OutputToFile(
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
-  test.add_output_callbacks(
-      htf.output.callbacks.json_factory.OutputToJSON(
+  test.add_output_callbacks(json_factory.OutputToJSON(
           './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
           indent=4))
   
   # Example of how to output to testrun protobuf format.
-  #test.add_output_callbacks(
-  #  htf.output.callbacks.mfg_inspector.OutputToTestRunProto(
+  #test.add_output_callbacksmfg_inspector.OutputToTestRunProto(
   #    './{dut_id}.{start_time_millis}.pb'))
   
   # Example of how to upload to mfg-inspector.  Replace filename with your

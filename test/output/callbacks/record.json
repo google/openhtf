@@ -2,34 +2,34 @@
   "code_info": {
     "docstring": "Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py", 
     "name": "all_the_things.py", 
-    "sourcecode": "# Copyright 2014 Google Inc. All Rights Reserved.\n\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n\n#     http://www.apache.org/licenses/LICENSE-2.0\n\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n\"\"\"Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py\n\"\"\"\n\nimport json\nimport os\nimport time\n\nimport openhtf as htf\nfrom openhtf.output.callbacks import OutputToFile\nfrom openhtf.output.callbacks.json_factory import OutputToJSON\n# Uncomment the following line for Testrun output.\n# from openhtf.output.callbacks.mfg_inspector import OutputToTestRunProto\nfrom openhtf.plugs import user_input\nfrom openhtf.util import units\n\nimport example_plug\n\n\n@htf.plug(example=example_plug.ExamplePlug)\ndef example_monitor(example):\n  time.sleep(.2)\n  return example.increment()\n"
+    "sourcecode": "# Copyright 2014 Google Inc. All Rights Reserved.\n\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n\n#     http://www.apache.org/licenses/LICENSE-2.0\n\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n\"\"\"Example OpenHTF test logic.\n\nRun with (your virtualenv must be activated first):\npython all_the_things.py\n\"\"\"\n\nimport json\nimport os\nimport time\n\nimport openhtf as htf\nfrom openhtf.output.callbacks import OutputToFile\nfrom openhtf.output.callbacks import json_factory\nfrom openhtf.output.callbacks import mfg_inspector\nfrom openhtf.plugs import user_input\nfrom openhtf.util import units\n\nimport example_plug\n\n\n@htf.plug(example=example_plug.ExamplePlug)\ndef example_monitor(example):\n  time.sleep(.2)\n  return example.increment()\n"
   }, 
   "dut_id": "TestDUT", 
-  "end_time_millis": 1471981975722, 
+  "end_time_millis": 1472153323543, 
   "log_records": [
     {
       "level": 20, 
-      "lineno": 54, 
-      "logger_name": "openhtf.test_record.25870:1471981964613:140039026113872", 
+      "lineno": 53, 
+      "logger_name": "openhtf.test_record.7885:1472153313586:140263860605712", 
       "message": "Hello World!", 
       "source": "all_the_things.py", 
-      "timestamp_millis": 1471981967851
+      "timestamp_millis": 1472153317287
     }, 
     {
       "level": 20, 
-      "lineno": 61, 
-      "logger_name": "openhtf.test_record.25870:1471981964613:140039026113872", 
+      "lineno": 60, 
+      "logger_name": "openhtf.test_record.7885:1472153313586:140263860605712", 
       "message": "Plug value: 0", 
       "source": "all_the_things.py", 
-      "timestamp_millis": 1471981972631
+      "timestamp_millis": 1472153320481
     }, 
     {
       "level": 10, 
-      "lineno": 279, 
-      "logger_name": "openhtf.test_record.25870:1471981964613:140039026113872", 
+      "lineno": 278, 
+      "logger_name": "openhtf.test_record.7885:1472153313586:140263860605712", 
       "message": "Finishing test execution normally with outcome FAIL.", 
       "source": "test_state.py", 
-      "timestamp_millis": 1471981975721
+      "timestamp_millis": 1472153323543
     }
   ], 
   "metadata": {
@@ -58,7 +58,7 @@
         "name": "hello_world", 
         "sourcecode": "@htf.measures(\n    htf.Measurement('unset_meas'),\n    htf.Measurement(\n        'widget_type').matches_regex(r'.*Widget$').doc(\n            '''This measurement tracks the type of widgets.'''),\n    htf.Measurement(\n        'widget_color').doc('Color of the widget'),\n    htf.Measurement('widget_size').in_range(1, 4))\n@htf.plug(example=example_plug.ExamplePlug)\n@htf.plug(prompts=user_input.UserInput)\ndef hello_world(test, example, prompts):\n  \"\"\"A hello world test phase.\"\"\"\n  test.logger.info('Hello World!')\n  test.measurements.widget_type = prompts.prompt(\n      'What\\'s the widget type?', text_input=True)\n  if test.measurements.widget_type == 'raise':\n    raise Exception()\n  test.measurements.widget_color = 'Black'\n  test.measurements.widget_size = 3\n  test.logger.info('Plug value: %s', example.increment())\n"
       }, 
-      "end_time_millis": 1471981972676, 
+      "end_time_millis": 1472153320508, 
       "measurements": {
         "unset_meas": {
           "name": "unset_meas", 
@@ -92,7 +92,7 @@
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1471981967850
+      "start_time_millis": 1472153317286
     }, 
     {
       "attachments": {}, 
@@ -101,7 +101,7 @@
         "name": "set_measurements", 
         "sourcecode": "    @openhtf.PhaseOptions(requires_state=True)\n    @plugs.plug(update_kwargs=False, **monitor_plugs)\n    @measurements.measures(\n        measurements.Measurement(measurement_name).with_units(\n            units).with_dimensions(uom.MILLISECOND))\n    @functools.wraps(phase_desc.func)\n    def monitored_phase_func(test_state, *args, **kwargs):\n      # Start monitor thread, it will run monitor_desc periodically.\n      monitor_thread = _MonitorThread(\n          measurement_name, monitor_desc, phase_desc.extra_kwargs, test_state,\n          poll_interval_ms)\n      monitor_thread.start()\n      try:\n        return phase_desc(test_state, *args, **kwargs)\n      finally:\n        monitor_thread.kill()\n"
       }, 
-      "end_time_millis": 1471981975700, 
+      "end_time_millis": 1472153323532, 
       "measurements": {
         "level_all": {
           "measured_value": 9, 
@@ -128,19 +128,19 @@
           ], 
           "measured_value": [
             [
-              200.88601112365723, 
+              200.53386688232422, 
               1
             ], 
             [
-              1000.6160736083984, 
+              1000.7288455963135, 
               2
             ], 
             [
-              2000.6470680236816, 
+              2000.976800918579, 
               3
             ], 
             [
-              3000.675916671753, 
+              3001.0077953338623, 
               4
             ]
           ], 
@@ -157,7 +157,7 @@
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1471981972678
+      "start_time_millis": 1472153320510
     }, 
     {
       "attachments": {}, 
@@ -166,7 +166,7 @@
         "name": "dimensions", 
         "sourcecode": "@htf.measures(\n    htf.Measurement('unset_dims').with_dimensions(units.HERTZ),\n    htf.Measurement('dimensions').with_dimensions(units.HERTZ),\n    htf.Measurement('lots_of_dims').with_dimensions(\n        units.HERTZ, units.SECOND, units.RADIAN))\ndef dimensions(test):\n  for dim in range(5):\n    test.measurements.dimensions[dim] = 1 << dim\n  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):\n    test.measurements.lots_of_dims[x, y, z] = x + y + z\n"
       }, 
-      "end_time_millis": 1471981975704, 
+      "end_time_millis": 1472153323534, 
       "measurements": {
         "dimensions": {
           "dimensions": [
@@ -264,7 +264,7 @@
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1471981975702
+      "start_time_millis": 1472153323533
     }, 
     {
       "attachments": {
@@ -282,15 +282,15 @@
         "name": "attachments", 
         "sourcecode": "def attachments(test):\n  test.attach('test_attachment', 'This is test attachment data.')\n  test.attach_from_file('example_attachment.txt')\n"
       }, 
-      "end_time_millis": 1471981975721, 
+      "end_time_millis": 1472153323543, 
       "measurements": {}, 
       "name": "attachments", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1471981975705
+      "start_time_millis": 1472153323535
     }
   ], 
-  "start_time_millis": 1471981967848, 
+  "start_time_millis": 1472153317284, 
   "station_id": "jethier.mtv.corp.google.com"
 }
