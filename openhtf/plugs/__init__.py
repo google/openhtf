@@ -277,7 +277,7 @@ def plug(update_kwargs=True, **plugs):
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
   for a_plug in plugs.itervalues():
-    is_placeholder = isinstance(a_plug, BasePlug.Placeholder)
+    is_placeholder = isinstance(a_plug, PlugPlaceholder)
     if not (is_placeholder or issubclass(a_plug, BasePlug)):
       raise InvalidPlugError(
           'Plug %s is not a subclass of plugs.BasePlug' % a_plug)

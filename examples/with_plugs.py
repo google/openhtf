@@ -66,7 +66,7 @@ class PingExample(PingPlug):
 class PingCnn(PingPlug):
   host = 'cnn.com'
 
-@plugs.plug(pinger=PingPlug.placeholder())
+@plugs.plug(pinger=PingPlug.placeholder)
 @htf.measures('total_time', 'retcode')
 def MainTestPhase(test, pinger, count):
   start = time.time()
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     for count in counts:
       phases.append(MainTestPhase
           .with_args(count=count)
-          .WithPlugs(pinger=ping_plug))
+          .with_plugs(pinger=ping_plug))
 
   test = htf.Test(*phases)
 
