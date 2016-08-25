@@ -110,6 +110,7 @@ import mutablerecords
 import sockjs.tornado
 
 import openhtf
+from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import timeouts
@@ -130,6 +131,17 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
+class PlugPlaceholder(object):
+  """Placeholder for a specific plug to be provided before test execution.
+
+  Utilize with_plugs method to provide the plug before test execution.  The
+  with_plugs method checks to make sure the substitute plug is a subclass of
+  the PlugPlaceholder's base_class.
+  """
+  def __init__(self, base_class):
+      self.base_class = base_class
+
+
 class BasePlug(object):
   """All plug types must subclass this type.
 
@@ -143,14 +155,10 @@ class BasePlug(object):
   # Allow explicitly disabling remote access to specific attributes.
   disable_remote_attrs = set()
 
-  class Placeholder(object):
-    """Placeholder for a specific plug to be provided before test execution"""
-    def __init__(self, cls):
-      self.cls = cls
-
-  @classmethod
+  @classproperty
   def placeholder(cls):
-    return cls.Placeholder(cls)
+    """Returns a PlugPlaceholder for calling class"""
+    return PlugPlaceholder(cls)
 
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
