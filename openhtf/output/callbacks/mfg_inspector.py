@@ -238,7 +238,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
         # Just a plain ol' value.
         if isinstance(value, numbers.Number):
           testrun_param.numeric_value = float(value)
-        else:
+        elif measurement.measured_value.is_value_set:
           testrun_param.text_value = str(value)
         # Check for validators we know how to translate.
         for validator in measurement.validators:
@@ -272,7 +272,9 @@ def _extract_parameters(record, testrun, used_parameter_names):
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
         if measurement.dimensions is None:
-          if isinstance(testrun_param.numeric_value, float):
+          if not measurement.measured_value.is_value_set:
+            testrun_code.details = "Unset"
+          elif isinstance(testrun_param.numeric_value, float):
             testrun_code.details = str(testrun_param.numeric_value)
           else:
             testrun_code.details = testrun_param.text_value
