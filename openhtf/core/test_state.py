@@ -40,6 +40,7 @@ import openhtf
 
 from openhtf import plugs
 from openhtf import util
+from openhtf.core import phase_executor
 from openhtf.core import measurements
 from openhtf.core import test_record
 from openhtf.util import conf
@@ -208,8 +209,14 @@ class TestState(object):
     if phase_outcome.raised_exception:
       self.logger.debug('Finishing test execution early due to phase '
                         'exception, outcome ERROR.')
-      code = str(type(phase_outcome.phase_result).__name__)
-      description = str(phase_outcome.phase_result).decode('utf8', 'replace')
+      result = phase_outcome.phase_result
+      if isinstance(result, phase_executor.ExceptionInfo):
+        code = result.exc_type.__name__
+        description = str(result.exc_val).decode('utf8', 'replace')
+      else:
+        # threads.ThreadTerminationError gets str'd directly.
+        code = str(type(phase_outcome.phase_result).__name__)
+        description = str(phase_outcome.phase_result).decode('utf8', 'replace')
       self.test_record.add_outcome_details(code, description)
       self.finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:

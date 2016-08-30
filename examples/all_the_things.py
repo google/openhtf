@@ -24,7 +24,7 @@ import time
 
 import openhtf as htf
 from openhtf.util import units
-from openhtf.util import user_input
+from openhtf.plugs import user_input
 
 import example_plug
 
@@ -45,7 +45,7 @@ def example_monitor(example):
     htf.Measurement('widget_size').in_range(1, 4))
 @htf.plug(example=example_plug.ExamplePlug)
 @htf.plug(prompts=user_input.UserInput)
-def hello_world(test, example):
+def hello_world(test, example, prompts):
   """A hello world test phase."""
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.prompt(

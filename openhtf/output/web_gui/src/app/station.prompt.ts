@@ -48,7 +48,7 @@ export class Prompt {
   sendResponse(input: HTMLInputElement, id) {
     let ip = this.routeParams.get('ip');
     let port = this.routeParams.get('port');
-    let response = input.value || '';
+    let response = input ? input.value : '';
     this.stationService.respondToPrompt(ip, port, id, response);
     input.value = null;
   }
