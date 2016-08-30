@@ -300,10 +300,12 @@ PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
 
 
 class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
-    'timeout_s': None, 'run_if': None, 'requires_state': None})):
+    'name': None, 'timeout_s': None, 'run_if': None, 'requires_state': None})):
   """Options used to override default test phase behaviors.
 
   Attributes:
+    name: Override for the name of the phase. Can be formatted similar to
+        measurements using with_args() to distinguish multiple similar phases.
     timeout_s: Timeout to use for the phase, in seconds.
     run_if: Callback that decides whether to run the phase or not.
     requires_state: If True, pass the whole TestState into the first argument,
@@ -311,11 +313,19 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
         phase needs to wrap another phase for some reason, as
         PhaseDescriptors can only be invoked with a TestState instance.
 
-  Example Usage:
+  Example Usages:
     @PhaseOptions(timeout_s=1)
     def PhaseFunc(test):
       pass
+
+    @PhaseOptions(name='Phase({port})')
+    def PhaseFunc(test, port, other_info):
+      pass
   """
+
+  def with_args(self, **kwargs):
+    return mutablerecords.CopyRecord(
+        self, name=util.format_string(self.name, **kwargs))
 
   def update(self, **kwargs):
     for key, value in kwargs.iteritems():
@@ -379,7 +389,7 @@ class PhaseDescriptor(mutablerecords.Record(
 
   @property
   def name(self):
-    return self.func.__name__
+    return self.options.name or self.func.__name__
 
   @property
   def doc(self):
@@ -390,6 +400,7 @@ class PhaseDescriptor(mutablerecords.Record(
     # Make a copy so we can have multiple of the same phase with different args
     # in the same test.
     new_info = mutablerecords.CopyRecord(self)
+    new_info.options = new_info.options.with_args(**kwargs)
     new_info.extra_kwargs.update(kwargs)
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
@@ -401,7 +412,7 @@ class PhaseDescriptor(mutablerecords.Record(
     the 'requires_state' option is set, then a test_state.TestState is passed
     instead. If no positional args are expected, then neither is passed in. In
     any case, keyword args are passed in based on extra_kwargs, set via
-    WithArgs(), combined with plugs (plugs override extra_kwargs).
+    with_args(), combined with plugs (plugs override extra_kwargs).
 
     Args:
       test_state: test_state.TestState for the currently executing Test.

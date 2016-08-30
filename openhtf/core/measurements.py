@@ -69,6 +69,7 @@ from enum import Enum
 import mutablerecords
 
 import openhtf
+from openhtf import util
 from openhtf.util import validators
 from openhtf.util import units
 
@@ -203,16 +204,9 @@ class Measurement(  # pylint: disable=no-init
 
   def with_args(self, **kwargs):
     """Creates a new Measurement, see openhtf.PhaseInfo.with_args."""
-    new_meas = mutablerecords.CopyRecord(self)
-    if '{' in new_meas.name:
-      formatter = lambda x: x.format(**kwargs) if x else x
-    else:
-      # str % {'a': 1} is harmless if str doesn't use any interpolation.
-      # .format is as well, but % is more likely to be used in other contexts.
-      formatter = lambda x: x % kwargs if x else x
-    new_meas.name = formatter(self.name)
-    new_meas.docstring = formatter(self.docstring)
-    return new_meas
+    return mutablerecords.CopyRecord(
+        self, name=util.format_string(self.name, **kwargs),
+        docstring=util.format_string(self.docstring, **kwargs))
 
   def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Support our default set of validators as direct attributes."""

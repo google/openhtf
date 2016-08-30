@@ -27,6 +27,7 @@ import os
 import shutil
 import tempfile
 
+from openhtf import util
 from openhtf.util import data
 
 
@@ -76,20 +77,10 @@ class OutputToFile(object):
   @contextlib.contextmanager
   def open_output_file(self, test_record):
     """Open file based on pattern."""
-    output_file = None
     record_dict = data.convert_to_base_types(test_record)
-    if isinstance(self.filename_pattern, basestring):
-      if '{' in self.filename_pattern:
-        output_file = self.open_file(
-            self.filename_pattern.format(**record_dict))
-      elif '%' in self.filename_pattern:
-        raise ValueError(
-            '%-style filename patterns deprecated, use .format() syntax')
-      else:
-        output_file = self.open_file(self.filename_pattern)
-    elif callable(self.filename_pattern):
-      output_file = self.open_file(self.filename_pattern(record_dict))
-    if output_file:
+    pattern = self.filename_pattern
+    if isinstance(pattern, basestring) or callable(pattern):
+      output_file = self.open_file(util.format_string(pattern, **record_dict))
       try:
         yield output_file
       finally:

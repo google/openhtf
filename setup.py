@@ -110,7 +110,7 @@ build.sub_commands.insert(0, ('build_proto', None))
 INSTALL_REQUIRES = [
     'contextlib2==0.5.1',
     'enum34==1.1.2',
-    'mutablerecords==0.3.0',
+    'mutablerecords==0.4.1',
     'oauth2client==1.5.2',
     'protobuf==2.6.1',
     'pyaml==15.3.1',
