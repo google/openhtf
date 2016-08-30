@@ -238,7 +238,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
         # Just a plain ol' value.
         if isinstance(value, numbers.Number):
           testrun_param.numeric_value = float(value)
-        else:
+        elif isinstance(value, str):
           testrun_param.text_value = str(value)
         # Check for validators we know how to translate.
         for validator in measurement.validators:
@@ -268,7 +268,8 @@ def _extract_parameters(record, testrun, used_parameter_names):
         _mangle_measurement(
             name, measurement.measured_value, measurement, mangled_parameters,
             attachment.name)
-      if testrun_param.status == test_runs_pb2.FAIL:
+      if (testrun_param.status == test_runs_pb2.FAIL and
+          measurement.measured_value.is_value_set):
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
         if measurement.dimensions is None:
