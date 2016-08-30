@@ -34,6 +34,7 @@ import mutablerecords
 from enum import Enum
 
 from openhtf import core
+from openhtf import output
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import history
@@ -43,6 +44,9 @@ from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import triggers
+from openhtf.output.callbacks import console_summary
+from openhtf.output.callbacks import json_factory
+from openhtf.output.callbacks import mfg_inspector
 from openhtf.plugs import user_input, plug
 from openhtf.util import conf
 from openhtf.util import data
