@@ -33,7 +33,8 @@ from openhtf.util import units
 
 
 # Fields that are considered 'volatile' for record comparison.
-_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis'}
+_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
+                    'lineno'}
 
 RECORD_FILENAME = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'measurements_record.pickle')
