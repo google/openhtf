@@ -115,8 +115,8 @@ def _populate_header(record, testrun):
     testrun_phase = testrun.phases.add()
     testrun_phase.name = phase.name
     testrun_phase.description = phase.codeinfo.sourcecode
-    testrun_phase.timing.start_time_millis = phase.start_time_millis 
-    testrun_phase.timing.end_time_millis = phase.end_time_millis 
+    testrun_phase.timing.start_time_millis = phase.start_time_millis
+    testrun_phase.timing.end_time_millis = phase.end_time_millis
   if 'config' in record.metadata:
     attachment = testrun.info_parameters.add()
     attachment.name = 'config'
@@ -218,22 +218,25 @@ def _extract_parameters(record, testrun, used_parameter_names):
       tr_name = _ensure_unique_parameter_name(name, used_parameter_names)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
-      if measurement.outcome == measurements.Outcome.PASS:
-        testrun_param.status = test_runs_pb2.PASS
-      else:
-        # FAIL or UNSET results in a FAIL in the TestRun output.
-        testrun_param.status = test_runs_pb2.FAIL
       if measurement.docstring:
         testrun_param.description = measurement.docstring
       if measurement.units and measurement.units.code in UOM_CODE_MAP:
         testrun_param.unit_code = UOM_CODE_MAP[measurement.units.code]
 
-      if not measurement.measured_value:
+      if measurement.outcome == measurements.Outcome.PASS:
+        testrun_param.status = test_runs_pb2.PASS
+      elif (not measurement.measured_value
+            or not measurement.measured_value.is_value_set):
         testrun_param.status = test_runs_pb2.ERROR
         continue
+      else:
+        testrun_param.status = test_runs_pb2.FAIL
+
       value = None
       if measurement.measured_value.is_value_set:
         value = measurement.measured_value.value
+      else:
+        testrun_param.status = test_runs_pb2.ERROR
       if measurement.dimensions is None:
         # Just a plain ol' value.
         if isinstance(value, numbers.Number):
