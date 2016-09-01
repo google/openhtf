@@ -41,7 +41,7 @@ from openhtf.plugs import user_input
 # phase will be taking a measurement that we'd like to call
 # 'hello_world_measurement'.  Measurements can be accessed and set via
 # the 'test' object, always passed as the first argument to test phases.
-@htf.measurements.measures(htf.measurements.Measurement('hello_world_measurement'))
+@htf.measures(htf.Measurement('hello_world_measurement'))
 def hello_world(test):
   """A hello world test phase."""
   # At the heart of an OpenHTF test script are the test phases, such as

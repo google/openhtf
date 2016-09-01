@@ -37,12 +37,8 @@ from openhtf import core
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import history
-<<<<<<< HEAD
 from openhtf.core.measurements import Measurement, measures
 from openhtf.core.monitors import monitors
-=======
-from openhtf.core import measurements
->>>>>>> 0d8d803... Plugin interface and example plugin
 from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
@@ -52,11 +48,8 @@ from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
-<<<<<<< HEAD
 from openhtf.util import units
-=======
-from openhtf.util import user_input
->>>>>>> 0d8d803... Plugin interface and example plugin
+
 
 
 __version__ = util.get_version()

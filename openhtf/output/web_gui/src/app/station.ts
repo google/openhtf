@@ -29,7 +29,6 @@ import {Logs} from './station.logs';
 import {StationHeader} from './station.header';
 import {Metadata} from './station.metadata';
 import {PhaseListing} from './station.phases';
-import {Prompt} from './station.prompt';
 import {StationService} from './station.service';
 import {TestHeader} from './station.testheader';
 import {Countdown, ObjectToArray} from './utils';
@@ -43,7 +42,7 @@ import 'file?name=/templates/station.html!./station.html';
   templateUrl: 'templates/station.html',
   styleUrls: ['styles/station.css'],
   pipes: [ObjectToArray],
-  directives: [StationHeader, Prompt, TestHeader, PhaseListing, Logs, Metadata, ],
+  directives: [StationHeader, TestHeader, PhaseListing, Logs, Metadata, ],
   providers: [StationService]
 })
 export class Station implements OnDestroy, OnInit {
