@@ -25,20 +25,32 @@ For more information on measurements, see the measurements.py example.
 
 TODO(someone): Write an output example.
 For more information on output, see the output.py example.
+
+with_plugs() is most useful when you have a test that has to happen in the same
+(or mostly similar) ways across multiple interfaces, such testing connectivity
+on a quad-NIC board. Instead of creating 4 phases with 4 plugs, you create 1 phase
+with 4 subclasses of the same plug and use with_plugs() to create the 4 phases.
 """
+import itertools
 import subprocess
 import time
 
 import openhtf as htf
 from openhtf import plugs
 
+
 class PingPlug(plugs.BasePlug):
+  """This plug simply does a ping against the host attribute."""
   enable_remote = True
   host = None
+
   def __init__(self):
+    # This should only ever be constructed by a subclass, so this is only
+    # checking that the subclass set host correctly.
     assert self.host is not None
 
-  def get_command(self, count):
+  def _get_command(self, count):
+    # Returns the commandline for pinging the host.
     return [
       'ping',
       '-c',
@@ -47,28 +59,33 @@ class PingPlug(plugs.BasePlug):
     ]
 
   def run(self, count):
-    command = self.get_command(count)
+    command = self._get_command(count)
     print "running: %s" % command
     return subprocess.call(command)
 
+
+# These subclasses specify the host to ping so they can be used directly by
+# phases or through with_plugs().
 class PingGoogle(PingPlug):
   host = 'google.com'
+
 
 class PingDnsA(PingPlug):
   host = '8.8.8.8'
 
+
 class PingDnsB(PingPlug):
   host = '8.8.4.4'
 
-class PingExample(PingPlug):
-  host = 'example.com'
-
-class PingCnn(PingPlug):
-  host = 'cnn.com'
 
 @plugs.plug(pinger=PingPlug.placeholder)
 @htf.measures('total_time', 'retcode')
-def MainTestPhase(test, pinger, count):
+def test_ping(test, pinger, count):
+  """This tests that we can ping a host.
+
+  The plug, pinger, is expected to be replaced at test creation time, so the
+  placeholder property was used instead of the class directly.
+  """
   start = time.time()
   retcode = pinger.run(count)
   elapsed = time.time() - start
@@ -76,25 +93,21 @@ def MainTestPhase(test, pinger, count):
   test.measurements.retcode = retcode
 
 
-
 if __name__ == '__main__':
   # We instantiate our OpenHTF test with the phases we want to run as args.
+
+  # We're going to use these counts and these plugs to create all our phases
+  # using only 1 written phase.
+  counts = [3, 5, 10]
   ping_plugs = [
     PingGoogle,
     PingDnsA,
     PingDnsB,
-    PingExample,
-    PingCnn
   ]
-  counts = [3, 5, 10]
-  phases = []
-  for ping_plug in ping_plugs:
-    for count in counts:
-      phases.append(MainTestPhase
-          .with_args(count=count)
-          .with_plugs(pinger=ping_plug))
 
-  test = htf.Test(*phases)
+  test = htf.Test(
+      *(test_ping.with_args(count=count).with_plugs(pinger=plug)
+        for count, plug in itertools.product(counts, ping_plugs)))
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.

@@ -131,15 +131,14 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
-class PlugPlaceholder(object):
+class PlugPlaceholder(collections.namedtuple(
+    'PlugPlaceholder', ['base_class'])):
   """Placeholder for a specific plug to be provided before test execution.
 
   Utilize with_plugs method to provide the plug before test execution.  The
   with_plugs method checks to make sure the substitute plug is a subclass of
   the PlugPlaceholder's base_class.
   """
-  def __init__(self, base_class):
-      self.base_class = base_class
 
 
 class BasePlug(object):
@@ -157,7 +156,7 @@ class BasePlug(object):
 
   @classproperty
   def placeholder(cls):
-    """Returns a PlugPlaceholder for calling class"""
+    """Returns a PlugPlaceholder for calling class."""
     return PlugPlaceholder(cls)
 
   def _asdict(self):
@@ -277,10 +276,10 @@ def plug(update_kwargs=True, **plugs):
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
   for plug in plugs.itervalues():
-    is_placeholder = isinstance(plug, BasePlug.Placeholder)
-    if not (is_placeholder or issubclass(plug, BasePlug)):
+    if not (isinstance(plug, PlugPlaceholder) or issubclass(plug, BasePlug)):
       raise InvalidPlugError(
-          'Plug %s is not a subclass of plugs.BasePlug' % a_plug)
+          'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
+          'for one' % plug)
 
   def result(func):
     """Wrap the given function and return the wrapper.
@@ -326,6 +325,9 @@ class PlugManager(object):
 
   def __init__(self, plug_types=None, logger=None):
     self._plug_types = plug_types or set()
+    if any(isinstance(plug, PlugPlaceholder) for plug in self._plug_types):
+      raise InvalidPlugError('Plug %s is a placeholder, replace it using '
+                             'with_plugs()' % plug)
     self._logger = logger
     self._plugs_by_type = {}
     self._plugs_by_name = {}
