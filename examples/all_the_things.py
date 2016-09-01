@@ -25,6 +25,9 @@ import time
 import openhtf as htf
 from openhtf.util import units
 from openhtf.plugs import user_input
+from openhtf.output import callbacks
+from openhtf.output.callbacks import json_factory 
+from openhtf.output.callbacks import mfg_inspector
 
 import example_plug
 
@@ -99,17 +102,14 @@ if __name__ == '__main__':
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.add_output_callbacks(htf.output.callbacks.OutputToFile(
+  test.add_output_callbacks(callbacks.OutputToFile(
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
-  test.add_output_callbacks(
-      htf.output.callbacks.json_factory.OutputToJSON(
-          './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
-          indent=4))
+  test.add_output_callbacks(json_factory.OutputToJSON(
+      './{dut_id}.{metadata[test_name]}.{start_time_millis}.json', indent=4))
   
   # Example of how to output to testrun protobuf format.
   #test.add_output_callbacks(
-  #  htf.output.callbacks.mfg_inspector.OutputToTestRunProto(
-  #    './{dut_id}.{start_time_millis}.pb'))
+  #  mfg_inspector.OutputToTestRunProto('./{dut_id}.{start_time_millis}.pb'))
   
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
@@ -117,7 +117,7 @@ if __name__ == '__main__':
   # 'my_private_key.json'.
   #if os.path.isfile('my_private_key.json'):
   #  with open('my_private_key.json', 'r') as json_file:
-  #    test.add_output_callbacks(output.UploadToMfgInspector.from_json(
+  #    test.add_output_callbacks(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
 
   #test.configure(teardown_function=teardown)
