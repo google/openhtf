@@ -181,19 +181,26 @@ def add_html(tag):
 
 
 def main():
-  #Take all cmd line arguments (plugin names)
+  # Take all cmd line arguments (plugin names)
   parser = argparse.ArgumentParser()
   parser.add_argument('plugins', nargs = '*', help = 'plugins')
   plugins = parser.parse_args().plugins
 
+  # Make sure update_plugins is in correct directory
+  try:
+    if os.getcwd().split('openhtf/openhtf/')[1] != 'output/web_gui/src':
+      raise
+  except:
+    print("Error: update_plugins currently not in openhtf/openhtf/output/web_gui/src")
+    return
 
-  #Delete and reinstantiate existing plugin dir in dist
+  # Delete and reinstantiate existing plugin dir in dist
   config_list=[]
   if os.path.exists("./dist/plugin/"):
     shutil.rmtree("./dist/plugin/")
   os.mkdir("./dist/plugin/")
 
-  #Import plugins and copy frontend folders into dist/plugin
+  # Import plugins and copy frontend folders into dist/plugin
   for name in plugins:
     try:
       plugin_module = importlib.import_module(name)
@@ -208,7 +215,7 @@ def main():
       print("Error: Unable to add "+name+" plugin: "+str(e))
 
 
-  #Generate station.html  
+  # Generate station.html  
   with open("./station.html", 'w') as new_file:
     new_file.write(pre_html)
     for config in config_list:
@@ -221,7 +228,7 @@ def main():
   shutil.move("./station.html", "./app/")
 
 
-  #Generate station.ts
+  # Generate station.ts
   with open("./station.ts", 'w') as new_file:
     new_file.write(pre_ts)
     for config in config_list:
