@@ -23,20 +23,20 @@ use cases must be in want of a plugin interface. Here's how to write one!
 A basic, bare-bones plugin package structure looks like this: 
 ```
 /example_plugin
-	|
-	-- setup.py
-	|
-	-- /example_plugin
-			|
-			-- __init__.py
-			|
-			-- /plugin
-				|
-				-- main.ts
-				|
-				-- example_plugin.html
-				|
-				-- example_service.ts
+    |
+    -- setup.py
+    |
+    -- /example_plugin
+            |
+            -- __init__.py
+            |
+            -- /plugin
+                |
+                -- main.ts
+                |
+                -- example_plugin.html
+                |
+                -- example_service.ts
 ```
 
 A plugin with this structure would be able to show up in the frontend and 
@@ -61,7 +61,7 @@ The handlers variable list is what OpenHTF will use to configure and add your
 tornado handler. A simple example: 
 ```
 handlers=[(r'/example/', ExampleHandler),
-		 (r'/example2/', ExampleHandler2)]
+          (r'/example2/', ExampleHandler2)]
 ```
 The list consists tuples containing the regex for the URL you need served, 
 and the name of the handler to serve it to.
@@ -74,10 +74,10 @@ main.ts module; this component will populate the body of your plugin tab.
 Another example: 
 ```
 configs={
-	'class':'ExamplePlugin',
-	'tag':'example-plugin', 
-	'label':'example', 
-	'icon':'pets'}
+    'class':'ExamplePlugin',
+    'tag':'example-plugin', 
+    'label':'example', 
+    'icon':'pets'}
 ```
 - label: The label for the tab for your plugin
 - icon: Optional, but refers to the icon from Material Icons that you want
@@ -113,7 +113,7 @@ version 3.10.6 or higher.
 2. On command line (unix): 
 ```
 cd openhtf/openhtf/output/web_gui/src/
-npm run update_plugins (NAME(S) OF PLUGIN(S))  
+npm run update_plugins (NAME(S) OF PLUGIN(S))
 		/i.e., npm run update_plugins example_plugin
 npm run build
 ```

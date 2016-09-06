@@ -347,10 +347,10 @@ class WebGuiServer(tornado.web.Application):
         (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path})
     ] + dash_router.urls + station_router.urls
 
-    #Add plugins into handler_routes
+    # Add plugins into handler_routes
     for plugin in list(plugins or []):
       try:
-        #Import plugin package
+        # Import plugin package
         plugin_module = importlib.import_module(plugin)
         handlers = plugin_module.handlers
       except (ImportError, AttributeError) as error:
@@ -358,11 +358,11 @@ class WebGuiServer(tornado.web.Application):
         continue
 
       for handler in handlers:
-        #Add in handler dependencies 
+        # Add in handler dependencies 
         dep_dict = {'station_store': self.store, 'host': socket.gethostname(),
                     'port': http_port, 'path': path}
 
-        #Add completed route to handler_routes
+        # Add completed route to handler_routes
         handler_routes.append(handler + (dep_dict,))
 
     super(WebGuiServer, self).__init__(
