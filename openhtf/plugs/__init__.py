@@ -100,6 +100,7 @@ self._my_config having a value of 'my_config_value'.
 
 import collections
 import functools
+import inspect
 import json
 import logging
 import threading
@@ -109,6 +110,7 @@ import mutablerecords
 import sockjs.tornado
 
 import openhtf
+from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import timeouts
@@ -129,6 +131,17 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
+class PlugPlaceholder(object):
+  """Placeholder for a specific plug to be provided before test execution.
+
+  Utilize with_plugs method to provide the plug before test execution.  The
+  with_plugs method checks to make sure the substitute plug is a subclass of
+  the PlugPlaceholder's base_class.
+  """
+  def __init__(self, base_class):
+      self.base_class = base_class
+
+
 class BasePlug(object):
   """All plug types must subclass this type.
 
@@ -141,6 +154,11 @@ class BasePlug(object):
   enable_remote = False
   # Allow explicitly disabling remote access to specific attributes.
   disable_remote_attrs = set()
+
+  @classproperty
+  def placeholder(cls):
+    """Returns a PlugPlaceholder for calling class"""
+    return PlugPlaceholder(cls)
 
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
@@ -259,7 +277,8 @@ def plug(update_kwargs=True, **plugs):
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
   for a_plug in plugs.itervalues():
-    if not issubclass(a_plug, BasePlug):
+    is_placeholder = isinstance(a_plug, PlugPlaceholder)
+    if not (is_placeholder or issubclass(a_plug, BasePlug)):
       raise InvalidPlugError(
           'Plug %s is not a subclass of plugs.BasePlug' % a_plug)
 
