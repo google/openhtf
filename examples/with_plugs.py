@@ -27,9 +27,10 @@ TODO(someone): Write an output example.
 For more information on output, see the output.py example.
 
 with_plugs() is most useful when you have a test that has to happen in the same
-(or mostly similar) ways across multiple interfaces, such testing connectivity
-on a quad-NIC board. Instead of creating 4 phases with 4 plugs, you create 1 phase
-with 4 subclasses of the same plug and use with_plugs() to create the 4 phases.
+(or mostly similar) ways across multiple interfaces, such as testing
+connectivity on a quad-NIC board. Instead of creating 4 phases with 4 plugs, you
+can create 1 phase with 4 subclasses of the same plug and use with_plugs() to
+end up with the 4 phases you want.
 """
 import itertools
 import subprocess
