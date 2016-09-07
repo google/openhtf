@@ -101,6 +101,7 @@ self._my_config having a value of 'my_config_value'.
 import collections
 import functools
 import json
+import inspect
 import logging
 import threading
 import time
@@ -109,6 +110,7 @@ import mutablerecords
 import sockjs.tornado
 
 import openhtf
+from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import timeouts
@@ -129,6 +131,16 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
+class PlugPlaceholder(collections.namedtuple(
+    'PlugPlaceholder', ['base_class'])):
+  """Placeholder for a specific plug to be provided before test execution.
+
+  Utilize with_plugs method to provide the plug before test execution.  The
+  with_plugs method checks to make sure the substitute plug is a subclass of
+  the PlugPlaceholder's base_class.
+  """
+
+
 class BasePlug(object):
   """All plug types must subclass this type.
 
@@ -141,6 +153,11 @@ class BasePlug(object):
   enable_remote = False
   # Allow explicitly disabling remote access to specific attributes.
   disable_remote_attrs = set()
+
+  @classproperty
+  def placeholder(cls):
+    """Returns a PlugPlaceholder for calling class."""
+    return PlugPlaceholder(cls)
 
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
@@ -250,7 +267,7 @@ def plug(update_kwargs=True, **plugs):
   with @staticmethod.
 
   Args:
- wait_for_plug_update(   **plugs: Dict mapping name to Plug type.
+    wait_for_plug_update(   **plugs: Dict mapping name to Plug type.
 
   Returns:
     A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
@@ -259,9 +276,10 @@ def plug(update_kwargs=True, **plugs):
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
   for a_plug in plugs.itervalues():
-    if not issubclass(a_plug, BasePlug):
+    if not (isinstance(a_plug, PlugPlaceholder) or issubclass(a_plug, BasePlug)):
       raise InvalidPlugError(
-          'Plug %s is not a subclass of plugs.BasePlug' % a_plug)
+          'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
+          'for one' % a_plug)
 
   def result(func):
     """Wrap the given function and return the wrapper.
@@ -307,6 +325,9 @@ class PlugManager(object):
 
   def __init__(self, plug_types=None, logger=None):
     self._plug_types = plug_types or set()
+    if any(isinstance(plug, PlugPlaceholder) for plug in self._plug_types):
+      raise InvalidPlugError('Plug %s is a placeholder, replace it using '
+                             'with_plugs()' % plug)
     self._logger = logger
     self._plugs_by_type = {}
     self._plugs_by_name = {}
