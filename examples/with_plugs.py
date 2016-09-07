@@ -32,7 +32,6 @@ connectivity on a quad-NIC board. Instead of creating 4 phases with 4 plugs, you
 can create 1 phase with 4 subclasses of the same plug and use with_plugs() to
 end up with the 4 phases you want.
 """
-import itertools
 import subprocess
 import time
 
@@ -96,9 +95,8 @@ def test_ping(test, pinger, count):
 if __name__ == '__main__':
   # We instantiate our OpenHTF test with the phases we want to run as args.
 
-  # We're going to use these counts and these plugs to create all our phases
-  # using only 1 written phase.
-  counts = [3, 5, 10]
+  # We're going to use these these plugs to create all our phases using only 1
+  # written phase.
   ping_plugs = [
     PingGoogle,
     PingDnsA,
@@ -106,8 +104,7 @@ if __name__ == '__main__':
   ]
 
   test = htf.Test(
-      *(test_ping.with_args(count=count).with_plugs(pinger=plug)
-        for count, plug in itertools.product(counts, ping_plugs)))
+      *(test_ping.with_plugs(pinger=plug) for plug in ping_plugs))
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.
