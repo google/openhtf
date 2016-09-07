@@ -42,7 +42,6 @@ from openhtf import plugs
 
 class PingPlug(plugs.BasePlug):
   """This plug simply does a ping against the host attribute."""
-  enable_remote = True
   host = None
 
   def __init__(self):
@@ -61,7 +60,7 @@ class PingPlug(plugs.BasePlug):
 
   def run(self, count):
     command = self._get_command(count)
-    print "running: %s" % command
+    print "running: %s" % ' '.join(command)
     return subprocess.call(command)
 
 
