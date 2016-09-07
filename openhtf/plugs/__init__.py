@@ -267,7 +267,7 @@ def plug(update_kwargs=True, **plugs):
   with @staticmethod.
 
   Args:
- wait_for_plug_update(   **plugs: Dict mapping name to Plug type.
+    wait_for_plug_update(   **plugs: Dict mapping name to Plug type.
 
   Returns:
     A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
@@ -275,11 +275,11 @@ def plug(update_kwargs=True, **plugs):
   Raises:
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
-  for plug in plugs.itervalues():
-    if not (isinstance(plug, PlugPlaceholder) or issubclass(plug, BasePlug)):
+  for a_plug in plugs.itervalues():
+    if not (isinstance(a_plug, PlugPlaceholder) or issubclass(a_plug, BasePlug)):
       raise InvalidPlugError(
           'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
-          'for one' % plug)
+          'for one' % a_plug)
 
   def result(func):
     """Wrap the given function and return the wrapper.
