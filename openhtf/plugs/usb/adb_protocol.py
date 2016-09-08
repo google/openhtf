@@ -873,7 +873,7 @@ class AdbConnection(object):
       if msg.arg0 != cls.AUTH_TOKEN:
         raise usb_exceptions.AdbProtocolError('Bad AUTH response: %s', msg)
 
-      signed_token = rsa_key.sign(ADB_BANNER)
+      signed_token = rsa_key.sign(msg.data)
       adb_transport.write_message(
           adb_message.AdbMessage(
               command='AUTH', arg0=cls.AUTH_SIGNATURE, arg1=0,
@@ -888,7 +888,8 @@ class AdbConnection(object):
     adb_transport.write_message(
         adb_message.AdbMessage(
             command='AUTH', arg0=cls.AUTH_RSAPUBLICKEY, arg1=0,
-            data=rsa_keys[0].get_public_key() + '\0'))
+            data=rsa_keys[0].get_public_key() + '\0'),
+        timeout)
     try:
       msg = adb_transport.read_until(
           ('CNXN',), timeouts.PolledTimeout.from_millis(auth_timeout_ms))
