@@ -27,7 +27,7 @@ debug output.
 Config keys must be declared as in the following example, where default_value
 and description are optional:
 
-  from openhtf import conf
+  from openhtf.util import conf
 
   conf.declare('antimatter_intermix_constant',
                default_value=3.14159,
@@ -38,7 +38,7 @@ avoid naming conflicts, configuration keys must begin with a lowercase letter.
 They may also be accessed by treating the conf module as a dictionary, but this
 method is discouraged and should only be used in favor of getattr().
 
-  from openhtf import conf
+  from openhtf.util import conf
 
   warp_core.SetIntermixConstant(conf.antimatter_intermix_constant)
 
@@ -49,7 +49,7 @@ method is discouraged and should only be used in favor of getattr().
 Another common mechanism for obtaining configuration values is to use the
 conf.inject_positional_args decorator:
 
-  from openhtf import conf
+  from openhtf.util import conf
 
   @conf.inject_positional_args
   def ModifyThePhaseVariance(antimatter_intermix_constant, phase_variance):
@@ -83,7 +83,7 @@ configuration always overrides default values, but only overrides previously
 loaded values if _override=True (default) for the load* method used.  Some
 examples of how to load a configuration:
 
-  from openhtf import conf
+  from openhtf.util import conf
 
   conf.declare('antimatter_intermix_constant')
   conf.declare('phase_variance')
@@ -544,7 +544,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     # kwargs.
     @functools.wraps(method)
     def method_wrapper(**kwargs):
-      """Wrapper that pulls values from openhtf.conf."""
+      """Wrapper that pulls values from openhtf.util.conf."""
       # Check for keyword args with names that are in the config so we can warn.
       for kwarg in kwarg_names:
         if kwarg in self:
@@ -568,7 +568,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     if argspec.args[0] == 'self':
       @functools.wraps(method)
       def self_wrapper(self, **kwargs):  # pylint: disable=invalid-name
-        """Wrapper that pulls values from openhtf.conf."""
+        """Wrapper that pulls values from openhtf.util.conf."""
         kwargs['self'] = self
         return method_wrapper(**kwargs)
       return self_wrapper
