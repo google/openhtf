@@ -37,7 +37,7 @@ from openhtf.plugs.usb import fastboot_device
 from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.plugs import cambrionix
-from openhtf.triggers import prompt_for_test_start
+from openhtf.plugs.user_input import prompt_for_test_start
 from openhtf.util import conf
 
 _LOG = logging.getLogger(__name__)

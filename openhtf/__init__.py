@@ -42,7 +42,6 @@ from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
-from openhtf.core import triggers
 from openhtf.plugs import user_input, plug
 from openhtf.util import conf
 from openhtf.util import data
