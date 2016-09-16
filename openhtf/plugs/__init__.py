@@ -267,7 +267,8 @@ def plug(update_kwargs=True, **plugs):
   with @staticmethod.
 
   Args:
-    wait_for_plug_update(   **plugs: Dict mapping name to Plug type.
+    update_kwargs: If true, makes the decorated phase take this plug as a kwarg.
+    plugs: Dict mapping name to Plug type.
 
   Returns:
     A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
