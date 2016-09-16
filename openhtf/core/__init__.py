@@ -14,6 +14,7 @@
 
 """TestExecutor executes tests."""
 
+import collections
 import logging
 import sys
 import threading
@@ -116,10 +117,12 @@ class TestExecutor(threads.KillableThread):
       self.test_state = test_state.TestState(self._test_descriptor)
       # Wait here until the test start trigger returns a DUT ID.  Don't hold
       # self._lock while we do this, or else calls to stop() will deadlock.
-      # Create plugs while we're here because that may also take a while and
-      # we don't want to hold self._lock while we wait.
-      self.test_state.mark_test_started(self._wait_for_test_start())
-      self.test_state.plug_manager.initialize_plugs()
+      self.test_state.plug_manager.initialize_plugs(
+          (self._test_start.plug_type,))
+      self.test_state.mark_test_started(
+          self.test_state.plug_manager.call_trigger(self._test_start))
+
+      # self.test_state.mark_test_started(self._wait_for_test_start())
 
       with self._lock:
         if not self._exit_stack:

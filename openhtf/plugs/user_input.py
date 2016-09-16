@@ -168,11 +168,6 @@ class UserInput(plugs.BasePlug):
 def prompt_for_test_start(
     message='Provide a DUT ID in order to start the test.', text_input=True,
     timeout_s=60*60*24):
-  """Make a test start trigger based on prompting the user for input."""
-  def trigger():  # pylint: disable=missing-docstring
-    plug = UserInput()
-    response = plug.prompt(
-        message, text_input=text_input, timeout_s=timeout_s)
-    plug.tearDown()
-    return response
-  return trigger
+  """Make a test start TriggerInfo based on prompting the user for input."""
+  return plugs.TriggerInfo(UserInput, 'prompt', tuple(),
+      dict(message=message, text_input=text_input, timeout_s=timeout_s))

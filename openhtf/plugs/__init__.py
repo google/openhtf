@@ -127,8 +127,21 @@ class PlugOverrideError(Exception):
 class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
+
 class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
+
+
+class TriggerInfo(collections.namedtuple(
+    'TriggerInfo', ('plug_type', 'trigger', 'args', 'kwargs'))):
+  """Information about a trigger to be called later on a plug instance.
+
+  Fields:
+    plug_type: The Python type of the plug containing the start trigger.
+    trigger: The name of a callable attribute on plug_type instances.
+    args: Arguments to pass to trigger when it's called.
+    kwargs: Keyword args to pass to trigger when it's called.
+"""
 
 
 class PlugPlaceholder(collections.namedtuple(
@@ -407,6 +420,12 @@ class PlugManager(object):
         raise
       self.update_plug(plug_type, plug_instance)
     self._initialize_rpc_server()
+
+  def call_trigger(self, trigger_info):
+    """Call the trigger corresponding to trigger_info on the matching plug."""
+    trigger = getattr(self._plugs_by_type[trigger_info.plug_type],
+                      trigger_info.trigger)
+    return trigger(*trigger_info.args, **trigger_info.kwargs)
 
   def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.
