@@ -633,7 +633,7 @@ class StationApi(object):
         plug_type_name, current_state, timeout_s)
 
   @staticmethod
-  def _summary_for_state_dict(cls, state_dict):
+  def _summary_for_state_dict(state_dict):
     """Return a dict for state with counts swapped in for phase/log records."""
     state_dict_summary = {
         k: v for k, v in state_dict.iteritems() if k != 'plugs'}
