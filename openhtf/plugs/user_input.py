@@ -54,74 +54,12 @@ class PromptInputError(Exception):
 class MultiplePromptsError(Exception):
   """Raised if a prompt is invoked while there is an existing prompt."""
 
+
 class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
 Prompt = collections.namedtuple('Prompt', 'id message text_input')
-
-
-class PromptManager(object):
-  """Top level abstraction for OpenHTF user prompt functionality.
-
-  Only one active prompt is allowed at a time, and an ID is stored in order to
-  ignore late responses to previous prompts.
-  """
-  def __init__(self):
-    self.prompt = None
-    self._response = None
-    self._cond = threading.Condition()
-
-  def DisplayPrompt(self, message, text_input=False, timeout_s=None):
-    """Prompt for a user response by showing the message.
-
-    Args:
-      message: The message to display to the user.
-      text_input: True iff the user needs to provide a string back.
-    Returns:
-      The string input by the user.
-    """
-    timeout_s = timeout_s or DEFAULT_TIMEOUT_S
-    with self._cond:
-      if self.prompt is not None:
-        self.prompt = None
-        raise MultiplePromptsError
-      self.prompt = Prompt(id=uuid.uuid4(),
-                           message=message,
-                           text_input=text_input)
-      self._response = None
-      _LOG.debug('Displaying prompt (%s): "%s"%s%s', self.prompt.id,
-                 message, ', Expects text' if text_input else '',
-                 ', Timeout: %s sec' % timeout_s if timeout_s else '')
-
-      console_prompt = ConsolePrompt(
-          message, functools.partial(self.Respond, self.prompt.id))
-      console_prompt.start()
-      self._cond.wait(timeout_s)
-      console_prompt.Stop()
-      self.prompt = None
-      if self._response is None:
-        self.prompt = None
-        raise PromptUnansweredError
-      return self._response
-
-  def Respond(self, prompt_id, response):
-    """Respond to the prompt that has the given ID.
-
-    If there is no active prompt or the prompt id being responded to doesn't
-    match the active prompt, do nothing.
-    """
-    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
-    with self._cond:
-      if self.prompt is not None and prompt_id == self.prompt.id:
-        self._response = response
-        self._cond.notifyAll()
-        return True  # The response was used.
-      return False  # The response was not used.
-
-
-# Module-level instance to achieve shared prompt state.
-PROMPT_MANAGER = PromptManager()
 
 
 class ConsolePrompt(threading.Thread):
@@ -173,9 +111,58 @@ class ConsolePrompt(threading.Thread):
 
 class UserInput(plugs.BasePlug):
   """Get user input from inside test phases."""
+  def __init__(self):
+    self._prompt = None
+    self._response = None
+    self._cond = threading.Condition()
+    
   def prompt(self, message, text_input=False, timeout_s=None):
-    return PROMPT_MANAGER.DisplayPrompt(
-        message, text_input=text_input, timeout_s=timeout_s)
+    """Prompt for a user response by showing the message.
+
+    Args:
+      message: The message to display to the user.
+      text_input: True iff the user needs to provide a string back.
+      timeout_s: Seconds to wait before raising a PromptUnansweredError.
+    Returns:
+      The string input by the user.
+    """
+    timeout_s = timeout_s or DEFAULT_TIMEOUT_S
+    with self._cond:
+      if self._prompt is not None:
+        self._prompt = None
+        raise MultiplePromptsError
+      self._prompt = Prompt(id=uuid.uuid4(),
+                           message=message,
+                           text_input=text_input)
+      self._response = None
+      _LOG.debug('Displaying prompt (%s): "%s"%s%s', self._prompt.id,
+                 message, ', Expects text' if text_input else '',
+                 ', Timeout: %s sec' % timeout_s if timeout_s else '')
+
+      console_prompt = ConsolePrompt(
+          message, functools.partial(self.respond, self._prompt.id))
+      console_prompt.start()
+      self._cond.wait(timeout_s)
+      console_prompt.Stop()
+      self._prompt = None
+      if self._response is None:
+        self._prompt = None
+        raise PromptUnansweredError
+      return self._response
+
+  def respond(self, prompt_id, response):
+    """Respond to the prompt that has the given ID.
+
+    If there is no active prompt or the prompt id being responded to doesn't
+    match the active prompt, do nothing.
+    """
+    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
+    with self._cond:
+      if self._prompt is not None and prompt_id == self._prompt.id:
+        self._response = response
+        self._cond.notifyAll()
+        return True  # The response was used.
+      return False  # The response was not used.
 
 
 def prompt_for_test_start(
@@ -183,16 +170,9 @@ def prompt_for_test_start(
     timeout_s=60*60*24):
   """Make a test start trigger based on prompting the user for input."""
   def trigger():  # pylint: disable=missing-docstring
-    return PROMPT_MANAGER.DisplayPrompt(
+    plug = UserInput()
+    response = plug.prompt(
         message, text_input=text_input, timeout_s=timeout_s)
+    plug.tearDown()
+    return response
   return trigger
-
-
-def get_prompt_manager():
-  """Return the shared prompt manager.
-
-  The prompter returned is a module-level instance. Thus rather than implement
-  our own Singleton or Borg or DeleBorg, we take advantage of the fact that
-  modules are already effectively singletons.
-  """
-  return PROMPT_MANAGER
