@@ -122,6 +122,7 @@ class UserInput(plugs.BasePlug):
     Args:
       message: The message to display to the user.
       text_input: True iff the user needs to provide a string back.
+      timeout_s: Seconds to wait before raising a PromptUnansweredError.
     Returns:
       The string input by the user.
     """
