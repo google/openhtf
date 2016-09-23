@@ -115,7 +115,8 @@ class AsyncCommandHandle(object):
     self.stdout = stdout or cStringIO.StringIO()
     self.force_closed_or_timeout = False
 
-    self.reader_thread = threading.Thread(target=self._reader_thread_proc)
+    self.reader_thread = threading.Thread(target=self._reader_thread_proc,
+                                          args=(timeout,))
     self.reader_thread.daemon = True
     self.reader_thread.start()
 
@@ -141,9 +142,9 @@ class AsyncCommandHandle(object):
     while not self.stream.is_closed():
       self.stream.write(reader(adb_protocol.MAX_ADB_DATA))
 
-  def _reader_thread_proc(self):
+  def _reader_thread_proc(self, timeout):
     """Read until the stream is closed."""
-    for data in self.stream.read_until_close():
+    for data in self.stream.read_until_close(timeout_ms=timeout):
       if self.stdout is not None:
         self.stdout.write(data)
 
