@@ -368,6 +368,9 @@ class WebGuiServer(tornado.web.Application):
     This handler updates our URL handlers with any newly available plug
     information and notifies the StationPubSub of the event.
     """
+    if state is None:
+      return
+
     def _make_sockjs_url(rel_url):
       """SockJS URL is /plugs/<host>/<port>/<test_uid>/<plug_name>"""
       return r'/plugs/%s/%s/%s/%s' % (hostport + (test_uid, rel_url))
