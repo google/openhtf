@@ -528,7 +528,8 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       A wrapper that, when invoked, will call the wrapped method, passing in
     configuration values for positional arguments.
     """
-    argspec = self._modules['inspect'].getargspec(method)
+    inspect = self._modules['inspect']
+    argspec = inspect.getargspec(method)
 
     # Index in argspec.args of the first keyword argument.  This index is a
     # negative number if there are any kwargs, or 0 if there are no kwargs.
@@ -560,7 +561,11 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
                              self[overridden], kwargs[overridden])
 
       final_kwargs.update(kwargs)
-      self._logger.debug('Invoking %s with %s', method.__name__, final_kwargs)
+      if inspect.ismethod(method):
+        name = '%s.%s' % (method.im_class.__name__, method.__name__)
+      else:
+        name = method.__name__
+      self._logger.debug('Invoking %s with %s', name, final_kwargs)
       return method(**final_kwargs)
 
     # We have to check for a 'self' parameter explicitly because Python doesn't
