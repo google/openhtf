@@ -643,7 +643,7 @@ class StationApi(object):
         state_dict_summary['test_record'].phases)
     state_dict_summary['test_record'].log_records = len(
         state_dict_summary['test_record'].log_records)
-    state_dict_summary['running_phase_state'] = data.ConvertToBaseTypes(
+    state_dict_summary['running_phase_state'] = data.convert_to_base_types(
         state_dict_summary['running_phase_state'], tuple_type=list)
 
     return state_dict_summary
