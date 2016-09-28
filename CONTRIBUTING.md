@@ -271,11 +271,11 @@ python setup.py develop
 If you're having issues with the python setup, it's possible that the problem is due to El Capitan not including ssl headers. This [link](http://adarsh.io/bundler-failing-on-el-capitan/) may help you in that regard. 
 
 ## Web Frontend Development
-OpenHTF ships with a built-in web gui found in the `openhtf.io.frontend` module.
+OpenHTF ships with a built-in web gui found in the `openhtf.output.web_gui` module.
 
 We don't expect everyone to go through the steps of building the frontend from
 source, so we provide a prebuilt version of the frontend in the
-`openhtf/io/frontend/prebuilt` directory. If you don't plan to contribute to
+`openhtf/output/web_gui/prebuilt` directory. If you don't plan to contribute to
 the built-in frontend, you can feel free to stop reading here; OpenHTF will
 automatically use the the prebuilt version of the frontend we include.
 
@@ -293,7 +293,7 @@ extra steps:
 ### Linux (Debian/Ubuntu)
 ```bash
 # Change to the frontend directory.
-cd openhtf/io/frontend/src
+cd openhtf/output/web_gui/src
 
 # Install the frontend's build dependencies.
 npm install
@@ -319,7 +319,7 @@ frontend server is started as a runnable module. In a terminal where your Python
 virtual environment (set up above) is active, start the server with:
 
 ```bash
-python -m openhtf.io.frontend
+python -m openhtf.output.web_gui
 ```
 
 If you want the server to automatically restart when changes are detected, use
