@@ -87,7 +87,7 @@ class TestPhaseDescriptor(unittest.TestCase):
       self.assertEqual('func-name(s)', second_phase.name)
 
   def test_with_plugs(self):
-      self._phase_data.provide_plugs.return_value = {
+      self._phase_data.plug_manager.provide_plugs.return_value = {
           'plug': ExtraPlug(),
       }
       phase = extra_plug_func.with_plugs(plug=ExtraPlug).with_args(phrase='hello')
