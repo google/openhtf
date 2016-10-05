@@ -42,8 +42,8 @@ class ExtraPlug(plugs.BasePlug):
 
 @openhtf.PhaseOptions(name='extra_plug_func[{plug.name}][{phrase}]')
 @plugs.plug(plug=ExtraPlug.placeholder)
-def extra_plug_func(plug, arg):
-  return plug.echo(arg)
+def extra_plug_func(plug, phrase):
+  return plug.echo(phrase)
 
 
 class TestPhaseDescriptor(unittest.TestCase):
@@ -95,4 +95,4 @@ class TestPhaseDescriptor(unittest.TestCase):
       self.assertEqual('extra_plug_func[extra_plug_0][hello]', phase.name)
 
       result = phase(self._phase_data)
-      self.assertEqual('extra_plug_0 says hello', second_result)
+      self.assertEqual('extra_plug_0 says hello', result)
