@@ -90,6 +90,7 @@ class TestPhaseDescriptor(unittest.TestCase):
       phase = extra_plug_func.with_plugs(plug=ExtraPlug).with_args(phrase='hello')
       self.assertIs(phase.func, extra_plug_func.func)
       self.assertEqual(1, len(phase.plugs))
+      self.assertEqual('extra_plug_func[extra_plug_0][hello]', phase.options.name)
       self.assertEqual('extra_plug_func[extra_plug_0][hello]', phase.name)
 
       result = phase(self._phase_data)
