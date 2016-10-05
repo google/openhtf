@@ -71,4 +71,4 @@ class TestUtil(unittest.TestCase):
       'Oranges are orange and sour.', res)
 
     #  The original text has not changed
-    self.assertNotEqual(text, res)ß
+    self.assertNotEqual(text, res)

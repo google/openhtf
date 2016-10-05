@@ -130,8 +130,8 @@ def format_string(target, **kwargs):
 
   Args:
     target: The target string to format. This can be a function that takes a
-        dict as its only argument, a string with {}- or %-based formatting,
-        or a basic string with none of those. In the latter case, the string is
+        dict as its only argument, a string with {}- or %-based formatting, or
+        a basic string with none of those. In the latter case, the string is
         returned as-is, but in all other cases the string is formatted (or the
         callback called) with the given kwargs.
         If this is None (or otherwise falsey), it is returned immediately.
