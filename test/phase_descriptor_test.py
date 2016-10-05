@@ -87,8 +87,8 @@ class TestPhaseDescriptor(unittest.TestCase):
       self.assertEqual('func-name(s)', second_phase.name)
 
   def test_with_plugs(self):
-      phase = phase.with_plugs(ExtraPlug).with_args(phrase='hello')
-      self.assertIs(phase.func, extra_plug_func)
+      phase = extra_plug_func.with_plugs(ExtraPlug).with_args(phrase='hello')
+      self.assertIs(phase.func, extra_plug_func.func)
       self.assertEqual(1, len(phase.plugs))
       self.assertEqual('extra_plug_func[extra_plug_0][hello]', phase.name)
 
