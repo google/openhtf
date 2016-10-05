@@ -109,7 +109,15 @@ class classproperty(object):
 def format_string_safe_substitute(target, **kwargs):
   """Formats string with Template.safe_substitute so calls can be chained."""
   t = Template(target)
-  return t.safe_substitute(**kwargs)
+  res = t.safe_substitute(**kwargs)
+
+  # also run through string.format
+  try:
+    return res.format(**kwargs)
+  except KeyError:
+    pass
+
+  return res
 
 def format_string(target, **kwargs):
   """Formats a string in any of four ways (or not at all).
