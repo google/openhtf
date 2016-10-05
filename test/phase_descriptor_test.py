@@ -40,7 +40,7 @@ class ExtraPlug(plugs.BasePlug):
   def echo(self, phrase):
     return '%s says %s' % (self.name, phrase)
 
-@openhtf.PhaseOptions(name='extra_plug_func[$plug][$arg]')
+@openhtf.PhaseOptions(name='extra_plug_func[{plug.name}][$arg]')
 @plugs.plug(plug=ExtraPlug.placeholder)
 def extra_plug_func(plug, arg):
   return plug.echo(arg)
