@@ -34,6 +34,18 @@ def extra_arg_func(input=None):
   return input
 
 
+class ExtraPlug(plugs.BasePlug):
+  name = 'extra_plug_0'
+
+  def echo(self, phrase):
+    return '%s says %s' % (self.name, phrase)
+
+@openhtf.PhaseOptions(name='extra_plug_func[$plug][$arg]')
+@plugs.plug(plug=ExtraPlug.placeholder)
+def extra_plug_func(plug, arg):
+  return plug.echo(arg)
+
+
 class TestPhaseDescriptor(unittest.TestCase):
 
   def setUp(self):
@@ -62,14 +74,23 @@ class TestPhaseDescriptor(unittest.TestCase):
       phase = openhtf.PhaseDescriptor.wrap_or_copy(extra_arg_func)
       phase = phase.with_args(input='input arg')
       result = phase(self._phase_data)
+      first_result = phase(self._phase_data)
       self.assertEqual('input arg', result)
       self.assertEqual('func-name(i)', phase.name)
+      self.assertEqual('input arg', first_result)
 
       # Must do with_args() on the original phase, otherwise it has already been
       # formatted and the format-arg information is lost.
       second_phase = extra_arg_func.with_args(input='second input')
-      first_result = phase(self._phase_data)
       second_result = second_phase(self._phase_data)
-      self.assertEqual('input arg', first_result)
       self.assertEqual('second input', second_result)
       self.assertEqual('func-name(s)', second_phase.name)
+
+  def test_with_plugs(self):
+      phase = phase.with_plugs(ExtraPlug).with_args(phrase='hello')
+      self.assertIs(phase.func, extra_plug_func)
+      self.assertEqual(1, len(phase.plugs))
+      self.assertEqual('extra_plug_func[extra_plug_0][hello]', phase.name)
+
+      result = phase(self._phase_data)
+      self.assertEqual('extra_plug_0 says hello', second_result)
