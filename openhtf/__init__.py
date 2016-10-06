@@ -239,7 +239,10 @@ class Test(object):
             _LOG.exception(
                 'Output callback %s raised; continuing anyway', output_cb)
       finally:
+        result = (self._executor.test_state.test_record.outcome
+                  == test_record.Outcome.PASS)
         self._executor = None
+        return result
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
