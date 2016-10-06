@@ -108,7 +108,7 @@ class classproperty(object):
     return self._func(owner)
 
 
-def safe_format(target, **kwargs):
+def partial_format(target, **kwargs):
   """Formats a string without requiring all values to be present.
 
   This function allows substitutions to be gradually made in several steps
@@ -144,7 +144,7 @@ def format_string(target, **kwargs):
   if callable(target):
     return target(kwargs)
   if '{' in target:
-    return safe_format(target, **kwargs)
+    return partial_format(target, **kwargs)
   if '%' in target:
     return target % kwargs
   return target

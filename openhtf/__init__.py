@@ -303,8 +303,8 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
   """Options used to override default test phase behaviors.
 
   Attributes:
-    name: Override for the name of the phase. Can be formatted in many different
-        formats defined in util.format_string.
+    name: Override for the name of the phase. Can be formatted in several
+        different ways as defined in util.format_string.
     timeout_s: Timeout to use for the phase, in seconds.
     run_if: Callback that decides whether to run the phase or not.
     requires_state: If True, pass the whole TestState into the first argument,

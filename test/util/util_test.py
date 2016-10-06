@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
+
+import copy
 import mock
+import time
+import unittest
 
 from openhtf import util
 from openhtf.util import timeouts
@@ -45,10 +47,12 @@ class TestUtil(unittest.TestCase):
     self.polledtimeout.expire()
     self.assertTrue(self.polledtimeout.has_expired())
 
-  def test_safe_format(self):
-    text = ('Apples are {apple[color]} and {apple[taste]}. '
+  def test_partial_format(self):
+    original = ('Apples are {apple[color]} and {apple[taste]}. '
         'Pears are {pear.color} and {pear.taste}. '
         'Oranges are {orange_color} and {orange_taste}.')
+    text = copy.copy(original)
+
     apple = {
         'color': 'red',
         'taste': 'sweet',
@@ -60,15 +64,15 @@ class TestUtil(unittest.TestCase):
     pear = Pear()
 
     # Partial formatting
-    res = util.safe_format(text, apple=apple)
-    res = util.safe_format(res, pear=pear)
+    res = util.partial_format(text, apple=apple)
+    res = util.partial_format(res, pear=pear)
     self.assertEqual('Apples are red and sweet. Pears are green and tart. '
       'Oranges are {orange_color} and {orange_taste}.', res)
 
     # Format rest of string
-    res = util.safe_format(res, orange_color='orange', orange_taste='sour')
+    res = util.partial_format(res, orange_color='orange', orange_taste='sour')
     self.assertEqual('Apples are red and sweet. Pears are green and tart. '
       'Oranges are orange and sour.', res)
 
     #  The original text has not changed
-    self.assertNotEqual(text, res)
+    self.assertEqual(original, text)
