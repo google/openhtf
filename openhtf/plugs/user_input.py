@@ -39,13 +39,6 @@ if platform.system() != 'Windows':
 
 _LOG = logging.getLogger(__name__)
 
-ARG_PARSER = argv.ModuleParser()
-ARG_PARSER.add_argument(
-    '--prompt_timeout_s', type=int, action=argv.StoreInModule,
-    target='%s.DEFAULT_TIMEOUT_S' % __name__,
-    help='User prompt timeout in seconds.')
-DEFAULT_TIMEOUT_S = None
-
 
 class PromptInputError(Exception):
   """Raised in the event that a prompt returns without setting the response."""
@@ -126,7 +119,6 @@ class UserInput(plugs.BasePlug):
     Returns:
       The string input by the user.
     """
-    timeout_s = timeout_s or DEFAULT_TIMEOUT_S
     with self._cond:
       if self._prompt is not None:
         self._prompt = None
@@ -166,8 +158,12 @@ class UserInput(plugs.BasePlug):
 
 
 def prompt_for_test_start(
-    message='Provide a DUT ID in order to start the test.', text_input=True,
-    timeout_s=60*60*24):
-  """Make a test start TriggerInfo based on prompting the user for input."""
-  return plugs.TriggerInfo(UserInput, 'prompt', tuple(),
-      dict(message=message, text_input=text_input, timeout_s=timeout_s))
+    message='Enter a DUT ID in order to start the test.', timeout_s=None):
+  """Return an OpenHTF phase for use as a prompt-based start trigger."""
+  @plugs.plug(prompts=UserInput)
+  def trigger_phase(test, prompts):
+    """Test start trigger that prompts the user for a DUT ID."""
+    test.test_record.dut_id = prompts.prompt(message=message, text_input=True,
+                                             timeout_s=timeout_s)
+
+  return trigger_phase

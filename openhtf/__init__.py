@@ -42,7 +42,7 @@ from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
-from openhtf.plugs import user_input, plug
+from openhtf.plugs import plug
 from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import functions
@@ -288,8 +288,8 @@ def create_arg_parser(add_help=False):
   >>> parser.parse_args()
   """
   return argparse.ArgumentParser('OpenHTF-based testing', parents=[
-      conf.ARG_PARSER, user_input.ARG_PARSER, phase_executor.ARG_PARSER,
-      logs.ARG_PARSER], add_help=add_help)
+      conf.ARG_PARSER, phase_executor.ARG_PARSER, logs.ARG_PARSER],
+      add_help=add_help)
 
 
 # Result of a phase.

@@ -235,11 +235,8 @@ class TestState(object):
           self.is_finalized, phase_outcome)
     return self.is_finalized
 
-  def mark_test_started(self, dut_id):
-    """Set the TestRecord's dut_id and start_time_millis fields."""
-    assert self._status == self.Status.WAITING_FOR_TEST_START
-    # This might still be None; it's the value returned by test_start.
-    self.test_record.dut_id = dut_id
+  def mark_test_started(self):
+    """Set the TestRecord's start_time_millis field."""
     self.test_record.start_time_millis = util.time_millis()
     self.notify_update()
 

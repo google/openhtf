@@ -132,18 +132,6 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
-class TriggerInfo(collections.namedtuple(
-    'TriggerInfo', ('plug_type', 'trigger', 'args', 'kwargs'))):
-  """Information about a trigger to be called later on a plug instance.
-
-  Fields:
-    plug_type: The Python type of the plug containing the start trigger.
-    trigger: The name of a callable attribute on plug_type instances.
-    args: Arguments to pass to trigger when it's called.
-    kwargs: Keyword args to pass to trigger when it's called.
-"""
-
-
 class PlugPlaceholder(collections.namedtuple(
     'PlugPlaceholder', ['base_class'])):
   """Placeholder for a specific plug to be provided before test execution.
@@ -252,7 +240,8 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     This is so that the yielded tuples may be easily passed to sockjs a la:
         sockjs.tornado.SockJSRouter(*result)
     """
-    proxy = xmlrpcutil.TimeoutProxyMixin((host, port))
+    proxy = xmlrpcutil.TimeoutProxyServer('http://%s:%s' % (host, port),
+                                          timeout_s=timeout_s, allow_none=True)
     seen = set()
     for method in proxy.system.listMethods():
       if not method.startswith('plugs.'):
@@ -390,15 +379,21 @@ class PlugManager(object):
       server_thread.start()
       self._xmlrpc_server = server
 
-  def initialize_plugs(self, plug_types=None):
+  def initialize_plugs(self, plug_types=None, partial=False):
     """Instantiate required plugs.
 
-    Instantiates known plug types and saves the instances in self._plugs_by_type
-    for use in ProvidePlugs().  Additional plug types may be specified here
-    rather than passed into the constructor (this is used primarily for unit
-    testing phases).
+    Instantiates plug types and saves the instances in self._plugs_by_type for
+    use in provide_plugs().
+
+    Args:
+      plug_types: Additional plug types may be specified here rather than passed
+                  into the constructor (this is used primarily for unit testing
+                  phases).
+      partial: If true, _only_ instantiate the plugs named in plug_types. Skip
+               the ones passed into the constuctor, and skip RPC server setup.
     """
-    for plug_type in set(plug_types or ()) | self._plug_types:
+    types = plug_types if partial else set(plug_types or ()) | self._plug_types
+    for plug_type in types:
       if plug_type in self._plugs_by_type:
         continue
       try:
@@ -419,13 +414,8 @@ class PlugManager(object):
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)
-    self._initialize_rpc_server()
-
-  def call_trigger(self, trigger_info):
-    """Call the trigger corresponding to trigger_info on the matching plug."""
-    trigger = getattr(self._plugs_by_type[trigger_info.plug_type],
-                      trigger_info.trigger)
-    return trigger(*trigger_info.args, **trigger_info.kwargs)
+    if not partial:
+      self._initialize_rpc_server()
 
   def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.
