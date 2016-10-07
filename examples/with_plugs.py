@@ -76,9 +76,9 @@ class PingDnsA(PingPlug):
 class PingDnsB(PingPlug):
   host = '8.8.4.4'
 
-
+@htf.PhaseOptions(name='Ping-{pinger.host}-{count}')
 @plugs.plug(pinger=PingPlug.placeholder)
-@htf.measures('total_time', 'retcode')
+@htf.measures('total_time_{pinger.host}_{count}', 'retcode')
 def test_ping(test, pinger, count):
   """This tests that we can ping a host.
 
@@ -88,7 +88,7 @@ def test_ping(test, pinger, count):
   start = time.time()
   retcode = pinger.run(count)
   elapsed = time.time() - start
-  test.measurements.total_time = elapsed
+  test.measurements['total_time_%s_%s' % (pinger.host, count)] = elapsed
   test.measurements.retcode = retcode
 
 
@@ -103,8 +103,8 @@ if __name__ == '__main__':
     PingDnsB,
   ]
 
-  test = htf.Test(
-      *(test_ping.with_plugs(pinger=plug) for plug in ping_plugs))
+  test = htf.Test(*(test_ping.with_plugs(pinger=plug).with_args(count=2)
+                    for plug in ping_plugs))
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.

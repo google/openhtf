@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
+
+import copy
 import mock
+import time
+import unittest
 
-
+from openhtf import util
 from openhtf.util import timeouts
+
 
 class TestUtil(unittest.TestCase):
 
@@ -43,3 +46,33 @@ class TestUtil(unittest.TestCase):
   def test_time_expired_true(self):
     self.polledtimeout.expire()
     self.assertTrue(self.polledtimeout.has_expired())
+
+  def test_partial_format(self):
+    original = ('Apples are {apple[color]} and {apple[taste]}. '
+        'Pears are {pear.color} and {pear.taste}. '
+        'Oranges are {orange_color} and {orange_taste}.')
+    text = copy.copy(original)
+
+    apple = {
+        'color': 'red',
+        'taste': 'sweet',
+    }
+
+    class Pear(object):
+      color = 'green'
+      taste = 'tart'
+    pear = Pear()
+
+    # Partial formatting
+    res = util.partial_format(text, apple=apple)
+    res = util.partial_format(res, pear=pear)
+    self.assertEqual('Apples are red and sweet. Pears are green and tart. '
+      'Oranges are {orange_color} and {orange_taste}.', res)
+
+    # Format rest of string
+    res = util.partial_format(res, orange_color='orange', orange_taste='sour')
+    self.assertEqual('Apples are red and sweet. Pears are green and tart. '
+      'Oranges are orange and sour.', res)
+
+    #  The original text has not changed
+    self.assertEqual(original, text)

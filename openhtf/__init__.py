@@ -303,8 +303,8 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
   """Options used to override default test phase behaviors.
 
   Attributes:
-    name: Override for the name of the phase. Can be formatted similar to
-        measurements using with_args() to distinguish multiple similar phases.
+    name: Override for the name of the phase. Can be formatted in several
+        different ways as defined in util.format_string.
     timeout_s: Timeout to use for the phase, in seconds.
     run_if: Callback that decides whether to run the phase or not.
     requires_state: If True, pass the whole TestState into the first argument,
@@ -322,7 +322,8 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
       pass
   """
 
-  def with_args(self, **kwargs):
+  def format_strings(self, **kwargs):
+    """String substitution of name."""
     return mutablerecords.CopyRecord(
         self, name=util.format_string(self.name, **kwargs))
 
@@ -399,9 +400,9 @@ class PhaseDescriptor(mutablerecords.Record(
     # Make a copy so we can have multiple of the same phase with different args
     # in the same test.
     new_info = mutablerecords.CopyRecord(self)
-    new_info.options = new_info.options.with_args(**kwargs)
+    new_info.options = new_info.options.format_strings(**kwargs)
     new_info.extra_kwargs.update(kwargs)
-    new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
+    new_info.measurements = [m.format_strings(**kwargs) for m in self.measurements]
     return new_info
 
   def with_plugs(self, **subplugs):
@@ -418,7 +419,13 @@ class PhaseDescriptor(mutablerecords.Record(
             'Could not find valid placeholder for substitute plug %s '
             'required for phase %s' % (name, self.name))
       new_plugs[name] = mutablerecords.CopyRecord(original_plug, cls=sub_class)
-    return mutablerecords.CopyRecord(self, plugs=new_plugs.values())
+
+    return mutablerecords.CopyRecord(
+        self,
+        plugs=new_plugs.values(),
+        options=self.options.format_strings(**subplugs),
+        measurements=[m.format_strings(**subplugs) for m in self.measurements])
+
 
   def __call__(self, test_state):
     """Invoke this Phase, passing in the appropriate args.

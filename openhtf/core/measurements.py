@@ -202,8 +202,8 @@ class Measurement(  # pylint: disable=no-init
     self.validators.append(validator)
     return self
 
-  def with_args(self, **kwargs):
-    """Creates a new Measurement, see openhtf.PhaseInfo.with_args."""
+  def format_strings(self, **kwargs):
+    """String substitution for names and docstrings."""
     return mutablerecords.CopyRecord(
         self, name=util.format_string(self.name, **kwargs),
         docstring=util.format_string(self.docstring, **kwargs))

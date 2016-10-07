@@ -16,9 +16,11 @@
 """One-off utilities."""
 
 import logging
+import re
 import time
 from datetime import datetime
 from pkg_resources import get_distribution, DistributionNotFound
+from string import Template
 
 import mutablerecords
 
@@ -106,6 +108,23 @@ class classproperty(object):
     return self._func(owner)
 
 
+def partial_format(target, **kwargs):
+  """Formats a string without requiring all values to be present.
+
+  This function allows substitutions to be gradually made in several steps
+  rather than all at once.  Similar to string.Template.safe_substitute.
+  """
+  output = target[:]
+  tags = dict(re.findall(r'(\{(.*?)\})', target))
+
+  for tag, var in re.findall(r'(\{(.*?)\})', output):
+    root = var.split('.')[0]  # dot notation
+    root = root.split('[')[0]  # dict notation
+    if root in kwargs:
+      output = output.replace(tag, tag.format(**{root: kwargs[root]}))
+
+  return output
+
 def format_string(target, **kwargs):
   """Formats a string in any of three ways (or not at all).
 
@@ -117,14 +136,15 @@ def format_string(target, **kwargs):
         callback called) with the given kwargs.
         If this is None (or otherwise falsey), it is returned immediately.
     **kwargs: The arguments to use for formatting.
-        Passed to string.format, %, or target if it's callable.
+        Passed to safe_format, %, or target if it's
+        callable.
   """
   if not target:
     return target
   if callable(target):
     return target(kwargs)
   if '{' in target:
-    return target.format(**kwargs)
+    return partial_format(target, **kwargs)
   if '%' in target:
     return target % kwargs
   return target
