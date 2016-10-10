@@ -76,3 +76,8 @@ class TestUtil(unittest.TestCase):
 
     #  The original text has not changed
     self.assertEqual(original, text)
+
+    #  Make sure no unexpected problems with an empty string
+    empty_string = ''
+    self.assertEqual('', util.partial_format(empty_string))
+    self.assertEqual('', util.partial_format(empty_string, foo='bar'))

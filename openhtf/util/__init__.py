@@ -20,7 +20,6 @@ import re
 import time
 from datetime import datetime
 from pkg_resources import get_distribution, DistributionNotFound
-from string import Template
 
 import mutablerecords
 
@@ -115,7 +114,6 @@ def partial_format(target, **kwargs):
   rather than all at once.  Similar to string.Template.safe_substitute.
   """
   output = target[:]
-  tags = dict(re.findall(r'(\{(.*?)\})', target))
 
   for tag, var in re.findall(r'(\{(.*?)\})', output):
     root = var.split('.')[0]  # dot notation
