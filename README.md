@@ -26,9 +26,24 @@ Python packages the OS depends upon. The installation instructions assume you've
 _already_ created a virtualenv and activated it if you wish to do so.
 
 
-Once you've downloaded [the source code](https://github.com/google/openhtf)
-via [git](https://git-scm.com/) or other means, install it into your Python
-environment using the standard `setup.py` script.
+### Option 1: Installing via 'pip' (recommended)
+The most straightforward way to get the `openhtf` Python package into your
+Python environment is simply to install it via
+[pip](https://pypi.python.org/pypi). This will install the most recent
+production release.
+
+```bash
+pip install openhtf
+```
+
+
+### Option 2: Installing from Source
+If you want to install from source instead (for example, if you want some new
+feature that hasn't made it to the production release yet), you can download
+[the source code](https://github.com/google/openhtf) via
+[git](https://git-scm.com/) or other means, and install the `openhtf` package
+into your Python environment using the standard `setup.py` script.
+
 ```bash
 python setup.py install
 ```
