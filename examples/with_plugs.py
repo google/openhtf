@@ -18,14 +18,6 @@ Run with (your virtualenv must be activated first):
 
   python with_plugs.py
 
-Afterwards, take a look at the hello_world.json output file.  This will
-give you a basic idea of what a minimal test outputs.
-
-For more information on measurements, see the measurements.py example.
-
-TODO(someone): Write an output example.
-For more information on output, see the output.py example.
-
 with_plugs() is most useful when you have a test that has to happen in the same
 (or mostly similar) ways across multiple interfaces, such as testing
 connectivity on a quad-NIC board. Instead of creating 4 phases with 4 plugs, you
@@ -76,6 +68,8 @@ class PingDnsA(PingPlug):
 class PingDnsB(PingPlug):
   host = '8.8.4.4'
 
+# Note: phase name and total_time measurement use {} formatting with args
+# passed into the phase so each phase has a unique name.
 @htf.PhaseOptions(name='Ping-{pinger.host}-{count}')
 @plugs.plug(pinger=PingPlug.placeholder)
 @htf.measures('total_time_{pinger.host}_{count}', 'retcode')
