@@ -99,12 +99,29 @@ class ConsolePrompt(threading.Thread):
         if sys.stdin.isatty():
           termios.tcflush(sys.stdin, termios.TCIFLUSH)
 
+        line = ''
         while not self._stopped:
           inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
           for stream in inputs:
             if stream is sys.stdin:
-              response = sys.stdin.readline().rstrip()
-              self._callback(response)
+              new = sys.stdin.read(1024)
+              if not new:
+                # Hit EOF!
+                if not sys.stdin.isatty():
+                  # We're running in the background somewhere, so the only way
+                  # to respond to this prompt is the UI. Let's just wait for
+                  # that to happen now. We'll give them a week :)
+                  print "Waiting for a non-console response."
+                  time.sleep(60*60*24*7)
+                else:
+                  # They hit ^D (to insert EOF). Tell them to hit ^C if they
+                  # want to actually quit.
+                  print "Hit ^C to exit."
+                  break
+              line += new
+              if '\n' in line:
+                response = line[:line.find('\n')]
+                self._callback(response)
               return
     finally:
       self._stopped = True
