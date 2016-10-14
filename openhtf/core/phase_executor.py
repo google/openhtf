@@ -177,13 +177,14 @@ class PhaseExecutor(object):
 
     Args:
       phases: List of phases to execute.
-      teardown_func: 
+      teardown_func:
 
     Yields:
       PhaseOutcome instance that wraps the phase return value (or exception).
     """
     try:
       for phase in phases:
+        repeat_count = 0
         while True:
           outcome = self._execute_one_phase(phase)
           if outcome:
@@ -197,6 +198,13 @@ class PhaseExecutor(object):
             # If we're done with this phase, skip to the next one.
             if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
               break
+
+            if outcome.phase_result is openhtf.PhaseResult.REPEAT:
+              repeat_count += 1
+              if (repeat_count >= phase.options.repeat_limit
+                  and phase.options.repeat_limit is not None):
+                break
+
           else:
             # run_if was falsey, just skip this phase.
             break
