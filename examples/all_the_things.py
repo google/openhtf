@@ -26,7 +26,7 @@ import openhtf as htf
 from openhtf.util import units
 from openhtf.plugs import user_input
 from openhtf.output import callbacks
-from openhtf.output.callbacks import json_factory 
+from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
 
 import example_plug
@@ -50,6 +50,8 @@ def example_monitor(example):
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
   """A hello world test phase."""
+  import ipdb
+  ipdb.set_trace()
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.prompt(
       'What\'s the widget type?', text_input=True)
@@ -106,11 +108,11 @@ if __name__ == '__main__':
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
   test.add_output_callbacks(json_factory.OutputToJSON(
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.json', indent=4))
-  
+
   # Example of how to output to testrun protobuf format.
   #test.add_output_callbacks(
   #  mfg_inspector.OutputToTestRunProto('./{dut_id}.{start_time_millis}.pb'))
-  
+
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
