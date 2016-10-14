@@ -24,6 +24,7 @@ prompt state should use the openhtf.prompts pseudomodule.
 import collections
 import functools
 import logging
+import os
 import platform
 import select
 import sys
@@ -104,7 +105,7 @@ class ConsolePrompt(threading.Thread):
           inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
           for stream in inputs:
             if stream is sys.stdin:
-              new = sys.stdin.read(1024)
+              new = os.read(sys.stdin.fileno(), 1024)
               if not new:
                 # Hit EOF!
                 if not sys.stdin.isatty():
