@@ -140,7 +140,7 @@ def format_string(target, **kwargs):
   if not target:
     return target
   if callable(target):
-    return target(kwargs)
+    return target(**kwargs)
   if '{' in target:
     return partial_format(target, **kwargs)
   if '%' in target:
