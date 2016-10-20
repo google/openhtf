@@ -337,7 +337,7 @@ def _test_run_from_test_record(record):
   _populate_header(record, testrun)
   _attach_json(record, testrun)
 
-  used_parameter_names = set('OpenHTF_record.json')
+  used_parameter_names = set(['OpenHTF_record.json'])
   mangled_parameters = _extract_parameters(record, testrun,
                                            used_parameter_names)
   _add_mangled_parameters(testrun, mangled_parameters, used_parameter_names)
