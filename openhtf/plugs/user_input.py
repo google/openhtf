@@ -117,7 +117,7 @@ class ConsolePrompt(threading.Thread):
                 else:
                   # They hit ^D (to insert EOF). Tell them to hit ^C if they
                   # want to actually quit.
-                  print "Hit ^C to exit."
+                  print "Hit ^C (Ctrl+c) to exit."
                   break
               line += new
               if '\n' in line:
