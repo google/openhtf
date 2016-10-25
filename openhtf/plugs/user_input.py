@@ -104,11 +104,19 @@ class ConsolePrompt(threading.Thread):
 
 class UserInput(plugs.BasePlug):
   """Get user input from inside test phases."""
+  enable_remote = True
+
   def __init__(self):
     self._prompt = None
     self._response = None
     self._cond = threading.Condition()
     
+  def _asdict(self):
+    """Return a dict representation of the current prompt."""
+    return {'id': self._prompt.id.hex,
+            'message': self._prompt.message,
+            'text-input': self._prompt.text_input}
+
   def prompt(self, message, text_input=False, timeout_s=None):
     """Prompt for a user response by showing the message.
 
@@ -145,10 +153,16 @@ class UserInput(plugs.BasePlug):
   def respond(self, prompt_id, response):
     """Respond to the prompt that has the given ID.
 
+    Args:
+      prompt_id: Either a UUID instance, or a string representing a UUID.
+      response: A string response to the given prompt.
+
     If there is no active prompt or the prompt id being responded to doesn't
     match the active prompt, do nothing.
     """
-    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
+    if type(prompt_id) == str:
+      prompt_id = uuid.UUID(prompt_id)
+    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id.hex, response)
     with self._cond:
       if self._prompt is not None and prompt_id == self._prompt.id:
         self._response = response

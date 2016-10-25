@@ -16,10 +16,10 @@
 """Frontend server for OpenHTF using the station API.
 
 This server has two ways of knowing which stations to track:
-  
+
   (1) Discovery pings sent using OpenHTF's multicast station discovery service.
       These pings can be disabled via the '--disable-multicast' flag if desired.
-  
+
   (2) A list of stations provided via the server's config yaml file (specified
       via the '--config-file' flag). This list will be sought under the config
       key 'stations', which should contain a list of station entries:
@@ -170,7 +170,7 @@ class StationStore(threading.Thread):
                 hostport, remote_test,self._on_update_callback)
       except station_api.StationUnreachableError:
         _LOG.debug('Station at %s is unreachable.', hostport)
-    
+
     if self._on_discovery_callback:
       self._on_discovery_callback(self.stations)
 
@@ -360,7 +360,7 @@ class WebGuiServer(tornado.web.Application):
     """Returns True if there's a handler for the given URL (exact match)."""
     if not url.endswith('$'):
       url += '$'  # tornado does this internally, so we do the same.
-    return any(h[1].regex.pattern == url for h in self.handlers)
+    return any(h[0].pattern == url for h in self.handlers)
 
   def handle_test_state_update(self, hostport, test_uid, state):
     """Handle an update to a RemoteState.
@@ -382,11 +382,11 @@ class WebGuiServer(tornado.web.Application):
       # yields (connection-type, URL) tuples, where URL is relative to the
       # particular station and test_uid in question.  We generate an absolute
       # URL for use with SockJS with _make_sockjs_url().
-      self.add_handlers(
-          (conn, _make_sockjs_url(rel_url)) for conn, rel_url
+      self.add_handlers('.*$', [
+          (_make_sockjs_url(rel_url), conn) for conn, rel_url
           in plugs.RemotePlug.discover(hostport.host, plugs_port)
           if not self.has_handler_for_url(_make_sockjs_url(rel_url))
-      )
+      ])
 
   def start(self):
     """Start the web server."""

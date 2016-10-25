@@ -194,6 +194,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     # Grab exactly the attrs we want, the server has all plugs', not just ours.
     for method in self.system.listMethods():
       name, attr = method.rsplit('.', 1)
+      name = name.split('.', 1)[1]
       if name == plug_name:
         if hasattr(type(self), attr):
           _LOG.warning(
@@ -247,7 +248,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
       if not method.startswith('plugs.'):
         continue
       try:
-        _, plug_name, _ = method.split('.')
+        plug_name = method.rsplit('.', 1)[0].split('.', 1)[1]
       except ValueError:
         _LOG.warning('Invalid RemotePlug method: %s', method)
         continue
@@ -352,8 +353,7 @@ class PlugManager(object):
     Plug methods are available via RPC calls to:
       'plugs.<plug_module>.<plug_type>.<plug_method>'
 
-    Note that this method will shutdown any previously running server, but
-    should still not be called twice in the lifetime of a PlugManager.
+    Note that this method will shutdown any previously running server.
     """
     server = xmlrpcutil.SimpleThreadedXmlRpcServer((
         conf.station_api_bind_address, 0))
@@ -390,7 +390,7 @@ class PlugManager(object):
                   into the constructor (this is used primarily for unit testing
                   phases).
       partial: If true, _only_ instantiate the plugs named in plug_types. Skip
-               the ones passed into the constuctor, and skip RPC server setup.
+               the ones passed into the constuctor.
     """
     types = plug_types if partial else set(plug_types or ()) | self._plug_types
     for plug_type in types:
@@ -414,8 +414,7 @@ class PlugManager(object):
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)
-    if not partial:
-      self._initialize_rpc_server()
+    self._initialize_rpc_server()
 
   def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.

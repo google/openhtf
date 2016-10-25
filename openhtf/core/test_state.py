@@ -262,6 +262,11 @@ class TestState(object):
     """
     assert not self.is_finalized, 'Test already completed!'
 
+    # Sanity check to make sure we have a DUT ID by the end of the test.
+    if not self.test_record.dut_id:
+      raise BlankDutIdError(
+          'Blank or missing DUT ID, HTF requires a non-blank ID.')
+
     if test_outcome:
       # Override measurement-based PASS/FAIL with a specific test outcome.
       self.test_record.outcome = test_outcome
@@ -280,11 +285,6 @@ class TestState(object):
       # set, but if we're finishing normally, log it here.
       self.logger.debug('Finishing test execution normally with outcome %s.',
                         self.test_record.outcome.name)
-
-    # Sanity check to make sure we have a DUT ID by the end of the test.
-    if not self.test_record.dut_id:
-      raise BlankDutIdError(
-          'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     # The test is done at this point, no further updates to test_record.
     self.logger.handlers = []
