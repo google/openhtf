@@ -50,8 +50,6 @@ def example_monitor(example):
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
   """A hello world test phase."""
-  import ipdb
-  ipdb.set_trace()
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.prompt(
       'What\'s the widget type?', text_input=True)
