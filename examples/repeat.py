@@ -90,5 +90,3 @@ def phase_repeat_with_limit(test, test_plug):
 if __name__ == '__main__':
   test = openhtf.Test(phase_repeat, phase_repeat_with_limit)
   test.execute(test_start=lambda: 'RepeatDutID')
-
-
