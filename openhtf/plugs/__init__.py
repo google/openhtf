@@ -379,20 +379,18 @@ class PlugManager(object):
       server_thread.start()
       self._xmlrpc_server = server
 
-  def initialize_plugs(self, plug_types=None, partial=False):
+  def initialize_plugs(self, plug_types=None):
     """Instantiate required plugs.
 
     Instantiates plug types and saves the instances in self._plugs_by_type for
     use in provide_plugs().
 
     Args:
-      plug_types: Additional plug types may be specified here rather than passed
+      plug_types: Plug types may be specified here rather than passed
                   into the constructor (this is used primarily for unit testing
                   phases).
-      partial: If true, _only_ instantiate the plugs named in plug_types. Skip
-               the ones passed into the constuctor.
     """
-    types = plug_types if partial else set(plug_types or ()) | self._plug_types
+    types = plug_types if plug_types is not None else self._plug_types
     for plug_type in types:
       if plug_type in self._plugs_by_type:
         continue
@@ -410,7 +408,7 @@ class PlugManager(object):
         else:
           setattr(plug_instance, 'logger', self._logger)
       except Exception:  # pylint: disable=broad-except
-        _LOG.error('Exception insantiating plug type %s', plug_type)
+        _LOG.error('Exception instantiating plug type %s', plug_type)
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)

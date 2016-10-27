@@ -119,9 +119,9 @@ class TestExecutor(threads.KillableThread):
       # Have the phase executor run the start trigger phase. Do partial plug
       # initialization for just the plugs needed by the start trigger phase.
       self.test_state.plug_manager.initialize_plugs(
-          (phase_plug.cls for phase_plug in self._test_start.plugs),
-          partial=True)
+          (phase_plug.cls for phase_plug in self._test_start.plugs))
       executor.execute_start_trigger(self._test_start)
+      self.test_state.mark_test_started()
 
       # Full plug initialization happens _after_ the start trigger, as close to
       # test execution as possible, for the best chance of test equipment being
@@ -145,7 +145,6 @@ class TestExecutor(threads.KillableThread):
       # exceptions from test code.  Any exceptions here are caused by the
       # framework, and we probably want them to interrupt framework state
       # changes (like the transition to FINISHING).
-      self.test_state.mark_test_started()
       self._execute_test_phases(executor)
 
   def _execute_test_phases(self, executor):

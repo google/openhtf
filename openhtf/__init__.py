@@ -199,8 +199,9 @@ class Test(object):
     """Starts the framework and executes the given test.
 
     Args:
-      test_start: Trigger for starting the test, defaults to not setting the DUT
-          serial number.
+      test_start: Either a trigger phase for starting the test, or a function
+                  that returns a DUT ID. If neither is provided, defaults to not
+                  setting the DUT ID.
     """
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
@@ -217,8 +218,17 @@ class Test(object):
       self._test_desc.metadata['config'] = conf._asdict()
       self.last_run_time_millis = util.time_millis()
 
+      if not any((isinstance(test_start, PhaseDescriptor), test_start is None)):
+        @TestPhase()
+        def trigger_phase(test):
+          test.test_record.dut_id = test_start()
+        trigger = trigger_phase
+
+      else:
+        trigger = test_start
+
       self._executor = core.TestExecutor(
-          self._test_desc, test_start, self._test_options.teardown_function)
+          self._test_desc, trigger, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self._executor.start()
 
@@ -239,10 +249,9 @@ class Test(object):
             _LOG.exception(
                 'Output callback %s raised; continuing anyway', output_cb)
       finally:
-        result = (self._executor.test_state.test_record.outcome
-                  == test_record.Outcome.PASS)
         self._executor = None
-        return result
+
+      return (final_state.test_record.outcome == test_record.Outcome.PASS)
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {

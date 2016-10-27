@@ -178,7 +178,7 @@ class PhaseExecutor(object):
     Logs a warning if the start trigger failed to set the DUT ID.
     """
     self._execute_one_phase(phase_desc)
-    if not self.test_state.test_record.dut_id:
+    if self.test_state.test_record.dut_id is None:
       _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
                    ' to do so to prevent a BlankDutIdError when the test ends.')
 
