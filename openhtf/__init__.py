@@ -28,6 +28,7 @@ import socket
 import sys
 import threading
 import weakref
+from types import LambdaType
 
 import mutablerecords
 
@@ -42,7 +43,7 @@ from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
-from openhtf.plugs import user_input, plug
+from openhtf.plugs import plug
 from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import functions
@@ -199,8 +200,9 @@ class Test(object):
     """Starts the framework and executes the given test.
 
     Args:
-      test_start: Trigger for starting the test, defaults to not setting the DUT
-          serial number.
+      test_start: Either a trigger phase for starting the test, or a function
+                  that returns a DUT ID. If neither is provided, defaults to not
+                  setting the DUT ID.
     """
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
@@ -217,8 +219,16 @@ class Test(object):
       self._test_desc.metadata['config'] = conf._asdict()
       self.last_run_time_millis = util.time_millis()
 
+      if isinstance(test_start, LambdaType):
+        @TestPhase()
+        def trigger_phase(test):
+          test.test_record.dut_id = test_start()
+        trigger = trigger_phase
+      else:
+        trigger = test_start
+
       self._executor = core.TestExecutor(
-          self._test_desc, test_start, self._test_options.teardown_function)
+          self._test_desc, trigger, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self._executor.start()
 
@@ -240,6 +250,8 @@ class Test(object):
                 'Output callback %s raised; continuing anyway', output_cb)
       finally:
         self._executor = None
+
+    return final_state.test_record.outcome == test_record.Outcome.PASS
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
@@ -285,8 +297,8 @@ def create_arg_parser(add_help=False):
   >>> parser.parse_args()
   """
   return argparse.ArgumentParser('OpenHTF-based testing', parents=[
-      conf.ARG_PARSER, user_input.ARG_PARSER, phase_executor.ARG_PARSER,
-      logs.ARG_PARSER], add_help=add_help)
+      conf.ARG_PARSER, phase_executor.ARG_PARSER, logs.ARG_PARSER],
+      add_help=add_help)
 
 
 # Result of a phase.

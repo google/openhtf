@@ -14,6 +14,7 @@
 
 """TestExecutor executes tests."""
 
+import collections
 import logging
 import sys
 import threading
@@ -107,18 +108,23 @@ class TestExecutor(threads.KillableThread):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
+      self.test_state = test_state.TestState(self._test_descriptor)
+      executor = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
-        # Initial setup of exit stack and final cleanup of attributes.
         self._exit_stack = exit_stack
 
-      self.test_state = test_state.TestState(self._test_descriptor)
-      # Wait here until the test start trigger returns a DUT ID.  Don't hold
-      # self._lock while we do this, or else calls to stop() will deadlock.
-      # Create plugs while we're here because that may also take a while and
-      # we don't want to hold self._lock while we wait.
-      self.test_state.mark_test_started(self._wait_for_test_start())
+      # Have the phase executor run the start trigger phase. Do partial plug
+      # initialization for just the plugs needed by the start trigger phase.
+      self.test_state.plug_manager.initialize_plugs(
+          (phase_plug.cls for phase_plug in self._test_start.plugs))
+      executor.execute_start_trigger(self._test_start)
+      self.test_state.mark_test_started()
+
+      # Full plug initialization happens _after_ the start trigger, as close to
+      # test execution as possible, for the best chance of test equipment being
+      # in a known-good state at the start of test execution.
       self.test_state.plug_manager.initialize_plugs()
 
       with self._lock:
@@ -132,9 +138,7 @@ class TestExecutor(threads.KillableThread):
 
         # Tear down plugs first, then output test record.
         exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
-
-        # Perform initialization of some top-level stuff we need.
-        executor = self._make_phase_executor(exit_stack)
+        exit_stack.callback(executor.stop)
 
       # Everything is set, set status and begin test execution.  Note we don't
       # protect this with a try: block because the PhaseExecutor handles any
@@ -142,18 +146,6 @@ class TestExecutor(threads.KillableThread):
       # framework, and we probably want them to interrupt framework state
       # changes (like the transition to FINISHING).
       self._execute_test_phases(executor)
-
-  def _wait_for_test_start(self):
-    """Wait for the test start trigger to return a DUT ID."""
-    if self._test_start is None:
-      return
-    return self._test_start()
-
-  def _make_phase_executor(self, exit_stack):
-    """Create a phase_executor.PhaseExecutor and set it up."""
-    executor = phase_executor.PhaseExecutor(self.test_state)
-    exit_stack.callback(executor.stop)
-    return executor
 
   def _execute_test_phases(self, executor):
     """Executes one test's phases from start to finish."""

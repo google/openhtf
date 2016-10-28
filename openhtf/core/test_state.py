@@ -235,11 +235,10 @@ class TestState(object):
           self.is_finalized, phase_outcome)
     return self.is_finalized
 
-  def mark_test_started(self, dut_id):
-    """Set the TestRecord's dut_id and start_time_millis fields."""
-    assert self._status == self.Status.WAITING_FOR_TEST_START
-    # This might still be None; it's the value returned by test_start.
-    self.test_record.dut_id = dut_id
+  def mark_test_started(self):
+    """Set the TestRecord's start_time_millis field."""
+    # Blow up instead of blowing away a previously set start_time_millis.
+    assert self.test_record.start_time_millis is None
     self.test_record.start_time_millis = util.time_millis()
     self.notify_update()
 
@@ -265,6 +264,11 @@ class TestState(object):
     """
     assert not self.is_finalized, 'Test already completed!'
 
+    # Sanity check to make sure we have a DUT ID by the end of the test.
+    if not self.test_record.dut_id:
+      raise BlankDutIdError(
+          'Blank or missing DUT ID, HTF requires a non-blank ID.')
+
     if test_outcome:
       # Override measurement-based PASS/FAIL with a specific test outcome.
       self.test_record.outcome = test_outcome
@@ -283,11 +287,6 @@ class TestState(object):
       # set, but if we're finishing normally, log it here.
       self.logger.debug('Finishing test execution normally with outcome %s.',
                         self.test_record.outcome.name)
-
-    # Sanity check to make sure we have a DUT ID by the end of the test.
-    if not self.test_record.dut_id:
-      raise BlankDutIdError(
-          'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     # The test is done at this point, no further updates to test_record.
     self.logger.handlers = []

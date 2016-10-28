@@ -127,8 +127,26 @@ class PlugOverrideError(Exception):
 class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
+
 class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
+
+
+class RemoteAttribute(collections.namedtuple(
+    'RemoteMethod', ['class_name', 'name'])):
+  """Used to make parsing attribute names on remote plugs cleaner."""
+
+  @classmethod
+  def from_method_string(cls, method_string):
+    """Construct a RemoteAttribute from a method string.
+
+    Method strings, as returned by a ServerProxy's listMethods() method, will
+    look something like:
+        'plugs.openhtf.plugs.user_input.UserInput.prompt'
+    """
+    class_name, attr_name = method_string.rsplit('.', 1)
+    class_name = class_name.split('.', 1)[1]
+    return cls(class_name, attr_name)
 
 
 class PlugPlaceholder(collections.namedtuple(
@@ -192,13 +210,14 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     sockjs.tornado.SockJSConnection.__init__(self, session)
     # Grab exactly the attrs we want, the server has all plugs', not just ours.
     for method in self.system.listMethods():
-      name, attr = method.rsplit('.', 1)
-      if name == plug_name:
-        if hasattr(type(self), attr):
-          _LOG.warning(
-              'Skipping predefined attribute "%s" for remote access.', attr)
+      remote_attr = RemoteAttribute.from_method_string(method)
+      if remote_attr.class_name == plug_name:
+        if hasattr(type(self), remote_attr.name):
+          _LOG.warning('Skipping predefined attribute "%s" for remote access.',
+                       remote_attr.name)
         else:
-          setattr(self, attr, functools.partial(self.__request, method))
+          setattr(self, remote_attr.name,
+                  functools.partial(self.__request, method))
 
   def __getattr__(self, attr):
     _LOG.debug('RemotePlug "%s" requested unknown attribute "%s", known:')
@@ -239,21 +258,23 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     This is so that the yielded tuples may be easily passed to sockjs a la:
         sockjs.tornado.SockJSRouter(*result)
     """
-    proxy = xmlrpcutil.TimeoutProxyMixin((host, port))
+    proxy = xmlrpcutil.TimeoutProxyServer('http://%s:%s' % (host, port),
+                                          timeout_s=timeout_s, allow_none=True)
     seen = set()
     for method in proxy.system.listMethods():
       if not method.startswith('plugs.'):
         continue
       try:
-        _, plug_name, _ = method.split('.')
+        remote_attr = RemoteAttribute.from_method_string(method)
       except ValueError:
         _LOG.warning('Invalid RemotePlug method: %s', method)
         continue
 
-      if plug_name not in seen:
-        seen.add(plug_name)
+      if remote_attr.class_name not in seen:
+        seen.add(remote_attr.class_name)
         # Skip 'plugs.' prefix for URLs.
-        yield (functools.partial(cls, host, port, plug_name), plug_name)
+        yield (functools.partial(cls, host, port, remote_attr.class_name),
+               remote_attr.class_name)
 
 
 def plug(update_kwargs=True, **plugs):
@@ -267,7 +288,8 @@ def plug(update_kwargs=True, **plugs):
   with @staticmethod.
 
   Args:
-    wait_for_plug_update(   **plugs: Dict mapping name to Plug type.
+    update_kwargs: If true, makes the decorated phase take this plug as a kwarg.
+    plugs: Dict mapping name to Plug type.
 
   Returns:
     A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
@@ -349,8 +371,7 @@ class PlugManager(object):
     Plug methods are available via RPC calls to:
       'plugs.<plug_module>.<plug_type>.<plug_method>'
 
-    Note that this method will shutdown any previously running server, but
-    should still not be called twice in the lifetime of a PlugManager.
+    Note that this method will shutdown any previously running server.
     """
     server = xmlrpcutil.SimpleThreadedXmlRpcServer((
         conf.station_api_bind_address, 0))
@@ -379,12 +400,16 @@ class PlugManager(object):
   def initialize_plugs(self, plug_types=None):
     """Instantiate required plugs.
 
-    Instantiates known plug types and saves the instances in self._plugs_by_type
-    for use in ProvidePlugs().  Additional plug types may be specified here
-    rather than passed into the constructor (this is used primarily for unit
-    testing phases).
+    Instantiates plug types and saves the instances in self._plugs_by_type for
+    use in provide_plugs().
+
+    Args:
+      plug_types: Plug types may be specified here rather than passed
+                  into the constructor (this is used primarily for unit testing
+                  phases).
     """
-    for plug_type in set(plug_types or ()) | self._plug_types:
+    types = plug_types if plug_types is not None else self._plug_types
+    for plug_type in types:
       if plug_type in self._plugs_by_type:
         continue
       try:
@@ -401,7 +426,7 @@ class PlugManager(object):
         else:
           setattr(plug_instance, 'logger', self._logger)
       except Exception:  # pylint: disable=broad-except
-        _LOG.error('Exception insantiating plug type %s', plug_type)
+        _LOG.error('Exception instantiating plug type %s', plug_type)
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)

@@ -689,7 +689,7 @@ class StationApi(object):
         return
 
       # Remote end already thinks the test isn't Execute()'ing, so wait for it.
-      state = timeouts.LoopUntilTimeoutOrNotNone(
+      state = timeouts.loop_until_timeout_or_not_none(
           timeout_s, lambda: openhtf.Test.state_by_uid(test_uid), sleep_s=.1)
       if not state:
         raise UpdateTimeout(

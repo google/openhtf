@@ -30,6 +30,7 @@ import sys
 import threading
 import uuid
 
+from openhtf import PhaseOptions
 from openhtf import plugs
 from openhtf.util import argv
 
@@ -38,13 +39,6 @@ if platform.system() != 'Windows':
   import termios
 
 _LOG = logging.getLogger(__name__)
-
-ARG_PARSER = argv.ModuleParser()
-ARG_PARSER.add_argument(
-    '--prompt_timeout_s', type=int, action=argv.StoreInModule,
-    target='%s.DEFAULT_TIMEOUT_S' % __name__,
-    help='User prompt timeout in seconds.')
-DEFAULT_TIMEOUT_S = None
 
 
 class PromptInputError(Exception):
@@ -111,11 +105,19 @@ class ConsolePrompt(threading.Thread):
 
 class UserInput(plugs.BasePlug):
   """Get user input from inside test phases."""
+  enable_remote = True
+
   def __init__(self):
     self._prompt = None
     self._response = None
     self._cond = threading.Condition()
-    
+
+  def _asdict(self):
+    """Return a dict representation of the current prompt."""
+    return {'id': self._prompt.id.hex,
+            'message': self._prompt.message,
+            'text-input': self._prompt.text_input}
+
   def prompt(self, message, text_input=False, timeout_s=None):
     """Prompt for a user response by showing the message.
 
@@ -126,7 +128,6 @@ class UserInput(plugs.BasePlug):
     Returns:
       The string input by the user.
     """
-    timeout_s = timeout_s or DEFAULT_TIMEOUT_S
     with self._cond:
       if self._prompt is not None:
         self._prompt = None
@@ -153,10 +154,16 @@ class UserInput(plugs.BasePlug):
   def respond(self, prompt_id, response):
     """Respond to the prompt that has the given ID.
 
+    Args:
+      prompt_id: Either a UUID instance, or a string representing a UUID.
+      response: A string response to the given prompt.
+
     If there is no active prompt or the prompt id being responded to doesn't
     match the active prompt, do nothing.
     """
-    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
+    if type(prompt_id) == str:
+      prompt_id = uuid.UUID(prompt_id)
+    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id.hex, response)
     with self._cond:
       if self._prompt is not None and prompt_id == self._prompt.id:
         self._response = response
@@ -166,13 +173,13 @@ class UserInput(plugs.BasePlug):
 
 
 def prompt_for_test_start(
-    message='Provide a DUT ID in order to start the test.', text_input=True,
-    timeout_s=60*60*24):
-  """Make a test start trigger based on prompting the user for input."""
-  def trigger():  # pylint: disable=missing-docstring
-    plug = UserInput()
-    response = plug.prompt(
-        message, text_input=text_input, timeout_s=timeout_s)
-    plug.tearDown()
-    return response
-  return trigger
+    message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24):
+  """Return an OpenHTF phase for use as a prompt-based start trigger."""
+  @PhaseOptions(timeout_s=timeout_s)
+  @plugs.plug(prompts=UserInput)
+  def trigger_phase(test, prompts):
+    """Test start trigger that prompts the user for a DUT ID."""
+    test.test_record.dut_id = prompts.prompt(message=message, text_input=True,
+                                             timeout_s=timeout_s)
+
+  return trigger_phase

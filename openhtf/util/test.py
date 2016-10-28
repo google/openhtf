@@ -260,7 +260,7 @@ def patch_plugs(**mock_plugs):
     @test.patch_plugs(my_plug_mock=my_plug_module.MyPlug)
     def test_my_phase_again(self, my_plug_mock):
       pass
-    
+
   """
   def test_wrapper(test_func):
     plug_argspec = inspect.getargspec(test_func)
