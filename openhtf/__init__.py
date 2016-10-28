@@ -28,6 +28,7 @@ import socket
 import sys
 import threading
 import weakref
+from types import LambdaType
 
 import mutablerecords
 
@@ -218,12 +219,11 @@ class Test(object):
       self._test_desc.metadata['config'] = conf._asdict()
       self.last_run_time_millis = util.time_millis()
 
-      if not any((isinstance(test_start, PhaseDescriptor), test_start is None)):
+      if isinstance(test_start, LambdaType):
         @TestPhase()
         def trigger_phase(test):
           test.test_record.dut_id = test_start()
         trigger = trigger_phase
-
       else:
         trigger = test_start
 
@@ -251,7 +251,7 @@ class Test(object):
       finally:
         self._executor = None
 
-      return (final_state.test_record.outcome == test_record.Outcome.PASS)
+    return final_state.test_record.outcome == test_record.Outcome.PASS
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {

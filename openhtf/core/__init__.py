@@ -114,7 +114,6 @@ class TestExecutor(threads.KillableThread):
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
         self._exit_stack = exit_stack
-        exit_stack.callback(executor.stop)
 
       # Have the phase executor run the start trigger phase. Do partial plug
       # initialization for just the plugs needed by the start trigger phase.
@@ -139,6 +138,7 @@ class TestExecutor(threads.KillableThread):
 
         # Tear down plugs first, then output test record.
         exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
+        exit_stack.callback(executor.stop)
 
       # Everything is set, set status and begin test execution.  Note we don't
       # protect this with a try: block because the PhaseExecutor handles any

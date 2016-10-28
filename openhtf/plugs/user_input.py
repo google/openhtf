@@ -30,6 +30,7 @@ import sys
 import threading
 import uuid
 
+from openhtf import PhaseOptions
 from openhtf import plugs
 from openhtf.util import argv
 
@@ -110,7 +111,7 @@ class UserInput(plugs.BasePlug):
     self._prompt = None
     self._response = None
     self._cond = threading.Condition()
-    
+
   def _asdict(self):
     """Return a dict representation of the current prompt."""
     return {'id': self._prompt.id.hex,
@@ -172,8 +173,9 @@ class UserInput(plugs.BasePlug):
 
 
 def prompt_for_test_start(
-    message='Enter a DUT ID in order to start the test.', timeout_s=None):
+    message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24):
   """Return an OpenHTF phase for use as a prompt-based start trigger."""
+  @PhaseOptions(timeout_s=timeout_s)
   @plugs.plug(prompts=UserInput)
   def trigger_phase(test, prompts):
     """Test start trigger that prompts the user for a DUT ID."""

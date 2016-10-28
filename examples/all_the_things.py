@@ -26,7 +26,7 @@ import openhtf as htf
 from openhtf.util import units
 from openhtf.plugs import user_input
 from openhtf.output import callbacks
-from openhtf.output.callbacks import json_factory 
+from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
 
 import example_plug

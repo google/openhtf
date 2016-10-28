@@ -132,6 +132,23 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
+class RemoteAttribute(collections.namedtuple(
+    'RemoteMethod', ['class_name', 'name'])):
+  """Used to make parsing attribute names on remote plugs cleaner."""
+
+  @classmethod
+  def from_method_string(cls, method_string):
+    """Construct a RemoteAttribute from a method string.
+
+    Method strings, as returned by a ServerProxy's listMethods() method, will
+    look something like:
+        'plugs.openhtf.plugs.user_input.UserInput.prompt'
+    """
+    class_name, attr_name = method_string.rsplit('.', 1)
+    class_name = class_name.split('.', 1)[1]
+    return cls(class_name, attr_name)
+
+
 class PlugPlaceholder(collections.namedtuple(
     'PlugPlaceholder', ['base_class'])):
   """Placeholder for a specific plug to be provided before test execution.
@@ -193,14 +210,14 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     sockjs.tornado.SockJSConnection.__init__(self, session)
     # Grab exactly the attrs we want, the server has all plugs', not just ours.
     for method in self.system.listMethods():
-      name, attr = method.rsplit('.', 1)
-      name = name.split('.', 1)[1]
-      if name == plug_name:
-        if hasattr(type(self), attr):
-          _LOG.warning(
-              'Skipping predefined attribute "%s" for remote access.', attr)
+      remote_attr = RemoteAttribute.from_method_string(method)
+      if remote_attr.class_name == plug_name:
+        if hasattr(type(self), remote_attr.name):
+          _LOG.warning('Skipping predefined attribute "%s" for remote access.',
+                       remote_attr.name)
         else:
-          setattr(self, attr, functools.partial(self.__request, method))
+          setattr(self, remote_attr.name,
+                  functools.partial(self.__request, method))
 
   def __getattr__(self, attr):
     _LOG.debug('RemotePlug "%s" requested unknown attribute "%s", known:')
@@ -248,15 +265,16 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
       if not method.startswith('plugs.'):
         continue
       try:
-        plug_name = method.rsplit('.', 1)[0].split('.', 1)[1]
+        remote_attr = RemoteAttribute.from_method_string(method)
       except ValueError:
         _LOG.warning('Invalid RemotePlug method: %s', method)
         continue
 
-      if plug_name not in seen:
-        seen.add(plug_name)
+      if remote_attr.class_name not in seen:
+        seen.add(remote_attr.class_name)
         # Skip 'plugs.' prefix for URLs.
-        yield (functools.partial(cls, host, port, plug_name), plug_name)
+        yield (functools.partial(cls, host, port, remote_attr.class_name),
+               remote_attr.class_name)
 
 
 def plug(update_kwargs=True, **plugs):
