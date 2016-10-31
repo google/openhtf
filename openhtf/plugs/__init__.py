@@ -144,8 +144,8 @@ class RemoteAttribute(collections.namedtuple(
     look something like:
         'plugs.openhtf.plugs.user_input.UserInput.prompt'
     """
-    class_name, attr_name = method_string.rsplit('.', 1)
-    class_name = class_name.split('.', 1)[1]
+    remainder, _, attr_name = method_string.rpartition('.')
+    _, _, class_name = remainder.partition('.')
     return cls(class_name, attr_name)
 
 
