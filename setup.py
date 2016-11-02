@@ -47,10 +47,11 @@ class BuildProtoCommand(Command):
   description = 'Builds the proto files into python files.'
   user_options = [('protoc=', None, 'Path to the protoc compiler.'),
                   ('protodir=', None, 'Path to protobuf install.'),
-                  ('indir=', 'i', 'Directory containing input .proto files'),
+                  ('indir=', 'i', 'Directory containing input .proto files.'),
                   ('outdir=', 'o', 'Where to output .py files.')]
 
   def initialize_options(self):
+    self.skip_proto = False
     try:
       prefix = subprocess.check_output(
           'pkg-config --variable prefix protobuf'.split()).strip()
@@ -62,9 +63,9 @@ class BuildProtoCommand(Command):
         # Default to /usr/local for Homebrew
         prefix = '/usr/local'
       else:
-        raise NotImplementedError(
-            'Windows support in-progress. Help us by submitting an issue! '
-            'https://github.com/google/openhtf/issues/new')
+        print ('Warning: mfg-inspector output is not fully implemented for '
+               'Windows. OpenHTF will be installed without it.')
+        self.skip_proto = True
 
     self.protoc = os.path.join(prefix, 'bin', 'protoc')
     self.protodir = os.path.join(prefix, 'include')
@@ -75,6 +76,9 @@ class BuildProtoCommand(Command):
     pass
 
   def run(self):
+    if self.skip_proto:
+      print 'Skipping building protocol buffers.'
+      return
     # Build regular proto files.
     protos = glob.glob(os.path.join(self.indir, '*.proto'))
     if protos:
