@@ -114,6 +114,8 @@ class UserInput(plugs.BasePlug):
 
   def _asdict(self):
     """Return a dict representation of the current prompt."""
+    if self._prompt is None:
+      return None
     return {'id': self._prompt.id.hex,
             'message': self._prompt.message,
             'text-input': self._prompt.text_input}
