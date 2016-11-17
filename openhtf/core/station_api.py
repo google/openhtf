@@ -810,14 +810,15 @@ STATION_API = StationApi()
 API_SERVER = None
 
 def start_server():
-  global API_SERVER
-  if API_SERVER is None and (conf.station_api_port or
-      conf.enable_station_discovery):
-    _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
-               conf.station_api_port and int(conf.station_api_port),
-               'en' if conf.enable_station_discovery else 'dis')
-    API_SERVER = ApiServer()
-    API_SERVER.start()
+  if type(conf.station_api_port) is int or conf.station_api_port.isdigit():
+    global API_SERVER
+    if API_SERVER is None and (conf.station_api_port or
+        conf.enable_station_discovery):
+      _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
+                 conf.station_api_port and int(conf.station_api_port),
+                 'en' if conf.enable_station_discovery else 'dis')
+      API_SERVER = ApiServer()
+      API_SERVER.start()
 
 def stop_server():
   global API_SERVER
