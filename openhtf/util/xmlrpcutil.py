@@ -59,7 +59,7 @@ class BaseServerProxy(xmlrpclib.ServerProxy, object):
 
 
 class TimeoutProxyMixin(object):
-  """A ServerProxy that supports timeouts."""
+  """Timeouts for ServerProxy objects."""
   def __init__(self, *args, **kwargs):
     super(TimeoutProxyMixin, self).__init__(
         transport=TimeoutTransport(
@@ -68,6 +68,10 @@ class TimeoutProxyMixin(object):
 
   def __settimeout(self, timeout_s):
     self.__transport.settimeout(timeout_s)
+
+
+class TimeoutProxyServer(TimeoutProxyMixin, BaseServerProxy):
+  """A BaseServerProxy plus timeouts."""
 
 
 class LockedProxyMixin(object):

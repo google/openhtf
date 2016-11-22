@@ -27,7 +27,7 @@ export class StationService extends SubscriptionService {
   UNKNOWN_HOST: string = '???.???.???.???';
   UNKNOWN_PORT: string = '????';
   UNKNOWN_STATION_ID: string = '(station ID unknown)';
-  
+
   private history: any;
   private reachable: boolean;
   private stationInfo: any;
@@ -56,7 +56,7 @@ export class StationService extends SubscriptionService {
    * Configure the station service; must be done once before subscribing.
    * @param host - Host of the OpenHTF station to get updates for.
    * @param port - Port for the OpenHTF station's station API.
-   */  
+   */
   setHostPort(host: string, port: string) {
     this.stationInfo.host = host;
     this.stationInfo.port = port;
