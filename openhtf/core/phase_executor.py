@@ -187,7 +187,8 @@ class PhaseExecutor(object):
 
     Args:
       phases: List of phases to execute.
-      teardown_func:
+      teardown_func: Function or phase to execute at the end of all phases
+          regardless of errors.
 
     Yields:
       PhaseOutcome instance that wraps the phase return value (or exception).

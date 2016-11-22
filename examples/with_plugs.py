@@ -71,7 +71,7 @@ class PingDnsB(PingPlug):
 # Note: phase name and total_time measurement use {} formatting with args
 # passed into the phase so each phase has a unique name.
 @htf.PhaseOptions(name='Ping-{pinger.host}-{count}')
-@plugs.plug(pinger=PingPlug.placeholder)
+@htf.plug(pinger=PingPlug.placeholder)
 @htf.measures('total_time_{pinger.host}_{count}', 'retcode')
 def test_ping(test, pinger, count):
   """This tests that we can ping a host.

@@ -325,7 +325,7 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
         phase needs to wrap another phase for some reason, as
         PhaseDescriptors can only be invoked with a TestState instance.
     repeat_limit:  Maximum number of repeats.  None indicates a phase will
-        be repeated infinitely as long as PhaseResult.REPEAT returned.
+        be repeated infinitely as long as PhaseResult.REPEAT is returned.
 
   Example Usages:
     @PhaseOptions(timeout_s=1)
