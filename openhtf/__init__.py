@@ -311,7 +311,8 @@ PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
 
 
 class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
-    'name': None, 'timeout_s': None, 'run_if': None, 'requires_state': None})):
+    'name': None, 'timeout_s': None, 'run_if': None, 'requires_state': None,
+    'repeat_limit': None})):
   """Options used to override default test phase behaviors.
 
   Attributes:
@@ -323,6 +324,8 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
         otherwise only the TestApi will be passed in.  This is useful if a
         phase needs to wrap another phase for some reason, as
         PhaseDescriptors can only be invoked with a TestState instance.
+    repeat_limit:  Maximum number of repeats.  None indicates a phase will
+        be repeated infinitely as long as PhaseResult.REPEAT is returned.
 
   Example Usages:
     @PhaseOptions(timeout_s=1)

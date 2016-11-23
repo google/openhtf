@@ -20,10 +20,17 @@ import mock
 import openhtf
 from openhtf import core
 from openhtf import plugs
+from openhtf import PhaseResult
+from openhtf.core.test_state import TestState
+from openhtf.core.phase_executor import PhaseExecutor
+
 from openhtf.util import conf
 
 
 class UnittestPlug(plugs.BasePlug):
+
+  def __init__(self):
+    self.count = 0
 
   def setup_cap(self):
     print 'Set up the plugs instance.'
@@ -33,6 +40,9 @@ class UnittestPlug(plugs.BasePlug):
 
   def do_stuff(self):
     print 'Plugs-specific functionality.'
+
+  def increment(self):
+    self.count += 1
 
 
 @openhtf.PhaseOptions()
@@ -45,6 +55,14 @@ def phase_one(test, test_plug):
 def phase_two(test, test_plug):
   time.sleep(2)
   print 'phase_two completed'
+
+@openhtf.PhaseOptions(repeat_limit=4)
+@plugs.plug(test_plug=UnittestPlug)
+def phase_repeat(test, test_plug):
+  time.sleep(.1)
+  test_plug.increment()
+  print 'phase_repeat completed for %s time' % test_plug.count
+  return openhtf.PhaseResult.REPEAT
 
 
 class TestExecutor(unittest.TestCase):
@@ -76,3 +94,20 @@ class TestExecutor(unittest.TestCase):
         found = False
     if not found:
       self.assertEqual(0, 1)
+
+class TestPhaseExecutor(unittest.TestCase):
+
+  def setUp(self):
+    self.test_state = mock.MagicMock(spec=TestState,
+        plug_manager=plugs.PlugManager(), logger=mock.MagicMock())
+    self.test_state.plug_manager.initialize_plugs([UnittestPlug])
+    self.phase_executor = PhaseExecutor(self.test_state)
+
+  def test_execute_phases(self):
+    results = list(self.phase_executor.execute_phases(
+        [phase_two, phase_repeat], None))
+
+    self.assertEqual(5, len(results))
+    self.assertEqual(PhaseResult.CONTINUE, results[0].phase_result)
+    for i in xrange(1, 5):
+      self.assertEqual(PhaseResult.REPEAT, results[i].phase_result)

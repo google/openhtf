@@ -106,11 +106,11 @@ if __name__ == '__main__':
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
   test.add_output_callbacks(json_factory.OutputToJSON(
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.json', indent=4))
-  
+
   # Example of how to output to testrun protobuf format.
   #test.add_output_callbacks(
   #  mfg_inspector.OutputToTestRunProto('./{dut_id}.{start_time_millis}.pb'))
-  
+
   # Example of how to upload to mfg-inspector.  Replace filename with your
   # JSON-formatted private key downloaded from Google Developers Console
   # when you created the Service Account you intend to use, or name it
