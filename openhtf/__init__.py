@@ -234,19 +234,8 @@ class Test(object):
       self._test_desc.metadata['config'] = conf._asdict()
       self.last_run_time_millis = util.time_millis()
 
-      if isinstance(test_start, LambdaType):
-        @TestPhase()
-        def trigger_phase(test):
-          test.test_record.dut_id = test_start()
-        trigger = trigger_phase
-      else:
-        trigger = test_start
-
-      if conf.capture_source:
-        trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
-
       self._executor = core.TestExecutor(
-          self._test_desc, trigger, self._test_options.teardown_function)
+          self._test_desc, test_start, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self._executor.start()
 
