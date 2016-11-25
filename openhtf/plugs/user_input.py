@@ -24,6 +24,7 @@ prompt state should use the openhtf.prompts pseudomodule.
 import collections
 import functools
 import logging
+import os
 import platform
 import select
 import sys
@@ -90,14 +91,32 @@ class ConsolePrompt(threading.Thread):
         print self._message
 
         # Before reading, clear any lingering buffered terminal input.
-        termios.tcflush(sys.stdin, termios.TCIFLUSH)
+        if sys.stdin.isatty():
+          termios.tcflush(sys.stdin, termios.TCIFLUSH)
 
+        line = ''
         while not self._stopped:
           inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
           for stream in inputs:
             if stream is sys.stdin:
-              response = sys.stdin.readline().rstrip()
-              self._callback(response)
+              new = os.read(sys.stdin.fileno(), 1024)
+              if not new:
+                # Hit EOF!
+                if not sys.stdin.isatty():
+                  # We're running in the background somewhere, so the only way
+                  # to respond to this prompt is the UI. Let's just wait for
+                  # that to happen now. We'll give them a week :)
+                  print "Waiting for a non-console response."
+                  time.sleep(60*60*24*7)
+                else:
+                  # They hit ^D (to insert EOF). Tell them to hit ^C if they
+                  # want to actually quit.
+                  print "Hit ^C (Ctrl+c) to exit."
+                  break
+              line += new
+              if '\n' in line:
+                response = line[:line.find('\n')]
+                self._callback(response)
               return
     finally:
       self._stopped = True
