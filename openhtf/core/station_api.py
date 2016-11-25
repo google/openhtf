@@ -769,7 +769,7 @@ class ApiServer(threading.Thread):
       })
 
   def run(self):
-    if conf.station_api_port:
+    if conf.station_api_port is not None:
       self.station_api_server = xmlrpcutil.SimpleThreadedXmlRpcServer(
           (conf.station_api_bind_address, int(conf.station_api_port)),
           allow_none=True,
@@ -811,7 +811,7 @@ API_SERVER = None
 
 def start_server():
   global API_SERVER
-  if API_SERVER is None and (conf.station_api_port or
+  if API_SERVER is None and (conf.station_api_port is not None or
       conf.enable_station_discovery):
     _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
                conf.station_api_port and int(conf.station_api_port),
