@@ -109,6 +109,7 @@ class TestMeasurements(unittest.TestCase):
       test.add_output_callbacks(callbacks.OutputToFile(RECORD_FILENAME))
     else:
       test.add_output_callbacks(_save_result)
+    test.configure(capture_source=True)
     test.execute(test_start=lambda: 'TestDUT')
     if not self.UPDATE_OUTPUT:
       data.assert_records_equal_nonvolatile(

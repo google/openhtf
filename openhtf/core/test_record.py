@@ -120,3 +120,7 @@ class CodeInfo(mutablerecords.Record(
   def for_function(cls, func):
     source = _get_source_safely(func)
     return cls(func.__name__, inspect.getdoc(func), source)
+
+  @classmethod
+  def uncaptured(cls):
+    return cls('', None, '')
