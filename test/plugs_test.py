@@ -106,6 +106,24 @@ class PlugsTest(test.TestCase):
       self.assertIs(AdderPlug.LAST_INSTANCE, adder_plug)
     yield dummy_phase
 
+  @test.yields_phases
+  def test_plug_logging(self):
+    """Test that both __init__ and other functions get the good logger."""
+    class LoggingPlug(plugs.BasePlug):
+      def __init__(self):
+        self.logger_seen_init = self.logger
+
+      def action(self):
+        self.logger_seen_action = self.logger
+
+    @plugs.plug(logger=LoggingPlug)
+    def dummy_phase(test_api, logger):
+      logger.action()
+      self.assertIs(logger.logger_seen_init, logger.logger_seen_action)
+      self.assertIs(logger.logger_seen_init, self.logger)
+
+    yield dummy_phase
+
   def test_tear_down_raises(self):
     """Test that all plugs get torn down even if some raise."""
     self.plug_manager.initialize_plugs({
@@ -140,6 +158,11 @@ class PlugsTest(test.TestCase):
     with self.assertRaises(plugs.InvalidPlugError):
       self.plug_manager.initialize_plugs({
           type('BadPlug', (plugs.BasePlug,), {'logger': None})})
+    with self.assertRaises(plugs.InvalidPlugError):
+      class BadPlugInit(plugs.BasePlug):
+        def __init__(self):
+          self.logger = None
+      self.plug_manager.initialize_plugs({BadPlugInit})
     with self.assertRaises(plugs.InvalidPlugError):
       self.plug_manager.wait_for_plug_update('invalid', {}, 0)
 
