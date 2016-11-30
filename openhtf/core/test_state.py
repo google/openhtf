@@ -29,7 +29,6 @@ import copy
 import logging
 import socket
 import threading
-import weakref
 
 import mimetypes
 from enum import Enum

@@ -15,13 +15,13 @@
 
 """One-off utilities."""
 
+from datetime import datetime
 import logging
+from pkg_resources import get_distribution, DistributionNotFound
 import re
 import threading
 import time
 import weakref
-from datetime import datetime
-from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
 
