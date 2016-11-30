@@ -94,20 +94,22 @@
   </li>
   <!-- Pending phases from their list. -->
   <li *ngFor="let phase of state.test_record.pending_phases">
-      <div class="collapsible-header {{'PENDING' | statusToColor}} waves-effect waves-light">
+    <!-- Mostly repeats from the completed phases section above -->
+    <!-- TODO(fahhem): Make this a component that takes a status, cycle time,
+                       etc to DRY it out.
+    -->
+    <div class="collapsible-header {{'PENDING' | statusToColor}} waves-effect waves-light">
       <div class="phase-header-text">
-        <div class="name">
-          {{phase[0]}}
-        </div>
-        <div class="cycle-time">
-        </div>
-        <div class="status">
-          PENDING
-        </div>
+        <div class="name">{{phase.name}}</div>
+        <div class="cycle-time"></div>
+        <div class="status">PENDING2</div>
       </div>
     </div>
     <div class="collapsible-body {{'PENDING' | statusToDark}}">
-      <p *ngIf="phase.docstring" class="docstring">{{phase[1]}}</p>
+      <p *ngIf="phase.docstring" class="docstring">{{phase.docstring}}</p>
+      <div class="measurement-container"
+           [innerHTML]="phase.measurements | measToHtml">
+      </div>
     </div>
   </li>
 </ul>

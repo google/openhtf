@@ -194,7 +194,11 @@ class PhaseExecutor(object):
       PhaseOutcome instance that wraps the phase return value (or exception).
     """
     try:
+      self.test_state.add_pending_phases(phases)
+      if teardown_func:
+        self.test_state.add_pending_phases([teardown_func])
       for phase in phases:
+        self.test_state.pop_pending_phase()
         repeat_count = 0
         while True:
           outcome = self._execute_one_phase(phase)
@@ -203,6 +207,7 @@ class PhaseExecutor(object):
             # because yielding the outcome results in the state being finalized
             # in the case of a terminal outcome.
             if outcome.is_terminal and teardown_func:
+              self.test_state.clear_pending_phases()
               self._execute_one_phase(teardown_func)
             yield outcome
 
@@ -220,9 +225,11 @@ class PhaseExecutor(object):
             # run_if was falsey, just skip this phase.
             break
       if teardown_func:
+        self.test_state.clear_pending_phases()
         self._execute_one_phase(teardown_func)
     except (KeyboardInterrupt, SystemExit):
       if teardown_func:
+        self.test_state.clear_pending_phases()
         self._execute_one_phase(teardown_func)
       raise
 

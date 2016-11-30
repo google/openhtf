@@ -53,8 +53,8 @@ class TestRecord(  # pylint: disable=no-init
         'TestRecord', ['dut_id', 'station_id'],
         {'start_time_millis': None, 'end_time_millis': None,
          'outcome': None, 'outcome_details': list,
-         'code_info': None,
-         'metadata': dict,
+         'code_info': None, 'metadata': dict,
+         'pending_phases': list,
          'phases': list, 'log_records': list})):
   """The record of a single run of a test."""
 
@@ -71,16 +71,15 @@ class TestRecord(  # pylint: disable=no-init
 class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'PhaseRecord', ['name', 'codeinfo'],
-        {'measurements': None,
-         'start_time_millis': None, 'end_time_millis': None,
-         'attachments': dict, 'result': None})):
+        {'start_time_millis': None, 'end_time_millis': None,
+         'measurements': dict, 'attachments': dict, 'result': None})):
   """The record of a single run of a phase.
 
   Measurement metadata (declarations) and values are stored in separate
   dictionaries, each of which map measurement name to the respective object.  In
   the case of the measurements field, those objects are measurements.Measurement
   instances.  The 'value' attribute of each of those instances is an instance of
-  measurments.MeasuredValue, which contains either a single value, or a list of
+  measurements.MeasuredValue, which contains either a single value, or a list of
   values in the case of a dimensioned measurement.
 
   See measurements.Record.GetValues() for more information.
