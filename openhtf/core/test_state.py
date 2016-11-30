@@ -100,13 +100,13 @@ class TestState(util.SubscribableStateMixin):
         dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
-    subscription = Subscribable()
+    subscribable = util.Subscribable()
     logger = logs.initialize_record_logger(
-        test_desc.uid, test_record_obj, subscription.notify)
+        test_desc.uid, test_record_obj, subscribable.notify)
     plug_manager = plugs.PlugManager(test_desc.plug_types, logger)
-    return cls(test_record_obj, logger, plug_manager, subscription)
+    return cls(test_record_obj, logger, plug_manager, subscribable)
 
-  def __init__(self, test_record_obj, logger, plug_manager, subscription):
+  def __init__(self, test_record_obj, logger, plug_manager, subscribable):
     self._status = self.Status.WAITING_FOR_TEST_START
     self.test_record = test_record_obj
     self.logger = logger
@@ -131,7 +131,7 @@ class TestState(util.SubscribableStateMixin):
                 running_phase_state.attachments,
                 running_phase_state.attach,
                 running_phase_state.attach_from_file,
-                self.subscription.notify))
+                self.subscribable.notify))
 
   @contextlib.contextmanager
   def running_phase_context(self, phase_desc):
@@ -146,10 +146,10 @@ class TestState(util.SubscribableStateMixin):
     """
     assert not self.running_phase_state, 'Phase already running!'
     self.running_phase_state = PhaseState.from_descriptor(
-        phase_desc, self.subscription.notify)
+        phase_desc, self.subscribable.notify)
     try:
       with self.running_phase_state.record_timing_context:
-        self.subscription.notify()  # New phase started.
+        self.subscribable.notify()  # New phase started.
         yield self.running_phase_state
     finally:
       # Clear notification callbacks so we can serialize measurements.
@@ -157,7 +157,7 @@ class TestState(util.SubscribableStateMixin):
         meas.set_notification_callback(None)
       self.test_record.phases.append(self.running_phase_state.phase_record)
       self.running_phase_state = None
-      self.subscription.notify()  # Phase finished.
+      self.subscribable.notify()  # Phase finished.
 
   def _asdict(self):
     """Return a dict representation of the test's state."""
@@ -176,7 +176,7 @@ class TestState(util.SubscribableStateMixin):
 
     Returns: dict-representation, update-event
     """
-    return self._asdict(), self.subscription.subscribe()
+    return self._asdict(), self.subscribable.subscribe()
 
   @property
   def is_finalized(self):
@@ -236,13 +236,13 @@ class TestState(util.SubscribableStateMixin):
     # Blow up instead of blowing away a previously set start_time_millis.
     assert self.test_record.start_time_millis is 0
     self.test_record.start_time_millis = util.time_millis()
-    self.subscription.notify()
+    self.subscribable.notify()
 
   def set_status_running(self):
     """Mark the test as actually running, can't be done once finalized."""
     assert self._status == self.Status.WAITING_FOR_TEST_START
     self._status = self.Status.RUNNING
-    self.subscription.notify()
+    self.subscribable.notify()
 
   def finalize(self, test_outcome=None):
     """Mark the state as finished.
@@ -288,7 +288,7 @@ class TestState(util.SubscribableStateMixin):
     self.logger.handlers = []
     self.test_record.end_time_millis = util.time_millis()
     self._status = self.Status.COMPLETED
-    self.subscription.notify()
+    self.subscribable.notify()
 
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (

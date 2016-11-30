@@ -50,12 +50,12 @@ class TestStopError(Exception):
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
 
-  def __init__(self, test_descriptor, test_start_function, teardown_function=None):
+  def __init__(self, test_descriptor, test_start, teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
 
     # Ensure test_start is a phase that saves to the dut_id.
-    if not isinstance(test_start_function, (openhtf.TestPhase, openhtf.PhaseDescriptor)):
+    if not isinstance(test_start, openhtf.PhaseDescriptor):
       @openhtf.TestPhase()
       def trigger_phase(test):
         test.dut_id = test_start_function()
@@ -161,6 +161,7 @@ class TestExecutor(threads.KillableThread):
 
 
 def _sanitize_to_phase(func_or_phase, default_timeout_s):
+  """Converts a function/phase to a phase with a timeout set."""
 
   if isinstance(func_or_phase, openhtf.PhaseDescriptor):
     # It's an actual phase already.
@@ -169,10 +170,8 @@ def _sanitize_to_phase(func_or_phase, default_timeout_s):
     return func_or_phase
   elif func_or_phase:
     # It's a function, so let's wrap it up nice and cozy.
-    @openhtf.TestPhase(timeout_s=default_timeout_s, name=func_or_phase.__name__)
-    def faux_phase(test):
-      result = func_or_phase()
-    return faux_phase
+    return openhtf.TestPhase(
+        timeout_s=default_timeout_s, name=func_or_phase.__name__)(func_or_phase)
   # It's falsey after all.
   return None
 
