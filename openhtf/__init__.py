@@ -26,6 +26,7 @@ import logging
 import signal
 import socket
 import sys
+import textwrap
 import threading
 import weakref
 from types import LambdaType
@@ -53,6 +54,14 @@ from openhtf.util import units
 
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
+
+conf.declare('capture_source', description=textwrap.dedent(
+    '''Whether to capture the source of phases and the test module.  This
+    defaults to False since this potentially reads many files and makes large
+    string copies.
+
+    Set to 'true' if you want to capture your test's source.''',
+    default_value=False)
 
 
 class UnrecognizedTestUidError(Exception):
@@ -94,16 +103,24 @@ class Test(object):
 
     self.created_time_millis = util.time_millis()
     self.last_run_time_millis = None
-    # Capture the source now, but we'll only use it if we get TestOptions with
-    # 'capture_source' as True.
-    # This CodeInfo can be overriden by wrapping layers to choose a different
-    # module or stack frame.
-    self.code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
-    self._test_desc = TestDescriptor(
-        self.uid, phases, test_record.CodeInfo.uncaptured(), metadata)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
+    self._test_desc = TestDescriptor(
+        self.uid, phases, test_record.CodeInfo.uncaptured(), metadata)
+
+    if conf.capture_source:
+      # First, we copy the phases with the real CodeInfo for them.
+      phases = [
+        mutablerecords.CopyRecord(
+            phase, code_info=test_record.CodeInfo.for_function(phase.func))
+        for phase in self._test_desc.phases]
+
+      # Then we replace the TestDescriptor with one that stores the test
+      # module's CodeInfo as well as our newly copied phases.
+      code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
+      self._test_desc = self._test_desc._replace(
+          code_info=code_info, phases=phases)
 
     # Make sure configure() gets called at least once before Execute().  The
     # user might call configure() again to override options, but we don't want
@@ -171,19 +188,6 @@ class Test(object):
     logs.setup_logger()
     for key, value in kwargs.iteritems():
       setattr(self._test_options, key, value)
-
-    # 'capture_source' takes effect here.
-    if self._test_options.capture_source:
-      # First, we copy the phases with the real CodeInfo for them.
-      phases = [
-        mutablerecords.CopyRecord(
-            phase, code_info=test_record.CodeInfo.for_function(phase.func))
-        for phase in self._test_desc.phases]
-
-      # Then we replace the TestDescriptor with one that stores the test
-      # module's CodeInfo as well as our newly copied phases.
-      self._test_desc = self._test_desc._replace(
-          code_info=self.code_info, phases=phases)
 
   @classmethod
   def handle_sig_int(cls, *_):
@@ -271,7 +275,6 @@ class Test(object):
 class TestOptions(mutablerecords.Record('TestOptions', [], {
     'name': 'OpenHTF Test',
     'output_callbacks': list,
-    'capture_source': False,
     'teardown_function': None,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
@@ -279,9 +282,6 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
   name: The name of the test to be put into the metadata.
   output_callbacks: List of output callbacks to run, typically it's better to
       use add_output_callbacks(), but you can pass [] here to reset them.
-  capture_source: Whether to capture the source of phases and the test module.
-      This must default to False since this potentially reads many files and
-      makes copies before the test author has a chance to intercede.
   teardown_function: Function to run at teardown.  We pass the same arguments to
       it as a phase.
   """
