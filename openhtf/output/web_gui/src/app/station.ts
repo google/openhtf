@@ -47,6 +47,7 @@ export class Station implements OnDestroy, OnInit {
   private currentMillis: number;
   private currentMillisJob: number;
   private tests: any[];
+  private testUIDs: string[];
 
   /**
    * Create a Station view component.
@@ -68,6 +69,7 @@ export class Station implements OnDestroy, OnInit {
     this.stationService.subscribe();
     this.stationInfo = this.stationService.getStationInfo();
     this.tests = this.stationService.getTests();
+    this.testUIDs = this.stationService.getTestUIDs();
   }
 
   /**

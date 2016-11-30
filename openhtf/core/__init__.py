@@ -117,9 +117,10 @@ class TestExecutor(threads.KillableThread):
 
       # Have the phase executor run the start trigger phase. Do partial plug
       # initialization for just the plugs needed by the start trigger phase.
-      self.test_state.plug_manager.initialize_plugs(
-          (phase_plug.cls for phase_plug in self._test_start.plugs))
-      executor.execute_start_trigger(self._test_start)
+      if self._test_start is not None:
+        self.test_state.plug_manager.initialize_plugs(
+            (phase_plug.cls for phase_plug in self._test_start.plugs))
+        executor.execute_start_trigger(self._test_start)
       self.test_state.mark_test_started()
 
       # Full plug initialization happens _after_ the start trigger, as close to

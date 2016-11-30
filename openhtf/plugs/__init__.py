@@ -108,6 +108,7 @@ import time
 
 import mutablerecords
 import sockjs.tornado
+import tornado.web
 
 import openhtf
 from openhtf.util import classproperty
@@ -144,8 +145,8 @@ class RemoteAttribute(collections.namedtuple(
     look something like:
         'plugs.openhtf.plugs.user_input.UserInput.prompt'
     """
-    class_name, attr_name = method_string.rsplit('.', 1)
-    class_name = class_name.split('.', 1)[1]
+    remainder, _, attr_name = method_string.rpartition('.')
+    _, _, class_name = remainder.partition('.')
     return cls(class_name, attr_name)
 
 
@@ -200,51 +201,70 @@ class BasePlug(object):
     pass
 
 
-class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
-                 sockjs.tornado.SockJSConnection):
+class RemotePlug(xmlrpcutil.TimeoutProxyServer):
   """Remote interface to a Plug.
 
-  This class is used by the frontend server to poke at Plugs that are currently
-  in use by a remotely running OpenHTF Test.  It also provides a SockJS
-  interface as a SockJSConnection for frontend clients to interact with.
+  This class is used by the web GUI to call methods on plugs that are currently
+  in use by a remotely running OpenHTF test.
   """
 
-  def __init__(self, host, port, plug_name, session):
-    super(RemotePlug, self).__init__((host, port))
-    sockjs.tornado.SockJSConnection.__init__(self, session)
+  class RemotePlugHandler(tornado.web.RequestHandler):
+    """Handles HTTP POST requests directed at remote plugs."""
+
+    def initialize(self, remote_plug):
+      self.remote_plug = remote_plug
+
+    def post(self):
+      """Called when we receive a JSON message from a frontend client."""
+      try:
+        data = json.loads(self.request.body)
+        method = data['method']
+        args = data['args']
+      except (KeyError, ValueError):
+        self._write_error('Malformed JSON request')
+        return
+
+      try:
+        result = getattr(self.remote_plug, method)(*args)
+      except (AttributeError, TypeError, ValueError):
+        self._write_error('Error in RPC request')
+        return
+
+      self.write(json.dumps(result))
+
+    def _write_error(self, message):
+      """Helper that returns an HTTP 500 error and logs the error details."""
+      _LOG.warning('%s: %s', message, self.request.body, exc_info=True)
+      self.set_status(500)
+      self.write('RemotePlug error: %s.' % message)
+
+  def __init__(self, host, port, plug_name):
+    super(RemotePlug, self).__init__('http://%s:%s' % (host, port))
+    self.plug_name = plug_name
+
     # Grab exactly the attrs we want, the server has all plugs', not just ours.
-    for method in self.system.listMethods():
+    for method in self.list_methods():
       remote_attr = RemoteAttribute.from_method_string(method)
       if remote_attr.class_name == plug_name:
         if hasattr(type(self), remote_attr.name):
-          _LOG.warning('Skipping predefined attribute "%s" for remote access.',
+          _LOG.warning('Skipping preexisting remote plug attribute "%s".',
                        remote_attr.name)
         else:
-          setattr(self, remote_attr.name,
-                  functools.partial(self.__request, method))
+          setattr(self, remote_attr.name, getattr(self, method))
+
+  def list_methods(self):
+    # Accessing self.system directly would result in a call to __getattr__.
+    self._cached_methods = super(
+        RemotePlug, self).__getattr__('system').listMethods()
+    return self._cached_methods
 
   def __getattr__(self, attr):
-    _LOG.debug('RemotePlug "%s" requested unknown attribute "%s", known:')
-    _LOG.debug(str(self.system.listMethods()))
+    if attr in self._cached_methods or attr in self.list_methods():
+      return super(RemotePlug, self).__getattr__(attr)
+    _LOG.debug('RemotePlug "%s" requested unknown attribute "%s", known: %s',
+        self.plug_name, attr, self.list_methods())
     raise AttributeError(
         'RemotePlug attribute "%s" not found, is it disabled?' % attr)
-
-  def on_message(self, msg):
-    """Called when we receive a JSON message from a frontend client."""
-    try:
-      attr, args = json.loads(msg)
-    except ValueError:
-      _LOG.warning('Malformed JSON request received: %s', msg, exc_info=True)
-      # TODO(madsci): What to do when we get malformed request?
-      return
-
-    try:
-      self.send(json.dumps(getattr(self, attr)(*args)))
-    except (AttributeError, TypeError, ValueError):
-      _LOG.warning('Error handling JSON RPC request: %s(%s)', attr, args,
-                   exc_info=True)
-      # TODO(madsci): How to send exceptions back?
-      return
 
   @classmethod
   def discover(cls, host, port, timeout_s=xmlrpcutil.DEFAULT_PROXY_TIMEOUT_S):
@@ -256,11 +276,11 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
 
     Yields:
       Tuples of:
-        - Callable that expects a Session and returns a SockJSConnection
-        - URL to which that SockJSConnection should be bound.
+        - Name of the plug, e.g. openhtf.plugs.user_input.UserInput.
+        - Request handler class, to be initialized with the remote plug.
+        - Handler params, including the remote plug instance.
 
-    This is so that the yielded tuples may be easily passed to sockjs a la:
-        sockjs.tornado.SockJSRouter(*result)
+    The yielded tuple can be passed to a Tornado application as a route.
     """
     proxy = xmlrpcutil.TimeoutProxyServer('http://%s:%s' % (host, port),
                                           timeout_s=timeout_s, allow_none=True)
@@ -268,17 +288,18 @@ class RemotePlug(xmlrpcutil.TimeoutProxyMixin, xmlrpcutil.BaseServerProxy,
     for method in proxy.system.listMethods():
       if not method.startswith('plugs.'):
         continue
-      try:
-        remote_attr = RemoteAttribute.from_method_string(method)
-      except ValueError:
+
+      remote_attr = RemoteAttribute.from_method_string(method)
+      plug_name = remote_attr.class_name
+
+      if not plug_name:
         _LOG.warning('Invalid RemotePlug method: %s', method)
         continue
 
-      if remote_attr.class_name not in seen:
-        seen.add(remote_attr.class_name)
-        # Skip 'plugs.' prefix for URLs.
-        yield (functools.partial(cls, host, port, remote_attr.class_name),
-               remote_attr.class_name)
+      if plug_name not in seen:
+        seen.add(plug_name)
+        remote_plug = cls(host, port, plug_name)
+        yield (plug_name, cls.RemotePlugHandler, {'remote_plug': remote_plug})
 
 
 def plug(update_kwargs=True, **plugs):

@@ -16,6 +16,10 @@
 declare var jsonpatch; // Global provided by the fast-json-patch package.
 
 import {Injectable} from 'angular2/core';
+import {Headers, Http, RequestOptions} from 'angular2/http';
+import {Observable} from 'rxjs/Observable';
+import 'rxjs/add/observable/throw';
+import 'rxjs/add/operator/catch';
 
 import {SubscriptionService} from './utils';
 
@@ -31,14 +35,14 @@ export class StationService extends SubscriptionService {
   private history: any;
   private reachable: boolean;
   private stationInfo: any;
-  private testList: any[];
+  private testUIDs: string[];
   private tests: any;
   private pausedTests: any[];
 
   /**
    * Create a StationService.
    */
-  constructor() {
+  constructor(private http: Http) {
     super();
     this.history = {};
     this.reachable = false;
@@ -47,7 +51,7 @@ export class StationService extends SubscriptionService {
       'port': this.UNKNOWN_PORT,
       'station_id': this.UNKNOWN_STATION_ID
     };
-    this.testList = [];
+    this.testUIDs = [];
     this.tests = {};
     this.pausedTests = [];
   }
@@ -72,7 +76,7 @@ export class StationService extends SubscriptionService {
   updateTest(test_uid: string, state: any) {
     if (this.tests[test_uid] == undefined) {
       this.tests[test_uid] = state;
-      this.testList.push(state);
+      this.testUIDs.push(test_uid);
     } else if (this.pausedTests.indexOf(test_uid) == -1) {
       let diff = jsonpatch.compare(this.tests[test_uid], state);
       jsonpatch.apply(this.tests[test_uid], diff);
@@ -98,7 +102,8 @@ export class StationService extends SubscriptionService {
   onmessage(msg) {
     this.reachable = true;
     let parsedData = JSON.parse(msg.data);
-    let test_uid = parsedData.test_uid, state = parsedData.state;
+    let test_uid = parsedData.test_uid;
+    let state = parsedData.state;
     if (!state) {
       console.warn('Received an empty state update.');
       return;
@@ -138,21 +143,39 @@ export class StationService extends SubscriptionService {
    * to objects representing the serialized OpenHTF RemoteState instances.
    */
   getTests(): any[] {
-    return this.testList;
+    return this.tests;
   }
 
   /**
-   * Send a response to the given station for the given prompt.
+   * Return a reference to the array listing test UIDs on this station.
+   *
+   * The UIDs are listed in the order that they were first seen.
    */
-  respondToPrompt(ip: string, port: string, id: string, response: string) {
-    // TODO(jethier): Refactor and reinstate prompt response logic once
-    //                prompts-as-plugs rewrite is complete.
-    //
-    // let headers = new Headers({ 'Content-Type': 'application/json' });
-    // let options = new RequestOptions({ headers: headers });
-    // this.http.post('/station/' + ip + '/' + port + '/prompt/' + id,
-    //   response,
-    //   options).catch(this.handleError)
-    //           .subscribe();
+  getTestUIDs(): any[] {
+    return this.testUIDs;
+  }
+
+  /**
+   * Log an error message thrown by an Observable and re-throw.
+   */
+  private handleError(error: any) {
+    let errMsg = error.message || 'Error communicating with station.';
+    return Observable.throw(errMsg);
+  }
+
+  /**
+   * Send a response to the given station for the given prompt ID.
+   */
+  respondToPrompt(ip: string, port: string, test_uid: number, id: string, response: string) {
+    let headers = new Headers({ 'Content-Type': 'application/json' });
+    let options = new RequestOptions({ headers: headers });
+    let plug_url = `/plugs/${ ip }/${ port }/${ test_uid }/openhtf.plugs.user_input.UserInput`;
+    let payload = JSON.stringify({
+      method: 'respond',
+      args: [id, response],
+    });
+    this.http.post(plug_url, payload, options)
+        .catch(this.handleError)
+        .subscribe();
   }
 }

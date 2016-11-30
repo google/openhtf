@@ -134,7 +134,7 @@ class UserInput(plugs.BasePlug):
   def _asdict(self):
     """Return a dict representation of the current prompt."""
     if self._prompt is None:
-      return None
+      return
     return {'id': self._prompt.id.hex,
             'message': self._prompt.message,
             'text-input': self._prompt.text_input}
@@ -154,8 +154,8 @@ class UserInput(plugs.BasePlug):
         self._prompt = None
         raise MultiplePromptsError
       self._prompt = Prompt(id=uuid.uuid4(),
-                           message=message,
-                           text_input=text_input)
+                            message=message,
+                            text_input=text_input)
       self._response = None
       _LOG.debug('Displaying prompt (%s): "%s"%s%s', self._prompt.id,
                  message, ', Expects text' if text_input else '',

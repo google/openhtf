@@ -13,16 +13,12 @@
 // limitations under the License.
 
 
-declare var $: any;  // Global provided by the jquery package.
-
 import {Component, Input} from 'angular2/core';
-import {RouteParams, Router} from 'angular2/router';
-import {Observable} from 'rxjs/Observable';
+import {RouteParams} from 'angular2/router';
 
 import {StationService} from './station.service';
 import 'file?name=/styles/station.prompt.css!./station.prompt.css';
 import 'file?name=/templates/station.prompt.html!./station.prompt.html';
-
 
 /** Prompt view component. **/
 @Component({
@@ -33,7 +29,8 @@ import 'file?name=/templates/station.prompt.html!./station.prompt.html';
   providers: [StationService]
 })
 export class Prompt {
-  @Input() framework: any;
+  @Input() prompt: any;
+  @Input() test_uid: number;
 
   /**
    * Create a Station view component.
@@ -45,11 +42,13 @@ export class Prompt {
   /**
    * Send the response to the given prompt through the StationService.
    */
-  sendResponse(input: HTMLInputElement, id) {
-    let ip = this.routeParams.get('ip');
+  sendResponse(input: HTMLInputElement, id: string) {
+    let ip = this.routeParams.get('host');
     let port = this.routeParams.get('port');
     let response = input ? input.value : '';
-    this.stationService.respondToPrompt(ip, port, id, response);
-    input.value = null;
+    this.stationService.respondToPrompt(ip, port, this.test_uid, id, response);
+    if (input) {
+      input.value = null;
+    }
   }
 }

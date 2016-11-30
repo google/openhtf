@@ -151,10 +151,13 @@ class StationStore(threading.Thread):
     for station in conf.stations:
       host = station['host']
       port = int(station['port'])
-      self.stations[host, port] = station_api.Station.from_host_port(host, port)
+      self.stations[HostPort(host, port)] = (
+          station_api.Station.from_host_port(host, port))
 
   def __getitem__(self, hostport):  # pylint:disable=invalid-name
     """Provide dictionary-like access to the station store."""
+    if not isinstance(hostport, Hostport):
+      raise ValueError('StationStore key must be a Hostport instance.')
     return self.stations.setdefault(hostport, None)
 
   def _discover(self):
@@ -341,52 +344,50 @@ class WebGuiServer(tornado.web.Application):
         functools.partial(StationPubSub, self.store), '/sub/station')
     handler_routes = [
         (r'/', self.MainHandler, {'port': http_port}),
-        (r'/station/(?:(?:[0-9]{1,3}\.){3}[0-9]{1,3})/(?:[0-9]{1,5})(?:/*)',
+        (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
         (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path}),
-        (r'/(styles\.css)', tornado.web.StaticFileHandler, {'path': path}),
     ] + dash_router.urls + station_router.urls
     super(WebGuiServer, self).__init__(
         handler_routes, template_path=path, static_path=path, debug=dev_mode)
     self.listen(http_port)
 
-  def remove_handlers_by_url(self, url):
-    """Remove any handlers with the given URL pattern (must match exactly)."""
-    if not url.endswith('$'):
-      url += '$'  # tornado does this internally, so we do the same.
-    self.handlers = [h for h in self.handlers if h[1].regex.pattern != url]
-
   def has_handler_for_url(self, url):
     """Returns True if there's a handler for the given URL (exact match)."""
     if not url.endswith('$'):
-      url += '$'  # tornado does this internally, so we do the same.
-    return any(h[0].pattern == url for h in self.handlers)
+      url += '$'  # Tornado does this internally, so we do the same.
+    for host_pattern, host_handlers in self.handlers:
+      for url_spec in host_handlers:
+        if url_spec.regex.pattern == url:
+          return True
+    return False
 
   def handle_test_state_update(self, hostport, test_uid, state):
     """Handle an update to a RemoteState.
 
-    This handler updates our URL handlers with any newly available plug
-    information and notifies the StationPubSub of the event.
+    Notifies the StationPubSub of the state update, and updates the server's URL
+    handlers with any newly available remote plugs.
     """
     if state is None:
       return
 
-    def _make_sockjs_url(rel_url):
-      """SockJS URL is /plugs/<host>/<port>/<test_uid>/<plug_name>"""
-      return r'/plugs/%s/%s/%s/%s' % (hostport + (test_uid, rel_url))
+    def make_plug_url(plug_name):
+      """Plug URL is /plugs/<host>/<port>/<test_uid>/<plug_name>"""
+      return '/plugs/%s/%s/%s/%s' % (hostport + (test_uid, plug_name))
 
     StationPubSub.publish_test_state_update(hostport, test_uid, state)
     plugs_port = state.plugs and state.plugs['xmlrpc_port']
     if plugs_port:
-      # See plugs.RemotePlug.discover for details, but essentially this call
-      # yields (connection-type, URL) tuples, where URL is relative to the
-      # particular station and test_uid in question.  We generate an absolute
-      # URL for use with SockJS with _make_sockjs_url().
-      self.add_handlers('.*$', [
-          (_make_sockjs_url(rel_url), conn) for conn, rel_url
+      # See plugs.RemotePlug.discover for details. This call yields tuples of
+      # (plug_name, handler, handler_params). From the plug names, we create
+      # URLs that are particular to a given station and test_uid.
+      handlers = [
+          (make_plug_url(plug_name), handler, params)
+          for plug_name, handler, params
           in plugs.RemotePlug.discover(hostport.host, plugs_port)
-          if not self.has_handler_for_url(_make_sockjs_url(rel_url))
-      ])
+          if not self.has_handler_for_url(make_plug_url(plug_name))
+      ]
+      self.add_handlers('.*$', handlers)
 
   def start(self):
     """Start the web server."""
