@@ -58,9 +58,9 @@ class TestExecutor(threads.KillableThread):
     if not isinstance(test_start, openhtf.PhaseDescriptor):
       @openhtf.TestPhase()
       def trigger_phase(test):
-        test.dut_id = test_start_function()
+        test.dut_id = test_start()
     else:
-      trigger_phase = test_start_function
+      trigger_phase = test_start
 
     self._test_start = _sanitize_to_phase(
         trigger_phase, default_timeout_s=60*60*24*365)
