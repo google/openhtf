@@ -421,8 +421,9 @@ class PlugManager(object):
           raise InvalidPlugError(
               'Plug type "%s" is not an instance of BasePlug' % plug_type)
         if plug_type.logger != _LOG:
+          # They put a logger attribute on the class itself, overriding ours.
           raise InvalidPlugError(
-              'Do not override "logger" in plugs', plug_type)
+              'Do not override "logger" in your plugs.', plug_type)
 
         # Override the logger so that __init__'s logging goes into the record.
         plug_type.logger = self._logger
