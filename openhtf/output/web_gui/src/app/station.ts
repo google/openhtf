@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/////////////////////////////////////////////////////////////////////////
+//AUTOMATICALLY GENERATED - IF YOU WANT TO EDIT GO TO update_plugins.py//
+/////////////////////////////////////////////////////////////////////////
 
 declare var $;  // Global provided by the jquery package.
 
@@ -20,12 +23,12 @@ import {Component,
         OnInit,
         SimpleChange} from 'angular2/core';
 import {RouteParams} from 'angular2/router';
+import {RouterLink} from 'angular2/router';
 
 import {Logs} from './station.logs';
 import {StationHeader} from './station.header';
 import {Metadata} from './station.metadata';
 import {PhaseListing} from './station.phases';
-import {Prompt} from './station.prompt';
 import {StationService} from './station.service';
 import {TestHeader} from './station.testheader';
 import {Countdown, ObjectToArray} from './utils';
@@ -39,7 +42,7 @@ import 'file?name=/templates/station.html!./station.html';
   templateUrl: 'templates/station.html',
   styleUrls: ['styles/station.css'],
   pipes: [ObjectToArray],
-  directives: [StationHeader, Prompt, TestHeader, PhaseListing, Logs, Metadata],
+  directives: [StationHeader, TestHeader, PhaseListing, Logs, Metadata, ],
   providers: [StationService]
 })
 export class Station implements OnDestroy, OnInit {
@@ -47,6 +50,7 @@ export class Station implements OnDestroy, OnInit {
   private currentMillis: number;
   private currentMillisJob: number;
   private tests: any[];
+  private plugins: any[];
 
   /**
    * Create a Station view component.
@@ -56,13 +60,22 @@ export class Station implements OnDestroy, OnInit {
     this.currentMillis = setInterval(() => {
       this.currentMillis = Date.now();
     }, 250);
+    //This line is automatically generated, can be very long
+    this.plugins=[];
   }
 
   /**
    * Set up the view component on initialization.
    */
   public ngOnInit(): any{
-    $('station-header ul.tabs').tabs();
+    //Setting function to make tabs in history view work correctly
+    $('station-header ul.tabs').tabs({'onShow': function(tab){
+      if (tab.selector == '#history-header'){
+        $('.history-nav').show();
+      } else if (tab.selector != '#testList' && tab.selector != '#starred'){
+        $('.history-nav').hide();
+      }
+    }});
     this.stationService.setHostPort(this.routeParams.get('host'),
                                     this.routeParams.get('port'));
     this.stationService.subscribe();
@@ -77,4 +90,5 @@ export class Station implements OnDestroy, OnInit {
     this.stationService.unsubscribe();
     clearInterval(this.currentMillisJob);
   }
+
 }

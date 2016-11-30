@@ -20,7 +20,9 @@ import {
   Input,
   OnChanges,
   OnInit,
-  SimpleChange
+  SimpleChange,
+  EventEmitter, 
+  Output
 } from 'angular2/core';
 
 import {SimplifyStatus, StatusToColor} from './utils';
@@ -41,12 +43,17 @@ export class TestHeader implements OnChanges {
   @Input() endTime: number;
   @Input() currentMillis: number;
   @Input() status: string;
+  @Input() isSummary: boolean;
+  @Input() canStar: boolean;
+  @Input() starred: boolean;
+  @Output() starChange = new EventEmitter();
   indicatorColorPipe: StatusToColor; // See ngOnChanges.
   indicatorStatusPipe: SimplifyStatus; // See ngOnChanges.
 
   constructor() {
     this.indicatorColorPipe = new StatusToColor();
     this.indicatorStatusPipe = new SimplifyStatus();
+    this.starChange.emit(this.starred);
   }
 
   ngOnInit() {
@@ -58,6 +65,17 @@ export class TestHeader implements OnChanges {
       $('.test-header-nav .indicator').addClass(color_class);
       $('.test-content').show()
     }, 100); // Timing hacks to make materialize-css play nice with Angular2.
+  }
+
+  /**
+   * Propogates star toggle event back to HistoryHeader component.
+   * @param event - Allows for event propogation, used to stop click from
+   *                reaching HistoryHeader.
+   */
+  toggleStar(event){
+    this.starred = !this.starred;
+    event.stopPropagation();
+    this.starChange.emit(this.starred);
   }
 
   /**

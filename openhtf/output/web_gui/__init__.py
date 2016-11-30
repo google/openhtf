@@ -54,6 +54,7 @@ import signal
 import socket
 import sys
 import threading
+import importlib
 
 import requests
 import sockjs.tornado
@@ -327,7 +328,7 @@ class WebGuiServer(tornado.web.Application):
     def get(self):
       self.render('index.html', host=socket.gethostname(), port=self.port)
 
-  def __init__(self, discovery_interval_s, disable_discovery, http_port,
+  def __init__(self, discovery_interval_s, disable_discovery, http_port, plugins = None,
                dev_mode=False):
     self.store = StationStore(
         discovery_interval_s, disable_discovery,
@@ -343,9 +344,27 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:(?:[0-9]{1,3}\.){3}[0-9]{1,3})/(?:[0-9]{1,5})(?:/*)',
          self.MainHandler, {'port': http_port}),
-        (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path}),
-        (r'/(styles\.css)', tornado.web.StaticFileHandler, {'path': path}),
+        (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path})
     ] + dash_router.urls + station_router.urls
+
+    # Add plugins into handler_routes
+    for plugin in list(plugins or []):
+      try:
+        # Import plugin package
+        plugin_module = importlib.import_module(plugin)
+        handlers = plugin_module.handlers
+      except (ImportError, AttributeError) as error:
+        _LOG.warning("Error: Unable to add "+plugin+" plugin: "+str(error))
+        continue
+
+      for handler in handlers:
+        # Add in handler dependencies 
+        dep_dict = {'station_store': self.store, 'host': socket.gethostname(),
+                    'port': http_port, 'path': path}
+
+        # Add completed route to handler_routes
+        handler_routes.append(handler + (dep_dict,))
+
     super(WebGuiServer, self).__init__(
         handler_routes, template_path=path, static_path=path, debug=dev_mode)
     self.listen(http_port)

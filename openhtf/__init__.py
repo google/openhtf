@@ -51,6 +51,7 @@ from openhtf.util import logs
 from openhtf.util import units
 
 
+
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
 

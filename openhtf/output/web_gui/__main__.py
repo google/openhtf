@@ -42,6 +42,8 @@ def main():
                       help='Disable multicast-based station discovery.')
   parser.add_argument('--dev', action='store_true',
                       help='Start in development mode.')
+  parser.add_argument('--plugins',  nargs = '*', dest='plugins',
+                      help='Add in plugins')
   args = parser.parse_args()
 
   logs.setup_logger()
@@ -49,6 +51,7 @@ def main():
   web_server = openhtf.output.web_gui.WebGuiServer(args.discovery_interval_s,
                                                    args.disable_discovery,
                                                    args.port,
+                                                   args.plugins,
                                                    args.dev)
 
   def sigint_handler(*dummy):

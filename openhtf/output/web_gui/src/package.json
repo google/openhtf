@@ -13,7 +13,8 @@
     "prestart": "python ./other_modules/get_other_modules.py",
     "start": "webpack --watch",
     "get_other_modules": "python ./other_modules/get_other_modules.py --force",
-    "update_prebuilt": "cp -r ./dist/* ../prebuilt"
+    "update_prebuilt": "cp -r ./dist/* ../prebuilt",
+    "update_plugins": "python ./update_plugins.py"
   },
   "license": "Apache-2.0",
   "devDependencies": {
@@ -41,6 +42,7 @@
     "material-design-icons": "~2.2.3",
     "material-icons": "~0.1.0",
     "materialize-css": "~0.97.6",
+    "process-env": "^1.1.0",
     "reflect-metadata": "0.1.2",
     "rxjs": "=5.0.0-beta.6",
     "symbol-observable": "^1.0.1",
