@@ -96,7 +96,9 @@ class TestMeasurements(unittest.TestCase):
     """Creating a measurement with invalid units should raise."""
     self.assertRaises(TypeError, htf.Measurement('bad_units').with_units, 1701)
 
-  @conf.save_and_restore(station_id='measurements_test', station_api_port=None)
+  @conf.save_and_restore(
+      station_id='measurements_test', station_api_port=None,
+      capture_source=True)
   def test_measurements(self):
     result = util.NonLocalResult()
     def _save_result(test_record):
@@ -109,7 +111,6 @@ class TestMeasurements(unittest.TestCase):
       test.add_output_callbacks(callbacks.OutputToFile(RECORD_FILENAME))
     else:
       test.add_output_callbacks(_save_result)
-    test.configure(capture_source=True)
     test.execute(test_start=lambda: 'TestDUT')
     if not self.UPDATE_OUTPUT:
       data.assert_records_equal_nonvolatile(

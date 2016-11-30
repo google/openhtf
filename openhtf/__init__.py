@@ -60,7 +60,7 @@ conf.declare('capture_source', description=textwrap.dedent(
     defaults to False since this potentially reads many files and makes large
     string copies.
 
-    Set to 'true' if you want to capture your test's source.''',
+    Set to 'true' if you want to capture your test's source.'''),
     default_value=False)
 
 
@@ -242,7 +242,7 @@ class Test(object):
       else:
         trigger = test_start
 
-      if self._test_options.capture_source:
+      if conf.capture_source:
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
       self._executor = core.TestExecutor(

@@ -15,7 +15,7 @@
 
 import unittest
 
-import openhtf
+import openhtf as htf
 
 
 def phase(test):
@@ -25,15 +25,17 @@ def phase(test):
 class BasicCodeCaptureTest(unittest.TestCase):
   """Basic sanity test only for capture_source's behavior."""
 
+  @htf.conf.save_and_restore
   def testCaptured(self):
-    test = openhtf.Test(phase)
-    test.configure(capture_source=True)
+    htf.conf.load(capture_source=True)
+    test = htf.Test(phase)
     phase_descriptor = test.descriptor.phases[0]
     self.assertEquals(phase_descriptor.code_info.name, phase.__name__)
 
+  @htf.conf.save_and_restore
   def testNotCaptured(self):
-    test = openhtf.Test(phase)
-    test.configure(capture_source=False)
+    htf.conf.load(capture_source=False)
+    test = htf.Test(phase)
     phase_descriptor = test.descriptor.phases[0]
     self.assertEquals(phase_descriptor.code_info.name, '')
 
