@@ -171,6 +171,10 @@ class BasePlug(object):
   enable_remote = False
   # Allow explicitly disabling remote access to specific attributes.
   disable_remote_attrs = set()
+  # Default logger to be used only in __init__ of subclasses..
+  # This is overwritten both on the class and the instance so don't store
+  # a copy of it anywhere.
+  logger = _LOG
 
   @classproperty
   def placeholder(cls):
@@ -416,15 +420,25 @@ class PlugManager(object):
         if not issubclass(plug_type, BasePlug):
           raise InvalidPlugError(
               'Plug type "%s" is not an instance of BasePlug' % plug_type)
+        if plug_type.logger != _LOG:
+          # They put a logger attribute on the class itself, overriding ours.
+          raise InvalidPlugError(
+              'Do not override "logger" in your plugs.', plug_type)
+
+        # Override the logger so that __init__'s logging goes into the record.
+        plug_type.logger = self._logger
         plug_instance = plug_type()
+        # Now set it back since we'll give the instance a logger in a moment.
+        plug_type.logger = _LOG
         # Set the logger attribute directly (rather than in BasePlug) so we
         # don't depend on subclasses' implementation of __init__ to have it
         # set.
-        if hasattr(plug_instance, 'logger'):
+        if plug_instance.logger != _LOG:
           raise InvalidPlugError(
-              'Plugs must not override the logger attribute.', plug_type)
+              'Do not set "self.logger" in __init__ in your plugs', plug_type)
         else:
-          setattr(plug_instance, 'logger', self._logger)
+          # Now the instance has its own copy of the test logger.
+          plug_instance.logger = self._logger
       except Exception:  # pylint: disable=broad-except
         _LOG.error('Exception instantiating plug type %s', plug_type)
         self.tear_down_plugs()
