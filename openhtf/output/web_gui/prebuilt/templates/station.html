@@ -4,29 +4,29 @@
                   [stationInfo]="stationInfo">
   </station-header>
   <div class="currentTab" id="current">
-    <div *ngIf="tests.length == 0" class="big-message">
+    <div *ngIf="testUIDs.length == 0" class="big-message">
       No tests available for display.
     </div>
-    <div *ngFor="let test of tests">
+    <div *ngFor="let testUID of testUIDs">
       <div class="test">
         <test-header
-          [dutID]="test.test_record?.dut_id"
-          [startTime]="test.test_record?.start_time_millis"
-          [endTime]="test.test_record?.end_time_millis"
+          [dutID]="tests[testUID].test_record?.dut_id"
+          [startTime]="tests[testUID].test_record?.start_time_millis"
+          [endTime]="tests[testUID].test_record?.end_time_millis"
           [currentMillis]="currentMillis"
-          [status]="test.test_record?.outcome
-                    || test.status || 'OFFLINE'">
+          [status]="tests[testUID].test_record?.outcome
+                    || tests[testUID].status || 'OFFLINE'">
         </test-header>
         <div class="test-content">
-          <prompt [prompt]="test.plugs.plug_states['openhtf.plugs.user_input.UserInput']"
-                  [test_uid]="test.test_uid">
+          <prompt [prompt]="tests[testUID].plugs.plug_states['openhtf.plugs.user_input.UserInput']"
+                  [test_uid]="testUID">
           </prompt>
-          <phase-listing id="phases" [state]="test"
+          <phase-listing id="phases" [state]="tests[testUID]"
                                      [currentMillis]="currentMillis">
           </phase-listing>
-          <logs id="logs" [log_records]="test.test_record?.log_records">
+          <logs id="logs" [log_records]="tests[testUID].test_record?.log_records">
           </logs>
-          <metadata id="metadata" [metadata]="test.test_record.metadata">
+          <metadata id="metadata" [metadata]="tests[testUID].test_record.metadata">
           </metadata>
         </div>
       </div>

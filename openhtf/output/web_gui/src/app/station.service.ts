@@ -35,7 +35,7 @@ export class StationService extends SubscriptionService {
   private history: any;
   private reachable: boolean;
   private stationInfo: any;
-  private testList: any[];
+  private testUIDs: string[];
   private tests: any;
   private pausedTests: any[];
 
@@ -51,7 +51,7 @@ export class StationService extends SubscriptionService {
       'port': this.UNKNOWN_PORT,
       'station_id': this.UNKNOWN_STATION_ID
     };
-    this.testList = [];
+    this.testUIDs = [];
     this.tests = {};
     this.pausedTests = [];
   }
@@ -76,7 +76,7 @@ export class StationService extends SubscriptionService {
   updateTest(test_uid: string, state: any) {
     if (this.tests[test_uid] == undefined) {
       this.tests[test_uid] = state;
-      this.testList.push(state);
+      this.testUIDs.push(test_uid);
     } else if (this.pausedTests.indexOf(test_uid) == -1) {
       let diff = jsonpatch.compare(this.tests[test_uid], state);
       jsonpatch.apply(this.tests[test_uid], diff);
@@ -104,7 +104,6 @@ export class StationService extends SubscriptionService {
     let parsedData = JSON.parse(msg.data);
     let test_uid = parsedData.test_uid;
     let state = parsedData.state;
-    state.test_uid = test_uid  // Add test_uid to the test state.
     if (!state) {
       console.warn('Received an empty state update.');
       return;
@@ -144,7 +143,16 @@ export class StationService extends SubscriptionService {
    * to objects representing the serialized OpenHTF RemoteState instances.
    */
   getTests(): any[] {
-    return this.testList;
+    return this.tests;
+  }
+
+  /**
+   * Return a reference to the array listing test UIDs on this station.
+   *
+   * The UIDs are listed in the order that they were first seen.
+   */
+  getTestUIDs(): any[] {
+    return this.testUIDs;
   }
 
   /**
