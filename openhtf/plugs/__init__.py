@@ -249,12 +249,13 @@ class RemotePlug(xmlrpcutil.TimeoutProxyServer):
           setattr(self, remote_attr.name, getattr(self, method))
 
   def list_methods(self):
-    self._listed_methods = super(
+    # Accessing self.system directly would result in a call to __getattr__.
+    self._cached_methods = super(
         RemotePlug, self).__getattr__('system').listMethods()
-    return self._listed_methods
+    return self._cached_methods
 
   def __getattr__(self, attr):
-    if attr in self._listed_methods or attr in self.list_methods():
+    if attr in self._cached_methods or attr in self.list_methods():
       return super(RemotePlug, self).__getattr__(attr)
     _LOG.debug('RemotePlug "%s" requested unknown attribute "%s", known: %s',
         self.plug_name, attr, self.list_methods())

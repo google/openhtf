@@ -372,6 +372,7 @@ class WebGuiServer(tornado.web.Application):
       return
 
     def make_plug_url(plug_name):
+      """Plug URL is /plugs/<host>/<port>/<test_uid>/<plug_name>"""
       return '/plugs/%s/%s/%s/%s' % (hostport + (test_uid, plug_name))
 
     StationPubSub.publish_test_state_update(hostport, test_uid, state)
