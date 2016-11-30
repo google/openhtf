@@ -128,6 +128,17 @@ class TestState(object):
                 running_phase_state.attach_from_file,
                 self.notify_update))
 
+  def add_pending_phases(self, phase_descs):
+    self.test_record.pending_phases.extend([
+        PhaseState.from_descriptor(phase_desc, None)
+        for phase_desc in phase_descs])
+
+  def pop_pending_phase(self):
+    self.test_record.pending_phases.pop(0)
+
+  def clear_pending_phases(self):
+    self.test_record.pending_phases.clear()
+
   @contextlib.contextmanager
   def running_phase_context(self, phase_desc):
     """Create a context within which a single phase is running.
