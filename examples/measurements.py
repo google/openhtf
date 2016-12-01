@@ -93,7 +93,7 @@ def lots_of_measurements(test):
 # describing the measurement.  Validators can get quite complex, for more
 # details, see the validators.py example.
 @htf.measures(htf.Measurement('validated_measurement').in_range(0, 10).doc(
-    'This measurement is validated.').with_units(units.SECOND))
+    'This measurement is validated.').with_units(htf.units.SECOND))
 def measure_seconds(test):
   # The 'outcome' of this measurement in the test_record result will be a PASS
   # because its value passes the validator specified (0 <= 5 <= 10).
@@ -106,7 +106,7 @@ def measure_seconds(test):
 # must be a string containing the measurement name).  If you want to specify
 # multiple measurements this way, you can stack multiple decorators.
 @htf.measures('inline_kwargs', docstring='This measurement is declared inline!',
-              units=units.HERTZ, validators=[validators.in_range(0, 10)])
+              units=htf.units.HERTZ, validators=[validators.in_range(0, 10)])
 @htf.measures('another_inline', docstring='Because why not?')
 def inline_phase(test):
   # This measurement will have an outcome of FAIL, because the set value of 15
