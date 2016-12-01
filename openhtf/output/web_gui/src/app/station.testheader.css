@@ -33,6 +33,7 @@
 }
 
 .test-header-nav .tabs {
+  display: flex;
   background: transparent;
   height: 130%;
   overflow-x: hidden;
@@ -40,10 +41,12 @@
 }
 
 .test-header-nav .tabs .tab {
+  flex-grow: 1;
   height: 100%;
 }
 
 .test-header-nav .tabs .tab a {
+  padding: 0;
   color: white;
   position: relative;
 }
