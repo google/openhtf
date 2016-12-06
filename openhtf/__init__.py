@@ -138,10 +138,10 @@ class Test(object):
     station_api.start_server()
 
   @classmethod
-  def state_by_uid(cls, test_uid):
-    """Get TestState of a test by UID.
+  def from_uid(cls, test_uid):
+    """Get Test by UID.
 
-    Returns: TestState of currently running test, given by test_uid.
+    Returns: Test object, given by UID.
 
     Raises:
       UnrecognizedTestUidError: If the test_uid is not recognized.
@@ -149,7 +149,7 @@ class Test(object):
     test = cls.TEST_INSTANCES.get(test_uid)
     if not test:
       raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
-    return test.state
+    return test
 
   @property
   def uid(self):

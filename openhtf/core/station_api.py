@@ -161,6 +161,14 @@ class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
     return not self.__eq__(other)
 
 
+class RemotePhaseDescriptor(collections.namedtuple('RemotePhaseDescriptor', [
+    'name', 'doc'])):
+  """Representation of a remote PhaseDescriptor.
+
+  This is static information attached to a RemoteTest.
+  """
+
+
 class RemotePhase(collections.namedtuple('RemotePhase', [
     'name', 'codeinfo', 'start_time_millis', 'attachments', 'measurements'])):
   """Encapsulating class for info about a remotely executing Phase.
@@ -213,7 +221,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
         # Cache last known state (a RemoteState) so we can detect deltas.
-        'cached_state': None})):
+        'cached_state': None, 'cached_phase_descriptors': None})):
 
   def __hash__(self):
     return hash((self.test_uid, self.created_time_millis))
@@ -271,6 +279,16 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
         'running_phase_state': data.convert_to_base_types(
             cached_state.running_phase_state),
         'test_record': xmlrpclib.Binary(pickle.dumps(test_record))}
+
+  @property
+  def phase_descriptors(self):
+    """Get phase descriptors for this test."""
+    if not self.cached_phase_descriptors:
+      descriptors = self.shared_proxy.get_phase_descriptors(self.test_uid)
+      if descriptors:
+        self.cached_phase_descriptors = [
+            RemotePhaseDescriptor(**desc) for desc in descriptors]
+    return self.cached_phase_descriptors
 
   def wait_for_update(self, timeout_s=1):
     """Block until there's new state data available, or timeout.
@@ -510,7 +528,7 @@ class Station(object):
               self.make_proxy, self._shared_proxy, self._history, **test_dict)
         except Exception as e:
           # TODO(madsci): catch real exceptions here.
-          import pdb; pdb.set_trace()
+          raise
       else:
         updated_tests[test_uid] = self.cached_tests[test_uid]
 
@@ -561,6 +579,11 @@ class StationApi(object):
     _LOG.debug('RPC:list_tests() -> %s results', len(retval))
     return retval
 
+  def get_phase_descriptors(self, test_uid):
+    """Get phase descriptors for the given test UID, or None if invalid UID."""
+    phases = openhtf.Test.from_uid(test_uid).descriptor.phases
+    return [{'name': phase.name, 'doc': phase.doc} for phase in phases]
+
   @staticmethod
   def _serialize_state_dict(state_dict, remote_record=None):
     if (remote_record and
@@ -597,7 +620,7 @@ class StationApi(object):
     currently .Execute()'ing.
     """
     _LOG.debug('RPC:get_test_state(%s)', test_uid)
-    state = openhtf.Test.state_by_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
     if state:
       remote_record = remote_record and pickle.loads(remote_record.data)
       return self._serialize_state_dict(state._asdict(), remote_record)
@@ -628,7 +651,7 @@ class StationApi(object):
       PlugUnrecognizedError: If the requested plug is not used by the
           currently running test.
     """
-    test_state = openhtf.Test.state_by_uid(test_uid)
+    test_state = openhtf.Test.from_uid(test_uid).state
     return test_state.plug_manager.wait_for_plug_update(
         plug_type_name, current_state, timeout_s)
 
@@ -681,7 +704,7 @@ class StationApi(object):
           previously thought it was).
     """
     _LOG.debug('RPC:wait_for_update(timeout_s=%s)', timeout_s)
-    state = openhtf.Test.state_by_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
     if state is None:
       if remote_state_dict:
         # Remote end expects there to be a test running but there isn't, this
@@ -690,7 +713,7 @@ class StationApi(object):
 
       # Remote end already thinks the test isn't Execute()'ing, so wait for it.
       state = timeouts.loop_until_timeout_or_not_none(
-          timeout_s, lambda: openhtf.Test.state_by_uid(test_uid), sleep_s=.1)
+          timeout_s, lambda: openhtf.Test.from_uid(test_uid).state, sleep_s=.1)
       if not state:
         raise UpdateTimeout(
             "No test started Execute()'ing before timeout", timeout_s)
@@ -732,7 +755,7 @@ class StationApi(object):
 
     _LOG.debug('RPC:wait_for_update() -> change after wait')
     # Grab a fresh copy of the state and return the new info.
-    state = openhtf.Test.state_by_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
     return state and self._serialize_state_dict(
         state._asdict(), remote_state_dict['test_record'])
 
