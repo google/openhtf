@@ -26,6 +26,7 @@ import logging
 import signal
 import socket
 import sys
+import textwrap
 import threading
 import weakref
 from types import LambdaType
@@ -53,6 +54,14 @@ from openhtf.util import units
 
 __version__ = util.get_version()
 _LOG = logging.getLogger(__name__)
+
+conf.declare('capture_source', description=textwrap.dedent(
+    '''Whether to capture the source of phases and the test module.  This
+    defaults to False since this potentially reads many files and makes large
+    string copies.
+
+    Set to 'true' if you want to capture your test's source.'''),
+    default_value=False)
 
 
 class UnrecognizedTestUidError(Exception):
@@ -94,11 +103,24 @@ class Test(object):
 
     self.created_time_millis = util.time_millis()
     self.last_run_time_millis = None
-    code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
-    self._test_desc = TestDescriptor(self.uid, phases, code_info, metadata)
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
+    self._test_desc = TestDescriptor(
+        self.uid, phases, test_record.CodeInfo.uncaptured(), metadata)
+
+    if conf.capture_source:
+      # First, we copy the phases with the real CodeInfo for them.
+      phases = [
+        mutablerecords.CopyRecord(
+            phase, code_info=test_record.CodeInfo.for_function(phase.func))
+        for phase in self._test_desc.phases]
+
+      # Then we replace the TestDescriptor with one that stores the test
+      # module's CodeInfo as well as our newly copied phases.
+      code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
+      self._test_desc = self._test_desc._replace(
+          code_info=code_info, phases=phases)
 
     # Make sure configure() gets called at least once before Execute().  The
     # user might call configure() again to override options, but we don't want
@@ -159,14 +181,7 @@ class Test(object):
     self._test_options.output_callbacks.extend(callbacks)
 
   def configure(self, **kwargs):
-    """Update test-wide configuration options.
-
-    Valid kwargs:
-      output_callbacks: List of output callbacks to run, typically it's better
-          to use add_output_callbacks(), but you can pass [] here to reset them.
-      teardown_function: Function to run at teardown.  We pass the same
-          arguments to it as a phase.
-    """
+    """Update test-wide configuration options. See TestOptions for docs."""
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
     create_arg_parser(add_help=True).parse_known_args()
@@ -227,6 +242,9 @@ class Test(object):
       else:
         trigger = test_start
 
+      if conf.capture_source:
+        trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
+
       self._executor = core.TestExecutor(
           self._test_desc, trigger, self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
@@ -259,7 +277,14 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'output_callbacks': list,
     'teardown_function': None,
 })):
-  """Class encapsulating various tunable knobs for Tests and their defaults."""
+  """Class encapsulating various tunable knobs for Tests and their defaults.
+
+  name: The name of the test to be put into the metadata.
+  output_callbacks: List of output callbacks to run, typically it's better to
+      use add_output_callbacks(), but you can pass [] here to reset them.
+  teardown_function: Function to run at teardown.  We pass the same arguments to
+      it as a phase.
+  """
 
 
 class TestDescriptor(collections.namedtuple(
@@ -366,17 +391,18 @@ class PhasePlug(mutablerecords.Record(
 
 
 class PhaseDescriptor(mutablerecords.Record(
-    'PhaseDescriptor', ['func', 'code_info'],
+    'PhaseDescriptor', ['func'],
     {'options': PhaseOptions, 'plugs': list, 'measurements': list,
-     'extra_kwargs': dict})):
+     'extra_kwargs': dict, 'code_info': test_record.CodeInfo.uncaptured()})):
   """Phase function and related information.
 
   Attributes:
     func: Function to be called (with TestApi as first argument).
-    code_info: Info about the source code of func.
     options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
     measurements: List of Measurement objects.
+    extra_kwargs: Keyword arguments that will be passed to the function.
+    code_info: Info about the source code of func.
   """
 
   @classmethod
@@ -398,7 +424,7 @@ class PhaseDescriptor(mutablerecords.Record(
       # or kwargs.  See with_args() below for more details.
       retval = mutablerecords.CopyRecord(func)
     else:
-      retval = cls(func, test_record.CodeInfo.for_function(func))
+      retval = cls(func)
     retval.options.update(**options)
     return retval
 

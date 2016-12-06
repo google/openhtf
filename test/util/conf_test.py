@@ -96,6 +96,7 @@ class TestConf(unittest.TestCase):
         'enable_station_discovery': True,
         'station_api_port': 8888,
         'allow_unset_measurements': False,
+        'capture_source': False,
         'station_discovery_string': 'OPENHTF_DISCOVERY',
         'station_api_bind_address': '0.0.0.0',
         'station_id': 'station_id',
