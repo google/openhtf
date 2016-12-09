@@ -428,6 +428,14 @@ class PhaseDescriptor(mutablerecords.Record(
     retval.options.update(**options)
     return retval
 
+  def _asdict(self):
+    asdict = {
+        key: data.convert_to_base_types(getattr(self, key), ignore_keys=('cls',))
+        for key in self.optional_attributes
+    }
+    asdict.update(name=self.name, doc=self.doc)
+    return asdict
+
   @property
   def name(self):
     return self.options.name or self.func.__name__
@@ -497,6 +505,15 @@ class PhaseDescriptor(mutablerecords.Record(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)
     return self.func(**kwargs)
+
+
+class RemotePhaseDescriptor(mutablerecords.Record('RemotePhaseDescriptor', [
+    'name', 'doc'], PhaseDescriptor.optional_attributes)):
+  """Representation of a PhaseDescriptor on a remote test (see station_api).
+
+  This is static information attached to a RemoteTest.  It's defined here to
+  avoid a circular dependency with station_api.
+  """
 
 
 class TestApi(collections.namedtuple('TestApi', [

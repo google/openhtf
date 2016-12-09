@@ -161,14 +161,6 @@ class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
     return not self.__eq__(other)
 
 
-class RemotePhaseDescriptor(collections.namedtuple('RemotePhaseDescriptor', [
-    'name', 'doc'])):
-  """Representation of a remote PhaseDescriptor.
-
-  This is static information attached to a RemoteTest.
-  """
-
-
 class RemotePhase(collections.namedtuple('RemotePhase', [
     'name', 'codeinfo', 'start_time_millis', 'attachments', 'measurements'])):
   """Encapsulating class for info about a remotely executing Phase.
@@ -221,7 +213,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
         # Cache last known state (a RemoteState) so we can detect deltas.
-        'cached_state': None, 'cached_phase_descriptors': None})):
+        'cached_state': None, 'cached_phase_descriptors': list})):
 
   def __hash__(self):
     return hash((self.test_uid, self.created_time_millis))
@@ -287,7 +279,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
       descriptors = self.shared_proxy.get_phase_descriptors(self.test_uid)
       if descriptors:
         self.cached_phase_descriptors = [
-            RemotePhaseDescriptor(**desc) for desc in descriptors]
+            openhtf.RemotePhaseDescriptor(**desc) for desc in descriptors]
     return self.cached_phase_descriptors
 
   def wait_for_update(self, timeout_s=1):
@@ -580,9 +572,13 @@ class StationApi(object):
     return retval
 
   def get_phase_descriptors(self, test_uid):
-    """Get phase descriptors for the given test UID, or None if invalid UID."""
+    """Get phase descriptor fields for the given test UID.
+
+    Returns:
+      Dict containing RemotePhaseDescriptor fields, or None if UID is invalid.
+    """
     phases = openhtf.Test.from_uid(test_uid).descriptor.phases
-    return [{'name': phase.name, 'doc': phase.doc} for phase in phases]
+    return [data.convert_to_base_types(phase) for phase in phases]
 
   @staticmethod
   def _serialize_state_dict(state_dict, remote_record=None):
