@@ -121,8 +121,25 @@ class Validators(object):
   def equals(self, value):
     if isinstance(value, self.modules['numbers'].Number):
       return self.InRange(minimum=value, maximum=value)
-    else:
+    elif isinstance(value, basestring):
       return self._matches_regex(self.modules['re'].escape(value))
+    else:
+      return self.Equals(value)
+    
+  class Equals(object):
+    """Validator to verify an object is equal to the expected value."""
+    
+    def __init__(self, expected):
+      self.expected = expected
+      
+    def __call__(self, value):
+      return value == self.expected
+    
+    def __str__(self):
+      return "'x' is equal to '%s'" % self.expected
+    
+    def __eq__(self, other):
+      return isinstance(other, type(self)) and self.expected == other.expected
 
   class RegexMatcher(object):
     """Validator to verify a string value matches a regex."""
