@@ -55,7 +55,7 @@ where you'll find sample test scripts and plugs. In addition, many of OpenHTF's
 modules are fairly well documented inline through the use of docstrings.
 
 Note: some of the `examples/` require protocol buffer code to be generated via
-`setup python.py build` command.  This requires protocol buffer compiler
+`python setup.py build` command.  This requires protocol buffer compiler
 library to be installed
 ([additional instructions](CONTRIBUTING.md#setting-up-your-dev-environment)).
 
