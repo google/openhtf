@@ -122,11 +122,12 @@ class ConsolePrompt(threading.Thread):
       self._stopped = True
 
 
-class UserInput(plugs.BasePlug):
+class UserInput(plugs.FrontendAwareBasePlug):
   """Get user input from inside test phases."""
   enable_remote = True
 
   def __init__(self):
+    super(UserInput, self).__init__()
     self._prompt = None
     self._response = None
     self._cond = threading.Condition()
@@ -138,6 +139,11 @@ class UserInput(plugs.BasePlug):
     return {'id': self._prompt.id.hex,
             'message': self._prompt.message,
             'text-input': self._prompt.text_input}
+
+  def _set_prompt(self, prompt):
+    """Helper for setting the prompt and triggering notfiy_update."""
+    self._prompt = prompt
+    self.notify_update()
 
   def prompt(self, message, text_input=False, timeout_s=None):
     """Prompt for a user response by showing the message.
@@ -151,11 +157,10 @@ class UserInput(plugs.BasePlug):
     """
     with self._cond:
       if self._prompt is not None:
-        self._prompt = None
+        self._set_prompt(None)
         raise MultiplePromptsError
-      self._prompt = Prompt(id=uuid.uuid4(),
-                            message=message,
-                            text_input=text_input)
+      self._set_prompt(Prompt(id=uuid.uuid4(), message=message,
+                              text_input=text_input))
       self._response = None
       _LOG.debug('Displaying prompt (%s): "%s"%s%s', self._prompt.id,
                  message, ', Expects text' if text_input else '',
@@ -166,9 +171,8 @@ class UserInput(plugs.BasePlug):
       console_prompt.start()
       self._cond.wait(timeout_s)
       console_prompt.Stop()
-      self._prompt = None
+      self._set_prompt(None)
       if self._response is None:
-        self._prompt = None
         raise PromptUnansweredError
       return self._response
 

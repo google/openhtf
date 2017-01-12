@@ -25,13 +25,9 @@ beginning of a test, and all plugs' tearDown() methods are called at the
 end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 
-If the Station API is enabled, then the _asdict() method of plugs may be
-called in a tight loop to detect state updates.  Since _asdict() may incur
-significant overhead, it's recommended to use functions.call_at_most_every()
-to limit the rate at which _asdict() is called.  As an additional
-consideration, a separate thread calling _asdict() implies that Plugs must
-be thread-safe if Station API is enabled (at least, calls to _asdict() must
-be).
+A plug may be made "frontend-aware", allowing it, in conjunction with the
+Station API, to update any frontends each time the plug's state changes. See
+FrontendAwareBasePlug for more info.
 
 Example implementation of a plug:
 
@@ -111,6 +107,7 @@ import sockjs.tornado
 import tornado.web
 
 import openhtf
+from openhtf import util
 from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
@@ -199,6 +196,19 @@ class BasePlug(object):
   def tearDown(self):
     """This method is called automatically at the end of each Test execution."""
     pass
+
+
+class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
+  """A plug that notifies of any state updates.
+
+  Plugs inheriting from this class may be used in conjunction with the Station
+  API to update any frontends each time the plug's state changes. The plug
+  should call its notify_update method when and only when the state, as returned
+  by _asdict, changes.
+
+  Since the Station API runs in a separate thread, the _asdict() method of
+  frontend-aware plugs should be written with thread safety in mind.
+  """
 
 
 class RemotePlug(xmlrpcutil.TimeoutProxyServer):
@@ -513,23 +523,38 @@ class PlugManager(object):
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
-  def wait_for_plug_update(self, plug_type_name, current_state, timeout_s):
-    """Return an updated plug state dict, or None on timeout.
+  def wait_for_plug_update(self, plug_name, remote_state, timeout_s):
+    """Wait for a change in the state of a frontend-aware plug.
 
-    This method blocks until the plug described by plug_type_name has a state
-    that differs from current_state (as per equality check), or timeout_s
-    seconds have passed (in which case, it returns None).
+    Args:
+      plug_name: Plug name, e.g. 'openhtf.plugs.user_input.UserInput'.
+      remote_state: The last observed state.
+      timeout_s: Number of seconds to wait for an update.
 
-    TODO(madsci): Maybe consider combining overlapping requests for the same
-    plug, otherwise we start a new PlugUpdateThread for each request.  In
-    practice, if there is only a single frontend running, there should only
-    ever be one request at a time for a given plug anyway.
+    Returns:
+      An updated state, or None if the timeout runs out.
+
+    Raises:
+      InvalidPlugError: The plug can't be waited on either because it's not in
+          use or it's not a frontend-aware plug.
     """
-    if plug_type_name not in self._plugs_by_name:
-      raise InvalidPlugError('Unknown plug name "%s"' % plug_type_name)
-    plug_instance = self._plugs_by_name[plug_type_name]
-    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
-    while not timeout.has_expired():
-      new_state = plug_instance._asdict()
-      if new_state != current_state:
-        return new_state
+    plug = self._plugs_by_name.get(plug_name)
+
+    if plug is None:
+      raise InvalidPlugError('Cannot wait on unknown plug "%s".' % plug_name)
+
+    if not isinstance(plug, FrontendAwareBasePlug):
+      raise InvalidPlugError('Cannot wait on a plug %s that is not an subclass '
+                             'of FrontendAwareBasePlug.' % plug_name)
+
+    state, update_event = plug.asdict_with_event()
+    if state != remote_state:
+      return state
+
+    if update_event.wait(timeout_s):
+      return plug._asdict()
+
+  def get_frontend_aware_plug_names(self):
+    """Returns the names of frontend-aware plugs."""
+    return [name for name, plug in self._plugs_by_name.iteritems()
+            if isinstance(plug, FrontendAwareBasePlug)]

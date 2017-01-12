@@ -131,8 +131,8 @@ class UpdateTimeout(Exception):
   """Raised when a wait_for_update call times out."""
 
 
-class PlugUnrecognizedError(Exception):
-  """Raised if a plug is requested that is not in use."""
+class TestNotRunningError(Exception):
+  """Raised by wait_for_plug_update if the test is not running."""
 
 
 class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
@@ -294,6 +294,13 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     self.cached_state = (remote_state_dict and
                          RemoteState(cached_state, **remote_state_dict))
     return self.cached_state
+
+  def wait_for_plug_update(self, plug_name, plug_state, timeout_s=1):
+    return self.proxy_factory(timeout_s + 1).wait_for_plug_update(
+        self.test_uid, plug_name, plug_state, timeout_s)
+
+  def get_frontend_aware_plug_names(self):
+    return self.proxy_factory().get_frontend_aware_plug_names(self.test_uid)
 
   @property
   @StationUnreachableError.reraise_socket_error
@@ -508,9 +515,9 @@ class Station(object):
         try:
           updated_tests[test_uid] = RemoteTest(
               self.make_proxy, self._shared_proxy, self._history, **test_dict)
-        except Exception as e:
+        except Exception:
           # TODO(madsci): catch real exceptions here.
-          import pdb; pdb.set_trace()
+          raise
       else:
         updated_tests[test_uid] = self.cached_tests[test_uid]
 
@@ -602,35 +609,31 @@ class StationApi(object):
       remote_record = remote_record and pickle.loads(remote_record.data)
       return self._serialize_state_dict(state._asdict(), remote_record)
 
-  def wait_for_plug(self, test_id, plug_type_name, current_state, timeout_s):
+  def wait_for_plug_update(self, test_uid, plug_name, current_state, timeout_s):
     """Long-poll RPC that blocks until the requested plug has an update.
-
-    While waiting, a thread is spawned that will call the plug's _asdict()
-    method in a tight loop until a change is detected (this is to prevent
-    Plug implementors from having to sprinkle notify calls everywhere to
-    trigger updates).
 
     Args:
       test_uid: Test UID from which to obtain the plug on which to wait.
-      plug_type_name: The plug type (string name, like 'my.module.MyPlug')
-          on which to wait for an update.
+      plug_name: The plug type (string name, like 'my.module.MyPlug') on which
+          to wait for an update.
       current_state: Current remotely known plug state.  This is what the
           plug's state is compared against to detect an update.
-      timeout_s: Timeout (in seconds) to wait for an update.  If no update
-          occurs within this time, returns an empty string.
+      timeout_s: Number of seconds to wait for an update before giving up.
 
     Returns:
       New _asdict() state of plug, or None in the case of a timeout.
 
     Raises:
-      UnrecognizedTestUidError: If the test_uid is not recognized.
-      TestNotRunningError: If the test requested is not currently running.
-      PlugUnrecognizedError: If the requested plug is not used by the
-          currently running test.
+      UnrecognizedTestUidError: The test_uid is not recognized.
+      TestNotRunningError: The requested test is not running.
+      openhtf.plugs.InvalidPlugError: The plug can't be waited on either because
+          it's not in use or it's not frontend-aware.
     """
     test_state = openhtf.Test.state_by_uid(test_uid)
+    if test_state is None:
+      raise TestNotRunningError('Test %s is not running.' % test_uid)
     return test_state.plug_manager.wait_for_plug_update(
-        plug_type_name, current_state, timeout_s)
+        plug_name, current_state, timeout_s)
 
   @staticmethod
   def _summary_for_state_dict(state_dict):
@@ -649,7 +652,7 @@ class StationApi(object):
     return state_dict_summary
 
   def wait_for_update(self, test_uid, remote_state_dict, timeout_s):
-    """Long-poll RPC that blocks until there is new information available.
+    """Long-poll RPC that blocks until the test state has an update.
 
     Events that trigger an update:
       Test Status Changes (ie, transition from WAITING_FOR_START to RUNNING).
@@ -659,7 +662,7 @@ class StationApi(object):
       Log line is produced (via TestApi.logger).
 
     Note that plug state changes do NOT trigger an update here, use
-    wait_for_plug() to get plug state change events.
+    wait_for_plug_update() to get plug state change events.
 
     Args:
       test_uid: Test UID for which to wait on an update.
@@ -682,16 +685,19 @@ class StationApi(object):
     """
     _LOG.debug('RPC:wait_for_update(timeout_s=%s)', timeout_s)
     state = openhtf.Test.state_by_uid(test_uid)
+
+    # Handle the case in which the test is not running.
     if state is None:
       if remote_state_dict:
-        # Remote end expects there to be a test running but there isn't, this
-        # is all the information we need to return immediately.
+        # Remote end expected the test to be running but it's not. This is all
+        # the information we need to return immediately.
         return
 
-      # Remote end already thinks the test isn't Execute()'ing, so wait for it.
+      # Remote end expected that the test was not running, so wait for it to
+      # start.
       state = timeouts.loop_until_timeout_or_not_none(
           timeout_s, lambda: openhtf.Test.state_by_uid(test_uid), sleep_s=.1)
-      if not state:
+      if state is None:
         raise UpdateTimeout(
             "No test started Execute()'ing before timeout", timeout_s)
       _LOG.debug(
@@ -743,6 +749,15 @@ class StationApi(object):
     return [xmlrpclib.Binary(pickle.dumps(test_record))
             for test_record in history.for_test_uid(
                 test_uid, start_after_millis=start_time_millis)]
+
+  def get_frontend_aware_plug_names(self, test_uid):
+    """Returns the names of frontend-aware plugs."""
+    _LOG.debug('RPC:get_frontend_aware_plug_names()')
+    state = openhtf.Test.state_by_uid(test_uid)
+    if state is None:
+      return
+    return state.plug_manager.get_frontend_aware_plug_names()
+
 
 
 class ApiServer(threading.Thread):
