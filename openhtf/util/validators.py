@@ -85,6 +85,8 @@ class Validators(object):
       self.maximum = maximum
 
     def __call__(self, value):
+       if value is None:
+        return False
       import math
       # Check for nan
       if math.isnan(value):
