@@ -37,6 +37,7 @@ from openhtf.output.callbacks import json_factory
 
 from openhtf.plugs import user_input
 
+
 # The @htf.measures annotation notifies the OpenHTF framework that this test
 # phase will be taking a measurement that we'd like to call
 # 'hello_world_measurement'.  Measurements can be accessed and set via

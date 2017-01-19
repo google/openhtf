@@ -46,6 +46,7 @@ class FailTwicePlug(plugs.BasePlug):
 
     return True
 
+
 class FailAlwaysPlug(plugs.BasePlug):
   """Plug that always returns False indicating failure."""
 
@@ -58,6 +59,7 @@ class FailAlwaysPlug(plugs.BasePlug):
     print "FailAlwaysPlug: Run number %s" % (self.count)
 
     return False
+
 
 # This phase demonstrates catching an exception raised in the plug and
 # returning PhaseResult.REPEAT to trigger a repeat.  The phase will be run a

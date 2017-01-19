@@ -92,6 +92,7 @@ def attachments(test):
   test.attach('test_attachment', 'This is test attachment data.')
   test.attach_from_file('example_attachment.txt')
 
+
 def teardown(test):
   test.logger.info('Running teardown')
 
@@ -120,5 +121,5 @@ if __name__ == '__main__':
   #    test.add_output_callbacks(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
 
-  #test.configure(teardown_function=teardown)
+  test.configure(teardown_function=teardown)
   test.execute(test_start=user_input.prompt_for_test_start())

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """Example plug for OpenHTF."""
-
 
 import time
 
@@ -41,7 +39,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
       implemented).
 
       For example, if you had no openhtf.conf loaded, you could do this:
-        my_plug = ExamplePlug(example_plug_increment=4)
+        my_plug = ExamplePlug(example_plug_increment_size=4)
 
     - tearDown()
       This method will be called automatically by the OpenHTF framework at
