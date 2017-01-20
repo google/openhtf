@@ -33,8 +33,10 @@ import example_plug
 
 
 @htf.plug(example=example_plug.ExamplePlug)
-def example_monitor(example):
+@htf.plug(frontend_aware=example_plug.ExampleFrontendAwarePlug)
+def example_monitor(example, frontend_aware):
   time.sleep(.2)
+  frontend_aware.increment()
   return example.increment()
 
 

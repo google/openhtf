@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Example plug for OpenHTF."""
+"""Example plugs for OpenHTF."""
 
 import time
 
@@ -79,3 +79,27 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
     """Increment our value, return the previous value."""
     self.value += self.increment_size
     return self.value - self.increment_size
+
+
+class ExampleFrontendAwarePlug(plugs.FrontendAwareBasePlug):
+  """Example of a simple frontend-aware plug.
+
+  A frontend-aware plug is a plug that agrees to call self.notify_update()
+  anytime its state changes. The state should be returned by self._asdict().
+  This allows frontends such as openhtf.output.web_gui to receive updates to the
+  plug's state in real time.
+
+  See also:
+    - openhtf.plugs.FrontendAwareBasePlug
+    - openhtf.plugs.user_input.UserInput
+  """
+  def __init__(self):
+    self.value = 0
+
+  def _asdict(self):
+    return {'value': self.value}
+
+  def increment(self):
+    """Increment our value."""
+    self.value += 1
+    self.notify_update()
