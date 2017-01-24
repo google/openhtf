@@ -194,13 +194,23 @@ class UserInput(plugs.BasePlug):
 
 
 def prompt_for_test_start(
-    message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24):
-  """Return an OpenHTF phase for use as a prompt-based start trigger."""
+    message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24,
+    validator=lambda sn: sn):
+  """Return an OpenHTF phase for use as a prompt-based start trigger.
+
+    Args:
+      message: The message to display to the user.
+      timeout_s: Seconds to wait before raising a PromptUnansweredError.
+      validator: Function used to validate or modify the serial number.
+  """
+
   @PhaseOptions(timeout_s=timeout_s)
   @plugs.plug(prompts=UserInput)
   def trigger_phase(test, prompts):
     """Test start trigger that prompts the user for a DUT ID."""
-    test.test_record.dut_id = prompts.prompt(message=message, text_input=True,
-                                             timeout_s=timeout_s)
+
+    dut_id = prompts.prompt(message=message, text_input=True,
+                            timeout_s=timeout_s)
+    test.test_record.dut_id = validator(dut_id)
 
   return trigger_phase
