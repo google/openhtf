@@ -105,6 +105,7 @@ import inspect
 import logging
 import threading
 import time
+import types
 
 import mutablerecords
 import sockjs.tornado
@@ -143,7 +144,11 @@ class RemoteAttribute(collections.namedtuple(
 
     Method strings, as returned by a ServerProxy's listMethods() method, will
     look something like:
-        'plugs.openhtf.plugs.user_input.UserInput.prompt'
+      'plugs.openhtf.plugs.user_input.UserInput.prompt'
+
+    The resulting RemoteAttribute would then have fields:
+      class_name: 'openhtf.plugs.user_input.UserInput'
+      name: 'prompt'
     """
     remainder, _, attr_name = method_string.rpartition('.')
     _, _, class_name = remainder.partition('.')
@@ -386,41 +391,47 @@ class PlugManager(object):
             'xmlrpc_port': self._xmlrpc_server and
                            self._xmlrpc_server.socket.getsockname()[1]}
 
-  def _initialize_rpc_server(self):
-    """Initialize and start an XMLRPC server for current plug types.
+  def _create_or_update_rpc_server(self):
+    """Create or update the XML-RPC server for remote access to plugs.
 
-    If any plugs we currently know about have enable_remote set True, then
-    register their public methods (ones that don't start with _) and spin up
-    an XMLRPC Server.
+    We register on the server the public methods (ones that don't start with _)
+    of those plugs which have enable_remote set to True.
 
-    Plug methods are available via RPC calls to:
+    Those methods are then available via RPC calls to:
       'plugs.<plug_module>.<plug_type>.<plug_method>'
-
-    Note that this method will shutdown any previously running server.
     """
-    server = xmlrpcutil.SimpleThreadedXmlRpcServer((
-        conf.station_api_bind_address, 0))
-    for name, a_plug in self._plugs_by_name.iteritems():
-      if not a_plug.enable_remote:
+
+    # Create a list of (method, method_name) pairs.
+    plug_methods = []
+
+    for name, plug in self._plugs_by_name.iteritems():
+      if not plug.enable_remote:
         continue
 
-      for attr in dir(a_plug):
-        if (not attr.startswith('_') and
-            attr != 'tearDown' and
-            attr not in a_plug.disable_remote_attrs):
-          server.register_function(
-              getattr(a_plug, attr), name='.'.join(('plugs', name, attr)))
+      for attr_name in dir(plug):
+        attr = getattr(plug, attr_name)
+        if (isinstance(attr, types.MethodType) and
+            not attr_name.startswith('_') and
+            attr_name != 'tearDown' and
+            attr_name not in plug.disable_remote_attrs):
+          plug_methods.append((attr, '.'.join(('plugs', name, attr_name))))
 
-    if server.system_listMethods():
-      if self._xmlrpc_server:
-        _LOG.warning('Shutting down previous PlugManager XMLRPC Server.')
-        self._xmlrpc_server.shutdown()
-      server.register_introspection_functions()
-      server_thread = threading.Thread(target=server.serve_forever,
+    if not plug_methods:
+      return
+
+    if not self._xmlrpc_server:
+      _LOG.debug('Starting PlugManager XML-RPC server.')
+      self._xmlrpc_server = xmlrpcutil.SimpleThreadedXmlRpcServer((
+        conf.station_api_bind_address, 0))
+      self._xmlrpc_server.register_introspection_functions()
+      server_thread = threading.Thread(target=self._xmlrpc_server.serve_forever,
                                        name='PlugManager-XMLRPCServer')
       server_thread.daemon = True
       server_thread.start()
-      self._xmlrpc_server = server
+
+    for method, name in plug_methods:
+      self._xmlrpc_server.register_function(method, name=name)
+
 
   def initialize_plugs(self, plug_types=None):
     """Instantiate required plugs.
@@ -465,7 +476,7 @@ class PlugManager(object):
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)
-    self._initialize_rpc_server()
+    self._create_or_update_rpc_server()
 
   def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.

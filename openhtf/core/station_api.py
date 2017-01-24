@@ -38,16 +38,16 @@ This API is based around the following hierarchy of abstractions:
       +------------------------------------------------------------------+
 
 A station discovery mechanism is implemented to provide multicast-based
-discovery of OpenHTF Stations possible.  To discover stations, use the
-Station.discover_stations() method:
+discovery of OpenHTF Stations.  To discover stations, use the Station.discover()
+method:
 
-  for station in Station.discover_stations():
+  for station in Station.discover():
     print 'Found station:', station
 
 This iterator yields Station instances, which contain the necessary
 information to connect to the station via XML-RPC to obtain more details:
 
-  for station in Station.discover_stations():
+  for station in Station.discover():
     print 'Found station "%s", with tests:' % station.station_id
     for test in station.tests.itervalues():
       print '  %s' % test.test_name  # test is a RemoteTest object.
