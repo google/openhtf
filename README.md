@@ -21,7 +21,7 @@ manufacturing floor.
 
 ## Installing OpenHTF
 **NOTE:** We recommend using [virtualenv](https://virtualenv.pypa.io) to create
-a isolated Python environments for your projects, so as to protect system-wide
+an isolated Python environments for your projects, so as to protect system-wide
 Python packages the OS depends upon. The installation instructions assume you've
 _already_ created a virtualenv and activated it if you wish to do so.
 
@@ -93,24 +93,24 @@ of the word _test_. In such scenarios we use the following more precise terms:
 
 
 ### Station
-Stations capture the notion that a given test ran at some point and may run
+_Stations_ capture the notion that a given test ran at some point and may run
 again. It loosely reflects the idea of physical test stations that process
 multiple DUTs over time. OpenHTF writes a breadcrumb to the filesystem (in a
-directory that can be set using the --rundir flag) each time a test runs, and
+directory that can be set using the `--rundir` flag) each time a test runs, and
 all tests that have the same name are considered to be of the same station. This
 way the web frontend can display a consolidated list of known tests as a list of
 stations.
 
 
 ### Phase
-OpenHTF tests are broken down into logical blocks called phases. Phases are no
+OpenHTF tests are broken down into logical blocks called _phases_. Phases are no
 more than normal Python callables (usually functions) combined with the needed
 metadata. Writing an OpenHTF test is just a matter of writing a bunch of phase
 functions and specifying the order in which they should be executed.
 
 
 ### Measurement
-OpenHTF gathers data about a DUT in the form of measurements. Usually,
+OpenHTF gathers data about a DUT in the form of _measurements_. Usually,
 measurements are declared along with a specification that desribes what
 constitutes a "passing" value. If OpenHTF finishes the test run and one or more
 measurements were out of that spec, the result of the whole test run will be
@@ -119,16 +119,16 @@ considered a fail.
 
 ### Attachment
 Sometimes may want to capture additional data that is more complex or free-form
-than a measurement. To that end, OpenHTF can attach arbitrary binary data to a
-test record along with an optional MIME type.
+than a measurement. An _attachment_ can link arbitrary binary data to a
+test record, along with an optional MIME type.
 
 
 ### Plug
 The essence of an OpenHTF test is to interact with a DUT to exercise it in
 various ways and observe the result. Sometimes this is done by communicating
 directly with the DUT, and other times it's done by communicating with a piece
-of test equipment to which the DUT is attached in some way. A plug is a piece of
-code written to enable OpenHTF to interact with a particular type of hardware,
+of test equipment to which the DUT is attached in some way. A _plug_ is a piece
+of code written to enable OpenHTF to interact with a particular type of hardware,
 whether that be a DUT itself or a piece of test equipment. OpenHTF comes
 packaged with a growing collection of useful plugs, but supports the
 creation of custom plugs as well.
