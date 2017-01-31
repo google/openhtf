@@ -29,11 +29,11 @@ from openhtf.output import callbacks
 from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
 
-import example_plug
+import example_plugs
 
 
-@htf.plug(example=example_plug.ExamplePlug)
-@htf.plug(frontend_aware=example_plug.ExampleFrontendAwarePlug)
+@htf.plug(example=example_plugs.ExamplePlug)
+@htf.plug(frontend_aware=example_plugs.ExampleFrontendAwarePlug)
 def example_monitor(example, frontend_aware):
   time.sleep(.2)
   frontend_aware.increment()
@@ -48,7 +48,7 @@ def example_monitor(example, frontend_aware):
     htf.Measurement(
         'widget_color').doc('Color of the widget'),
     htf.Measurement('widget_size').in_range(1, 4))
-@htf.plug(example=example_plug.ExamplePlug)
+@htf.plug(example=example_plugs.ExamplePlug)
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
   """A hello world test phase."""

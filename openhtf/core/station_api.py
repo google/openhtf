@@ -512,12 +512,8 @@ class Station(object):
       ctime_millis = test_dict['created_time_millis']
       if (test_uid not in self.cached_tests or
           ctime_millis != self.cached_tests[test_uid].created_time_millis):
-        try:
-          updated_tests[test_uid] = RemoteTest(
-              self.make_proxy, self._shared_proxy, self._history, **test_dict)
-        except Exception:
-          # TODO(madsci): catch real exceptions here.
-          raise
+        updated_tests[test_uid] = RemoteTest(
+            self.make_proxy, self._shared_proxy, self._history, **test_dict)
       else:
         updated_tests[test_uid] = self.cached_tests[test_uid]
 
@@ -629,6 +625,7 @@ class StationApi(object):
       openhtf.plugs.InvalidPlugError: The plug can't be waited on either because
           it's not in use or it's not frontend-aware.
     """
+    _LOG.debug('RPC:wait_for_plug_update(timeout_s=%s)', timeout_s)
     test_state = openhtf.Test.state_by_uid(test_uid)
     if test_state is None:
       raise TestNotRunningError('Test %s is not running.' % test_uid)

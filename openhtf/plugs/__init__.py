@@ -203,8 +203,8 @@ class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
 
   Plugs inheriting from this class may be used in conjunction with the Station
   API to update any frontends each time the plug's state changes. The plug
-  should call its notify_update method when and only when the state, as returned
-  by _asdict, changes.
+  should call notify_update() when and only when the state returned by _asdict()
+  changes.
 
   Since the Station API runs in a separate thread, the _asdict() method of
   frontend-aware plugs should be written with thread safety in mind.

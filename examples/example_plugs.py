@@ -94,6 +94,7 @@ class ExampleFrontendAwarePlug(plugs.FrontendAwareBasePlug):
     - openhtf.plugs.user_input.UserInput
   """
   def __init__(self):
+    super(ExampleFrontendAwarePlug, self).__init__()
     self.value = 0
 
   def _asdict(self):
