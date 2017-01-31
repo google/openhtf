@@ -125,6 +125,15 @@ def synchronized(func):  # pylint: disable=invalid-name
   @functools.wraps(func)
   def synchronized_method(self, *args, **kwargs):
     """Wrapper to return."""
+    if not hasattr(self, '_lock'):
+      if func.__name__ in type(self).__dict__:
+        hint = ''
+      else:
+        hint = (' Might be missing call to super in %s.__init__?' %
+                type(self).__name__)
+      raise RuntimeError('Can\'t synchronize method `%s` of %s without '
+                         'attribute `_lock`.%s' %
+                         (func.__name__, type(self).__name__, hint))
     with self._lock:
       return func(self, *args, **kwargs)
   return synchronized_method
