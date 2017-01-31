@@ -58,26 +58,21 @@ Prompt = collections.namedtuple('Prompt', 'id message text_input')
 
 
 class ConsolePrompt(threading.Thread):
-  """Thread that displays a prompt to the console and waits for a response.
+  """Thread that displays a prompt to the console and waits for a response."""
 
-  Args:
-    prompt_id: The prompt manager's id associated with this prompt.
-  """
   def __init__(self, message, callback):
     super(ConsolePrompt, self).__init__()
     self.daemon = True
     self._message = message
     self._callback = callback
     self._stopped = False
+    self._answered = False
 
   def Stop(self):
-    """Mark this ConsolePrompt as stopped.
-
-    If this prompt was already stopped, do nothing.
-    """
-    if not self._stopped:
+    """Mark this ConsolePrompt as stopped."""
+    self._stopped = True
+    if not self._answered:
       print "Nevermind; prompt was answered from elsewhere."
-      self._stopped = True
 
   def run(self):
     """Main logic for this thread to execute."""
@@ -85,7 +80,9 @@ class ConsolePrompt(threading.Thread):
       if platform.system() == 'Windows':
         # Windows doesn't support file-like objects for select(), so fall back
         # to raw_input().
-        self._callback(raw_input(self._message + '\n\r'))
+        response = raw_input(self._message + '\n\r')
+        self._answered = True
+        self._callback(response)
       else:
         # First, display the prompt to the console.
         print self._message
@@ -116,6 +113,7 @@ class ConsolePrompt(threading.Thread):
               line += new
               if '\n' in line:
                 response = line[:line.find('\n')]
+                self._answered = True
                 self._callback(response)
               return
     finally:
@@ -129,6 +127,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
   def __init__(self):
     super(UserInput, self).__init__()
     self._prompt = None
+    self._console_prompt = None
     self._response = None
     self._cond = threading.Condition()
 
@@ -140,38 +139,57 @@ class UserInput(plugs.FrontendAwareBasePlug):
             'message': self._prompt.message,
             'text-input': self._prompt.text_input}
 
-  def _set_prompt(self, prompt):
-    """Helper for setting the prompt and triggering notfiy_update."""
-    self._prompt = prompt
+  def _create_prompt(self, message, text_input):
+    """Sets the prompt."""
+    prompt_id = uuid.uuid4()
+    _LOG.debug('Displaying prompt (%s): "%s"%s', prompt_id, message,
+               ', Expects text' if text_input else '')
+
+    self._response = None
+    self._prompt = Prompt(id=prompt_id, message=message, text_input=text_input)
+    self._console_prompt = ConsolePrompt(
+        message, functools.partial(self.respond, prompt_id))
+
+    self._console_prompt.start()
+    self.notify_update()
+
+  def _remove_prompt(self):
+    """Ends the prompt."""
+    self._prompt = None
+    self._console_prompt.Stop()
+    self._console_prompt = None
     self.notify_update()
 
   def prompt(self, message, text_input=False, timeout_s=None):
-    """Prompt for a user response by showing the message.
+    """Prompt and wait for a user response to the given message.
 
     Args:
       message: The message to display to the user.
       text_input: True iff the user needs to provide a string back.
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
-    Returns:
-      The string input by the user.
-    """
-    with self._cond:
-      if self._prompt is not None:
-        self._set_prompt(None)
-        raise MultiplePromptsError
-      self._set_prompt(Prompt(id=uuid.uuid4(), message=message,
-                              text_input=text_input))
-      self._response = None
-      _LOG.debug('Displaying prompt (%s): "%s"%s%s', self._prompt.id,
-                 message, ', Expects text' if text_input else '',
-                 ', Timeout: %s sec' % timeout_s if timeout_s else '')
 
-      console_prompt = ConsolePrompt(
-          message, functools.partial(self.respond, self._prompt.id))
-      console_prompt.start()
-      self._cond.wait(timeout_s)
-      console_prompt.Stop()
-      self._set_prompt(None)
+    Returns:
+      The response from the user, or the empty string if text_input was False.
+
+    Raises:
+      MultiplePromptsError: There was already an existing prompt.
+      PromptUnansweredError: Timed out waiting for the user to respond.
+    """
+    self.start_prompt(message, text_input)
+    return self.wait_for_prompt(timeout_s)
+
+  def start_prompt(self, message, text_input=False):
+    """Creates a prompt without blocking on the user's response."""
+    with self._cond:
+      if self._prompt:
+        raise MultiplePromptsError
+      self._create_prompt(message, text_input)
+
+  def wait_for_prompt(self, timeout_s=None):
+    """Waits for and returns the user's response to the last prompt."""
+    with self._cond:
+      if self._prompt:
+        self._cond.wait(timeout_s)
       if self._response is None:
         raise PromptUnansweredError
       return self._response
@@ -179,22 +197,26 @@ class UserInput(plugs.FrontendAwareBasePlug):
   def respond(self, prompt_id, response):
     """Respond to the prompt that has the given ID.
 
+    If there is no active prompt or the prompt id being responded to doesn't
+    match the active prompt, do nothing.
+
     Args:
       prompt_id: Either a UUID instance, or a string representing a UUID.
       response: A string response to the given prompt.
 
-    If there is no active prompt or the prompt id being responded to doesn't
-    match the active prompt, do nothing.
+    Returns:
+      True if the prompt was used, otherwise False.
     """
     if type(prompt_id) == str:
       prompt_id = uuid.UUID(prompt_id)
     _LOG.debug('Responding to prompt (%s): "%s"', prompt_id.hex, response)
     with self._cond:
-      if self._prompt is not None and prompt_id == self._prompt.id:
-        self._response = response
-        self._cond.notifyAll()
-        return True  # The response was used.
-      return False  # The response was not used.
+      if not (self._prompt and self._prompt.id == prompt_id):
+        return False
+      self._response = response
+      self._remove_prompt()
+      self._cond.notifyAll()
+    return True
 
 
 def prompt_for_test_start(
