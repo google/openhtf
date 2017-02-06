@@ -124,7 +124,7 @@ class Validators(object):
     if isinstance(value, self.modules['numbers'].Number):
       return self.InRange(minimum=value, maximum=value)
     elif isinstance(value, basestring):
-      return self._matches_regex(self.modules['re'].escape(value))
+      return self.matches_regex(self.modules['re'].escape(value))
     else:
       return self.Equals(value)
     
