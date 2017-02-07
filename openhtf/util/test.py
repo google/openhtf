@@ -178,6 +178,7 @@ class PhaseOrTestIterator(collections.Iterator):
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test_state_ = test_state.TestState(openhtf.TestDescriptor(
           'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
+      test_state_.mark_test_started()
 
     # Actually execute the phase, saving the result in our return value.
     with test_state_.running_phase_context(phase_desc) as phase_state:
