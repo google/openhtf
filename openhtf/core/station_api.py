@@ -362,8 +362,8 @@ class Station(object):
   which is the same dict mapping as 'tests', but does not trigger any RPCs to
   update the local state.
 
-  The 'reachable' attribute can be used as a lightweight check if the host is
-  currently responding to RPC requests (
+  The 'reachable' attribute can be used as a lightweight check of whether the
+  host is currently responding to RPC requests.
   """
 
   STATION_MAP = {}  # Map (host, port) to Station instance.
@@ -380,26 +380,25 @@ class Station(object):
     self.host = host
     self.station_api_port = station_api_port
 
-    try:
-      if self._station_info != station_info:
-        _LOG.warning(
-            'Reusing Station (%s) with new StationInfo: %s, clearing History.',
-            self._station_info.station_id, station_info)
-        self._history = history.History()
-        self.cached_tests = {}
-    except AttributeError:
+    if not hasattr(self, '_station_info'):
       logging.debug('Creating new Station (%s) at %s:%s',
                     station_info.station_id, host, station_api_port)
       # We're not reusing a shared instance, initialize things we need.
       self._history = history.History()
+      self.cached_tests = {}
       self._lock = threading.Lock()
+
+    elif self._station_info != station_info:
+      _LOG.warning(
+          'Reusing Station (%s) with new StationInfo: %s, clearing History.',
+          self._station_info.station_id, station_info)
+      self._history = history.History()
       self.cached_tests = {}
 
     self._station_info = station_info
     # Shared proxy used for synchronous calls we expect to be fast.
-    # Long-polling calls should use the 'proxy' attribute directly instead, as
-    # it creates a new ServerProxy object each time, avoiding the danger of
-    # blocking short requests with long-running ones.
+    # Long-polling calls should use make_proxy() to create a new ServerProxy
+    # object each time, to avoid blocking short requests with long-running ones.
     self._shared_proxy = proxy or self.make_proxy()
     # Lock was acquired at the beginning of __new__().
     self.STATION_LOCK.release()

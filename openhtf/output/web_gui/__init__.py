@@ -80,7 +80,6 @@ conf.declare('stations',
              default_value=[],
              description='List of manually declared stations.')
 
-
 Hostport = collections.namedtuple('Hostport', ['host', 'port'])
 
 
@@ -143,6 +142,7 @@ class TestWatcher(threading.Thread):
     self._wait_timeout_s = wait_timeout_s
     self._lock = threading.Lock()  # Used by threads.synchronized.
     self._plug_watchers = {}
+    self.handle_state_update()
     self.start()
 
   @threads.synchronized
@@ -175,7 +175,6 @@ class TestWatcher(threading.Thread):
       del self._plug_watchers[plug_name]
 
   def run(self):
-    self.handle_state_update()
     while True:
       try:
         self.handle_state_update(
@@ -223,7 +222,7 @@ class StationStore(threading.Thread):
     """Provide dictionary-like access to the station store."""
     if not isinstance(hostport, Hostport):
       raise ValueError('StationStore key must be a Hostport instance.')
-    return self.stations.setdefault(hostport, None)
+    return self.stations.get(hostport)
 
   def _discover(self):
     """Discover stations through the station API."""
@@ -232,10 +231,7 @@ class StationStore(threading.Thread):
       self.stations.setdefault(hostport, station)
 
       try:
-        for test_uid, remote_test in station.tests.iteritems():
-          if (hostport, test_uid) not in self._watchers:
-            self._watchers[hostport, test_uid] = TestWatcher(
-                hostport, remote_test, self._on_update_callback)
+        self.watch_tests(hostport)
       except station_api.StationUnreachableError:
         _LOG.debug('Station at %s is unreachable.', hostport)
 
@@ -255,6 +251,12 @@ class StationStore(threading.Thread):
     """Stop the store."""
     self._stop_event.set()
     self.join()
+
+  def watch_tests(self, hostport):
+    for test_uid, remote_test in self.stations[hostport].tests.iteritems():
+      if (hostport, test_uid) not in self._watchers:
+        self._watchers[hostport, test_uid] = TestWatcher(
+            hostport, remote_test, self._on_update_callback)
 
 
 class PubSub(sockjs.tornado.SockJSConnection):
@@ -357,21 +359,24 @@ class StationPubSub(PubSub):
 
   @classmethod
   def publish_test_state_update(cls, hostport, test_uid, state):
-    """Publish test update for to relevant subscribed clients."""
+    """Publish test update to relevant subscribed clients."""
     cls.publish(
         cls.make_msg(test_uid, state),
         client_filter=lambda c: cls.subscriber_to_hostport_map[c] == hostport)
 
   def on_subscribe(self, info):
-    """Add the subscriber and send intial state."""
+    """Add the subscriber and send initial state."""
     hostport = Hostport(info.arguments['host'][0],
                         int(info.arguments['port'][0]))
     self.subscriber_to_hostport_map[self] = hostport
+
     if hostport not in self._store.stations:
       _LOG.debug('Client tried to subscribe to unknown station. This can '
                  'happen as a result of the web gui server being restarted.')
       return
+
     try:
+      self._store.watch_tests(hostport)
       for test_uid, remote_test in self._store[hostport].tests.iteritems():
         self.send(self.make_msg(test_uid, remote_test.state))
     except station_api.StationUnreachableError:
