@@ -827,7 +827,7 @@ class ApiServer(threading.Thread):
     try:
       try:
         if self.multicast_listener:
-          self.multicast_listener.Stop()
+          self.multicast_listener.stop()
       finally:
         if self.station_api_server:
           self.station_api_server.shutdown()
