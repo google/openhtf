@@ -340,7 +340,7 @@ def retry_until_valid_or_limit_reached(method, limit, validation_fn, sleep_s=1,
         raise
       return None
 
-  helper = retry_helper(limit - 1)
+  helper = RetryHelper(limit - 1)
   result = _execute_method(helper)
   while not validation_fn(result) and helper.retry_if_possible():
     time.sleep(sleep_s)
@@ -421,7 +421,7 @@ def execute_after_delay(time_s, func, *args, **kwargs):
     thread.start()
 
 
-class retry_helper(object):
+class RetryHelper(object):
   """A helper with to simplify retrying.
 
   Attributes:
