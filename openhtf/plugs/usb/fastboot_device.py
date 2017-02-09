@@ -111,7 +111,7 @@ class FastbootDevice(object):
 
 def _retry_usb_function(count, func, *args, **kwargs):
   """Helper function to retry USB."""
-  helper = timeouts.retry_helper(count)
+  helper = timeouts.RetryHelper(count)
   while True:
     try:
       return func(*args, **kwargs)
