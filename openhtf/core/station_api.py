@@ -38,16 +38,16 @@ This API is based around the following hierarchy of abstractions:
       +------------------------------------------------------------------+
 
 A station discovery mechanism is implemented to provide multicast-based
-discovery of OpenHTF Stations possible.  To discover stations, use the
-Station.discover_stations() method:
+discovery of OpenHTF Stations.  To discover stations, use the Station.discover()
+method:
 
-  for station in Station.discover_stations():
+  for station in Station.discover():
     print 'Found station:', station
 
 This iterator yields Station instances, which contain the necessary
 information to connect to the station via XML-RPC to obtain more details:
 
-  for station in Station.discover_stations():
+  for station in Station.discover():
     print 'Found station "%s", with tests:' % station.station_id
     for test in station.tests.itervalues():
       print '  %s' % test.test_name  # test is a RemoteTest object.
@@ -131,8 +131,8 @@ class UpdateTimeout(Exception):
   """Raised when a wait_for_update call times out."""
 
 
-class PlugUnrecognizedError(Exception):
-  """Raised if a plug is requested that is not in use."""
+class TestNotRunningError(Exception):
+  """Raised by wait_for_plug_update if the test is not running."""
 
 
 class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
@@ -305,6 +305,13 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
                          RemoteState(cached_state, **remote_state_dict))
     return self.cached_state
 
+  def wait_for_plug_update(self, plug_name, plug_state, timeout_s=1):
+    return self.proxy_factory(timeout_s + 1).wait_for_plug_update(
+        self.test_uid, plug_name, plug_state, timeout_s)
+
+  def get_frontend_aware_plug_names(self):
+    return self.proxy_factory().get_frontend_aware_plug_names(self.test_uid)
+
   @property
   @StationUnreachableError.reraise_socket_error
   def state(self):
@@ -365,8 +372,8 @@ class Station(object):
   which is the same dict mapping as 'tests', but does not trigger any RPCs to
   update the local state.
 
-  The 'reachable' attribute can be used as a lightweight check if the host is
-  currently responding to RPC requests (
+  The 'reachable' attribute can be used as a lightweight check of whether the
+  host is currently responding to RPC requests.
   """
 
   STATION_MAP = {}  # Map (host, port) to Station instance.
@@ -383,26 +390,25 @@ class Station(object):
     self.host = host
     self.station_api_port = station_api_port
 
-    try:
-      if self._station_info != station_info:
-        _LOG.warning(
-            'Reusing Station (%s) with new StationInfo: %s, clearing History.',
-            self._station_info.station_id, station_info)
-        self._history = history.History()
-        self.cached_tests = {}
-    except AttributeError:
+    if not hasattr(self, '_station_info'):
       logging.debug('Creating new Station (%s) at %s:%s',
                     station_info.station_id, host, station_api_port)
       # We're not reusing a shared instance, initialize things we need.
       self._history = history.History()
+      self.cached_tests = {}
       self._lock = threading.Lock()
+
+    elif self._station_info != station_info:
+      _LOG.warning(
+          'Reusing Station (%s) with new StationInfo: %s, clearing History.',
+          self._station_info.station_id, station_info)
+      self._history = history.History()
       self.cached_tests = {}
 
     self._station_info = station_info
     # Shared proxy used for synchronous calls we expect to be fast.
-    # Long-polling calls should use the 'proxy' attribute directly instead, as
-    # it creates a new ServerProxy object each time, avoiding the danger of
-    # blocking short requests with long-running ones.
+    # Long-polling calls should use make_proxy() to create a new ServerProxy
+    # object each time, to avoid blocking short requests with long-running ones.
     self._shared_proxy = proxy or self.make_proxy()
     # Lock was acquired at the beginning of __new__().
     self.STATION_LOCK.release()
@@ -515,12 +521,8 @@ class Station(object):
       ctime_millis = test_dict['created_time_millis']
       if (test_uid not in self.cached_tests or
           ctime_millis != self.cached_tests[test_uid].created_time_millis):
-        try:
-          updated_tests[test_uid] = RemoteTest(
-              self.make_proxy, self._shared_proxy, self._history, **test_dict)
-        except Exception as e:
-          # TODO(madsci): catch real exceptions here.
-          raise
+        updated_tests[test_uid] = RemoteTest(
+            self.make_proxy, self._shared_proxy, self._history, **test_dict)
       else:
         updated_tests[test_uid] = self.cached_tests[test_uid]
 
@@ -621,35 +623,32 @@ class StationApi(object):
       remote_record = remote_record and pickle.loads(remote_record.data)
       return self._serialize_state_dict(state._asdict(), remote_record)
 
-  def wait_for_plug(self, test_id, plug_type_name, current_state, timeout_s):
+  def wait_for_plug_update(self, test_uid, plug_name, current_state, timeout_s):
     """Long-poll RPC that blocks until the requested plug has an update.
-
-    While waiting, a thread is spawned that will call the plug's _asdict()
-    method in a tight loop until a change is detected (this is to prevent
-    Plug implementors from having to sprinkle notify calls everywhere to
-    trigger updates).
 
     Args:
       test_uid: Test UID from which to obtain the plug on which to wait.
-      plug_type_name: The plug type (string name, like 'my.module.MyPlug')
-          on which to wait for an update.
+      plug_name: The plug type (string name, like 'my.module.MyPlug') on which
+          to wait for an update.
       current_state: Current remotely known plug state.  This is what the
           plug's state is compared against to detect an update.
-      timeout_s: Timeout (in seconds) to wait for an update.  If no update
-          occurs within this time, returns an empty string.
+      timeout_s: Number of seconds to wait for an update before giving up.
 
     Returns:
       New _asdict() state of plug, or None in the case of a timeout.
 
     Raises:
-      UnrecognizedTestUidError: If the test_uid is not recognized.
-      TestNotRunningError: If the test requested is not currently running.
-      PlugUnrecognizedError: If the requested plug is not used by the
-          currently running test.
+      UnrecognizedTestUidError: The test_uid is not recognized.
+      TestNotRunningError: The requested test is not running.
+      openhtf.plugs.InvalidPlugError: The plug can't be waited on either because
+          it's not in use or it's not frontend-aware.
     """
-    test_state = openhtf.Test.from_uid(test_uid).state
+    _LOG.debug('RPC:wait_for_plug_update(timeout_s=%s)', timeout_s)
+    test_state = openhtf.Test.from_uid(test_uid)
+    if test_state is None:
+      raise TestNotRunningError('Test %s is not running.' % test_uid)
     return test_state.plug_manager.wait_for_plug_update(
-        plug_type_name, current_state, timeout_s)
+        plug_name, current_state, timeout_s)
 
   @staticmethod
   def _summary_for_state_dict(state_dict):
@@ -668,7 +667,7 @@ class StationApi(object):
     return state_dict_summary
 
   def wait_for_update(self, test_uid, remote_state_dict, timeout_s):
-    """Long-poll RPC that blocks until there is new information available.
+    """Long-poll RPC that blocks until the test state has an update.
 
     Events that trigger an update:
       Test Status Changes (ie, transition from WAITING_FOR_START to RUNNING).
@@ -678,7 +677,7 @@ class StationApi(object):
       Log line is produced (via TestApi.logger).
 
     Note that plug state changes do NOT trigger an update here, use
-    wait_for_plug() to get plug state change events.
+    wait_for_plug_update() to get plug state change events.
 
     Args:
       test_uid: Test UID for which to wait on an update.
@@ -701,16 +700,19 @@ class StationApi(object):
     """
     _LOG.debug('RPC:wait_for_update(timeout_s=%s)', timeout_s)
     state = openhtf.Test.from_uid(test_uid).state
+
+    # Handle the case in which the test is not running.
     if state is None:
       if remote_state_dict:
-        # Remote end expects there to be a test running but there isn't, this
-        # is all the information we need to return immediately.
+        # Remote end expected the test to be running but it's not. This is all
+        # the information we need to return immediately.
         return
 
-      # Remote end already thinks the test isn't Execute()'ing, so wait for it.
+      # Remote end expected that the test was not running, so wait for it to
+      # start.
       state = timeouts.loop_until_timeout_or_not_none(
           timeout_s, lambda: openhtf.Test.from_uid(test_uid).state, sleep_s=.1)
-      if not state:
+      if state is None:
         raise UpdateTimeout(
             "No test started Execute()'ing before timeout", timeout_s)
       _LOG.debug(
@@ -762,6 +764,15 @@ class StationApi(object):
     return [xmlrpclib.Binary(pickle.dumps(test_record))
             for test_record in history.for_test_uid(
                 test_uid, start_after_millis=start_time_millis)]
+
+  def get_frontend_aware_plug_names(self, test_uid):
+    """Returns the names of frontend-aware plugs."""
+    _LOG.debug('RPC:get_frontend_aware_plug_names()')
+    state = openhtf.Test.from_uid(test_uid)
+    if state is None:
+      return
+    return state.plug_manager.get_frontend_aware_plug_names()
+
 
 
 class ApiServer(threading.Thread):

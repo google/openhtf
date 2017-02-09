@@ -66,6 +66,7 @@ from openhtf.core import station_api
 from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
+from openhtf.util import threads
 from openhtf.util.data import convert_to_base_types
 
 
@@ -79,15 +80,51 @@ conf.declare('stations',
              default_value=[],
              description='List of manually declared stations.')
 
-
 Hostport = collections.namedtuple('Hostport', ['host', 'port'])
+
+
+class PlugWatcher(threading.Thread):
+  """Watches a plug for updates.
+
+  Args:
+    test: The RemoteTest instance to watch.
+    plug_name: The plug to watch.
+    callback: Callback function to invoke on updates.
+    wait_timeout_s: Seconds to wait for an update before timeout and retry.
+  """
+  daemon = True
+
+  def __init__(self, test, plug_name, callback, wait_timeout_s):
+    super(PlugWatcher, self).__init__()
+    self._test = test
+    self._plug_name = plug_name
+    self._callback = callback
+    self._wait_timeout_s = wait_timeout_s
+    self._stopped = threading.Event()
+    self.start()
+
+  def run(self):
+    plug_state = None
+    while not self._stopped.is_set():
+      try:
+        plug_state = self._test.wait_for_plug_update(
+            self._plug_name, plug_state, timeout_s=self._wait_timeout_s)
+        if not self._stopped.is_set():
+          self._callback()
+      except socket.error:
+        _LOG.debug('Socket error. Ending monitoring of plug %s.',
+                   self._plug_name)
+        return
+
+  def stop(self):
+    self._stopped.set()
 
 
 class TestWatcher(threading.Thread):
   """Watches a RemoteTest for updates and executes a callback with new state.
 
   Args:
-    hostport: Tuple of (host, port) describing the station being watched.
+    hostport: Named tuple (host, port) indicating the station being watched.
     test: The RemoteTest instance to watch.
     callback: Callback function to invoke on updates. Gets passed the updated
               RemoteState.
@@ -103,17 +140,44 @@ class TestWatcher(threading.Thread):
     self._test = test
     self._callback = callback
     self._wait_timeout_s = wait_timeout_s
+    self._lock = threading.Lock()  # Used by threads.synchronized.
+    self._plug_watchers = {}
+    self.handle_state_update()
     self.start()
 
-  def _do_callback_for_state(self, state):
-    """Exectute the callback function passing in the updated RemoteState."""
+  @threads.synchronized
+  def handle_state_update(self, state=None):
+    """Execute the callback function passing in the updated RemoteState.
+
+    Also, start or stop PlugWatcher threads according to the frontend-aware
+    threads present on the test state.
+
+    Args:
+      state: Updated state, or None if we should ask RemoteTest for the state.
+    """
+    if state is None:
+      state = self._test.state
+
     self._callback(self._hostport, self._test.test_uid, state)
 
+    if state is None:
+      return
+
+    plug_names = set(self._test.get_frontend_aware_plug_names())
+    watched_names = set(self._plug_watchers.iterkeys())
+
+    for plug_name in plug_names - watched_names:
+      self._plug_watchers[plug_name] = PlugWatcher(
+          self._test, plug_name, self.handle_state_update, self._wait_timeout_s)
+
+    for plug_name in watched_names - plug_names:
+      self._plug_watchers[plug_name].stop()
+      del self._plug_watchers[plug_name]
+
   def run(self):
-    self._do_callback_for_state(self._test.state)
     while True:
       try:
-        self._do_callback_for_state(
+        self.handle_state_update(
             self._test.wait_for_update(timeout_s=self._wait_timeout_s))
       except socket.error:
         _LOG.debug('Station at %s went unreachable. Ending monitoring of '
@@ -158,7 +222,7 @@ class StationStore(threading.Thread):
     """Provide dictionary-like access to the station store."""
     if not isinstance(hostport, Hostport):
       raise ValueError('StationStore key must be a Hostport instance.')
-    return self.stations.setdefault(hostport, None)
+    return self.stations.get(hostport)
 
   def _discover(self):
     """Discover stations through the station API."""
@@ -167,10 +231,7 @@ class StationStore(threading.Thread):
       self.stations.setdefault(hostport, station)
 
       try:
-        for test_uid, remote_test in station.tests.iteritems():
-          if (hostport, test_uid) not in self._watchers:
-            self._watchers[hostport, test_uid] = TestWatcher(
-                hostport, remote_test,self._on_update_callback)
+        self.watch_tests(hostport)
       except station_api.StationUnreachableError:
         _LOG.debug('Station at %s is unreachable.', hostport)
 
@@ -190,6 +251,12 @@ class StationStore(threading.Thread):
     """Stop the store."""
     self._stop_event.set()
     self.join()
+
+  def watch_tests(self, hostport):
+    for test_uid, remote_test in self.stations[hostport].tests.iteritems():
+      if (hostport, test_uid) not in self._watchers:
+        self._watchers[hostport, test_uid] = TestWatcher(
+            hostport, remote_test, self._on_update_callback)
 
 
 class PubSub(sockjs.tornado.SockJSConnection):
@@ -292,21 +359,24 @@ class StationPubSub(PubSub):
 
   @classmethod
   def publish_test_state_update(cls, hostport, test_uid, state):
-    """Publish test update for to relevant subscribed clients."""
+    """Publish test update to relevant subscribed clients."""
     cls.publish(
         cls.make_msg(test_uid, state),
         client_filter=lambda c: cls.subscriber_to_hostport_map[c] == hostport)
 
   def on_subscribe(self, info):
-    """Add the subscriber and send intial state."""
+    """Add the subscriber and send initial state."""
     hostport = Hostport(info.arguments['host'][0],
                         int(info.arguments['port'][0]))
     self.subscriber_to_hostport_map[self] = hostport
+
     if hostport not in self._store.stations:
       _LOG.debug('Client tried to subscribe to unknown station. This can '
                  'happen as a result of the web gui server being restarted.')
       return
+
     try:
+      self._store.watch_tests(hostport)
       for test_uid, remote_test in self._store[hostport].tests.iteritems():
         self.send(self.make_msg(test_uid, remote_test.state))
     except station_api.StationUnreachableError:

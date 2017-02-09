@@ -17,11 +17,15 @@
 
 import logging
 import re
+import threading
 import time
+import weakref
 from datetime import datetime
 from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
+
+from openhtf.util import threads
 
 
 def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable=invalid-name
@@ -146,3 +150,43 @@ def format_string(target, **kwargs):
   if '%' in target:
     return target % kwargs
   return target
+
+
+class SubscribableStateMixin(object):
+  """Gives an object the capability of notifying watchers of state changes.
+
+  The state should be represented as a dictionary and returned by _asdict.
+  An object that wants to watch this object's state should call
+  asdict_with_event to get the current state and an event object. This object
+  can then notify watchers holding those events that the state has changed by
+  calling notify_update.
+  """
+
+  def __init__(self):
+    super(SubscribableStateMixin, self).__init__()
+    self._lock = threading.Lock()  # Used by threads.synchronized.
+    self._update_events = weakref.WeakSet()
+
+  def _asdict(self):
+    raise NotImplementedError(
+        'Subclasses of SubscribableStateMixin must implement _asdict.')
+
+  @threads.synchronized
+  def asdict_with_event(self):
+    """Get a dict representation of this object and an update event.
+
+    Returns:
+      state: Dict representation of this object.
+      update_event: An event that is guaranteed to be set if an update has been
+          triggered since the returned dict was generated.
+    """
+    event = threading.Event()
+    self._update_events.add(event)
+    return self._asdict(), event
+
+  @threads.synchronized
+  def notify_update(self):
+    """Notify any update events that there was an update."""
+    for event in self._update_events:
+      event.set()
+    self._update_events.clear()

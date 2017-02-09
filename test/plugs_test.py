@@ -21,12 +21,13 @@ from openhtf import plugs
 from openhtf.util import test
 
 
-class AdderPlug(plugs.BasePlug):
+class AdderPlug(plugs.FrontendAwareBasePlug):
 
   INSTANCE_COUNT = 0
   LAST_INSTANCE = None
 
   def __init__(self):
+    super(AdderPlug, self).__init__()
     type(self).INSTANCE_COUNT += 1
     type(self).LAST_INSTANCE = self
     self.state = 'CREATED'
@@ -37,6 +38,7 @@ class AdderPlug(plugs.BasePlug):
 
   def increment(self):
     self.number += 1
+    self.notify_update()
     return self.number
 
   def tearDown(self):

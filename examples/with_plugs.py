@@ -24,6 +24,7 @@ connectivity on a quad-NIC board. Instead of creating 4 phases with 4 plugs, you
 can create 1 phase with 4 subclasses of the same plug and use with_plugs() to
 end up with the 4 phases you want.
 """
+
 import subprocess
 import time
 
@@ -67,6 +68,7 @@ class PingDnsA(PingPlug):
 
 class PingDnsB(PingPlug):
   host = '8.8.4.4'
+
 
 # Note: phase name and total_time measurement use {} formatting with args
 # passed into the phase so each phase has a unique name.

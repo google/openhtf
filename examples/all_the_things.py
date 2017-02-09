@@ -29,12 +29,14 @@ from openhtf.output import callbacks
 from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
 
-import example_plug
+import example_plugs
 
 
-@htf.plug(example=example_plug.ExamplePlug)
-def example_monitor(example):
+@htf.plug(example=example_plugs.ExamplePlug)
+@htf.plug(frontend_aware=example_plugs.ExampleFrontendAwarePlug)
+def example_monitor(example, frontend_aware):
   time.sleep(.2)
+  frontend_aware.increment()
   return example.increment()
 
 
@@ -46,7 +48,7 @@ def example_monitor(example):
     htf.Measurement(
         'widget_color').doc('Color of the widget'),
     htf.Measurement('widget_size').in_range(1, 4))
-@htf.plug(example=example_plug.ExamplePlug)
+@htf.plug(example=example_plugs.ExamplePlug)
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
   """A hello world test phase."""
@@ -92,6 +94,7 @@ def attachments(test):
   test.attach('test_attachment', 'This is test attachment data.')
   test.attach_from_file('example_attachment.txt')
 
+
 def teardown(test):
   test.logger.info('Running teardown')
 
@@ -120,5 +123,5 @@ if __name__ == '__main__':
   #    test.add_output_callbacks(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
 
-  #test.configure(teardown_function=teardown)
+  test.configure(teardown_function=teardown)
   test.execute(test_start=user_input.prompt_for_test_start())

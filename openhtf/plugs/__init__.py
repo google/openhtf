@@ -25,13 +25,9 @@ beginning of a test, and all plugs' tearDown() methods are called at the
 end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 
-If the Station API is enabled, then the _asdict() method of plugs may be
-called in a tight loop to detect state updates.  Since _asdict() may incur
-significant overhead, it's recommended to use functions.call_at_most_every()
-to limit the rate at which _asdict() is called.  As an additional
-consideration, a separate thread calling _asdict() implies that Plugs must
-be thread-safe if Station API is enabled (at least, calls to _asdict() must
-be).
+A plug may be made "frontend-aware", allowing it, in conjunction with the
+Station API, to update any frontends each time the plug's state changes. See
+FrontendAwareBasePlug for more info.
 
 Example implementation of a plug:
 
@@ -105,12 +101,14 @@ import inspect
 import logging
 import threading
 import time
+import types
 
 import mutablerecords
 import sockjs.tornado
 import tornado.web
 
 import openhtf
+from openhtf import util
 from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
@@ -143,7 +141,11 @@ class RemoteAttribute(collections.namedtuple(
 
     Method strings, as returned by a ServerProxy's listMethods() method, will
     look something like:
-        'plugs.openhtf.plugs.user_input.UserInput.prompt'
+      'plugs.openhtf.plugs.user_input.UserInput.prompt'
+
+    The resulting RemoteAttribute would then have fields:
+      class_name: 'openhtf.plugs.user_input.UserInput'
+      name: 'prompt'
     """
     remainder, _, attr_name = method_string.rpartition('.')
     _, _, class_name = remainder.partition('.')
@@ -199,6 +201,19 @@ class BasePlug(object):
   def tearDown(self):
     """This method is called automatically at the end of each Test execution."""
     pass
+
+
+class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
+  """A plug that notifies of any state updates.
+
+  Plugs inheriting from this class may be used in conjunction with the Station
+  API to update any frontends each time the plug's state changes. The plug
+  should call notify_update() when and only when the state returned by _asdict()
+  changes.
+
+  Since the Station API runs in a separate thread, the _asdict() method of
+  frontend-aware plugs should be written with thread safety in mind.
+  """
 
 
 class RemotePlug(xmlrpcutil.TimeoutProxyServer):
@@ -386,41 +401,47 @@ class PlugManager(object):
             'xmlrpc_port': self._xmlrpc_server and
                            self._xmlrpc_server.socket.getsockname()[1]}
 
-  def _initialize_rpc_server(self):
-    """Initialize and start an XMLRPC server for current plug types.
+  def _create_or_update_rpc_server(self):
+    """Create or update the XML-RPC server for remote access to plugs.
 
-    If any plugs we currently know about have enable_remote set True, then
-    register their public methods (ones that don't start with _) and spin up
-    an XMLRPC Server.
+    We register on the server the public methods (ones that don't start with _)
+    of those plugs which have enable_remote set to True.
 
-    Plug methods are available via RPC calls to:
+    Those methods are then available via RPC calls to:
       'plugs.<plug_module>.<plug_type>.<plug_method>'
-
-    Note that this method will shutdown any previously running server.
     """
-    server = xmlrpcutil.SimpleThreadedXmlRpcServer((
-        conf.station_api_bind_address, 0))
-    for name, a_plug in self._plugs_by_name.iteritems():
-      if not a_plug.enable_remote:
+
+    # Create a list of (method, method_name) pairs.
+    plug_methods = []
+
+    for name, plug in self._plugs_by_name.iteritems():
+      if not plug.enable_remote:
         continue
 
-      for attr in dir(a_plug):
-        if (not attr.startswith('_') and
-            attr != 'tearDown' and
-            attr not in a_plug.disable_remote_attrs):
-          server.register_function(
-              getattr(a_plug, attr), name='.'.join(('plugs', name, attr)))
+      for attr_name in dir(plug):
+        attr = getattr(plug, attr_name)
+        if (isinstance(attr, types.MethodType) and
+            not attr_name.startswith('_') and
+            attr_name != 'tearDown' and
+            attr_name not in plug.disable_remote_attrs):
+          plug_methods.append((attr, '.'.join(('plugs', name, attr_name))))
 
-    if server.system_listMethods():
-      if self._xmlrpc_server:
-        _LOG.warning('Shutting down previous PlugManager XMLRPC Server.')
-        self._xmlrpc_server.shutdown()
-      server.register_introspection_functions()
-      server_thread = threading.Thread(target=server.serve_forever,
+    if not plug_methods:
+      return
+
+    if not self._xmlrpc_server:
+      _LOG.debug('Starting PlugManager XML-RPC server.')
+      self._xmlrpc_server = xmlrpcutil.SimpleThreadedXmlRpcServer((
+        conf.station_api_bind_address, 0))
+      self._xmlrpc_server.register_introspection_functions()
+      server_thread = threading.Thread(target=self._xmlrpc_server.serve_forever,
                                        name='PlugManager-XMLRPCServer')
       server_thread.daemon = True
       server_thread.start()
-      self._xmlrpc_server = server
+
+    for method, name in plug_methods:
+      self._xmlrpc_server.register_function(method, name=name)
+
 
   def initialize_plugs(self, plug_types=None):
     """Instantiate required plugs.
@@ -465,7 +486,7 @@ class PlugManager(object):
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)
-    self._initialize_rpc_server()
+    self._create_or_update_rpc_server()
 
   def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.
@@ -513,23 +534,38 @@ class PlugManager(object):
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
-  def wait_for_plug_update(self, plug_type_name, current_state, timeout_s):
-    """Return an updated plug state dict, or None on timeout.
+  def wait_for_plug_update(self, plug_name, remote_state, timeout_s):
+    """Wait for a change in the state of a frontend-aware plug.
 
-    This method blocks until the plug described by plug_type_name has a state
-    that differs from current_state (as per equality check), or timeout_s
-    seconds have passed (in which case, it returns None).
+    Args:
+      plug_name: Plug name, e.g. 'openhtf.plugs.user_input.UserInput'.
+      remote_state: The last observed state.
+      timeout_s: Number of seconds to wait for an update.
 
-    TODO(madsci): Maybe consider combining overlapping requests for the same
-    plug, otherwise we start a new PlugUpdateThread for each request.  In
-    practice, if there is only a single frontend running, there should only
-    ever be one request at a time for a given plug anyway.
+    Returns:
+      An updated state, or None if the timeout runs out.
+
+    Raises:
+      InvalidPlugError: The plug can't be waited on either because it's not in
+          use or it's not a frontend-aware plug.
     """
-    if plug_type_name not in self._plugs_by_name:
-      raise InvalidPlugError('Unknown plug name "%s"' % plug_type_name)
-    plug_instance = self._plugs_by_name[plug_type_name]
-    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
-    while not timeout.has_expired():
-      new_state = plug_instance._asdict()
-      if new_state != current_state:
-        return new_state
+    plug = self._plugs_by_name.get(plug_name)
+
+    if plug is None:
+      raise InvalidPlugError('Cannot wait on unknown plug "%s".' % plug_name)
+
+    if not isinstance(plug, FrontendAwareBasePlug):
+      raise InvalidPlugError('Cannot wait on a plug %s that is not an subclass '
+                             'of FrontendAwareBasePlug.' % plug_name)
+
+    state, update_event = plug.asdict_with_event()
+    if state != remote_state:
+      return state
+
+    if update_event.wait(timeout_s):
+      return plug._asdict()
+
+  def get_frontend_aware_plug_names(self):
+    """Returns the names of frontend-aware plugs."""
+    return [name for name, plug in self._plugs_by_name.iteritems()
+            if isinstance(plug, FrontendAwareBasePlug)]

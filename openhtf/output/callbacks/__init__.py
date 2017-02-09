@@ -77,7 +77,9 @@ class OutputToFile(object):
   @contextlib.contextmanager
   def open_output_file(self, test_record):
     """Open file based on pattern."""
-    record_dict = data.convert_to_base_types(test_record)
+    # Ignore keys for the log filename to not convert larger data structures.
+    record_dict = data.convert_to_base_types(
+        test_record, ignore_keys=('code_info', 'phases', 'log_records'))
     pattern = self.filename_pattern
     if isinstance(pattern, basestring) or callable(pattern):
       output_file = self.open_file(util.format_string(pattern, **record_dict))

@@ -68,12 +68,12 @@ class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
 
-class TestState(object):
+class TestState(util.SubscribableStateMixin):
   """This class handles tracking the state of a running Test.
 
   This class encapsulates all the interesting transient bits of a running Test,
   as opposed to the openhtf.TestDescriptor class, which encapsulates static
-  data associated with a Test (that is, it remains the same across invokations
+  data associated with a Test (that is, it remains the same across invocations
   of Test.Execute()).
 
   Init Args:
@@ -95,6 +95,7 @@ class TestState(object):
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])
 
   def __init__(self, test_desc):
+    super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
     self.test_record = test_record.TestRecord(
@@ -106,8 +107,6 @@ class TestState(object):
     self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
     self.running_phase_state = None
     self.user_defined_state = {}
-    self._lock = threading.Lock()
-    self._update_events = weakref.WeakSet()
 
   @property
   def test_api(self):
@@ -161,26 +160,6 @@ class TestState(object):
         'plugs': self.plug_manager._asdict(),
         'running_phase_state': self.running_phase_state,
     }
-
-  @threads.synchronized
-  def asdict_with_event(self):
-    """Get a dict representation of this test's state and an update event.
-
-    The event returned is guaranteed to be set if an update has been triggered
-    since the returned dict was generated.
-
-    Returns: dict-representation, update-event
-    """
-    event = threading.Event()
-    self._update_events.add(event)
-    return self._asdict(), event
-
-  @threads.synchronized
-  def notify_update(self):
-    """Notify any update events that there was an update."""
-    for event in self._update_events:
-      event.set()
-    self._update_events.clear()
 
   @property
   def is_finalized(self):
