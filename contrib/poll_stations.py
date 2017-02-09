@@ -64,6 +64,13 @@ def phase_to_str(phase):
 
 def print_test(remote_test):
   print(' |-- %s' % (remote_test,))
+  phase_descriptors = remote_test.phase_descriptors
+  if phase_descriptors:
+    print(' |    |-- RemoteTest PhaseDescriptors:')
+    for desc in phase_descriptors:
+      print(' |    |    |-- Name: %s, Doc (summary): %s' % (
+          desc.name, desc.doc and desc.doc.splitlines()[0]))
+    print(' |    |')
   remote_state = remote_test.cached_state
   if remote_state:
     print(' |    |-- RemoteTest State:')

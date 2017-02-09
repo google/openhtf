@@ -213,7 +213,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     # Timestamps (in milliseconds) that we care about.
     'created_time_millis', 'last_run_time_millis'], {
         # Cache last known state (a RemoteState) so we can detect deltas.
-        'cached_state': None})):
+        'cached_state': None, 'cached_phase_descriptors': list})):
 
   def __hash__(self):
     return hash((self.test_uid, self.created_time_millis))
@@ -271,6 +271,16 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
         'running_phase_state': data.convert_to_base_types(
             cached_state.running_phase_state),
         'test_record': xmlrpclib.Binary(pickle.dumps(test_record))}
+
+  @property
+  def phase_descriptors(self):
+    """Get phase descriptors for this test."""
+    if not self.cached_phase_descriptors:
+      descriptors = self.shared_proxy.get_phase_descriptors(self.test_uid)
+      if descriptors:
+        self.cached_phase_descriptors = [
+            openhtf.RemotePhaseDescriptor(**desc) for desc in descriptors]
+    return self.cached_phase_descriptors
 
   def wait_for_update(self, timeout_s=1):
     """Block until there's new state data available, or timeout.
@@ -563,6 +573,15 @@ class StationApi(object):
     _LOG.debug('RPC:list_tests() -> %s results', len(retval))
     return retval
 
+  def get_phase_descriptors(self, test_uid):
+    """Get phase descriptor fields for the given test UID.
+
+    Returns:
+      Dict containing RemotePhaseDescriptor fields, or None if UID is invalid.
+    """
+    phases = openhtf.Test.from_uid(test_uid).descriptor.phases
+    return [data.convert_to_base_types(phase) for phase in phases]
+
   @staticmethod
   def _serialize_state_dict(state_dict, remote_record=None):
     if (remote_record and
@@ -599,7 +618,7 @@ class StationApi(object):
     currently .Execute()'ing.
     """
     _LOG.debug('RPC:get_test_state(%s)', test_uid)
-    state = openhtf.Test.state_by_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
     if state:
       remote_record = remote_record and pickle.loads(remote_record.data)
       return self._serialize_state_dict(state._asdict(), remote_record)
@@ -625,7 +644,7 @@ class StationApi(object):
           it's not in use or it's not frontend-aware.
     """
     _LOG.debug('RPC:wait_for_plug_update(timeout_s=%s)', timeout_s)
-    test_state = openhtf.Test.state_by_uid(test_uid)
+    test_state = openhtf.Test.from_uid(test_uid).state
     if test_state is None:
       raise TestNotRunningError('Test %s is not running.' % test_uid)
     return test_state.plug_manager.wait_for_plug_update(
@@ -680,7 +699,7 @@ class StationApi(object):
           previously thought it was).
     """
     _LOG.debug('RPC:wait_for_update(timeout_s=%s)', timeout_s)
-    state = openhtf.Test.state_by_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
 
     # Handle the case in which the test is not running.
     if state is None:
@@ -692,7 +711,7 @@ class StationApi(object):
       # Remote end expected that the test was not running, so wait for it to
       # start.
       state = timeouts.loop_until_timeout_or_not_none(
-          timeout_s, lambda: openhtf.Test.state_by_uid(test_uid), sleep_s=.1)
+          timeout_s, lambda: openhtf.Test.from_uid(test_uid).state, sleep_s=.1)
       if state is None:
         raise UpdateTimeout(
             "No test started Execute()'ing before timeout", timeout_s)
@@ -734,7 +753,7 @@ class StationApi(object):
 
     _LOG.debug('RPC:wait_for_update() -> change after wait')
     # Grab a fresh copy of the state and return the new info.
-    state = openhtf.Test.state_by_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
     return state and self._serialize_state_dict(
         state._asdict(), remote_state_dict['test_record'])
 
@@ -749,7 +768,7 @@ class StationApi(object):
   def get_frontend_aware_plug_names(self, test_uid):
     """Returns the names of frontend-aware plugs."""
     _LOG.debug('RPC:get_frontend_aware_plug_names()')
-    state = openhtf.Test.state_by_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
     if state is None:
       return
     return state.plug_manager.get_frontend_aware_plug_names()

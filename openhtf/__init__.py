@@ -138,10 +138,10 @@ class Test(object):
     station_api.start_server()
 
   @classmethod
-  def state_by_uid(cls, test_uid):
-    """Get TestState of a test by UID.
+  def from_uid(cls, test_uid):
+    """Get Test by UID.
 
-    Returns: TestState of currently running test, given by test_uid.
+    Returns: Test object, given by UID.
 
     Raises:
       UnrecognizedTestUidError: If the test_uid is not recognized.
@@ -149,7 +149,7 @@ class Test(object):
     test = cls.TEST_INSTANCES.get(test_uid)
     if not test:
       raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
-    return test.state
+    return test
 
   @property
   def uid(self):
@@ -428,6 +428,14 @@ class PhaseDescriptor(mutablerecords.Record(
     retval.options.update(**options)
     return retval
 
+  def _asdict(self):
+    asdict = {
+        key: data.convert_to_base_types(getattr(self, key), ignore_keys=('cls',))
+        for key in self.optional_attributes
+    }
+    asdict.update(name=self.name, doc=self.doc)
+    return asdict
+
   @property
   def name(self):
     return self.options.name or self.func.__name__
@@ -497,6 +505,15 @@ class PhaseDescriptor(mutablerecords.Record(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)
     return self.func(**kwargs)
+
+
+class RemotePhaseDescriptor(mutablerecords.Record('RemotePhaseDescriptor', [
+    'name', 'doc'], PhaseDescriptor.optional_attributes)):
+  """Representation of a PhaseDescriptor on a remote test (see station_api).
+
+  This is static information attached to a RemoteTest.  It's defined here to
+  avoid a circular dependency with station_api.
+  """
 
 
 class TestApi(collections.namedtuple('TestApi', [
