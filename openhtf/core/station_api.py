@@ -644,7 +644,7 @@ class StationApi(object):
           it's not in use or it's not frontend-aware.
     """
     _LOG.debug('RPC:wait_for_plug_update(timeout_s=%s)', timeout_s)
-    test_state = openhtf.Test.from_uid(test_uid)
+    test_state = openhtf.Test.from_uid(test_uid).state
     if test_state is None:
       raise TestNotRunningError('Test %s is not running.' % test_uid)
     return test_state.plug_manager.wait_for_plug_update(
@@ -768,7 +768,7 @@ class StationApi(object):
   def get_frontend_aware_plug_names(self, test_uid):
     """Returns the names of frontend-aware plugs."""
     _LOG.debug('RPC:get_frontend_aware_plug_names()')
-    state = openhtf.Test.from_uid(test_uid)
+    state = openhtf.Test.from_uid(test_uid).state
     if state is None:
       return
     return state.plug_manager.get_frontend_aware_plug_names()
