@@ -189,7 +189,10 @@ class UserInput(plugs.FrontendAwareBasePlug):
     """Waits for and returns the user's response to the last prompt."""
     with self._cond:
       if self._prompt:
-        self._cond.wait(timeout_s)
+        if timeout_s is None:
+          self._cond.wait(3600 * 24 * 365)
+        else:
+          self._cond.wait(timeout_s)
       if self._response is None:
         raise PromptUnansweredError
       return self._response
