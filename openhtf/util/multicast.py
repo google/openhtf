@@ -71,7 +71,7 @@ class MulticastListener(threading.Thread):
                           socket.IP_MULTICAST_TTL,
                           self.ttl)
 
-  def stop(self):
+  def stop(self, timeout_s=None):
     """Stop listening for messages."""
     self._live = False
     try:
@@ -79,7 +79,7 @@ class MulticastListener(threading.Thread):
       self._sock.close()
     except socket.error:
       pass
-    self.join()
+    self.join(timeout_s)
 
   def run(self):
     """Listen for pings until stopped."""
