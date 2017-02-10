@@ -483,6 +483,8 @@ class PlugManager(object):
           plug_instance.logger = self._logger
       except Exception:  # pylint: disable=broad-except
         _LOG.error('Exception instantiating plug type %s', plug_type)
+        # Also log to the test record.
+        self._logger.error('Exception instantiating plug type %s', plug_type)
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)
