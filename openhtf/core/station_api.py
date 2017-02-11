@@ -851,6 +851,7 @@ def start_server():
 
 def stop_server():
   global API_SERVER
-  _LOG.debug('Stopping Station API server.')
-  API_SERVER.stop()
-  API_SERVER = None
+  if API_SERVER is not None:
+     _LOG.debug('Stopping Station API server.')
+     API_SERVER.stop()
+     API_SERVER = None
