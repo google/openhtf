@@ -790,11 +790,15 @@ class ApiServer(threading.Thread):
     if message != conf.station_discovery_string:
       _LOG.debug('Received unexpected traffic on discovery socket: %s', message)
     else:
+      if not self.station_api_server:
+        port = conf.station_api_port
+      else:
+        port = self.station_api_server.socket.getsockname()[1]
       return json.dumps({
           'station_uid': StationApi.UID,
           'station_id': conf.station_id,
           'station_api_bind_address': conf.station_api_bind_address,
-          'station_api_port': conf.station_api_port,
+          'station_api_port': port,
           'last_activity_time_millis': self.last_activity_time_millis,
       })
 
