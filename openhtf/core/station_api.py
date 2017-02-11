@@ -827,7 +827,7 @@ class ApiServer(threading.Thread):
     try:
       try:
         if self.multicast_listener:
-          self.multicast_listener.stop()
+          self.multicast_listener.stop(timeout_s=0)
       finally:
         if self.station_api_server:
           self.station_api_server.shutdown()
@@ -854,4 +854,6 @@ def stop_server():
   if API_SERVER is not None:
      _LOG.debug('Stopping Station API server.')
      API_SERVER.stop()
+    _LOG.debug('Stopped Station API server.')
      API_SERVER = None
+
