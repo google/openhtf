@@ -15,6 +15,7 @@
 import threading
 import time
 
+import mock
 import openhtf
 
 from openhtf import plugs
@@ -62,7 +63,7 @@ class TearDownRaisesPlug2(plugs.BasePlug):
 class PlugsTest(test.TestCase):
 
   def setUp(self):
-    self.logger = object()
+    self.logger = mock.MagicMock()
     self.plug_manager = plugs.PlugManager({AdderPlug}, self.logger)
     AdderPlug.INSTANCE_COUNT = 0
 
