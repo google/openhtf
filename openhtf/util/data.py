@@ -156,6 +156,13 @@ def total_size(obj):
   """Returns the approximate total memory footprint an object."""
   seen = set()
   def sizeof(current_obj):
+    try:
+      return _sizeof(current_obj)
+    except Exception:  # pylint: disable=broad-except
+      # Not sure what just happened, but let's assume it's a reference.
+      return struct.calcsize('P')
+    
+  def _sizeof(current_obj):
     """Do a depth-first acyclic traversal of all reachable objects."""
     if id(current_obj) in seen:
       # A rough approximation of the size cost of an additional reference.
