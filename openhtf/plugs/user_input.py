@@ -29,6 +29,7 @@ import platform
 import select
 import sys
 import threading
+import time
 import uuid
 
 from openhtf import PhaseOptions
