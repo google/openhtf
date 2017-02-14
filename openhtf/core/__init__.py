@@ -114,6 +114,10 @@ class TestExecutor(threads.KillableThread):
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
         self._exit_stack = exit_stack
+        # We need to exit the PhaseExecutor before we tear down the plugs
+        # that a phase may be executing, so we add them in reverse order.
+        exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
+        exit_stack.callback(executor.stop)
 
       # Have the phase executor run the start trigger phase. Do partial plug
       # initialization for just the plugs needed by the start trigger phase.
@@ -127,19 +131,6 @@ class TestExecutor(threads.KillableThread):
       # test execution as possible, for the best chance of test equipment being
       # in a known-good state at the start of test execution.
       self.test_state.plug_manager.initialize_plugs()
-
-      with self._lock:
-        if not self._exit_stack:
-          # We shouldn't get here, but just in case something went weird with a
-          # call to stop() and we ended up resuming execution here but the
-          # exit stack was already cleared, bail.  Try to tear down plugs on a
-          # best-effort basis.
-          self.test_state.plug_manager.tear_down_plugs()
-          raise TestStopError('Test Stopped.')
-
-        # Tear down plugs first, then output test record.
-        exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
-        exit_stack.callback(executor.stop)
 
       # Everything is set, set status and begin test execution.  Note we don't
       # protect this with a try: block because the PhaseExecutor handles any
