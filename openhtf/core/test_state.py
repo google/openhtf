@@ -217,7 +217,7 @@ class TestState(util.SubscribableStateMixin):
   def mark_test_started(self):
     """Set the TestRecord's start_time_millis field."""
     # Blow up instead of blowing away a previously set start_time_millis.
-    assert self.test_record.start_time_millis is None
+    assert self.test_record.start_time_millis is 0
     self.test_record.start_time_millis = util.time_millis()
     self.notify_update()
 
