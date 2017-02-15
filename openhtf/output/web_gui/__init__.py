@@ -394,11 +394,33 @@ class WebGuiServer(tornado.web.Application):
     """Main handler for OpenHTF frontend app.
 
     Serves the index page; the main entry point for the client app."""
+
     def initialize(self, port):  # pylint: disable=arguments-differ
       self.port = port
 
     def get(self):
       self.render('index.html', host=socket.gethostname(), port=self.port)
+
+  class PlugsHandler(tornado.web.RequestHandler):
+    """Handler for all plugs from the OpenHTF frontend app."""
+
+    def initialize(self, remote_plugs):
+      self._plugs = remote_plugs
+
+    def post(self):
+      host, port_str, test_uid, plug_name = self.request.path.split('/')[2:]
+      plug = self._plugs.get((host, int(port_str), test_uid, plug_name))
+      if plug is None:
+        self.set_status(500)
+        self.write('Plug "%s" not found in "%s"' % (
+            self.request.path, self._plugs.keys()))
+      try:
+        response = plug.respond(self.request.body)
+      except Exception as e:  # pylint: disable=broad-except
+        self.set_status(500)
+        self.write('Remote plug error: %s' % repr(e))
+      else:
+        self.write(response)
 
   def __init__(self, discovery_interval_s, disable_discovery, http_port,
                dev_mode=False):
@@ -407,6 +429,7 @@ class WebGuiServer(tornado.web.Application):
         DashboardPubSub.publish_discovery_update,
         self.handle_test_state_update,
     )
+    self.remote_plugs = {}
 
     path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
     dash_router = sockjs.tornado.SockJSRouter(DashboardPubSub, '/sub/dashboard')
@@ -416,21 +439,12 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
+        (r'/plugs/.*', self.PlugsHandler, {'remote_plugs': self.remote_plugs}),
         (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path}),
     ] + dash_router.urls + station_router.urls
     super(WebGuiServer, self).__init__(
         handler_routes, template_path=path, static_path=path, debug=dev_mode)
     self.listen(http_port)
-
-  def has_handler_for_url(self, url):
-    """Returns True if there's a handler for the given URL (exact match)."""
-    if not url.endswith('$'):
-      url += '$'  # Tornado does this internally, so we do the same.
-    for host_pattern, host_handlers in self.handlers:
-      for url_spec in host_handlers:
-        if url_spec.regex.pattern == url:
-          return True
-    return False
 
   def handle_test_state_update(self, hostport, test_uid, state):
     """Handle an update to a RemoteState.
@@ -441,23 +455,19 @@ class WebGuiServer(tornado.web.Application):
     if state is None:
       return
 
-    def make_plug_url(plug_name):
-      """Plug URL is /plugs/<host>/<port>/<test_uid>/<plug_name>"""
-      return '/plugs/%s/%s/%s/%s' % (hostport + (test_uid, plug_name))
-
     StationPubSub.publish_test_state_update(hostport, test_uid, state)
     plugs_port = state.plugs and state.plugs['xmlrpc_port']
-    if plugs_port:
-      # See plugs.RemotePlug.discover for details. This call yields tuples of
-      # (plug_name, handler, handler_params). From the plug names, we create
-      # URLs that are particular to a given station and test_uid.
-      handlers = [
-          (make_plug_url(plug_name), handler, params)
-          for plug_name, handler, params
-          in plugs.RemotePlug.discover(hostport.host, plugs_port)
-          if not self.has_handler_for_url(make_plug_url(plug_name))
-      ]
-      self.add_handlers('.*$', handlers)
+    if not plugs_port:
+      return
+
+    # Update the plugs we're interacting with. The PlugManager we're interacting
+    # with may have gone and come back since the last update, so we have to
+    # open a new connection each time to avoid getting an update
+    self.remote_plugs.update({
+        (hostport.host, hostport.port, test_uid, plug_name): handler
+        for plug_name, handler
+        in plugs.RemotePlug.discover(hostport.host, plugs_port)
+    })
 
   def start(self):
     """Start the web server."""
