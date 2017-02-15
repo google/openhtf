@@ -51,7 +51,7 @@ class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
 class TestRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
-        {'start_time_millis': None, 'end_time_millis': None,
+        {'start_time_millis': int, 'end_time_millis': None,
          'outcome': None, 'outcome_details': list,
          'code_info': None,
          'metadata': dict,
@@ -72,7 +72,7 @@ class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'PhaseRecord', ['name', 'codeinfo'],
         {'measurements': None,
-         'start_time_millis': None, 'end_time_millis': None,
+         'start_time_millis': int, 'end_time_millis': None,
          'attachments': dict, 'result': None})):
   """The record of a single run of a phase.
 

@@ -217,7 +217,7 @@ class TestState(util.SubscribableStateMixin):
   def mark_test_started(self):
     """Set the TestRecord's start_time_millis field."""
     # Blow up instead of blowing away a previously set start_time_millis.
-    assert self.test_record.start_time_millis is None
+    assert self.test_record.start_time_millis is 0
     self.test_record.start_time_millis = util.time_millis()
     self.notify_update()
 
@@ -305,7 +305,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
   def _asdict(self):
     return {
         'name': self.name, 'codeinfo': self.phase_record.codeinfo,
-        'start_time_millis': 0, # long(self.phase_record.start_time_millis),
+        'start_time_millis': long(self.phase_record.start_time_millis),
         # We only serialize attachment hashes, they can be large.
         'attachments': {
             name: attachment.sha1 for name, attachment in
