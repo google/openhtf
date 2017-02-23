@@ -245,12 +245,6 @@ class RemotePlug(xmlrpcutil.TimeoutProxyServer):
 
       return json.dumps(result)
 
-    def _write_error(self, message):
-      """Helper that returns an HTTP 500 error and logs the error details."""
-      _LOG.warning('%s: %s', message, self.request.body, exc_info=True)
-      self.set_status(500)
-      self.write('RemotePlug error: %s.' % message)
-
   def __init__(self, host, port, plug_name):
     super(RemotePlug, self).__init__('http://%s:%s' % (host, port))
     self.plug_name = plug_name
