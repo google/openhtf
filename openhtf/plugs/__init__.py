@@ -214,6 +214,7 @@ class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
   Since the Station API runs in a separate thread, the _asdict() method of
   frontend-aware plugs should be written with thread safety in mind.
   """
+  enable_remote = True
 
 
 class RemotePlug(xmlrpcutil.TimeoutProxyServer):

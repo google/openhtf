@@ -123,7 +123,6 @@ class ConsolePrompt(threading.Thread):
 
 class UserInput(plugs.FrontendAwareBasePlug):
   """Get user input from inside test phases."""
-  enable_remote = True
 
   def __init__(self):
     super(UserInput, self).__init__()
