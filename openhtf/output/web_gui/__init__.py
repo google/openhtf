@@ -414,6 +414,7 @@ class WebGuiServer(tornado.web.Application):
         self.set_status(500)
         self.write('Plug "%s" not found in "%s"' % (
             self.request.path, self._plugs.keys()))
+        return
       try:
         response = plug.respond(self.request.body)
       except Exception as e:  # pylint: disable=broad-except
@@ -460,9 +461,10 @@ class WebGuiServer(tornado.web.Application):
     if not plugs_port:
       return
 
-    # Update the plugs we're interacting with. The PlugManager we're interacting
-    # with may have gone and come back since the last update, so we have to
-    # open a new connection each time to avoid getting an update
+    # Update the plugs we're interacting with. On each state update, we open new
+    # connections to the XML-RPC server via RemotePlug.discover because the
+    # PlugManager we're interacting with may have gone and come back since the
+    # last update.
     self.remote_plugs.update({
         (hostport.host, hostport.port, test_uid, plug_name): handler
         for plug_name, handler
