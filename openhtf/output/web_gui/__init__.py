@@ -76,6 +76,7 @@ UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
 BUILD_PATH = os.path.join(os.path.dirname(__file__), 'src', 'dist')
 PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
 
+conf.declare('custom_frontend', description='Path to a custom web frontend.')
 conf.declare('stations',
              default_value=[],
              description='List of manually declared stations.')
@@ -408,7 +409,14 @@ class WebGuiServer(tornado.web.Application):
         self.handle_test_state_update,
     )
 
-    path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
+    if 'custom_frontend' in conf:
+      path = conf.custom_frontend
+    else:
+      path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
+    if not os.path.exists(path):
+      raise ValueError('Frontend path `%s` does not exist.' % path)
+    _LOG.info('Running frontend from path `%s`')
+
     dash_router = sockjs.tornado.SockJSRouter(DashboardPubSub, '/sub/dashboard')
     station_router = sockjs.tornado.SockJSRouter(
         functools.partial(StationPubSub, self.store), '/sub/station')
