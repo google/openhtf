@@ -224,7 +224,7 @@ class StationStore(threading.Thread):
   def _discover(self):
     """Discover stations through the station API."""
     for station in station_api.Station.discover():
-      hostport = Hos;tport(station.host, station.station_api_port)
+      hostport = Hostport(station.host, station.station_api_port)
       self.stations.setdefault(hostport, station)
 
       try:
