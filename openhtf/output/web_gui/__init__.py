@@ -223,26 +223,33 @@ class StationStore(threading.Thread):
 
   def _discover(self):
     """Discover stations through the station API."""
+    hostports = []
     for station in station_api.Station.discover():
       hostport = Hostport(station.host, station.station_api_port)
       self.stations.setdefault(hostport, station)
+      hostports.append(hostport)
 
+    self._handle_stations(hostports)
+
+  def _handle_stations(self, hostports):
+    for hostport in hostports:
       try:
         self.watch_tests(hostport)
       except station_api.StationUnreachableError:
         _LOG.debug('Station at %s is unreachable.', hostport)
-
     if self._on_discovery_callback:
       self._on_discovery_callback(self.stations)
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
-    if self._disable_discovery:
-      _LOG.debug("Station discovery is disabled; StationStore won't update.")
-      return
+    self._handle_stations(self.stations.iterkeys())
     while not self._stop_event.is_set():
-      self._discover()
-      self._stop_event.wait(self._discovery_interval_s)
+      if self._disable_discovery:
+        _LOG.debug('Station discovery is disabled; using static station info')
+        self._handle_stations(self.stations.iterkeys())
+      else:
+        self._discover()
+        self._stop_event.wait(self._discovery_interval_s)
 
   def stop(self):
     """Stop the store."""
