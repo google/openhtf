@@ -19,6 +19,7 @@
 from __future__ import print_function
 import argparse
 import logging
+import os
 import signal
 
 import openhtf.output.web_gui
@@ -27,6 +28,9 @@ from openhtf.util import logs
 
 
 _LOG = logging.getLogger(__name__)
+
+BUILD_PATH = os.path.join(os.path.dirname(__file__), 'src', 'dist')
+PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
 
 
 def main():
@@ -42,13 +46,24 @@ def main():
                       help='Disable multicast-based station discovery.')
   parser.add_argument('--dev', action='store_true',
                       help='Start in development mode.')
+  parser.add_argument('--custom_frontend', type=str,
+                      help='Path to a custom web frontend.')
   args = parser.parse_args()
 
   logs.setup_logger()
 
+  if args.custom_frontend is not None:
+    frontend_path = args.custom_frontend
+  else:
+    frontend_path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
+  if not os.path.exists(frontend_path):
+    raise ValueError('Frontend path `%s` does not exist.' % frontend_path)
+  _LOG.info('Running frontend from path `%s`' % frontend_path)
+
   web_server = openhtf.output.web_gui.WebGuiServer(args.discovery_interval_s,
                                                    args.disable_discovery,
                                                    args.port,
+                                                   frontend_path,
                                                    args.dev)
 
   def sigint_handler(*dummy):

@@ -49,7 +49,6 @@ import collections
 import functools
 import json
 import logging
-import os
 import signal
 import socket
 import sys
@@ -73,10 +72,7 @@ from openhtf.util.data import convert_to_base_types
 _LOG = logging.getLogger(__name__)
 
 UNKNOWN_STATION_ID = 'UNKNOWN_STATION'
-BUILD_PATH = os.path.join(os.path.dirname(__file__), 'src', 'dist')
-PREBUILT_PATH = os.path.join(os.path.dirname(__file__), 'prebuilt')
 
-conf.declare('custom_frontend', description='Path to a custom web frontend.')
 conf.declare('stations',
              default_value=[],
              description='List of manually declared stations.')
@@ -402,20 +398,12 @@ class WebGuiServer(tornado.web.Application):
       self.render('index.html', host=socket.gethostname(), port=self.port)
 
   def __init__(self, discovery_interval_s, disable_discovery, http_port,
-               dev_mode=False):
+               frontend_path, dev_mode=False):
     self.store = StationStore(
         discovery_interval_s, disable_discovery,
         DashboardPubSub.publish_discovery_update,
         self.handle_test_state_update,
     )
-
-    if 'custom_frontend' in conf:
-      path = conf.custom_frontend
-    else:
-      path = BUILD_PATH if os.path.exists(BUILD_PATH) else PREBUILT_PATH
-    if not os.path.exists(path):
-      raise ValueError('Frontend path `%s` does not exist.' % path)
-    _LOG.info('Running frontend from path `%s`')
 
     dash_router = sockjs.tornado.SockJSRouter(DashboardPubSub, '/sub/dashboard')
     station_router = sockjs.tornado.SockJSRouter(
@@ -424,10 +412,11 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
-        (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': path}),
+        (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': frontend_path}),
     ] + dash_router.urls + station_router.urls
     super(WebGuiServer, self).__init__(
-        handler_routes, template_path=path, static_path=path, debug=dev_mode)
+        handler_routes, template_path=frontend_path, static_path=frontend_path,
+        debug=dev_mode)
     self.listen(http_port)
 
   def has_handler_for_url(self, url):
