@@ -123,7 +123,6 @@ class ConsolePrompt(threading.Thread):
 
 class UserInput(plugs.FrontendAwareBasePlug):
   """Get user input from inside test phases."""
-  enable_remote = True
 
   def __init__(self):
     super(UserInput, self).__init__()
@@ -134,11 +133,12 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
   def _asdict(self):
     """Return a dict representation of the current prompt."""
-    if self._prompt is None:
-      return
-    return {'id': self._prompt.id.hex,
-            'message': self._prompt.message,
-            'text-input': self._prompt.text_input}
+    with self._cond:
+      if self._prompt is None:
+        return
+      return {'id': self._prompt.id.hex,
+              'message': self._prompt.message,
+              'text-input': self._prompt.text_input}
 
   def _create_prompt(self, message, text_input):
     """Sets the prompt."""
