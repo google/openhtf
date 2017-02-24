@@ -1,0 +1,53 @@
+<!--
+Simple example of a custom OpenHTF frontend.
+
+Example usage:
+  python -m openhtf.output.web_gui --custom_frontend=examples/example_frontend
+
+This frontend has limited functionality and can only display a list of stations.
+
+The minimum requirement of a frontend is that it has a file named index.html.
+To receive station, test, and plug data, the frontend must open WebSocket
+connections to the OpenHTF web_gui server. Finally, to send data back to
+certain plugs (e.g. UserInput) the frontend must make POST requests to the
+appropriate endpoints.
+-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <p>This is my custom OpenHTF frontend.</p>
+
+  <p class="status">Loading…</p>
+
+  Available stations (if any):
+  <ul class="stations">
+  </ul>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.2/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.slim.min.js"></script>
+
+  <script>
+    let sock = SockJS('/sub/dashboard');
+    let $status = $('.status');
+    let $stations = $('.stations');
+    sock.onopen = function () { $status.text('Connected to server.'); }
+    sock.onclose = function () { $status.text('Failed to connect to server.'); }
+    sock.onmessage = function (message) {
+      $stations.empty()
+      let stationMap = JSON.parse(message.data);
+      for (let host_port in stationMap) {
+        let station = stationMap[host_port];
+        $stations.append('<li>' + station.station_id + ' (' + station.status +
+                         ')</li>');
+      }
+    };
+  </script>
+</body>
+</html>
