@@ -34,7 +34,7 @@ from openhtf.util import units
 
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
-                    'lineno'}
+                    'lineno', 'codeinfo', 'code_info'}
 
 RECORD_FILENAME = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'measurements_record.pickle')
@@ -103,7 +103,6 @@ class TestMeasurements(unittest.TestCase):
     result = util.NonLocalResult()
     def _save_result(test_record):
       result.result = test_record
-    htf.Test.uid = 'UNITTEST:MOCK:UID'
     test = htf.Test(hello_phase, again_phase, lots_of_measurements,
                     measure_seconds, measure_dimensions, inline_phase)
 
@@ -111,6 +110,7 @@ class TestMeasurements(unittest.TestCase):
       test.add_output_callbacks(callbacks.OutputToFile(RECORD_FILENAME))
     else:
       test.add_output_callbacks(_save_result)
+    test.make_uid = lambda: 'UNITTEST:MOCK:UID'
     test.execute(test_start=lambda: 'TestDUT')
     if not self.UPDATE_OUTPUT:
       data.assert_records_equal_nonvolatile(
