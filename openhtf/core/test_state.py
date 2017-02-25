@@ -94,7 +94,7 @@ class TestState(util.SubscribableStateMixin):
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])
 
-  def __init__(self, test_desc):
+  def __init__(self, test_desc, test_uid):
     super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
@@ -103,7 +103,7 @@ class TestState(util.SubscribableStateMixin):
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
     self.logger = logs.initialize_record_logger(
-        test_desc.uid, self.test_record, self.notify_update)
+        test_uid, self.test_record, self.notify_update)
     self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
     self.running_phase_state = None
     self.user_defined_state = {}

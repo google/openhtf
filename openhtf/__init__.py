@@ -28,6 +28,7 @@ import socket
 import sys
 import textwrap
 import threading
+import uuid
 import weakref
 from types import LambdaType
 
@@ -107,7 +108,7 @@ class Test(object):
     self._lock = threading.Lock()
     self._executor = None
     self._test_desc = TestDescriptor(
-        self.uid, phases, test_record.CodeInfo.uncaptured(), metadata)
+        phases, test_record.CodeInfo.uncaptured(), metadata)
 
     if conf.capture_source:
       # First, we copy the phases with the real CodeInfo for them.
@@ -132,7 +133,7 @@ class Test(object):
     else:
       self.configure()
 
-    self.TEST_INSTANCES[self.uid] = self
+    self._increment_next_uid()
     # This is a noop if the server is already running, otherwise start it now
     # that we have at least one Test instance.
     station_api.start_server()
@@ -151,15 +152,18 @@ class Test(object):
       raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
     return test
 
-  @property
-  def uid(self):
-    """Return a unique identifier for this Test instance.
+  def get_current_or_next_uid(self):
+    if self._executor is not None:
+      return self._executor.uid
+    return self._uid
 
-    Note that this identifier must be unique across Python invokations, so the
-    station_api UID is used as a prefix to guarantee that.  Test UID's need not
-    be unique across different hosts.
+  def _increment_next_uid(self):
+    """Increments the next execution's UID.
+
+    This identifier must be unique across invocations of execute() to
+    differentiate between different runs of the same test.
     """
-    return '%s:%s' % (station_api.STATION_API.UID, id(self))
+    self._uid = '%s:%s' % (station_api.STATION_API.UID, uuid.uuid4().hex)
 
   @property
   def descriptor(self):
@@ -246,10 +250,12 @@ class Test(object):
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
       self._executor = core.TestExecutor(
-          self._test_desc, trigger, self._test_options.teardown_function)
+          self._test_desc, self.get_current_or_next_uid(), trigger,
+          self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
+      self._increment_next_uid()
+      self.TEST_INSTANCES[self._executor.uid] = self
       self._executor.start()
-
 
     try:
       self._executor.wait()
@@ -259,14 +265,16 @@ class Test(object):
 
         _LOG.debug('Test completed for %s, saving to history and outputting.',
                    final_state.test_record.metadata['test_name'])
-        for output_cb in (self._test_options.output_callbacks +
-                          [functools.partial(history.append_record, self.uid)]):
+        for output_cb in (
+            self._test_options.output_callbacks +
+            [functools.partial(history.append_record, self._executor.uid)]):
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
             _LOG.exception(
                 'Output callback %s raised; continuing anyway', output_cb)
       finally:
+        del self.TEST_INSTANCES[self._executor.uid]
         self._executor = None
 
     return final_state.test_record.outcome == test_record.Outcome.PASS
@@ -288,23 +296,22 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
 
 
 class TestDescriptor(collections.namedtuple(
-    'TestDescriptor', ['uid', 'phases', 'code_info', 'metadata'])):
+    'TestDescriptor', ['phases', 'code_info', 'metadata'])):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
   by the framework along the way.
 
   Attributes:
-    uid: Test UID for this Test.
     phases: The phases to execute for this Test.
     metadata: Any metadata that should be associated with test records.
     code_info: Information about the module that created the Test.
   """
 
-  def __new__(cls, uid, phases, code_info, metadata):
+  def __new__(cls, phases, code_info, metadata):
     phases = [PhaseDescriptor.wrap_or_copy(phase) for phase in phases]
     return super(TestDescriptor, cls).__new__(
-        cls, uid, phases, code_info, metadata)
+        cls, phases, code_info, metadata)
 
   @property
   def plug_types(self):

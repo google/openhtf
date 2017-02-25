@@ -562,7 +562,7 @@ class StationApi(object):
       List of RemoteTest tuple values (as a dict).
     """
     retval = [{
-        'test_uid': test.uid,
+        'test_uid': test.get_current_or_next_uid(),
         'test_name': test.get_option('name'),
         'created_time_millis': long(test.created_time_millis),
         'last_run_time_millis':
