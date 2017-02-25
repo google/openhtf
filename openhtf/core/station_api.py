@@ -85,9 +85,9 @@ from openhtf.util import threads
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
 
-# Fix for xmlrpclib to use <i8> for longs instead of <int>, because our
+# Fix for xmlrpclib to use <i8> for longs and ints instead of <int>, because our
 # timestamps are in millis, which are too big for 4-byte ints.
-xmlrpclib.Marshaller.dispatch[long] = (
+xmlrpclib.Marshaller.dispatch[long] = xmlrpclib.Marshaller.dispatch[int] = (
     lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
 
 _LOG = logging.getLogger(__name__)
@@ -182,7 +182,6 @@ class RemoteState(collections.namedtuple('RemoteState', [
 
   def __new__(cls, cached_state, status,
               test_record, plugs, running_phase_state):
-    test_record = pickle.loads(test_record.data)
     cached_rec = cached_state and cached_state.test_record
 
     # If we have cached phases/logs for the same test (identified by the
@@ -191,9 +190,10 @@ class RemoteState(collections.namedtuple('RemoteState', [
     # the remote side will have already sent us all phases and logs, so
     # there's no need to re-request them.  We'll update our local cache later.
     if (cached_rec and
-        cached_rec.start_time_millis == test_record.start_time_millis):
-      test_record.phases = cached_rec.phases + test_record.phases
-      test_record.log_records = cached_rec.log_records + test_record.log_records
+        cached_rec['start_time_millis'] == test_record['start_time_millis']):
+      test_record['phases'] = cached_rec['phases'] + test_record['phases']
+      test_record['log_records'] = (
+          cached_rec['log_records'] + test_record['log_records'])
 
     return super(RemoteState, cls).__new__(
         cls, test_state.TestState.Status[status], test_record, plugs,
@@ -261,16 +261,16 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     if not cached_state:
       return None, None
 
-    test_record = mutablerecords.CopyRecord(
-        cached_state.test_record,
-        phases=len(cached_state.test_record.phases),
-        log_records=len(cached_state.test_record.log_records))
+    test_record = dict(cached_state.test_record)
+    test_record['phases'] = len(test_record['phases'])
+    test_record['log_records'] = len(test_record['log_records'])
 
     return cached_state, {
         'status': cached_state.status.name,
         'running_phase_state': data.convert_to_base_types(
             cached_state.running_phase_state),
-        'test_record': xmlrpclib.Binary(pickle.dumps(test_record))}
+        'test_record': test_record
+    }
 
   @property
   def phase_descriptors(self):
@@ -343,9 +343,8 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     _LOG.debug('Requested history update for %s after %s, got %s results.',
                self.test_uid, last_start_time, len(new_history))
 
-    for pickled_record in new_history:
-      self._cached_history.APPEND_RECORD(
-          self.test_uid, pickle.loads(pickled_record.data))
+    for record in new_history:
+      self._cached_history.APPEND_RECORD(self.test_uid, record)
     return self.cached_history
 
 
@@ -585,18 +584,17 @@ class StationApi(object):
   @staticmethod
   def _serialize_state_dict(state_dict, remote_record=None):
     if (remote_record and
-        remote_record.start_time_millis ==
+        remote_record['start_time_millis'] ==
         state_dict['test_record'].start_time_millis):
       # Make a copy and delete phases/logs that are already known remotely.
       state_dict['test_record'] = mutablerecords.CopyRecord(
           state_dict['test_record'])
-      del state_dict['test_record'].phases[:remote_record.phases]
-      del state_dict['test_record'].log_records[:remote_record.log_records]
+      del state_dict['test_record'].phases[:remote_record['phases']]
+      del state_dict['test_record'].log_records[:remote_record['log_records']]
 
     return {
         'status': state_dict['status'].name,
-        'test_record':
-            xmlrpclib.Binary(pickle.dumps(state_dict['test_record'])),
+        'test_record': data.convert_to_base_types(state_dict['test_record']),
         'plugs': state_dict['plugs'],
         'running_phase_state':
             data.convert_to_base_types(state_dict['running_phase_state'])
@@ -620,7 +618,6 @@ class StationApi(object):
     _LOG.debug('RPC:get_test_state(%s)', test_uid)
     state = openhtf.Test.from_uid(test_uid).state
     if state:
-      remote_record = remote_record and pickle.loads(remote_record.data)
       return self._serialize_state_dict(state._asdict(), remote_record)
 
   def wait_for_plug_update(self, test_uid, plug_name, current_state, timeout_s):
@@ -655,12 +652,12 @@ class StationApi(object):
     """Return a dict for state with counts swapped in for phase/log records."""
     state_dict_summary = {
         k: v for k, v in state_dict.iteritems() if k != 'plugs'}
-    state_dict_summary['test_record'] = mutablerecords.CopyRecord(
+    state_dict_summary['test_record'] = data.convert_to_base_types(
         state_dict_summary['test_record'])
-    state_dict_summary['test_record'].phases = len(
-        state_dict_summary['test_record'].phases)
-    state_dict_summary['test_record'].log_records = len(
-        state_dict_summary['test_record'].log_records)
+    state_dict_summary['test_record']['phases'] = len(
+        state_dict_summary['test_record']['phases'])
+    state_dict_summary['test_record']['log_records'] = len(
+        state_dict_summary['test_record']['log_records'])
     state_dict_summary['running_phase_state'] = data.convert_to_base_types(
         state_dict_summary['running_phase_state'], tuple_type=list)
 
@@ -725,7 +722,7 @@ class StationApi(object):
     # Deserialize the RemoteState fields for comparison.
     remote_state_dict = remote_state_dict and {
         'status': test_state.TestState.Status[remote_state_dict['status']],
-        'test_record': pickle.loads(remote_state_dict['test_record'].data),
+        'test_record': remote_state_dict['test_record'],
         'running_phase_state': remote_state_dict['running_phase_state'],
     }
     if state_dict_summary != remote_state_dict:
@@ -761,7 +758,7 @@ class StationApi(object):
     """Get a list of pickled TestRecords for test_uid from the History."""
     _LOG.debug('RPC:get_history_after(%s)', start_time_millis)
     # TODO(madsci): We really should pull attachments out of band here.
-    return [xmlrpclib.Binary(pickle.dumps(test_record))
+    return [data.convert_to_base_types(test_record)
             for test_record in history.for_test_uid(
                 test_uid, start_after_millis=start_time_millis)]
 
@@ -772,7 +769,6 @@ class StationApi(object):
     if state is None:
       return
     return state.plug_manager.get_frontend_aware_plug_names()
-
 
 
 class ApiServer(threading.Thread):
@@ -846,7 +842,7 @@ API_SERVER = None
 def start_server():
   global API_SERVER
   if API_SERVER is None and (conf.station_api_port is not None or
-      conf.enable_station_discovery):
+                             conf.enable_station_discovery):
     _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
                conf.station_api_port and int(conf.station_api_port),
                'en' if conf.enable_station_discovery else 'dis')
