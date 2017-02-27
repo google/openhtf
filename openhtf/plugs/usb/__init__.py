@@ -98,9 +98,6 @@ class FastbootPlug(plugs.BasePlug):
 
   def __getattr__(self, attr):
     """Forward other attributes to the device."""
-    # Use the class version of logger.
-    if attr == 'logger':
-      return self.__getattribute__(attr)
     return getattr(self._device, attr)
 
 
@@ -124,9 +121,6 @@ class AdbPlug(plugs.BasePlug):
 
   def __getattr__(self, attr):
     """Forward other attributes to the device."""
-    # Use the class version of logger.
-    if attr == 'logger':
-      return self.__getattribute__(attr)
     return getattr(self._device, attr)
 
 
