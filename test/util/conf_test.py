@@ -103,7 +103,7 @@ class TestConf(unittest.TestCase):
         'other_flag': 'other_value',
         'string_default': 'default',
         'none_default': None,
-        'teardown_timeout_s': 3,
+        'teardown_timeout_s': 30,
         'max_history_size_mb': 256}, conf._asdict())
 
   def test_undeclared(self):
