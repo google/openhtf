@@ -62,7 +62,6 @@ in this module.
 """
 
 import collections
-import cPickle as pickle
 import functools
 import json
 import logging
@@ -755,7 +754,7 @@ class StationApi(object):
         state._asdict(), remote_state_dict['test_record'])
 
   def get_history_after(self, test_uid, start_time_millis):
-    """Get a list of pickled TestRecords for test_uid from the History."""
+    """Get a list of TestRecords for test_uid from the History."""
     _LOG.debug('RPC:get_history_after(%s)', start_time_millis)
     # TODO(madsci): We really should pull attachments out of band here.
     return [data.convert_to_base_types(test_record)
