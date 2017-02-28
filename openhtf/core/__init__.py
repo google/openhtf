@@ -34,7 +34,7 @@ from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
-conf.declare('teardown_timeout_s', default_value=3, description=
+conf.declare('teardown_timeout_s', default_value=30, description=
              'Timeout (in seconds) for test teardown functions.')
 
 
@@ -57,8 +57,9 @@ class TestExecutor(threads.KillableThread):
     # Force teardown function timeout, otherwise we can hang for a long time
     # when shutting down, such as in response to a SIGINT.
     timeout_s = conf.teardown_timeout_s
-    if hasattr(teardown_function, 'timeout_s'):
-      timeout_s = teardown_function.timeout_s
+    if hasattr(teardown_function, 'options') and hasattr(
+        teardown_function.options, 'timeout_s'):
+      timeout_s = teardown_function.options.timeout_s
 
     self._teardown_function = (
         teardown_function and
