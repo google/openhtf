@@ -15,13 +15,13 @@
 
 """One-off utilities."""
 
+from datetime import datetime
 import logging
+from pkg_resources import get_distribution, DistributionNotFound
 import re
 import threading
 import time
 import weakref
-from datetime import datetime
-from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
 
@@ -164,14 +164,12 @@ class SubscribableStateMixin(object):
 
   def __init__(self):
     super(SubscribableStateMixin, self).__init__()
-    self._lock = threading.Lock()  # Used by threads.synchronized.
-    self._update_events = weakref.WeakSet()
+    self._subscribable = Subscribable()
 
   def _asdict(self):
     raise NotImplementedError(
         'Subclasses of SubscribableStateMixin must implement _asdict.')
 
-  @threads.synchronized
   def asdict_with_event(self):
     """Get a dict representation of this object and an update event.
 
@@ -180,13 +178,29 @@ class SubscribableStateMixin(object):
       update_event: An event that is guaranteed to be set if an update has been
           triggered since the returned dict was generated.
     """
-    event = threading.Event()
-    self._update_events.add(event)
-    return self._asdict(), event
+    return self._asdict(), self._subscribable.subscribe()
 
-  @threads.synchronized
   def notify_update(self):
     """Notify any update events that there was an update."""
-    for event in self._update_events:
-      event.set()
-    self._update_events.clear()
+    self._subscribable.notify()
+
+
+class Subscribable(object):
+  """This allows notifications/callbacks to propagate to other threads."""
+
+  def __init__(self):
+    self._events = weakref.WeakSet()
+    self._lock = threading.Lock()
+
+  def subscribe(self):
+    event = threading.Event()
+    with self._lock:
+      self._events.add(event)
+    return event
+
+  def notify(self):
+    with self._lock:
+      for event in self._events:
+        event.set()
+      self._events.clear()
+

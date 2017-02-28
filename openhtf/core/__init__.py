@@ -54,19 +54,23 @@ class TestExecutor(threads.KillableThread):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
 
-    # Force teardown function timeout, otherwise we can hang for a long time
-    # when shutting down, such as in response to a SIGINT.
-    timeout_s = conf.teardown_timeout_s
-    if hasattr(teardown_function, 'timeout_s'):
-      timeout_s = teardown_function.timeout_s
+    # Ensure test_start is a phase that saves to the dut_id.
+    if not isinstance(test_start, openhtf.PhaseDescriptor):
+      @openhtf.TestPhase()
+      def trigger_phase(test):
+        test.dut_id = test_start()
+    else:
+      trigger_phase = test_start
 
-    self._teardown_function = (
-        teardown_function and
-        openhtf.PhaseDescriptor.wrap_or_copy(
-            teardown_function, timeout_s=timeout_s))
+    self._test_start = _sanitize_to_phase(
+        trigger_phase, default_timeout_s=60*60*24*365)
+
+    # Ensure teardown function has a timeout, otherwise we can hang for a long
+    # time when shutting down, such as in response to a SIGINT.
+    self._teardown_function = _sanitize_to_phase(
+        teardown_function, default_timeout_s=conf.teardown_timeout_s)
 
     self._test_descriptor = test_descriptor
-    self._test_start = test_start
     self._lock = threading.Lock()
     self._exit_stack = None
 
@@ -108,7 +112,8 @@ class TestExecutor(threads.KillableThread):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      self.test_state = test_state.TestState(self._test_descriptor)
+      self.test_state = test_state.TestState.from_test_descriptor(
+          self._test_descriptor)
       executor = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stack must be done while holding this lock.
@@ -153,3 +158,20 @@ class TestExecutor(threads.KillableThread):
     except KeyboardInterrupt:
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
+
+
+def _sanitize_to_phase(func_or_phase, default_timeout_s):
+  """Converts a function/phase to a phase with a timeout set."""
+
+  if isinstance(func_or_phase, openhtf.PhaseDescriptor):
+    # It's an actual phase already.
+    if func_or_phase.options.timeout_s is None:
+      func_or_phase.options.timeout_s = default_timeout_s
+    return func_or_phase
+  elif func_or_phase:
+    # It's a function, so let's wrap it up nice and cozy.
+    return openhtf.TestPhase(
+        timeout_s=default_timeout_s, name=func_or_phase.__name__)(func_or_phase)
+  # It's falsey after all.
+  return None
+

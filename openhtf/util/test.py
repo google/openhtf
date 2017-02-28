@@ -176,8 +176,9 @@ class PhaseOrTestIterator(collections.Iterator):
     # Cobble together a fake TestState to pass to the test phase.
     with mock.patch(
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test_state_ = test_state.TestState(openhtf.TestDescriptor(
-          'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
+      test_state_ = test_state.TestState.from_test_descriptor(
+          openhtf.TestDescriptor(
+              'Unittest:StubTest:UID', (phase_desc,), phase_desc.code_info, {}))
       test_state_.mark_test_started()
 
     # Actually execute the phase, saving the result in our return value.
