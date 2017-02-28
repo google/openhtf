@@ -212,7 +212,7 @@ class StationStore(threading.Thread):
     for station in conf.stations:
       host = station['host']
       port = int(station['port'])
-      self.stations[HostPort(host, port)] = (
+      self.stations[Hostport(host, port)] = (
           station_api.Station.from_host_port(host, port))
 
   def __getitem__(self, hostport):  # pylint:disable=invalid-name
