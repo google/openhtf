@@ -86,32 +86,42 @@ def _open_usb_handle(**kwargs):
 class FastbootPlug(plugs.BasePlug):
   """Plug that provides fastboot."""
 
-  def __new__(cls):
-    device = fastboot_device.FastbootDevice.connect(
+  def __init__(self):
+    self._device = fastboot_device.FastbootDevice.connect(
         _open_usb_handle(
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
             interface_protocol=fastboot_device.PROTOCOL))
-    device.tearDown = device.close  # pylint: disable=invalid-name
-    return device
+
+  def tearDown(self):
+    self._device.close()
+
+  def __getattr__(self, attr):
+    """Forward other attributes to the device."""
+    return getattr(self._device, attr)
 
 
 class AdbPlug(plugs.BasePlug):
   """Plug that provides ADB."""
 
-  def __new__(cls):
+  def __init__(self):
     kwargs = {}
     if conf.libusb_rsa_key:
       kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
 
-    device = adb_device.AdbDevice.connect(
+    self._device = adb_device.AdbDevice.connect(
         _open_usb_handle(
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),
         **kwargs)
-    device.tearDown = device.close  # pylint: disable=invalid-name
-    return device
+
+  def tearDown(self):
+    self._device.close()
+
+  def __getattr__(self, attr):
+    """Forward other attributes to the device."""
+    return getattr(self._device, attr)
 
 
 class AndroidTriggers(object):  # pylint: disable=invalid-name
