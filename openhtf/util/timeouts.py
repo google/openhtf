@@ -88,7 +88,7 @@ class PolledTimeout(object):
     """Returns True if the timeout has expired."""
     if self.timeout_s is None:
       return False
-    return self.seconds > self.timeout_s
+    return self.seconds >= self.timeout_s
 
   # Bad API. alusco is sometimes bad at naming.
   Poll = has_expired  # pylint: disable=invalid-name
