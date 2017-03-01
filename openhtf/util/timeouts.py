@@ -102,7 +102,10 @@ class PolledTimeout(object):
   def remaining(self):
     if self.timeout_s is None:
       return None
-    return self.timeout_s - self.seconds
+    # We max() against 0 to ensure we don't return a (slightly) negative number.
+    # This reduces races between .has_expired() calls and sleeping/waiting
+    # .remaining seconds.
+    return max(0, self.timeout_s - self.seconds)
 
   @property
   def remaining_ms(self):
@@ -369,9 +372,7 @@ def take_at_least_n_seconds(time_s):
   timeout = PolledTimeout(time_s)
   yield
   while not timeout.has_expired():
-    # We max() against 0 to ensure we don't pass a (slightly) negative number
-    # in the race between .has_expired() being True and .remaining going negative.
-    time.sleep(max(0, timeout.remaining))
+    time.sleep(timeout.remaining)
 
 
 def take_at_most_n_seconds(time_s, func, *args, **kwargs):
