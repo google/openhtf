@@ -404,9 +404,8 @@ class WebGuiServer(tornado.web.Application):
     def initialize(self, remote_plugs):
       self._plugs = remote_plugs
 
-    def post(self):
-      host, port_str, test_uid, plug_name = self.request.path.split('/')[2:]
-      plug = self._plugs.get((host, int(port_str), test_uid, plug_name))
+    def post(self, host, port, test_uid, plug_name):
+      plug = self._plugs.get((host, int(port), test_uid, plug_name))
       if plug is None:
         self.set_status(500)
         self.write('Plug "%s" not found in "%s"' % (
@@ -436,7 +435,9 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
-        (r'/plugs/.*', self.PlugsHandler, {'remote_plugs': self.remote_plugs}),
+        (r'/plugs/(?P<host>[\d\.]+)/(?P<port>\d+)/(?P<test_uid>.+)/'
+         '(?P<plug_name>.+)', self.PlugsHandler,
+         {'remote_plugs': self.remote_plugs}),
         (r'/(.*\..*)', tornado.web.StaticFileHandler, {'path': frontend_path}),
     ] + dash_router.urls + station_router.urls
     super(WebGuiServer, self).__init__(
