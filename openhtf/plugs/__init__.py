@@ -224,35 +224,27 @@ class RemotePlug(xmlrpcutil.TimeoutProxyServer):
   in use by a remotely running OpenHTF test.
   """
 
-  class RemotePlugHandler(tornado.web.RequestHandler):
-    """Handles HTTP POST requests directed at remote plugs."""
+  class RemotePlugHandler(object):
+    """Handles requests directed at remote plugs."""
 
-    def initialize(self, remote_plug):
+    def __init__(self, remote_plug):
       self.remote_plug = remote_plug
 
-    def post(self):
+    def respond(self, request):
       """Called when we receive a JSON message from a frontend client."""
       try:
-        data = json.loads(self.request.body)
+        data = json.loads(request)
         method = data['method']
         args = data['args']
       except (KeyError, ValueError):
-        self._write_error('Malformed JSON request')
-        return
+        raise ValueError('Malformed JSON request')
 
       try:
         result = getattr(self.remote_plug, method)(*args)
       except (AttributeError, TypeError, ValueError):
-        self._write_error('Error in RPC request')
-        return
+        raise Exception('Error in RPC request')
 
-      self.write(json.dumps(result))
-
-    def _write_error(self, message):
-      """Helper that returns an HTTP 500 error and logs the error details."""
-      _LOG.warning('%s: %s', message, self.request.body, exc_info=True)
-      self.set_status(500)
-      self.write('RemotePlug error: %s.' % message)
+      return json.dumps(result)
 
   def __init__(self, host, port, plug_name):
     super(RemotePlug, self).__init__('http://%s:%s' % (host, port))
@@ -315,7 +307,7 @@ class RemotePlug(xmlrpcutil.TimeoutProxyServer):
       if plug_name not in seen:
         seen.add(plug_name)
         remote_plug = cls(host, port, plug_name)
-        yield (plug_name, cls.RemotePlugHandler, {'remote_plug': remote_plug})
+        yield (plug_name, cls.RemotePlugHandler(remote_plug))
 
 
 def plug(update_kwargs=True, **plugs):
