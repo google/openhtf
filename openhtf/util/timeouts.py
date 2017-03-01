@@ -369,7 +369,9 @@ def take_at_least_n_seconds(time_s):
   timeout = PolledTimeout(time_s)
   yield
   while not timeout.has_expired():
-    time.sleep(timeout.remaining)
+    # We max() against 0 to ensure we don't pass a (slightly) negative number
+    # in the race between .has_expired() being True and .remaining going negative.
+    time.sleep(max(0, timeout.remaining))
 
 
 def take_at_most_n_seconds(time_s, func, *args, **kwargs):
