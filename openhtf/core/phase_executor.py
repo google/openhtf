@@ -118,7 +118,7 @@ class PhaseExecutorThread(threads.KillableThread):
   """
 
   def __init__(self, phase_desc, test_state):
-    super(PhaseExecutorThread, self).__init__()
+    super(PhaseExecutorThread, self).__init__(name='PhaseExecutorThread')
     self._phase_desc = phase_desc
     self._test_state = test_state
     self._phase_outcome = None
