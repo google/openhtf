@@ -128,6 +128,7 @@ def send(query,
          address=DEFAULT_ADDRESS,
          port=DEFAULT_PORT,
          ttl=DEFAULT_TTL,
+         local_only=False,
          timeout_s=2):
   """Sends a query to the given multicast socket and returns responses.
 
@@ -144,6 +145,16 @@ def send(query,
   # Set up the socket as a UDP Multicast socket with the given timeout.
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+  if local_only:
+    sock.setsockopt(
+        socket.IPPROTO_IP,
+        socket.IP_MULTICAST_IF,
+        # IP_MULTICAST_IF is the 8-byte group address followed by the IP
+        # assigned to the interface on which to listen.
+        struct.pack(
+            '!4sL',
+            socket.inet_aton('127.0.0.1'),  # Only connect to the local connection.
+            socket.INADDR_ANY))
   sock.settimeout(timeout_s)
   sock.sendto(query, (address, port))
 
