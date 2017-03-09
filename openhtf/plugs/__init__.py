@@ -104,8 +104,6 @@ import time
 import types
 
 import mutablerecords
-import sockjs.tornado
-import tornado.web
 
 import openhtf
 from openhtf import util

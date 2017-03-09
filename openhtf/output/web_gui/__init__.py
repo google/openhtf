@@ -54,9 +54,7 @@ import socket
 import sys
 import threading
 
-import requests
 import sockjs.tornado
-import tornado.escape
 import tornado.ioloop
 import tornado.web
 
