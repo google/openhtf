@@ -45,6 +45,7 @@ from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
+from openhtf.core import test_state
 from openhtf.plugs import plug
 from openhtf.util import conf
 from openhtf.util import data
@@ -252,8 +253,8 @@ class Test(object):
       if conf.capture_source:
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
-      self._executor = core.TestExecutor(
-          self._test_desc, self.make_uid(), trigger,
+      self._executor = self._test_options.dependencies.test_executor(
+          self._test_desc, self._test_options, self.make_uid(), trigger,
           self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
@@ -282,10 +283,33 @@ class Test(object):
     return final_state.test_record.outcome == test_record.Outcome.PASS
 
 
+class DependencyOptions(mutablerecords.Record('DependencyOptions', [], {
+    'test_executor': lambda: core.TestExecutor,
+    'test_state': lambda: test_state.TestState,
+    'plug_manager': lambda: plugs.PlugManager,
+})):
+  """Dependency options for replacing classes with replacements.
+
+  Lightweight dependency-injection. If we go too far down this path, we should
+  switch to a proper framework.
+
+  test_executor: Takes a TestDescriptor, test_start phase, and teardown_function
+      has the API: start(), wait(), finalize() -> TestState, stop(), kill()
+  test_state: Takes a TestDescriptor (and TestOptions) and tracks and exposes
+      the test state.
+  plug_manager: Takes a list of plug_types and a logger and manages plugs.
+      API: initialize_plugs(plug_types), update_plug(plug_type, plug_instance),
+      provide_plugs({name: cls}) -> {name: instance}, tear_down_plugs(),
+      wait_for_plug_update(name, last state, timeout_s) -> new state,
+      get_frontend_aware_plug_names() -> [names]
+  """
+
+
 class TestOptions(mutablerecords.Record('TestOptions', [], {
     'name': 'OpenHTF Test',
     'output_callbacks': list,
     'teardown_function': None,
+    'dependencies': DependencyOptions
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 

@@ -51,7 +51,7 @@ class TestStopError(Exception):
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
 
-  def __init__(self, test_descriptor, execution_uid, test_start,
+  def __init__(self, test_descriptor, test_options, execution_uid, test_start,
                teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
@@ -69,6 +69,7 @@ class TestExecutor(threads.KillableThread):
             teardown_function, timeout_s=timeout_s))
 
     self._test_descriptor = test_descriptor
+    self._test_options = test_options
     self._test_start = test_start
     self._lock = threading.Lock()
     self._exit_stack = None
@@ -112,7 +113,8 @@ class TestExecutor(threads.KillableThread):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      self.test_state = test_state.TestState(self._test_descriptor, self.uid)
+      self.test_state = self._test_options.dependencies.test_state(
+          self._test_descriptor, self._test_options, self.uid)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stack must be done while holding this lock.

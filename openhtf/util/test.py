@@ -136,7 +136,7 @@ class InvalidTestError(Exception):
 
 
 class PhaseOrTestIterator(collections.Iterator):
-  def __init__(self, iterator, mock_plugs):
+  def __init__(self, iterator, mock_plugs, dependency_options=None):
     """Create an iterator for iterating over Tests or phases to run.
 
     Args:
@@ -149,11 +149,12 @@ class PhaseOrTestIterator(collections.Iterator):
       raise InvalidTestError(
           'Methods decorated with patch_plugs or yields_phases must yield '
           'test phases or openhtf.Test objects.', iterator)
+    self._dependency_options = dependency_options or openhtf.DependencyOptions()
 
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
-    self.plug_manager = plugs.PlugManager()
+    self.plug_manager = self._dependency_options.plug_manager()
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
@@ -176,7 +177,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # Cobble together a fake TestState to pass to the test phase.
     with mock.patch(
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test_state_ = test_state.TestState(openhtf.TestDescriptor(
+      test_state_ = self._dependency_options.test_state(openhtf.TestDescriptor(
           (phase_desc,), phase_desc.code_info, {}), 'Unittest:StubTest:UID')
       test_state_.mark_test_started()
 
