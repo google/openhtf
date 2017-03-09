@@ -119,10 +119,8 @@ INSTALL_REQUIRES = [
     'protobuf==2.6.1',
     'pyaml==15.3.1',
     'pyOpenSSL==0.15.1',
-    'requests==2.9.1',
     'sockjs-tornado==1.0.3',
     'tornado==4.3',
-    'xlrd==1.0.0',
 ]
 
 
@@ -182,6 +180,9 @@ setup(
             'libusb1==1.3.0',
             'M2Crypto==0.22.3',
             'python-gflags==2.0',
+        ],
+        'update_units': [
+            'xlrd==1.0.0',
         ],
     },
     setup_requires=[
