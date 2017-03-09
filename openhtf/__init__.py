@@ -133,7 +133,6 @@ class Test(object):
     else:
       self.configure()
 
-    self._increment_next_uid()
     # This is a noop if the server is already running, otherwise start it now
     # that we have at least one Test instance.
     station_api.start_server()
@@ -152,18 +151,22 @@ class Test(object):
       raise UnrecognizedTestUidError('Test UID %s not recognized' % test_uid)
     return test
 
-  def get_current_or_next_uid(self):
+  @property
+  def uid(self):
     if self._executor is not None:
       return self._executor.uid
-    return self._uid
 
-  def _increment_next_uid(self):
-    """Increments the next execution's UID.
+  def make_uid(self):
+    """Returns the next test execution's UID.
 
-    This identifier must be unique across invocations of execute() to
-    differentiate between different runs of the same test.
+    This identifier must be unique but trackable across invocations of
+    execute(). Therefore, it's made of three parts separated by ':'
+    * Process-specific (decided on process start up)
+    * Test descriptor-specific (decided on descriptor creation)
+    * Execution-specific (decided on test start)
     """
-    self._uid = '%s:%s' % (station_api.STATION_API.UID, uuid.uuid4().hex)
+    return ':'.join([
+        station_api.STATION_API.UID, self.descriptor.uid, uuid.uuid4().hex[:16]])
 
   @property
   def descriptor(self):
@@ -250,11 +253,10 @@ class Test(object):
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
       self._executor = core.TestExecutor(
-          self._test_desc, self.get_current_or_next_uid(), trigger,
+          self._test_desc, self.make_uid(), trigger,
           self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
-      self._increment_next_uid()
-      self.TEST_INSTANCES[self._executor.uid] = self
+      self.TEST_INSTANCES[self.uid] = self
       self._executor.start()
 
     try:
@@ -267,14 +269,14 @@ class Test(object):
                    final_state.test_record.metadata['test_name'])
         for output_cb in (
             self._test_options.output_callbacks +
-            [functools.partial(history.append_record, self._executor.uid)]):
+            [functools.partial(history.append_record, self.uid)]):
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
             _LOG.exception(
                 'Output callback %s raised; continuing anyway', output_cb)
       finally:
-        del self.TEST_INSTANCES[self._executor.uid]
+        del self.TEST_INSTANCES[self.uid]
         self._executor = None
 
     return final_state.test_record.outcome == test_record.Outcome.PASS
@@ -296,7 +298,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
 
 
 class TestDescriptor(collections.namedtuple(
-    'TestDescriptor', ['phases', 'code_info', 'metadata'])):
+    'TestDescriptor', ['phases', 'code_info', 'metadata', 'uid'])):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
@@ -306,12 +308,13 @@ class TestDescriptor(collections.namedtuple(
     phases: The phases to execute for this Test.
     metadata: Any metadata that should be associated with test records.
     code_info: Information about the module that created the Test.
+    uid: UID for this test.
   """
 
   def __new__(cls, phases, code_info, metadata):
     phases = [PhaseDescriptor.wrap_or_copy(phase) for phase in phases]
     return super(TestDescriptor, cls).__new__(
-        cls, phases, code_info, metadata)
+        cls, phases, code_info, metadata, uid=uuid.uuid4().hex[:16])
 
   @property
   def plug_types(self):
