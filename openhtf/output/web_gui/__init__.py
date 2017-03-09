@@ -223,13 +223,9 @@ class StationStore(threading.Thread):
 
   def _discover(self):
     """Discover stations through the station API."""
-    hostports = []
     for station in station_api.Station.discover():
       hostport = Hostport(station.host, station.station_api_port)
-      self.stations.setdefault(hostport, station)
-      hostports.append(hostport)
-
-    self._handle_stations(hostports)
+      self.stations[hostport] = station
 
   def _handle_stations(self, hostports):
     for hostport in hostports:
@@ -242,14 +238,16 @@ class StationStore(threading.Thread):
 
   def run(self):
     """Continuously scan for new stations and add them to the store."""
+    if self._disable_discovery:
+      _LOG.debug('Station discovery is disabled; only using static stations.')
+
     self._handle_stations(self.stations.iterkeys())
     while not self._stop_event.is_set():
-      if self._disable_discovery:
-        _LOG.debug('Station discovery is disabled; using static station info')
-        self._handle_stations(self.stations.iterkeys())
-      else:
+      if not self._disable_discovery:
         self._discover()
-        self._stop_event.wait(self._discovery_interval_s)
+
+      self._handle_stations(self.stations.iterkeys())
+      self._stop_event.wait(self._discovery_interval_s)
 
   def stop(self):
     """Stop the store."""
