@@ -27,6 +27,7 @@ import openhtf
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import phase_executor
+from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
@@ -50,7 +51,8 @@ class TestStopError(Exception):
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
 
-  def __init__(self, test_descriptor, test_start, teardown_function=None):
+  def __init__(self, test_descriptor, execution_uid, test_start,
+               teardown_function=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
 
@@ -70,6 +72,7 @@ class TestExecutor(threads.KillableThread):
     self._test_start = test_start
     self._lock = threading.Lock()
     self._exit_stack = None
+    self.uid = execution_uid
 
   def stop(self):
     """Stop this test."""
@@ -109,7 +112,7 @@ class TestExecutor(threads.KillableThread):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      self.test_state = test_state.TestState(self._test_descriptor)
+      self.test_state = test_state.TestState(self._test_descriptor, self.uid)
       executor = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stack must be done while holding this lock.

@@ -559,7 +559,8 @@ class StationApi(object):
     station_api performance to degrade; don't do that.
 
     Returns:
-      List of RemoteTest tuple values (as a dict).
+      List of RemoteTest tuple values (as a dict). Only currently-executing
+      tests are returned.
     """
     retval = [{
         'test_uid': test.uid,
@@ -567,7 +568,7 @@ class StationApi(object):
         'created_time_millis': long(test.created_time_millis),
         'last_run_time_millis':
             test.last_run_time_millis and long(test.last_run_time_millis),
-    } for test in openhtf.Test.TEST_INSTANCES.values()]
+    } for test in openhtf.Test.TEST_INSTANCES.values() if test.uid is not None]
     _LOG.debug('RPC:list_tests() -> %s results', len(retval))
     return retval
 
