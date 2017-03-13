@@ -113,7 +113,7 @@ class TestExecutor(threads.KillableThread):
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
       self.test_state = test_state.TestState(self._test_descriptor, self.uid)
-      phase_executor = phase_executor.PhaseExecutor(self.test_state)
+      phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stack must be done while holding this lock.
       with self._lock:
@@ -121,14 +121,14 @@ class TestExecutor(threads.KillableThread):
         # We need to exit the PhaseExecutor before we tear down the plugs
         # that a phase may be executing, so we add them in reverse order.
         exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
-        exit_stack.callback(phase_executor.stop)
+        exit_stack.callback(phase_exec.stop)
 
       # Have the phase executor run the start trigger phase. Do partial plug
       # initialization for just the plugs needed by the start trigger phase.
       if self._test_start is not None:
         self.test_state.plug_manager.initialize_plugs(
             (phase_plug.cls for phase_plug in self._test_start.plugs))
-        phase_executor.execute_start_trigger(self._test_start)
+        phase_exec.execute_start_trigger(self._test_start)
       self.test_state.mark_test_started()
 
       # Full plug initialization happens _after_ the start trigger, as close to
@@ -141,14 +141,14 @@ class TestExecutor(threads.KillableThread):
       # exceptions from test code.  Any exceptions here are caused by the
       # framework, and we probably want them to interrupt framework state
       # changes (like the transition to FINISHING).
-      self._execute_test_phases(phase_executor)
+      self._execute_test_phases(phase_exec)
 
-  def _execute_test_phases(self, phase_executor):
+  def _execute_test_phases(self, phase_exec):
     """Executes one test's phases from start to finish."""
     self.test_state.set_status_running()
 
     try:
-      for phase_outcome in phase_executor.execute_phases(
+      for phase_outcome in phase_exec.execute_phases(
           self._test_descriptor.phases, self._teardown_function):
         if self.test_state.set_status_from_phase_outcome(phase_outcome):
           break
