@@ -576,10 +576,17 @@ class StationApi(object):
     """Get phase descriptor fields for the given test UID.
 
     Returns:
-      Dict containing RemotePhaseDescriptor fields, or None if UID is invalid.
+      List of dicts of RemotePhaseDescriptor fields.
+
+    Raises:
+      UnrecognizedTestUidError: The test_uid is not recognized.
     """
-    phases = openhtf.Test.from_uid(test_uid).descriptor.phases
-    return [data.convert_to_base_types(phase) for phase in phases]
+    phases_as_dicts = []
+    for phase in openhtf.Test.from_uid(test_uid).descriptor.phases:
+      phase_as_dict = data.convert_to_base_types(phase)
+      phase_as_dict['id'] = id(phase)
+      phases_as_dicts.append(phase_as_dict)
+    return phases_as_dicts
 
   @staticmethod
   def _serialize_state_dict(state_dict, remote_record=None):

@@ -70,7 +70,7 @@ class TestRecord(  # pylint: disable=no-init
 
 class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
-        'PhaseRecord', ['name', 'codeinfo'],
+        'PhaseRecord', ['descriptor_id', 'name', 'codeinfo'],
         {'measurements': None,
          'start_time_millis': int, 'end_time_millis': None,
          'attachments': dict, 'result': None})):
@@ -88,7 +88,7 @@ class PhaseRecord(  # pylint: disable=no-init
 
   @classmethod
   def from_descriptor(cls, phase_desc):
-    return cls(phase_desc.name, phase_desc.code_info)
+    return cls(id(phase_desc), phase_desc.name, phase_desc.code_info)
 
 
 def _get_source_safely(obj):

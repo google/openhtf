@@ -518,7 +518,7 @@ class PhaseDescriptor(mutablerecords.Record(
 
 
 class RemotePhaseDescriptor(mutablerecords.Record('RemotePhaseDescriptor', [
-    'name', 'doc'], PhaseDescriptor.optional_attributes)):
+    'id', 'name', 'doc'], PhaseDescriptor.optional_attributes)):
   """Representation of a PhaseDescriptor on a remote test (see station_api).
 
   This is static information attached to a RemoteTest.  It's defined here to

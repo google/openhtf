@@ -393,7 +393,7 @@ class TestHandler(tornado.web.RequestHandler):
   StationPubSub provides test state information, which changes frequently.
   This handler provides information missing from the test state:
     - Phase descriptors, i.e. the full phase list
-    - History of previous executions of a given test
+    - Execution history of a given Test instance
   """
   PHASES_ENDPOINT = 'phases'
   HISTORY_ENDPOINT = 'history'
