@@ -387,6 +387,45 @@ class StationPubSub(PubSub):
     self.subscriber_to_hostport_map.pop(self)
 
 
+class TestHandler(tornado.web.RequestHandler):
+  """Provides additional test information.
+
+  StationPubSub provides test state information, which changes frequently.
+  This handler provides information missing from the test state:
+    - Phase descriptors, i.e. the full phase list
+    - History of previous executions of a given test
+  """
+  PHASES_ENDPOINT = 'phases'
+  HISTORY_ENDPOINT = 'history'
+  ENDPOINTS = (PHASES_ENDPOINT, HISTORY_ENDPOINT)
+
+  def initialize(self, station_store):
+    self.station_store = station_store
+
+  def get(self, host, port, test_uid, request_type):
+    assert request_type in self.ENDPOINTS
+
+    try:
+      station = self.station_store[Hostport(host, int(port))]
+    except (KeyError, ValueError):
+      self.write('Unknown host and port %s:%s' % (host, port))
+      self.set_status(404)
+      return
+
+    try:
+      test = station.tests[test_uid]
+    except KeyError:
+      self.write('Unknown test ID %s' % test_uid)
+      self.set_status(404)
+      return
+
+    # Ensure we send a dictionary because lists are not allowed.
+    if request_type == self.PHASES_ENDPOINT:
+      self.write({'data': data.convert_to_base_types(test.phase_descriptors)})
+    else:
+      self.write({'data': data.convert_to_base_types(test.history)})
+
+
 class WebGuiServer(tornado.web.Application):
   """Serves the OpenHTF web frontend."""
 
@@ -439,6 +478,8 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
+        (r'/test/([\d\.]+)/(\d+)/(.*)/(phases|history)/?', TestHandler,
+         {'station_store': self.store}),
         (r'/plugs/(?P<host>[\d\.]+)/(?P<port>\d+)/(?P<test_uid>.+)/'
          '(?P<plug_name>.+)', self.PlugsHandler,
          {'remote_plugs': self.remote_plugs}),
