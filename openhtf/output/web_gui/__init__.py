@@ -62,9 +62,8 @@ from openhtf import plugs
 from openhtf.core import station_api
 from openhtf.util import classproperty
 from openhtf.util import conf
-from openhtf.util import logs
 from openhtf.util import threads
-from openhtf.util.data import convert_to_base_types
+from openhtf.util import data
 
 
 _LOG = logging.getLogger(__name__)
@@ -196,6 +195,7 @@ class StationStore(threading.Thread):
       test_uid: uid of the test that received the update, unique per station.
       state: The full test state post-update.
   """
+
   def __init__(self, discovery_interval_s, disable_discovery=False,
                on_discovery_callback=None, on_update_callback=None):
     super(StationStore, self).__init__()
@@ -354,7 +354,7 @@ class StationPubSub(PubSub):
     """Construct a message for publishing."""
     return json.dumps({
         'test_uid': test_uid,
-        'state': convert_to_base_types(remote_state)
+        'state': data.convert_to_base_types(remote_state)
     })
 
   @classmethod
@@ -393,7 +393,8 @@ class WebGuiServer(tornado.web.Application):
   class MainHandler(tornado.web.RequestHandler):
     """Main handler for OpenHTF frontend app.
 
-    Serves the index page; the main entry point for the client app."""
+    Serves the index page; the main entry point for the client app.
+    """
 
     def initialize(self, port):  # pylint: disable=arguments-differ
       self.port = port
