@@ -34,6 +34,7 @@ framework.
 
 import collections
 import logging
+import time
 import traceback
 
 import openhtf
@@ -251,6 +252,13 @@ class PhaseExecutor(object):
     It will raise a ThreadTerminationError, which will cause the test to stop
     executing and terminate with an ERROR state.
     """
+    self.test_state.logger.debug('Stopping PhaseExecutor')
     current_phase_thread = self._current_phase_thread
     if current_phase_thread:
+      kill_start = time.time()
       current_phase_thread.kill()
+      while current_phase_thread.is_alive():
+        time.sleep(.1)
+      self.test_state.logger.debug('Took %.3f seconds to kill %s',
+                                   time.time() - kill_start,
+                                   current_phase_thread.name)
