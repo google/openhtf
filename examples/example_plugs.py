@@ -13,7 +13,10 @@
 # limitations under the License.
 
 """Example plugs for OpenHTF."""
-
+import os
+import subprocess
+import tempfile
+import threading
 import time
 
 import openhtf.plugs as plugs
@@ -104,3 +107,61 @@ class ExampleFrontendAwarePlug(plugs.FrontendAwareBasePlug):
     """Increment our value."""
     self.value += 1
     self.notify_update()
+
+
+class Worker(threading.Thread):
+  """Worker."""
+  command = None
+  delay_s = None
+  _stopping = False
+
+  def set_command(self, command):
+    self.command = command
+
+  def set_delay(self, delay_s):
+    self.delay_s = delay_s
+
+  def run(self):
+    self.tempdir = tempfile.mkdtemp()
+    self.log = os.path.join(self.tempdir, 'example_worker.log')
+    while not self._stopping:
+      try:
+        res = subprocess.check_output(self.command, shell=True)
+        with open(self.log, 'a') as logfile:
+          logfile.write(res + '\n')
+        print res
+
+        if self.delay_s:
+          print 'sleeping'
+          time.sleep(self.delay_s)
+      except Exception:
+        pass
+
+  def stop(self):
+    self._stopping = True
+
+class ExampleAsyncPlug(plugs.BasePlug):
+
+  def __init__(self):
+    self.worker = Worker()
+
+  def configure(self, worker_command, worker_delay_s):
+    self.worker.set_command(worker_command)
+    self.worker.set_delay(worker_delay_s)
+
+  def start(self):
+    self.worker.start()
+
+  def testTearDown(self):
+    self.worker.stop()
+    self.worker.join()
+    with open(self.worker.log) as logfile:
+      contents = logfile.readlines()
+      print 'Last Entry: ', contents[-1]
+
+    os.remove(self.worker.log)
+
+  def tearDown(self):
+    self.logger.info('Running ExampleAsyncPlug tearDown')
+    assert not os.path.exists(self.worker.log), ('worker log file should have '
+        'been removed by testTearDown method')
