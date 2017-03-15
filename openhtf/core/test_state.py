@@ -91,6 +91,7 @@ class TestState(util.SubscribableStateMixin):
         providing test authors access to necessary state information, while
         protecting internal-only structures from being accidentally modified.
         Note that if there is no running phase, test_api is also None.
+    execution_uid: A UUID that is specific to this execution.
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])
 
@@ -107,6 +108,7 @@ class TestState(util.SubscribableStateMixin):
     self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
     self.running_phase_state = None
     self.user_defined_state = {}
+    self.execution_uid = execution_uid
 
   @property
   def test_api(self):
