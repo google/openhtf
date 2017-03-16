@@ -411,7 +411,7 @@ class BaseTestHandler(tornado.web.RequestHandler):
     self.write_result(test)
 
   def write_result(self, test):
-    raise NotImplmenetedError
+    raise NotImplementedError
 
 
 class PhasesHandler(BaseTestHandler):
@@ -482,9 +482,9 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
-        (r'/phases/([\d\.]+)/(\d+)/(.*)/?', PhasesHandler,
+        (r'/station/([\d\.]+)/(\d+)/(.*)/phases/?', PhasesHandler,
          {'station_store': self.store}),
-        (r'/history/([\d\.]+)/(\d+)/(.*)/?', HistoryHandler,
+        (r'/station/([\d\.]+)/(\d+)/(.*)/history/?', HistoryHandler,
          {'station_store': self.store}),
         (r'/plugs/(?P<host>[\d\.]+)/(?P<port>\d+)/(?P<test_uid>.+)/'
          '(?P<plug_name>.+)', self.PlugsHandler,
