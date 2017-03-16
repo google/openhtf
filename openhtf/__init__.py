@@ -375,7 +375,7 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
   def format_strings(self, **kwargs):
     """String substitution of name."""
     return mutablerecords.CopyRecord(
-        self, name=util.format_string(self.name, **kwargs))
+        self, name=util.format_string(self.name, kwargs))
 
   def update(self, **kwargs):
     for key, value in kwargs.iteritems():
