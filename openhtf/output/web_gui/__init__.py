@@ -62,9 +62,8 @@ from openhtf import plugs
 from openhtf.core import station_api
 from openhtf.util import classproperty
 from openhtf.util import conf
-from openhtf.util import logs
 from openhtf.util import threads
-from openhtf.util.data import convert_to_base_types
+from openhtf.util import data
 
 
 _LOG = logging.getLogger(__name__)
@@ -196,6 +195,7 @@ class StationStore(threading.Thread):
       test_uid: uid of the test that received the update, unique per station.
       state: The full test state post-update.
   """
+
   def __init__(self, discovery_interval_s, disable_discovery=False,
                on_discovery_callback=None, on_update_callback=None):
     super(StationStore, self).__init__()
@@ -354,7 +354,7 @@ class StationPubSub(PubSub):
     """Construct a message for publishing."""
     return json.dumps({
         'test_uid': test_uid,
-        'state': convert_to_base_types(remote_state)
+        'state': data.convert_to_base_types(remote_state)
     })
 
   @classmethod
@@ -387,13 +387,57 @@ class StationPubSub(PubSub):
     self.subscriber_to_hostport_map.pop(self)
 
 
+class BaseTestHandler(tornado.web.RequestHandler):
+  """Provides additional test information via HTTP GET."""
+
+  def initialize(self, station_store):
+    self._station_store = station_store
+
+  def get(self, host, port, test_uid):
+    try:
+      station = self._station_store[Hostport(host, int(port))]
+    except (KeyError, ValueError):
+      self.write('Unknown host and port %s:%s' % (host, port))
+      self.set_status(404)
+      return
+
+    try:
+      test = station.tests[test_uid]
+    except KeyError:
+      self.write('Unknown test ID %s' % test_uid)
+      self.set_status(404)
+      return
+
+    self.write_result(test)
+
+  def write_result(self, test):
+    raise NotImplementedError
+
+
+class PhasesHandler(BaseTestHandler):
+  """Provides phase descriptors for a test, i.e. the full phase list."""
+
+  def write_result(self, test):
+    # Wrap value in a dict because a list is not allowed.
+    self.write({'data': data.convert_to_base_types(test.phase_descriptors)})
+
+
+class HistoryHandler(BaseTestHandler):
+  """Provides execution history of a given Test instance."""
+
+  def write_result(self, test):
+    # Wrap value in a dict because a list is not allowed.
+    self.write({'data': data.convert_to_base_types(test.history)})
+
+
 class WebGuiServer(tornado.web.Application):
   """Serves the OpenHTF web frontend."""
 
   class MainHandler(tornado.web.RequestHandler):
     """Main handler for OpenHTF frontend app.
 
-    Serves the index page; the main entry point for the client app."""
+    Serves the index page; the main entry point for the client app.
+    """
 
     def initialize(self, port):  # pylint: disable=arguments-differ
       self.port = port
@@ -438,6 +482,10 @@ class WebGuiServer(tornado.web.Application):
         (r'/', self.MainHandler, {'port': http_port}),
         (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
+        (r'/station/([\d\.]+)/(\d+)/(.*)/phases/?', PhasesHandler,
+         {'station_store': self.store}),
+        (r'/station/([\d\.]+)/(\d+)/(.*)/history/?', HistoryHandler,
+         {'station_store': self.store}),
         (r'/plugs/(?P<host>[\d\.]+)/(?P<port>\d+)/(?P<test_uid>.+)/'
          '(?P<plug_name>.+)', self.PlugsHandler,
          {'remote_plugs': self.remote_plugs}),
