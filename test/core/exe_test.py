@@ -104,10 +104,11 @@ class TestPhaseExecutor(unittest.TestCase):
     self.phase_executor = PhaseExecutor(self.test_state)
 
   def test_execute_phases(self):
-    results = list(self.phase_executor.execute_phases(
-        [phase_two, phase_repeat], None))
+    results = [
+        self.phase_executor.execute_phase(phase_two),
+        self.phase_executor.execute_phase(phase_repeat),
+    ]
 
-    self.assertEqual(5, len(results))
+    self.assertEqual(2, len(results))
     self.assertEqual(PhaseResult.CONTINUE, results[0].phase_result)
-    for i in xrange(1, 5):
-      self.assertEqual(PhaseResult.REPEAT, results[i].phase_result)
+    self.assertEqual(PhaseResult.REPEAT, results[1].phase_result)

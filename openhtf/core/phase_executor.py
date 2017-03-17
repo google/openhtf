@@ -183,49 +183,31 @@ class PhaseExecutor(object):
       _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
                    ' to do so to prevent a BlankDutIdError when the test ends.')
 
-  def execute_phases(self, phases, teardown_func):
+  def execute_phase(self, phase):
     """Executes each phase or skips them, yielding PhaseOutcome instances.
 
     Args:
-      phases: List of phases to execute.
-      teardown_func: Function or phase to execute at the end of all phases
-          regardless of errors.
+      phase: Phase to execute.
 
-    Yields:
-      PhaseOutcome instance that wraps the phase return value (or exception).
+    Returns:
+      The final PhaseOutcome that wraps the phase return value (or exception)
+      of the final phase run. All intermediary results, if any, are REPEAT
+      and handled internally. Returning REPEAT here means the phase hit its
+      limit for repetitions.
     """
-    try:
-      for phase in phases:
-        repeat_count = 0
-        while True:
-          outcome = self._execute_one_phase(phase)
-          if outcome:
-            # We have to run the teardown_func *before* we yield the outcome,
-            # because yielding the outcome results in the state being finalized
-            # in the case of a terminal outcome.
-            if outcome.is_terminal and teardown_func:
-              self._execute_one_phase(teardown_func)
-            yield outcome
+    repeat_count = 0
+    repeat_limit = phase.options.repeat_limit
+    while True:
+      outcome = self._execute_one_phase(phase)
 
-            # If we're done with this phase, skip to the next one.
-            if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
-              break
+      if outcome is None or outcome is not openhtf.PhaseResult.REPEAT:
+        break
 
-            if outcome.phase_result is openhtf.PhaseResult.REPEAT:
-              repeat_count += 1
-              if (repeat_count >= phase.options.repeat_limit
-                  and phase.options.repeat_limit is not None):
-                break
+      repeat_count += 1
+      if repeat_limit is None or repeat_count < repeat_limit:
+        continue
 
-          else:
-            # run_if was falsey, just skip this phase.
-            break
-      if teardown_func:
-        self._execute_one_phase(teardown_func)
-    except (KeyboardInterrupt, SystemExit):
-      if teardown_func:
-        self._execute_one_phase(teardown_func)
-      raise
+    return outcome
 
   def _execute_one_phase(self, phase_desc):
     """Executes the given phase, returning a PhaseOutcome."""

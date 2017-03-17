@@ -148,12 +148,17 @@ class TestExecutor(threads.KillableThread):
     self.test_state.set_status_running()
 
     try:
-      for phase_outcome in phase_exec.execute_phases(
-          self._test_descriptor.phases, self._teardown_function):
-        if self.test_state.set_status_from_phase_outcome(phase_outcome):
+      for phase in self._test_descriptor.phases:
+        outcome = phase_exec.execute_phase(phase)
+        print outcome
+        if outcome.is_terminal:
+          self.test_state.finalize_from_phase_outcome(outcome)
           break
       else:
-        self.test_state.finalize()
+        self.test_state.finalize_normally()
     except KeyboardInterrupt:
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
+    finally:
+      if self._teardown_function:
+        phase_exec.execute_phase(self._teardown_function)

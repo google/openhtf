@@ -177,15 +177,25 @@ class TestState(util.SubscribableStateMixin):
     """
     return self.running_phase_state and self.running_phase_state.name
 
-  def set_status_from_phase_outcome(self, phase_outcome):
-    """Set our internal state based on the given phase outcome.
+  def mark_test_started(self):
+    """Set the TestRecord's start_time_millis field."""
+    # Blow up instead of blowing away a previously set start_time_millis.
+    assert self.test_record.start_time_millis is 0
+    self.test_record.start_time_millis = util.time_millis()
+    self.notify_update()
+
+  def set_status_running(self):
+    """Mark the test as actually running, can't be done once finalized."""
+    assert self._status == self.Status.WAITING_FOR_TEST_START
+    self._status = self.Status.RUNNING
+    self.notify_update()
+
+  def finalize_from_phase_outcome(self, phase_outcome):
+    """Finalize due to the given phase outcome.
 
     Args:
       phase_outcome: An instance of phase_executor.PhaseOutcome
-
-    Returns: True if the test has finished prematurely (failed).
     """
-    assert not self.is_finalized, 'Test already completed!'
     # Handle a few cases where the test is ending prematurely.
     if phase_outcome.raised_exception:
       self.logger.debug('Finishing test execution early due to phase '
@@ -207,67 +217,38 @@ class TestState(util.SubscribableStateMixin):
     elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.debug('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
-      # TODO(madsci): Decouple flow control from pass/fail.
       self.finalize(test_record.Outcome.ABORTED)
 
-    if self.is_finalized != phase_outcome.is_terminal:
-      raise openhtf.InvalidTestStateError(
-          'Unexpected finalized state (%s) after PhaseOutcome %s.',
-          self.is_finalized, phase_outcome)
-    return self.is_finalized
-
-  def mark_test_started(self):
-    """Set the TestRecord's start_time_millis field."""
-    # Blow up instead of blowing away a previously set start_time_millis.
-    assert self.test_record.start_time_millis is 0
-    self.test_record.start_time_millis = util.time_millis()
-    self.notify_update()
-
-  def set_status_running(self):
-    """Mark the test as actually running, can't be done once finalized."""
-    assert self._status == self.Status.WAITING_FOR_TEST_START
-    self._status = self.Status.RUNNING
-    self.notify_update()
-
-  def finalize(self, test_outcome=None):
+  def finalize_normally(self):
     """Mark the state as finished.
 
-    This method is called with no arguments on normal test completion, or
-    with an argument if the test stopped under some other condition, where
-    the test_outcome argument specifies what the Test's outcome was.
+    This method is called on normal test completion. The outcome will be either
+    PASS or FAIL, depending on measurements' PASS/FAIL status.
 
-    When a Test completes normally, the outcome will be either PASS or FAIL,
-    depending on measurements' PASS/FAIL status.  Any UNSET measurements will
-    cause the Test to FAIL unless conf.allow_unset_measurements is set True.
-
-    Args:
-      test_outcome: If specified, use this as the Test outcome.
+    Any UNSET measurements will cause the Test to FAIL unless
+    conf.allow_unset_measurements is set True.
     """
-    assert not self.is_finalized, 'Test already completed!'
+    allowed_outcomes = {measurements.Outcome.PASS}
+    if conf.allow_unset_measurements:
+      allowed_outcomes.add(measurements.Outcome.UNSET)
 
+    if any(meas.outcome not in allowed_outcomes
+           for phase in self.test_record.phases
+           for meas in phase.measurements.itervalues()):
+      self.finalize(test_record.Outcome.FAIL)
+    else:
+      self.finalize(test_record.Outcome.PASS)
+    self.logger.debug('Finishing test execution normally with outcome %s.',
+                      self.test_record.outcome.name)
+
+  def finalize(self, test_outcome):
+    assert not self.is_finalized, 'Test already completed!'
     # Sanity check to make sure we have a DUT ID by the end of the test.
     if not self.test_record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
-    if test_outcome:
-      # Override measurement-based PASS/FAIL with a specific test outcome.
-      self.test_record.outcome = test_outcome
-    else:
-      allowed_outcomes = {measurements.Outcome.PASS}
-      if conf.allow_unset_measurements:
-        allowed_outcomes.add(measurements.Outcome.UNSET)
-
-      if any(meas.outcome not in allowed_outcomes
-             for phase in self.test_record.phases
-             for meas in phase.measurements.itervalues()):
-        self.test_record.outcome = test_record.Outcome.FAIL
-      else:
-        self.test_record.outcome = test_record.Outcome.PASS
-      # A message has already been logged if we were called with test_outcome
-      # set, but if we're finishing normally, log it here.
-      self.logger.debug('Finishing test execution normally with outcome %s.',
-                        self.test_record.outcome.name)
+    self.test_record.outcome = test_outcome
 
     # The test is done at this point, no further updates to test_record.
     self.logger.handlers = []
