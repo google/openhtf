@@ -460,9 +460,11 @@ class PlugManager(object):
 
         # Override the logger so that __init__'s logging goes into the record.
         plug_type.logger = self._logger
-        plug_instance = plug_type()
-        # Now set it back since we'll give the instance a logger in a moment.
-        plug_type.logger = _LOG
+        try:
+          plug_instance = plug_type()
+        finally:
+          # Now set it back since we'll give the instance a logger in a moment.
+          plug_type.logger = _LOG
         # Set the logger attribute directly (rather than in BasePlug) so we
         # don't depend on subclasses' implementation of __init__ to have it
         # set.
