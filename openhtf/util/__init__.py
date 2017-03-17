@@ -127,7 +127,7 @@ def partial_format(target, **kwargs):
 
   return output
 
-def format_string(target, **kwargs):
+def format_string(target, kwargs):
   """Formats a string in any of three ways (or not at all).
 
   Args:
@@ -137,7 +137,7 @@ def format_string(target, **kwargs):
         returned as-is, but in all other cases the string is formatted (or the
         callback called) with the given kwargs.
         If this is None (or otherwise falsey), it is returned immediately.
-    **kwargs: The arguments to use for formatting.
+    kwargs: The arguments to use for formatting.
         Passed to safe_format, %, or target if it's
         callable.
   """
