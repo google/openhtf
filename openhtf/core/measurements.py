@@ -205,8 +205,8 @@ class Measurement(  # pylint: disable=no-init
   def format_strings(self, **kwargs):
     """String substitution for names and docstrings."""
     return mutablerecords.CopyRecord(
-        self, name=util.format_string(self.name, **kwargs),
-        docstring=util.format_string(self.docstring, **kwargs))
+        self, name=util.format_string(self.name, kwargs),
+        docstring=util.format_string(self.docstring, kwargs))
 
   def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Support our default set of validators as direct attributes."""

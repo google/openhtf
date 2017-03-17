@@ -82,7 +82,7 @@ class OutputToFile(object):
         test_record, ignore_keys=('code_info', 'phases', 'log_records'))
     pattern = self.filename_pattern
     if isinstance(pattern, basestring) or callable(pattern):
-      output_file = self.open_file(util.format_string(pattern, **record_dict))
+      output_file = self.open_file(util.format_string(pattern, record_dict))
       try:
         yield output_file
       finally:
