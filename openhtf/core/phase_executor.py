@@ -157,10 +157,12 @@ class PhaseExecutorThread(threads.KillableThread):
     if isinstance(self._phase_outcome, PhaseOutcome):
       return self._phase_outcome
 
-    # Check for timeout, indicated by None for PhaseOutcome.phase_result.
-    if self.is_alive():
-      self.kill()
+    if timeout.has_expired():
       return PhaseOutcome(None)
+
+    # Should never get here
+    self.logger.warning('Could not determine result of executed phase.')
+    return PhaseOutcome(None)
 
   def stop(self):
     self._test_state.logger.debug('Stopping %s', self.name)
