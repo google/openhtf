@@ -253,7 +253,7 @@ class Test(object):
       if conf.capture_source:
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
-      self._executor = self._test_options.dependencies.test_executor(
+      self._executor = self._test_options.inject_dependencies.test_executor(
           self._test_desc, self._test_options, self.make_uid(), trigger,
           self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
@@ -283,12 +283,12 @@ class Test(object):
     return final_state.test_record.outcome == test_record.Outcome.PASS
 
 
-class DependencyOptions(mutablerecords.Record('DependencyOptions', [], {
+class InjectedDependencies(mutablerecords.Record('InjectedDependencies', [], {
     'test_executor': lambda: core.TestExecutor,
     'test_state': lambda: test_state.TestState,
     'plug_manager': lambda: plugs.PlugManager,
 })):
-  """Dependency options for replacing classes with replacements.
+  """Injected dependencies for replacing classes with replacements.
 
   Lightweight dependency-injection. If we go too far down this path, we should
   switch to a proper framework.
@@ -309,7 +309,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'name': 'OpenHTF Test',
     'output_callbacks': list,
     'teardown_function': None,
-    'dependencies': DependencyOptions
+    'inject_dependencies': InjectedDependencies,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
