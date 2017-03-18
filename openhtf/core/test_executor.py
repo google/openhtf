@@ -136,11 +136,14 @@ class TestExecutor(threads.KillableThread):
       # in a known-good state at the start of test execution.
       self.test_state.plug_manager.initialize_plugs()
 
-      # Everything is set, set status and begin test execution.  Note we don't
-      # protect this with a try: block because the PhaseExecutor handles any
-      # exceptions from test code.  Any exceptions here are caused by the
-      # framework, and we probably want them to interrupt framework state
-      # changes (like the transition to FINISHING).
+      # Now that the test has started, we want to ensure that the teardown
+      # phase gets called no matter what happens, whether the test passes,
+      # fails, errors, or gets cancelled/aborted.
+      with self._lock:
+        if self._teardown_function:
+          exit_stack.callback(phase_exec.execute_phase, self._teardown_function)
+
+      # Everything is set, set status and begin test execution.
       self._execute_test_phases(phase_exec)
 
   def _execute_test_phases(self, phase_exec):
@@ -150,7 +153,6 @@ class TestExecutor(threads.KillableThread):
     try:
       for phase in self._test_descriptor.phases:
         outcome = phase_exec.execute_phase(phase)
-        print outcome
         if outcome.is_terminal:
           self.test_state.finalize_from_phase_outcome(outcome)
           break
@@ -159,6 +161,3 @@ class TestExecutor(threads.KillableThread):
     except KeyboardInterrupt:
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
-    finally:
-      if self._teardown_function:
-        phase_exec.execute_phase(self._teardown_function)
