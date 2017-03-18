@@ -113,7 +113,7 @@ class TestExecutor(threads.KillableThread):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      self.test_state = self._test_options.inject_dependencies.test_state(
+      self.test_state = self._test_options.injected_dependencies.test_state(
           self._test_descriptor, self._test_options, self.uid)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 

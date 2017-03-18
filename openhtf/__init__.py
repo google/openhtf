@@ -253,7 +253,7 @@ class Test(object):
       if conf.capture_source:
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
-      self._executor = self._test_options.inject_dependencies.test_executor(
+      self._executor = self._test_options.injected_dependencies.test_executor(
           self._test_desc, self._test_options, self.make_uid(), trigger,
           self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
@@ -293,6 +293,9 @@ class InjectedDependencies(mutablerecords.Record('InjectedDependencies', [], {
   Lightweight dependency-injection. If we go too far down this path, we should
   switch to a proper framework.
 
+  TODO(fahhem): Cleanup APIs for these classes then provide base classes for
+  replacements to use.
+
   test_executor: Takes a TestDescriptor, test_start phase, and teardown_function
       has the API: start(), wait(), finalize() -> TestState, stop(), kill()
   test_state: Takes a TestDescriptor (and TestOptions) and tracks and exposes
@@ -309,7 +312,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'name': 'OpenHTF Test',
     'output_callbacks': list,
     'teardown_function': None,
-    'inject_dependencies': InjectedDependencies,
+    'injected_dependencies': InjectedDependencies,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 

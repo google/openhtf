@@ -135,7 +135,7 @@ class InvalidTestError(Exception):
 
 
 class PhaseOrTestIterator(collections.Iterator):
-  def __init__(self, iterator, mock_plugs, inject_dependencies=None):
+  def __init__(self, iterator, mock_plugs, injected_dependencies=None):
     """Create an iterator for iterating over Tests or phases to run.
 
     Args:
@@ -152,9 +152,10 @@ class PhaseOrTestIterator(collections.Iterator):
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
-    self._inject_dependencies = inject_dependencies or htf.InjectedDependencies()
-    self.plug_manager = self._inject_dependencies.plug_manager()
-    self._inject_dependencies.plug_manager = lambda *_: self.plug_manager
+    self._injected_dependencies = (
+        injected_dependencies or htf.InjectedDependencies())
+    self.plug_manager = self._injected_dependencies.plug_manager()
+    self._injected_dependencies.plug_manager = lambda *_: self.plug_manager
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
@@ -175,10 +176,10 @@ class PhaseOrTestIterator(collections.Iterator):
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
-    test_state = self._inject_dependencies.test_state(
+    test_state = self._injected_dependencies.test_state(
         htf.TestDescriptor(
             (phase_desc,), phase_desc.code_info, {}),
-        htf.TestOptions(inject_dependencies=self._inject_dependencies),
+        htf.TestOptions(injected_dependencies=self._injected_dependencies),
         'Unittest:StubTest:UID')
     test_state.mark_test_started()
 
@@ -206,7 +207,7 @@ class PhaseOrTestIterator(collections.Iterator):
     test.add_output_callbacks(
         lambda record: setattr(record_saver, 'result', record))
 
-    test.configure(inject_dependencies=self._inject_dependencies)
+    test.configure(injected_dependencies=self._injected_dependencies)
     test.execute(test_start=lambda: 'TestDutId')
 
     return record_saver.result
