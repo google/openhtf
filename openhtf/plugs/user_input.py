@@ -153,8 +153,9 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
     self._console_prompt.start()
     self.notify_update()
+    return prompt_id
 
-  def _remove_prompt(self):
+  def remove_prompt(self):
     """Ends the prompt."""
     self._prompt = None
     self._console_prompt.Stop()
@@ -184,7 +185,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     with self._cond:
       if self._prompt:
         raise MultiplePromptsError
-      self._create_prompt(message, text_input)
+      return self._create_prompt(message, text_input)
 
   def wait_for_prompt(self, timeout_s=None):
     """Waits for and returns the user's response to the last prompt."""
@@ -218,7 +219,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
       if not (self._prompt and self._prompt.id == prompt_id):
         return False
       self._response = response
-      self._remove_prompt()
+      self.remove_prompt()
       self._cond.notifyAll()
     return True
 
