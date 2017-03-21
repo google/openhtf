@@ -37,6 +37,9 @@ _LOG = logging.getLogger(__name__)
 
 conf.declare('teardown_timeout_s', default_value=30, description=
              'Timeout (in seconds) for test teardown functions.')
+conf.declare('cancel_timeout_s', default_value=30,
+             description='Timeout (in seconds) when the test has been cancelled'
+             'to wait for the running phase to exit.')
 
 
 class TestExecutionError(Exception):
@@ -77,10 +80,10 @@ class TestExecutor(threads.KillableThread):
   def stop(self):
     """Stop this test."""
     _LOG.info('Stopping test executor.')
+    self.kill()
     with self._lock:
       if self._exit_stack:
         self._exit_stack.close()
-    self.kill()
 
   def finalize(self):
     """Finalize test execution and output resulting record to callbacks.
@@ -115,20 +118,21 @@ class TestExecutor(threads.KillableThread):
       self.test_state = test_state.TestState(self._test_descriptor, self.uid)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
-      # Any access to self._exit_stack must be done while holding this lock.
+      # Any access to self._exit_stacks must be done while holding this lock.
       with self._lock:
         self._exit_stack = exit_stack
-        # We need to exit the PhaseExecutor before we tear down the plugs
-        # that a phase may be executing, so we add them in reverse order.
-        exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
-        exit_stack.callback(phase_exec.stop)
+        # Ensure that we tear everything down when exiting.
+        exit_stack.callback(self._execute_test_teardown, phase_exec)
+        # We don't want to run the 'teardown function' unless the test has
+        # actually started.
+        self._do_teardown_function = False
 
-      # Have the phase executor run the start trigger phase. Do partial plug
-      # initialization for just the plugs needed by the start trigger phase.
       if self._test_start is not None:
-        self.test_state.plug_manager.initialize_plugs(
-            (phase_plug.cls for phase_plug in self._test_start.plugs))
-        phase_exec.execute_start_trigger(self._test_start)
+        self._execute_test_start(phase_exec)
+      # The trigger has run and the test has started, so from now on we want the
+      # teardown function to execute at the end, no matter what.
+      with self._lock:
+        self._do_teardown_function = True
       self.test_state.mark_test_started()
 
       # Full plug initialization happens _after_ the start trigger, as close to
@@ -136,15 +140,29 @@ class TestExecutor(threads.KillableThread):
       # in a known-good state at the start of test execution.
       self.test_state.plug_manager.initialize_plugs()
 
-      # Now that the test has started, we want to ensure that the teardown
-      # phase gets called no matter what happens, whether the test passes,
-      # fails, errors, or gets cancelled/aborted.
-      with self._lock:
-        if self._teardown_function:
-          exit_stack.callback(phase_exec.execute_phase, self._teardown_function)
-
       # Everything is set, set status and begin test execution.
       self._execute_test_phases(phase_exec)
+
+  def _execute_test_start(self, phase_exec):
+    """Run the start trigger phase, and check that the DUT ID is set after.
+
+    Logs a warning if the start trigger failed to set the DUT ID.
+    """
+    # Have the phase executor run the start trigger phase. Do partial plug
+    # initialization for just the plugs needed by the start trigger phase.
+    self.test_state.plug_manager.initialize_plugs(
+        (phase_plug.cls for phase_plug in self._test_start.plugs))
+    phase_exec.execute_phase(self._test_start)
+
+    if self.test_state.test_record.dut_id is None:
+      _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
+                   ' to do so to prevent a BlankDutIdError when the test ends.')
+
+  def _execute_test_teardown(self, phase_exec):
+    phase_exec.stop(timeout_s=conf.cancel_timeout_s)
+    if self._do_teardown_function and self._teardown_function:
+      phase_exec.execute_phase(self._teardown_function)
+    self.test_state.plug_manager.tear_down_plugs()
 
   def _execute_test_phases(self, phase_exec):
     """Executes one test's phases from start to finish."""

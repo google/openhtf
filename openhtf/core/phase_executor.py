@@ -34,11 +34,13 @@ framework.
 
 import collections
 import logging
+import time
 import traceback
 
 import openhtf
 from openhtf.util import argv
 from openhtf.util import threads
+from openhtf.util import timeouts
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
@@ -173,16 +175,6 @@ class PhaseExecutor(object):
     self.test_state = test_state
     self._current_phase_thread = None
 
-  def execute_start_trigger(self, phase_desc):
-    """Run the start trigger phase, and check that the DUT ID is set after.
-
-    Logs a warning if the start trigger failed to set the DUT ID.
-    """
-    self._execute_one_phase(phase_desc)
-    if self.test_state.test_record.dut_id is None:
-      _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
-                   ' to do so to prevent a BlankDutIdError when the test ends.')
-
   def execute_phase(self, phase):
     """Executes each phase or skips them, yielding PhaseOutcome instances.
 
@@ -198,7 +190,7 @@ class PhaseExecutor(object):
     repeat_count = 0
     repeat_limit = phase.options.repeat_limit
     while True:
-      outcome = self._execute_one_phase(phase)
+      outcome = self._execute_phase_once(phase)
 
       if outcome is None or outcome is not openhtf.PhaseResult.REPEAT:
         break
@@ -209,7 +201,7 @@ class PhaseExecutor(object):
 
     return outcome
 
-  def _execute_one_phase(self, phase_desc):
+  def _execute_phase_once(self, phase_desc):
     """Executes the given phase, returning a PhaseOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
@@ -227,12 +219,25 @@ class PhaseExecutor(object):
     _LOG.debug('Phase finished with result %s', phase_state.result)
     return phase_state.result
 
-  def stop(self):
+  def stop(self, timeout_s=None):
     """Stops execution of the current phase, if any.
 
     It will raise a ThreadTerminationError, which will cause the test to stop
     executing and terminate with an ERROR state.
     """
-    current_phase_thread = self._current_phase_thread
-    if current_phase_thread:
-      current_phase_thread.kill()
+    phase_thread = self._current_phase_thread
+    self._current_phase_thread = None
+    self.test_state.running_phase_state = None
+
+    if not phase_thread:
+      return
+
+    phase_thread.kill()
+
+    _LOG.debug('Waiting for cancelled phase to exit: %s', phase_thread)
+
+    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
+    while phase_thread.is_alive() and not timeout.has_expired():
+      time.sleep(0.1)
+    _LOG.debug('Cancelled phase did%s exit',
+               "n't" if phase_thread.is_alive() else '')

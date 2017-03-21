@@ -93,6 +93,7 @@ class TestConf(unittest.TestCase):
     conf.load(station_id='station_id')
     self.assertEquals({
         'flag_key': 'flag_value',
+        'cancel_timeout_s': 30,
         'enable_station_discovery': True,
         'station_api_port': 8888,
         'allow_unset_measurements': False,

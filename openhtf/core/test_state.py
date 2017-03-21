@@ -141,17 +141,17 @@ class TestState(util.SubscribableStateMixin):
     currently running phase.
     """
     assert not self.running_phase_state, 'Phase already running!'
-    self.running_phase_state = PhaseState.from_descriptor(
+    phase_state = self.running_phase_state = PhaseState.from_descriptor(
         phase_desc, self.notify_update)
     try:
-      with self.running_phase_state.record_timing_context:
+      with phase_state.record_timing_context:
         self.notify_update()  # New phase started.
-        yield self.running_phase_state
+        yield phase_state
     finally:
       # Clear notification callbacks so we can serialize measurements.
-      for meas in self.running_phase_state.measurements.values():
+      for meas in phase_state.measurements.values():
         meas.set_notification_callback(None)
-      self.test_record.phases.append(self.running_phase_state.phase_record)
+      self.test_record.phases.append(phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
 

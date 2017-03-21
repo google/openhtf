@@ -14,6 +14,7 @@
 """Unit tests for the openhtf.exe module."""
 
 import unittest
+import threading
 import time
 import mock
 
@@ -95,6 +96,50 @@ class TestExecutor(unittest.TestCase):
     if not found:
       self.assertEqual(0, 1)
 
+  def test_cancel_start(self):
+
+    @openhtf.PhaseOptions()
+    def cancel_phase(test):
+      test.dut_id = 'DUT ID'
+      executor.stop()
+
+    ev = threading.Event()
+    test = openhtf.Test()
+    # Cancel during test start phase.
+    executor = core.TestExecutor(test.descriptor, 'uid', cancel_phase,
+                                 teardown_function=lambda: ev.set())
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.phases[0].name, cancel_phase.name)
+    self.assertIsNone(record.end_time_millis)
+    # Teardown function should not be executed.
+    self.assertFalse(ev.is_set())
+
+  def test_cancel_phase(self):
+
+    @openhtf.PhaseOptions()
+    def start_phase(test):
+      test.dut_id = 'DUT ID'
+
+    @openhtf.PhaseOptions()
+    def cancel_phase(test):
+      executor.stop()
+
+    ev = threading.Event()
+    test = openhtf.Test(cancel_phase)
+    # Cancel during test start phase.
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
+                                 teardown_function=lambda: ev.set())
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.phases[0].name, start_phase.name)
+    self.assertLess(record.start_time_millis, time.time() * 1000)
+    self.assertIsNone(record.end_time_millis)
+    # Teardown function should be executed.
+    self.assertTrue(ev.is_set())
+
 class TestPhaseExecutor(unittest.TestCase):
 
   def setUp(self):
@@ -112,3 +157,4 @@ class TestPhaseExecutor(unittest.TestCase):
     self.assertEqual(2, len(results))
     self.assertEqual(PhaseResult.CONTINUE, results[0].phase_result)
     self.assertEqual(PhaseResult.REPEAT, results[1].phase_result)
+
