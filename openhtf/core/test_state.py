@@ -27,6 +27,7 @@ invokation of an openhtf.Test instance.
 import contextlib
 import copy
 import logging
+import os
 import socket
 import threading
 import weakref
@@ -365,7 +366,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     """
     with open(filename, 'rb') as f:  # pylint: disable=invalid-name
       self.attach(
-          name if name is not None else filename, f.read(),
+          os.path.basename(name) if name is not None else filename, f.read(),
           mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
               filename)[0])
 
