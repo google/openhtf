@@ -366,7 +366,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     """
     with open(filename, 'rb') as f:  # pylint: disable=invalid-name
       self.attach(
-          os.path.basename(name) if name is not None else filename, f.read(),
+          name if name is not None else os.path.basename(filename), f.read(),
           mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
               filename)[0])
 
