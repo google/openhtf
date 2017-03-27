@@ -60,11 +60,9 @@ def main():
     raise ValueError('Frontend path `%s` does not exist.' % frontend_path)
   _LOG.info('Running frontend from path `%s`' % frontend_path)
 
-  web_server = openhtf.output.web_gui.WebGuiServer(args.discovery_interval_s,
-                                                   args.disable_discovery,
-                                                   args.port,
-                                                   frontend_path,
-                                                   args.dev)
+  web_server = openhtf.output.web_gui.WebGuiServer(
+      args.discovery_interval_s, args.disable_discovery, args.port,
+      frontend_path, args.dev, args)
 
   def sigint_handler(*dummy):
     """Handle SIGINT by stopping running executor and handler."""
