@@ -445,6 +445,22 @@ class WebGuiServer(tornado.web.Application):
     def get(self):
       self.render('index.html', host=socket.gethostname(), port=self.port)
 
+  class ConfigHandler(tornado.web.RequestHandler):
+    """Provides configuration information.
+
+    This exposes the config file and flags used to run the web GUI.
+    Note that this is distinct from the configuration of test stations.
+    """
+
+    def initialize(self, cli_args):
+      self._cli_args = cli_args
+
+    def get(self):
+      self.write({
+        'conf': conf._asdict(),
+        'flags': vars(self._cli_args),
+      })
+
   class PlugsHandler(tornado.web.RequestHandler):
     """Handler for all plugs from the OpenHTF frontend app."""
 
@@ -467,7 +483,7 @@ class WebGuiServer(tornado.web.Application):
         self.write(response)
 
   def __init__(self, discovery_interval_s, disable_discovery, http_port,
-               frontend_path, dev_mode=False):
+               frontend_path, dev_mode, cli_args):
     self.store = StationStore(
         discovery_interval_s, disable_discovery,
         DashboardPubSub.publish_discovery_update,
@@ -480,6 +496,7 @@ class WebGuiServer(tornado.web.Application):
         functools.partial(StationPubSub, self.store), '/sub/station')
     handler_routes = [
         (r'/', self.MainHandler, {'port': http_port}),
+        (r'/config/?', self.ConfigHandler, {'cli_args': cli_args}),
         (r'/station/(?:\d{1,3}\.){3}\d{1,3}/(?:\d{1,5})/?',
          self.MainHandler, {'port': http_port}),
         (r'/station/([\d\.]+)/(\d+)/(.*)/phases/?', PhasesHandler,
