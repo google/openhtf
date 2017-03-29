@@ -217,7 +217,7 @@ class StationStore(threading.Thread):
     """Provide dictionary-like access to the station store."""
     if not isinstance(hostport, Hostport):
       raise ValueError('StationStore key must be a Hostport instance.')
-    return self.stations.get(hostport)
+    return self.stations[hostport]
 
   def _discover(self):
     """Discover stations through the station API."""
@@ -396,12 +396,7 @@ class BaseTestHandler(tornado.web.RequestHandler):
   def get(self, host, port, test_uid):
     try:
       station = self._station_store[Hostport(host, int(port))]
-    except (ValueError):
-      self.write('Invalid port %s')
-      self.set_status(400)
-      return
-
-    if station is None:
+    except (KeyError, ValueError):
       self.write('Unknown host and port %s:%s' % (host, port))
       self.set_status(404)
       return
