@@ -217,7 +217,7 @@ class StationStore(threading.Thread):
     """Provide dictionary-like access to the station store."""
     if not isinstance(hostport, Hostport):
       raise ValueError('StationStore key must be a Hostport instance.')
-    return self.stations.get(hostport)
+    return self.stations[hostport]
 
   def _discover(self):
     """Discover stations through the station API."""

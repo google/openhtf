@@ -161,7 +161,8 @@ class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
 
 
 class RemotePhase(collections.namedtuple('RemotePhase', [
-    'name', 'codeinfo', 'start_time_millis', 'attachments', 'measurements'])):
+    'name', 'codeinfo', 'descriptor_id', 'start_time_millis', 'attachments',
+    'measurements'])):
   """Encapsulating class for info about a remotely executing Phase.
 
   See PhaseState._asdict() in exe/test_state.py for attribute details.
@@ -582,7 +583,7 @@ class StationApi(object):
       UnrecognizedTestUidError: The test_uid is not recognized.
     """
     phases = openhtf.Test.from_uid(test_uid).descriptor.phases
-    return [dict(id=id(phase), **data.convert_to_base_types(phases))
+    return [dict(id=id(phase), **data.convert_to_base_types(phase))
             for phase in phases]
 
   @staticmethod
