@@ -396,7 +396,12 @@ class BaseTestHandler(tornado.web.RequestHandler):
   def get(self, host, port, test_uid):
     try:
       station = self._station_store[Hostport(host, int(port))]
-    except (KeyError, ValueError):
+    except (ValueError):
+      self.write('Invalid port %s')
+      self.set_status(400)
+      return
+
+    if station is None:
       self.write('Unknown host and port %s:%s' % (host, port))
       self.set_status(404)
       return
