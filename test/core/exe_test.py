@@ -21,11 +21,13 @@ import mock
 import openhtf
 from openhtf import core
 from openhtf import plugs
+from openhtf import util
 from openhtf import PhaseResult
 from openhtf.core.test_state import TestState
 from openhtf.core.phase_executor import PhaseExecutor
 
 from openhtf.util import conf
+from openhtf.util import logs
 
 
 class UnittestPlug(plugs.BasePlug):
@@ -68,10 +70,8 @@ def phase_repeat(test, test_plug):
 
 class TestExecutor(unittest.TestCase):
 
-  def __init__(self, unittest_name):
-    super(TestExecutor, self).__init__(unittest_name)
-
   def setUp(self):
+    logs.setup_logger()
     self.test_plug_type = UnittestPlug
 
   def test_plug_map(self):
@@ -96,12 +96,28 @@ class TestExecutor(unittest.TestCase):
     if not found:
       self.assertEqual(0, 1)
 
+  @conf.save_and_restore(cancel_timeout_s=1)
   def test_cancel_start(self):
 
     @openhtf.PhaseOptions()
     def cancel_phase(test):
       test.dut_id = 'DUT ID'
-      executor.stop()
+      # We have 'executor' because we're inside the test method's scope.
+      # We have to run it in a thread to avoid getting a nasty series of
+      # confusing errors:
+      # If we were to stop it in this phase, it eventually causes the phase
+      # to be killed using KillableThread, which raises ThreadTerminationError
+      # inside here, which really raises it inside wherever executor.stop() is.
+      # That leads to the stopping of the executor to get stopped itself at a
+      # random point in time. To make this deterministic, we keep the phase
+      # alive as long as the executor is running, which really just means that
+      # the wait() call gets the error raised in it.
+      inner_ev = threading.Event()
+      def stop_executor():
+        executor.stop()
+        inner_ev.set()
+      threading.Thread(target=stop_executor).start()
+      inner_ev.wait(1)
 
     ev = threading.Event()
     test = openhtf.Test()
@@ -112,9 +128,12 @@ class TestExecutor(unittest.TestCase):
     executor.wait()
     record = executor.test_state.test_record
     self.assertEqual(record.phases[0].name, cancel_phase.name)
-    self.assertIsNone(record.end_time_millis)
+    # The test will end before it starts because the test never actually
+    # started, we canceled it inside of test_start.
+    self.assertLessEqual(record.end_time_millis, record.start_time_millis)
+    self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should not be executed.
-    self.assertFalse(ev.is_set())
+    self.assertFalse(ev.wait(3))
 
   def test_cancel_phase(self):
 
@@ -124,7 +143,13 @@ class TestExecutor(unittest.TestCase):
 
     @openhtf.PhaseOptions()
     def cancel_phase(test):
-      executor.stop()
+      # See above cancel_phase for explanations.
+      inner_ev = threading.Event()
+      def stop_executor():
+        executor.stop()
+        inner_ev.set()
+      threading.Thread(target=stop_executor).start()
+      inner_ev.wait(1)
 
     ev = threading.Event()
     test = openhtf.Test(cancel_phase)
@@ -135,10 +160,11 @@ class TestExecutor(unittest.TestCase):
     executor.wait()
     record = executor.test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
-    self.assertLess(record.start_time_millis, time.time() * 1000)
-    self.assertIsNone(record.end_time_millis)
+    self.assertLessEqual(record.start_time_millis, util.time_millis())
+    self.assertLessEqual(record.start_time_millis, record.end_time_millis)
+    self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should be executed.
-    self.assertTrue(ev.is_set())
+    self.assertTrue(ev.wait(1))
 
 class TestPhaseExecutor(unittest.TestCase):
 
@@ -153,8 +179,12 @@ class TestPhaseExecutor(unittest.TestCase):
         self.phase_executor.execute_phase(phase_two),
         self.phase_executor.execute_phase(phase_repeat),
     ]
+    counter = self.test_state.plug_manager.provide_plugs(
+        {'plug': UnittestPlug}.iteritems())['plug']
+    self.assertEqual(counter.count, 4)
 
     self.assertEqual(2, len(results))
     self.assertEqual(PhaseResult.CONTINUE, results[0].phase_result)
     self.assertEqual(PhaseResult.REPEAT, results[1].phase_result)
+    # assert 0
 
