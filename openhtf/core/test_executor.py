@@ -31,13 +31,14 @@ from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
+from openhtf.util import logs
 from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
 conf.declare('teardown_timeout_s', default_value=30, description=
              'Timeout (in seconds) for test teardown functions.')
-conf.declare('cancel_timeout_s', default_value=5,
+conf.declare('cancel_timeout_s', default_value=15,
              description='Timeout (in seconds) when the test has been cancelled'
              'to wait for the running phase to exit.')
 
@@ -80,10 +81,15 @@ class TestExecutor(threads.KillableThread):
   def stop(self):
     """Stop this test."""
     _LOG.info('Stopping test executor.')
-    self.kill()
+    # Deterministically mark the test as aborted.
+    self.finalize()
+    # Cause the exit stack to collapse immediately.
     with self._lock:
       if self._exit_stack:
         self._exit_stack.close()
+    # No need to kill this thread because, with the test_state finalized, it
+    # will end soon since we are stopping the current phase and won't run
+    # anymore phases.
 
   def finalize(self):
     """Finalize test execution and output resulting record to callbacks.
@@ -99,7 +105,7 @@ class TestExecutor(threads.KillableThread):
       raise TestStopError('Test Stopped.')
     if not self.test_state.is_finalized:
       self.test_state.logger.info('Finishing test with outcome ABORTED.')
-      self.test_state.finalize(test_record.Outcome.ABORTED)
+      self.test_state.abort()
 
     return self.test_state
 
@@ -161,7 +167,7 @@ class TestExecutor(threads.KillableThread):
   def _execute_test_teardown(self, phase_exec):
     phase_exec.stop(timeout_s=conf.cancel_timeout_s)
     if self._do_teardown_function and self._teardown_function:
-      phase_exec.execute_phase(self._teardown_function)
+      res = phase_exec.execute_phase(self._teardown_function)
     self.test_state.plug_manager.tear_down_plugs()
 
   def _execute_test_phases(self, phase_exec):

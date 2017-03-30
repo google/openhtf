@@ -167,6 +167,10 @@ class TestState(util.SubscribableStateMixin):
   def is_finalized(self):
     return self._status == self.Status.COMPLETED
 
+  def stop_running_phase(self):
+    """Stops the currently running phase, allowing another phase to run."""
+    self.running_phase_state = None
+
   @property
   def last_run_phase_name(self):
     """Get the name of the currently running phase, or None.
@@ -186,6 +190,8 @@ class TestState(util.SubscribableStateMixin):
 
   def set_status_running(self):
     """Mark the test as actually running, can't be done once finalized."""
+    if self._is_aborted():
+      return
     assert self._status == self.Status.WAITING_FOR_TEST_START
     self._status = self.Status.RUNNING
     self.notify_update()
@@ -196,6 +202,9 @@ class TestState(util.SubscribableStateMixin):
     Args:
       phase_outcome: An instance of phase_executor.PhaseOutcome
     """
+    if self._is_aborted():
+      return
+
     # Handle a few cases where the test is ending prematurely.
     if phase_outcome.raised_exception:
       self.logger.debug('Finishing test execution early due to phase '
@@ -209,15 +218,15 @@ class TestState(util.SubscribableStateMixin):
         code = str(type(phase_outcome.phase_result).__name__)
         description = str(phase_outcome.phase_result).decode('utf8', 'replace')
       self.test_record.add_outcome_details(code, description)
-      self.finalize(test_record.Outcome.ERROR)
+      self._finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:
       self.logger.debug('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
-      self.finalize(test_record.Outcome.TIMEOUT)
+      self._finalize(test_record.Outcome.TIMEOUT)
     elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.debug('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
-      self.finalize(test_record.Outcome.ABORTED)
+      self._finalize(test_record.Outcome.ABORTED)
 
   def finalize_normally(self):
     """Mark the state as finished.
@@ -228,6 +237,9 @@ class TestState(util.SubscribableStateMixin):
     Any UNSET measurements will cause the Test to FAIL unless
     conf.allow_unset_measurements is set True.
     """
+    if self._is_aborted():
+      return
+
     allowed_outcomes = {measurements.Outcome.PASS}
     if conf.allow_unset_measurements:
       allowed_outcomes.add(measurements.Outcome.UNSET)
@@ -235,14 +247,22 @@ class TestState(util.SubscribableStateMixin):
     if any(meas.outcome not in allowed_outcomes
            for phase in self.test_record.phases
            for meas in phase.measurements.itervalues()):
-      self.finalize(test_record.Outcome.FAIL)
+      self._finalize(test_record.Outcome.FAIL)
     else:
-      self.finalize(test_record.Outcome.PASS)
+      self._finalize(test_record.Outcome.PASS)
     self.logger.debug('Finishing test execution normally with outcome %s.',
                       self.test_record.outcome.name)
 
-  def finalize(self, test_outcome):
-    assert not self.is_finalized, 'Test already completed!'
+  def abort(self):
+    if self._is_aborted():
+      return
+
+    self._finalize(test_record.Outcome.ABORTED)
+
+  def _finalize(self, test_outcome):
+    aborting = test_outcome == test_record.Outcome.ABORTED
+    assert not self.is_finalized or aborting, (
+        'Test already completed with status %s!' % self._status.name)
     # Sanity check to make sure we have a DUT ID by the end of the test.
     if not self.test_record.dut_id:
       raise BlankDutIdError(
@@ -255,6 +275,12 @@ class TestState(util.SubscribableStateMixin):
     self.test_record.end_time_millis = util.time_millis()
     self._status = self.Status.COMPLETED
     self.notify_update()
+
+  def _is_aborted(self):
+    if self.is_finalized and self.test_record.outcome == test_record.Outcome.ABORTED:
+      self.logger.debug('Test already aborted.')
+      return True
+    return False
 
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
