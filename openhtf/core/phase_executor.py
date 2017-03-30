@@ -34,6 +34,8 @@ framework.
 
 import collections
 import logging
+import sys
+import threading
 import time
 import traceback
 
@@ -97,6 +99,10 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   def is_timeout(self):
     """True if this PhaseOutcome indicates a phase timeout."""
     return self.phase_result is None
+
+  @property
+  def is_repeat(self):
+    return self.phase_result is openhtf.PhaseResult.REPEAT
 
   @property
   def raised_exception(self):
@@ -174,6 +180,7 @@ class PhaseExecutor(object):
   def __init__(self, test_state):
     self.test_state = test_state
     self._current_phase_thread = None
+    self._stopping = threading.Event()
 
   def execute_phase(self, phase):
     """Executes each phase or skips them, yielding PhaseOutcome instances.
@@ -187,19 +194,18 @@ class PhaseExecutor(object):
       and handled internally. Returning REPEAT here means the phase hit its
       limit for repetitions.
     """
-    repeat_count = 0
-    repeat_limit = phase.options.repeat_limit
-    while True:
+    repeat_count = 1
+    repeat_limit = phase.options.repeat_limit or sys.maxint
+    while not self._stopping.is_set():
       outcome = self._execute_phase_once(phase)
 
-      if outcome is None or outcome is not openhtf.PhaseResult.REPEAT:
-        break
-
-      repeat_count += 1
-      if repeat_limit is None or repeat_count < repeat_limit:
+      if (outcome.is_repeat and repeat_count < repeat_limit):
+        repeat_count += 1
         continue
 
-    return outcome
+      return outcome
+    # We've been cancelled, so just 'timeout' the phase.
+    return PhaseOutcome(None)
 
   def _execute_phase_once(self, phase_desc):
     """Executes the given phase, returning a PhaseOutcome."""
@@ -225,9 +231,8 @@ class PhaseExecutor(object):
     It will raise a ThreadTerminationError, which will cause the test to stop
     executing and terminate with an ERROR state.
     """
+    self._stopping.set()
     phase_thread = self._current_phase_thread
-    self._current_phase_thread = None
-    self.test_state.running_phase_state = None
 
     if not phase_thread:
       return
@@ -235,9 +240,13 @@ class PhaseExecutor(object):
     phase_thread.kill()
 
     _LOG.debug('Waiting for cancelled phase to exit: %s', phase_thread)
-
     timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
     while phase_thread.is_alive() and not timeout.has_expired():
       time.sleep(0.1)
-    _LOG.debug('Cancelled phase did%s exit',
-               "n't" if phase_thread.is_alive() else '')
+    _LOG.debug('Cancelled phase %s exit',
+               "didn't" if phase_thread.is_alive() else 'did')
+    # Clear the currently running phase, whether it finished or timed out.
+    self.test_state.stop_running_phase()
+
+    # Clear stopping once we're done, in case we're used againu
+    self._stopping.clear()
