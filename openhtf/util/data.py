@@ -99,7 +99,7 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
 
 
 def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
-  """Recursively convert objects into base types, mostly dicts and strings.
+  """Recursively convert objects into base types.
 
   This is used to convert some special types of objects used internally into
   base types for more friendly output via mechanisms such as JSON.  It is used
@@ -111,14 +111,15 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
       attribute name to value.  Optional attributes with a value of None are
       skipped.
     - Enum instances are converted to strings via their .name attribute.
-    - Number types are left as such (instances of numbers.Number).
+    - Real and integral numbers are converted to built-in types.
     - Byte and unicode strings are left alone (instances of basestring).
     - Other non-None values are converted to strings via str().
 
-  This results in the return value containing only dicts, lists, tuples,
-  strings, Numbers, and None.  If tuples should be converted to lists (ie
-  for an encoding that does not differentiate between the two), pass
-  'tuple_type=list' as an argument.
+  The return value contains only the Python built-in types: dict, list, tuple,
+  str, unicode, int, float, long, bool, and NoneType (unless tuple_type is set
+  to something else).  If tuples should be converted to lists (e.g. for an
+  encoding that does not differentiate between the two), pass 'tuple_type=list'
+  as an argument.
   """
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, basestring), 'Pass a real iterable!'
@@ -135,21 +136,27 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    obj = {convert_to_base_types(k, ignore_keys, tuple_type):
+    return {convert_to_base_types(k, ignore_keys, tuple_type):
                convert_to_base_types(v, ignore_keys, tuple_type)
-           for k, v in obj.iteritems() if k not in ignore_keys}
+            for k, v in obj.iteritems() if k not in ignore_keys}
   elif isinstance(obj, list):
-    obj = [convert_to_base_types(val, ignore_keys, tuple_type) for val in obj]
+    return [convert_to_base_types(val, ignore_keys, tuple_type) for val in obj]
   elif isinstance(obj, tuple):
-    obj = tuple_type(
+    return tuple_type(
         convert_to_base_types(value, ignore_keys, tuple_type) for value in obj)
-  elif obj is not None and (
-      not isinstance(obj, numbers.Number) and not isinstance(obj, basestring)):
-    # Leave None as None to distinguish it from "None", as well as numbers and
-    # strings, converting anything unknown to strings.
-    obj = str(obj)
 
-  return obj
+  # Preserve booleans, None, and unicode.
+  elif obj in (True, False, None) or type(obj) is unicode:
+    return obj
+
+  # Convert numeric types (e.g. numpy ints and floats) into built-in types.
+  elif isinstance(obj, numbers.Integral):
+    return int(obj)
+  elif isinstance(obj, numbers.Real):
+    return float(obj)
+
+  # Convert all other types to strings.
+  return str(obj)
 
 
 def total_size(obj):
@@ -161,7 +168,7 @@ def total_size(obj):
     except Exception:  # pylint: disable=broad-except
       # Not sure what just happened, but let's assume it's a reference.
       return struct.calcsize('P')
-    
+
   def _sizeof(current_obj):
     """Do a depth-first acyclic traversal of all reachable objects."""
     if id(current_obj) in seen:
