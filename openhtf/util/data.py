@@ -31,6 +31,9 @@ from mutablerecords import records
 
 from enum import Enum
 
+# Used by convert_to_base_types().
+PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
+
 
 def pprint_diff(first, second, first_name='first', second_name='second'):
   """Compare the pprint representation of two objects and yield diff lines."""
@@ -124,6 +127,9 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, basestring), 'Pass a real iterable!'
 
+  if type(obj) in PASSTHROUGH_TYPES:
+    return obj
+
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
   elif isinstance(obj, records.RecordClass):
@@ -145,13 +151,9 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
     return tuple_type(
         convert_to_base_types(value, ignore_keys, tuple_type) for value in obj)
 
-  # Preserve booleans, None, and unicode.
-  elif obj in (True, False, None) or type(obj) is unicode:
-    return obj
-
   # Convert numeric types (e.g. numpy ints and floats) into built-in types.
   elif isinstance(obj, numbers.Integral):
-    return int(obj)
+    return long(obj)
   elif isinstance(obj, numbers.Real):
     return float(obj)
 
