@@ -34,11 +34,13 @@ framework.
 
 import collections
 import logging
+import time
 import traceback
 
 import openhtf
 from openhtf.util import argv
 from openhtf.util import threads
+from openhtf.util import timeouts
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
@@ -123,6 +125,7 @@ class PhaseExecutorThread(threads.KillableThread):
     self._phase_desc = phase_desc
     self._test_state = test_state
     self._phase_outcome = None
+    self._stopping = False
 
   def _thread_proc(self):
     """Execute the encompassed phase and save the result."""
@@ -141,22 +144,31 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def join_or_die(self):
     """Wait for thread to finish, return a PhaseOutcome with its response."""
-    if self._phase_desc.options.timeout_s is not None:
-      self.join(self._phase_desc.options.timeout_s)
-    else:
-      self.join(DEFAULT_PHASE_TIMEOUT_S)
+    timeout_s = self._phase_desc.options.timeout_s or DEFAULT_PHASE_TIMEOUT_S
+    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
+    while self.is_alive() and not timeout.has_expired() and not self._stopping:
+      time.sleep(.050)  # wait 50 ms
+
+    if self._stopping:
+      # Phase was killed.
+      return PhaseOutcome(threads.ThreadTerminationError())
 
     # We got a return value or an exception and handled it.
     if isinstance(self._phase_outcome, PhaseOutcome):
       return self._phase_outcome
 
-    # Check for timeout, indicated by None for PhaseOutcome.phase_result.
-    if self.is_alive():
-      self.kill()
+    if timeout.has_expired():
       return PhaseOutcome(None)
 
-    # Phase was killed.
-    return PhaseOutcome(threads.ThreadTerminationError())
+    # Should never get here
+    self.logger.warning('Could not determine result of executed phase.')
+    return PhaseOutcome(None)
+
+  def stop(self):
+    self._test_state.logger.debug('Stopping %s', self.name)
+    self._stopping = True
+    self.kill()
+
 
   @property
   def name(self):
@@ -251,6 +263,13 @@ class PhaseExecutor(object):
     It will raise a ThreadTerminationError, which will cause the test to stop
     executing and terminate with an ERROR state.
     """
+    self.test_state.logger.debug('Stopping PhaseExecutor')
     current_phase_thread = self._current_phase_thread
     if current_phase_thread:
-      current_phase_thread.kill()
+      kill_start = time.time()
+      current_phase_thread.stop()
+      while current_phase_thread.is_alive():
+        time.sleep(.1)
+      self.test_state.logger.debug('Took %.3f seconds to kill %s',
+          time.time() - kill_start,
+          current_phase_thread.name)
