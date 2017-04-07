@@ -34,11 +34,15 @@ framework.
 
 import collections
 import logging
+import sys
+import threading
+import time
 import traceback
 
 import openhtf
 from openhtf.util import argv
 from openhtf.util import threads
+from openhtf.util import timeouts
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
@@ -95,6 +99,10 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   def is_timeout(self):
     """True if this PhaseOutcome indicates a phase timeout."""
     return self.phase_result is None
+
+  @property
+  def is_repeat(self):
+    return self.phase_result is openhtf.PhaseResult.REPEAT
 
   @property
   def raised_exception(self):
@@ -172,62 +180,34 @@ class PhaseExecutor(object):
   def __init__(self, test_state):
     self.test_state = test_state
     self._current_phase_thread = None
+    self._stopping = threading.Event()
 
-  def execute_start_trigger(self, phase_desc):
-    """Run the start trigger phase, and check that the DUT ID is set after.
-
-    Logs a warning if the start trigger failed to set the DUT ID.
-    """
-    self._execute_one_phase(phase_desc)
-    if self.test_state.test_record.dut_id is None:
-      _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
-                   ' to do so to prevent a BlankDutIdError when the test ends.')
-
-  def execute_phases(self, phases, teardown_func):
+  def execute_phase(self, phase):
     """Executes each phase or skips them, yielding PhaseOutcome instances.
 
     Args:
-      phases: List of phases to execute.
-      teardown_func: Function or phase to execute at the end of all phases
-          regardless of errors.
+      phase: Phase to execute.
 
-    Yields:
-      PhaseOutcome instance that wraps the phase return value (or exception).
+    Returns:
+      The final PhaseOutcome that wraps the phase return value (or exception)
+      of the final phase run. All intermediary results, if any, are REPEAT
+      and handled internally. Returning REPEAT here means the phase hit its
+      limit for repetitions.
     """
-    try:
-      for phase in phases:
-        repeat_count = 0
-        while True:
-          outcome = self._execute_one_phase(phase)
-          if outcome:
-            # We have to run the teardown_func *before* we yield the outcome,
-            # because yielding the outcome results in the state being finalized
-            # in the case of a terminal outcome.
-            if outcome.is_terminal and teardown_func:
-              self._execute_one_phase(teardown_func)
-            yield outcome
+    repeat_count = 1
+    repeat_limit = phase.options.repeat_limit or sys.maxint
+    while not self._stopping.is_set():
+      outcome = self._execute_phase_once(phase)
 
-            # If we're done with this phase, skip to the next one.
-            if outcome.phase_result is openhtf.PhaseResult.CONTINUE:
-              break
+      if (outcome.is_repeat and repeat_count < repeat_limit):
+        repeat_count += 1
+        continue
 
-            if outcome.phase_result is openhtf.PhaseResult.REPEAT:
-              repeat_count += 1
-              if (repeat_count >= phase.options.repeat_limit
-                  and phase.options.repeat_limit is not None):
-                break
+      return outcome
+    # We've been cancelled, so just 'timeout' the phase.
+    return PhaseOutcome(None)
 
-          else:
-            # run_if was falsey, just skip this phase.
-            break
-      if teardown_func:
-        self._execute_one_phase(teardown_func)
-    except (KeyboardInterrupt, SystemExit):
-      if teardown_func:
-        self._execute_one_phase(teardown_func)
-      raise
-
-  def _execute_one_phase(self, phase_desc):
+  def _execute_phase_once(self, phase_desc):
     """Executes the given phase, returning a PhaseOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
@@ -245,12 +225,28 @@ class PhaseExecutor(object):
     _LOG.debug('Phase finished with result %s', phase_state.result)
     return phase_state.result
 
-  def stop(self):
+  def stop(self, timeout_s=None):
     """Stops execution of the current phase, if any.
 
     It will raise a ThreadTerminationError, which will cause the test to stop
     executing and terminate with an ERROR state.
     """
-    current_phase_thread = self._current_phase_thread
-    if current_phase_thread:
-      current_phase_thread.kill()
+    self._stopping.set()
+    phase_thread = self._current_phase_thread
+
+    if not phase_thread:
+      return
+
+    phase_thread.kill()
+
+    _LOG.debug('Waiting for cancelled phase to exit: %s', phase_thread)
+    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
+    while phase_thread.is_alive() and not timeout.has_expired():
+      time.sleep(0.1)
+    _LOG.debug('Cancelled phase %s exit',
+               "didn't" if phase_thread.is_alive() else 'did')
+    # Clear the currently running phase, whether it finished or timed out.
+    self.test_state.stop_running_phase()
+
+    # Clear stopping once we're done, in case we're used againu
+    self._stopping.clear()
