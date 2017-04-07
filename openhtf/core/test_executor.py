@@ -152,6 +152,7 @@ class TestExecutor(threads.KillableThread):
   def _execute_test_start(self, phase_exec):
     """Run the start trigger phase, and check that the DUT ID is set after.
 
+    Initializes any plugs used in the trigger.
     Logs a warning if the start trigger failed to set the DUT ID.
     """
     # Have the phase executor run the start trigger phase. Do partial plug
