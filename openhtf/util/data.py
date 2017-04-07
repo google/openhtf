@@ -128,7 +128,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
   elif isinstance(obj, records.RecordClass):
     obj = {attr: getattr(obj, attr)
            for attr in type(obj).all_attribute_names
-           if (getattr(obj, attr) is not None or
+           if (getattr(obj, attr, None) is not None or
                attr in type(obj).required_attributes)}
   elif isinstance(obj, Enum):
     obj = obj.name

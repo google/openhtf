@@ -71,7 +71,7 @@ class TestRecord(  # pylint: disable=no-init
 class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'PhaseRecord', ['descriptor_id', 'name', 'codeinfo'],
-        {'measurements': None,
+        {'measurements': None, 'options': None,
          'start_time_millis': int, 'end_time_millis': None,
          'attachments': dict, 'result': None})):
   """The record of a single run of a phase.

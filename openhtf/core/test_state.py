@@ -284,7 +284,7 @@ class TestState(util.SubscribableStateMixin):
 
 
 class PhaseState(mutablerecords.Record('PhaseState', [
-    'name', 'phase_record', 'measurements'])):
+    'name', 'phase_record', 'measurements', 'options'])):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
@@ -303,7 +303,8 @@ class PhaseState(mutablerecords.Record('PhaseState', [
         test_record.PhaseRecord.from_descriptor(phase_desc),
         {measurement.name:
              copy.deepcopy(measurement).set_notification_callback(notify_cb)
-         for measurement in phase_desc.measurements})
+         for measurement in phase_desc.measurements},
+        phase_desc.options)
 
   def _asdict(self):
     return {
@@ -311,6 +312,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
         'codeinfo': self.phase_record.codeinfo,
         'descriptor_id': self.phase_record.descriptor_id,
         'start_time_millis': long(self.phase_record.start_time_millis),
+        'options': self.phase_record.options,
         # We only serialize attachment hashes, they can be large.
         'attachments': {
             name: attachment.sha1 for name, attachment in
@@ -402,3 +404,4 @@ class PhaseState(mutablerecords.Record('PhaseState', [
       # Fill out final values for the PhaseRecord.
       self.phase_record.measurements = validated_measurements
       self.phase_record.end_time_millis = util.time_millis()
+      self.phase_record.options = self.options
