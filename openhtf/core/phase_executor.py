@@ -223,7 +223,20 @@ class PhaseExecutor(object):
       phase_state.result = phase_thread.join_or_die()
 
     _LOG.debug('Phase finished with result %s', phase_state.result)
+    _LOG.info('Phase finished as: %s',
+               self._readable_phase_result(phase_state.result))
     return phase_state.result
+
+  def _readable_phase_result(self, phase_result):
+    if phase_result.is_timeout:
+      return 'TIMEOUT'
+    if phase_result.is_repeat:
+      return 'REPEAT'
+    if phase_result.raised_exception:
+      return 'ERROR: %s' % phase_result.phase_result
+    if phase_result.is_terminal:
+      return 'STOP'
+    return 'Unknown: %s' % phase_result.phase_result
 
   def stop(self, timeout_s=None):
     """Stops execution of the current phase, if any.
