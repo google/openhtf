@@ -233,10 +233,10 @@ class PhaseExecutor(object):
     if phase_result.is_repeat:
       return 'REPEAT'
     if phase_result.raised_exception:
-      return 'ERROR: %s' % phase_result.phase_result
+      return 'ERROR: %s' % (phase_result.phase_result,)
     if phase_result.is_terminal:
       return 'STOP'
-    return 'Unknown: %s' % phase_result.phase_result
+    return 'Unknown: %s' % (phase_result.phase_result,)
 
   def stop(self, timeout_s=None):
     """Stops execution of the current phase, if any.
