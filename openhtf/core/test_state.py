@@ -208,7 +208,7 @@ class TestState(util.SubscribableStateMixin):
 
     # Handle a few cases where the test is ending prematurely.
     if phase_outcome.raised_exception:
-      self.logger.debug('Finishing test execution early due to phase '
+      self.logger.error('Finishing test execution early due to phase '
                         'exception, outcome ERROR.')
       result = phase_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
@@ -221,11 +221,11 @@ class TestState(util.SubscribableStateMixin):
       self.test_record.add_outcome_details(code, description)
       self._finalize(test_record.Outcome.ERROR)
     elif phase_outcome.is_timeout:
-      self.logger.debug('Finishing test execution early due to phase '
+      self.logger.error('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
       self._finalize(test_record.Outcome.TIMEOUT)
     elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
-      self.logger.debug('Finishing test execution early due to '
+      self.logger.error('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
       self._finalize(test_record.Outcome.ABORTED)
 
@@ -251,13 +251,15 @@ class TestState(util.SubscribableStateMixin):
       self._finalize(test_record.Outcome.FAIL)
     else:
       self._finalize(test_record.Outcome.PASS)
-    self.logger.debug('Finishing test execution normally with outcome %s.',
+    self.logger.info('Finishing test execution normally with outcome %s.',
                       self.test_record.outcome.name)
 
   def abort(self):
     if self._is_aborted():
       return
 
+    self.logger.info('Finishing test execution early due to '
+                     'test abortion, outcome ABORTED.')
     self._finalize(test_record.Outcome.ABORTED)
 
   def _finalize(self, test_outcome):
