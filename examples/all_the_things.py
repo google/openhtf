@@ -95,12 +95,19 @@ def attachments(test):
   test.attach_from_file('example_attachment.txt')
 
 
+@htf.TestPhase(run_if=lambda: False)
+def skip_phase(test):
+  """Don't run this phase."""
+  pass
+
+
 def teardown(test):
   test.logger.info('Running teardown')
 
 
 if __name__ == '__main__':
-  test = htf.Test(hello_world, set_measurements, dimensions, attachments,
+  test = htf.Test(
+      hello_world, set_measurements, dimensions, attachments, skip_phase,
       # Some metadata fields, these in particular are used by mfg-inspector,
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',

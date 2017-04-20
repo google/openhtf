@@ -68,6 +68,11 @@ def phase_repeat(test, test_plug):
   return openhtf.PhaseResult.REPEAT
 
 
+@openhtf.PhaseOptions(run_if=lambda: False)
+def phase_skip(test):
+  pass
+
+
 class TestExecutor(unittest.TestCase):
 
   def setUp(self):
@@ -178,13 +183,14 @@ class TestPhaseExecutor(unittest.TestCase):
     results = [
         self.phase_executor.execute_phase(phase_two),
         self.phase_executor.execute_phase(phase_repeat),
+        self.phase_executor.execute_phase(phase_skip),
     ]
     counter = self.test_state.plug_manager.provide_plugs(
         {'plug': UnittestPlug}.iteritems())['plug']
     self.assertEqual(counter.count, 4)
 
-    self.assertEqual(2, len(results))
+    self.assertEqual(3, len(results))
     self.assertEqual(PhaseResult.CONTINUE, results[0].phase_result)
     self.assertEqual(PhaseResult.REPEAT, results[1].phase_result)
+    self.assertEqual(PhaseResult.CONTINUE, results[2].phase_result)
     # assert 0
-

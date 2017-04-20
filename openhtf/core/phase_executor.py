@@ -213,7 +213,7 @@ class PhaseExecutor(object):
     if phase_desc.options.run_if and not phase_desc.options.run_if():
       _LOG.info('Phase %s skipped due to run_if returning falsey.',
                 phase_desc.name)
-      return
+      return PhaseOutcome(openhtf.PhaseResult.CONTINUE)
 
     with self.test_state.running_phase_context(phase_desc) as phase_state:
       _LOG.info('Executing phase %s', phase_desc.name)
