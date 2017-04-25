@@ -202,11 +202,18 @@ class Measurement(  # pylint: disable=no-init
     self.validators.append(validator)
     return self
 
-  def format_strings(self, **kwargs):
+  def with_args(self, **kwargs):
     """String substitution for names and docstrings."""
+    validators = [
+        validator.with_args(**kwargs)
+        if hasattr(validator, 'with_args') else validator
+        for validator in self.validators
+    ]
     return mutablerecords.CopyRecord(
         self, name=util.format_string(self.name, kwargs),
-        docstring=util.format_string(self.docstring, kwargs))
+        docstring=util.format_string(self.docstring, kwargs),
+        validators=validators,
+    )
 
   def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Support our default set of validators as direct attributes."""
@@ -217,7 +224,8 @@ class Measurement(  # pylint: disable=no-init
 
     # Create a wrapper to invoke the attribute from within validators.
     def _with_validator(*args, **kwargs):  # pylint: disable=invalid-name
-      return self.with_validator(getattr(validators, attr)(*args, **kwargs))
+      return self.with_validator(
+          validators.create_validator(attr, *args, **kwargs))
     return _with_validator
 
   def validate(self):

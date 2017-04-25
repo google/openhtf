@@ -50,124 +50,140 @@ if they are implemented by a class that has internal state that is not copyable
 by the default copy.deepcopy().
 """
 
+import numbers
+import re
 import sys
+from openhtf import util
+
+_VALIDATORS = {}
 
 
-class Validators(object):
-  """Validators class."""
+def register(validator, name=None):
+  name = name or validator.__name__
+  if name in _VALIDATORS:
+    raise ValueError('Duplicate validator name', name)
+  _VALIDATORS[name] = validator
 
-  def __init__(self, modules):
-    self.modules = modules
-    self._validators = {}
 
-  def register(self, validator, name=None):
-    name = name or validator.__name__
-    if hasattr(self, name):
-      raise ValueError('Duplicate validator name', name)
-    self._validators[name] = validator
+def create_validator(name, *args, **kwargs):
+  return _VALIDATORS[name](*args, **kwargs)
 
-  def __getattr__(self, attr):
-    if attr in self._validators:
-      return self._validators[attr]
-    raise ValueError('Validator not registered', attr)
+# Built-in validators below this line
 
-  # Built-in validators below this line
+class InRange(object):
+  """Validator to verify a numeric value is within a range."""
 
-  class InRange(object):
-    """Validator to verify a numeric value is within a range."""
+  def __init__(self, minimum, maximum, type=None):
+    if minimum is None and maximum is None:
+      raise ValueError('Must specify minimum, maximum, or both')
+    if (minimum is not None and maximum is not None
+        and isinstance(minimum, numbers.Number)
+        and isinstance(maximum, numbers.Number)
+        and minimum > maximum):
+      raise ValueError('Minimum cannot be greater than maximum')
+    self.minimum = minimum
+    self.maximum = maximum
+    self._type = type or (lambda x: x)
 
-    def __init__(self, minimum=None, maximum=None):
-      if minimum is None and maximum is None:
-        raise ValueError('Must specify minimum, maximum, or both')
-      if minimum is not None and maximum is not None and minimum > maximum:
-        raise ValueError('Minimum cannot be greater than maximum')
-      self.minimum = minimum
-      self.maximum = maximum
+  def with_args(self, **kwargs):
+    return type(self)(
+        minimum=util.format_string(self.minimum, kwargs),
+        maximum=util.format_string(self.maximum, kwargs),
+        type=self._type,
+    )
 
-    def __call__(self, value):
-      if value is None:
-        return False
-      import math
-      # Check for nan
-      if math.isnan(value):
-        return False
-      # Check for equal bounds first so we can use with non-numeric values.
-      if self.minimum == self.maximum and value != self.minimum:
-        return False
-      if self.minimum is not None and value < self.minimum:
-        return False
-      if self.maximum is not None and value > self.maximum:
-        return False
-      return True
+  def __call__(self, value):
+    if value is None:
+      return False
+    import math
+    # Check for nan
+    if math.isnan(value):
+      return False
+    minimum = self._type(self.minimum)
+    maximum = self._type(self.maximum)
+    # Check for equal bounds first so we can use with non-numeric values.
+    if minimum == maximum and value != minimum:
+      return False
+    if minimum is not None and value < minimum:
+      return False
+    if maximum is not None and value > maximum:
+      return False
+    return True
 
-    def __str__(self):
-      assert self.minimum is not None or self.maximum is not None
-      if self.minimum is not None and self.maximum is not None:
-        if self.minimum == self.maximum:
-          return 'x == %s' % self.minimum
-        return '%s <= x <= %s' % (self.minimum, self.maximum)
-      if self.minimum is not None:
-        return '%s <= x' % self.minimum
-      if self.maximum is not None:
-        return 'x <= %s' % self.maximum
+  def __str__(self):
+    assert self.minimum is not None or self.maximum is not None
+    if self.minimum is not None and self.maximum is not None:
+      if self.minimum == self.maximum:
+        return 'x == %s' % self.minimum
+      return '%s <= x <= %s' % (self.minimum, self.maximum)
+    if self.minimum is not None:
+      return '%s <= x' % self.minimum
+    if self.maximum is not None:
+      return 'x <= %s' % self.maximum
 
-    def __eq__(self, other):
-      return (isinstance(other, type(self)) and
-              self.minimum == other.minimum and self.maximum == other.maximum)
+  def __eq__(self, other):
+    return (isinstance(other, type(self)) and
+            self.minimum == other.minimum and self.maximum == other.maximum)
 
-    def __ne__(self, other):
-      return not self == other
+  def __ne__(self, other):
+    return not self == other
 
-  in_range = InRange  # pylint: disable=invalid-name
+in_range = InRange  # pylint: disable=invalid-name
+register(in_range, name='in_range')
 
-  def equals(self, value):
-    if isinstance(value, self.modules['numbers'].Number):
-      return self.InRange(minimum=value, maximum=value)
-    elif isinstance(value, basestring):
-      return self.matches_regex(self.modules['re'].escape(value))
-    else:
-      return self.Equals(value)
-    
-  class Equals(object):
-    """Validator to verify an object is equal to the expected value."""
-    
-    def __init__(self, expected):
-      self.expected = expected
-      
-    def __call__(self, value):
-      return value == self.expected
-    
-    def __str__(self):
-      return "'x' is equal to '%s'" % self.expected
-    
-    def __eq__(self, other):
-      return isinstance(other, type(self)) and self.expected == other.expected
 
-  class RegexMatcher(object):
-    """Validator to verify a string value matches a regex."""
+@register
+def equals(self, value, type=None):
+  if isinstance(value, numbers.Number):
+    return InRange(minimum=value, maximum=value, type=type)
+  elif isinstance(value, basestring):
+    assert type is None or issubclass(type, basestring), (
+        'Cannot use a non-string type when matching a string')
+    return matches_regex(re.escape(value))
+  else:
+    return Equals(value, type=type)
 
-    def __init__(self, regex, compiled_regex):
-      self._compiled = compiled_regex
-      self.regex = regex
 
-    def __call__(self, value):
-      return self._compiled.match(str(value)) is not None
+class Equals(object):
+  """Validator to verify an object is equal to the expected value."""
 
-    def __deepcopy__(self, dummy_memo):
-      return type(self)(self.regex, self._compiled)
+  def __init__(self, expected, type=None):
+    self.expected = expected
+    self._type = type or (lambda x: x)
 
-    def __str__(self):
-      return "'x' matches /%s/" % self.regex
+  def __call__(self, value):
+    return value == self._type(self.expected)
 
-    def __eq__(self, other):
-      return isinstance(other, type(self)) and self.regex == other.regex
+  def __str__(self):
+    return "'x' is equal to '%s'" % self.expected
 
-    def __ne__(self, other):
-      return not self == other
+  def __eq__(self, other):
+    return isinstance(other, type(self)) and self.expected == other.expected
 
-  # We have to use our saved reference to the re module because this module
-  # has lost all references by the sys.modules replacement and has been gc'd.
-  def matches_regex(self, regex):
-    return self.RegexMatcher(regex, self.modules['re'].compile(regex))
 
-sys.modules[__name__] = Validators(sys.modules)
+class RegexMatcher(object):
+  """Validator to verify a string value matches a regex."""
+
+  def __init__(self, regex, compiled_regex):
+    self._compiled = compiled_regex
+    self.regex = regex
+
+  def __call__(self, value):
+    return self._compiled.match(str(value)) is not None
+
+  def __deepcopy__(self, dummy_memo):
+    return type(self)(self.regex, self._compiled)
+
+  def __str__(self):
+    return "'x' matches /%s/" % self.regex
+
+  def __eq__(self, other):
+    return isinstance(other, type(self)) and self.regex == other.regex
+
+  def __ne__(self, other):
+    return not self == other
+
+
+@register
+def matches_regex(regex):
+  return RegexMatcher(regex, re.compile(regex))

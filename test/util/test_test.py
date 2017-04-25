@@ -37,8 +37,8 @@ class MyPlug(plugs.BasePlug):
 
 @plugs.plug(my_plug=MyPlug)
 @measurements.measures('test_measurement', 'othr_measurement')
-@measurements.measures('passes', validators=[validators.InRange(1, 10)])
-@measurements.measures('fails', validators=[validators.InRange(1, 10)])
+@measurements.measures('passes', validators=[validators.in_range(1, 10)])
+@measurements.measures('fails', validators=[validators.in_range(1, 10)])
 @measurements.measures('unset_measurement')
 def test_phase(phase_data, my_plug):
   phase_data.logger.error('in phase_data %s', id(phase_data))

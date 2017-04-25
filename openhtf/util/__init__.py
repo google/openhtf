@@ -145,6 +145,8 @@ def format_string(target, kwargs):
     return target
   if callable(target):
     return target(**kwargs)
+  if not isinstance(target, basestring):
+    return target
   if '{' in target:
     return partial_format(target, **kwargs)
   if '%' in target:

@@ -461,7 +461,7 @@ class PhaseDescriptor(mutablerecords.Record(
     new_info = mutablerecords.CopyRecord(self)
     new_info.options = new_info.options.format_strings(**kwargs)
     new_info.extra_kwargs.update(kwargs)
-    new_info.measurements = [m.format_strings(**kwargs) for m in self.measurements]
+    new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
   def with_plugs(self, **subplugs):

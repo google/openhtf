@@ -29,6 +29,7 @@ import openhtf as htf
 from openhtf.output import callbacks
 from openhtf.util import conf
 from openhtf.util import data
+from openhtf.util import test as htf_test
 from openhtf.util import units
 
 
@@ -75,14 +76,25 @@ def measure_dimensions(test):
 
 
 @htf.measures('inline_kwargs', docstring='This measurement is declared inline!',
-          units=units.HERTZ, validators=[util.validators.InRange(0, 10)])
+          units=units.HERTZ, validators=[util.validators.in_range(0, 10)])
 @htf.measures('another_inline', docstring='Because why not?')
 def inline_phase(test):
   test.measurements.inline_kwargs = 15
   test.measurements.another_inline = 'This one is unvalidated.'
 
 
-class TestMeasurements(unittest.TestCase):
+@htf.measures(
+    htf.Measurement('replaced_min_only').in_range('{min}', 5, type=int),
+    htf.Measurement('replaced_max_only').in_range(0, '{max}', type=int),
+    htf.Measurement('replaced_min_max').in_range('{min}', '{max}', type=int),
+)
+def measures_with_args(test, min, max):
+  test.measurements.replaced_min_only = 1
+  test.measurements.replaced_max_only = 1
+  test.measurements.replaced_min_max = 1
+
+
+class TestMeasurements(htf_test.TestCase):
 
   UPDATE_OUTPUT = False
 
@@ -115,6 +127,21 @@ class TestMeasurements(unittest.TestCase):
     if not self.UPDATE_OUTPUT:
       data.assert_records_equal_nonvolatile(
           self.record, result.result, _VOLATILE_FIELDS)
+
+  @htf_test.yields_phases
+  def test_validator_replacement(self):
+    record = yield measures_with_args.with_args(min=2, max=4)
+    self.assertMeasurementFail(record, 'replaced_min_only')
+    self.assertMeasurementPass(record, 'replaced_max_only')
+    self.assertMeasurementFail(record, 'replaced_min_max')
+    record = yield measures_with_args.with_args(min=0, max=5)
+    self.assertMeasurementPass(record, 'replaced_min_only')
+    self.assertMeasurementPass(record, 'replaced_max_only')
+    self.assertMeasurementPass(record, 'replaced_min_max')
+    record = yield measures_with_args.with_args(min=-1, max=0)
+    self.assertMeasurementPass(record, 'replaced_min_only')
+    self.assertMeasurementFail(record, 'replaced_max_only')
+    self.assertMeasurementFail(record, 'replaced_min_max')
 
   def test_update_output(self):
     """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
