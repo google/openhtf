@@ -14,25 +14,18 @@
 
 """TestExecutor executes tests."""
 
-import collections
 import logging
 import sys
 import threading
-import time
-from enum import Enum
 
 import contextlib2 as contextlib
 
 import openhtf
-from openhtf import plugs
-from openhtf import util
 from openhtf.core import phase_executor
-from openhtf.core import station_api
-from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
-from openhtf.util import logs
 from openhtf.util import threads
+
 
 _LOG = logging.getLogger(__name__)
 
@@ -97,9 +90,12 @@ class TestExecutor(threads.KillableThread):
     Should only be called once at the conclusion of a test run, and will raise
     an exception if end_time_millis is already set.
 
-    Returns: Finalized TestState.  It should not be modified after this call.
+    Returns:
+      Finalized TestState.  It should not be modified after this call.
 
-    Raises: TestAlreadyFinalized if end_time_millis already set.
+    Raises:
+      TestStopError: test
+      TestAlreadyFinalized if end_time_millis already set.
     """
     if not self.test_state:
       raise TestStopError('Test Stopped.')
@@ -154,6 +150,9 @@ class TestExecutor(threads.KillableThread):
 
     Initializes any plugs used in the trigger.
     Logs a warning if the start trigger failed to set the DUT ID.
+
+    Args:
+      phase_exec: openhtf.core.phase_executor.PhaseExecutor instance.
     """
     # Have the phase executor run the start trigger phase. Do partial plug
     # initialization for just the plugs needed by the start trigger phase.
@@ -168,7 +167,7 @@ class TestExecutor(threads.KillableThread):
   def _execute_test_teardown(self, phase_exec):
     phase_exec.stop(timeout_s=conf.cancel_timeout_s)
     if self._do_teardown_function and self._teardown_function:
-      res = phase_exec.execute_phase(self._teardown_function)
+      phase_exec.execute_phase(self._teardown_function)
     self.test_state.plug_manager.tear_down_plugs()
 
   def _execute_test_phases(self, phase_exec):

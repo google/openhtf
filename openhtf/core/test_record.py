@@ -22,9 +22,9 @@ import inspect
 import logging
 import os
 
-import mutablerecords
-
 from enum import Enum
+
+import mutablerecords
 
 from openhtf.util import logs
 
@@ -37,12 +37,13 @@ class InvalidMeasurementDimensions(Exception):
 
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
-Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])
+Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])  # pylint: disable=invalid-name
 # LogRecord is in openhtf.util.logs.LogRecord.
 
 
 class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
   """Encapsulate attachment data and guessed MIME type."""
+
   @property
   def sha1(self):
     return hashlib.sha1(self.data).hexdigest()

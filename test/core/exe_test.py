@@ -13,18 +13,19 @@
 # limitations under the License.
 """Unit tests for the openhtf.exe module."""
 
-import unittest
 import threading
 import time
+import unittest
+
 import mock
 
 import openhtf
 from openhtf import core
+from openhtf import PhaseResult
 from openhtf import plugs
 from openhtf import util
-from openhtf import PhaseResult
-from openhtf.core.test_state import TestState
 from openhtf.core.phase_executor import PhaseExecutor
+from openhtf.core.test_state import TestState
 
 from openhtf.util import conf
 from openhtf.util import logs
@@ -50,18 +51,24 @@ class UnittestPlug(plugs.BasePlug):
 
 @openhtf.PhaseOptions()
 def phase_one(test, test_plug):
+  del test  # Unused.
+  del test_plug  # Unused.
   time.sleep(1)
   print 'phase_one completed'
 
 
 @plugs.plug(test_plug=UnittestPlug)
 def phase_two(test, test_plug):
+  del test  # Unused.
+  del test_plug  # Unused.
   time.sleep(2)
   print 'phase_two completed'
+
 
 @openhtf.PhaseOptions(repeat_limit=4)
 @plugs.plug(test_plug=UnittestPlug)
 def phase_repeat(test, test_plug):
+  del test  # Unused.
   time.sleep(.1)
   test_plug.increment()
   print 'phase_repeat completed for %s time' % test_plug.count
@@ -70,7 +77,7 @@ def phase_repeat(test, test_plug):
 
 @openhtf.PhaseOptions(run_if=lambda: False)
 def phase_skip(test):
-  pass
+  del test  # Unused.
 
 
 class TestExecutor(unittest.TestCase):
@@ -128,7 +135,7 @@ class TestExecutor(unittest.TestCase):
     test = openhtf.Test()
     # Cancel during test start phase.
     executor = core.TestExecutor(test.descriptor, 'uid', cancel_phase,
-                                 teardown_function=lambda: ev.set())
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -148,6 +155,7 @@ class TestExecutor(unittest.TestCase):
 
     @openhtf.PhaseOptions()
     def cancel_phase(test):
+      del test  # Unused.
       # See above cancel_phase for explanations.
       inner_ev = threading.Event()
       def stop_executor():
@@ -160,7 +168,7 @@ class TestExecutor(unittest.TestCase):
     test = openhtf.Test(cancel_phase)
     # Cancel during test start phase.
     executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=lambda: ev.set())
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -171,11 +179,13 @@ class TestExecutor(unittest.TestCase):
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
 
+
 class TestPhaseExecutor(unittest.TestCase):
 
   def setUp(self):
     self.test_state = mock.MagicMock(spec=TestState,
-        plug_manager=plugs.PlugManager(), logger=mock.MagicMock())
+                                     plug_manager=plugs.PlugManager(),
+                                     logger=mock.MagicMock())
     self.test_state.plug_manager.initialize_plugs([UnittestPlug])
     self.phase_executor = PhaseExecutor(self.test_state)
 

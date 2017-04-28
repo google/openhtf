@@ -30,19 +30,16 @@ to change it back to False afterwards (there's a test to make sure you do).
 """
 
 import cPickle as pickle
-import difflib
-import logging
+from cStringIO import StringIO
 import os.path
 import unittest
-
-from cStringIO import StringIO
-
-import google.protobuf.text_format as text_format
 
 from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import data
+
+import google.protobuf.text_format as text_format
 
 
 def _local_filename(filename):
@@ -68,7 +65,8 @@ class TestOutput(unittest.TestCase):
 
   def test_json(self):
     json_output = StringIO()
-    json_factory.OutputToJSON(json_output, sort_keys=True, indent=2)(self.record)
+    json_factory.OutputToJSON(
+        json_output, sort_keys=True, indent=2)(self.record)
     if self.UPDATE_OUTPUT:
       with open(_local_filename('record.json'), 'wb') as jsonfile:
         jsonfile.write(json_output.getvalue())

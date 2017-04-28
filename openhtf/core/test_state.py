@@ -27,12 +27,10 @@ invokation of an openhtf.Test instance.
 import contextlib
 import copy
 import logging
+import mimetypes
 import os
 import socket
-import threading
-import weakref
 
-import mimetypes
 from enum import Enum
 
 import mutablerecords
@@ -41,15 +39,15 @@ import openhtf
 
 from openhtf import plugs
 from openhtf import util
-from openhtf.core import phase_executor
 from openhtf.core import measurements
+from openhtf.core import phase_executor
 from openhtf.core import test_record
 from openhtf.util import conf
 from openhtf.util import logs
-from openhtf.util import threads
 
-conf.declare('allow_unset_measurements', default_value=False, description=\
-  'If True, unset measurements do not cause Tests to FAIL.')
+conf.declare('allow_unset_measurements', default_value=False,
+             description='If True, unset measurements do not cause Tests to '
+             'FAIL.')
 # All tests require a station_id.  This can be via the --config-file
 # automatically loaded by OpenHTF, provided explicitly to the config with
 # conf.load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
@@ -94,7 +92,7 @@ class TestState(util.SubscribableStateMixin):
         Note that if there is no running phase, test_api is also None.
     execution_uid: A UUID that is specific to this execution.
   """
-  Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])
+  Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])  # pylint: disable=invalid-name
 
   def __init__(self, test_desc, execution_uid):
     super(TestState, self).__init__()
@@ -119,6 +117,9 @@ class TestState(util.SubscribableStateMixin):
     phases.  Note that the return value is none if there is no
     self.running_phase_state set.  As such, this attribute should only
     be accessed within a RunningPhaseContext().
+
+    Returns:
+      openhtf.TestApi
     """
     running_phase_state = self.running_phase_state
     return (running_phase_state and
@@ -140,6 +141,12 @@ class TestState(util.SubscribableStateMixin):
 
     Within this context, the Station API will report the given phase as the
     currently running phase.
+
+    Args:
+      phase_desc: openhtf.PhaseDescriptor to start a context for.
+
+    Yields:
+      PhaseState to track transient state.
     """
     assert not self.running_phase_state, 'Phase already running!'
     phase_state = self.running_phase_state = PhaseState.from_descriptor(
@@ -179,6 +186,9 @@ class TestState(util.SubscribableStateMixin):
     Note that this name is not guaranteed to still be accurate by the time this
     method returns, so this should only be used for log messages/user display
     and not for programmatic purposes.
+
+    Returns:
+      str name of currently running phase or None.
     """
     return self.running_phase_state and self.running_phase_state.name
 
@@ -215,7 +225,7 @@ class TestState(util.SubscribableStateMixin):
         code = result.exc_type.__name__
         description = str(result.exc_val).decode('utf8', 'replace')
       else:
-        # threads.ThreadTerminationError gets str'd directly.
+        # openhtf.util.threads.ThreadTerminationError gets str'd directly.
         code = str(type(phase_outcome.phase_result).__name__)
         description = str(phase_outcome.phase_result).decode('utf8', 'replace')
       self.test_record.add_outcome_details(code, description)
@@ -252,7 +262,7 @@ class TestState(util.SubscribableStateMixin):
     else:
       self._finalize(test_record.Outcome.PASS)
     self.logger.info('Finishing test execution normally with outcome %s.',
-                      self.test_record.outcome.name)
+                     self.test_record.outcome.name)
 
   def abort(self):
     if self._is_aborted():
@@ -280,7 +290,8 @@ class TestState(util.SubscribableStateMixin):
     self.notify_update()
 
   def _is_aborted(self):
-    if self.is_finalized and self.test_record.outcome == test_record.Outcome.ABORTED:
+    if (self.is_finalized and
+        self.test_record.outcome == test_record.Outcome.ABORTED):
       self.logger.debug('Test already aborted.')
       return True
     return False
@@ -388,6 +399,9 @@ class PhaseState(mutablerecords.Record('PhaseState', [
 
     This method performs some pre-phase setup on self (for measurements), and
     records the start and end time based on when the context is entered/exited.
+
+    Yields:
+      None
     """
     self.phase_record.start_time_millis = util.time_millis()
 

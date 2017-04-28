@@ -57,6 +57,7 @@ _LOG = logging.getLogger(__name__)
 
 class ExceptionInfo(collections.namedtuple(
     'ExceptionInfo', ['exc_type', 'exc_val', 'exc_tb'])):
+
   def _asdict(self):
     return {
         'exc_type': str(self.exc_type),
@@ -88,6 +89,7 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
   of Exception (phase raised), or an instance of openhtf.PhaseResult.  Any
   other value will raise an InvalidPhaseResultError.
   """
+
   def __init__(self, phase_result):
     if (phase_result is not None and
         not isinstance(phase_result, (openhtf.PhaseResult, ExceptionInfo)) and
@@ -199,7 +201,7 @@ class PhaseExecutor(object):
     while not self._stopping.is_set():
       outcome = self._execute_phase_once(phase)
 
-      if (outcome.is_repeat and repeat_count < repeat_limit):
+      if outcome.is_repeat and repeat_count < repeat_limit:
         repeat_count += 1
         continue
 
@@ -230,6 +232,9 @@ class PhaseExecutor(object):
 
     It will raise a ThreadTerminationError, which will cause the test to stop
     executing and terminate with an ERROR state.
+
+    Args:
+      timeout_s: int or None, timeout in seconds to wait for the phase to stop.
     """
     self._stopping.set()
     phase_thread = self._current_phase_thread
