@@ -156,9 +156,6 @@ class TestState(util.SubscribableStateMixin):
         self.notify_update()  # New phase started.
         yield phase_state
     finally:
-      # Clear notification callbacks so we can serialize measurements.
-      for meas in phase_state.measurements.values():
-        meas.set_notification_callback(None)
       self.test_record.phases.append(phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
@@ -396,6 +393,29 @@ class PhaseState(mutablerecords.Record('PhaseState', [
           mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
               filename)[0])
 
+  def _finalize_measurements(self):
+    """Perform end-of-phase finalization steps for measurements."""
+    # Clear notification callbacks for later serialization.
+    for meas in self.measurements.values():
+      meas.set_notification_callback(None)
+
+    # Initialize with already-validated and UNSET measurements.
+    validated_measurements = {
+        name: measurement
+        for name, measurement in self.measurements.iteritems()
+        if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
+    }
+
+    # Validate multi-dimensional measurements now that we have all values.
+    validated_measurements.update({
+        name: measurement.validate()
+        for name, measurement in self.measurements.iteritems()
+        if measurement.outcome is measurements.Outcome.PARTIALLY_SET
+    })
+
+    # Fill out final values for the PhaseRecord.
+    self.phase_record.measurements = validated_measurements
+
   @property
   @contextlib.contextmanager
   def record_timing_context(self):
@@ -412,21 +432,6 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     try:
       yield
     finally:
-      # Initialize with already-validated and UNSET measurements.
-      validated_measurements = {
-          name: measurement
-          for name, measurement in self.measurements.iteritems()
-          if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
-      }
-
-      # Validate multi-dimensional measurements now that we have all values.
-      validated_measurements.update({
-          name: measurement.validate()
-          for name, measurement in self.measurements.iteritems()
-          if measurement.outcome is measurements.Outcome.PARTIALLY_SET
-      })
-
-      # Fill out final values for the PhaseRecord.
-      self.phase_record.measurements = validated_measurements
+      self._finalize_measurements()
       self.phase_record.end_time_millis = util.time_millis()
       self.phase_record.options = self.options
