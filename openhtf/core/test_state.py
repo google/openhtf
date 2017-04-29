@@ -207,34 +207,36 @@ class TestState(util.SubscribableStateMixin):
     self._status = self.Status.RUNNING
     self.notify_update()
 
-  def finalize_from_phase_outcome(self, phase_outcome):
+  def finalize_from_phase_outcome(self, phase_execution_outcome):
     """Finalize due to the given phase outcome.
 
     Args:
-      phase_outcome: An instance of phase_executor.PhaseOutcome
+      phase_execution_outcome: An instance of
+          phase_executor.PhaseExecutionOutcome.
     """
     if self._is_aborted():
       return
 
     # Handle a few cases where the test is ending prematurely.
-    if phase_outcome.raised_exception:
+    if phase_execution_outcome.raised_exception:
       self.logger.error('Finishing test execution early due to phase '
                         'exception, outcome ERROR.')
-      result = phase_outcome.phase_result
+      result = phase_execution_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
         description = str(result.exc_val).decode('utf8', 'replace')
       else:
         # openhtf.util.threads.ThreadTerminationError gets str'd directly.
-        code = str(type(phase_outcome.phase_result).__name__)
-        description = str(phase_outcome.phase_result).decode('utf8', 'replace')
+        code = str(type(phase_execution_outcome.phase_result).__name__)
+        description = str(phase_execution_outcome.phase_result).decode(
+            'utf8', 'replace')
       self.test_record.add_outcome_details(code, description)
       self._finalize(test_record.Outcome.ERROR)
-    elif phase_outcome.is_timeout:
+    elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
       self._finalize(test_record.Outcome.TIMEOUT)
-    elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
+    elif phase_execution_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.error('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
       self._finalize(test_record.Outcome.ABORTED)

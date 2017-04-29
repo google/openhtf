@@ -38,7 +38,7 @@ sS'result'
 p18
 g1
 (copenhtf.core.phase_executor
-PhaseOutcome
+PhaseExecutionOutcome
 p19
 c__builtin__
 tuple
