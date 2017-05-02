@@ -836,6 +836,7 @@ class ApiServer(threading.Thread):
       finally:
         if self.station_api_server:
           self.station_api_server.shutdown()
+          self.station_api_server.server_close()
     except Exception:
       _LOG.debug('Exception stopping Station API, ignoring.', exc_info=True)
 

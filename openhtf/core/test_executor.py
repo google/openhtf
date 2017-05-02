@@ -31,12 +31,16 @@ from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
+from openhtf.util import logs
 from openhtf.util import threads
 
 _LOG = logging.getLogger(__name__)
 
 conf.declare('teardown_timeout_s', default_value=30, description=
              'Timeout (in seconds) for test teardown functions.')
+conf.declare('cancel_timeout_s', default_value=15,
+             description='Timeout (in seconds) when the test has been cancelled'
+             'to wait for the running phase to exit.')
 
 
 class TestExecutionError(Exception):
@@ -77,10 +81,15 @@ class TestExecutor(threads.KillableThread):
   def stop(self):
     """Stop this test."""
     _LOG.info('Stopping test executor.')
+    # Deterministically mark the test as aborted.
+    self.finalize()
+    # Cause the exit stack to collapse immediately.
     with self._lock:
       if self._exit_stack:
         self._exit_stack.close()
-    self.kill()
+    # No need to kill this thread because, with the test_state finalized, it
+    # will end soon since we are stopping the current phase and won't run
+    # anymore phases.
 
   def finalize(self):
     """Finalize test execution and output resulting record to callbacks.
@@ -96,7 +105,7 @@ class TestExecutor(threads.KillableThread):
       raise TestStopError('Test Stopped.')
     if not self.test_state.is_finalized:
       self.test_state.logger.info('Finishing test with outcome ABORTED.')
-      self.test_state.finalize(test_record.Outcome.ABORTED)
+      self.test_state.abort()
 
     return self.test_state
 
@@ -115,20 +124,21 @@ class TestExecutor(threads.KillableThread):
       self.test_state = test_state.TestState(self._test_descriptor, self.uid)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
-      # Any access to self._exit_stack must be done while holding this lock.
+      # Any access to self._exit_stacks must be done while holding this lock.
       with self._lock:
         self._exit_stack = exit_stack
-        # We need to exit the PhaseExecutor before we tear down the plugs
-        # that a phase may be executing, so we add them in reverse order.
-        exit_stack.callback(self.test_state.plug_manager.tear_down_plugs)
-        exit_stack.callback(phase_exec.stop)
+        # Ensure that we tear everything down when exiting.
+        exit_stack.callback(self._execute_test_teardown, phase_exec)
+        # We don't want to run the 'teardown function' unless the test has
+        # actually started.
+        self._do_teardown_function = False
 
-      # Have the phase executor run the start trigger phase. Do partial plug
-      # initialization for just the plugs needed by the start trigger phase.
       if self._test_start is not None:
-        self.test_state.plug_manager.initialize_plugs(
-            (phase_plug.cls for phase_plug in self._test_start.plugs))
-        phase_exec.execute_start_trigger(self._test_start)
+        self._execute_test_start(phase_exec)
+      # The trigger has run and the test has started, so from now on we want the
+      # teardown function to execute at the end, no matter what.
+      with self._lock:
+        self._do_teardown_function = True
       self.test_state.mark_test_started()
 
       # Full plug initialization happens _after_ the start trigger, as close to
@@ -136,24 +146,43 @@ class TestExecutor(threads.KillableThread):
       # in a known-good state at the start of test execution.
       self.test_state.plug_manager.initialize_plugs()
 
-      # Everything is set, set status and begin test execution.  Note we don't
-      # protect this with a try: block because the PhaseExecutor handles any
-      # exceptions from test code.  Any exceptions here are caused by the
-      # framework, and we probably want them to interrupt framework state
-      # changes (like the transition to FINISHING).
+      # Everything is set, set status and begin test execution.
       self._execute_test_phases(phase_exec)
+
+  def _execute_test_start(self, phase_exec):
+    """Run the start trigger phase, and check that the DUT ID is set after.
+
+    Initializes any plugs used in the trigger.
+    Logs a warning if the start trigger failed to set the DUT ID.
+    """
+    # Have the phase executor run the start trigger phase. Do partial plug
+    # initialization for just the plugs needed by the start trigger phase.
+    self.test_state.plug_manager.initialize_plugs(
+        (phase_plug.cls for phase_plug in self._test_start.plugs))
+    phase_exec.execute_phase(self._test_start)
+
+    if self.test_state.test_record.dut_id is None:
+      _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
+                   ' to do so to prevent a BlankDutIdError when the test ends.')
+
+  def _execute_test_teardown(self, phase_exec):
+    phase_exec.stop(timeout_s=conf.cancel_timeout_s)
+    if self._do_teardown_function and self._teardown_function:
+      res = phase_exec.execute_phase(self._teardown_function)
+    self.test_state.plug_manager.tear_down_plugs()
 
   def _execute_test_phases(self, phase_exec):
     """Executes one test's phases from start to finish."""
     self.test_state.set_status_running()
 
     try:
-      for phase_outcome in phase_exec.execute_phases(
-          self._test_descriptor.phases, self._teardown_function):
-        if self.test_state.set_status_from_phase_outcome(phase_outcome):
+      for phase in self._test_descriptor.phases:
+        outcome = phase_exec.execute_phase(phase)
+        if outcome.is_terminal:
+          self.test_state.finalize_from_phase_outcome(outcome)
           break
       else:
-        self.test_state.finalize()
+        self.test_state.finalize_normally()
     except KeyboardInterrupt:
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise

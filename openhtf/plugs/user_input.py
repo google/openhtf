@@ -212,7 +212,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     Returns:
       True if the prompt was used, otherwise False.
     """
-    if type(prompt_id) == str:
+    if isinstance(prompt_id, basestring):
       prompt_id = uuid.UUID(prompt_id)
     _LOG.debug('Responding to prompt (%s): "%s"', prompt_id.hex, response)
     with self._cond:

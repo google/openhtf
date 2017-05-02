@@ -516,6 +516,7 @@ class PlugManager(object):
     if self._xmlrpc_server:
       _LOG.debug('Shutting down Plug XMLRPC Server.')
       self._xmlrpc_server.shutdown()
+      self._xmlrpc_server.server_close()
       self._xmlrpc_server = None
 
     _LOG.debug('Tearing down all plugs.')
