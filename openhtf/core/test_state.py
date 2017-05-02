@@ -247,11 +247,26 @@ class TestState(util.SubscribableStateMixin):
     if self._is_aborted():
       return
 
-    if any(phase.outcome == test_record.PhaseOutcome.FAIL
-           for phase in self.test_record.phases):
-      self._finalize(test_record.Outcome.FAIL)
-    else:
+    phases = self.test_record.phases
+    if not phases:
+      # Vacuously PASS a TestRecord with no phases.
       self._finalize(test_record.Outcome.PASS)
+    elif any(
+        phase.outcome == test_record.PhaseOutcome.FAIL for phase in phases):
+      # Any FAIL phase results in a test failure.
+      self._finalize(test_record.Outcome.FAIL)
+    elif all(
+        phase.outcome == test_record.PhaseOutcome.SKIP for phase in phases):
+      # Error when all phases are skipped; otherwise, it could lead to
+      # unintentional passes.
+      self.logger.error('All phases were skipped, outcome ERROR.')
+      self.test_record.add_outcome_details(
+          'ALL_SKIPPED', 'All phases were unexpectedly skipped.')
+      self._finalize(test_record.Outcome.ERROR)
+    else:
+      # Otherwise, the test run was successful.
+      self._finalize(test_record.Outcome.PASS)
+
     self.logger.info('Finishing test execution normally with outcome %s.',
                      self.test_record.outcome.name)
 

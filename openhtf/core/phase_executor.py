@@ -99,25 +99,29 @@ class PhaseExecutionOutcome(collections.namedtuple(
     super(PhaseExecutionOutcome, self).__init__(phase_result)
 
   @property
-  def is_timeout(self):
-    """True if this PhaseExecutionOutcome indicates a phase timeout."""
-    return self.phase_result is None
-
-  @property
   def is_repeat(self):
     return self.phase_result is openhtf.PhaseResult.REPEAT
 
   @property
-  def raised_exception(self):
-    """True if the phase in question raised an exception."""
-    return isinstance(self.phase_result, (
-        ExceptionInfo, threads.ThreadTerminationError))
+  def is_skip(self):
+    return self.phase_result is openhtf.PhaseResult.SKIP
 
   @property
   def is_terminal(self):
     """True if this result will stop the test."""
     return (self.raised_exception or self.is_timeout or
             self.phase_result == openhtf.PhaseResult.STOP)
+
+  @property
+  def is_timeout(self):
+    """True if this PhaseExecutionOutcome indicates a phase timeout."""
+    return self.phase_result is None
+
+  @property
+  def raised_exception(self):
+    """True if the phase in question raised an exception."""
+    return isinstance(self.phase_result, (
+        ExceptionInfo, threads.ThreadTerminationError))
 
 
 class PhaseExecutorThread(threads.KillableThread):
@@ -218,7 +222,7 @@ class PhaseExecutor(object):
     if phase_desc.options.run_if and not phase_desc.options.run_if():
       _LOG.info('Phase %s skipped due to run_if returning falsey.',
                 phase_desc.name)
-      return PhaseExecutionOutcome(openhtf.PhaseResult.CONTINUE)
+      return PhaseExecutionOutcome(openhtf.PhaseResult.SKIP)
 
     with self.test_state.running_phase_context(phase_desc) as phase_state:
       _LOG.info('Executing phase %s', phase_desc.name)

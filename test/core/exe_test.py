@@ -83,8 +83,14 @@ def phase_repeat(test, test_plug):
 
 
 @openhtf.PhaseOptions(run_if=lambda: False)
-def phase_skip(test):
+def phase_skip_from_run_if(test):
   del test  # Unused.
+
+
+@openhtf.PhaseOptions()
+def phase_return_skip(test):
+  del test  # Unused.
+  return openhtf.PhaseResult.SKIP
 
 
 class TestExecutor(unittest.TestCase):
@@ -212,5 +218,9 @@ class TestPhaseExecutor(unittest.TestCase):
     self.assertEqual(PhaseResult.STOP, result.phase_result)
 
   def test_execute_run_if_false(self):
-    result = self.phase_executor.execute_phase(phase_skip)
-    self.assertEqual(PhaseResult.CONTINUE, result.phase_result)
+    result = self.phase_executor.execute_phase(phase_skip_from_run_if)
+    self.assertEqual(PhaseResult.SKIP, result.phase_result)
+
+  def test_execute_phase_return_skip(self):
+    result = self.phase_executor.execute_phase(phase_return_skip)
+    self.assertEqual(PhaseResult.SKIP, result.phase_result)
