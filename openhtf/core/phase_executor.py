@@ -201,9 +201,10 @@ class PhaseExecutor(object):
     repeat_count = 1
     repeat_limit = phase.options.repeat_limit or sys.maxint
     while not self._stopping.is_set():
-      phase_execution_outcome = self._execute_phase_once(phase)
+      is_last_repeat = repeat_count >= repeat_limit
+      phase_execution_outcome = self._execute_phase_once(phase, is_last_repeat)
 
-      if phase_execution_outcome.is_repeat and repeat_count < repeat_limit:
+      if phase_execution_outcome.is_repeat and not is_last_repeat:
         repeat_count += 1
         continue
 
@@ -211,7 +212,7 @@ class PhaseExecutor(object):
     # We've been cancelled, so just 'timeout' the phase.
     return PhaseExecutionOutcome(None)
 
-  def _execute_phase_once(self, phase_desc):
+  def _execute_phase_once(self, phase_desc, is_last_repeat):
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
@@ -224,10 +225,14 @@ class PhaseExecutor(object):
       phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      phase_state.result = phase_thread.join_or_die()
+      result = phase_state.result = phase_thread.join_or_die()
+      if phase_state.result.is_repeat and is_last_repeat:
+        _LOG.error('Phase returned REPEAT, exceeding repeat_limit.')
+        phase_state.hit_repeat_limit = True
+        result = PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
 
-    _LOG.debug('Phase finished with result %s', phase_state.result)
-    return phase_state.result
+    _LOG.debug('Phase finished with result %s', result)
+    return result
 
   def stop(self, timeout_s=None):
     """Stops execution of the current phase, if any.

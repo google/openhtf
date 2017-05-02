@@ -242,21 +242,13 @@ class TestState(util.SubscribableStateMixin):
     """Mark the state as finished.
 
     This method is called on normal test completion. The outcome will be either
-    PASS or FAIL, depending on measurements' PASS/FAIL status.
-
-    Any UNSET measurements will cause the Test to FAIL unless
-    conf.allow_unset_measurements is set True.
+    PASS, FAIL, or ERROR, depending on phases' outcomes.
     """
     if self._is_aborted():
       return
 
-    allowed_outcomes = {measurements.Outcome.PASS}
-    if conf.allow_unset_measurements:
-      allowed_outcomes.add(measurements.Outcome.UNSET)
-
-    if any(meas.outcome not in allowed_outcomes
-           for phase in self.test_record.phases
-           for meas in phase.measurements.itervalues()):
+    if any(phase.outcome == test_record.PhaseOutcome.FAIL
+           for phase in self.test_record.phases):
       self._finalize(test_record.Outcome.FAIL)
     else:
       self._finalize(test_record.Outcome.PASS)
@@ -302,8 +294,10 @@ class TestState(util.SubscribableStateMixin):
     )
 
 
-class PhaseState(mutablerecords.Record('PhaseState', [
-    'name', 'phase_record', 'measurements', 'options'])):
+class PhaseState(mutablerecords.Record(
+    'PhaseState',
+    ['name', 'phase_record', 'measurements', 'options'],
+    {'hit_repeat_limit': False})):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
@@ -312,6 +306,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     measurements: A dict mapping measurement name to it's declaration; this
         dict can be passed to measurements.Collection to initialize a user-
         facing Collection for setting measurements.
+    options: the PhaseOptions from the phase descriptor.
     result: Convenience getter/setter for phase_record.result.
   """
 
@@ -394,7 +389,11 @@ class PhaseState(mutablerecords.Record('PhaseState', [
               filename)[0])
 
   def _finalize_measurements(self):
-    """Perform end-of-phase finalization steps for measurements."""
+    """Perform end-of-phase finalization steps for measurements.
+
+    Any UNSET measurements will cause the Phase to FAIL unless
+    conf.allow_unset_measurements is set True.
+    """
     # Clear notification callbacks for later serialization.
     for meas in self.measurements.values():
       meas.set_notification_callback(None)
@@ -416,6 +415,27 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     # Fill out final values for the PhaseRecord.
     self.phase_record.measurements = validated_measurements
 
+  def _measurements_pass(self):
+    allowed_outcomes = {measurements.Outcome.PASS}
+    if conf.allow_unset_measurements:
+      allowed_outcomes.add(measurements.Outcome.UNSET)
+
+    if any(meas.outcome not in allowed_outcomes
+           for meas in self.phase_record.measurements.itervalues()):
+      return False
+    return True
+
+  def _set_phase_outcome(self):
+    if self.result.is_terminal or self.hit_repeat_limit:
+      outcome = test_record.PhaseOutcome.ERROR
+    elif self.result.is_repeat:
+      outcome = test_record.PhaseOutcome.SKIP
+    else:
+      outcome = (test_record.PhaseOutcome.PASS
+                 if self._measurements_pass()
+                 else test_record.PhaseOutcome.FAIL)
+    self.phase_record.outcome = outcome
+
   @property
   @contextlib.contextmanager
   def record_timing_context(self):
@@ -433,5 +453,6 @@ class PhaseState(mutablerecords.Record('PhaseState', [
       yield
     finally:
       self._finalize_measurements()
+      self._set_phase_outcome()
       self.phase_record.end_time_millis = util.time_millis()
       self.phase_record.options = self.options

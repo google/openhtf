@@ -69,12 +69,22 @@ class TestRecord(  # pylint: disable=no-init
     self.outcome_details.append(OutcomeDetails(code, description))
 
 
+# PhaseResult enumerations are converted to these outcomes by the PhaseState.
+PhaseOutcome = Enum(  # pylint: disable=invalid-name
+    'PhaseOutcome', [
+        'PASS',  # CONTINUE with allowed measurement outcomes.
+        'FAIL',  # CONTINUE with failed measurements.
+        'SKIP',  # SKIP or REPEAT when under the phase's repeat limit.
+        'ERROR',  # Any terminal result.
+    ])
+
+
 class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'PhaseRecord', ['descriptor_id', 'name', 'codeinfo'],
         {'measurements': None, 'options': None,
          'start_time_millis': int, 'end_time_millis': None,
-         'attachments': dict, 'result': None})):
+         'attachments': dict, 'result': None, 'outcome': None})):
   """The record of a single run of a phase.
 
   Measurement metadata (declarations) and values are stored in separate
@@ -85,6 +95,13 @@ class PhaseRecord(  # pylint: disable=no-init
   values in the case of a dimensioned measurement.
 
   See measurements.Record.GetValues() for more information.
+
+  The 'result' attribute contains a phase_executor.PhaseExecutionOutcome
+  instance, which wraps the openhtf.PhaseResult returned by the phase or an
+  error condition that terminated the phase.
+
+  The 'outcome' attribute is a PhaseOutcome, which caches the pass/fail outcome
+  of the phase's measurements or indicates that the verification was skipped.
   """
 
   @classmethod

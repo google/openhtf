@@ -5,44 +5,29 @@
     "sourcecode": ""
   }, 
   "dut_id": "TestDUT", 
-  "end_time_millis": 1489517501549, 
+  "end_time_millis": 1493685195524, 
   "log_records": [
     {
       "level": 20, 
-      "lineno": 55, 
-      "logger_name": "openhtf.test_record.6247:1489517493935:baab135eeb3c432a:41e1f44869b24d74", 
+      "lineno": 56, 
+      "logger_name": "openhtf.test_record.27627:1493685162592:200cbcc7dc0d4b99:c86e5371e15a43ac", 
       "message": "Hello World!", 
       "source": "all_the_things.py", 
-      "timestamp_millis": 1489517497564
+      "timestamp_millis": 1493685173046
     }, 
     {
       "level": 20, 
-      "lineno": 62, 
-      "logger_name": "openhtf.test_record.6247:1489517493935:baab135eeb3c432a:41e1f44869b24d74", 
+      "lineno": 63, 
+      "logger_name": "openhtf.test_record.27627:1493685162592:200cbcc7dc0d4b99:c86e5371e15a43ac", 
       "message": "Plug value: 0", 
       "source": "all_the_things.py", 
-      "timestamp_millis": 1489517498434
-    }, 
-    {
-      "level": 20, 
-      "lineno": 99, 
-      "logger_name": "openhtf.test_record.6247:1489517493935:baab135eeb3c432a:41e1f44869b24d74", 
-      "message": "Running teardown", 
-      "source": "all_the_things.py", 
-      "timestamp_millis": 1489517501546
-    }, 
-    {
-      "level": 10, 
-      "lineno": 268, 
-      "logger_name": "openhtf.test_record.6247:1489517493935:baab135eeb3c432a:41e1f44869b24d74", 
-      "message": "Finishing test execution normally with outcome FAIL.", 
-      "source": "test_state.py", 
-      "timestamp_millis": 1489517501548
+      "timestamp_millis": 1493685192449
     }
   ], 
   "metadata": {
     "config": {
       "allow_unset_measurements": false, 
+      "cancel_timeout_s": 15, 
       "capture_source": false, 
       "enable_station_discovery": true, 
       "example_plug_increment_size": 1, 
@@ -50,7 +35,7 @@
       "station_api_bind_address": "0.0.0.0", 
       "station_api_port": 8888, 
       "station_discovery_string": "OPENHTF_DISCOVERY", 
-      "station_id": "kschiller-macbookair.roam.corp.google.com", 
+      "station_id": "arsharma.mtv.corp.google.com", 
       "teardown_timeout_s": 30
     }, 
     "test_description": "OpenHTF Example Test", 
@@ -67,14 +52,15 @@
         "name": "", 
         "sourcecode": ""
       }, 
-      "descriptor_id": 4353718176, 
-      "end_time_millis": 1489517497562, 
+      "descriptor_id": 139737081263600, 
+      "end_time_millis": 1493685173044, 
       "measurements": {}, 
       "name": "trigger_phase", 
+      "outcome": "PASS", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1489517494031
+      "start_time_millis": 1493685162712
     }, 
     {
       "attachments": {}, 
@@ -83,8 +69,8 @@
         "name": "", 
         "sourcecode": ""
       }, 
-      "descriptor_id": 4353720048, 
-      "end_time_millis": 1489517498467, 
+      "descriptor_id": 139737081262736, 
+      "end_time_millis": 1493685192498, 
       "measurements": {
         "unset_meas": {
           "name": "unset_meas", 
@@ -115,10 +101,11 @@
         }
       }, 
       "name": "hello_world", 
+      "outcome": "FAIL", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1489517497564
+      "start_time_millis": 1493685173046
     }, 
     {
       "attachments": {}, 
@@ -127,8 +114,8 @@
         "name": "", 
         "sourcecode": ""
       }, 
-      "descriptor_id": 4353718896, 
-      "end_time_millis": 1489517501520, 
+      "descriptor_id": 139737081262880, 
+      "end_time_millis": 1493685195518, 
       "measurements": {
         "level_all": {
           "measured_value": 9, 
@@ -155,19 +142,19 @@
           ], 
           "measured_value": [
             [
-              203.0949592590332, 
+              200.40321350097656, 
               1
             ], 
             [
-              1005.2528381347656, 
+              1000.6890296936035, 
               2
             ], 
             [
-              2006.5529346466064, 
+              2000.87308883667, 
               3
             ], 
             [
-              2999.3488788604736, 
+              3000.854015350342, 
               4
             ]
           ], 
@@ -181,10 +168,11 @@
         }
       }, 
       "name": "set_measurements", 
+      "outcome": "PASS", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1489517498468
+      "start_time_millis": 1493685192499
     }, 
     {
       "attachments": {}, 
@@ -193,8 +181,8 @@
         "name": "", 
         "sourcecode": ""
       }, 
-      "descriptor_id": 4353718752, 
-      "end_time_millis": 1489517501523, 
+      "descriptor_id": 139737081263024, 
+      "end_time_millis": 1493685195520, 
       "measurements": {
         "dimensions": {
           "dimensions": [
@@ -289,10 +277,11 @@
         }
       }, 
       "name": "dimensions", 
+      "outcome": "FAIL", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1489517501522
+      "start_time_millis": 1493685195519
     }, 
     {
       "attachments": {
@@ -310,14 +299,15 @@
         "name": "", 
         "sourcecode": ""
       }, 
-      "descriptor_id": 4353719040, 
-      "end_time_millis": 1489517501545, 
+      "descriptor_id": 139737081263168, 
+      "end_time_millis": 1493685195524, 
       "measurements": {}, 
       "name": "attachments", 
+      "outcome": "PASS", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1489517501523
+      "start_time_millis": 1493685195520
     }, 
     {
       "attachments": {}, 
@@ -326,16 +316,17 @@
         "name": "", 
         "sourcecode": ""
       }, 
-      "descriptor_id": 4353719904, 
-      "end_time_millis": 1489517501548, 
+      "descriptor_id": 139737081263456, 
+      "end_time_millis": 1493685195525, 
       "measurements": {}, 
       "name": "teardown", 
+      "outcome": "PASS", 
       "result": {
         "phase_result": "CONTINUE"
       }, 
-      "start_time_millis": 1489517501546
+      "start_time_millis": 1493685195524
     }
   ], 
-  "start_time_millis": 1489517497562, 
-  "station_id": "kschiller-macbookair.roam.corp.google.com"
+  "start_time_millis": 1493685173044, 
+  "station_id": "arsharma.mtv.corp.google.com"
 }
