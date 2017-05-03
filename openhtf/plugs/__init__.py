@@ -481,6 +481,10 @@ class PlugManager(object):
       self.update_plug(plug_type, plug_instance)
     self._create_or_update_rpc_server()
 
+  def get_plug(self, plug_name):
+    """Get a plug instance by name."""
+    return self._plugs_by_name.get(plug_name)
+
   def update_plug(self, plug_type, plug_value):
     """Update internal data stores with the given plug value for plug type.
 
