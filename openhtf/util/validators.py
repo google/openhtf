@@ -101,9 +101,6 @@ class InRange(object):
       return False
     minimum = self._type(self.minimum)
     maximum = self._type(self.maximum)
-    # Check for equal bounds first so we can use with non-numeric values.
-    if minimum == maximum and value != minimum:
-      return False
     if minimum is not None and value < minimum:
       return False
     if maximum is not None and value > maximum:
