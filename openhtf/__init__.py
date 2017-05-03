@@ -483,7 +483,7 @@ class PhaseDescriptor(mutablerecords.Record(
         self,
         plugs=new_plugs.values(),
         options=self.options.format_strings(**subplugs),
-        measurements=[m.format_strings(**subplugs) for m in self.measurements])
+        measurements=[m.with_args(**subplugs) for m in self.measurements])
 
 
   def __call__(self, test_state):
