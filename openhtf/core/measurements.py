@@ -49,7 +49,7 @@ Examples:
 
   @measurements.measures(
       measurements.Measurement(
-          'number_widgets').InRange(5, 10).doc(
+          'number_widgets').in_range(5, 10).doc(
           '''This phase parameter tracks the number of widgets.'''))
   @measurements.measures(
       *(measurements.Measurement('level_%s' % lvl)
