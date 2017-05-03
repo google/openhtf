@@ -95,6 +95,8 @@ _LOG = logging.getLogger(__name__)
 # to use for station discovery, even if it's overridden in the config.
 DEFAULT_DISCOVERY_STRING = 'OPENHTF_DISCOVERY'
 
+conf.declare('enable_station_api', default_value=True)
+
 conf.declare('enable_station_discovery', default_value=True)
 conf.declare('station_api_bind_address', default_value='0.0.0.0')
 conf.declare('station_api_port', default_value=8888)
@@ -847,8 +849,9 @@ API_SERVER = None
 
 def start_server():
   global API_SERVER
-  if API_SERVER is None and (conf.station_api_port is not None or
-                             conf.enable_station_discovery):
+  if API_SERVER is None and (conf.enable_station_api and
+                             (conf.station_api_port is not None or
+                              conf.enable_station_discovery)):
     _LOG.debug('Starting Station API server on port %s (discovery %sabled).',
                conf.station_api_port and int(conf.station_api_port),
                'en' if conf.enable_station_discovery else 'dis')
@@ -862,4 +865,3 @@ def stop_server():
     API_SERVER.stop()
     _LOG.debug('Stopped Station API server.')
     API_SERVER = None
-
