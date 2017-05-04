@@ -417,7 +417,7 @@ class PlugManager(object):
             attr_name not in plug.disable_remote_attrs):
           plug_methods.append((attr, '.'.join(('plugs', name, attr_name))))
 
-    if not plug_methods:
+    if not plug_methods or conf.station_api_port is None:
       return
 
     if not self._xmlrpc_server:
