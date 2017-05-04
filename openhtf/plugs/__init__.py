@@ -481,8 +481,18 @@ class PlugManager(object):
       self.update_plug(plug_type, plug_instance)
     self._create_or_update_rpc_server()
 
-  def get_plug(self, plug_name):
-    """Get a plug instance by name."""
+  def get_plug_by_class_path(self, plug_name):
+    """Get a plug instance by name (class path).
+
+    This provides a way for extensions to OpenHTF to access plug instances for
+    a running test via that test's plug manager.
+
+    Args:
+      plug_name: Plug name, e.g. 'openhtf.plugs.user_input.UserInput'.
+
+    Returns:
+      The plug manager's instance of the specified plug.
+    """
     return self._plugs_by_name.get(plug_name)
 
   def update_plug(self, plug_type, plug_value):
