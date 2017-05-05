@@ -83,7 +83,7 @@ A few isolated examples, also see test/util/test_test.py for some usage:
     def test_multiple(self, mock_my_plug):
       # You can also yield an entire openhtf.Test() object.  If you do, you get
       # a TestRecord yielded back instead of a PhaseRecord.
-      test_rec = yield openhtf.Test(mytest.first_phase, mytest.second_phase)
+      test_rec = yield htf.Test(mytest.first_phase, mytest.second_phase)
 
       # Some utility assertions are provided for operating on test records (see
       # below for a full list).
@@ -121,13 +121,12 @@ import unittest
 
 import mock
 
-import openhtf
+import openhtf as htf
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
 from openhtf.core import phase_executor
 from openhtf.core import test_record
-from openhtf.core import test_state
 from openhtf.util import conf
 
 
@@ -136,7 +135,7 @@ class InvalidTestError(Exception):
 
 
 class PhaseOrTestIterator(collections.Iterator):
-  def __init__(self, iterator, mock_plugs):
+  def __init__(self, iterator, mock_plugs, injected_dependencies=None):
     """Create an iterator for iterating over Tests or phases to run.
 
     Args:
@@ -153,7 +152,10 @@ class PhaseOrTestIterator(collections.Iterator):
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
-    self.plug_manager = plugs.PlugManager()
+    self._injected_dependencies = (
+        injected_dependencies or htf.InjectedDependencies())
+    self.plug_manager = self._injected_dependencies.plug_manager()
+    self._injected_dependencies.plug_manager = lambda *_: self.plug_manager
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
@@ -174,17 +176,18 @@ class PhaseOrTestIterator(collections.Iterator):
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
-    with mock.patch(
-        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test_state_ = test_state.TestState(openhtf.TestDescriptor(
-          (phase_desc,), phase_desc.code_info, {}), 'Unittest:StubTest:UID')
-      test_state_.mark_test_started()
+    test_state = self._injected_dependencies.test_state(
+        htf.TestDescriptor(
+            (phase_desc,), phase_desc.code_info, {}),
+        htf.TestOptions(injected_dependencies=self._injected_dependencies),
+        'Unittest:StubTest:UID')
+    test_state.mark_test_started()
 
     # Actually execute the phase, saving the result in our return value.
-    with test_state_.running_phase_context(phase_desc) as phase_state:
+    with test_state.running_phase_context(phase_desc) as phase_state:
       try:
         phase_state.result = phase_executor.PhaseOutcome(
-            phase_desc(test_state_))
+            phase_desc(test_state))
       except Exception:  # pylint:disable=broad-except
         logging.exception('Exception executing phase %s', phase_desc.name)
         phase_state.result = phase_executor.PhaseOutcome(
@@ -204,16 +207,14 @@ class PhaseOrTestIterator(collections.Iterator):
     test.add_output_callbacks(
         lambda record: setattr(record_saver, 'result', record))
 
-    # Mock the PlugManager to use ours instead, and execute the test.
-    with mock.patch(
-        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test.execute(test_start=lambda: 'TestDutId')
+    test.configure(injected_dependencies=self._injected_dependencies)
+    test.execute(test_start=lambda: 'TestDutId')
 
     return record_saver.result
 
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
-    if isinstance(phase_or_test, openhtf.Test):
+    if isinstance(phase_or_test, htf.Test):
       self.last_result = self._handle_test(phase_or_test)
     elif not callable(phase_or_test):
       raise InvalidTestError(
@@ -221,7 +222,7 @@ class PhaseOrTestIterator(collections.Iterator):
           'individual test phases', phase_or_test)
     else:
       self.last_result = self._handle_phase(
-          openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
+          htf.PhaseDescriptor.wrap_or_copy(phase_or_test))
     return phase_or_test, self.last_result
 
 
@@ -368,14 +369,14 @@ class TestCase(unittest.TestCase):
 
   def assertPhaseContinue(self, phase_record):
     if phase_record.result.phase_result is not None:
-      self.assertIs(openhtf.PhaseResult.CONTINUE,
+      self.assertIs(htf.PhaseResult.CONTINUE,
                     phase_record.result.phase_result)
 
   def assertPhaseRepeat(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
+    self.assertIs(htf.PhaseResult.REPEAT, phase_record.result.phase_result)
 
   def assertPhaseStop(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.STOP, phase_record.result.phase_result)
+    self.assertIs(htf.PhaseResult.STOP, phase_record.result.phase_result)
 
   def assertPhaseError(self, phase_record, exc_type=None):
     self.assertTrue(phase_record.result.raised_exception,
