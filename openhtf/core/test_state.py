@@ -232,10 +232,14 @@ class TestState(util.SubscribableStateMixin):
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
+      self.test_record.add_outcome_details('TIMEOUT',
+                                           'A phase hit its timeout.')
       self._finalize(test_record.Outcome.TIMEOUT)
     elif phase_execution_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.error('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
+      self.test_record.add_outcome_details('STOP',
+                                           'A phase stopped the test run.')
       self._finalize(test_record.Outcome.ABORTED)
 
   def finalize_normally(self):
