@@ -339,10 +339,21 @@ def create_arg_parser(add_help=False):
 # Result of a phase.
 #
 # These values can be returned by a test phase to control what the framework
-# does after the phase.  CONTINUE causes the framework to execute the next
-# phase, REPEAT causes the framework to execute that same phase again, and STOP
-# causes the framework to stop executing.
-PhaseResult = Enum('PhaseResult', ['CONTINUE', 'REPEAT', 'STOP'])
+# does after the phase.
+PhaseResult = Enum('PhaseResult', [
+    # Causes the framework to process the phase measurement outcomes and execute
+    # the next phase.
+    'CONTINUE',
+    # Causes the framework to execute the same phase again, ignoring the
+    # measurement outcomes for this instance. If returned more than the phase's
+    # repeat_limit option, this will be treated as a STOP.
+    'REPEAT',
+    # Causes the framework to ignore the measurement outcomes and execute the
+    # next phase.
+    'SKIP',
+    # Causes the framework to stop executing, indicating a failure.
+    'STOP'
+])
 
 
 class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {

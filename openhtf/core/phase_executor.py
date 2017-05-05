@@ -67,10 +67,11 @@ class ExceptionInfo(collections.namedtuple(
 
 
 class InvalidPhaseResultError(Exception):
-  """Raised when a PhaseOutcome is created with an invalid phase result."""
+  """Raised when PhaseExecutionOutcome is created with invalid phase result."""
 
 
-class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
+class PhaseExecutionOutcome(collections.namedtuple(
+    'PhaseExecutionOutcome', 'phase_result')):
   """Provide some utility and sanity around phase return values.
 
   This should not be confused with openhtf.PhaseResult.  PhaseResult is an
@@ -95,16 +96,26 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
         not isinstance(phase_result, (openhtf.PhaseResult, ExceptionInfo)) and
         not isinstance(phase_result, threads.ThreadTerminationError)):
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
-    super(PhaseOutcome, self).__init__(phase_result)
-
-  @property
-  def is_timeout(self):
-    """True if this PhaseOutcome indicates a phase timeout."""
-    return self.phase_result is None
+    super(PhaseExecutionOutcome, self).__init__(phase_result)
 
   @property
   def is_repeat(self):
     return self.phase_result is openhtf.PhaseResult.REPEAT
+
+  @property
+  def is_skip(self):
+    return self.phase_result is openhtf.PhaseResult.SKIP
+
+  @property
+  def is_terminal(self):
+    """True if this result will stop the test."""
+    return (self.raised_exception or self.is_timeout or
+            self.phase_result == openhtf.PhaseResult.STOP)
+
+  @property
+  def is_timeout(self):
+    """True if this PhaseExecutionOutcome indicates a phase timeout."""
+    return self.phase_result is None
 
   @property
   def raised_exception(self):
@@ -112,19 +123,13 @@ class PhaseOutcome(collections.namedtuple('PhaseOutcome', 'phase_result')):
     return isinstance(self.phase_result, (
         ExceptionInfo, threads.ThreadTerminationError))
 
-  @property
-  def is_terminal(self):
-    """True if this outcome will stop the test."""
-    return (self.raised_exception or self.is_timeout or
-            self.phase_result == openhtf.PhaseResult.STOP)
-
 
 class PhaseExecutorThread(threads.KillableThread):
   """Handles the execution and result of a single test phase.
 
-  The phase outcome will be stored in the _phase_outcome attribute once it is
-  known (_phase_outcome is None until then), and it will be a PhaseOutcome
-  instance.
+  The phase outcome will be stored in the _phase_execution_outcome attribute
+  once it is known (_phase_execution_outcome is None until then), and it will be
+  a PhaseExecutionOutcome instance.
   """
 
   def __init__(self, phase_desc, test_state):
@@ -132,7 +137,7 @@ class PhaseExecutorThread(threads.KillableThread):
         name='<PhaseExecutorThread: (phase_desc.name)>')
     self._phase_desc = phase_desc
     self._test_state = test_state
-    self._phase_outcome = None
+    self._phase_execution_outcome = None
 
   def _thread_proc(self):
     """Execute the encompassed phase and save the result."""
@@ -141,32 +146,33 @@ class PhaseExecutorThread(threads.KillableThread):
     if phase_return is None:
       phase_return = openhtf.PhaseResult.CONTINUE
 
-    # If phase_return is invalid, this will raise, and _phase_outcome will get
-    # set to the InvalidPhaseResultError in _thread_exception instead.
-    self._phase_outcome = PhaseOutcome(phase_return)
+    # If phase_return is invalid, this will raise, and _phase_execution_outcome
+    # will get set to the InvalidPhaseResultError in _thread_exception instead.
+    self._phase_execution_outcome = PhaseExecutionOutcome(phase_return)
 
   def _thread_exception(self, *args):
-    self._phase_outcome = PhaseOutcome(ExceptionInfo(*args))
+    self._phase_execution_outcome = PhaseExecutionOutcome(ExceptionInfo(*args))
     self._test_state.logger.exception('Phase %s raised an exception', self.name)
 
   def join_or_die(self):
-    """Wait for thread to finish, return a PhaseOutcome with its response."""
+    """Wait for thread to finish, returning a PhaseExecutionOutcome instance."""
     if self._phase_desc.options.timeout_s is not None:
       self.join(self._phase_desc.options.timeout_s)
     else:
       self.join(DEFAULT_PHASE_TIMEOUT_S)
 
     # We got a return value or an exception and handled it.
-    if isinstance(self._phase_outcome, PhaseOutcome):
-      return self._phase_outcome
+    if isinstance(self._phase_execution_outcome, PhaseExecutionOutcome):
+      return self._phase_execution_outcome
 
-    # Check for timeout, indicated by None for PhaseOutcome.phase_result.
+    # Check for timeout, indicated by None for
+    # PhaseExecutionOutcome.phase_result.
     if self.is_alive():
       self.kill()
-      return PhaseOutcome(None)
+      return PhaseExecutionOutcome(None)
 
     # Phase was killed.
-    return PhaseOutcome(threads.ThreadTerminationError())
+    return PhaseExecutionOutcome(threads.ThreadTerminationError())
 
   @property
   def name(self):
@@ -185,47 +191,52 @@ class PhaseExecutor(object):
     self._stopping = threading.Event()
 
   def execute_phase(self, phase):
-    """Executes each phase or skips them, yielding PhaseOutcome instances.
+    """Executes a phase or skips it, yielding PhaseExecutionOutcome instances.
 
     Args:
       phase: Phase to execute.
 
     Returns:
-      The final PhaseOutcome that wraps the phase return value (or exception)
-      of the final phase run. All intermediary results, if any, are REPEAT
-      and handled internally. Returning REPEAT here means the phase hit its
-      limit for repetitions.
+      The final PhaseExecutionOutcome that wraps the phase return value
+      (or exception) of the final phase run. All intermediary results, if any,
+      are REPEAT and handled internally. Returning REPEAT here means the phase
+      hit its limit for repetitions.
     """
     repeat_count = 1
     repeat_limit = phase.options.repeat_limit or sys.maxint
     while not self._stopping.is_set():
-      outcome = self._execute_phase_once(phase)
+      is_last_repeat = repeat_count >= repeat_limit
+      phase_execution_outcome = self._execute_phase_once(phase, is_last_repeat)
 
-      if outcome.is_repeat and repeat_count < repeat_limit:
+      if phase_execution_outcome.is_repeat and not is_last_repeat:
         repeat_count += 1
         continue
 
-      return outcome
+      return phase_execution_outcome
     # We've been cancelled, so just 'timeout' the phase.
-    return PhaseOutcome(None)
+    return PhaseExecutionOutcome(None)
 
-  def _execute_phase_once(self, phase_desc):
-    """Executes the given phase, returning a PhaseOutcome."""
+  def _execute_phase_once(self, phase_desc, is_last_repeat):
+    """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
       _LOG.info('Phase %s skipped due to run_if returning falsey.',
                 phase_desc.name)
-      return PhaseOutcome(openhtf.PhaseResult.CONTINUE)
+      return PhaseExecutionOutcome(openhtf.PhaseResult.SKIP)
 
     with self.test_state.running_phase_context(phase_desc) as phase_state:
       _LOG.info('Executing phase %s', phase_desc.name)
       phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
       phase_thread.start()
       self._current_phase_thread = phase_thread
-      phase_state.result = phase_thread.join_or_die()
+      result = phase_state.result = phase_thread.join_or_die()
+      if phase_state.result.is_repeat and is_last_repeat:
+        _LOG.error('Phase returned REPEAT, exceeding repeat_limit.')
+        phase_state.hit_repeat_limit = True
+        result = PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
 
-    _LOG.debug('Phase finished with result %s', phase_state.result)
-    return phase_state.result
+    _LOG.debug('Phase finished with result %s', result)
+    return result
 
   def stop(self, timeout_s=None):
     """Stops execution of the current phase, if any.

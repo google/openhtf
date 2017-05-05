@@ -183,11 +183,11 @@ class PhaseOrTestIterator(collections.Iterator):
     # Actually execute the phase, saving the result in our return value.
     with test_state_.running_phase_context(phase_desc) as phase_state:
       try:
-        phase_state.result = phase_executor.PhaseOutcome(
+        phase_state.result = phase_executor.PhaseExecutionOutcome(
             phase_desc(test_state_))
       except Exception:  # pylint:disable=broad-except
         logging.exception('Exception executing phase %s', phase_desc.name)
-        phase_state.result = phase_executor.PhaseOutcome(
+        phase_state.result = phase_executor.PhaseExecutionOutcome(
             phase_executor.ExceptionInfo(*sys.exc_info()))
 
     return phase_state.phase_record

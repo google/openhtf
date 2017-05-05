@@ -33,6 +33,8 @@ from openhtf.util import logs
 
 class UnittestPlug(plugs.BasePlug):
 
+  return_continue_count = 4
+
   def __init__(self):
     self.count = 0
 
@@ -47,6 +49,11 @@ class UnittestPlug(plugs.BasePlug):
 
   def increment(self):
     self.count += 1
+    return self.count >= self.return_continue_count
+
+
+class MoreRepeatsUnittestPlug(UnittestPlug):
+  return_continue_count = 100
 
 
 @openhtf.PhaseOptions()
@@ -66,18 +73,24 @@ def phase_two(test, test_plug):
 
 
 @openhtf.PhaseOptions(repeat_limit=4)
-@plugs.plug(test_plug=UnittestPlug)
+@plugs.plug(test_plug=UnittestPlug.placeholder)
 def phase_repeat(test, test_plug):
   del test  # Unused.
   time.sleep(.1)
-  test_plug.increment()
+  ret = test_plug.increment()
   print 'phase_repeat completed for %s time' % test_plug.count
-  return openhtf.PhaseResult.REPEAT
+  return openhtf.PhaseResult.CONTINUE if ret else openhtf.PhaseResult.REPEAT
 
 
 @openhtf.PhaseOptions(run_if=lambda: False)
-def phase_skip(test):
+def phase_skip_from_run_if(test):
   del test  # Unused.
+
+
+@openhtf.PhaseOptions()
+def phase_return_skip(test):
+  del test  # Unused.
+  return openhtf.PhaseResult.SKIP
 
 
 class TestExecutor(unittest.TestCase):
@@ -186,21 +199,28 @@ class TestPhaseExecutor(unittest.TestCase):
     self.test_state = mock.MagicMock(spec=TestState,
                                      plug_manager=plugs.PlugManager(),
                                      logger=mock.MagicMock())
-    self.test_state.plug_manager.initialize_plugs([UnittestPlug])
+    self.test_state.plug_manager.initialize_plugs([
+        UnittestPlug, MoreRepeatsUnittestPlug])
     self.phase_executor = PhaseExecutor(self.test_state)
 
-  def test_execute_phases(self):
-    results = [
-        self.phase_executor.execute_phase(phase_two),
-        self.phase_executor.execute_phase(phase_repeat),
-        self.phase_executor.execute_phase(phase_skip),
-    ]
-    counter = self.test_state.plug_manager.provide_plugs(
-        {'plug': UnittestPlug}.iteritems())['plug']
-    self.assertEqual(counter.count, 4)
+  def test_execute_continue_phase(self):
+    result = self.phase_executor.execute_phase(phase_two)
+    self.assertEqual(PhaseResult.CONTINUE, result.phase_result)
 
-    self.assertEqual(3, len(results))
-    self.assertEqual(PhaseResult.CONTINUE, results[0].phase_result)
-    self.assertEqual(PhaseResult.REPEAT, results[1].phase_result)
-    self.assertEqual(PhaseResult.CONTINUE, results[2].phase_result)
-    # assert 0
+  def test_execute_repeat_okay_phase(self):
+    result = self.phase_executor.execute_phase(
+        phase_repeat.with_plugs(test_plug=UnittestPlug))
+    self.assertEqual(PhaseResult.CONTINUE, result.phase_result)
+
+  def test_execute_repeat_limited_phase(self):
+    result = self.phase_executor.execute_phase(
+        phase_repeat.with_plugs(test_plug=MoreRepeatsUnittestPlug))
+    self.assertEqual(PhaseResult.STOP, result.phase_result)
+
+  def test_execute_run_if_false(self):
+    result = self.phase_executor.execute_phase(phase_skip_from_run_if)
+    self.assertEqual(PhaseResult.SKIP, result.phase_result)
+
+  def test_execute_phase_return_skip(self):
+    result = self.phase_executor.execute_phase(phase_return_skip)
+    self.assertEqual(PhaseResult.SKIP, result.phase_result)

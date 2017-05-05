@@ -156,9 +156,6 @@ class TestState(util.SubscribableStateMixin):
         self.notify_update()  # New phase started.
         yield phase_state
     finally:
-      # Clear notification callbacks so we can serialize measurements.
-      for meas in phase_state.measurements.values():
-        meas.set_notification_callback(None)
       self.test_record.phases.append(phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
@@ -207,60 +204,73 @@ class TestState(util.SubscribableStateMixin):
     self._status = self.Status.RUNNING
     self.notify_update()
 
-  def finalize_from_phase_outcome(self, phase_outcome):
+  def finalize_from_phase_outcome(self, phase_execution_outcome):
     """Finalize due to the given phase outcome.
 
     Args:
-      phase_outcome: An instance of phase_executor.PhaseOutcome
+      phase_execution_outcome: An instance of
+          phase_executor.PhaseExecutionOutcome.
     """
     if self._is_aborted():
       return
 
     # Handle a few cases where the test is ending prematurely.
-    if phase_outcome.raised_exception:
+    if phase_execution_outcome.raised_exception:
       self.logger.error('Finishing test execution early due to phase '
                         'exception, outcome ERROR.')
-      result = phase_outcome.phase_result
+      result = phase_execution_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
         description = str(result.exc_val).decode('utf8', 'replace')
       else:
         # openhtf.util.threads.ThreadTerminationError gets str'd directly.
-        code = str(type(phase_outcome.phase_result).__name__)
-        description = str(phase_outcome.phase_result).decode('utf8', 'replace')
+        code = str(type(phase_execution_outcome.phase_result).__name__)
+        description = str(phase_execution_outcome.phase_result).decode(
+            'utf8', 'replace')
       self.test_record.add_outcome_details(code, description)
       self._finalize(test_record.Outcome.ERROR)
-    elif phase_outcome.is_timeout:
+    elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
+      self.test_record.add_outcome_details('TIMEOUT',
+                                           'A phase hit its timeout.')
       self._finalize(test_record.Outcome.TIMEOUT)
-    elif phase_outcome.phase_result == openhtf.PhaseResult.STOP:
+    elif phase_execution_outcome.phase_result == openhtf.PhaseResult.STOP:
       self.logger.error('Finishing test execution early due to '
                         'PhaseResult.STOP, outcome FAIL.')
+      self.test_record.add_outcome_details('STOP',
+                                           'A phase stopped the test run.')
       self._finalize(test_record.Outcome.ABORTED)
 
   def finalize_normally(self):
     """Mark the state as finished.
 
     This method is called on normal test completion. The outcome will be either
-    PASS or FAIL, depending on measurements' PASS/FAIL status.
-
-    Any UNSET measurements will cause the Test to FAIL unless
-    conf.allow_unset_measurements is set True.
+    PASS, FAIL, or ERROR, depending on phases' outcomes.
     """
     if self._is_aborted():
       return
 
-    allowed_outcomes = {measurements.Outcome.PASS}
-    if conf.allow_unset_measurements:
-      allowed_outcomes.add(measurements.Outcome.UNSET)
-
-    if any(meas.outcome not in allowed_outcomes
-           for phase in self.test_record.phases
-           for meas in phase.measurements.itervalues()):
-      self._finalize(test_record.Outcome.FAIL)
-    else:
+    phases = self.test_record.phases
+    if not phases:
+      # Vacuously PASS a TestRecord with no phases.
       self._finalize(test_record.Outcome.PASS)
+    elif any(
+        phase.outcome == test_record.PhaseOutcome.FAIL for phase in phases):
+      # Any FAIL phase results in a test failure.
+      self._finalize(test_record.Outcome.FAIL)
+    elif all(
+        phase.outcome == test_record.PhaseOutcome.SKIP for phase in phases):
+      # Error when all phases are skipped; otherwise, it could lead to
+      # unintentional passes.
+      self.logger.error('All phases were skipped, outcome ERROR.')
+      self.test_record.add_outcome_details(
+          'ALL_SKIPPED', 'All phases were unexpectedly skipped.')
+      self._finalize(test_record.Outcome.ERROR)
+    else:
+      # Otherwise, the test run was successful.
+      self._finalize(test_record.Outcome.PASS)
+
     self.logger.info('Finishing test execution normally with outcome %s.',
                      self.test_record.outcome.name)
 
@@ -303,8 +313,10 @@ class TestState(util.SubscribableStateMixin):
     )
 
 
-class PhaseState(mutablerecords.Record('PhaseState', [
-    'name', 'phase_record', 'measurements', 'options'])):
+class PhaseState(mutablerecords.Record(
+    'PhaseState',
+    ['name', 'phase_record', 'measurements', 'options'],
+    {'hit_repeat_limit': False})):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
@@ -313,6 +325,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     measurements: A dict mapping measurement name to it's declaration; this
         dict can be passed to measurements.Collection to initialize a user-
         facing Collection for setting measurements.
+    options: the PhaseOptions from the phase descriptor.
     result: Convenience getter/setter for phase_record.result.
   """
 
@@ -394,6 +407,54 @@ class PhaseState(mutablerecords.Record('PhaseState', [
           mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
               filename)[0])
 
+  def _finalize_measurements(self):
+    """Perform end-of-phase finalization steps for measurements.
+
+    Any UNSET measurements will cause the Phase to FAIL unless
+    conf.allow_unset_measurements is set True.
+    """
+    # Clear notification callbacks for later serialization.
+    for meas in self.measurements.values():
+      meas.set_notification_callback(None)
+
+    # Initialize with already-validated and UNSET measurements.
+    validated_measurements = {
+        name: measurement
+        for name, measurement in self.measurements.iteritems()
+        if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
+    }
+
+    # Validate multi-dimensional measurements now that we have all values.
+    validated_measurements.update({
+        name: measurement.validate()
+        for name, measurement in self.measurements.iteritems()
+        if measurement.outcome is measurements.Outcome.PARTIALLY_SET
+    })
+
+    # Fill out final values for the PhaseRecord.
+    self.phase_record.measurements = validated_measurements
+
+  def _measurements_pass(self):
+    allowed_outcomes = {measurements.Outcome.PASS}
+    if conf.allow_unset_measurements:
+      allowed_outcomes.add(measurements.Outcome.UNSET)
+
+    if any(meas.outcome not in allowed_outcomes
+           for meas in self.phase_record.measurements.itervalues()):
+      return False
+    return True
+
+  def _set_phase_outcome(self):
+    if self.result.is_terminal or self.hit_repeat_limit:
+      outcome = test_record.PhaseOutcome.ERROR
+    elif self.result.is_repeat:
+      outcome = test_record.PhaseOutcome.SKIP
+    else:
+      outcome = (test_record.PhaseOutcome.PASS
+                 if self._measurements_pass()
+                 else test_record.PhaseOutcome.FAIL)
+    self.phase_record.outcome = outcome
+
   @property
   @contextlib.contextmanager
   def record_timing_context(self):
@@ -410,21 +471,7 @@ class PhaseState(mutablerecords.Record('PhaseState', [
     try:
       yield
     finally:
-      # Initialize with already-validated and UNSET measurements.
-      validated_measurements = {
-          name: measurement
-          for name, measurement in self.measurements.iteritems()
-          if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
-      }
-
-      # Validate multi-dimensional measurements now that we have all values.
-      validated_measurements.update({
-          name: measurement.validate()
-          for name, measurement in self.measurements.iteritems()
-          if measurement.outcome is measurements.Outcome.PARTIALLY_SET
-      })
-
-      # Fill out final values for the PhaseRecord.
-      self.phase_record.measurements = validated_measurements
+      self._finalize_measurements()
+      self._set_phase_outcome()
       self.phase_record.end_time_millis = util.time_millis()
       self.phase_record.options = self.options
