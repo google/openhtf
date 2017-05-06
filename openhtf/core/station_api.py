@@ -162,7 +162,7 @@ class StationInfo(mutablerecords.Record('StationInfo', ['station_id'], {
 
 class RemotePhase(collections.namedtuple('RemotePhase', [
     'name', 'codeinfo', 'descriptor_id', 'start_time_millis', 'attachments',
-    'measurements'])):
+    'measurements', 'options'])):
   """Encapsulating class for info about a remotely executing Phase.
 
   See PhaseState._asdict() in exe/test_state.py for attribute details.
