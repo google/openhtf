@@ -166,14 +166,13 @@ class SubscribableStateMixin(object):
 
   def __init__(self):
     super(SubscribableStateMixin, self).__init__()
-    self._lock = threading.Lock()  # Used by threads.synchronized.
+    self._lock = threading.Lock()
     self._update_events = weakref.WeakSet()
 
   def _asdict(self):
     raise NotImplementedError(
         'Subclasses of SubscribableStateMixin must implement _asdict.')
 
-  @threads.synchronized
   def asdict_with_event(self):
     """Get a dict representation of this object and an update event.
 
@@ -183,12 +182,13 @@ class SubscribableStateMixin(object):
           triggered since the returned dict was generated.
     """
     event = threading.Event()
-    self._update_events.add(event)
+    with self._lock:
+      self._update_events.add(event)
     return self._asdict(), event
 
-  @threads.synchronized
   def notify_update(self):
     """Notify any update events that there was an update."""
-    for event in self._update_events:
-      event.set()
-    self._update_events.clear()
+    with self._lock:
+      for event in self._update_events:
+        event.set()
+      self._update_events.clear()
