@@ -131,7 +131,7 @@ register(in_range, name='in_range')
 
 
 @register
-def equals(self, value, type=None):
+def equals(value, type=None):
   if isinstance(value, numbers.Number):
     return InRange(minimum=value, maximum=value, type=type)
   elif isinstance(value, basestring):
