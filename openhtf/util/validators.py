@@ -74,7 +74,7 @@ def create_validator(name, *args, **kwargs):
 class InRange(object):
   """Validator to verify a numeric value is within a range."""
 
-  def __init__(self, minimum, maximum, type=None):
+  def __init__(self, minimum=None, maximum=None, type=None):
     if minimum is None and maximum is None:
       raise ValueError('Must specify minimum, maximum, or both')
     if (minimum is not None and maximum is not None
