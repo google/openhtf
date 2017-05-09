@@ -63,6 +63,7 @@ def register(validator, name=None):
   if name in _VALIDATORS:
     raise ValueError('Duplicate validator name', name)
   _VALIDATORS[name] = validator
+  return validator
 
 
 def create_validator(name, *args, **kwargs):
