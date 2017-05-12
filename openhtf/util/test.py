@@ -136,6 +136,7 @@ class InvalidTestError(Exception):
 
 
 class PhaseOrTestIterator(collections.Iterator):
+
   def __init__(self, iterator, mock_plugs):
     """Create an iterator for iterating over Tests or phases to run.
 
@@ -144,6 +145,9 @@ class PhaseOrTestIterator(collections.Iterator):
           be a generator.
       mock_plugs: Dict mapping plug types to mock objects to use instead of
           actually instantiating that type.
+
+    Raises:
+      InvalidTestError: when iterator is not a generator.
     """
     if not isinstance(iterator, types.GeneratorType):
       raise InvalidTestError(
@@ -166,7 +170,6 @@ class PhaseOrTestIterator(collections.Iterator):
                                        plug_cls not in self.mock_plugs)
     for plug_type, plug_value in self.mock_plugs.iteritems():
       self.plug_manager.update_plug(plug_type, plug_value)
-
 
   @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
@@ -233,11 +236,6 @@ def yields_phases(func):
 def patch_plugs(**mock_plugs):
   """Decorator for mocking plugs for a test phase.
 
-  Args:
-    **mock_plugs: kwargs mapping argument name to be passed to the test case to
-        a string describing the plug type to mock.  The corresponding mock will
-        be passed to the decorated test case as a keyword argument.
-
   Usage:
 
     @plugs(my_plug=my_plug_module.MyPlug)
@@ -262,6 +260,13 @@ def patch_plugs(**mock_plugs):
     def test_my_phase_again(self, my_plug_mock):
       pass
 
+  Args:
+    **mock_plugs: kwargs mapping argument name to be passed to the test case to
+        a string describing the plug type to mock.  The corresponding mock will
+        be passed to the decorated test case as a keyword argument.
+
+  Returns:
+    Function decorator that mocks plugs.
   """
   def test_wrapper(test_func):
     plug_argspec = inspect.getargspec(test_func)
@@ -314,7 +319,7 @@ def patch_plugs(**mock_plugs):
 
 class TestCase(unittest.TestCase):
 
-  def _AssertPhaseOrTestRecord(func):
+  def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
 
     This allows assertions to apply to a single phase or "any phase in the test"
@@ -325,6 +330,9 @@ class TestCase(unittest.TestCase):
     In the case of a TestRecord, the assertion will pass if *any* PhaseRecord in
     the TestRecord passes, otherwise the *last* exception raised will be
     re-raised.
+
+    Returns:
+      Function decorator.
     """
     @functools.wraps(func)
     def assertion_wrapper(self, phase_or_test_record, *args):
