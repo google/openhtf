@@ -218,7 +218,7 @@ class Measurement(  # pylint: disable=no-init
   def __getattr__(self, attr):  # pylint: disable=invalid-name
     """Support our default set of validators as direct attributes."""
     # Don't provide a back door to validators.py private stuff accidentally.
-    if attr.startswith('_') or not hasattr(validators, attr):
+    if attr.startswith('_') or not validators.has_validator(attr):
       raise AttributeError("'%s' object has no attribute '%s'" % (
           type(self).__name__, attr))
 

@@ -65,6 +65,10 @@ def register(validator, name=None):
   _VALIDATORS[name] = validator
 
 
+def has_validator(name):
+  return name in _VALIDATORS
+
+
 def create_validator(name, *args, **kwargs):
   return _VALIDATORS[name](*args, **kwargs)
 
