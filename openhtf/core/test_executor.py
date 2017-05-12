@@ -47,6 +47,7 @@ class TestStopError(Exception):
 # pylint: disable=too-many-instance-attributes
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
+  daemon = True
 
   def __init__(self, test_descriptor, execution_uid, test_start,
                teardown_function=None):
