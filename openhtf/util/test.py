@@ -187,8 +187,10 @@ class PhaseOrTestIterator(collections.Iterator):
     # Actually execute the phase, saving the result in our return value.
     with test_state_.running_phase_context(phase_desc) as phase_state:
       try:
-        phase_state.result = phase_executor.PhaseExecutionOutcome(
-            phase_desc(test_state_))
+        phase_return = phase_desc(test_state_)
+        if phase_return is None:
+          phase_return = openhtf.PhaseResult.CONTINUE
+        phase_state.result = phase_executor.PhaseExecutionOutcome(phase_return)
       except Exception:  # pylint:disable=broad-except
         logging.exception('Exception executing phase %s', phase_desc.name)
         phase_state.result = phase_executor.PhaseExecutionOutcome(
@@ -376,9 +378,8 @@ class TestCase(unittest.TestCase):
   ##### PhaseRecord Assertions #####
 
   def assertPhaseContinue(self, phase_record):
-    if phase_record.result.phase_result is not None:
-      self.assertIs(openhtf.PhaseResult.CONTINUE,
-                    phase_record.result.phase_result)
+    self.assertIs(openhtf.PhaseResult.CONTINUE,
+                  phase_record.result.phase_result)
 
   def assertPhaseRepeat(self, phase_record):
     self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
