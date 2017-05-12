@@ -131,6 +131,7 @@ class PhaseExecutorThread(threads.KillableThread):
   once it is known (_phase_execution_outcome is None until then), and it will be
   a PhaseExecutionOutcome instance.
   """
+  daemon = True
 
   def __init__(self, phase_desc, test_state):
     super(PhaseExecutorThread, self).__init__(
