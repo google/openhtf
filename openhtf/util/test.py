@@ -153,7 +153,8 @@ class PhaseOrTestIterator(collections.Iterator):
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
-    self.plug_manager = plugs.PlugManager()
+    self.plug_manager = plugs.PlugManager(
+        logger=logging.getLogger('test.PlugManager'))
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
@@ -384,6 +385,18 @@ class TestCase(unittest.TestCase):
       self.assertIsInstance(phase_record.result.phase_result.exc_val, exc_type,
                             'Raised exception %r is not a subclass of %r' %
                             (phase_record.result.phase_result, exc_type))
+
+  def assertPhaseOutcomePass(self, phase_record):
+    self.assertIs(test_record.PhaseOutcome.PASS, phase_record.outcome)
+
+  def assertPhaseOutcomeFail(self, phase_record):
+    self.assertIs(test_record.PhaseOutcome.FAIL, phase_record.outcome)
+
+  def assertPhaseOutcomeSkip(self, phase_record):
+    self.assertIs(test_record.PhaseOutcome.SKIP, phase_record.outcome)
+
+  def assertPhaseOutcomeError(self, phase_record):
+    self.assertIs(test_record.PhaseOutcome.ERROR, phase_record.outcome)
 
   ##### Measurement Assertions #####
 
