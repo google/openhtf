@@ -46,10 +46,11 @@ A few isolated examples, also see test/util/test_test.py for some usage:
 
   class PhasesTest(test.TestCase):
 
+    # Decorate with conf.save_and_restore to temporarily set conf values.
+    # NOTE: This must come before yields_phases.
+    @conf.save_and_restore(phase_variance='test_phase_variance')
     # Decorate the test* method with this to be able to yield a phase to run it.
     @test.yields_phases
-    # Decorate with conf.save_and_restore to temporarily set conf values.
-    @conf.save_and_restore(phase_variance='test_phase_variance')
     def test_first_phase(self):
       phase_record = yield mytest.first_phase
       # Check a measurement value.
