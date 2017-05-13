@@ -129,27 +129,6 @@ class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
 
 
-class RemoteAttribute(collections.namedtuple(
-    'RemoteMethod', ['class_name', 'name'])):
-  """Used to make parsing attribute names on remote plugs cleaner."""
-
-  @classmethod
-  def from_method_string(cls, method_string):
-    """Construct a RemoteAttribute from a method string.
-
-    Method strings, as returned by a ServerProxy's listMethods() method, will
-    look something like:
-      'plugs.openhtf.plugs.user_input.UserInput.prompt'
-
-    The resulting RemoteAttribute would then have fields:
-      class_name: 'openhtf.plugs.user_input.UserInput'
-      name: 'prompt'
-    """
-    remainder, _, attr_name = method_string.rpartition('.')
-    _, _, class_name = remainder.partition('.')
-    return cls(class_name, attr_name)
-
-
 class PlugPlaceholder(collections.namedtuple(
     'PlugPlaceholder', ['base_class'])):
   """Placeholder for a specific plug to be provided before test execution.
@@ -213,99 +192,6 @@ class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
   frontend-aware plugs should be written with thread safety in mind.
   """
   enable_remote = True
-
-
-class RemotePlug(xmlrpcutil.TimeoutProxyServer):
-  """Remote interface to a Plug.
-
-  This class is used by the web GUI to call methods on plugs that are currently
-  in use by a remotely running OpenHTF test.
-  """
-
-  class RemotePlugHandler(object):
-    """Handles requests directed at remote plugs."""
-
-    def __init__(self, remote_plug):
-      self.remote_plug = remote_plug
-
-    def respond(self, request):
-      """Called when we receive a JSON message from a frontend client."""
-      try:
-        data = json.loads(request)
-        method = data['method']
-        args = data['args']
-      except (KeyError, ValueError):
-        raise ValueError('Malformed JSON request')
-
-      try:
-        result = getattr(self.remote_plug, method)(*args)
-      except (AttributeError, TypeError, ValueError):
-        raise Exception('Error in RPC request')
-
-      return json.dumps(result)
-
-  def __init__(self, host, port, plug_name):
-    super(RemotePlug, self).__init__('http://%s:%s' % (host, port))
-    self.plug_name = plug_name
-
-    # Grab exactly the attrs we want, the server has all plugs', not just ours.
-    for method in self.list_methods():
-      remote_attr = RemoteAttribute.from_method_string(method)
-      if remote_attr.class_name == plug_name:
-        if hasattr(type(self), remote_attr.name):
-          _LOG.warning('Skipping preexisting remote plug attribute "%s".',
-                       remote_attr.name)
-        else:
-          setattr(self, remote_attr.name, getattr(self, method))
-
-  def list_methods(self):
-    # Accessing self.system directly would result in a call to __getattr__.
-    self._cached_methods = super(
-        RemotePlug, self).__getattr__('system').listMethods()
-    return self._cached_methods
-
-  def __getattr__(self, attr):
-    if attr in self._cached_methods or attr in self.list_methods():
-      return super(RemotePlug, self).__getattr__(attr)
-    _LOG.debug('RemotePlug "%s" requested unknown attribute "%s", known: %s',
-        self.plug_name, attr, self.list_methods())
-    raise AttributeError(
-        'RemotePlug attribute "%s" not found, is it disabled?' % attr)
-
-  @classmethod
-  def discover(cls, host, port, timeout_s=xmlrpcutil.DEFAULT_PROXY_TIMEOUT_S):
-    """Discover what plugs are available at host, port, yielding them.
-
-    timeout_s only applies to the discovery.  To set a timeout on the resulting
-    RemotePlug instances, call settimeout() on them (they have the same
-    default).
-
-    Yields:
-      Tuples of:
-        - Name of the plug, e.g. openhtf.plugs.user_input.UserInput.
-        - Request handler class, to be initialized with the remote plug.
-        - Handler params, including the remote plug instance.
-
-    The yielded tuple can be passed to a Tornado application as a route.
-    """
-    proxy = xmlrpcutil.TimeoutProxyServer('http://%s:%s' % (host, port),
-                                          timeout_s=timeout_s, allow_none=True)
-    seen = set()
-    for method in proxy.system.listMethods():
-      if not method.startswith('plugs.'):
-        continue
-
-      remote_attr = RemoteAttribute.from_method_string(method)
-      plug_name = remote_attr.class_name
-
-      if not plug_name:
-        _LOG.warning('Invalid RemotePlug method: %s', method)
-        continue
-
-      if plug_name not in seen:
-        seen.add(plug_name)
-        remote_plug = cls(host, port, plug_name)
-        yield (plug_name, cls.RemotePlugHandler(remote_plug))
 
 
 def plug(update_kwargs=True, **plugs):

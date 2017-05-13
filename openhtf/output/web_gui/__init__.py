@@ -534,7 +534,7 @@ class WebGuiServer(tornado.web.Application):
     self.remote_plugs.update({
         (hostport.host, hostport.port, test_uid, plug_name): handler
         for plug_name, handler
-        in plugs.RemotePlug.discover(hostport.host, plugs_port)
+        in station_api.RemotePlug.discover(hostport.host, plugs_port)
     })
 
   def start(self):
