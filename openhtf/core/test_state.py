@@ -240,7 +240,7 @@ class TestState(util.SubscribableStateMixin):
                         'PhaseResult.STOP, outcome FAIL.')
       self.test_record.add_outcome_details('STOP',
                                            'A phase stopped the test run.')
-      self._finalize(test_record.Outcome.ABORTED)
+      self._finalize(test_record.Outcome.FAIL)
 
   def finalize_normally(self):
     """Mark the state as finished.
