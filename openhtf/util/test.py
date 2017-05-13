@@ -185,16 +185,10 @@ class PhaseOrTestIterator(collections.Iterator):
       test_state_.mark_test_started()
 
     # Actually execute the phase, saving the result in our return value.
-    with test_state_.running_phase_context(phase_desc) as phase_state:
-      try:
-        phase_state.result = phase_executor.PhaseExecutionOutcome(
-            phase_desc(test_state_))
-      except Exception:  # pylint:disable=broad-except
-        logging.exception('Exception executing phase %s', phase_desc.name)
-        phase_state.result = phase_executor.PhaseExecutionOutcome(
-            phase_executor.ExceptionInfo(*sys.exc_info()))
-
-    return phase_state.phase_record
+    executor = phase_executor.PhaseExecutor(test_state_)
+    # Use _execute_phase_once because we want to expose all possible outcomes.
+    executor._execute_phase_once(phase_desc, is_last_repeat=False)
+    return test_state_.test_record.phases[-1]
 
   @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_test(self, test):
@@ -376,9 +370,8 @@ class TestCase(unittest.TestCase):
   ##### PhaseRecord Assertions #####
 
   def assertPhaseContinue(self, phase_record):
-    if phase_record.result.phase_result is not None:
-      self.assertIs(openhtf.PhaseResult.CONTINUE,
-                    phase_record.result.phase_result)
+    self.assertIs(
+        openhtf.PhaseResult.CONTINUE, phase_record.result.phase_result)
 
   def assertPhaseRepeat(self, phase_record):
     self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
