@@ -130,8 +130,9 @@ class TestExecutor(threads.KillableThread):
         # actually started.
         self._do_teardown_function = False
 
-      if self._test_start is not None:
-        self._execute_test_start(phase_exec)
+      if self._test_start is not None and self._execute_test_start(phase_exec):
+        # Exit early if test_start returned a terminal outcome of any kind.
+        return
       # The trigger has run and the test has started, so from now on we want the
       # teardown function to execute at the end, no matter what.
       with self._lock:
@@ -159,11 +160,12 @@ class TestExecutor(threads.KillableThread):
     # initialization for just the plugs needed by the start trigger phase.
     self.test_state.plug_manager.initialize_plugs(
         (phase_plug.cls for phase_plug in self._test_start.plugs))
-    phase_exec.execute_phase(self._test_start)
+    outcome = phase_exec.execute_phase(self._test_start)
 
     if self.test_state.test_record.dut_id is None:
       _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
                    ' to do so to prevent a BlankDutIdError when the test ends.')
+    return outcome.is_terminal
 
   def _execute_test_teardown(self, phase_exec):
     phase_exec.stop(timeout_s=conf.cancel_timeout_s)
