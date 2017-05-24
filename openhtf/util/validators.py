@@ -73,6 +73,8 @@ def has_validator(name):
 def create_validator(name, *args, **kwargs):
   return _VALIDATORS[name](*args, **kwargs)
 
+_identity = lambda x: x
+
 # Built-in validators below this line
 
 class InRange(object):
@@ -88,7 +90,7 @@ class InRange(object):
       raise ValueError('Minimum cannot be greater than maximum')
     self.minimum = minimum
     self.maximum = maximum
-    self._type = type or (lambda x: x)
+    self._type = type
 
   def with_args(self, **kwargs):
     return type(self)(
@@ -104,8 +106,9 @@ class InRange(object):
     # Check for nan
     if math.isnan(value):
       return False
-    minimum = self._type(self.minimum)
-    maximum = self._type(self.maximum)
+    converter = self._type or _identity
+    minimum = converter(self.minimum)
+    maximum = converter(self.maximum)
     if minimum is not None and value < minimum:
       return False
     if maximum is not None and value > maximum:
@@ -151,10 +154,11 @@ class Equals(object):
 
   def __init__(self, expected, type=None):
     self.expected = expected
-    self._type = type or (lambda x: x)
+    self._type = type
 
   def __call__(self, value):
-    return value == self._type(self.expected)
+    converter = self._type or _identity
+    return value == converter(self.expected)
 
   def __str__(self):
     return "'x' is equal to '%s'" % self.expected
