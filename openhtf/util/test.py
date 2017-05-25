@@ -316,7 +316,7 @@ def patch_plugs(**mock_plugs):
 class TestCase(unittest.TestCase):
   
   def __init__(self, methodName=None):
-    super(self, TestCase).__init__(methodName=methodName)
+    super(TestCase, self).__init__(methodName=methodName)
     test_method = getattr(self, methodName)
     if inspect.isgeneratorfunction(test_method):
       raise ValueError("%s yields without @openhtf.util.test.yields_phases")
