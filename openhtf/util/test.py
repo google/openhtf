@@ -314,6 +314,12 @@ def patch_plugs(**mock_plugs):
 
 
 class TestCase(unittest.TestCase):
+  
+  def __init__(self, methodName=None):
+    super(TestCase, self).__init__(methodName=methodName)
+    test_method = getattr(self, methodName)
+    if inspect.isgeneratorfunction(test_method):
+      raise ValueError("%s yields without @openhtf.util.test.yields_phases")
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
