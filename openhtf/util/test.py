@@ -314,7 +314,7 @@ def patch_plugs(**mock_plugs):
 
 
 class TestCase(unittest.TestCase):
-  
+
   def __init__(self, methodName=None):
     super(TestCase, self).__init__(methodName=methodName)
     test_method = getattr(self, methodName)
