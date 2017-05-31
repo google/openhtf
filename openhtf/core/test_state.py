@@ -447,7 +447,7 @@ class PhaseState(mutablerecords.Record(
   def _set_phase_outcome(self):
     if self.result is None or self.result.is_terminal or self.hit_repeat_limit:
       outcome = test_record.PhaseOutcome.ERROR
-    elif self.result.is_repeat:
+    elif self.result.is_repeat or self.result.is_skip:
       outcome = test_record.PhaseOutcome.SKIP
     else:
       outcome = (test_record.PhaseOutcome.PASS
