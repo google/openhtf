@@ -31,7 +31,7 @@ _LOG = logging.getLogger(__name__)
 
 conf.declare('teardown_timeout_s', default_value=30, description=
              'Timeout (in seconds) for test teardown functions.')
-conf.declare('cancel_timeout_s', default_value=15,
+conf.declare('cancel_timeout_s', default_value=2,
              description='Timeout (in seconds) when the test has been cancelled'
              'to wait for the running phase to exit.')
 
