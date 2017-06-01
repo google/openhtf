@@ -384,6 +384,9 @@ class TestCase(unittest.TestCase):
   def assertPhaseRepeat(self, phase_record):
     self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
 
+  def assertPhaseSkip(self, phase_record):
+    self.assertIs(openhtf.PhaseResult.SKIP, phase_record.result.phase_result)
+
   def assertPhaseStop(self, phase_record):
     self.assertIs(openhtf.PhaseResult.STOP, phase_record.result.phase_result)
 

@@ -349,7 +349,7 @@ PhaseResult = Enum('PhaseResult', [
     # repeat_limit option, this will be treated as a STOP.
     'REPEAT',
     # Causes the framework to ignore the measurement outcomes and execute the
-    # next phase.
+    # next phase.  The phase is still logged, unlike with run_if.
     'SKIP',
     # Causes the framework to stop executing, indicating a failure.
     'STOP'
@@ -365,7 +365,8 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
     name: Override for the name of the phase. Can be formatted in several
         different ways as defined in util.format_string.
     timeout_s: Timeout to use for the phase, in seconds.
-    run_if: Callback that decides whether to run the phase or not.
+    run_if: Callback that decides whether to run the phase or not; if not run,
+        the phase will also not be logged.
     requires_state: If True, pass the whole TestState into the first argument,
         otherwise only the TestApi will be passed in.  This is useful if a
         phase needs to wrap another phase for some reason, as
