@@ -293,6 +293,10 @@ class TestState(util.SubscribableStateMixin):
 
     self.test_record.outcome = test_outcome
 
+    # If we've reached here without 'starting' the test, then we 'start' it just
+    # so we can properly 'end' it.
+    if self.test_record.start_time_millis == 0:
+      self.test_record.start_time_millis = util.time_millis()
     # The test is done at this point, no further updates to test_record.
     self.logger.handlers = []
     self.test_record.end_time_millis = util.time_millis()
