@@ -234,7 +234,7 @@ def unit_defs_from_sheet(sheet, column_names):
       # Split on ' or ' to support the units like '% or pct'
       for suffix in suffix.split(' or '):
         yield "%s = UnitDescriptor('%s', '%s', '''%s''')\n" % (
-          key, name, code, suffix)
+            key, name, code, suffix)
         yield "ALL_UNITS.append(%s)\n" % key
 
   except xlrd.XLRDError:
