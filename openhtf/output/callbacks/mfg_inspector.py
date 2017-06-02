@@ -385,7 +385,7 @@ class UploadToMfgInspector(object):
   TOKEN_URI = 'https://accounts.google.com/o/oauth2/token'
   SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
   DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
-                     'uploads/quantum_upload/')
+                     'uploads/quantum_upload/?json')
 
   # pylint: disable=invalid-name,missing-docstring
   class _MemStorage(oauth2client.client.Storage):
@@ -470,8 +470,8 @@ class UploadToMfgInspector(object):
       else:
         raise UploadFailedError(results['error'], results)
 
-    # Return True if successful
-    return True
+    result = json.loads(content)
+    return result['key']
 
   def __call__(self, test_record_obj):  # pylint: disable=invalid-name
 
@@ -495,14 +495,14 @@ class UploadOrOutput(object):
                upload_fail_message='Upload to mfg-inspector failed!'):
     self._upload_fail_message = upload_fail_message
     self._UploadToMfgInspector = UploadToMfgInspector(user, keydata)
-    self.OutputToTestRunProto = OutputToTestRunProto(filename_pattern)
+    self._OutputToTestRunProto = OutputToTestRunProto(filename_pattern)
 
   def __call__(self, test_record_obj):  # pylint: disable=invalid-name
     try:
       logging.info('Attempting to upload to mfg-inspector')
-      self._UploadToMfgInspector(test_record_obj)
+      return self._UploadToMfgInspector(test_record_obj)
     except Exception:
       logging.warning('%s', self._upload_fail_message)
-      filename = self.OutputToTestRunProto(test_record_obj)
+      filename = self._OutputToTestRunProto(test_record_obj)
       logging.info('Saved local file: %s', filename)
       raise
