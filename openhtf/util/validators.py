@@ -50,6 +50,7 @@ if they are implemented by a class that has internal state that is not copyable
 by the default copy.deepcopy().
 """
 
+import abc
 import numbers
 import re
 import sys
@@ -75,9 +76,30 @@ def create_validator(name, *args, **kwargs):
 
 _identity = lambda x: x
 
+
+class Validator(object):
+  __metaclass__ = abc.ABCMeta
+
+  @abc.abstractmethod
+  def __call__(self, value):
+    """Should validate value."""
+
+
+class RangeValidator(Validator):
+  __metaclass__ = abc.ABCMeta
+
+  @abc.abstractproperty
+  def minimum(self):
+    """Should return the minimum, inclusive value of the range."""
+
+  @abc.abstractproperty
+  def maximum(self):
+    """Should return the maximum, inclusive value of the range."""
+
+
 # Built-in validators below this line
 
-class InRange(object):
+class InRange(RangeValidator):
   """Validator to verify a numeric value is within a range."""
 
   def __init__(self, minimum=None, maximum=None, type=None):
@@ -88,9 +110,17 @@ class InRange(object):
         and isinstance(maximum, numbers.Number)
         and minimum > maximum):
       raise ValueError('Minimum cannot be greater than maximum')
-    self.minimum = minimum
-    self.maximum = maximum
+    self._minimum = minimum
+    self._maximum = maximum
     self._type = type
+
+  @property
+  def minimum(self):
+    return self._minimum
+
+  @property
+  def maximum(self):
+    return self._maximum
 
   def with_args(self, **kwargs):
     return type(self)(
@@ -195,7 +225,7 @@ def matches_regex(regex):
   return RegexMatcher(regex, re.compile(regex))
 
 
-class WithinPercent(object):
+class WithinPercent(RangeValidator):
   """Validates that a number is within percent of a value."""
 
   def __init__(self, expected, percent):
@@ -204,9 +234,16 @@ class WithinPercent(object):
     self.expected = expected
     self.percent = percent
 
+  @property
+  def minimum(self):
+    return (1.0 - self.percent / 100.0) * self.expected
+
+  @property
+  def maximum(self):
+    return (1.0 + self.percent / 100.0) * self.expected
+
   def __call__(self, value):
-    return ((1.0 - self.percent / 100.0) * self.expected <= value <=
-            (1.0 + self.percent / 100.0) * self.expected)
+    return self.minimum <= value <= self.maximum
 
   def __str__(self):
     return "'x' is within {}% of {}".format(self.percent, self.expected)
