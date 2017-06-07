@@ -74,13 +74,17 @@ class PingDnsB(PingPlug):
 # passed into the phase so each phase has a unique name.
 @htf.PhaseOptions(name='Ping-{pinger.host}-{count}')
 @htf.plug(pinger=PingPlug.placeholder)
-@htf.measures('total_time_{pinger.host}_{count}', 'retcode')
-def test_ping(test, pinger, count):
+@htf.measures(
+    'total_time_{pinger.host}_{count}',
+    htf.Measurement('retcode').equals('{expected_retcode}', type=int)
+)
+def test_ping(test, pinger, count, expected_retcode):
   """This tests that we can ping a host.
 
   The plug, pinger, is expected to be replaced at test creation time, so the
   placeholder property was used instead of the class directly.
   """
+  del expected_retcode  # Not used in the phase, only used by a measurement
   start = time.time()
   retcode = pinger.run(count)
   elapsed = time.time() - start
@@ -98,9 +102,13 @@ if __name__ == '__main__':
     PingDnsA,
     PingDnsB,
   ]
+  
+  phases = [
+      test_ping.with_plugs(pinger=plug).with_args(count=2, expected_retcode=0)
+      for plug in ping_plugs
+  ]
 
-  test = htf.Test(*(test_ping.with_plugs(pinger=plug).with_args(count=2)
-                    for plug in ping_plugs))
+  test = htf.Test(*phases)
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.
