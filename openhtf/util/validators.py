@@ -193,3 +193,33 @@ class RegexMatcher(object):
 @register
 def matches_regex(regex):
   return RegexMatcher(regex, re.compile(regex))
+
+
+class WithinPercent(object):
+  """Validates that a number is within percent of a value."""
+
+  def __init__(self, expected, percent):
+    if percent < 0:
+      raise ValueError('percent argument is {}, must be >0'.format(percent))
+    self.expected = expected
+    self.percent = percent
+
+  def __call__(self, value):
+    return ((1.0 - self.percent / 100.0) * self.expected <= value <=
+            (1.0 + self.percent / 100.0) * self.expected)
+
+  def __str__(self):
+    return "'x' is within {}% of {}".format(self.percent, self.expected)
+
+  def __eq__(self, other):
+    return (isinstance(other, type(self)) and
+            self.expected == other.expected and
+            self.percent == other.percent)
+
+  def __ne__(self, other):
+    return not self == other
+
+
+@register
+def within_percent(expected, percent):
+  return WithinPercent(expected, percent)
