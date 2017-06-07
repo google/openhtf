@@ -77,7 +77,7 @@ def create_validator(name, *args, **kwargs):
 _identity = lambda x: x
 
 
-class Validator(object):
+class ValidatorBase(object):
   __metaclass__ = abc.ABCMeta
 
   @abc.abstractmethod
@@ -85,7 +85,7 @@ class Validator(object):
     """Should validate value."""
 
 
-class RangeValidator(Validator):
+class RangeValidatorBase(ValidatorBase):
   __metaclass__ = abc.ABCMeta
 
   @abc.abstractproperty
@@ -99,7 +99,7 @@ class RangeValidator(Validator):
 
 # Built-in validators below this line
 
-class InRange(RangeValidator):
+class InRange(RangeValidatorBase):
   """Validator to verify a numeric value is within a range."""
 
   def __init__(self, minimum=None, maximum=None, type=None):
@@ -225,7 +225,7 @@ def matches_regex(regex):
   return RegexMatcher(regex, re.compile(regex))
 
 
-class WithinPercent(RangeValidator):
+class WithinPercent(RangeValidatorBase):
   """Validates that a number is within percent of a value."""
 
   def __init__(self, expected, percent):
