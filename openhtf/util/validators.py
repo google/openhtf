@@ -7,7 +7,7 @@ module, and will typically be a type, instances of which are callable:
   from openhtf.util import validators
   from openhtf.util import measurements
 
-  class MyLessThanValidator(object):
+  class MyLessThanValidator(ValidatorBase):
     def __init__(self, limit):
       self.limit = limit
 
@@ -23,6 +23,10 @@ module, and will typically be a type, instances of which are callable:
       measurements.Measurement('my_measurement').LessThan(4))
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will have outcome 'FAIL'
+
+If implemented as a class, inherit from a suitable base class defined in this
+module; such validators may have specialized handling by the infrastructure that
+you can leverage.
 
 For simpler validators, you don't need to register them at all, you can
 simply attach them to the Measurement with the .with_validator() method:
@@ -82,7 +86,7 @@ class ValidatorBase(object):
 
   @abc.abstractmethod
   def __call__(self, value):
-    """Should validate value."""
+    """Should validate value, returning a boolean result."""
 
 
 class RangeValidatorBase(ValidatorBase):
