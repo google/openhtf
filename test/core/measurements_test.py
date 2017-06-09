@@ -14,21 +14,14 @@
 
 """Test various measurements use cases.
 
-Expected output is stored in measurements_record.pickle.  To update this
-expected output, set UPDATE_OUTPUT to True below.  Make sure to set it back
-to False when done (there's a test to make sure you do this).
+The test cases here need improvement - they should check for things that we
+actually care about.
 """
-
-import cPickle as pickle
-import os.path
-import unittest
 
 import openhtf.util as util
 
 import openhtf as htf
-from openhtf.output import callbacks
 from openhtf.util import conf
-from openhtf.util import data
 from openhtf.util import test as htf_test
 from openhtf.util import units
 
@@ -36,9 +29,6 @@ from openhtf.util import units
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
                     'lineno', 'codeinfo', 'code_info', 'descriptor_id'}
-
-RECORD_FILENAME = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), 'measurements_record.pickle')
 
 
 # Phases copied from the measurements example in examples/, because they
@@ -96,14 +86,6 @@ def measures_with_args(test, min, max):
 
 class TestMeasurements(htf_test.TestCase):
 
-  UPDATE_OUTPUT = False
-
-  @classmethod
-  def setUpClass(cls):
-    if not cls.UPDATE_OUTPUT:
-      with open(RECORD_FILENAME, 'rb') as picklefile:
-        cls.record = pickle.load(picklefile)
-
   def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
     self.assertRaises(TypeError, htf.Measurement('bad_units').with_units, 1701)
@@ -118,15 +100,9 @@ class TestMeasurements(htf_test.TestCase):
     test = htf.Test(hello_phase, again_phase, lots_of_measurements,
                     measure_seconds, measure_dimensions, inline_phase)
 
-    if self.UPDATE_OUTPUT:
-      test.add_output_callbacks(callbacks.OutputToFile(RECORD_FILENAME))
-    else:
-      test.add_output_callbacks(_save_result)
+    test.add_output_callbacks(_save_result)
     test.make_uid = lambda: 'UNITTEST:MOCK:UID'
     test.execute(test_start=lambda: 'TestDUT')
-    if not self.UPDATE_OUTPUT:
-      data.assert_records_equal_nonvolatile(
-          self.record, result.result, _VOLATILE_FIELDS)
 
   @htf_test.yields_phases
   def test_validator_replacement(self):
@@ -142,7 +118,3 @@ class TestMeasurements(htf_test.TestCase):
     self.assertMeasurementPass(record, 'replaced_min_only')
     self.assertMeasurementFail(record, 'replaced_max_only')
     self.assertMeasurementFail(record, 'replaced_min_max')
-
-  def test_update_output(self):
-    """Make sure we don't accidentally leave UPDATE_OUTPUT True."""
-    assert not self.UPDATE_OUTPUT, 'Change UPDATE_OUTPUT back to False!'
