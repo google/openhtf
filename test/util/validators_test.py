@@ -15,8 +15,9 @@ class TestInRange(unittest.TestCase):
     with self.assertRaisesRegexp(ValueError, 'Minimum cannot be greater'):
       validators.InRange(minimum=10, maximum=0)
 
-  def test_invalidates_nan(self):
+  def test_invalidates_non_numbers(self):
     self.assertFalse(validators.InRange(0, 10)(float('nan')))
+    self.assertFalse(validators.InRange(0, 10)(None))
 
   def test_upper_and_lower_bound_validator(self):
     test_validator = validators.InRange(minimum=-10, maximum=10)
@@ -40,7 +41,7 @@ class TestInRange(unittest.TestCase):
       self.assertFalse(test_validator(invalid_value))
 
   def test_str_does_not_raise(self):
-    for args in [(None, 10), (0, None), (0, 10)]:
+    for args in [(None, 10), (0, None), (0, 10), (5, 5)]:
       test_validator = validators.InRange(*args)
       str(test_validator)
       # Check that we constructed a usable validator.
@@ -93,8 +94,21 @@ class TestEqualsFactory(unittest.TestCase):
     self.assertTrue(string_validator('aardvark'))
     self.assertFalse(string_validator('aard'))
 
+  def test_with_object(self):
+    class MyType(object):
+      val = 'A'
+    my_type_a = MyType()
+    object_validator = validators.equals(my_type_a)
+    self.assertTrue(object_validator(my_type_a))
+    my_type_b = MyType()
+    self.assertFalse((object_validator(my_type_b)))
+
 
 class TestWithinPercent(unittest.TestCase):
+
+  def test_raises_for_negative_percentage(self):
+    with self.assertRaisesRegexp(ValueError, 'percent argument is'):
+      validators.WithinPercent(expected=100, percent=-1)
 
   def test_within_percent_less_than_one_hundred(self):
     validator = validators.WithinPercent(expected=100, percent=5)
