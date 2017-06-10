@@ -33,6 +33,12 @@ def save_a_measure(test):
   test.measurements.numerical_measure = 10
 
 
+@htf.TestPhase()
+def add_attachment(test):
+  """Simple test phase that adds a text attachment."""
+  test.attach('test_attachment', 'This is test attachment data.')
+
+
 class TestOutput(unittest.TestCase):
 
   @classmethod
@@ -41,7 +47,7 @@ class TestOutput(unittest.TestCase):
     result = util.NonLocalResult()
     def _save_result(test_record):
       result.result = test_record
-    test = htf.Test(save_a_measure)
+    test = htf.Test(save_a_measure, add_attachment)
     test.add_output_callbacks(_save_result)
     test.make_uid = lambda: 'UNITTEST:MOCK:UID'
     test.execute(test_start=lambda: 'TestDUT')

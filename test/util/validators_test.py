@@ -1,9 +1,97 @@
 """Unit tests for util/validators.py"""
 
 import copy
+import decimal
 import unittest
 
 from openhtf.util import validators
+
+
+class TestInRange(unittest.TestCase):
+
+  def test_raises_if_invalid_arguments(self):
+    with self.assertRaisesRegexp(ValueError, 'Must specify minimum'):
+      validators.InRange()
+    with self.assertRaisesRegexp(ValueError, 'Minimum cannot be greater'):
+      validators.InRange(minimum=10, maximum=0)
+
+  def test_invalidates_nan(self):
+    self.assertFalse(validators.InRange(0, 10)(float('nan')))
+
+  def test_upper_and_lower_bound_validator(self):
+    test_validator = validators.InRange(minimum=-10, maximum=10)
+    for valid_value in [-10, 0, 10]:
+      self.assertTrue(test_validator(valid_value))
+    for invalid_value in [-float('inf'), -11, 11, float('inf')]:
+      self.assertFalse(test_validator(invalid_value))
+
+  def test_lower_bound_validator(self):
+    test_validator = validators.InRange(minimum=-10)
+    for valid_value in [-10, 0, 10, float('inf')]:
+      self.assertTrue(test_validator(valid_value))
+    for invalid_value in [-float('inf'), -11]:
+      self.assertFalse(test_validator(invalid_value))
+
+  def test_upper_bound_validator(self):
+    test_validator = validators.InRange(maximum=10)
+    for valid_value in [-float('inf'), -10, 0, 10]:
+      self.assertTrue(test_validator(valid_value))
+    for invalid_value in [11, float('inf')]:
+      self.assertFalse(test_validator(invalid_value))
+
+  def test_str_does_not_raise(self):
+    for args in [(None, 10), (0, None), (0, 10)]:
+      test_validator = validators.InRange(*args)
+      str(test_validator)
+      # Check that we constructed a usable validator.
+      self.assertTrue(test_validator(5))
+
+  def test_comparable_with_equivalent_in_range_validator(self):
+    validator_a = validators.InRange(minimum=0, maximum=10)
+    validator_b = validators.InRange(minimum=0, maximum=10)
+    self.assertEqual(validator_a, validator_b)
+    validator_c = validators.InRange(maximum=10)
+    self.assertNotEqual(validator_a, validator_c)
+
+
+class TestEqualsValidator(unittest.TestCase):
+
+  def test_with_built_in_pods(self):
+    for val in [1, '1', 1.0, False, (1,), [1], {1:1}]:
+      self.assertTrue(validators.Equals(val)(val))
+
+  def test_with_custom_class(self):
+    class MyType(object):
+      A = 10
+    my_type = MyType()
+    self.assertTrue(validators.Equals(my_type)(my_type))
+
+  def test_str_does_not_raise(self):
+    equality_validator = validators.Equals(1)
+    str(equality_validator)
+    # Check that we constructed a usable validator.
+    self.assertTrue(equality_validator(1))
+
+  def test_comparable_with_equivalent_equals_validator(self):
+    validator_a = validators.Equals('12.3')
+    validator_b = validators.Equals('12.3')
+    self.assertEqual(validator_a, validator_b)
+    validator_c = validators.Equals('01,2')
+    self.assertNotEqual(validator_a, validator_c)
+
+
+class TestEqualsFactory(unittest.TestCase):
+
+  def test_with_numbers(self):
+    for expected in [1, 1.0, decimal.Decimal(1), 1L]:
+      number_validator = validators.equals(expected)
+      self.assertTrue(number_validator(expected))
+      self.assertFalse(number_validator(0))
+
+  def test_with_string(self):
+    string_validator = validators.equals('aardvark')
+    self.assertTrue(string_validator('aardvark'))
+    self.assertFalse(string_validator('aard'))
 
 
 class TestWithinPercent(unittest.TestCase):
@@ -47,6 +135,8 @@ class TestWithinPercent(unittest.TestCase):
   def test_string_representation_does_not_raise(self):
     validator_a = validators.WithinPercent(expected=100, percent=10)
     str(validator_a)
+    # Check that we constructed a usable validator.
+    self.assertTrue(validator_a(100))
 
   def test_is_deep_copyable(self):
     validator_a = validators.WithinPercent(expected=100, percent=10)

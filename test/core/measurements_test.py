@@ -84,6 +84,11 @@ def measures_with_args(test, min, max):
   test.measurements.replaced_min_max = 1
 
 
+@htf.TestPhase()
+def add_attachment(test):
+  test.attach('test_attachment', 'This is test attachment data.')
+
+
 class TestMeasurements(htf_test.TestCase):
 
   def test_unit_enforcement(self):
@@ -98,7 +103,8 @@ class TestMeasurements(htf_test.TestCase):
     def _save_result(test_record):
       result.result = test_record
     test = htf.Test(hello_phase, again_phase, lots_of_measurements,
-                    measure_seconds, measure_dimensions, inline_phase)
+                    measure_seconds, measure_dimensions, inline_phase,
+                    add_attachment)
 
     test.add_output_callbacks(_save_result)
     test.make_uid = lambda: 'UNITTEST:MOCK:UID'
