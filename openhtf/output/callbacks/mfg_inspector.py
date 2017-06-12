@@ -245,7 +245,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
           testrun_param.text_value = str(value)
         # Check for validators we know how to translate.
         for validator in measurement.validators:
-          if isinstance(validator, validators.InRange):
+          if isinstance(validator, validators.RangeValidatorBase):
             if validator.minimum is not None:
               testrun_param.numeric_minimum = float(validator.minimum)
             if validator.maximum is not None:

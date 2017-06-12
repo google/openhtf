@@ -7,7 +7,7 @@ module, and will typically be a type, instances of which are callable:
   from openhtf.util import validators
   from openhtf.util import measurements
 
-  class MyLessThanValidator(object):
+  class MyLessThanValidator(ValidatorBase):
     def __init__(self, limit):
       self.limit = limit
 
@@ -23,6 +23,10 @@ module, and will typically be a type, instances of which are callable:
       measurements.Measurement('my_measurement').LessThan(4))
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will have outcome 'FAIL'
+
+If implemented as a class, inherit from a suitable base class defined in this
+module; such validators may have specialized handling by the infrastructure that
+you can leverage.
 
 For simpler validators, you don't need to register them at all, you can
 simply attach them to the Measurement with the .with_validator() method:
@@ -50,6 +54,7 @@ if they are implemented by a class that has internal state that is not copyable
 by the default copy.deepcopy().
 """
 
+import abc
 import numbers
 import re
 import sys
@@ -75,9 +80,30 @@ def create_validator(name, *args, **kwargs):
 
 _identity = lambda x: x
 
+
+class ValidatorBase(object):
+  __metaclass__ = abc.ABCMeta
+
+  @abc.abstractmethod
+  def __call__(self, value):
+    """Should validate value, returning a boolean result."""
+
+
+class RangeValidatorBase(ValidatorBase):
+  __metaclass__ = abc.ABCMeta
+
+  @abc.abstractproperty
+  def minimum(self):
+    """Should return the minimum, inclusive value of the range."""
+
+  @abc.abstractproperty
+  def maximum(self):
+    """Should return the maximum, inclusive value of the range."""
+
+
 # Built-in validators below this line
 
-class InRange(object):
+class InRange(RangeValidatorBase):
   """Validator to verify a numeric value is within a range."""
 
   def __init__(self, minimum=None, maximum=None, type=None):
@@ -88,9 +114,17 @@ class InRange(object):
         and isinstance(maximum, numbers.Number)
         and minimum > maximum):
       raise ValueError('Minimum cannot be greater than maximum')
-    self.minimum = minimum
-    self.maximum = maximum
+    self._minimum = minimum
+    self._maximum = maximum
     self._type = type
+
+  @property
+  def minimum(self):
+    return self._minimum
+
+  @property
+  def maximum(self):
+    return self._maximum
 
   def with_args(self, **kwargs):
     return type(self)(
@@ -193,3 +227,40 @@ class RegexMatcher(object):
 @register
 def matches_regex(regex):
   return RegexMatcher(regex, re.compile(regex))
+
+
+class WithinPercent(RangeValidatorBase):
+  """Validates that a number is within percent of a value."""
+
+  def __init__(self, expected, percent):
+    if percent < 0:
+      raise ValueError('percent argument is {}, must be >0'.format(percent))
+    self.expected = expected
+    self.percent = percent
+
+  @property
+  def minimum(self):
+    return (1.0 - self.percent / 100.0) * self.expected
+
+  @property
+  def maximum(self):
+    return (1.0 + self.percent / 100.0) * self.expected
+
+  def __call__(self, value):
+    return self.minimum <= value <= self.maximum
+
+  def __str__(self):
+    return "'x' is within {}% of {}".format(self.percent, self.expected)
+
+  def __eq__(self, other):
+    return (isinstance(other, type(self)) and
+            self.expected == other.expected and
+            self.percent == other.percent)
+
+  def __ne__(self, other):
+    return not self == other
+
+
+@register
+def within_percent(expected, percent):
+  return WithinPercent(expected, percent)
