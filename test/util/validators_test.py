@@ -93,6 +93,7 @@ class TestEqualsFactory(unittest.TestCase):
     string_validator = validators.equals('aardvark')
     self.assertTrue(string_validator('aardvark'))
     self.assertFalse(string_validator('aard'))
+    self.assertFalse(string_validator('aardvarka'))
 
   def test_with_object(self):
     class MyType(object):

@@ -178,7 +178,7 @@ def equals(value, type=None):
   elif isinstance(value, basestring):
     assert type is None or issubclass(type, basestring), (
         'Cannot use a non-string type when matching a string')
-    return matches_regex(re.escape(value))
+    return matches_regex('^{}$'.format(re.escape(value)))
   else:
     return Equals(value, type=type)
 
