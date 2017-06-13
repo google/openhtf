@@ -19,27 +19,16 @@ actually care for.
 """
 
 from cStringIO import StringIO
-import unittest
 
+from examples import all_the_things
 import openhtf as htf
 from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
 from openhtf import util
+from openhtf.util import test
 
 
-@htf.measures('numerical_measure')
-def save_a_measure(test):
-  """Simple test phase that saves a measure."""
-  test.measurements.numerical_measure = 10
-
-
-@htf.TestPhase()
-def add_attachment(test):
-  """Simple test phase that adds a text attachment."""
-  test.attach('test_attachment', 'This is test attachment data.')
-
-
-class TestOutput(unittest.TestCase):
+class TestOutput(test.TestCase):
 
   @classmethod
   def setUpClass(cls):
@@ -47,17 +36,23 @@ class TestOutput(unittest.TestCase):
     result = util.NonLocalResult()
     def _save_result(test_record):
       result.result = test_record
-    test = htf.Test(save_a_measure, add_attachment)
-    test.add_output_callbacks(_save_result)
-    test.make_uid = lambda: 'UNITTEST:MOCK:UID'
-    test.execute(test_start=lambda: 'TestDUT')
-    cls.record = result.result
+    cls._test = htf.Test(
+        all_the_things.hello_world,
+    )
+    cls._test.add_output_callbacks(_save_result)
+    cls._test.make_uid = lambda: 'UNITTEST:MOCK:UID'
 
-  def test_json(self):
+  @test.patch_plugs(user_mock='openhtf.plugs.user_input.UserInput')
+  def test_json(self, user_mock):
+    user_mock.prompt.return_value = 'SomeWidget'
+    record = yield self._test
     json_output = StringIO()
     json_factory.OutputToJSON(
-        json_output, sort_keys=True, indent=2)(self.record)
+        json_output, sort_keys=True, indent=2)(record)
 
-  def test_testrun(self):
+  @test.patch_plugs(user_mock='openhtf.plugs.user_input.UserInput')
+  def test_testrun(self, user_mock):
+    user_mock.prompt.return_value = 'SomeWidget'
+    record = yield self._test
     testrun_output = StringIO()
-    mfg_inspector.OutputToTestRunProto(testrun_output)(self.record)
+    mfg_inspector.OutputToTestRunProto(testrun_output)(record)
