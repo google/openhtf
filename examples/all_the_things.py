@@ -19,6 +19,7 @@ python all_the_things.py
 """
 
 import time
+import os.path
 
 import openhtf as htf
 from openhtf import util
@@ -105,7 +106,8 @@ def measures_with_args(test, min, max):
 
 def attachments(test):
   test.attach('test_attachment', 'This is test attachment data.')
-  test.attach_from_file('example_attachment.txt')
+  test.attach_from_file(
+      os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
 
 @htf.TestPhase(run_if=lambda: False)

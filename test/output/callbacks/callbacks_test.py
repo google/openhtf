@@ -38,6 +38,8 @@ class TestOutput(test.TestCase):
       result.result = test_record
     cls._test = htf.Test(
         all_the_things.hello_world,
+        all_the_things.dimensions,
+        all_the_things.attachments,
     )
     cls._test.add_output_callbacks(_save_result)
     cls._test.make_uid = lambda: 'UNITTEST:MOCK:UID'
