@@ -48,6 +48,12 @@ class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
   def sha1(self):
     return hashlib.sha1(self.data).hexdigest()
 
+  def _asdict(self):
+    # Don't include the attachment data when converting to dict.
+    return {
+        'mimetype': self.mimetype,
+        'sha1': self.sha1,
+    }
 
 class TestRecord(  # pylint: disable=no-init
     mutablerecords.Record(

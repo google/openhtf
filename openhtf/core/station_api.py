@@ -167,8 +167,8 @@ class RemotePhase(collections.namedtuple('RemotePhase', [
 
   See PhaseState._asdict() in exe/test_state.py for attribute details.
 
-  Notably, 'attachments' is a dict mapping name to sha1 hash of the
-  attachment's data, not the actual attachment data itself.
+  Note that 'attachments' does not contain the attachment data itself, as it is
+  stripped out by Attachment._asdict().
   """
 
 
