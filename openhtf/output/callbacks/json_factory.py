@@ -1,8 +1,7 @@
 """Module for outputting test record to JSON-formatted files."""
 
-
 import base64
-from json import JSONEncoder
+import json
 
 from openhtf.output import callbacks
 from openhtf.util import data
@@ -31,18 +30,16 @@ class OutputToJSON(callbacks.OutputToFile):
   def __init__(self, filename_pattern=None, inline_attachments=True, **kwargs):
     super(OutputToJSON, self).__init__(filename_pattern)
     self.inline_attachments = inline_attachments
-    self.json_encoder = JSONEncoder(**kwargs)
+    self.json_encoder = json.JSONEncoder(**kwargs)
 
   def serialize_test_record(self, test_record):
     return self.json_encoder.encode(self.convert_to_dict(test_record))
 
   def convert_to_dict(self, test_record):
+    as_dict = data.convert_to_base_types(test_record)
     if self.inline_attachments:
-      as_dict = data.convert_to_base_types(test_record)
-      for phase in as_dict['phases']:
-        for value in phase['attachments'].itervalues():
-          value['data'] = base64.standard_b64encode(value['data'])
-    else:
-      as_dict = data.convert_to_base_types(test_record,
-                                           ignore_keys=('attachments',))
+      for phase, original_phase in zip(as_dict['phases'], test_record.phases):
+        for name, attachment in phase['attachments'].iteritems():
+          original_data = original_phase.attachments[name].data
+          attachment['data'] = base64.standard_b64encode(original_data)
     return as_dict
