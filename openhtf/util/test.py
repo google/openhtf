@@ -127,6 +127,7 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
 from openhtf.core import phase_executor
+from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
@@ -321,6 +322,11 @@ class TestCase(unittest.TestCase):
     if inspect.isgeneratorfunction(test_method):
       raise ValueError(
           "%s yields without @openhtf.util.test.yields_phases" % methodName)
+    
+    # Mock the station api server.
+    station_api_server_patcher = mock.patch.object(station_api, 'ApiServer')
+    self.mock_api_server = station_api_server_patcher.start()
+    self.addCleanup(self.mock_api_server.stop)
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
