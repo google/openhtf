@@ -351,6 +351,7 @@ class PhaseState(mutablerecords.Record(
         'start_time_millis': long(self.phase_record.start_time_millis),
         'options': self.phase_record.options,
         'attachments': self.attachments,
+        'measurements': self.measurements,
     }
 
   @property
