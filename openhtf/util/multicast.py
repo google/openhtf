@@ -148,13 +148,11 @@ def send(query,
   if local_only:
     sock.setsockopt(
         socket.IPPROTO_IP,
-        socket.IP_MULTICAST_IF,
         # IP_MULTICAST_IF is the 8-byte group address followed by the IP
         # assigned to the interface on which to listen.
-        struct.pack(
-            '!4sL',
-            socket.inet_aton('127.0.0.1'),  # Only connect to the local connection.
-            socket.INADDR_ANY))
+        socket.IP_MULTICAST_IF,
+        # Only connect to the local connection.
+        struct.pack('!4s', socket.inet_aton('127.0.0.1')))
   sock.settimeout(timeout_s)
   sock.sendto(query, (address, port))
 
