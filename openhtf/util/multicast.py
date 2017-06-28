@@ -34,6 +34,7 @@ _LOG = logging.getLogger(__name__)
 DEFAULT_ADDRESS = '239.1.1.1'
 DEFAULT_PORT = 10000
 DEFAULT_TTL = 1
+LOCALHOST_ADDRESS = 0x7f000001  # 127.0.0.1
 MAX_MESSAGE_BYTES = 1024  # Maximum allowable message length in bytes.
 
 
@@ -85,15 +86,18 @@ class MulticastListener(threading.Thread):
     """Listen for pings until stopped."""
     self._live = True
     self._sock.settimeout(self.LISTEN_TIMEOUT_S)
-    self._sock.setsockopt(
-        socket.IPPROTO_IP,
-        socket.IP_ADD_MEMBERSHIP,
-        # IP_ADD_MEMBERSHIP is the 8-byte group address followed by the IP
-        # assigned to the interface on which to listen.
-        struct.pack(
-            '!4sL',
-            socket.inet_aton(self.address),
-            socket.INADDR_ANY))  # Listen on all interfaces.
+
+    # Passing in INADDR_ANY means the kernel will choose the default interface.
+    # The localhost address is used to receive messages sent in "local_only"
+    # mode and the default address is used to receive all other messages.
+    for interface_ip in (socket.INADDR_ANY, LOCALHOST_ADDRESS):
+      self._sock.setsockopt(
+          socket.IPPROTO_IP,
+          socket.IP_ADD_MEMBERSHIP,
+          # IP_ADD_MEMBERSHIP takes the 8-byte group address followed by the IP
+          # assigned to the interface on which to listen.
+          struct.pack('!4sL', socket.inet_aton(self.address), interface_ip))
+
     if sys.platform == 'darwin':
       self._sock.setsockopt(socket.SOL_SOCKET,
                             socket.SO_REUSEPORT,
@@ -102,7 +106,7 @@ class MulticastListener(threading.Thread):
       self._sock.setsockopt(socket.SOL_SOCKET,
                             socket.SO_REUSEADDR,
                             1)  # Allow multiple listeners to bind.
-    self._sock.bind(('', self.port))
+    self._sock.bind((self.address, self.port))
 
     while self._live:
       try:
@@ -146,13 +150,11 @@ def send(query,
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
   if local_only:
+    # Set outgoing interface to localhost to ensure no packets leave this host.
     sock.setsockopt(
         socket.IPPROTO_IP,
-        # IP_MULTICAST_IF is the 8-byte group address followed by the IP
-        # assigned to the interface on which to listen.
         socket.IP_MULTICAST_IF,
-        # Only connect to the local connection.
-        struct.pack('!4s', socket.inet_aton('127.0.0.1')))
+        struct.pack('!L', LOCALHOST_ADDRESS))
   sock.settimeout(timeout_s)
   sock.sendto(query, (address, port))
 
