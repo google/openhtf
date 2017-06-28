@@ -87,6 +87,9 @@ class MulticastListener(threading.Thread):
     self._live = True
     self._sock.settimeout(self.LISTEN_TIMEOUT_S)
 
+    # Passing in INADDR_ANY means the kernel will choose the default interface.
+    # The localhost address is used to receive messages sent in "local_only"
+    # mode and the default address is used to receive all other messages.
     for interface_ip in (socket.INADDR_ANY, LOCALHOST_ADDRESS):
       self._sock.setsockopt(
           socket.IPPROTO_IP,
