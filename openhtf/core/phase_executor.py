@@ -254,14 +254,15 @@ class PhaseExecutor(object):
     if not phase_thread:
       return
 
-    phase_thread.kill()
-
-    _LOG.debug('Waiting for cancelled phase to exit: %s', phase_thread)
-    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
-    while phase_thread.is_alive() and not timeout.has_expired():
-      time.sleep(0.1)
-    _LOG.debug('Cancelled phase %s exit',
-               "didn't" if phase_thread.is_alive() else 'did')
+    if phase_thread.is_alive():
+      phase_thread.kill()
+    
+      _LOG.debug('Waiting for cancelled phase to exit: %s', phase_thread)
+      timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
+      while phase_thread.is_alive() and not timeout.has_expired():
+        time.sleep(0.1)
+      _LOG.debug('Cancelled phase %s exit',
+                 "didn't" if phase_thread.is_alive() else 'did')
     # Clear the currently running phase, whether it finished or timed out.
     self.test_state.stop_running_phase()
 
