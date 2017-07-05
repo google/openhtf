@@ -18,16 +18,15 @@ Run with (your virtualenv must be activated first):
 python all_the_things.py
 """
 
-import json
-import os
 import time
+import os.path
 
 import openhtf as htf
+from openhtf import util
 from openhtf.util import units
 from openhtf.plugs import user_input
 from openhtf.output import callbacks
 from openhtf.output.callbacks import json_factory
-from openhtf.output.callbacks import mfg_inspector
 
 import example_plugs
 
@@ -47,7 +46,10 @@ def example_monitor(example, frontend_aware):
             '''This measurement tracks the type of widgets.'''),
     htf.Measurement(
         'widget_color').doc('Color of the widget'),
-    htf.Measurement('widget_size').in_range(1, 4))
+    htf.Measurement('widget_size').in_range(1, 4).doc('Size of widget'))
+@htf.measures('specified_as_args', docstring='Helpful docstring',
+              units=units.HERTZ,
+              validators=[util.validators.matches_regex('Measurement')])
 @htf.plug(example=example_plugs.ExamplePlug)
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
@@ -59,6 +61,7 @@ def hello_world(test, example, prompts):
     raise Exception()
   test.measurements.widget_color = 'Black'
   test.measurements.widget_size = 3
+  test.measurements.specified_as_args = 'Measurement args specified directly'
   test.logger.info('Plug value: %s', example.increment())
 
 
@@ -90,15 +93,26 @@ def dimensions(test):
     test.measurements.lots_of_dims[x, y, z] = x + y + z
 
 
+@htf.measures(
+    htf.Measurement('replaced_min_only').in_range('{min}', 5, type=int),
+    htf.Measurement('replaced_max_only').in_range(0, '{max}', type=int),
+    htf.Measurement('replaced_min_max').in_range('{min}', '{max}', type=int),
+)
+def measures_with_args(test, min, max):
+  test.measurements.replaced_min_only = 1
+  test.measurements.replaced_max_only = 1
+  test.measurements.replaced_min_max = 1
+
+
 def attachments(test):
   test.attach('test_attachment', 'This is test attachment data.')
-  test.attach_from_file('example_attachment.txt')
+  test.attach_from_file(
+      os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
 
 @htf.TestPhase(run_if=lambda: False)
 def skip_phase(test):
   """Don't run this phase."""
-  pass
 
 
 def teardown(test):
@@ -108,6 +122,7 @@ def teardown(test):
 if __name__ == '__main__':
   test = htf.Test(
       hello_world, set_measurements, dimensions, attachments, skip_phase,
+      measures_with_args.with_args(min=2, max=4),
       # Some metadata fields, these in particular are used by mfg-inspector,
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',

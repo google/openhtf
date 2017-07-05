@@ -95,6 +95,7 @@ class TestConf(unittest.TestCase):
         'flag_key': 'flag_value',
         'cancel_timeout_s': 2,
         'enable_station_discovery': True,
+        'example_plug_increment_size': 1,
         'station_api_port': 8888,
         'allow_unset_measurements': False,
         'capture_source': False,
