@@ -6,6 +6,8 @@ The open-source hardware testing framework.
 [![Build Status](https://travis-ci.org/google/openhtf.svg?branch=master)](https://travis-ci.org/google/openhtf)
 [![Coverage Status](https://coveralls.io/repos/google/openhtf/badge.svg?branch=master&service=github)](https://coveralls.io/github/google/openhtf?branch=master)
 
+[Issue Stats](http://issuestats.com/github/google/openhtf)
+
 ## Overview
 OpenHTF is a Python library that provides a set of convenient abstractions
 designed to remove as much boilerplate as possible from hardware test setup and
