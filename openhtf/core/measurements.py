@@ -62,6 +62,7 @@ Examples:
 
 
 import collections
+import copy
 import logging
 
 from enum import Enum
@@ -138,6 +139,19 @@ class Measurement(  # pylint: disable=no-init
           self.name, len(self.dimensions))
     else:
       self.measured_value = MeasuredValue(self.name)
+
+  def __deepcopy__(self, memo):
+      kwargs = {
+          attr: copy.deepcopy(getattr(self, attr), memo)
+          for attr in self.__slots__
+      }
+      measured_value = kwargs.pop('measured_value', None)
+
+      new_measurement = type(self)(**kwargs)
+      new_measurement.measured_value = measured_value
+
+      return new_measurement
+
 
   def __setattr__(self, attr, value):
     super(Measurement, self).__setattr__(attr, value)
