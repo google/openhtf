@@ -132,7 +132,7 @@ class Measurement(  # pylint: disable=no-init
 
   def _initialize_value(self):
     if self.measured_value and self.measured_value.is_value_set:
-        raise ValueError('Cannot update a Measurement once a value is set.')
+      raise ValueError('Cannot update a Measurement once a value is set.')
     if self.dimensions:
       self.measured_value = DimensionedMeasuredValue(
           self.name, len(self.dimensions))
