@@ -24,6 +24,7 @@ transitions during the course of the lifetime of a single Execute()
 invokation of an openhtf.Test instance.
 """
 
+import collections
 import contextlib
 import copy
 import logging
@@ -338,9 +339,10 @@ class PhaseState(mutablerecords.Record(
     return cls(
         phase_desc.name,
         test_record.PhaseRecord.from_descriptor(phase_desc),
-        {measurement.name:
-             copy.deepcopy(measurement).set_notification_callback(notify_cb)
-         for measurement in phase_desc.measurements},
+        collections.OrderedDict(
+            (measurement.name,
+             copy.deepcopy(measurement).set_notification_callback(notify_cb))
+            for measurement in phase_desc.measurements),
         phase_desc.options)
 
   def _asdict(self):
@@ -412,26 +414,15 @@ class PhaseState(mutablerecords.Record(
     Any UNSET measurements will cause the Phase to FAIL unless
     conf.allow_unset_measurements is set True.
     """
-    # Clear notification callbacks for later serialization.
-    for meas in self.measurements.values():
-      meas.set_notification_callback(None)
+    for measurement in self.measurements.itervalues():
+      # Clear notification callbacks for later serialization.
+      measurement.set_notification_callback(None)
+      # Validate multi-dimensional measurements now that we have all values.
+      if measurement.outcome is measurements.Outcome.PARTIALLY_SET:
+        measurement.validate()
 
-    # Initialize with already-validated and UNSET measurements.
-    validated_measurements = {
-        name: measurement
-        for name, measurement in self.measurements.iteritems()
-        if measurement.outcome is not measurements.Outcome.PARTIALLY_SET
-    }
-
-    # Validate multi-dimensional measurements now that we have all values.
-    validated_measurements.update({
-        name: measurement.validate()
-        for name, measurement in self.measurements.iteritems()
-        if measurement.outcome is measurements.Outcome.PARTIALLY_SET
-    })
-
-    # Fill out final values for the PhaseRecord.
-    self.phase_record.measurements = validated_measurements
+    # Set final values on the PhaseRecord.
+    self.phase_record.measurements = self.measurements
 
   def _measurements_pass(self):
     allowed_outcomes = {measurements.Outcome.PASS}

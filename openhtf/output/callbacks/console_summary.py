@@ -44,22 +44,19 @@ class ConsoleSummary():
         new_phase = True
         phase_time_sec = (float(phase.end_time_millis)
                           - float(phase.start_time_millis)) / 1000.0
-        measured = phase.measured_values
-        measurements = phase.measurements
-        for key in measurements:
-          result = measurements[key]
-          if result.outcome == meas_module.Outcome.FAIL:
+        for name, measurement in phase.measurements.iteritems():
+          if measurement.outcome == meas_module.Outcome.FAIL:
             if new_phase:
               output_lines.append('failed phase: %s [ran for %.2f sec]' %
                                   (phase.name, phase_time_sec))
               new_phase = False
 
             output_lines.append('%sfailed_item: %s' %
-                                (self.indent, result.name))
+                                (self.indent, name))
             output_lines.append('%smeasured_value: %s' %
-                                (self.indent*2, str(measured[result.name])))
+                                (self.indent*2, measurement.measured_value))
             output_lines.append('%svalidators:' % (self.indent*2))
-            for validator in result.validators:
+            for validator in measurement.validators:
               output_lines.append('%svalidator: %s' %
                                   (self.indent*3, str(validator)))
 
