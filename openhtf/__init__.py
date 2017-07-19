@@ -328,9 +328,10 @@ def create_arg_parser(add_help=False):
           'My args title', parents=[openhtf.create_arg_parser()])
   >>> parser.parse_args()
   """
-  return argparse.ArgumentParser('OpenHTF-based testing', parents=[
+  return util.argv.SysArgvConsumingParser('OpenHTF-based testing', parents=[
       conf.ARG_PARSER, phase_executor.ARG_PARSER, logs.ARG_PARSER],
-      add_help=add_help)
+      add_help=add_help,
+      consume=True)
 
 
 # Result of a phase.
