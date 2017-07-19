@@ -112,15 +112,15 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 
 INSTALL_REQUIRES = [
-    'contextlib2==0.5.1',
-    'enum34==1.1.2',
-    'mutablerecords==0.4.1',
-    'oauth2client==1.5.2',
-    'protobuf==2.6.1',
-    'pyaml==15.3.1',
-    'pyOpenSSL==0.15.1',
-    'sockjs-tornado==1.0.3',
-    'tornado==4.3',
+    'contextlib2>=0.5.1,<1.0',
+    'enum34>=1.1.2,<2.0',
+    'mutablerecords>=0.4.1,<2.0',
+    'oauth2client>=1.5.2,<2.0',
+    'protobuf>=2.6.1,<3.0',
+    'pyaml>=15.3.1,<16.0',
+    'pyOpenSSL>=17.1.0,<18.0',
+    'sockjs-tornado>=1.0.3,<2.0',
+    'tornado>=4.3,<5.0',
 ]
 
 
@@ -177,16 +177,16 @@ setup(
     install_requires=INSTALL_REQUIRES,
     extras_require={
         'usb_plugs': [
-            'libusb1==1.3.0',
-            'M2Crypto==0.22.3',
-            'python-gflags==2.0',
+            'libusb1>=1.3.0,<2.0',
+            'M2Crypto>=0.22.3,<1.0',
+            'python-gflags>=2.0,<3.0',
         ],
         'update_units': [
-            'xlrd==1.0.0',
+            'xlrd>=1.0.0,<2.0',
         ],
     },
     setup_requires=[
-        'wheel==0.29.0',
+        'wheel>=0.29.0,<1.0',
     ],
     tests_require=[
         'mock>=2.0.0',
