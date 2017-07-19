@@ -127,7 +127,8 @@ class Measurement(  # pylint: disable=no-init
 
   def __init__(self, name, **kwargs):
     super(Measurement, self).__init__(name, **kwargs)
-    self._initialize_value()
+    if 'measured_value' not in kwargs:
+      self._initialize_value()
 
   def _initialize_value(self):
     if self.measured_value and self.measured_value.is_value_set:
