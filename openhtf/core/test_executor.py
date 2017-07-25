@@ -146,6 +146,12 @@ class TestExecutor(threads.KillableThread):
 
       # Everything is set, set status and begin test execution.
       self._execute_test_phases(phase_exec)
+      
+  def _thread_exception(self, exc_type, exc_val, exc_tb):
+    """When the framework throws an exception, turn it into a failure code."""
+    if self.test_state and not self.test_state.is_finalized:
+      self.test_state.test_record.add_outcome_details(exc_type.__name__, exc_val.message)
+    return True
 
   def _execute_test_start(self, phase_exec):
     """Run the start trigger phase, and check that the DUT ID is set after.
