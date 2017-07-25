@@ -57,6 +57,11 @@ class MoreRepeatsUnittestPlug(UnittestPlug):
 
 
 @openhtf.PhaseOptions()
+def start_phase(test):
+  test.dut_id = 'DUT ID'
+
+
+@openhtf.PhaseOptions()
 def phase_one(test, test_plug):
   del test  # Unused.
   del test_plug  # Unused.
@@ -102,6 +107,30 @@ class TestExecutor(unittest.TestCase):
   def test_plug_map(self):
     test = openhtf.Test(phase_one, phase_two)
     self.assertIn(self.test_plug_type, test.descriptor.plug_types)
+
+  def test_plug_exception(self):
+
+    class PlugException(Exception): pass
+
+    class PlugThatRaisesOnInit(plugs.BasePlug):
+      def __init__(self):
+        raise PlugException("here come the details")
+
+    @plugs.plug(raises_plug=PlugThatRaisesOnInit)
+    def phase(raises_plug):
+      pass
+
+    test = openhtf.Test(phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase)
+    executor.start()
+    executor.wait()
+    final_state = executor.finalize()
+    record = final_state.test_record
+    self.assertEqual(1, len(record.outcome_details))
+    details = record.outcome_details[0]
+    self.assertEqual('PlugException', details.code)
+    self.assertEqual('here come the details', details.description)
+    self.assertEqual(record.outcome, core.test_record.Outcome.ABORTED)
 
   # Mock test execution.
   def test_test_executor(self):
@@ -163,10 +192,6 @@ class TestExecutor(unittest.TestCase):
   def test_cancel_phase(self):
 
     @openhtf.PhaseOptions()
-    def start_phase(test):
-      test.dut_id = 'DUT ID'
-
-    @openhtf.PhaseOptions()
     def cancel_phase(test):
       del test  # Unused.
       # See above cancel_phase for explanations.
@@ -224,3 +249,4 @@ class TestPhaseExecutor(unittest.TestCase):
   def test_execute_phase_return_skip(self):
     result = self.phase_executor.execute_phase(phase_return_skip)
     self.assertEqual(PhaseResult.SKIP, result.phase_result)
+
