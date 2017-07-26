@@ -93,6 +93,12 @@ def phase_return_skip(test):
   return openhtf.PhaseResult.SKIP
 
 
+@openhtf.PhaseOptions()
+def phase_return_fail_and_continue(test):
+  del test  # Unused.
+  return openhtf.PhaseResult.FAIL_AND_CONTINUE
+
+
 class TestExecutor(unittest.TestCase):
 
   def setUp(self):
@@ -224,3 +230,7 @@ class TestPhaseExecutor(unittest.TestCase):
   def test_execute_phase_return_skip(self):
     result = self.phase_executor.execute_phase(phase_return_skip)
     self.assertEqual(PhaseResult.SKIP, result.phase_result)
+
+  def test_execute_phase_return_fail_and_continue(self):
+    result = self.phase_executor.execute_phase(phase_return_fail_and_continue)
+    self.assertEqual(PhaseResult.FAIL_AND_CONTINUE, result.phase_result)

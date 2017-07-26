@@ -79,7 +79,7 @@ class TestRecord(  # pylint: disable=no-init
 PhaseOutcome = Enum(  # pylint: disable=invalid-name
     'PhaseOutcome', [
         'PASS',  # CONTINUE with allowed measurement outcomes.
-        'FAIL',  # CONTINUE with failed measurements.
+        'FAIL',  # CONTINUE with failed measurements or FAIL_AND_CONTINUE.
         'SKIP',  # SKIP or REPEAT when under the phase's repeat limit.
         'ERROR',  # Any terminal result.
     ])
