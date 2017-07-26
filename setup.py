@@ -179,7 +179,6 @@ setup(
         'usb_plugs': [
             'libusb1>=1.3.0,<2.0',
             'M2Crypto>=0.22.3,<1.0',
-            'python-gflags>=2.0,<3.0',
         ],
         'update_units': [
             'xlrd>=1.0.0,<2.0',

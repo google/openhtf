@@ -3,7 +3,7 @@
 StoreInModule:
   Enables emulating a gflags-esque API (flag affects global value), but one
   doesn't necessarily need to use flags to set values.
-  
+
   Example usage:
     DEFAULT_VALUE = 0
     ARG_PARSER = argv.ModuleParser()
@@ -41,3 +41,30 @@ class StoreInModule(argparse.Action):
     else:
       module = __import__(self._tgt_mod)
     setattr(module, self._tgt_attr, values)
+
+
+class _StoreValueInModule(StoreInModule):
+  """Stores a value in a module level variable when set."""
+
+  def __init__(self, const, *args, **kwargs):
+    kwargs.update(nargs=0, const=const)
+    super(_StoreValueInModule, self).__init__(*args, **kwargs)
+
+  def __call__(self, parser, namespace, values, option_string=None):
+    del values  # Unused.
+    super(_StoreValueInModule, self).__call__(
+        parser, namespace, self.const, option_string=option_string)
+
+
+class StoreTrueInModule(_StoreValueInModule):
+  """Stores True in a module level variable when set."""
+
+  def __init__(self, *args, **kwargs):
+    super(StoreTrueInModule, self).__init__(True, *args, **kwargs)
+
+
+class StoreFalseInModule(_StoreValueInModule):
+  """Stores False in module level variable when set."""
+
+  def __init__(self, *args, **kwargs):
+    super(StoreFalseInModule, self).__init__(False, *args, **kwargs)
