@@ -99,6 +99,10 @@ class PhaseExecutionOutcome(collections.namedtuple(
     super(PhaseExecutionOutcome, self).__init__(phase_result)
 
   @property
+  def is_fail_and_continue(self):
+    return self.phase_result is openhtf.PhaseResult.FAIL_AND_CONTINUE
+
+  @property
   def is_repeat(self):
     return self.phase_result is openhtf.PhaseResult.REPEAT
 

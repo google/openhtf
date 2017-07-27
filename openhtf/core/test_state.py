@@ -439,6 +439,8 @@ class PhaseState(mutablerecords.Record(
       outcome = test_record.PhaseOutcome.ERROR
     elif self.result.is_repeat or self.result.is_skip:
       outcome = test_record.PhaseOutcome.SKIP
+    elif self.result.is_fail_and_continue:
+      outcome = test_record.PhaseOutcome.FAIL
     else:
       outcome = (test_record.PhaseOutcome.PASS
                  if self._measurements_pass()

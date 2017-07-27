@@ -344,6 +344,9 @@ PhaseResult = Enum('PhaseResult', [
     # Causes the framework to process the phase measurement outcomes and execute
     # the next phase.
     'CONTINUE',
+    # Causes the framework to mark the phase with a fail outcome and execute the
+    # next phase.
+    'FAIL_AND_CONTINUE',
     # Causes the framework to execute the same phase again, ignoring the
     # measurement outcomes for this instance. If returned more than the phase's
     # repeat_limit option, this will be treated as a STOP.
