@@ -79,6 +79,8 @@ def set_measurements(test):
   time.sleep(1)
   test.measurements.level_all = 9
   time.sleep(1)
+  level_all = test.get_measurement('level_all')
+  assert level_all.value == 9
 
 
 @htf.measures(
@@ -109,10 +111,20 @@ def attachments(test):
   test.attach_from_file(
       os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
+  test_attachment = test.get_attachment('test_attachment')
+  assert test_attachment == 'This is test attachment data.'
+
 
 @htf.TestPhase(run_if=lambda: False)
 def skip_phase(test):
   """Don't run this phase."""
+
+
+def analysis(test):
+  level_all = test.get_measurement('level_all')
+  assert level_all.value == 9
+  test_attachment = test.get_attachment('test_attachment')
+  assert test_attachment == 'This is test attachment data.'
 
 
 def teardown(test):
@@ -122,7 +134,7 @@ def teardown(test):
 if __name__ == '__main__':
   test = htf.Test(
       hello_world, set_measurements, dimensions, attachments, skip_phase,
-      measures_with_args.with_args(min=2, max=4),
+      measures_with_args.with_args(min=2, max=4), analysis,
       # Some metadata fields, these in particular are used by mfg-inspector,
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',

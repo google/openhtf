@@ -543,7 +543,8 @@ class RemotePhaseDescriptor(mutablerecords.Record('RemotePhaseDescriptor', [
 
 class TestApi(collections.namedtuple('TestApi', [
     'logger', 'state', 'test_record', 'measurements', 'attachments',
-    'attach', 'attach_from_file', 'notify_update'])):
+    'attach', 'attach_from_file', 'get_measurement', 'get_attachment',
+    'notify_update'])):
   """Class passed to test phases as the first argument.
 
   Attributes:
@@ -584,10 +585,17 @@ class TestApi(collections.namedtuple('TestApi', [
     attach_from_file: Attach binary data from a file, see
         TestState.attach_from_file().
 
+    get_attachment:  Get attachment from a previous phase, see TestState.
+
+    get_measurement: Get copy of a measurement from a previous phase, see
+        TestState.
+
     notify_update: Notify any frontends of an interesting update. Typically
         this is automatically called internally when interesting things happen,
         but it can be called by the user (takes no args), for instance if
         modifying test_record directly.
+
+
 
   Read-only Attributes:
     attachments: Dict mapping attachment name to test_record.Attachment
