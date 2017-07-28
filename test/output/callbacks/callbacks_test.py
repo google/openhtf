@@ -22,6 +22,7 @@ from cStringIO import StringIO
 
 from examples import all_the_things
 import openhtf as htf
+from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
 from openhtf import util
@@ -64,6 +65,6 @@ class TestConsoleSummary(test.TestCase):
 
     def test_outcome_colors(self):
         """Ensure there is an output color for each outcome."""
-        instance = htf.callbacks.console_summary.ConsoleSummary()
-        for outcome in htf.test_record_outcome:
-            self.assertIsNotNone(instance.color_table[outcome])
+        instance = console_summary.ConsoleSummary()
+        for outcome in htf.test_record.Outcome:
+            self.assertIn(outcome, instance.color_table)
