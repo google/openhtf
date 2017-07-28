@@ -109,7 +109,7 @@ functions and specifying the order in which they should be executed.
 
 ### Measurement
 OpenHTF gathers data about a DUT in the form of _measurements_. Usually,
-measurements are declared along with a specification that desribes what
+measurements are declared along with a specification that describes what
 constitutes a "passing" value. If OpenHTF finishes the test run and one or more
 measurements were out of that spec, the result of the whole test run will be
 considered a fail.
