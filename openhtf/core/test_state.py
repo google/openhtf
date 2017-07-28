@@ -151,7 +151,7 @@ class TestState(util.SubscribableStateMixin):
                 self.notify_update,))
 
   def get_measurement(self, measurement_name):
-    """Get a copy of a measurement value from a previous (or current) phase.
+    """Get a copy of a measurement value from current or previous phase.
 
     Args:
       measurement_name: str of the measurement name
@@ -177,7 +177,7 @@ class TestState(util.SubscribableStateMixin):
     return None
 
   def get_attachment(self, attachment_name):
-    """Get a copy of an attachment from a previous (or current) phase."""
+    """Get a copy of an attachment contents from current or previous phase."""
     for phase_record in self.test_record.phases:
       if attachment_name in phase_record.attachments:
         attachment = phase_record.attachments[attachment_name]

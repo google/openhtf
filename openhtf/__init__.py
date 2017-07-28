@@ -585,10 +585,11 @@ class TestApi(collections.namedtuple('TestApi', [
     attach_from_file: Attach binary data from a file, see
         TestState.attach_from_file().
 
-    get_attachment:  Get attachment from a previous phase, see TestState.
+    get_attachment:  Get copy of attachment contents from current or previous
+        phase, see TestState.get_attachement.
 
-    get_measurement: Get copy of a measurement from a previous phase, see
-        TestState.
+    get_measurement: Get copy of a measurement from a current or previous phase,
+        see TestState.get_measurement().
 
     notify_update: Notify any frontends of an interesting update. Typically
         this is automatically called internally when interesting things happen,
