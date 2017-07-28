@@ -125,6 +125,13 @@ def analysis(test):
   assert level_all.value == 9
   test_attachment = test.get_attachment('test_attachment')
   assert test_attachment == 'This is test attachment data.'
+  lots_of_dims = test.get_measurement('lots_of_dims')
+  assert lots_of_dims.value == [
+      (1, 21, 101, 123),
+      (2, 22, 102, 126),
+      (3, 23, 103, 129),
+      (4, 24, 104, 132)
+  ]
 
 
 def teardown(test):

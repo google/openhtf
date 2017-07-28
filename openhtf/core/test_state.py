@@ -159,19 +159,20 @@ class TestState(util.SubscribableStateMixin):
       an ImmutableMeasurement
     """
     # The framework ignores measurements from SKIP and REPEAT phases
-    ignore_outcomes = (test_record.PhaseOutcome.SKIP,)
-    # Iterate through phases in reversed order for LIFO.
-    for phase_record in reversed(self.test_record.phases):
-      if (measurement_name in phase_record.measurements and
-          phase_record.result not in ignore_outcomes):
-        measurement = phase_record.measurements[measurement_name]
-        return ImmutableMeasurement.FromMeasurement(measurement)
+    ignore_outcomes = set([test_record.PhaseOutcome.SKIP,])
 
     # Check current running phase state
     if self.running_phase_state:
       if measurement_name in self.running_phase_state.measurements:
         return ImmutableMeasurement.FromMeasurement(
             self.running_phase_state.measurements[measurement_name])
+
+    # Iterate through phases in reversed order for LIFO.
+    for phase_record in reversed(self.test_record.phases):
+      if (phase_record.result not in ignore_outcomes and
+          measurement_name in phase_record.measurements):
+        measurement = phase_record.measurements[measurement_name]
+        return ImmutableMeasurement.FromMeasurement(measurement)
 
     test.logger.warning('Could not find measurement: %s', measurement_name)
     return None
