@@ -31,6 +31,7 @@ class ConsoleSummary():
         test_record.Outcome.FAIL:self.RED,
         test_record.Outcome.ERROR:self.ORANGE,
         test_record.Outcome.TIMEOUT:self.ORANGE,
+        test_record.Outcome.ABORTED:self.RED,
     }
     self.output_stream = output_stream
   # pylint: enable=invalid-name
