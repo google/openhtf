@@ -44,3 +44,4 @@ other_modules/
 
 # Tox temporary files
 .tox/
+/docs/_build
