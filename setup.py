@@ -159,7 +159,7 @@ class PyTestCommand(test):
 
 
 setup(
-    name='openhtf',
+    pbr=True,
     version='1.1.0',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
@@ -186,6 +186,7 @@ setup(
         ],
     },
     setup_requires=[
+        'pbr',
         'wheel>=0.29.0,<1.0',
     ],
     tests_require=[
