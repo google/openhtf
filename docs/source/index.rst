@@ -10,7 +10,7 @@ Welcome to OpenHTF's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   api/autoindex
 
 Indices and tables
 ==================
