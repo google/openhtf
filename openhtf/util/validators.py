@@ -173,7 +173,7 @@ register(in_range, name='in_range')
 
 @register
 def equals(value, type=None):
-  if isinstance(value, numbers.Number):
+  if isinstance(value, numbers.Number) and not isinstance(value, bool):
     return InRange(minimum=value, maximum=value, type=type)
   elif isinstance(value, basestring):
     assert type is None or issubclass(type, basestring), (
