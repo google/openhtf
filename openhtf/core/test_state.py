@@ -222,7 +222,7 @@ class TestState(util.SubscribableStateMixin):
       result = phase_execution_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
-        description = str(result.exc_val).decode('utf8', 'replace')
+        description = unicode(result.exc_val)
       else:
         # openhtf.util.threads.ThreadTerminationError gets str'd directly.
         code = str(type(phase_execution_outcome.phase_result).__name__)
