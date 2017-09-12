@@ -116,7 +116,6 @@ def initialize_record_logger(test_uid, test_record, notify_update):
   # All record loggers have a shared parent that's separately configured, so
   # we want to propagate to that logger.
   logger.propagate = True
-  logger.setLevel(logging.DEBUG)
   # Just in case, make sure we don't have any extra handlers hanging around.
   logger.handlers = [RecordHandler(test_record, notify_update)]
   return logger
