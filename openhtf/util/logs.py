@@ -178,7 +178,7 @@ class RecordHandler(logging.Handler):
     """
     message = record.getMessage()
     if record.exc_info:
-      message += '\n' + ''.join(traceback.format_exception(
+      message += u'\n' + u''.join(traceback.format_exception(
           *record.exc_info))
 
     log_record = LogRecord(
