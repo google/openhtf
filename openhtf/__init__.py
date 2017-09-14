@@ -264,7 +264,7 @@ class Test(object):
       try:
         final_state = self._executor.finalize()
 
-        _LOG.debug('Test completed for %s, saving to history and outputting.',
+        _LOG.debug('Test completed for %s, outputting now.',
                    final_state.test_record.metadata['test_name'])
         for output_cb in self._test_options.output_callbacks:
           try:
