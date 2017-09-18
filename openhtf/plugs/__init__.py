@@ -96,8 +96,8 @@ self._my_config having a value of 'my_config_value'.
 
 import collections
 import functools
-import json
 import inspect
+import json
 import logging
 import threading
 import time
@@ -161,6 +161,31 @@ class BasePlug(object):
     """Returns a PlugPlaceholder for calling class."""
     return PlugPlaceholder(cls)
 
+  @classmethod
+  def get_plug_name(cls):
+    """Returns the plug's name.
+    
+    The plug name is a class name, or, if the plug is a subclass of another
+    plug, a comma-separated list of class names.
+
+    For example:
+        `openhtf.plugs.user_input.UserInput`
+    Or:
+        `openhtf.plugs.user_input.UserInput,\
+            my_module.advanced_user_input.AdvancedUserInput`
+
+    This allows frontends to make use of base class information to render
+    subclassed plugs appropriately.
+    """
+    ignored_classes = {FrontendAwareBasePlug, util.SubscribableStateMixin,
+                       BasePlug, object}
+    mro = [
+        '%s.%s' % (base_cls.__module__, base_cls.__name__)
+        for base_cls in cls.mro()
+        if base_cls not in ignored_classes
+    ]
+    return ','.join(mro)
+  
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
 
@@ -396,8 +421,7 @@ class PlugManager(object):
     if plug_type in self._plugs_by_type:
       self._plugs_by_type[plug_type].tearDown()
     self._plugs_by_type[plug_type] = plug_value
-    self._plugs_by_name[
-        '.'.join((plug_type.__module__, plug_type.__name__))] = plug_value
+    self._plugs_by_name[plug_type.get_plug_name()] = plug_value
 
   def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
