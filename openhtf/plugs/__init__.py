@@ -116,6 +116,15 @@ from openhtf.util import xmlrpcutil
 
 _LOG = logging.getLogger(__name__)
 
+PlugDescriptor = collections.namedtuple('PlugDescriptor', ['mro'])  # pylint: disable=invalid-name
+
+# Placeholder for a specific plug to be provided before test execution.
+#
+# Use the with_plugs() method to provide the plug before test execution. The
+# with_plugs() method checks to make sure the substitute plug is a subclass of
+# the PlugPlaceholder's base_class.
+PlugPlaceholder = collections.namedtuple('PlugPlaceholder', ['base_class'])  # pylint: disable-invalid-name
+
 
 class PlugOverrideError(Exception):
   """Raised when a plug would be overridden by a kwarg."""
@@ -127,16 +136,6 @@ class DuplicatePlugError(Exception):
 
 class InvalidPlugError(Exception):
   """Raised when a plug declaration or requested name is invalid."""
-
-
-class PlugPlaceholder(collections.namedtuple(
-    'PlugPlaceholder', ['base_class'])):
-  """Placeholder for a specific plug to be provided before test execution.
-
-  Utilize with_plugs method to provide the plug before test execution.  The
-  with_plugs method checks to make sure the substitute plug is a subclass of
-  the PlugPlaceholder's base_class.
-  """
 
 
 class BasePlug(object):
@@ -151,41 +150,45 @@ class BasePlug(object):
   enable_remote = False
   # Allow explicitly disabling remote access to specific attributes.
   disable_remote_attrs = set()
-  # Default logger to be used only in __init__ of subclasses..
+  # Default logger to be used only in __init__ of subclasses.
   # This is overwritten both on the class and the instance so don't store
   # a copy of it anywhere.
   logger = _LOG
 
   @classproperty
   def placeholder(cls):
-    """Returns a PlugPlaceholder for calling class."""
+    """Returns a PlugPlaceholder for the calling class."""
     return PlugPlaceholder(cls)
 
   @classmethod
-  def get_plug_name(cls):
-    """Returns the plug's name.
-    
-    The plug name is a class name, or, if the plug is a subclass of another
-    plug, a comma-separated list of class names.
+  def get_descriptor(cls):
+    """Returns the plug descriptor, containing info about this plug type."""
+    return PlugDescriptor(cls.get_mro())
+
+  @classmethod
+  def get_name(cls):
+    """Returns the plug's name, which is the class name and module.
 
     For example:
-        `openhtf.plugs.user_input.UserInput`
-    Or:
-        `openhtf.plugs.user_input.UserInput,\
-            my_module.advanced_user_input.AdvancedUserInput`
-
-    This allows frontends to make use of base class information to render
-    subclassed plugs appropriately.
+        'openhtf.plugs.user_input.UserInput'
     """
-    ignored_classes = {FrontendAwareBasePlug, util.SubscribableStateMixin,
-                       BasePlug, object}
-    mro = [
-        '%s.%s' % (base_cls.__module__, base_cls.__name__)
-        for base_cls in cls.mro()
-        if base_cls not in ignored_classes
-    ]
-    return ','.join(mro)
-  
+    return '%s.%s' % (cls.__module__, cls.__name__)
+
+  @classmethod
+  def get_mro(cls):
+    """Returns a list of names identifying the plug classes in the plug's MRO.
+
+    For example:
+        ['openhtf.plugs.user_input.UserInput']
+    Or:
+        ['openhtf.plugs.user_input.UserInput',
+         'my_module.advanced_user_input.AdvancedUserInput']
+    """
+    return ','.join([
+        base_class.get_name() for base_class in cls.mro()
+        if issubclass(base_class, BasePlug) and base_class is not BasePlug
+    ])
+
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
 
@@ -193,7 +196,7 @@ class BasePlug(object):
     use by that phase.  The result is reported via the Station API by the
     PlugManager (if the Station API is enabled, which is the default).
 
-    Note this method is called in a tight loop, it is recommended that you
+    Note that this method is called in a tight loop, it is recommended that you
     decorate it with functions.call_at_most_every() to limit the frequency at
     which updates happen (pass a number of seconds to it to limit samples to
     once per that number of seconds).
@@ -298,10 +301,14 @@ class PlugManager(object):
     self._xmlrpc_server = None
 
   def _asdict(self):
-    return {'plug_states': {name: plug._asdict()
-                            for name, plug in self._plugs_by_name.iteritems()},
-            'xmlrpc_port': self._xmlrpc_server and
-                           self._xmlrpc_server.socket.getsockname()[1]}
+    return {
+        'plug_descriptors': {name: plug.get_descriptor()
+                             for name, plug in self._plugs_by_name.iteritems()},
+        'plug_states': {name: plug._asdict()
+                        for name, plug in self._plugs_by_name.iteritems()},
+        'xmlrpc_port': self._xmlrpc_server and
+                       self._xmlrpc_server.socket.getsockname()[1]
+    }
 
   def _create_or_update_rpc_server(self):
     """Create or update the XML-RPC server for remote access to plugs.
@@ -421,7 +428,7 @@ class PlugManager(object):
     if plug_type in self._plugs_by_type:
       self._plugs_by_type[plug_type].tearDown()
     self._plugs_by_type[plug_type] = plug_value
-    self._plugs_by_name[plug_type.get_plug_name()] = plug_value
+    self._plugs_by_name[plug_type.get_name()] = plug_value
 
   def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
