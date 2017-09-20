@@ -257,8 +257,11 @@ class PlugManager(object):
 
   Attributes:
     _plug_types: Initial set of plug types, additional plug types may be
-        passed into calls to InitializePlugs().
-    _plugs_by_type: Dict mapping plug type to instantiated plug.
+        passed into calls to initialize_plugs().
+    _logger: The test logger, which is also passed to each plug instance.
+    _plugs_by_type: Dict mapping plug type to plug instance.
+    _plugs_by_name: Dict mapping plug name to plug instance.
+    _plug_descriptors: Dict mapping plug type to plug descriptor.
   """
 
   def __init__(self, plug_types=None, logger=None):
@@ -269,12 +272,12 @@ class PlugManager(object):
     self._logger = logger
     self._plugs_by_type = {}
     self._plugs_by_name = {}
+    self._plug_descriptors = {}
     self._xmlrpc_server = None
 
   def _asdict(self):
     return {
-        'plug_descriptors': {name: self.get_plug_descriptor(plug)
-                             for name, plug in self._plugs_by_name.iteritems()},
+        'plug_descriptors': self._plug_descriptors,
         'plug_states': {name: plug._asdict()
                         for name, plug in self._plugs_by_name.iteritems()},
         'xmlrpc_port': self._xmlrpc_server and
@@ -322,17 +325,9 @@ class PlugManager(object):
     for method, name in plug_methods:
       self._xmlrpc_server.register_function(method, name=name)
 
-  def get_plug_descriptor(self, plug_type):
+  def _make_plug_descriptor(self, plug_type):
     """Returns the plug descriptor, containing info about this plug type."""
     return PlugDescriptor(self.get_plug_mro(plug_type))
-
-  def get_plug_name(self, plug_type):
-    """Returns the plug's name, which is the class name and module.
-
-    For example:
-        'openhtf.plugs.user_input.UserInput'
-    """
-    return '%s.%s' % (plug_type.__module__, plug_type.__name__)
 
   def get_plug_mro(self, plug_type):
     """Returns a list of names identifying the plug classes in the plug's MRO.
@@ -347,6 +342,14 @@ class PlugManager(object):
         self.get_plug_name(base_class) for base_class in plug_type.mro()
         if issubclass(base_class, BasePlug) and base_class is not BasePlug
     ])
+
+  def get_plug_name(self, plug_type):
+    """Returns the plug's name, which is the class name and module.
+
+    For example:
+        'openhtf.plugs.user_input.UserInput'
+    """
+    return '%s.%s' % (plug_type.__module__, plug_type.__name__)
 
   def initialize_plugs(self, plug_types=None):
     """Instantiate required plugs.
@@ -425,6 +428,7 @@ class PlugManager(object):
       self._plugs_by_type[plug_type].tearDown()
     self._plugs_by_type[plug_type] = plug_value
     self._plugs_by_name[self.get_plug_name(plug_type)] = plug_value
+    self._plug_descriptors[plug_type] = self._make_plug_descriptor(plug_type)
 
   def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
