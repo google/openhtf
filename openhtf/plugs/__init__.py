@@ -264,9 +264,10 @@ class PlugManager(object):
 
   def __init__(self, plug_types=None, logger=None):
     self._plug_types = plug_types or set()
-    if any(isinstance(plug, PlugPlaceholder) for plug in self._plug_types):
-      raise InvalidPlugError('Plug %s is a placeholder, replace it using '
-                             'with_plugs()' % plug)
+    for plug in self._plug_types:
+      if isinstance(plug, PlugPlaceholder):
+        raise InvalidPlugError('Plug %s is a placeholder, replace it using '
+                               'with_plugs().' % plug)
     self._logger = logger
     self._plugs_by_type = {}
     self._plugs_by_name = {}
