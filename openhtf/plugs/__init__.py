@@ -426,9 +426,10 @@ class PlugManager(object):
     self._plug_types.add(plug_type)
     if plug_type in self._plugs_by_type:
       self._plugs_by_type[plug_type].tearDown()
+    plug_name = self.get_plug_name(plug_type)
     self._plugs_by_type[plug_type] = plug_value
-    self._plugs_by_name[self.get_plug_name(plug_type)] = plug_value
-    self._plug_descriptors[plug_type] = self._make_plug_descriptor(plug_type)
+    self._plugs_by_name[plug_name] = plug_value
+    self._plug_descriptors[plug_name] = self._make_plug_descriptor(plug_type)
 
   def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
