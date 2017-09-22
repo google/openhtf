@@ -338,10 +338,12 @@ class PlugManager(object):
         ['openhtf.plugs.user_input.UserInput',
          'my_module.advanced_user_input.AdvancedUserInput']
     """
-    return ','.join([
+    ignored_classes = (BasePlug, FrontendAwareBasePlug)
+    return [
         self.get_plug_name(base_class) for base_class in plug_type.mro()
-        if issubclass(base_class, BasePlug) and base_class is not BasePlug
-    ])
+        if (issubclass(base_class, BasePlug) and
+            base_class not in ignored_classes)
+    ]
 
   def get_plug_name(self, plug_type):
     """Returns the plug's name, which is the class name and module.
