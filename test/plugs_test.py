@@ -87,9 +87,15 @@ class PlugsTest(test.TestCase):
         AdderPlug.LAST_INSTANCE,
         self.plug_manager.provide_plugs(
             (('adder_plug', AdderPlug),))['adder_plug'])
-    self.assertItemsEqual(
-        {'plug_states': {'plugs_test.AdderPlug': {'number': 0}},
-         'xmlrpc_port': None}, self.plug_manager._asdict())
+    self.assertItemsEqual(self.plug_manager._asdict(), {
+        'plug_descriptors': {
+            'plugs_test.AdderPlug': plugs.PlugDescriptor('plugs_test.AdderPlug'),
+        },
+        'plug_states': {
+            'plugs_test.AdderPlug': {'number': 0},
+        },
+        'xmlrpc_port': None,
+    })
     self.assertEquals('CREATED', AdderPlug.LAST_INSTANCE.state)
 
   @test.yields_phases
