@@ -239,12 +239,16 @@ class WithinPercent(RangeValidatorBase):
     self.percent = percent
 
   @property
+  def _applied_percent(self):
+    return abs(self.expected * self.percent / 100.0)
+
+  @property
   def minimum(self):
-    return (1.0 - self.percent / 100.0) * self.expected
+    return self.expected - self._applied_percent
 
   @property
   def maximum(self):
-    return (1.0 + self.percent / 100.0) * self.expected
+    return self.expected + self._applied_percent
 
   def __call__(self, value):
     return self.minimum <= value <= self.maximum
