@@ -281,6 +281,7 @@ class TestState(util.SubscribableStateMixin):
 
     self.logger.info('Finishing test execution early due to '
                      'test abortion, outcome ABORTED.')
+    self.test_record.add_outcome_details('ABORTED', 'Test aborted by operator.')
     self._finalize(test_record.Outcome.ABORTED)
 
   def _finalize(self, test_outcome):
