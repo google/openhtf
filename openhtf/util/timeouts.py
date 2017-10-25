@@ -189,28 +189,32 @@ def loop_until_timeout_or_not_none(timeout_s, function, sleep_s=1):  # pylint: d
       timeout_s, function, lambda x: x is not None, sleep_s)
 
 
-def loop_until_true_or_raise(func,
-                             invert=False,
-                             timeout_s=3,
-                             sleep_s=0.5,
-                             message=None):
-  """Repeatedly call the given callable until truthy, or raise on a timeout.
+def loop_until_true_else_raise(timeout_s,
+                               function,
+                               invert=False,
+                               message=None,
+                               sleep_s=1):
+  """Repeatedly call the given function until truthy, or raise on a timeout.
 
   Args:
-    func: A callable to invoke.
+    timeout_s: The number of seconds to wait until a timeout condition is
+        reached. As a convenience, this accepts None to mean never timeout. Can
+        also be passed a PolledTimeout object instead of an integer.
+    function: The function to call each iteration.
     invert: If True, wait for the callable to return falsey instead of truthy.
-    timeout_s: Seconds to keep trying before raising.
-    sleep_s: Seconds to sleep between call attempts.
     message: Optional custom error message to use on a timeout.
+    sleep_s: Seconds to sleep between call attempts.
 
-  Returns: The final return value of func.
+  Returns:
+    The final return value of the function.
 
-  Raises: RuntimeError if the timeout is reached before func returns truthy.
+  Raises:
+    RuntimeError if the timeout is reached before the function returns truthy.
   """
   def validate(x):
     return bool(x) != invert
 
-  result = loop_until_timeout_or_valid(timeout_s, func, validate, sleep_s=1)
+  result = loop_until_timeout_or_valid(timeout_s, function, validate, sleep_s=1)
   if validate(result):
     return result
 
@@ -218,12 +222,13 @@ def loop_until_true_or_raise(func,
     raise RuntimeError(message)
 
   name = '(unknown)'
-  if hasattr(func, '__name__'):
-    name = func.__name__
-  elif isinstance(func, functools.partial) and hasattr(func.func, '__name__'):
-    name = func.func.__name__
+  if hasattr(function, '__name__'):
+    name = function.__name__
+  elif (isinstance(function, functools.partial)
+        and hasattr(function.func, '__name__')):
+    name = function.func.__name__
   raise RuntimeError(
-      'Callable %s failed to return %s within %d seconds.'
+      'Function %s failed to return %s within %d seconds.'
       % (name, 'falsey' if invert else 'truthy', timeout_s)) 
 
 
