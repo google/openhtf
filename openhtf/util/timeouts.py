@@ -16,6 +16,7 @@
 """A simple utility to do timeout checking."""
 
 import contextlib
+import functools
 import logging
 import threading
 import time
@@ -186,6 +187,49 @@ def loop_until_timeout_or_not_none(timeout_s, function, sleep_s=1):  # pylint: d
   """
   return loop_until_timeout_or_valid(
       timeout_s, function, lambda x: x is not None, sleep_s)
+
+
+def loop_until_true_else_raise(timeout_s,
+                               function,
+                               invert=False,
+                               message=None,
+                               sleep_s=1):
+  """Repeatedly call the given function until truthy, or raise on a timeout.
+
+  Args:
+    timeout_s: The number of seconds to wait until a timeout condition is
+        reached. As a convenience, this accepts None to mean never timeout. Can
+        also be passed a PolledTimeout object instead of an integer.
+    function: The function to call each iteration.
+    invert: If True, wait for the callable to return falsey instead of truthy.
+    message: Optional custom error message to use on a timeout.
+    sleep_s: Seconds to sleep between call attempts.
+
+  Returns:
+    The final return value of the function.
+
+  Raises:
+    RuntimeError if the timeout is reached before the function returns truthy.
+  """
+  def validate(x):
+    return bool(x) != invert
+
+  result = loop_until_timeout_or_valid(timeout_s, function, validate, sleep_s=1)
+  if validate(result):
+    return result
+
+  if message is not None:
+    raise RuntimeError(message)
+
+  name = '(unknown)'
+  if hasattr(function, '__name__'):
+    name = function.__name__
+  elif (isinstance(function, functools.partial)
+        and hasattr(function.func, '__name__')):
+    name = function.func.__name__
+  raise RuntimeError(
+      'Function %s failed to return %s within %d seconds.'
+      % (name, 'falsey' if invert else 'truthy', timeout_s)) 
 
 
 class Interval(object):
