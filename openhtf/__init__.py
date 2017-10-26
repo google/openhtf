@@ -540,7 +540,7 @@ class RemotePhaseDescriptor(mutablerecords.Record('RemotePhaseDescriptor', [
 
 class TestApi(collections.namedtuple('TestApi', [
     'logger', 'state', 'test_record', 'measurements', 'attachments',
-    'attach', 'attach_from_file', 'notify_update'])):
+    'attach', 'attach_from_file', 'notify_update', 'phase'])):
   """Class passed to test phases as the first argument.
 
   Attributes:
@@ -593,6 +593,8 @@ class TestApi(collections.namedtuple('TestApi', [
         that have been attached in the current phase show up here, and this
         attribute should not be modified directly; use TestApi.attach() or
         TestApi.attach_from_file() instead.
+
+    phase: Name of currently running phase. Convenient for logging purposes.
   """
   @property
   def dut_id(self):
@@ -605,7 +607,10 @@ class TestApi(collections.namedtuple('TestApi', [
                           self.test_record.dut_id, dut_id)
     self.test_record.dut_id = dut_id
     self.notify_update()
-
+  
+  @property
+  def phase(self):
+    return inspect.stack()[1][3]
 
 # Register signal handler to stop all tests on SIGINT.
 signal.signal(signal.SIGINT, Test.handle_sig_int)

@@ -55,6 +55,7 @@ def example_monitor(example, frontend_aware):
 def hello_world(test, example, prompts):
   """A hello world test phase."""
   test.logger.info('Hello World!')
+  test.logger.info('The phase running is %s', test.phase)
   test.measurements.widget_type = prompts.prompt(
       'What\'s the widget type?', text_input=True)
   if test.measurements.widget_type == 'raise':
