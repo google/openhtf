@@ -1,0 +1,49 @@
+@import 'vars';
+@import 'mixins';
+
+ul {
+  @include htf-unstyle-list;
+  font-size: $font-size-small;
+}
+
+li {
+  display: flex;
+  padding: 10px $widget-inner-padding;
+  border-bottom: 1px solid $border-light-grey;
+
+  &:last-of-type {
+    border-bottom: 0;
+  }
+}
+
+.log-message {
+  font-family: monospace, serif;
+}
+
+.timestamp-column {
+  font-size: $font-size-very-small;
+  margin-right: 10px;
+  max-width: 170px;
+  min-width: 170px;
+}
+
+.logger-name {
+  color: $text-grey;
+}
+
+.log-message-content {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ng-log-level-warning {
+  background: rgba($theme-yellow, .2);
+}
+
+.ng-log-level-error {
+  background: rgba($theme-red, .25);
+}
+
+.ng-log-level-critical {
+  background: rgba($theme-red, .45);
+}

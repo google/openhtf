@@ -1,0 +1,48 @@
+@import 'vars';
+@import 'mixins';
+
+.history-item-container {
+  cursor: pointer;
+  overflow: hidden;
+
+  &.is-selected {
+    background: rgba($theme-blue, .2);
+    border: 2px solid rgba($theme-blue, .8);
+  }
+}
+
+.history-item {
+  height: 48px;
+  line-height: 47px;
+  user-select: none;
+}
+
+.history-item-name-container {
+  flex-grow: 1;
+  line-height: initial;
+  min-width: 0;  // See https://css-tricks.com/flexbox-truncated-text/
+}
+
+.history-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin status-text {
+  color: $text-grey;
+  font-size: $font-size-small;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.history-item-status {
+  @include status-text;
+  margin-left: 15px;
+  margin-right: -15px;
+  min-width: 100px;
+}
+
+.status-text {
+  @include status-text;
+}

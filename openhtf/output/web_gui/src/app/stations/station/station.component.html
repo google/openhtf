@@ -1,0 +1,74 @@
+<div class="station">
+
+  <div class="nav-bar">
+    <button
+      *ngIf="dashboardEnabled"
+      (click)="goBack()"
+      type="button"
+      class="htf-link-button">
+      ‹ Return to station selection
+    </button>
+    <div class="u-flex-grow"></div>
+    <button
+      (click)="manualReload()"
+      type="button"
+      class="htf-link-button">
+      Refresh station
+    </button>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-bar-row u-font-size-large">
+      <div>{{ selectedStation.label }}</div>
+      <div class="u-flex-grow"></div>
+      <span *ngIf="isOnline">Status: Connected</span>
+      <span *ngIf="!isOnline" class="u-text-color-error">Status: Offline</span>
+    </div>
+    <div class="status-bar-row u-text-color-deemphasize">
+      <span>{{ selectedStation.testDescription }}</span>
+      <div class="u-flex-grow"></div>
+      <span class="htf-support-text">{{ selectedStation.host }}:{{ selectedStation.port }}</span>
+    </div>
+  </div>
+
+  <div [class.station--is-offline]="!isOnline">
+    <div class="htf-layout-widgets-container htf-layout-widgets-row">
+      <htf-user-input-plug [test]="activeTest"></htf-user-input-plug>
+    </div>
+
+    <div class="htf-layout-widgets-container">
+      <div class="htf-layout-widgets-left">
+        <div
+          *ngIf="selectedTest !== null"
+          class="past-test-warning htf-layout-widget">
+          <div class="htf-layout-widget-header">
+            <div>Displaying test record for a previous test run</div>
+            <span>&nbsp;({{ selectedTest.startTimeMillis | timeAgo }})</span>
+            <div class="u-flex-grow"></div>
+            <button
+              type="button"
+              class="htf-rounded-button-grey"
+              (click)="onSelectTest(null)">
+              Return to current test
+            </button>
+          </div>
+        </div>
+
+        <htf-test-summary [test]="activeTest"></htf-test-summary>
+        <htf-logs [test]="activeTest"></htf-logs>
+        <htf-attachments [test]="activeTest"></htf-attachments>
+        <htf-phase-list [test]="activeTest"></htf-phase-list>
+      </div>
+
+      <div class="htf-layout-widgets-right">
+        <htf-history
+          [selectedTest]="selectedTest"
+          [station]="selectedStation"
+          (onSelectTest)="onSelectTest($event.test)">
+        </htf-history>
+      </div>
+    </div>
+
+  </div>
+
+</div>

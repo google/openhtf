@@ -1,0 +1,40 @@
+<div
+  class="htf-layout-widget"
+  *ngIf="plugExists()">
+
+  <!-- Wrap contents in an extra div for the background color animation. -->
+  <div [@animateIn]="'in'">
+
+    <div class="htf-layout-widget-header">
+      <div>Operator input</div>
+    </div>
+
+    <div class="htf-layout-widget-body">
+
+      <div [innerHTML]="prompt"></div>
+
+      <input
+        #response_field
+        [style.display]="hasTextInput() ? 'inline' : 'none'"
+        [class.user-input-has-error]="error"
+        type="text"
+        class="u-push-top"
+        (keyup.enter)="sendResponse(response_field)">
+
+      <div class="user-input-error-text u-push-top-third" *ngIf="error">
+        {{ error }}
+      </div>
+
+      <div class="u-text-align-right">
+        <button
+          type="button"
+          class="htf-rounded-button-grey u-push-top"
+          (click)="sendResponse(response_field)">
+          {{ hasTextInput() ? 'Submit' : 'Okay' }}
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+</div>

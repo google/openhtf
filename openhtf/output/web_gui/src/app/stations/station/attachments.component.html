@@ -1,0 +1,46 @@
+<div *ngIf="test" class="htf-layout-widget">
+
+  <div class="htf-layout-widget-header">
+    <div>Attachments</div>
+    <div class="u-flex-grow"></div>
+    <button
+      *ngIf="test.attachments.length > 0"
+      type="button"
+      class="htf-rounded-button-grey"
+      (click)="toggleExpanded()">
+      {{ expanded? 'Collapse' : 'Expand' }}
+    </button>
+  </div>
+
+  <div
+    *ngIf="test.attachments.length === 0"
+    class="htf-layout-widget-body htf-support-text">
+    There are no attachments yet.
+  </div>
+
+  <div
+    *ngIf="!expanded && test.attachments.length > 0"
+    class="htf-layout-widget-body htf-support-text">
+    Expand to view
+    {{ test.attachments.length }}
+    {{ test.attachments.length === 1 ? 'attachment' : 'attachments' }}.
+  </div>
+
+  <ul *ngIf="expanded && test.attachments.length > 0">
+    <li
+      *ngFor="let attachment of test.attachments"
+      [ngSwitch]="linkForAttachment(attachment)">
+      <span *ngSwitchCase="null">{{ attachment.name }}</span>
+      <a
+        *ngSwitchDefault
+        [href]="linkForAttachment(attachment)"
+        target="_blank">
+        {{ attachment.name }}
+      </a>
+      <span class="htf-support-text">&nbsp;{{ attachment.mimeType }}</span>
+      <span class="u-flex-grow"></span>
+      <span class="htf-support-text">From phase: {{ attachment.phaseName }}</span>
+    </li>
+  </ul>
+
+</div>

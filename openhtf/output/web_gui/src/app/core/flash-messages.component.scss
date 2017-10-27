@@ -1,0 +1,102 @@
+@import 'vars';
+@import 'mixins';
+
+@keyframes flash-message-enter {
+  0% {
+    top: -32px;
+  }
+
+  100% {
+    top: 0;
+  }
+}
+
+@keyframes flash-message-exit {
+  0% {
+    top: 0;
+  }
+
+  100% {
+    top: -32px;
+  }
+}
+
+.flash-message {
+  animation: flash-message-enter $flash-message-animation-duration forwards;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  height: 32px;
+  left: 50%;
+  line-height: 31px;
+  min-width: 400px;
+  opacity: .9;
+  padding: 0 20px;
+  position: fixed;
+  text-align: center;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: $z-index-2;
+
+  &.flash-message--has-tooltip {
+    cursor: pointer;
+  }
+
+  &.flash-message--is-dismissed {
+    animation: flash-message-exit $flash-message-animation-duration forwards;
+  }
+
+  &.ng-flash-message-error {
+    background: $theme-red;
+    color: $text-white;
+  }
+
+  &.ng-flash-message-warn {
+    background: $theme-yellow;
+    color: $text-dark-grey;
+  }
+}
+
+.flash-message-tooltip {
+  background: $tooltip-background;
+  border-radius: 3px;
+  color: $text-white;
+  font-size: $font-size-small;
+  left: 50%;
+  line-height: initial;
+  max-width: 500px;
+  opacity: 0;
+  padding: 10px;
+  position: fixed;
+  text-align: left;
+  top: 40px;
+  transform: translateX(-50%);
+  transition: 200ms ease opacity;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  z-index: $z-index-2;
+
+  &.flash-message-tooltip--is-visible {
+    opacity: 1;
+  }
+}
+
+.flash-message-dismissal-button {
+  @include htf-unstyle-button;
+  border-radius: 50%;
+  border: 1px solid $text-white;
+  color: inherit;
+  display: inline-block;
+  float: left;
+  font-size: 11px;
+  height: 18px;
+  left: -6px;
+  padding-left: 1px;
+  position: relative;
+  top: 6px;
+  width: 18px;
+}
+
+.flash-message.ng-flash-message-warn .flash-message-dismissal-button {
+  border-color: $text-dark-grey;
+}

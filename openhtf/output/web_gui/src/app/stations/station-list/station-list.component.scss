@@ -1,0 +1,63 @@
+@import 'mixins';
+@import 'vars';
+
+.nav-bar {
+  color: $text-grey;
+  display: flex;
+  font-size: $font-size-small;
+  margin-bottom: 14px;
+}
+
+.station-list {
+  @include htf-unstyle-list;
+}
+
+.station-list li {
+  background: $background-white;
+  border-radius: 3px;
+  border: 1px solid $border-grey;
+  margin-bottom: 14px;
+}
+
+.station-list li button {
+  @include htf-unstyle-button;
+  box-shadow: inset 0 0 0 0 $theme-blue;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 15px 20px;
+  text-overflow: ellipsis;
+  transition: 300ms ease box-shadow;
+  white-space: nowrap;
+  width: 100%;
+
+  &:hover,
+  &:active {
+    box-shadow: inset 0 -3px 0 0 $theme-blue;
+
+    .station-label,
+    .station-description {
+      color: $theme-blue;
+    }
+  }
+
+  &:focus {
+    .station-label,
+    .station-description {
+      color: $theme-blue;
+    }
+  }
+
+  &.is-unreachable {
+    color: $text-grey;
+  }
+}
+
+.station-label {
+  font-size: $font-size-large;
+  transition: 300ms ease color;
+}
+
+.station-description {
+  color: $text-grey;
+  transition: 300ms ease color;
+}

@@ -1,0 +1,60 @@
+<div *ngIf="test" class="htf-layout-widget">
+
+  <div class="htf-layout-widget-header">
+    <div>Logs</div>
+    <div class="u-flex-grow"></div>
+    <button
+      *ngIf="test.logs.length > 0"
+      type="button"
+      class="htf-rounded-button-grey"
+      (click)="toggleExpanded()">
+      {{ expanded? 'Collapse' : 'Expand' }}
+    </button>
+  </div>
+
+  <div
+    *ngIf="test.logs.length === 0"
+    class="htf-layout-widget-body htf-support-text">
+    There are no logs yet.
+  </div>
+
+  <ul *ngIf="!expanded && test.logs.length > 0">
+    <li [ngClass]="test.logs[0].level | logLevelToClass" class="log-message">
+
+      <div class="timestamp-column">
+        {{ test.logs[0].timestampMillis | date:'mediumTime' }}
+        <div class="logger-name">{{ test.logs[0].loggerName }}</div>
+      </div>
+
+      <div class="log-message-content">{{ test.logs[0].message }}</div>
+
+    </li>
+    <li
+      *ngIf="!expanded && test.logs.length > 1"
+      class="htf-support-text">
+      Not showing {{ test.logs.length - 1 }} additional log
+      {{ test.logs.length - 1 === 1? 'message' : 'messages'}}.&nbsp;
+      <span *ngIf="collapsedErrorCount > 0" class="u-text-color-error">
+        {{ collapsedErrorCount }} additional
+        {{ collapsedErrorCount === 1? 'error' : 'errors' }}.
+      </span>
+    </li>
+  </ul>
+
+  <ul *ngIf="expanded && test.logs.length > 0">
+    <li
+      *ngFor="let log of test.logs"
+      class="log-message"
+      [ngClass]="log.level | logLevelToClass">
+
+      <div class="timestamp-column">
+        {{ log.timestampMillis | date:'mediumTime' }}
+        <div class="logger-name">{{ log.loggerName }}</div>
+      </div>
+
+      <div class="log-message-content">{{ log.message }}</div>
+
+    </li>
+  </ul>
+
+</div>

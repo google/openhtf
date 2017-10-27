@@ -1,0 +1,35 @@
+@import 'mixins';
+@import 'vars';
+
+.component-info {
+  border: 1px solid $theme-dark-grey;
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 5px;
+  position: relative;
+}
+
+.component-info:not(.is-root)::before {
+  border-bottom: 1px solid $theme-dark-grey;
+  border-left: 1px solid $theme-dark-grey;
+  content: '';
+  height: calc(100% + 11px);
+  left: -21px;
+  position: absolute;
+  top: calc(-50% - 11px);
+  width: 20px;
+}
+
+.component-info:not(.is-root).is-first::before {
+  height: calc(50% + 11px);
+  top: -11px;
+}
+
+ul {
+  @include htf-unstyle-list;
+  padding-left: 40px;
+}
+
+.serial-number {
+  font-weight: bold;
+}

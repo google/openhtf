@@ -1,0 +1,36 @@
+// Mixins imported across various stylesheets.
+
+@mixin htf-unstyle-button {
+  -webkit-appearance: initial;
+  background: transparent;
+  border: 0;
+  padding: 0;
+
+  &:focus,
+  &:active {
+    outline: none;
+  }
+}
+
+@mixin htf-unstyle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+@mixin htf-link-styling {
+  color: $theme-blue;
+  text-decoration: underline;
+  transition: 300ms ease color;
+
+  &:hover,
+  &:focus,
+  &:active {
+    color: darken($theme-blue, 15%);
+  }
+
+  &:disabled {
+    color: $text-grey;
+    cursor: initial;
+  }
+}

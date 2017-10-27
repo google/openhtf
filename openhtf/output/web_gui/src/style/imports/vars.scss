@@ -1,0 +1,44 @@
+// Variables imported across various stylesheets.
+
+// Colors.
+
+$background-grey: #f6f6f6;
+$background-white: #fff;
+$border-grey: #ccc;
+$border-light-grey: #e5e5e5;
+$shadow-black: #000;
+$text-dark-grey: #323232;
+$text-grey: #949a9f;
+$text-white: #fff;
+$theme-blue: #07f;
+$theme-dark-grey: #323232;
+$theme-green: #00e89d;
+$theme-red: #ff5d4e;
+$theme-white: #fff;
+$theme-yellow: #ffe54d;
+$tooltip-background: rgba(0, 0, 0, .7);
+
+// Font sizes.
+
+$font-size-very-large: 20px;
+$font-size-large: 16px;
+$font-size-regular: 14px;
+$font-size-small: 12px;
+$font-size-very-small: 10px;
+
+// Layout measurements.
+
+$gutter-large: 25px;
+$gutter-small: 18px;
+$nav-height: 52px;
+$widget-inner-padding: 15px;
+
+// Z-indices.
+
+$z-index-1: 1;
+$z-index-2: 2;
+
+// Animations.
+
+// Should match app/core/flash-message.service.ts.
+$flash-message-animation-duration: 400ms;

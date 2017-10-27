@@ -1,0 +1,112 @@
+// Page layout and layout-related styles common to many components.
+
+@import 'vars';
+
+@mixin htf-layout-centered {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1000px;
+  width: 95%;
+}
+
+.htf-layout-nav-container {
+  background: $background-white;
+  border-bottom: 1px solid $border-grey;
+  height: $nav-height;
+  line-height: ($nav-height + 1px);
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.htf-layout-nav {
+  @include htf-layout-centered;
+  align-items: baseline;
+  display: flex;
+}
+
+.htf-layout-container {
+  @include htf-layout-centered;
+}
+
+.htf-layout-widgets-container {
+  display: flex;
+}
+
+.htf-layout-widgets-row {
+  margin-right: -$gutter-large;
+
+  > * {
+    flex: 1;
+  }
+
+  .htf-layout-widget {
+    margin-right: $gutter-large;
+  }
+}
+
+.htf-layout-widgets-left {
+  word-break: break-all;
+  flex-grow: 1;
+  min-width: 0;  // See https://css-tricks.com/flexbox-truncated-text/
+}
+
+.htf-layout-widgets-right {
+  margin-left: $gutter-large;
+  vertical-align: top;
+  min-width: 300px;
+  max-width: 300px;
+}
+
+.htf-layout-widget {
+  background: $background-white;
+  border-radius: 3px;
+  border: 1px solid $border-grey;
+  margin-bottom: $gutter-large;
+}
+
+.htf-layout-header {
+  align-items: center;
+  display: flex;
+  height: 43px;
+  line-height: 42px;
+  padding: 0 $widget-inner-padding;
+}
+
+.htf-layout-widget-header {
+  align-items: center;
+  border-bottom: 1px solid $border-grey;
+  display: flex;
+  height: 54px;
+  padding: 0 $widget-inner-padding;
+
+  > :first-child {
+    font-weight: bold;
+  }
+}
+
+.htf-layout-widget-body {
+  padding: $widget-inner-padding;
+
+  + .htf-layout-widget-body {
+    border-top: 1px solid $border-grey;
+  }
+}
+
+.htf-layout-widget-list {
+  @include htf-unstyle-list;
+
+  > li {
+    border-bottom: 1px solid $border-grey;
+
+    &:last-of-type {
+      border-bottom: 0;
+    }
+  }
+}
+
+.htf-layout-widget-button {
+  border-radius: 0;
+  border: 0;
+  color: $theme-red;
+  width: 100%;
+}

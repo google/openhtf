@@ -1,0 +1,24 @@
+@import 'vars';
+
+.nav-bar {
+  display: flex;
+  font-size: $font-size-small;
+  margin-bottom: 12px;
+}
+
+.status-bar {
+  margin-bottom: ($gutter-small - 2px);
+}
+
+.status-bar-row {
+  align-items: baseline;
+  display: flex;
+}
+
+.past-test-warning {
+  color: $theme-red;
+
+  .htf-layout-widget-header {
+    border: 0;
+  }
+}

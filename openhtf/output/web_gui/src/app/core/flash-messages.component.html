@@ -1,0 +1,22 @@
+<div *ngIf="message">
+  <div
+    class="flash-message"
+    [class.flash-message--has-tooltip]="message.hasTooltip"
+    [class.flash-message--is-dismissed]="message.isDismissed"
+    [ngClass]="message.type | flashMessageTypeToClass"
+    (mouseenter)="onMouseEnter(message)"
+    (mouseleave)="onMouseExit(message)">
+    <button
+      type="button"
+      class="flash-message-dismissal-button"
+      (click)="dismiss()">
+      X
+    </button>
+    {{ message.content }}
+  </div>
+
+  <!-- Avoid whitespace since flash-message-tooltip uses white-space: pre -->
+  <div
+    [class.flash-message-tooltip--is-visible]="message.showTooltip"
+    class="flash-message-tooltip">{{ message.tooltip }}</div>
+</div>

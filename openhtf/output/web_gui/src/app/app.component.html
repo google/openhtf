@@ -1,0 +1,22 @@
+<htf-flash-messages></htf-flash-messages>
+
+<div class="htf-layout-nav-container">
+  <div class="htf-layout-nav">
+    <h1>OpenHTF</h1>
+    <h2>Hardware Testing Framework.</h2>
+  </div>
+</div>
+
+<div class="htf-layout-container">
+  <htf-station-list
+    [selectedStation]="selectedStation"
+    [style.display]="selectedStation === null ? 'initial' : 'none'"
+    (onSelectStation)="selectedStation = $event.station">
+  </htf-station-list>
+
+  <htf-station
+    *ngIf="selectedStation !== null"
+    [selectedStation]="selectedStation"
+    (onDeselectStation)="selectedStation = null">
+  </htf-station>
+</div>

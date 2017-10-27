@@ -1,0 +1,65 @@
+// Basic, global styles for built-in HTML elements.
+
+@import 'mixins';
+@import 'vars';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: $background-grey;
+  color: $text-dark-grey;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: $font-size-regular;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: initial;
+  margin: initial;
+}
+
+a:link,
+a:visited {
+  @include htf-link-styling;
+}
+
+input[type='text'] {
+  border-radius: 3px;
+  border: 1px solid darken($border-light-grey, 10%);
+  box-shadow: 0 0 10px rgba($shadow-black, .05) inset;
+  font-size: $font-size-large;
+  height: 40px;
+  padding: 0 12px;
+  transition: 300ms ease border-color;
+  width: 100%;
+
+  &:focus {
+    border-color: rgba($theme-blue, .5);
+    outline: none;
+    animation: htf-base-input-pulse 2s infinite;
+  }
+}
+
+@keyframes htf-base-input-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba($theme-blue, .25),
+        0 0 10px rgba($shadow-black, .1) inset;
+  }
+
+  70% {
+    box-shadow: 0 0 0 8px rgba($theme-blue, 0),
+        0 0 10px rgba($shadow-black, .1) inset;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba($theme-blue, 0),
+        0 0 10px rgba($shadow-black, .1) inset;
+  }
+}

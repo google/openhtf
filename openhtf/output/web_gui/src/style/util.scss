@@ -1,0 +1,75 @@
+// Utility classes.
+//
+// Sometimes it's simpler and more maintainable to directly apply low-level,
+// frequently-used styling patterns via a common class. That's where utility
+// classes come in. They fill in the gaps of a purely component-based or purely
+// semantic approach to HTML and CSS.
+//
+// Example use-cases are applying structural and positional traits to elements
+// that do not otherwise need their own class names.
+
+@import 'vars';
+
+// Used for text that should keep to a single line with limited width.
+.u-clamp-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.u-display-flex {
+  display: flex;
+}
+
+.u-flex-grow {
+  flex-grow: 1;
+}
+
+.u-font-size-small {
+  font-size: $font-size-small;
+}
+
+.u-font-size-large {
+  font-size: $font-size-large;
+}
+
+.u-line-height-initial {
+  line-height: initial;
+}
+
+.u-nudge-up {
+  bottom: 1px;
+  position: relative;
+}
+
+.u-push-bottom {
+  margin-bottom: 15px;
+}
+
+.u-push-bottom-third {
+  margin-bottom: 5px;
+}
+
+.u-push-top {
+  margin-top: 15px;
+}
+
+.u-push-top-third {
+  margin-top: 5px;
+}
+
+.u-text-align-left {
+  text-align: left;
+}
+
+.u-text-align-right {
+  text-align: right;
+}
+
+.u-text-color-deemphasize {
+  color: $text-grey;
+}
+
+.u-text-color-error {
+  color: $theme-red;
+}

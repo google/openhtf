@@ -28,6 +28,7 @@ import logging
 import os
 import platform
 import select
+import six
 import sys
 import threading
 import time

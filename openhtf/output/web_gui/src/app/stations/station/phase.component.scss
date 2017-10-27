@@ -1,0 +1,60 @@
+@import 'vars';
+
+.header-with-measurements {
+  border-bottom: 1px solid $border-light-grey;
+}
+
+.measurement-list {
+  border-collapse: separate;
+  border-right: 100px solid rgba($theme-dark-grey, .1);;
+  border-spacing: 0 3px;
+  font-size: $font-size-small;
+  padding: 10px 15px;
+  width: 100%;
+
+  // We use the ng- prefix to indicate CSS classes that are added dynamically.
+  // See status-pipes.ts.
+
+  &.ng-status-fail {
+    border-right-color: rgba($theme-red, .1);
+  }
+
+  &.ng-status-pass {
+    border-right-color: rgba($theme-green, .1);
+  }
+
+  &.ng-status-running {
+    border-right-color: rgba($theme-blue, .1);
+  }
+
+  thead {
+    text-decoration: underline;
+  }
+
+  tbody {
+    vertical-align: top;
+  }
+
+  td {
+    padding: 0;
+  }
+
+  .measurement-column-name {
+    width: 30%;
+    padding-right: 5px;
+  }
+
+  .measurement-column-value {
+    width: 30%;
+    padding-right: 5px;
+  }
+
+  .measurement-column-validators {
+    width: 30%;
+    padding-right: 5px;
+  }
+
+  .measurement-column-result {
+    text-align: right;
+  }
+}

@@ -1,0 +1,17 @@
+@import 'vars';
+@import 'mixins';
+
+ul {
+  @include htf-unstyle-list;
+}
+
+li {
+  align-items: baseline;
+  display: flex;
+  padding: 10px $widget-inner-padding;
+  border-bottom: 1px solid $border-light-grey;
+
+  &:last-of-type {
+    border-bottom: 0;
+  }
+}
