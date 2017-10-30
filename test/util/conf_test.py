@@ -104,6 +104,8 @@ class TestConf(unittest.TestCase):
     conf.load(station_id='station_id')
     self.assertEquals({
         'flag_key': 'flag_value',
+        'true_value': True,
+        'num_value': 100,
         'cancel_timeout_s': 2,
         'enable_station_discovery': True,
         'example_plug_increment_size': 1,
