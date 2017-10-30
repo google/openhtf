@@ -21,7 +21,7 @@ sys.argv.extend([
     # You can specify arbitrary keys, but they'll get ignored if they aren't
     # actually declared anywhere (included here to make sure of that).
     '--config_value=undeclared_flag=who_cares',
-    '--config-value', 'true_value=true',
+    '--config-value=true_value=true',
     '--config-value', 'num_value=100',
 ])
 
