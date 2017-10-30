@@ -319,7 +319,7 @@ class TestDescriptor(collections.namedtuple(
     return {plug.cls for phase in self.phases for plug in phase.plugs}
 
 
-def create_arg_parser(add_help=False):
+def create_arg_parser(add_help=False, consume=True):
   """Creates an argparse.ArgumentParser for parsing command line flags.
 
   If you want to add arguments, create your own with this as a parent:
@@ -328,9 +328,10 @@ def create_arg_parser(add_help=False):
           'My args title', parents=[openhtf.create_arg_parser()])
   >>> parser.parse_args()
   """
-  return argparse.ArgumentParser('OpenHTF-based testing', parents=[
+  return util.argv.SysArgvConsumingParser('OpenHTF-based testing', parents=[
       conf.ARG_PARSER, phase_executor.ARG_PARSER, logs.ARG_PARSER],
-      add_help=add_help)
+      add_help=add_help,
+      consume=consume)
 
 
 # Result of a phase.

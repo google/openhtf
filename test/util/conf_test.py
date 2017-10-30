@@ -13,16 +13,6 @@
 # limitations under the License.
 
 import sys
-
-_old_argv = list(sys.argv)
-sys.argv.extend([
-    '--config-value=flag_key=flag_value',
-    '--config-value', 'other_flag=other_value',
-    # You can specify arbitrary keys, but they'll get ignored if they aren't
-    # actually declared anywhere (included here to make sure of that).
-    '--config_value=undeclared_flag=who_cares',
-])
-
 import os.path
 import unittest
 
@@ -38,10 +28,6 @@ conf.declare('string_default', default_value='default')
 conf.declare('no_default')
 
 
-def tear_down_module():
-    sys.argv = _old_argv
-
-
 class TestConf(unittest.TestCase):
 
   YAML_FILENAME = os.path.join(os.path.dirname(__file__), 'test_config.yaml')
@@ -49,12 +35,21 @@ class TestConf(unittest.TestCase):
   NOT_A_DICT = os.path.join(os.path.dirname(__file__), 'bad_config.yaml')
 
   def setUp(self):
+    self._old_argv = list(sys.argv)
+    sys.argv.extend([
+        '--config-value=flag_key=flag_value',
+        '--config-value', 'other_flag=other_value',
+        # You can specify arbitrary keys, but they'll get ignored if they aren't
+        # actually declared anywhere (included here to make sure of that).
+        '--config_value=undeclared_flag=who_cares',
+    ])
     flags, _ = conf.ARG_PARSER.parse_known_args()
     conf.load_flag_values(flags)
 
   def tearDown(self):
     conf._flags.config_file = None
     conf.reset()
+    sys.argv = self._old_argv
 
   def test_yaml_config(self):
     with open(self.YAML_FILENAME, 'rb') as yamlfile:

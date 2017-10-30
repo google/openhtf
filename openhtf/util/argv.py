@@ -17,10 +17,39 @@ StoreInModule:
 """
 
 import argparse
+import sys
 
 
 def ModuleParser():
-  return argparse.ArgumentParser(add_help=False)
+  return SysArgvConsumingParser(add_help=False, consume=False)
+
+
+class SysArgvConsumingParser(argparse.ArgumentParser):
+  """ArgumentParser variant that can consume known arguments from sys.argv.
+
+  Args (in addition to the normal argparse.ArgumentParser args):
+    consume: If True, consumes known args from sys.argv upon parsing.
+  """
+  def __init__(self, *args, **kwargs):
+    self._consume = kwargs.pop('consume')
+    super(SysArgvConsumingParser, self).__init__(*args, **kwargs)
+
+  def parse_args(self):
+    self.parse_known_args()
+
+  def parse_known_args(self):
+    """Parse known args and remove them from sys.argv.
+
+    Returns: A 2-tuple of the namespace resulting from the parse, and the list
+        of args that were unknown and thus unconsumed. The script name
+        (sys.argv[0]) will be preserved along with any unparsed args.
+    """
+    leftover_args = [sys.argv[0]]
+    flags, unknown = super(SysArgvConsumingParser, self).parse_known_args()
+    leftover_args.extend(unknown)
+    if self._consume:
+      sys.argv = leftover_args
+    return flags, unknown
 
 
 class StoreInModule(argparse.Action):
