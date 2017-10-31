@@ -21,6 +21,8 @@ sys.argv.extend([
     # You can specify arbitrary keys, but they'll get ignored if they aren't
     # actually declared anywhere (included here to make sure of that).
     '--config_value=undeclared_flag=who_cares',
+    '--config-value=true_value=true',
+    '--config-value', 'num_value=100',
 ])
 
 import os.path
@@ -30,6 +32,8 @@ from openhtf.util import conf
 
 conf.declare('flag_key')
 conf.declare('other_flag')
+conf.declare('true_value')
+conf.declare('num_value')
 conf.declare('json_test_key')
 conf.declare('yaml_test_key')
 conf.declare('overridden_key')
@@ -89,10 +93,19 @@ class TestConf(unittest.TestCase):
     conf.load(flag_key='loaded_value')
     self.assertEquals('flag_value', conf.flag_key)
 
+  def test_non_str_flag_values(self):
+    self.assertEquals(True, conf.true_value)
+    self.assertEquals(100, conf.num_value)
+    # Make sure flag value takes precedence, even if a value is loaded.
+    conf.load(flag_key='loaded_value')
+    self.assertEquals(True, conf.true_value)
+
   def test_as_dict(self):
     conf.load(station_id='station_id')
     self.assertEquals({
         'flag_key': 'flag_value',
+        'true_value': True,
+        'num_value': 100,
         'cancel_timeout_s': 2,
         'enable_station_discovery': True,
         'example_plug_increment_size': 1,

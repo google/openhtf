@@ -259,7 +259,9 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     if flags is None:
       flags = self._flags
     for keyval in flags.config_value:
-      self._flag_values.setdefault(*keyval.split('=', 1))
+      k,v = keyval.split('=', 1)
+      v = self._modules['yaml'].load(v) if isinstance(v, str) else v
+      self._flag_values.setdefault(k, v)
 
   @staticmethod
   def _is_valid_key(key):
