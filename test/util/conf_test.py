@@ -116,6 +116,7 @@ class TestConf(unittest.TestCase):
         'station_api_bind_address': '0.0.0.0',
         'station_id': 'station_id',
         'other_flag': 'other_value',
+        'plug_teardown_timeout_s': 0,
         'string_default': 'default',
         'none_default': None,
         'teardown_timeout_s': 30,

@@ -110,11 +110,17 @@ from openhtf import util
 from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
-from openhtf.util import timeouts
+from openhtf.util import threads
 from openhtf.util import xmlrpcutil
 
 
 _LOG = logging.getLogger(__name__)
+
+
+conf.declare('plug_teardown_timeout_s', default_value=0, description=
+             'Timeout (in seconds) for each plug tearDown function if > 0; '
+             'otherwise, will wait an unlimited time.')
+
 
 PlugDescriptor = collections.namedtuple('PlugDescriptor', ['mro'])  # pylint: disable=invalid-name
 
@@ -243,6 +249,23 @@ def plug(update_kwargs=True, **plugs):
         for name, a_plug in plugs.iteritems()])
     return phase_desc
   return result
+
+
+class _PlugTearDownThread(threads.KillableThread):
+  """Killable thread that runs a plug's tearDown function."""
+
+  def __init__(self, a_plug, *args, **kwargs):
+    super(_PlugTearDownThread, self).__init__(*args, **kwargs)
+    self._plug = a_plug
+
+  def _thread_proc(self):
+    try:
+      self._plug.tearDown()
+    except Exception:  # pylint: disable=broad-except
+      # Including the stack trace from ThreadTerminationErrors received when
+      # killed.
+      _LOG.warning('Exception calling tearDown on %s:',
+                   self._plug, exc_info=True)
 
 
 class PlugManager(object):
@@ -456,10 +479,15 @@ class PlugManager(object):
 
     _LOG.debug('Tearing down all plugs.')
     for a_plug in self._plugs_by_type.itervalues():
-      try:
-        a_plug.tearDown()
-      except Exception:  # pylint: disable=broad-except
-        _LOG.warning('Exception calling tearDown on %s:', a_plug, exc_info=True)
+      thread = _PlugTearDownThread(a_plug)
+      thread.start()
+      timeout_s = (conf.plug_teardown_timeout_s
+                   if conf.plug_teardown_timeout_s
+                   else None)
+      thread.join(timeout_s)
+      if thread.is_alive():
+        thread.kill()
+        _LOG.warning('Killed tearDown for plug %s after timeout.', a_plug)
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
