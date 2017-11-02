@@ -23,6 +23,7 @@ prompt state should use the openhtf.prompts pseudomodule.
 
 import collections
 import functools
+import locale
 import logging
 import os
 import platform
@@ -92,7 +93,10 @@ class ConsolePrompt(threading.Thread):
         if sys.stdin.isatty():
           termios.tcflush(sys.stdin, termios.TCIFLUSH)
 
-        line = ''
+        # Although this isn't threadsafe with do_setlocale=True, it doesn't work without it.
+        encoding = locale.getpreferredencoding(do_setlocale=True)
+
+        line = u''
         while not self._stopped:
           inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
           for stream in inputs:
@@ -111,7 +115,7 @@ class ConsolePrompt(threading.Thread):
                   # want to actually quit.
                   print "Hit ^C (Ctrl+c) to exit."
                   break
-              line += new
+              line += new.decode(encoding)
               if '\n' in line:
                 response = line[:line.find('\n')]
                 self._answered = True
