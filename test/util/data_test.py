@@ -51,5 +51,5 @@ class TestData(unittest.TestCase):
     self.assertIs(type(converted['long']), long)
     self.assertIs(type(converted['bool']), bool)
     self.assertIs(converted['none'], None)
-    self.assertIs(type(converted['complex']), unicode)
+    self.assertIs(type(converted['complex']), str)
     self.assertIs(type(converted['float_subclass']), float)

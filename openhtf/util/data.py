@@ -158,7 +158,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
     return float(obj)
 
   # Convert all other types to strings.
-  return unicode(obj)
+  return str(obj)
 
 
 def total_size(obj):
