@@ -1,3 +1,5 @@
+# coding=utf-8
+
 # Copyright 2016 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +30,7 @@ class TestData(unittest.TestCase):
       'list': [10],
       'tuple': (10,),
       'str': '10',
-      'unicode': u'10',
+      'unicode': u'☃',
       'int': 2 ** 40,
       'float': 10.0,
       'long': 2 ** 80,
@@ -43,6 +45,7 @@ class TestData(unittest.TestCase):
     self.assertIs(type(converted['tuple']), tuple)
     self.assertIs(type(converted['str']), str)
     self.assertIs(type(converted['unicode']), unicode)
+    self.assertEqual(converted['unicode'], example_data['unicode'])
     self.assertIs(type(converted['int']), int)
     self.assertIs(type(converted['float']), float)
     self.assertIs(type(converted['long']), long)
