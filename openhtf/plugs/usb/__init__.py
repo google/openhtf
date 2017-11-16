@@ -119,9 +119,24 @@ class AdbPlug(plugs.BasePlug):
   """Plug that provides ADB."""
 
   def __init__(self):
-    kwargs = {}
     if conf.libusb_rsa_key:
-      kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
+      self._rsa_keys = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
+    else:
+      self._rsa_keys = None
+    self._device = None
+    self.reconnect()
+
+  def tearDown(self):
+    if self._device:
+      self._device.close()
+
+  def reconnect(self):
+    if self._device:
+      self._device.close()
+
+    kwargs = {}
+    if self._rsa_keys:
+      kwargs['rsa_keys'] = self._rsa_keys
 
     self._device = adb_device.AdbDevice.connect(
         _open_usb_handle(
@@ -129,9 +144,6 @@ class AdbPlug(plugs.BasePlug):
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL),
         **kwargs)
-
-  def tearDown(self):
-    self._device.close()
 
   def __getattr__(self, attr):
     """Forward other attributes to the device."""
