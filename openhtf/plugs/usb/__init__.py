@@ -27,24 +27,38 @@ To use these plugs:
   def MyPhase(test, adb):
     adb.Shell('ls')
 """
+import argparse
 import commands
 import logging
 import time
 
 import openhtf.plugs as plugs
+from openhtf.plugs import cambrionix
 from openhtf.plugs.usb import adb_device
+from openhtf.plugs.usb import adb_protocol
 from openhtf.plugs.usb import fastboot_device
+from openhtf.plugs.usb import fastboot_protocol
 from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
-from openhtf.plugs import cambrionix
 from openhtf.plugs.user_input import prompt_for_test_start
 from openhtf.util import conf
+from openhtf.util import functions
 
 _LOG = logging.getLogger(__name__)
 
 conf.declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
 conf.declare('remote_usb', 'ethersync or other')
 conf.declare('ethersync', 'ethersync configuration')
+
+
+@functions.call_once
+def init_dependent_flags():
+  parser = argparse.ArgumentParser(
+      'USB Plug flags', parents=[
+          adb_protocol.ARG_PARSER, fastboot_protocol.ARG_PARSER],
+      add_help=False)
+  parser.parse_known_args()
+
 
 def _open_usb_handle(**kwargs):
   """Open a UsbHandle subclass, based on configuration.
@@ -65,7 +79,7 @@ def _open_usb_handle(**kwargs):
   Returns:
     Instance of UsbHandle.
   """
-
+  init_dependent_flags()
   serial = None
   remote_usb = conf.remote_usb
   if remote_usb:

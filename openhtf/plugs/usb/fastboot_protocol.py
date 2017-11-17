@@ -22,13 +22,20 @@ import logging
 import os
 import struct
 
-import gflags
-
 from . import usb_exceptions
+from openhtf.util import argv
 
-FLAGS = gflags.FLAGS
-gflags.DEFINE_integer('fastboot_download_chunk_size_kb', 1024,
-                      'Size of chunks to send when downloading fastboot images')
+
+FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB = 1024
+
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument(
+    '--fastboot_download_chunk_size_kb',
+    default=FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB,
+    action=argv.StoreInModule,
+    type=int,
+    target='%s.FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB' % __name__,
+    help='Size of chunks to send when downloading fastboot images')
 
 _LOG = logging.getLogger(__name__)
 
@@ -170,7 +177,7 @@ class FastbootProtocol(object):
       progress = self._handle_progress(length, progress_callback)
       progress.next()
     while length:
-      tmp = data.read(FLAGS.fastboot_download_chunk_size_kb * 1024)
+      tmp = data.read(FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB * 1024)
       length -= len(tmp)
       self.usb.write(tmp)
 

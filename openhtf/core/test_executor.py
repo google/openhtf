@@ -161,6 +161,8 @@ class TestExecutor(threads.KillableThread):
     self.test_state.plug_manager.initialize_plugs(
         (phase_plug.cls for phase_plug in self._test_start.plugs))
     outcome = phase_exec.execute_phase(self._test_start)
+    if outcome.is_terminal:
+      self.test_state.finalize_from_phase_outcome(outcome)
 
     if self.test_state.test_record.dut_id is None:
       _LOG.warning('Start trigger did not set DUT ID. A later phase will need'

@@ -116,7 +116,7 @@ INSTALL_REQUIRES = [
     'enum34>=1.1.2,<2.0',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
-    'protobuf>=2.6.1,<3.0',
+    'protobuf>=2.6.1,<4.0',
     'pyaml>=15.3.1,<16.0',
     'pyOpenSSL>=17.1.0,<18.0',
     'sockjs-tornado>=1.0.3,<2.0',
@@ -179,7 +179,6 @@ setup(
         'usb_plugs': [
             'libusb1>=1.3.0,<2.0',
             'M2Crypto>=0.22.3,<1.0',
-            'python-gflags>=2.0,<3.0',
         ],
         'update_units': [
             'xlrd>=1.0.0,<2.0',

@@ -46,15 +46,9 @@ import string
 import struct
 import threading
 
-import gflags
-
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
 
-gflags.DEFINE_boolean('adb_message_log', False,
-                      'Set to True to save all incoming and outgoing '
-                      'AdbMessages and print them on close().')
-FLAGS = gflags.FLAGS
 _LOG = logging.getLogger(__name__)
 
 def make_wire_commands(*ids):

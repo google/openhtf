@@ -82,15 +82,24 @@ import logging
 import Queue
 import threading
 
-import gflags
 from enum import Enum
 
 from openhtf.plugs.usb import adb_message
 from openhtf.plugs.usb import usb_exceptions
+from openhtf.util import argv
 from openhtf.util import exceptions
 from openhtf.util import timeouts
 
-FLAGS = gflags.FLAGS
+
+ADB_MESSAGE_LOG = False
+
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument('--adb_messsage_log',
+                        action=argv.StoreTrueInModule,
+                        target='%s.ADB_MESSAGE_LOG' % __name__,
+                        help='Set to True to save all incoming and outgoing '
+                        'AdbMessages and print them on Close().')
+
 _LOG = logging.getLogger(__name__)
 
 # Maximum amount of data in an ADB packet, we would like to raise this, but the
@@ -849,7 +858,7 @@ class AdbConnection(object):
         unexpected way, or fails to respond appropriately to our CNXN request.
     """
     timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
-    if FLAGS.adb_message_log:
+    if ADB_MESSAGE_LOG:
       adb_transport = adb_message.DebugAdbTransportAdapter(transport)
     else:
       adb_transport = adb_message.AdbTransportAdapter(transport)

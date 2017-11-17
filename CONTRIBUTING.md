@@ -210,10 +210,10 @@ accordingly.
 
 ```bash
 # Clone into the repo.
-git clone git@github.com:google/openhtf.git
+git clone https://github.com/google/openhtf.git
 
 # Install system-level third-party dependencies.
-sudo apt-get install python-pip swig libssl-dev python-dev libffi-dev \ 
+sudo apt-get install python-pip swig libssl-dev python-dev libffi-dev \
 protobuf-compiler libprotobuf-dev
 
 # Make sure pip is up-to-date.
@@ -230,6 +230,9 @@ virtualenv venv
 
 # Activate the new virtualenv.
 . venv/bin/activate
+
+# Update setuptools.
+pip install setuptools --upgrade
 
 # Install openhtf into the virtualenv in dev mode.
 python setup.py develop

@@ -39,7 +39,6 @@ from enum import Enum
 from openhtf import core
 from openhtf import plugs
 from openhtf import util
-from openhtf.core import history
 from openhtf.core.measurements import Measurement, measures
 from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
@@ -265,11 +264,9 @@ class Test(object):
       try:
         final_state = self._executor.finalize()
 
-        _LOG.debug('Test completed for %s, saving to history and outputting.',
+        _LOG.debug('Test completed for %s, outputting now.',
                    final_state.test_record.metadata['test_name'])
-        for output_cb in (
-            self._test_options.output_callbacks +
-            [functools.partial(history.append_record, self.uid)]):
+        for output_cb in self._test_options.output_callbacks:
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
