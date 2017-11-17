@@ -178,18 +178,18 @@ class TestState(util.SubscribableStateMixin):
     return None
 
   def get_attachment(self, attachment_name):
-    """Get a copy of an attachment contents from current or previous phase."""
+    """Get a copy of an attachment from current or previous phase."""
     for phase_record in self.test_record.phases:
       if attachment_name in phase_record.attachments:
         attachment = phase_record.attachments[attachment_name]
-        return copy.deepcopy(attachment.data)
+        return copy.deepcopy(attachment)
 
     # Check current running phase state
     if self.running_phase_state:
       if attachment_name in self.running_phase_state.phase_record.attachments:
         attachment = self.running_phase_state.phase_record.attachments.get(
             attachment_name)
-        return copy.deepcopy(attachment.data)
+        return copy.deepcopy(attachment)
 
     test.logger.warning('Could not find attachment: %s', attachment_name)
     return None

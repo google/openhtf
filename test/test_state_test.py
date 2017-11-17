@@ -39,22 +39,12 @@ class TestTestApi(unittest.TestCase):
   def test_get_attachment(self):
     attachment_name = 'attachment.txt'
     input_contents = 'This is some attachment text!'
-    self.test_api.attach(attachment_name, input_contents)
+    mimetype='text/plain'
+    self.test_api.attach(attachment_name, input_contents, mimetype)
 
-    output_contents = self.test_api.get_attachment(attachment_name)
-    self.assertEqual(input_contents, output_contents)
-
-  def test_get_attachment_immutable(self):
-    attachment_name = 'attachment.txt'
-    input_contents = {'foo': 'This is some attachment text in a dict!'}
-    self.test_api.attach(attachment_name, input_contents)
-
-    output_contents = self.test_api.get_attachment(attachment_name)
-    self.assertEqual(input_contents, output_contents)
-
-    # if we mutate output_contents, it doesn't change the original attachment.
-    output_contents['foo'] = 'Mutate!'
-    self.assertNotEqual(input_contents, output_contents)
+    output_attachment = self.test_api.get_attachment(attachment_name)
+    self.assertEqual(input_contents, output_attachment.data)
+    self.assertEqual(mimetype, output_attachment.mimetype)
 
   def test_get_measurement(self):
     measurement_val = [1, 2, 3]
