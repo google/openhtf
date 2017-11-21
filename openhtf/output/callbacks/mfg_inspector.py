@@ -121,7 +121,7 @@ def _populate_header(record, testrun):
     attachment = testrun.info_parameters.add()
     attachment.name = 'config'
     attachment.value_binary = json.dumps(
-        record.metadata['config'], sort_keys=True, indent=4)
+        record.metadata['config'], sort_keys=True, indent=4).encode('utf-8')
 
 
 def _ensure_unique_parameter_name(name, used_parameter_names):
@@ -143,7 +143,7 @@ def _attach_json(record, testrun):
       sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
-  testrun_param.value_binary = record_json
+  testrun_param.value_binary = record_json.encode('utf-8')
   # pylint: disable=no-member
   testrun_param.type = test_runs_pb2.TEXT_UTF8
   # pylint: enable=no-member
@@ -266,7 +266,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
             'outcome': str(testrun_param.status), 'name': name,
             'dimensions': dims,
             'value': value
-        }, sort_keys=True)
+        }, sort_keys=True).encode('utf-8')
         attachment.type = test_runs_pb2.MULTIDIM_JSON
         _mangle_measurement(
             name, measurement.measured_value, measurement, mangled_parameters,
