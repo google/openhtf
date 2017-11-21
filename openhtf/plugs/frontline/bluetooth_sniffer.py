@@ -22,8 +22,6 @@ protocol, which this module partially implements, see the reference document:
 http://www.fte.com/docs/usermanuals/comprobe%20automation%20server%20protocol.pdf
 """
 
-# TODO: Remove references to a81c.files module and a81c.util module.
-
 import argparse
 import contextlib
 import datetime
@@ -31,6 +29,8 @@ import logging
 import os
 import socket
 import time
+
+from openhtf.util import files
 
 DEFAULT_AUTOMATION_PORT = 22901
 DEFAULT_HTTP_PORT = 55455
@@ -255,7 +255,12 @@ def _run_bluetooth_sniffer(host, port, local_log_path, download_port, address,
   sniffer = BleSniffer(host, port)
   try:
     sniffer.start_sniffing(address, capture_id)
-    util.sleep_or_prompt('BLE sniffer data collection', seconds, _LOG)
+    if seconds is None:
+      _LOG.info('Press ENTER to stop bluetooth sniffing.')
+      input()
+    else:
+      _LOG.info('Sniffing bluetooth for %f seconds.', seconds)
+      time.sleep(seconds)
   finally:
     sniffer.stop_sniffing()
     if local_log_path:
