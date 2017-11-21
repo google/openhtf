@@ -105,7 +105,7 @@ def measures_with_args(test, min, max):
 
 
 def attachments(test):
-  test.attach('test_attachment', 'This is test attachment data.')
+  test.attach('test_attachment', 'This is test attachment data.'.encode('utf-8'))
   test.attach_from_file(
       os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
