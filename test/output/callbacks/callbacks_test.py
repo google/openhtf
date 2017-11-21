@@ -18,7 +18,7 @@ is sane. It might be worth expanding the tests to also check for things we
 actually care for.
 """
 
-from io import StringIO
+from io import BytesIO
 
 from examples import all_the_things
 import openhtf as htf
@@ -49,7 +49,7 @@ class TestOutput(test.TestCase):
   def test_json(self, user_mock):
     user_mock.prompt.return_value = 'SomeWidget'
     record = yield self._test
-    json_output = StringIO()
+    json_output = BytesIO()
     json_factory.OutputToJSON(
         json_output, sort_keys=True, indent=2)(record)
 
@@ -57,7 +57,7 @@ class TestOutput(test.TestCase):
   def test_testrun(self, user_mock):
     user_mock.prompt.return_value = 'SomeWidget'
     record = yield self._test
-    testrun_output = StringIO()
+    testrun_output = BytesIO()
     mfg_inspector.OutputToTestRunProto(testrun_output)(record)
 
 
