@@ -21,7 +21,7 @@ syntax = "proto2";
 package openhtf;
 
 // import "assembly.proto";
-import "units.proto";
+import "openhtf/output/proto/units.proto";
 
 // Tag identifying the type of informational data encoded in the info parameter.
 enum InformationTag {

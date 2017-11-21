@@ -69,8 +69,8 @@ class BuildProtoCommand(Command):
 
     self.protoc = os.path.join(prefix, 'bin', 'protoc')
     self.protodir = os.path.join(prefix, 'include')
-    self.indir = os.path.join(os.getcwd(), 'openhtf', 'output', 'proto')
-    self.outdir = os.path.join(os.getcwd(), 'openhtf', 'output', 'proto')
+    self.indir = os.getcwd()
+    self.outdir = os.getcwd()
 
   def finalize_options(self):
     pass
@@ -80,7 +80,7 @@ class BuildProtoCommand(Command):
       print('Skipping building protocol buffers.')
       return
     # Build regular proto files.
-    protos = glob.glob(os.path.join(self.indir, '*.proto'))
+    protos = glob.glob(os.path.join(self.indir, 'openhtf', 'output', 'proto', '*.proto'))
     if protos:
       print(('Attempting to build proto files:\n%s' % '\n'.join(protos)))
       cmd = [
