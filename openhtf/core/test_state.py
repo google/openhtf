@@ -67,9 +67,9 @@ class BlankDutIdError(Exception):
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
-class ImmutableMeasurement(
-    collections.namedtuple('_Measurement',
-                           'name, value, units, dimensions, outcome')):
+class ImmutableMeasurement(collections.namedtuple(
+    'ImmutableMeasurement',
+    ['name', 'value', 'units', 'dimensions', 'outcome'])):
   """Immutable copy of a measurement."""
 
   @classmethod
@@ -150,40 +150,16 @@ class TestState(util.SubscribableStateMixin):
                 self.get_attachment,
                 self.notify_update,))
 
-  def get_measurement(self, measurement_name):
-    """Get a copy of a measurement value from current or previous phase.
+  def get_attachment(self, attachment_name):
+    """Get a copy of an attachment from current or previous phases.
 
     Args:
-      measurement_name: str of the measurement name
+      attachment_name:  str of the attachment name
+
     Returns:
-      an ImmutableMeasurement
+      A copy of the attachment or None if the attachment cannot be found.
+
     """
-    # The framework ignores measurements from SKIP and REPEAT phases
-    ignore_outcomes = set([test_record.PhaseOutcome.SKIP,])
-
-    # Check current running phase state
-    if self.running_phase_state:
-      if measurement_name in self.running_phase_state.measurements:
-        return ImmutableMeasurement.FromMeasurement(
-            self.running_phase_state.measurements[measurement_name])
-
-    # Iterate through phases in reversed order for LIFO.
-    for phase_record in reversed(self.test_record.phases):
-      if (phase_record.result not in ignore_outcomes and
-          measurement_name in phase_record.measurements):
-        measurement = phase_record.measurements[measurement_name]
-        return ImmutableMeasurement.FromMeasurement(measurement)
-
-    test.logger.warning('Could not find measurement: %s', measurement_name)
-    return None
-
-  def get_attachment(self, attachment_name):
-    """Get a copy of an attachment from current or previous phase."""
-    for phase_record in self.test_record.phases:
-      if attachment_name in phase_record.attachments:
-        attachment = phase_record.attachments[attachment_name]
-        return copy.deepcopy(attachment)
-
     # Check current running phase state
     if self.running_phase_state:
       if attachment_name in self.running_phase_state.phase_record.attachments:
@@ -191,7 +167,44 @@ class TestState(util.SubscribableStateMixin):
             attachment_name)
         return copy.deepcopy(attachment)
 
+    for phase_record in self.test_record.phases:
+      if attachment_name in phase_record.attachments:
+        attachment = phase_record.attachments[attachment_name]
+        return copy.deepcopy(attachment)
+
+
     test.logger.warning('Could not find attachment: %s', attachment_name)
+    return None
+
+  def get_measurement(self, measurement_name):
+    """Get a copy of a measurement value from current or previous phase.
+
+    Measurement and phase name uniqueness is not enforced, so this method will
+    return an immutable copy of the most recent measurement recorded.
+
+    Args:
+      measurement_name: str of the measurement name
+    Returns:
+      an ImmutableMeasurement or None if the measurement cannot be found.
+    """
+    # The framework ignores measurements from SKIP and REPEAT phases
+    ignore_outcomes = {test_record.PhaseOutcome.SKIP}
+
+    # Check current running phase state
+    if self.running_phase_state:
+      if measurement_name in self.running_phase_state.measurements:
+        return ImmutableMeasurement.FromMeasurement(
+            self.running_phase_state.measurements[measurement_name])
+
+    # Iterate through phases in reversed order to return most recent (necessary
+    # because measurement and phase names are not necessarily unique)
+    for phase_record in reversed(self.test_record.phases):
+      if (phase_record.result not in ignore_outcomes and
+          measurement_name in phase_record.measurements):
+        measurement = phase_record.measurements[measurement_name]
+        return ImmutableMeasurement.FromMeasurement(measurement)
+
+    test.logger.warning('Could not find measurement: %s', measurement_name)
     return None
 
   @contextlib.contextmanager
