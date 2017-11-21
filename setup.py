@@ -53,8 +53,8 @@ class BuildProtoCommand(Command):
   def initialize_options(self):
     self.skip_proto = False
     try:
-      prefix = subprocess.check_output(
-          'pkg-config --variable prefix protobuf'.split()).strip()
+      prefix = subprocess.getoutput(
+          'pkg-config --variable prefix protobuf').strip()
     except (subprocess.CalledProcessError, OSError):
       if platform.system() == 'Linux':
         # Default to /usr?
