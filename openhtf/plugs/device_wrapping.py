@@ -29,13 +29,28 @@ import serial
 import openhtf
 
 
+def short_repr(obj, max_len=40):
+  """Returns a short, term-friendly string representation of the object.
+
+  Args:
+    obj: An object for which to return a string representation.
+    max_len: Maximum length of the returned string. Longer reprs will be turned
+        into a brief descriptive string giving the type and length of obj.
+  """
+  obj_repr = repr(obj)
+  if len(obj_repr) <= max_len:
+    return obj_repr
+  return '<{} of length {}>'.format(type(arg).__name__, len(obj_repr))
+
+
 class DeviceWrappingPlug(openhtf.plugs.BasePlug):
   """A base plug for wrapping existing device abstractions.
 
-  Subclass instances must override the _device attribute to which normal
-  attribute access will be delegated. Subclasses can use the
-  @conf.inject_positional_args decorator on their constructors to get any
-  configuration needed to construct the inner device instance.
+  Attribute access is delegated to the _device attribute, which is normally set
+  by passing some device instance to the constructor of this base class.
+  Subclasses can use the @conf.inject_positional_args decorator on their
+  constructors to get any configuration needed to construct the inner device
+  instance.
 
   Example:
     class BleSnifferPlug(DeviceWrappingPlug):
@@ -71,17 +86,12 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
     if not callable(attribute):
       return attribute
 
-    def arg_string(arg):
-      """Returns a stdout-friendly string representation of the argument"""
-      arg_repr = repr(arg)
-      return arg_repr if len(arg_repr) < 40 else '<{} of length {}>'.format(
-          type(arg).__name__, len(arg_repr))
-
+    # Attribute callable; return a wrapper that logs calls with args and kwargs.
     functools.wraps(attribute, assigned=('__name__', '__doc__'))
     def logging_wrapper(*args, **kwargs):
-      args_strings = tuple(arg_string(arg) for arg in args)
+      args_strings = tuple(short_repr(arg) for arg in args)
       kwargs_strings = tuple(
-          ('%s=%s' % (key, arg_val(val)) for key, val in kwargs.items()))
+          ('%s=%s' % (key, short_repr(val)) for key, val in kwargs.items()))
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
         log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))
