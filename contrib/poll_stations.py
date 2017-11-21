@@ -63,13 +63,13 @@ def phase_to_str(phase):
 
 
 def print_test(remote_test):
-  print((' |-- %s' % (remote_test,)))
+  print(' |-- %s' % (remote_test,))
   phase_descriptors = remote_test.phase_descriptors
   if phase_descriptors:
     print(' |    |-- RemoteTest PhaseDescriptors:')
     for desc in phase_descriptors:
-      print((' |    |    |-- Name: %s, Doc (summary): %s' % (
-          desc.name, desc.doc and desc.doc.splitlines()[0])))
+      print(' |    |    |-- Name: %s, Doc (summary): %s' % (
+          desc.name, desc.doc and desc.doc.splitlines()[0]))
     print(' |    |')
   remote_state = remote_test.cached_state
   if remote_state:
@@ -77,12 +77,12 @@ def print_test(remote_test):
     print_state(remote_state)
   print(' |    |-- History:')
   for test_record in remote_test.cached_history:
-    print((' |         |-- DUT: "%s", Ran %s Phases in %.2f sec, Outcome: %s' % (
+    print(' |         |-- DUT: "%s", Ran %s Phases in %.2f sec, Outcome: %s' % (
         test_record.dut_id, len(test_record.phases),
         (test_record.end_time_millis - test_record.start_time_millis) / 1000.0,
-        test_record.outcome)))
+        test_record.outcome))
     for phase in test_record.phases:
-      print((' |         |    |-- %s' % phase_to_str(phase)))
+      print(' |         |    |-- %s' % phase_to_str(phase))
     print(' |         |')
   print(' |')
 
@@ -90,13 +90,13 @@ def print_test(remote_test):
 def print_state(remote_state):
   prefix = ' |    |    |'
   if remote_state.running_phase_state:
-    print(('%s-- Running Phase: %s' % (
-          prefix, remote_state.running_phase_state.name)))
+    print('%s-- Running Phase: %s' % (
+          prefix, remote_state.running_phase_state.name))
   else:
-    print(('%s-- No Phase Currently Running' % prefix))
-  print(('%s-- Completed Phases:' % prefix))
+    print('%s-- No Phase Currently Running' % prefix)
+  print('%s-- Completed Phases:' % prefix)
   for phase in remote_state.test_record.phases:
-    print((' |    |         |-- %s' % phase_to_str(phase)))
+    print(' |    |         |-- %s' % phase_to_str(phase))
   print(' |    |')
 
 
@@ -123,8 +123,8 @@ class StationList(object):
   def update(self, header=''):
     self.update_count += 1
     clear_screen()
-    print(('Last Updated @%s, %s Total Updates' % (fmt_time(), self.update_count)))
-    print((header + '\n'))
+    print('Last Updated @%s, %s Total Updates' % (fmt_time(), self.update_count))
+    print(header + '\n')
     for station in list(self.stations):
       try:
         self.print_station(station)
@@ -181,7 +181,7 @@ class StationList(object):
           update_thread.start()
           self.update_threads[remote_test] = update_thread
     except socket.error as e:
-      print((' |-- Connection Error: %s' % e))
+      print(' |-- Connection Error: %s' % e)
     print()
 
   def check_for_stations(self):
