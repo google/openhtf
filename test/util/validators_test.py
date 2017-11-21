@@ -10,9 +10,9 @@ from openhtf.util import validators
 class TestInRange(unittest.TestCase):
 
   def test_raises_if_invalid_arguments(self):
-    with self.assertRaisesRegexp(ValueError, 'Must specify minimum'):
+    with self.assertRaisesRegex(ValueError, 'Must specify minimum'):
       validators.InRange()
-    with self.assertRaisesRegexp(ValueError, 'Minimum cannot be greater'):
+    with self.assertRaisesRegex(ValueError, 'Minimum cannot be greater'):
       validators.InRange(minimum=10, maximum=0)
 
   def test_invalidates_non_numbers(self):
@@ -84,7 +84,7 @@ class TestEqualsValidator(unittest.TestCase):
 class TestEqualsFactory(unittest.TestCase):
 
   def test_with_numbers(self):
-    for expected in [1, 1.0, decimal.Decimal(1), 1L]:
+    for expected in [1, 1.0, decimal.Decimal(1), 1]:
       number_validator = validators.equals(expected)
       self.assertTrue(number_validator(expected))
       self.assertFalse(number_validator(0))
@@ -108,7 +108,7 @@ class TestEqualsFactory(unittest.TestCase):
 class TestWithinPercent(unittest.TestCase):
 
   def test_raises_for_negative_percentage(self):
-    with self.assertRaisesRegexp(ValueError, 'percent argument is'):
+    with self.assertRaisesRegex(ValueError, 'percent argument is'):
       validators.WithinPercent(expected=100, percent=-1)
 
   def test_within_percent_less_than_one_hundred(self):

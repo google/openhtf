@@ -21,6 +21,7 @@ import time
 from openhtf.plugs.usb import fastboot_protocol
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
+import collections
 
 # From fastboot.c
 VENDORS = {0x18D1, 0x0451, 0x0502, 0x0FCE, 0x05C6, 0x22B8, 0x0955,
@@ -85,7 +86,7 @@ class FastbootDevice(object):
       raise usb_exceptions.HandleClosedError()
 
     val = getattr(self._protocol, attr)
-    if callable(val):
+    if isinstance(val, collections.Callable):
       def _retry_wrapper(*args, **kwargs):
         """Wrap the retry function."""
         result = _retry_usb_function(self._num_retries, val, *args, **kwargs)

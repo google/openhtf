@@ -351,7 +351,7 @@ class PhaseState(mutablerecords.Record(
         'name': self.name,
         'codeinfo': self.phase_record.codeinfo,
         'descriptor_id': self.phase_record.descriptor_id,
-        'start_time_millis': long(self.phase_record.start_time_millis),
+        'start_time_millis': int(self.phase_record.start_time_millis),
         'options': self.phase_record.options,
         'attachments': self.attachments,
         'measurements': self.measurements,
@@ -415,7 +415,7 @@ class PhaseState(mutablerecords.Record(
     Any UNSET measurements will cause the Phase to FAIL unless
     conf.allow_unset_measurements is set True.
     """
-    for measurement in self.measurements.itervalues():
+    for measurement in self.measurements.values():
       # Clear notification callbacks for later serialization.
       measurement.set_notification_callback(None)
       # Validate multi-dimensional measurements now that we have all values.
@@ -431,7 +431,7 @@ class PhaseState(mutablerecords.Record(
       allowed_outcomes.add(measurements.Outcome.UNSET)
 
     if any(meas.outcome not in allowed_outcomes
-           for meas in self.phase_record.measurements.itervalues()):
+           for meas in self.phase_record.measurements.values()):
       return False
     return True
 

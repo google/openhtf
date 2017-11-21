@@ -67,7 +67,7 @@ OUTCOME_MAP = {
 UOM_CODE_MAP = {
     u.GetOptions().Extensions[units_pb2.uom_code]: num
     for num, u in
-    units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
+    units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.items()
 }
 # pylint: enable=no-member
 
@@ -155,7 +155,7 @@ def _extract_attachments(phase, testrun, used_parameter_names):
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
-    if isinstance(attachment_data, unicode):
+    if isinstance(attachment_data, str):
       attachment_data = attachment_data.encode('utf8')
     testrun_param.value_binary = attachment_data
     if mimetype in MIMETYPE_MAP:
@@ -173,8 +173,8 @@ def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
   We generate these by doing some name mangling, using some sane limits for
   very large multidimensional measurements.
   """
-  for coord, val in measured_value.value_dict.items(
-      )[:MAX_PARAMS_PER_MEASUREMENT]:
+  for coord, val in list(measured_value.value_dict.items(
+      ))[:MAX_PARAMS_PER_MEASUREMENT]:
     # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
     mangled_name = '_'.join([name] + [
         '%s%s' % (

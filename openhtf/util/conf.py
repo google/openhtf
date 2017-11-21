@@ -166,8 +166,8 @@ import yaml
 
 import mutablerecords
 
-import argv
-import threads
+from . import argv
+from . import threads
 
 # If provided, --config-file will cause the given file to be load()ed when the
 # conf module is initially imported.
@@ -408,7 +408,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
           files before declarations have been evaluated.
     """
     undeclared_keys = []
-    for key, value in dictionary.iteritems():
+    for key, value in dictionary.items():
       # Warn in this case.  We raise if you try to access a config key that
       # hasn't been declared, but we don't raise here so that you can use
       # configuration files that are supersets of required configuration for
@@ -441,7 +441,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     retval.update(self._loaded_values)
     # Only update keys that are declared so we don't allow injecting
     # un-declared keys via commandline flags.
-    for key, value in self._flag_values.iteritems():
+    for key, value in self._flag_values.items():
       if key in self._declarations:
         retval[key] = value
     return retval
@@ -564,7 +564,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 
       final_kwargs.update(kwargs)
       if inspect.ismethod(method):
-        name = '%s.%s' % (method.im_class.__name__, method.__name__)
+        name = '%s.%s' % (method.__self__.__class__.__name__, method.__name__)
       else:
         name = method.__name__
       self._logger.debug('Invoking %s with %s', name, final_kwargs)

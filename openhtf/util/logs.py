@@ -149,7 +149,7 @@ class MacAddressLogFilter(logging.Filter):
       record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.msg)
       record.args = tuple([
           self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
-          if isinstance(arg, basestring)
+          if isinstance(arg, str)
           else arg for arg in record.args])
     return True
 
@@ -212,8 +212,8 @@ def setup_logger():
       file_handler.addFilter(MAC_FILTER)
       logger.addHandler(file_handler)
     except IOError as exception:
-      print ('Failed to set up log file due to error: %s. '
-             'Continuing anyway.' % exception)
+      print(('Failed to set up log file due to error: %s. '
+             'Continuing anyway.' % exception))
 
   if not QUIET:
     console_handler = logging.StreamHandler(stream=sys.stderr)

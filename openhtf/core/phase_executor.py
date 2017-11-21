@@ -208,7 +208,7 @@ class PhaseExecutor(object):
       hit its limit for repetitions.
     """
     repeat_count = 1
-    repeat_limit = phase.options.repeat_limit or sys.maxint
+    repeat_limit = phase.options.repeat_limit or sys.maxsize
     while not self._stopping.is_set():
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome = self._execute_phase_once(phase, is_last_repeat)

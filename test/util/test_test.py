@@ -80,7 +80,7 @@ class TestTest(test.TestCase):
 
     mock_plug.do_stuff.assert_called_with('stuff_args')
     self.assertPhaseContinue(phase_record)
-    self.assertEquals('test_phase', phase_record.name)
+    self.assertEqual('test_phase', phase_record.name)
     self.assertMeasured(phase_record, 'test_measurement', 0xBEEF)
     self.assertMeasured(phase_record, 'othr_measurement', 0xDEAD)
     self.assertMeasurementPass(phase_record, 'passes')

@@ -52,7 +52,7 @@ class PingPlug(plugs.BasePlug):
 
   def run(self, count):
     command = self._get_command(count)
-    print "running: %s" % ' '.join(command)
+    print("running: %s" % ' '.join(command))
     return subprocess.call(command)
 
 

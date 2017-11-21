@@ -18,7 +18,7 @@
 
 import argparse
 import os
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 TARGETS = [
     'http://cdn.jsdelivr.net/sockjs/1/sockjs.min.js',  # sockjs
@@ -38,7 +38,7 @@ def main():
     filename = src.split('/')[-1].split('#')[0].split('?')[0]
     dst = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
     if args.force or not os.path.exists(dst):
-      urllib.urlretrieve(src, dst)
+      urllib.request.urlretrieve(src, dst)
 
 
 if __name__ == '__main__':

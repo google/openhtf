@@ -17,7 +17,7 @@
 
 import binascii
 import collections
-import cStringIO
+import io
 import logging
 import os
 import struct
@@ -70,7 +70,7 @@ class FastbootProtocol(object):
     """
     if arg is not None:
       command = '%s:%s' % (command, arg)
-    self._write(cStringIO.StringIO(command), len(command))
+    self._write(io.StringIO(command), len(command))
 
   def handle_simple_responses(
       self, timeout_ms=None, info_cb=DEFAULT_MESSAGE_CALLBACK):
@@ -175,7 +175,7 @@ class FastbootProtocol(object):
     """Sends the data to the device, tracking progress with the callback."""
     if progress_callback:
       progress = self._handle_progress(length, progress_callback)
-      progress.next()
+      next(progress)
     while length:
       tmp = data.read(FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB * 1024)
       length -= len(tmp)
@@ -259,14 +259,14 @@ class FastbootCommands(object):
     Returns:
       Response to a download request, normally nothing.
     """
-    if isinstance(source_file, basestring):
+    if isinstance(source_file, str):
       source_len = os.stat(source_file).st_size
       source_file = open(source_file)
 
     if source_len == 0:
       # Fall back to storing it all in memory :(
       data = source_file.read()
-      source_file = cStringIO.StringIO(data)
+      source_file = io.StringIO(data)
       source_len = len(data)
 
     self._protocol.send_command('download', '%08x' % source_len)

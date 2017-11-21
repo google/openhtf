@@ -40,7 +40,7 @@ class FailTwicePlug(plugs.BasePlug):
   def run(self):
     """Increments counter and raises an exception for first two runs."""
     self.count += 1
-    print 'FailTwicePlug: Run number %s' % (self.count)
+    print('FailTwicePlug: Run number %s' % (self.count))
     if self.count < 3:
       raise RuntimeError('Fails a couple times')
 
@@ -56,7 +56,7 @@ class FailAlwaysPlug(plugs.BasePlug):
   def run(self):
     """Increments counter and returns False indicating failure"""
     self.count += 1
-    print "FailAlwaysPlug: Run number %s" % (self.count)
+    print("FailAlwaysPlug: Run number %s" % (self.count))
 
     return False
 
@@ -70,10 +70,10 @@ def phase_repeat(test, test_plug):
     test_plug.run()
 
   except:
-    print "Error in phase_repeat, will retry"
+    print("Error in phase_repeat, will retry")
     return openhtf.PhaseResult.REPEAT
 
-  print "Completed phase_repeat"
+  print("Completed phase_repeat")
 
 
 # This phase demonstrates repeating a phase based upon a result returned from a
@@ -86,7 +86,7 @@ def phase_repeat_with_limit(test, test_plug):
   result = test_plug.run()
 
   if not result:
-    print "Invalid result in phase_repeat_with_limit, will retry"
+    print("Invalid result in phase_repeat_with_limit, will retry")
     return openhtf.PhaseResult.REPEAT
 
 if __name__ == '__main__':

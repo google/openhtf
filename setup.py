@@ -82,7 +82,7 @@ class BuildProtoCommand(Command):
     # Build regular proto files.
     protos = glob.glob(os.path.join(self.indir, '*.proto'))
     if protos:
-      print('Attempting to build proto files:\n%s' % '\n'.join(protos))
+      print(('Attempting to build proto files:\n%s' % '\n'.join(protos)))
       cmd = [
           self.protoc,
           '--proto_path', self.indir,
@@ -93,7 +93,7 @@ class BuildProtoCommand(Command):
         subprocess.check_call(cmd)
       except OSError as e:
         if e.errno == errno.ENOENT:
-          print('Could not find the protobuf compiler at %s' % self.protoc)
+          print(('Could not find the protobuf compiler at %s' % self.protoc))
           print('On many Linux systems, this is fixed by installing the '
                  '"protobuf-compiler" and "libprotobuf-dev" packages.')
         raise
@@ -154,7 +154,7 @@ class PyTestCommand(test):
       cov = ' --cov openhtf ' + outputs
 
     sys.argv = [sys.argv[0]]
-    print('invoking pytest.main with %s' % (self.pytest_args + cov))
+    print(('invoking pytest.main with %s' % (self.pytest_args + cov)))
     sys.exit(pytest.main(self.pytest_args + cov))
 
 

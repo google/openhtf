@@ -79,7 +79,7 @@ Example usage of a connection and stream:
 import collections
 import itertools
 import logging
-import Queue
+import queue
 import threading
 
 from enum import Enum
@@ -567,7 +567,7 @@ class AdbConnection(object):
 
   def _make_stream_transport(self):
     """Create an AdbStreamTransport with a newly allocated local_id."""
-    msg_queue = Queue.Queue()
+    msg_queue = queue.Queue()
     with self._stream_transport_map_lock:
       # Start one past the last id we used, and grab the first available one.
       # This mimics the ADB behavior of 'increment an unsigned and let it
@@ -579,9 +579,9 @@ class AdbConnection(object):
       self._last_id_used = (self._last_id_used % STREAM_ID_LIMIT) + 1
       for local_id in itertools.islice(
           itertools.chain(
-              xrange(self._last_id_used, STREAM_ID_LIMIT),
-              xrange(1, self._last_id_used)), 64):
-        if local_id not in self._stream_transport_map.keys():
+              range(self._last_id_used, STREAM_ID_LIMIT),
+              range(1, self._last_id_used)), 64):
+        if local_id not in list(self._stream_transport_map.keys()):
           self._last_id_used = local_id
           break
       else:
@@ -785,7 +785,7 @@ class AdbConnection(object):
       try:
         # Block for up to 10ms to rate-limit how fast we spin.
         return stream_transport.message_queue.get(True, .01)
-      except Queue.Empty:
+      except queue.Empty:
         pass
 
       # If someone else has the Lock, just keep checking our queue.
@@ -799,7 +799,7 @@ class AdbConnection(object):
         # Lock ourselves, we're sure there are no potentially in-flight reads.
         try:
           return stream_transport.message_queue.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
           pass
 
         while not timeout.has_expired():
@@ -818,7 +818,7 @@ class AdbConnection(object):
     # queued messages.
     try:
       return stream_transport.message_queue.get_nowait()
-    except Queue.Empty:
+    except queue.Empty:
       raise usb_exceptions.AdbStreamClosedError(
           'Attempt to read from closed or unknown %s', stream_transport)
 

@@ -18,7 +18,7 @@ is sane. It might be worth expanding the tests to also check for things we
 actually care for.
 """
 
-from cStringIO import StringIO
+from io import StringIO
 
 from examples import all_the_things
 import openhtf as htf
