@@ -27,6 +27,8 @@ class TestSniffer(unittest.TestCase):
   @classmethod
   def setUp(cls):
     cls.sniffer = bluetooth_sniffer.Sniffer()
+    cls.mac = 'aa:bb:cc:11:22:33'
+    cls.capture_name = 'test_capture'
 
   @classmethod
   def tearDown(cls):
@@ -34,13 +36,38 @@ class TestSniffer(unittest.TestCase):
 
   @mock.patch.object(socket, 'create_connection')
   def test_start_sniffing(self, mock_create_conn):
+    """Verify basic start commands are sent to the sniffer."""
     start_sniffer_commands = (
       'Start Sniffing\n',
       'Start Capture\n',
     )
     mock_socket = mock.MagicMock()
     mock_create_conn.return_value = mock_socket
-    self.sniffer.start_sniffing('aa:bb:cc:11:22:33', 'test_capture')
+    self.sniffer.start_sniffing(self.mac, self.capture_name)
     mock_create_conn.assert_called()
     for command in start_sniffer_commands:
       mock_socket.sendall.assert_any_call(command)
+
+  @mock.patch.object(socket, 'create_connection')
+  def test_stop_sniffing(self, mock_create_conn):
+    """Verify basic stop commands are sent to the sniffer."""
+    stop_sniffer_commands = (
+      'Stop Capture\n',
+      'Stop FTS\n',
+    )
+    mock_socket = mock.MagicMock()
+    mock_create_conn.return_value = mock_socket
+    self.sniffer.start_sniffing(self.mac, self.capture_name)
+    self.sniffer.stop_sniffing()
+    mock_create_conn.assert_called()
+    for command in stop_sniffer_commands:
+      mock_socket.sendall.assert_any_call(command)
+
+  def test_sniff(self):
+    """Verify the sniff context starts and stops the sniffer."""
+    with mock.patch.multiple(self.sniffer,
+                             start_sniffing=mock.DEFAULT,
+                             stop_sniffing=mock.DEFAULT):
+      with self.sniffer.sniff(self.mac, self.capture_name):
+        self.sniffer.start_sniffing.assert_called()
+      self.sniffer.stop_sniffing.assert_called()
