@@ -70,7 +70,7 @@ class BluetoothSnifferPlug(device_wrapping.DeviceWrappingPlug):
                bluetooth_sniffer_enable,
                bluetooth_sniffer_host,
                bluetooth_sniffer_port):
-    # Default to no device is sniffer support is disabled via conf.
+    # Default to no device if sniffer support is disabled via conf.
     device = None
     if bluetooth_sniffer_enable:
       device = bluetooth_sniffer.Sniffer(
