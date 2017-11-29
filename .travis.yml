@@ -1,9 +1,12 @@
 language: python
 python:
-- '2.7'
+  # - '2.7'
+  - '3.6'
 addons:
   apt:
     packages:
+    - python3
+    - python3-pip
     - swig
     - libusb-1.0-0-dev
     - libprotobuf-dev
@@ -14,7 +17,8 @@ cache:
   directories:
   - $HOME/.cache/pip
 env:
-- TOXENV=py27
+  #- TOXENV=py27
+- TOXENV=py36
 install:
 - pip install tox coveralls
 - pip install -e .
