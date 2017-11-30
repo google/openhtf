@@ -60,7 +60,7 @@ def init_dependent_flags():
   parser.parse_known_args()
 
 
-def _open_usb_handle(**kwargs):
+def _open_usb_handle(serial_number=None, **kwargs):
   """Open a UsbHandle subclass, based on configuration.
 
   If configuration 'remote_usb' is set, use it to connect to remote usb,
@@ -74,13 +74,13 @@ def _open_usb_handle(**kwargs):
        plug_port: 5
 
   Args:
+    serial_number: Optional serial number to connect to.
     **kwargs: Arguments to pass to respective handle's Open() method.
 
   Returns:
     Instance of UsbHandle.
   """
   init_dependent_flags()
-  serial = None
   remote_usb = conf.remote_usb
   if remote_usb:
     if remote_usb.strip() == 'ethersync':
@@ -92,9 +92,9 @@ def _open_usb_handle(**kwargs):
         raise ValueError('Ethersync needs mac_addr and plug_port to be set')
       else:
         ethersync = cambrionix.EtherSync(mac_addr)
-        serial = ethersync.get_usb_serial(port)
+        serial_number = ethersync.get_usb_serial(port)
 
-  return local_usb.LibUsbHandle.open(serial_number=serial, **kwargs)
+  return local_usb.LibUsbHandle.open(serial_number=serial_number, **kwargs)
 
 
 class FastbootPlug(plugs.BasePlug):
@@ -118,20 +118,40 @@ class FastbootPlug(plugs.BasePlug):
 class AdbPlug(plugs.BasePlug):
   """Plug that provides ADB."""
 
+  serial_number = None
+
   def __init__(self):
-    kwargs = {}
     if conf.libusb_rsa_key:
-      kwargs['rsa_keys'] = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
+      self._rsa_keys = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
+    else:
+      self._rsa_keys = None
+    self._device = None
+    self.connect()
+
+  def tearDown(self):
+    if self._device:
+      self._device.close()
+
+  def connect(self):
+    if self._device:
+      try:
+        self._device.close()
+      except (usb_exceptions.UsbWriteFailedError,
+              usb_exceptions.UsbReadFailedError):
+        pass
+      self._device = None
+
+    kwargs = {}
+    if self._rsa_keys:
+      kwargs['rsa_keys'] = self._rsa_keys
 
     self._device = adb_device.AdbDevice.connect(
         _open_usb_handle(
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
-            interface_protocol=adb_device.PROTOCOL),
+            interface_protocol=adb_device.PROTOCOL,
+            serial_number=self.serial_number),
         **kwargs)
-
-  def tearDown(self):
-    self._device.close()
 
   def __getattr__(self, attr):
     """Forward other attributes to the device."""
