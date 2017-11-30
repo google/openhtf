@@ -72,9 +72,9 @@ class TestMeasurements(htf_test.TestCase):
   @htf_test.yields_phases
   def test_measurement_order(self):
     record = yield all_the_things.dimensions
-    self.assertEqual(record.measurements.keys(),
+    self.assertEqual(list(record.measurements.keys()),
                      ['unset_dims', 'dimensions', 'lots_of_dims'])
     record = yield all_the_things.measures_with_args.with_args(min=2, max=4)
-    self.assertEqual(record.measurements.keys(),
+    self.assertEqual(list(record.measurements.keys()),
                      ['replaced_min_only', 'replaced_max_only',
                       'replaced_min_max'])

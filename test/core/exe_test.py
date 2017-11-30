@@ -39,13 +39,13 @@ class UnittestPlug(plugs.BasePlug):
     self.count = 0
 
   def setup_cap(self):
-    print 'Set up the plugs instance.'
+    print('Set up the plugs instance.')
 
   def tear_down_cap(self):
-    print 'Tear down the plugs instance.'
+    print('Tear down the plugs instance.')
 
   def do_stuff(self):
-    print 'Plugs-specific functionality.'
+    print('Plugs-specific functionality.')
 
   def increment(self):
     self.count += 1
@@ -61,7 +61,7 @@ def phase_one(test, test_plug):
   del test  # Unused.
   del test_plug  # Unused.
   time.sleep(1)
-  print 'phase_one completed'
+  print('phase_one completed')
 
 
 @plugs.plug(test_plug=UnittestPlug)
@@ -69,7 +69,7 @@ def phase_two(test, test_plug):
   del test  # Unused.
   del test_plug  # Unused.
   time.sleep(2)
-  print 'phase_two completed'
+  print('phase_two completed')
 
 
 @openhtf.PhaseOptions(repeat_limit=4)
@@ -78,7 +78,7 @@ def phase_repeat(test, test_plug):
   del test  # Unused.
   time.sleep(.1)
   ret = test_plug.increment()
-  print 'phase_repeat completed for %s time' % test_plug.count
+  print('phase_repeat completed for %s time' % test_plug.count)
   return openhtf.PhaseResult.CONTINUE if ret else openhtf.PhaseResult.REPEAT
 
 

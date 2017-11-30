@@ -198,7 +198,7 @@ class Measurement(  # pylint: disable=no-init
 
   def with_validator(self, validator):
     """Add a validator callback to this Measurement, chainable."""
-    if not callable(validator):
+    if not isinstance(validator, collections.Callable):
       raise ValueError('Validator must be callable', validator)
     self.validators.append(validator)
     return self
@@ -325,7 +325,7 @@ class DimensionedMeasuredValue(mutablerecords.Record(
 
   def __iter__(self):  # pylint: disable=invalid-name
     """Iterate over items, allows easy conversion to a dict."""
-    return self.value_dict.iteritems()
+    return iter(self.value_dict.items())
 
   def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
     coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
@@ -366,7 +366,7 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     if not self.is_value_set:
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return [dimensions + (value,) for dimensions, value in
-            self.value_dict.iteritems()]
+            self.value_dict.items()]
 
 
 class Collection(mutablerecords.Record('Collection', ['_measurements'])):
@@ -421,7 +421,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
   def __iter__(self):  # pylint: disable=invalid-name
     """Extract each MeasurementValue's value."""
     return ((key, meas.measured_value.value)
-            for key, meas in self._measurements.iteritems())
+            for key, meas in self._measurements.items())
 
   def __setattr__(self, name, value):  # pylint: disable=invalid-name
     self[name] = value
@@ -469,7 +469,7 @@ def measures(*measurements, **kwargs):
     """Turn strings into Measurement objects if necessary."""
     if isinstance(meas, Measurement):
       return meas
-    elif isinstance(meas, basestring):
+    elif isinstance(meas, str):
       return Measurement(meas, **kwargs)
     raise InvalidMeasurementType('Expected Measurement or string', meas)
 

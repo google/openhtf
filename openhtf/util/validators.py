@@ -81,17 +81,13 @@ def create_validator(name, *args, **kwargs):
 _identity = lambda x: x
 
 
-class ValidatorBase(object):
-  __metaclass__ = abc.ABCMeta
-
+class ValidatorBase(object, metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def __call__(self, value):
     """Should validate value, returning a boolean result."""
 
 
-class RangeValidatorBase(ValidatorBase):
-  __metaclass__ = abc.ABCMeta
-
+class RangeValidatorBase(ValidatorBase, metaclass=abc.ABCMeta):
   @abc.abstractproperty
   def minimum(self):
     """Should return the minimum, inclusive value of the range."""
@@ -175,8 +171,8 @@ register(in_range, name='in_range')
 def equals(value, type=None):
   if isinstance(value, numbers.Number):
     return InRange(minimum=value, maximum=value, type=type)
-  elif isinstance(value, basestring):
-    assert type is None or issubclass(type, basestring), (
+  elif isinstance(value, str):
+    assert type is None or issubclass(type, str), (
         'Cannot use a non-string type when matching a string')
     return matches_regex('^{}$'.format(re.escape(value)))
   else:

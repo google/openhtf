@@ -32,7 +32,7 @@ from mutablerecords import records
 from enum import Enum
 
 # Used by convert_to_base_types().
-PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
+PASSTHROUGH_TYPES = {bool, bytes, int, int, type(None), str}
 
 
 def pprint_diff(first, second, first_name='first', second_name='second'):
@@ -67,8 +67,8 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
   if isinstance(first, dict) and isinstance(second, dict):
     if set(first) != set(second):
       logging.error('%sMismatching keys:', ' ' * indent)
-      logging.error('%s  %s', ' ' * indent, first.keys())
-      logging.error('%s  %s', ' ' * indent, second.keys())
+      logging.error('%s  %s', ' ' * indent, list(first.keys()))
+      logging.error('%s  %s', ' ' * indent, list(second.keys()))
       assert set(first) == set(second)
     for key in first:
       if key in volatile_fields:
@@ -84,7 +84,7 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
     assert_records_equal_nonvolatile(first._asdict(), second._asdict(),
                                      volatile_fields, indent)
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
-    for idx, (fir, sec) in enumerate(itertools.izip(first, second)):
+    for idx, (fir, sec) in enumerate(zip(first, second)):
       try:
         assert_records_equal_nonvolatile(fir, sec, volatile_fields, indent + 2)
       except AssertionError:
@@ -125,7 +125,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
   as an argument.
   """
   # Because it's *really* annoying to pass a single string accidentally.
-  assert not isinstance(ignore_keys, basestring), 'Pass a real iterable!'
+  assert not isinstance(ignore_keys, str), 'Pass a real iterable!'
 
   if type(obj) in PASSTHROUGH_TYPES:
     return obj
@@ -144,7 +144,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
   if isinstance(obj, dict):
     return {convert_to_base_types(k, ignore_keys, tuple_type):
                convert_to_base_types(v, ignore_keys, tuple_type)
-            for k, v in obj.iteritems() if k not in ignore_keys}
+            for k, v in obj.items() if k not in ignore_keys}
   elif isinstance(obj, list):
     return [convert_to_base_types(val, ignore_keys, tuple_type) for val in obj]
   elif isinstance(obj, tuple):
@@ -153,7 +153,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
 
   # Convert numeric types (e.g. numpy ints and floats) into built-in types.
   elif isinstance(obj, numbers.Integral):
-    return long(obj)
+    return int(obj)
   elif isinstance(obj, numbers.Real):
     return float(obj)
 
@@ -181,9 +181,9 @@ def total_size(obj):
 
     if isinstance(current_obj, dict):
       size += sum(map(sizeof, itertools.chain.from_iterable(
-          current_obj.iteritems())))
+          iter(current_obj.items()))))
     elif (isinstance(current_obj, collections.Iterable) and
-          not isinstance(current_obj, basestring)):
+          not isinstance(current_obj, str)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
       size += sum(sizeof(getattr(current_obj, attr))
