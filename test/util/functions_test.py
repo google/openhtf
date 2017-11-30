@@ -64,7 +64,7 @@ class TestFunctions(unittest.TestCase):
     @functions.call_at_most_every(5)
     def CallOnceEveryFiveSeconds():
       call_times.append(mock_time.time())
-    for _ in xrange(100):
+    for _ in range(100):
       CallOnceEveryFiveSeconds()
     # Each call takes "6 seconds", so we get call times up to 600.
-    self.assertEquals(range(2, 600, 6), call_times) 
+    self.assertEqual(list(range(2, 600, 6)), call_times) 

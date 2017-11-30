@@ -58,7 +58,7 @@ def requires_open_handle(method):  # pylint: disable=invalid-name
   return wrapper_requiring_open_handle
 
 
-class UsbHandle(object):
+class UsbHandle(object, metaclass=abc.ABCMeta):
   """UsbHandle objects provide read/write access to USB Interfaces.
 
   Subclasses must implement this interface to provide actual Read/Write/Close
@@ -98,7 +98,6 @@ class UsbHandle(object):
     name: Name assigned to this handle, used for logging purposes.
     serial_number: Serial number of the device this handle refers to.
   """
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self, serial_number, name=None, default_timeout_ms=None):
     """Create a UsbHandle to refer to a particular USB Interface.

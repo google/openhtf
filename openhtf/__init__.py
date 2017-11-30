@@ -192,14 +192,14 @@ class Test(object):
     # side effects.
     create_arg_parser(add_help=True).parse_known_args()
     logs.setup_logger()
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
       setattr(self._test_options, key, value)
 
   @classmethod
   def handle_sig_int(cls, *_):
     if cls.TEST_INSTANCES:
       _LOG.error('Received SIGINT, stopping all tests.')
-      for test in cls.TEST_INSTANCES.values():
+      for test in list(cls.TEST_INSTANCES.values()):
         test.stop_from_sig_int()
     station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
@@ -390,7 +390,7 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
         self, name=util.format_string(self.name, kwargs))
 
   def update(self, **kwargs):
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
       if key not in self.__slots__:
         raise AttributeError('Type %s does not have attribute %s' % (
             type(self).__name__, key))
@@ -481,7 +481,7 @@ class PhaseDescriptor(mutablerecords.Record(
     plugs_by_name = {plug.name: plug for plug in self.plugs}
     new_plugs = dict(plugs_by_name)
 
-    for name, sub_class in subplugs.iteritems():
+    for name, sub_class in subplugs.items():
       original_plug = plugs_by_name.get(name)
       if (original_plug is None
           or not isinstance(original_plug.cls, plugs.PlugPlaceholder)
@@ -493,7 +493,7 @@ class PhaseDescriptor(mutablerecords.Record(
 
     return mutablerecords.CopyRecord(
         self,
-        plugs=new_plugs.values(),
+        plugs=list(new_plugs.values()),
         options=self.options.format_strings(**subplugs),
         measurements=[m.with_args(**subplugs) for m in self.measurements])
 

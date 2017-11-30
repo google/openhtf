@@ -69,7 +69,7 @@ import os
 import socket
 import threading
 import time
-import xmlrpclib
+import xmlrpc.client
 
 import mutablerecords
 
@@ -86,7 +86,7 @@ from openhtf.util import xmlrpcutil
 
 # Fix for xmlrpclib to use <i8> for longs and ints instead of <int>, because our
 # timestamps are in millis, which are too big for 4-byte ints.
-xmlrpclib.Marshaller.dispatch[long] = xmlrpclib.Marshaller.dispatch[int] = (
+xmlrpc.client.Marshaller.dispatch[int] = xmlrpc.client.Marshaller.dispatch[int] = (
     lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
 
 _LOG = logging.getLogger(__name__)
@@ -408,7 +408,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     try:
       remote_state_dict = self.proxy_factory(timeout_s + 1).wait_for_update(
           self.test_uid, summary_dict, timeout_s)
-    except xmlrpclib.Fault as fault:
+    except xmlrpc.client.Fault as fault:
       # TODO(madsci): This is a super kludge, eventually implement the
       # ReraisingMixin for ServerProxy, but that's hard, so do this for now.
       if 'openhtf.io.station_api.UpdateTimeout' in fault.faultString:
@@ -453,7 +453,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     """
     last_start_time = self._cached_history.last_start_time(self.test_uid)
     new_history = self.shared_proxy.get_history_after(
-        self.test_uid, long(last_start_time))
+        self.test_uid, int(last_start_time))
     _LOG.debug('Requested history update for %s after %s, got %s results.',
                self.test_uid, last_start_time, len(new_history))
 
@@ -680,10 +680,10 @@ class StationApi(object):
     retval = [{
         'test_uid': test.uid,
         'test_name': test.get_option('name'),
-        'created_time_millis': long(test.created_time_millis),
+        'created_time_millis': int(test.created_time_millis),
         'last_run_time_millis':
-            test.last_run_time_millis and long(test.last_run_time_millis),
-    } for test in openhtf.Test.TEST_INSTANCES.values() if test.uid is not None]
+            test.last_run_time_millis and int(test.last_run_time_millis),
+    } for test in list(openhtf.Test.TEST_INSTANCES.values()) if test.uid is not None]
     _LOG.debug('RPC:list_tests() -> %s results', len(retval))
     return retval
 
@@ -770,7 +770,7 @@ class StationApi(object):
   def _summary_for_state_dict(state_dict):
     """Return a dict for state with counts swapped in for phase/log records."""
     state_dict_summary = {
-        k: v for k, v in state_dict.iteritems() if k != 'plugs'}
+        k: v for k, v in state_dict.items() if k != 'plugs'}
     state_dict_summary['test_record'] = data.convert_to_base_types(
         state_dict_summary['test_record'])
     state_dict_summary['test_record']['phases'] = len(

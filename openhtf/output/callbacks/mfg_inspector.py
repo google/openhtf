@@ -67,7 +67,7 @@ OUTCOME_MAP = {
 UOM_CODE_MAP = {
     u.GetOptions().Extensions[units_pb2.uom_code]: num
     for num, u in
-    units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.iteritems()
+    units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.items()
 }
 # pylint: enable=no-member
 
@@ -121,7 +121,7 @@ def _populate_header(record, testrun):
     attachment = testrun.info_parameters.add()
     attachment.name = 'config'
     attachment.value_binary = json.dumps(
-        record.metadata['config'], sort_keys=True, indent=4)
+        record.metadata['config'], sort_keys=True, indent=4).encode('utf-8')
 
 
 def _ensure_unique_parameter_name(name, used_parameter_names):
@@ -143,7 +143,7 @@ def _attach_json(record, testrun):
       sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
-  testrun_param.value_binary = record_json
+  testrun_param.value_binary = record_json.encode('utf-8')
   # pylint: disable=no-member
   testrun_param.type = test_runs_pb2.TEXT_UTF8
   # pylint: enable=no-member
@@ -155,7 +155,7 @@ def _extract_attachments(phase, testrun, used_parameter_names):
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
-    if isinstance(attachment_data, unicode):
+    if isinstance(attachment_data, str):
       attachment_data = attachment_data.encode('utf8')
     testrun_param.value_binary = attachment_data
     if mimetype in MIMETYPE_MAP:
@@ -173,8 +173,8 @@ def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
   We generate these by doing some name mangling, using some sane limits for
   very large multidimensional measurements.
   """
-  for coord, val in measured_value.value_dict.items(
-      )[:MAX_PARAMS_PER_MEASUREMENT]:
+  for coord, val in list(measured_value.value_dict.items(
+      ))[:MAX_PARAMS_PER_MEASUREMENT]:
     # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
     mangled_name = '_'.join([name] + [
         '%s%s' % (
@@ -258,7 +258,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
         attachment = testrun.info_parameters.add()
         attachment.name = 'multidim_%s' % name
         dims = [{
-            'uom_suffix': d.suffix and d.suffix.encode('utf8'),
+            'uom_suffix': d.suffix,
             'uom_code': d.code}
                 for d in measurement.dimensions]
         # Refer to the module docstring for the expected schema.
@@ -266,7 +266,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
             'outcome': str(testrun_param.status), 'name': name,
             'dimensions': dims,
             'value': value
-        }, sort_keys=True)
+        }, sort_keys=True).encode('utf-8')
         attachment.type = test_runs_pb2.MULTIDIM_JSON
         _mangle_measurement(
             name, measurement.measured_value, measurement, mangled_parameters,

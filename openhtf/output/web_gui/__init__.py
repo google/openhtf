@@ -158,7 +158,7 @@ class TestWatcher(threading.Thread):
       return
 
     plug_names = set(self._test.get_frontend_aware_plug_names())
-    watched_names = set(self._plug_watchers.iterkeys())
+    watched_names = set(self._plug_watchers.keys())
 
     for plug_name in plug_names - watched_names:
       self._plug_watchers[plug_name] = PlugWatcher(
@@ -239,12 +239,12 @@ class StationStore(threading.Thread):
     if self._disable_discovery:
       _LOG.debug('Station discovery is disabled; only using static stations.')
 
-    self._handle_stations(self.stations.iterkeys())
+    self._handle_stations(iter(self.stations.keys()))
     while not self._stop_event.is_set():
       if not self._disable_discovery:
         self._discover()
 
-      self._handle_stations(self.stations.iterkeys())
+      self._handle_stations(iter(self.stations.keys()))
       self._stop_event.wait(self._discovery_interval_s)
 
   def stop(self):
@@ -253,7 +253,7 @@ class StationStore(threading.Thread):
     self.join()
 
   def watch_tests(self, hostport):
-    for test_uid, remote_test in self.stations[hostport].tests.iteritems():
+    for test_uid, remote_test in self.stations[hostport].tests.items():
       if (hostport, test_uid) not in self._watchers:
         self._watchers[hostport, test_uid] = TestWatcher(
             hostport, remote_test, self._on_update_callback)
@@ -322,7 +322,7 @@ class DashboardPubSub(PubSub):
   def publish_discovery_update(cls, stations):
     """Look for changes in high-level station info and publish if changed."""
     new_stations = {}
-    for (host, port), station in stations.iteritems():
+    for (host, port), station in stations.items():
       new_stations['%s:%s' % (host, port)] = {
           'station_id': station.station_id,
           'host': host,
@@ -377,7 +377,7 @@ class StationPubSub(PubSub):
 
     try:
       self._store.watch_tests(hostport)
-      for test_uid, remote_test in self._store[hostport].tests.iteritems():
+      for test_uid, remote_test in self._store[hostport].tests.items():
         self.send(self.make_msg(test_uid, remote_test.state))
     except station_api.StationUnreachableError:
       _LOG.debug('Station %s unreachable during on_subscribe.', hostport)
@@ -472,7 +472,7 @@ class WebGuiServer(tornado.web.Application):
       if plug is None:
         self.set_status(500)
         self.write('Plug "%s" not found in "%s"' % (
-            self.request.path, self._plugs.keys()))
+            self.request.path, list(self._plugs.keys())))
         return
       try:
         response = plug.respond(self.request.body)

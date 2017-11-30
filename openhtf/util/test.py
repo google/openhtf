@@ -171,7 +171,7 @@ class PhaseOrTestIterator(collections.Iterator):
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(plug_cls for plug_cls in plug_types if
                                        plug_cls not in self.mock_plugs)
-    for plug_type, plug_value in self.mock_plugs.iteritems():
+    for plug_type, plug_value in self.mock_plugs.items():
       self.plug_manager.update_plug(plug_type, plug_value)
 
   @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
@@ -196,7 +196,7 @@ class PhaseOrTestIterator(collections.Iterator):
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
-    for plug_type, plug_value in self.mock_plugs.iteritems():
+    for plug_type, plug_value in self.mock_plugs.items():
       self.plug_manager.update_plug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
@@ -211,11 +211,11 @@ class PhaseOrTestIterator(collections.Iterator):
 
     return record_saver.result
 
-  def next(self):
+  def __next__(self):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
       self.last_result = self._handle_test(phase_or_test)
-    elif not callable(phase_or_test):
+    elif not isinstance(phase_or_test, collections.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -285,8 +285,8 @@ def patch_plugs(**mock_plugs):
     # Make MagicMock instances for the plugs.
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
-    for plug_arg_name, plug_fullname in mock_plugs.iteritems():
-      if isinstance(plug_fullname, basestring):
+    for plug_arg_name, plug_fullname in mock_plugs.items():
+      if isinstance(plug_fullname, str):
         try:
           plug_module, plug_typename = plug_fullname.rsplit('.', 1)
           plug_type = getattr(sys.modules[plug_module], plug_typename)
@@ -355,7 +355,7 @@ class TestCase(unittest.TestCase):
             exc_info = sys.exc_info()
         else:
           if exc_info:
-            raise exc_info[0], exc_info[1], exc_info[2]
+            raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
       elif isinstance(phase_or_test_record, test_record.PhaseRecord):
         func(self, phase_or_test_record, *args)
       else:
@@ -365,13 +365,13 @@ class TestCase(unittest.TestCase):
   ##### TestRecord Assertions #####
 
   def assertTestPass(self, test_rec):
-    self.assertEquals(test_record.Outcome.PASS, test_rec.outcome)
+    self.assertEqual(test_record.Outcome.PASS, test_rec.outcome)
 
   def assertTestFail(self, test_rec):
-    self.assertEquals(test_record.Outcome.FAIL, test_rec.outcome)
+    self.assertEqual(test_record.Outcome.FAIL, test_rec.outcome)
 
   def assertTestError(self, test_rec, exc_type=None):
-    self.assertEquals(test_record.Outcome.ERROR, test_rec.outcome)
+    self.assertEqual(test_record.Outcome.ERROR, test_rec.outcome)
     if exc_type:
       self.assertPhaseError(test_rec.phases[-1], exc_type)
 
@@ -442,7 +442,7 @@ class TestCase(unittest.TestCase):
         phase_record.measurements[measurement].measured_value.is_value_set,
         'Measurement %s not set' % measurement)
     if value is not mock.ANY:
-      self.assertEquals(
+      self.assertEqual(
           value, phase_record.measurements[measurement].measured_value.value,
           'Measurement %s has wrong value: expected %s, got %s' %
           (measurement, value,

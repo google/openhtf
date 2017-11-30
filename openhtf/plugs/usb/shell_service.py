@@ -68,7 +68,7 @@ Some examples of how to use this service:
   # output.getvalue() now contains the output of the arecord command.
 """
 
-import cStringIO
+import io
 import threading
 import time
 
@@ -112,7 +112,7 @@ class AsyncCommandHandle(object):
     """
     self.stream = stream
     self.stdin = stdin
-    self.stdout = stdout or cStringIO.StringIO()
+    self.stdout = stdout or io.StringIO()
     self.force_closed_or_timeout = False
 
     self.reader_thread = threading.Thread(target=self._reader_thread_proc,
