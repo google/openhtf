@@ -16,12 +16,19 @@
 
 import http.client
 import xmlrpc.server
+import os
 import socketserver
+import sys
 import threading
 import xmlrpc.client
 import collections
 
 DEFAULT_PROXY_TIMEOUT_S = 3
+
+if sys.version_info[0] < 3:
+  from SimpleXMLRPCServer import SimpleXMLRPCServer
+else:
+  from xmlrpc.server import SimpleXMLRPCServer as SimpleXMLRPCServer
 
 
 class TimeoutHTTPConnection(http.client.HTTPConnection):
@@ -100,6 +107,6 @@ class LockedTimeoutProxy(TimeoutProxyMixin, LockedProxyMixin, BaseServerProxy):
 
 
 class SimpleThreadedXmlRpcServer(
-    socketserver.ThreadingMixIn, xmlrpc.server.SimpleXMLRPCServer):
+    socketserver.ThreadingMixIn, SimpleXMLRPCServer):
   """Helper for handling multiple simultaneous RPCs in threads."""
   daemon_threads = True
