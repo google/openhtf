@@ -213,8 +213,8 @@ accordingly.
 git clone https://github.com/google/openhtf.git
 
 # Install system-level third-party dependencies.
-sudo apt-get install python-pip swig libssl-dev python-dev libffi-dev \
-protobuf-compiler libprotobuf-dev
+sudo apt-get install python-pip swig libssl-dev python-dev python3-dev \
+libffi-dev protobuf-compiler libprotobuf-dev
 
 # Make sure pip is up-to-date.
 sudo pip install --upgrade pip

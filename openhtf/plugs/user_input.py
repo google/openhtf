@@ -111,7 +111,7 @@ class ConsolePrompt(threading.Thread):
                   # want to actually quit.
                   print("Hit ^C (Ctrl+c) to exit.")
                   break
-              line += new
+              line += new.decode('utf-8')
               if '\n' in line:
                 response = line[:line.find('\n')]
                 self._answered = True
