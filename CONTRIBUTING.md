@@ -337,3 +337,21 @@ npm run update_prebuilt
 
 That last step is easy to forget, so try to make it a habit whenever you're
 prepping a PR that includes frontend work.
+
+## Building documentation
+
+The documentation compiler loads each module to look for
+docstrings. That means you need dependencies installed, including
+optional ones:
+
+``` shellsession
+pip install -e .[usb_plugs]
+```
+
+You can then build the docs:
+
+``` shellsession
+python setup.py build_sphinx
+```
+
+The main index page will then be at `docs/build/html/index.html`.
