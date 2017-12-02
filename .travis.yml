@@ -1,7 +1,10 @@
 language: python
-python:
-  - '2.7'
-  - '3.6'
+matrix:
+  include:
+    - python: 2.7
+      env: TOXENV=py27
+    - python: 3.6
+      env: TOXENV=py36
 addons:
   apt:
     packages:
@@ -15,9 +18,6 @@ cache:
   apt: true
   directories:
   - $HOME/.cache/pip
-env:
-- TOXENV=py27
-- TOXENV=py36
 install:
 - pip install tox coveralls
 - pip install -e .
