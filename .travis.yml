@@ -1,6 +1,6 @@
 language: python
 python:
-  # - '2.7'
+  - '2.7'
   - '3.6'
 addons:
   apt:
@@ -16,7 +16,7 @@ cache:
   directories:
   - $HOME/.cache/pip
 env:
-  #- TOXENV=py27
+- TOXENV=py27
 - TOXENV=py36
 install:
 - pip install tox coveralls
