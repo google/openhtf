@@ -14,6 +14,7 @@
 
 import unittest
 import mock
+import sys
 
 from openhtf.util import data
 
@@ -45,7 +46,10 @@ class TestData(unittest.TestCase):
     self.assertIs(type(converted['unicode']), str)
     self.assertIs(type(converted['int']), int)
     self.assertIs(type(converted['float']), float)
-    self.assertIs(type(converted['long']), int)
+    if sys.version_info[0] < 3:
+      self.assertIs(type(converted['long']), long)
+    else:
+      self.assertIs(type(converted['long']), int)
     self.assertIs(type(converted['bool']), bool)
     self.assertIs(converted['none'], None)
     self.assertIs(type(converted['complex']), str)
