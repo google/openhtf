@@ -223,6 +223,19 @@ class PhaseOrTestIterator(collections.Iterator):
       self.last_result = self._handle_phase(
           openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
     return phase_or_test, self.last_result
+  
+  def next(self):
+    phase_or_test = self.iterator.send(self.last_result)
+    if isinstance(phase_or_test, openhtf.Test):
+      self.last_result = self._handle_test(phase_or_test)
+    elif not isinstance(phase_or_test, collections.Callable):
+      raise InvalidTestError(
+          'methods decorated with patch_plugs must yield Test instances or '
+          'individual test phases', phase_or_test)
+    else:
+      self.last_result = self._handle_phase(
+          openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
+    return phase_or_test, self.last_result
 
 
 def yields_phases(func):
