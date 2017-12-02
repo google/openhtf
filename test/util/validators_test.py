@@ -2,6 +2,7 @@
 
 import copy
 import decimal
+import six
 import unittest
 
 from openhtf.util import validators
@@ -10,9 +11,9 @@ from openhtf.util import validators
 class TestInRange(unittest.TestCase):
 
   def test_raises_if_invalid_arguments(self):
-    with self.assertRaisesRegex(ValueError, 'Must specify minimum'):
+    with six.assertRaisesRegex(self, ValueError, 'Must specify minimum'):
       validators.InRange()
-    with self.assertRaisesRegex(ValueError, 'Minimum cannot be greater'):
+    with six.assertRaisesRegex(self, ValueError, 'Minimum cannot be greater'):
       validators.InRange(minimum=10, maximum=0)
 
   def test_invalidates_non_numbers(self):
@@ -108,7 +109,7 @@ class TestEqualsFactory(unittest.TestCase):
 class TestWithinPercent(unittest.TestCase):
 
   def test_raises_for_negative_percentage(self):
-    with self.assertRaisesRegex(ValueError, 'percent argument is'):
+    with six.assertRaisesRegex(self, ValueError, 'percent argument is'):
       validators.WithinPercent(expected=100, percent=-1)
 
   def test_within_percent_less_than_one_hundred(self):
