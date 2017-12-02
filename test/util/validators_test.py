@@ -2,6 +2,7 @@
 
 import copy
 import decimal
+import sys
 import unittest
 
 from openhtf.util import validators
@@ -10,10 +11,16 @@ from openhtf.util import validators
 class TestInRange(unittest.TestCase):
 
   def test_raises_if_invalid_arguments(self):
-    with self.assertRaisesRegex(ValueError, 'Must specify minimum'):
-      validators.InRange()
-    with self.assertRaisesRegex(ValueError, 'Minimum cannot be greater'):
-      validators.InRange(minimum=10, maximum=0)
+    if sys.version_info[0] < 3:
+      with self.assertRaisesRegexp(ValueError, 'Must specify minimum'):
+        validators.InRange()
+      with self.assertRaisesRegexp(ValueError, 'Minimum cannot be greater'):
+        validators.InRange(minimum=10, maximum=0)
+    else:
+      with self.assertRaisesRegex(ValueError, 'Must specify minimum'):
+        validators.InRange()
+      with self.assertRaisesRegex(ValueError, 'Minimum cannot be greater'):
+        validators.InRange(minimum=10, maximum=0)
 
   def test_invalidates_non_numbers(self):
     self.assertFalse(validators.InRange(0, 10)(float('nan')))
@@ -108,8 +115,12 @@ class TestEqualsFactory(unittest.TestCase):
 class TestWithinPercent(unittest.TestCase):
 
   def test_raises_for_negative_percentage(self):
-    with self.assertRaisesRegex(ValueError, 'percent argument is'):
-      validators.WithinPercent(expected=100, percent=-1)
+    if sys.version_info[0] < 3:
+      with self.assertRaisesRegexp(ValueError, 'percent argument is'):
+        validators.WithinPercent(expected=100, percent=-1)
+    else:
+      with self.assertRaisesRegex(ValueError, 'percent argument is'):
+        validators.WithinPercent(expected=100, percent=-1)
 
   def test_within_percent_less_than_one_hundred(self):
     validator = validators.WithinPercent(expected=100, percent=5)
