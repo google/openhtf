@@ -53,12 +53,8 @@ class BuildProtoCommand(Command):
   def initialize_options(self):
     self.skip_proto = False
     try:
-      if sys.version_info[0] < 3:
-        prefix = subprocess.check_output(
-            'pkg-config --variable prefix protobuf'.split()).strip()
-      else:
-        prefix = subprocess.getoutput(
-            'pkg-config --variable prefix protobuf').strip()
+      prefix = subprocess.check_output(
+          'pkg-config --variable prefix protobuf'.split()).strip()
     except (subprocess.CalledProcessError, OSError):
       if platform.system() == 'Linux':
         # Default to /usr?
@@ -71,8 +67,8 @@ class BuildProtoCommand(Command):
               'Windows. OpenHTF will be installed without it.')
         self.skip_proto = True
 
-    self.protoc = os.path.join(prefix, 'bin', 'protoc')
-    self.protodir = os.path.join(prefix, 'include')
+    self.protoc = os.path.join(prefix, b'bin', b'protoc')
+    self.protodir = os.path.join(prefix, b'include')
     self.indir = os.getcwd()
     self.outdir = os.getcwd()
 

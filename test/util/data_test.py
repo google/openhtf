@@ -16,6 +16,7 @@ import unittest
 import mock
 import sys
 
+from builtins import int
 from openhtf.util import data
 
 
@@ -40,16 +41,14 @@ class TestData(unittest.TestCase):
     }
     converted = data.convert_to_base_types(example_data)
 
+
     self.assertIs(type(converted['list']), list)
     self.assertIs(type(converted['tuple']), tuple)
     self.assertIs(type(converted['str']), str)
     self.assertIs(type(converted['unicode']), str)
-    self.assertIs(type(converted['int']), int)
+    assert isinstance(converted['int'], int)
     self.assertIs(type(converted['float']), float)
-    if sys.version_info[0] < 3:
-      self.assertIs(type(converted['long']), long)
-    else:
-      self.assertIs(type(converted['long']), int)
+    assert isinstance(converted['long'], int)
     self.assertIs(type(converted['bool']), bool)
     self.assertIs(converted['none'], None)
     self.assertIs(type(converted['complex']), str)
