@@ -181,3 +181,23 @@ class PlugsTest(test.TestCase):
       @plugs.plug(adder_plug=AdderPlug)
       def dummy_phase(test, adder_plug):
         pass
+
+
+class PlugsPlaceHolderTest(test.TestCase):
+
+  def test_default_placeholder(self):
+    default = AdderPlug.default_placeholder
+    pm = plugs.PlugManager({default})
+    pm.initialize_plugs()
+    provided_plugs = pm.provide_plugs([('adder', default)])
+    self.assertEqual(1, len(provided_plugs))
+    self.assertIsInstance(provided_plugs['adder'], AdderPlug)
+
+  def test_non_default_placeholder_not_allowed_in_initializer(self):
+    with self.assertRaises(plugs.InvalidPlugError):
+      plugs.PlugManager({AdderPlug.placeholder})
+
+  def test_non_default_placeholder_not_allowed_in_provide_plugs(self):
+    pm = plugs.PlugManager()
+    with self.assertRaises(plugs.InvalidPlugError):
+      pm.provide_plugs([('adder', AdderPlug.placeholder)])

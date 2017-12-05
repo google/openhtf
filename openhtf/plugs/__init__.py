@@ -124,12 +124,17 @@ conf.declare('plug_teardown_timeout_s', default_value=0, description=
 
 PlugDescriptor = collections.namedtuple('PlugDescriptor', ['mro'])  # pylint: disable=invalid-name
 
+
 # Placeholder for a specific plug to be provided before test execution.
 #
 # Use the with_plugs() method to provide the plug before test execution. The
 # with_plugs() method checks to make sure the substitute plug is a subclass of
 # the PlugPlaceholder's base_class.
-PlugPlaceholder = collections.namedtuple('PlugPlaceholder', ['base_class'])  # pylint: disable-invalid-name
+class PlugPlaceholder(collections.namedtuple(
+    'PlugPlaceholder', ['base_class', 'allow_default'])):
+
+  def __str__(self):
+    return 'PlugPlaceholder(%s)' % self.base_class.__name__
 
 
 class PlugOverrideError(Exception):
@@ -164,7 +169,12 @@ class BasePlug(object):
   @classproperty
   def placeholder(cls):
     """Returns a PlugPlaceholder for the calling class."""
-    return PlugPlaceholder(cls)
+    return PlugPlaceholder(cls, False)
+
+  @classproperty
+  def default_placeholder(cls):
+    """Returns a PlugPlaceholder that defaults to this class."""
+    return PlugPlaceholder(cls, True)
 
   def _asdict(self):
     """Return a dictionary representation of this plug's state.
@@ -288,11 +298,20 @@ class PlugManager(object):
   """
 
   def __init__(self, plug_types=None, logger=None):
-    self._plug_types = plug_types or set()
-    for plug in self._plug_types:
-      if isinstance(plug, PlugPlaceholder):
-        raise InvalidPlugError('Plug %s is a placeholder, replace it using '
-                               'with_plugs().' % plug)
+    if plug_types is None:
+      plug_types = set()
+
+    self._plug_types = set()
+    for plug_type in plug_types:
+      if isinstance(plug_type, PlugPlaceholder):
+        if plug_type.allow_default:
+          self._plug_types.add(plug_type.base_class)
+        else:
+          raise InvalidPlugError('Plug %s is a placeholder, replace it using '
+                                 'with_plugs().' % (plug_type,))
+      else:
+        self._plug_types.add(plug_type)
+
     self._logger = logger
     self._plugs_by_type = {}
     self._plugs_by_name = {}
@@ -459,7 +478,16 @@ class PlugManager(object):
 
   def provide_plugs(self, plug_name_map):
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
-    return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}
+    ret = {}
+    for name, cls in plug_name_map:
+      if isinstance(cls, PlugPlaceholder):
+        if not cls.allow_default:
+          raise InvalidPlugError(
+              'Attempted to use Non-default PlugPlaceholder: %s=%s' % (
+                  name, cls.base_class.__name__))
+        cls = cls.base_class
+      ret[name] = self._plugs_by_type[cls]
+    return ret
 
   def tear_down_plugs(self):
     """Call tearDown() on all instantiated plugs.
