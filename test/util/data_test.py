@@ -14,10 +14,10 @@
 
 import unittest
 import mock
-import sys
 
 from builtins import int
 from openhtf.util import data
+from past.builtins import long
 
 
 class TestData(unittest.TestCase):
@@ -48,7 +48,7 @@ class TestData(unittest.TestCase):
     self.assertIs(type(converted['unicode']), str)
     assert isinstance(converted['int'], int)
     self.assertIs(type(converted['float']), float)
-    assert isinstance(converted['long'], int)
+    assert isinstance(converted['long'], long)
     self.assertIs(type(converted['bool']), bool)
     self.assertIs(converted['none'], None)
     self.assertIs(type(converted['complex']), str)

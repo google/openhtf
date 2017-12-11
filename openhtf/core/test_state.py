@@ -45,6 +45,7 @@ from openhtf.core import phase_executor
 from openhtf.core import test_record
 from openhtf.util import conf
 from openhtf.util import logs
+from past.builtins import long
 
 conf.declare('allow_unset_measurements', default_value=False,
              description='If True, unset measurements do not cause Tests to '
@@ -426,7 +427,7 @@ class PhaseState(mutablerecords.Record(
         'name': self.name,
         'codeinfo': self.phase_record.codeinfo,
         'descriptor_id': self.phase_record.descriptor_id,
-        'start_time_millis': int(self.phase_record.start_time_millis),
+        'start_time_millis': long(self.phase_record.start_time_millis),
         'options': self.phase_record.options,
         'attachments': self.attachments,
         'measurements': self.measurements,

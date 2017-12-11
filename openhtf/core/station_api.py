@@ -83,10 +83,11 @@ from openhtf.util import multicast
 from openhtf.util import threads
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
+from past.builtins import long
 
 # Fix for xmlrpclib to use <i8> for longs and ints instead of <int>, because our
 # timestamps are in millis, which are too big for 4-byte ints.
-xmlrpc.client.Marshaller.dispatch[int] = xmlrpc.client.Marshaller.dispatch[int] = (
+xmlrpc.client.Marshaller.dispatch[long] = xmlrpc.client.Marshaller.dispatch[int] = (
     lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
 
 _LOG = logging.getLogger(__name__)
@@ -453,7 +454,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     """
     last_start_time = self._cached_history.last_start_time(self.test_uid)
     new_history = self.shared_proxy.get_history_after(
-        self.test_uid, int(last_start_time))
+        self.test_uid, long(last_start_time))
     _LOG.debug('Requested history update for %s after %s, got %s results.',
                self.test_uid, last_start_time, len(new_history))
 
@@ -680,9 +681,9 @@ class StationApi(object):
     retval = [{
         'test_uid': test.uid,
         'test_name': test.get_option('name'),
-        'created_time_millis': int(test.created_time_millis),
+        'created_time_millis': long(test.created_time_millis),
         'last_run_time_millis':
-            test.last_run_time_millis and int(test.last_run_time_millis),
+            test.last_run_time_millis and long(test.last_run_time_millis),
     } for test in list(openhtf.Test.TEST_INSTANCES.values()) if test.uid is not None]
     _LOG.debug('RPC:list_tests() -> %s results', len(retval))
     return retval

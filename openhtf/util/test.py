@@ -112,6 +112,7 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
+from past.builtins import basestring
 import collections
 import functools
 import inspect
@@ -299,7 +300,7 @@ def patch_plugs(**mock_plugs):
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
     for plug_arg_name, plug_fullname in mock_plugs.items():
-      if isinstance(plug_fullname, str):
+      if isinstance(plug_fullname, basestring):
         try:
           plug_module, plug_typename = plug_fullname.rsplit('.', 1)
           plug_type = getattr(sys.modules[plug_module], plug_typename)
@@ -368,7 +369,7 @@ class TestCase(unittest.TestCase):
             exc_info = sys.exc_info()
         else:
           if exc_info:
-            raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
+            raise exc_info[0](exc_info[1]).raise_with_traceback(exc_info[2])
       elif isinstance(phase_or_test_record, test_record.PhaseRecord):
         func(self, phase_or_test_record, *args)
       else:

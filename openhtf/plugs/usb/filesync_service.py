@@ -223,7 +223,7 @@ class FilesyncService(object):
       if sys.exc_info()[0] is usb_exceptions.AdbRemoteError:
         raise
     # Otherwise reraise the original exception.
-    raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
+    raise exc_info[0](exc_info[1]).raise_with_traceback(exc_info[2])
 
   # pylint: disable=too-many-arguments
   def send(self, src_file, filename, st_mode=DEFAULT_PUSH_MODE, mtime=None,

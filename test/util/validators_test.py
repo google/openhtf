@@ -5,6 +5,7 @@ import decimal
 import six
 import unittest
 
+from builtins import int
 from openhtf.util import validators
 
 
@@ -85,7 +86,7 @@ class TestEqualsValidator(unittest.TestCase):
 class TestEqualsFactory(unittest.TestCase):
 
   def test_with_numbers(self):
-    for expected in [1, 1.0, decimal.Decimal(1), 1]:
+    for expected in [1, 1.0, decimal.Decimal(1), int(1)]:
       number_validator = validators.equals(expected)
       self.assertTrue(number_validator(expected))
       self.assertFalse(number_validator(0))

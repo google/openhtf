@@ -22,7 +22,10 @@ examples.
 
 import base64
 import contextlib
-import pickle as pickle
+try:
+   import cPickle as pickle
+except:
+   import pickle
 import os
 import shutil
 import tempfile

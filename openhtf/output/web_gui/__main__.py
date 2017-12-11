@@ -15,8 +15,7 @@
 
 """Entry point to run OpenHTF's built-in web gui server."""
 
-
-
+from __future__ import print_function
 import argparse
 import logging
 import os

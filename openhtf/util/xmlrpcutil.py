@@ -25,6 +25,7 @@ import collections
 
 DEFAULT_PROXY_TIMEOUT_S = 3
 
+# https://github.com/PythonCharmers/python-future/issues/280
 if sys.version_info[0] < 3:
   from SimpleXMLRPCServer import SimpleXMLRPCServer
 else:

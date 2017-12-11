@@ -28,6 +28,7 @@ import struct
 import sys
 
 from mutablerecords import records
+from past.builtins import long
 
 from enum import Enum
 
@@ -153,7 +154,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
 
   # Convert numeric types (e.g. numpy ints and floats) into built-in types.
   elif isinstance(obj, numbers.Integral):
-    return int(obj)
+    return long(obj)
   elif isinstance(obj, numbers.Real):
     return float(obj)
 

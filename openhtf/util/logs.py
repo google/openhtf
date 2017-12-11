@@ -63,6 +63,7 @@ Test record logs are by default output to stdout at a debug level.  There is
 no way to change this, if you don't like it redirect stdout to /dev/null.
 """
 
+from past.builtins import basestring
 import argparse
 import collections
 import logging
@@ -149,7 +150,7 @@ class MacAddressLogFilter(logging.Filter):
       record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.msg)
       record.args = tuple([
           self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
-          if isinstance(arg, str)
+          if isinstance(arg, basestring)
           else arg for arg in record.args])
     return True
 
