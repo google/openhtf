@@ -40,10 +40,29 @@ class ExtraPlug(plugs.BasePlug):
   def echo(self, phrase):
     return '%s says %s' % (self.name, phrase)
 
+
 @openhtf.PhaseOptions(name='extra_plug_func[{plug.name}][{phrase}]')
 @plugs.plug(plug=ExtraPlug.placeholder)
 def extra_plug_func(plug, phrase):
   return plug.echo(phrase)
+
+
+class PlaceholderCapablePlug(plugs.BasePlug):
+  auto_placeholder = True
+
+
+class SubPlaceholderCapablePlug(PlaceholderCapablePlug):
+  pass
+
+
+@plugs.plug(placed=PlaceholderCapablePlug)
+def placeholder_using_plug(placed):
+  del placed  # Unused.
+
+
+@plugs.plug(subplaced=SubPlaceholderCapablePlug)
+def sub_placeholder_using_plug(subplaced):
+  del subplaced  # Unused.
 
 
 class TestPhaseDescriptor(unittest.TestCase):
@@ -96,3 +115,18 @@ class TestPhaseDescriptor(unittest.TestCase):
 
       result = phase(self._phase_data)
       self.assertEqual('extra_plug_0 says hello', result)
+
+  def test_with_plugs_auto_placeholder(self):
+      phase = placeholder_using_plug.with_plugs(
+          placed=SubPlaceholderCapablePlug)
+      self.assertIs(phase.func, placeholder_using_plug.func)
+      self.assertEqual(1, len(phase.plugs))
+
+  def test_with_plugs_subclass_auto_placeholder_error(self):
+      with self.assertRaises(plugs.InvalidPlugError):
+          sub_placeholder_using_plug.with_plugs(
+              subplaced=SubPlaceholderCapablePlug)
+
+  def test_with_plugs_auto_placeholder_non_subclass_error(self):
+      with self.assertRaises(plugs.InvalidPlugError):
+          placeholder_using_plug.with_plugs(placed=ExtraPlug)
