@@ -33,7 +33,7 @@ from past.builtins import long
 from enum import Enum
 
 # Used by convert_to_base_types().
-PASSTHROUGH_TYPES = {bool, bytes, int, int, type(None), str}
+PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), str}
 
 
 def pprint_diff(first, second, first_name='first', second_name='second'):
@@ -182,7 +182,7 @@ def total_size(obj):
 
     if isinstance(current_obj, dict):
       size += sum(map(sizeof, itertools.chain.from_iterable(
-          iter(current_obj.items()))))
+          current_obj.items())))
     elif (isinstance(current_obj, collections.Iterable) and
           not isinstance(current_obj, str)):
       size += sum(sizeof(item) for item in current_obj)

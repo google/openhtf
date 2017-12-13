@@ -79,7 +79,7 @@ Example usage of a connection and stream:
 import collections
 import itertools
 import logging
-from queue import Queue
+import queue
 import threading
 
 from enum import Enum
@@ -567,7 +567,7 @@ class AdbConnection(object):
 
   def _make_stream_transport(self):
     """Create an AdbStreamTransport with a newly allocated local_id."""
-    msg_queue = Queue()
+    msg_queue = queue.Queue()
     with self._stream_transport_map_lock:
       # Start one past the last id we used, and grab the first available one.
       # This mimics the ADB behavior of 'increment an unsigned and let it

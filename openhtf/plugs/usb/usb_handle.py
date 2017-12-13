@@ -21,6 +21,7 @@ UsbHandle interface, which contains Open, Close, Read, and Write functionality.
 A UsbHandle object represents a single USB Interface, *not* an entire device.
 """
 
+from future.utils import with_metaclass
 import abc
 import functools
 import logging
@@ -58,7 +59,7 @@ def requires_open_handle(method):  # pylint: disable=invalid-name
   return wrapper_requiring_open_handle
 
 
-class UsbHandle(object, metaclass=abc.ABCMeta):
+class UsbHandle(with_metaclass(object)):
   """UsbHandle objects provide read/write access to USB Interfaces.
 
   Subclasses must implement this interface to provide actual Read/Write/Close
