@@ -28,7 +28,6 @@ To use these plugs:
     adb.Shell('ls')
 """
 import argparse
-import subprocess
 import logging
 import time
 

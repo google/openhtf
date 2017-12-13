@@ -198,7 +198,7 @@ class Measurement(  # pylint: disable=no-init
 
   def with_validator(self, validator):
     """Add a validator callback to this Measurement, chainable."""
-    if not isinstance(validator, collections.Callable):
+    if not callable(validator):
       raise ValueError('Validator must be callable', validator)
     self.validators.append(validator)
     return self

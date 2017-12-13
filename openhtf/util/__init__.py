@@ -144,7 +144,7 @@ def format_string(target, kwargs):
   """
   if not target:
     return target
-  if isinstance(target, collections.Callable):
+  if callable(target):
     return target(**kwargs)
   if not isinstance(target, str):
     return target

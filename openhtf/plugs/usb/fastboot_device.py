@@ -86,7 +86,7 @@ class FastbootDevice(object):
       raise usb_exceptions.HandleClosedError()
 
     val = getattr(self._protocol, attr)
-    if isinstance(val, collections.Callable):
+    if callable(val):
       def _retry_wrapper(*args, **kwargs):
         """Wrap the retry function."""
         result = _retry_usb_function(self._num_retries, val, *args, **kwargs)

@@ -199,7 +199,7 @@ class Test(object):
   def handle_sig_int(cls, *_):
     if cls.TEST_INSTANCES:
       _LOG.error('Received SIGINT, stopping all tests.')
-      for test in list(cls.TEST_INSTANCES.values()):
+      for test in cls.TEST_INSTANCES.values():
         test.stop_from_sig_int()
     station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above

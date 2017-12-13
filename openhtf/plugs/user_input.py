@@ -21,6 +21,7 @@ frontends alike. Any other part of the framework that needs to access shared
 prompt state should use the openhtf.prompts pseudomodule.
 """
 
+from __future__ import print_function
 from builtins import input
 import collections
 import functools

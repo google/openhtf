@@ -91,7 +91,7 @@ def set_measurements(test):
 def dimensions(test):
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim
-  for x, y, z in zip(list(range(1, 5)), list(range(21, 25)), list(range(101, 105))):
+  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):
     test.measurements.lots_of_dims[x, y, z] = x + y + z
 
 

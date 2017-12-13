@@ -684,7 +684,7 @@ class StationApi(object):
         'created_time_millis': long(test.created_time_millis),
         'last_run_time_millis':
             test.last_run_time_millis and long(test.last_run_time_millis),
-    } for test in list(openhtf.Test.TEST_INSTANCES.values()) if test.uid is not None]
+    } for test in openhtf.Test.TEST_INSTANCES.values() if test.uid is not None]
     _LOG.debug('RPC:list_tests() -> %s results', len(retval))
     return retval
 

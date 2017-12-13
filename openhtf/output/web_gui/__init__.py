@@ -239,7 +239,7 @@ class StationStore(threading.Thread):
     if self._disable_discovery:
       _LOG.debug('Station discovery is disabled; only using static stations.')
 
-    self._handle_stations(iter(self.stations.keys()))
+    self._handle_stations(self.stations.keys())
     while not self._stop_event.is_set():
       if not self._disable_discovery:
         self._discover()

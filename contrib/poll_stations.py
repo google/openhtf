@@ -29,10 +29,9 @@ Example:
 Outputs something like, which updates regularly:
 
 """
-
+from queue import Queue
 import logging
 import os
-import queue
 import socket
 import sys
 import threading
@@ -111,7 +110,7 @@ class StationList(object):
   """
 
   def __init__(self):
-    self.update_queue = queue.Queue()
+    self.update_queue = Queue()
     self.stations = set()
     # Really, these threads should be tracked on a per-station basis, because
     # two stations *could* have RemoteTest instances that would compare equal

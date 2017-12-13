@@ -156,7 +156,7 @@ def send(query,
         socket.IP_MULTICAST_IF,
         struct.pack('!L', LOCALHOST_ADDRESS))
   sock.settimeout(timeout_s)
-  sock.sendto(query, (address, port))
+  sock.sendto(query.encode('utf-8'), (address, port))
 
   # Set up our thread-safe Queue for handling responses.
   recv_queue = queue.Queue()

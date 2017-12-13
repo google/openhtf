@@ -32,7 +32,6 @@ import tempfile
 
 from openhtf import util
 from openhtf.util import data
-import collections
 
 
 # TODO(wallacbe): Switch to util
@@ -87,7 +86,7 @@ class OutputToFile(object):
     record_dict = data.convert_to_base_types(
         test_record, ignore_keys=('code_info', 'phases', 'log_records'))
     pattern = self.filename_pattern
-    if isinstance(pattern, str) or isinstance(pattern, collections.Callable):
+    if isinstance(pattern, str):
       output_file = self.open_file(util.format_string(pattern, record_dict))
       try:
         yield output_file

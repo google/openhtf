@@ -25,6 +25,7 @@ can create 1 phase with 4 subclasses of the same plug and use with_plugs() to
 end up with the 4 phases you want.
 """
 
+from __future__ import print_function
 import subprocess
 import time
 
