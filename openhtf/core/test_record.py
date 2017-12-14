@@ -125,7 +125,7 @@ def _get_source_safely(obj):
     return ''
 
 
-class CodeInfo(mutablerecords.Record(
+class CodeInfo(mutablerecords.HashableRecord(
     'CodeInfo', ['name', 'docstring', 'sourcecode'])):
   """Information regarding the running tester code."""
 
