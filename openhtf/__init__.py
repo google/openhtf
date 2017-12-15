@@ -483,9 +483,19 @@ class PhaseDescriptor(mutablerecords.Record(
 
     for name, sub_class in subplugs.iteritems():
       original_plug = plugs_by_name.get(name)
-      if (original_plug is None
-          or not isinstance(original_plug.cls, plugs.PlugPlaceholder)
-          or not issubclass(sub_class, original_plug.cls.base_class)):
+      accept_substitute = True
+      if original_plug is None:
+        accept_substitute = False
+      elif isinstance(original_plug.cls, plugs.PlugPlaceholder):
+        accept_substitute = issubclass(sub_class, original_plug.cls.base_class)
+      else:
+        # Check __dict__ to see if the attribute is explicitly defined in the
+        # class, rather than being defined in a parent class.
+        accept_substitute = ('auto_placeholder' in original_plug.cls.__dict__
+                             and original_plug.cls.auto_placeholder
+                             and issubclass(sub_class, original_plug.cls))
+
+      if not accept_substitute:
         raise plugs.InvalidPlugError(
             'Could not find valid placeholder for substitute plug %s '
             'required for phase %s' % (name, self.name))
@@ -496,7 +506,6 @@ class PhaseDescriptor(mutablerecords.Record(
         plugs=new_plugs.values(),
         options=self.options.format_strings(**subplugs),
         measurements=[m.with_args(**subplugs) for m in self.measurements])
-
 
   def __call__(self, test_state):
     """Invoke this Phase, passing in the appropriate args.
