@@ -30,13 +30,18 @@ class OutputToJSON(callbacks.OutputToFile):
   def __init__(self, filename_pattern=None, inline_attachments=True, **kwargs):
     super(OutputToJSON, self).__init__(filename_pattern)
     self.inline_attachments = inline_attachments
+
+    # Conform strictly to the JSON spec by default.
+    kwargs.setdefault('allow_nan', False)
+    self.allow_nan = kwargs['allow_nan']
     self.json_encoder = json.JSONEncoder(**kwargs)
 
   def serialize_test_record(self, test_record):
     return self.json_encoder.encode(self.convert_to_dict(test_record))
 
   def convert_to_dict(self, test_record):
-    as_dict = data.convert_to_base_types(test_record)
+    as_dict = data.convert_to_base_types(test_record,
+                                         json_safe=(not self.allow_nan))
     if self.inline_attachments:
       for phase, original_phase in zip(as_dict['phases'], test_record.phases):
         for name, attachment in phase['attachments'].iteritems():
