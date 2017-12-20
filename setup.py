@@ -192,4 +192,9 @@ setup(
         'pytest>=2.9.2',
         'pytest-cov>=2.2.1',
     ],
+    entry_points={
+        'console_scripts': [
+            'openhtf-testcat = openhtf.util.testcat:main'
+        ]
+    }
 )
