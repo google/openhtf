@@ -135,7 +135,7 @@ class PyTestCommand(test):
 
   def initialize_options(self):
     test.initialize_options(self)
-    self.pytest_args = 'test'
+    self.pytest_args = ['test']
     self.pytest_cov = None
 
   def finalize_options(self):
@@ -147,11 +147,10 @@ class PyTestCommand(test):
     self.run_command('build_proto')
 
     import pytest
-    cov = ''
+    cov = ['--cov', 'openhtf']
     if self.pytest_cov is not None:
-      outputs = ' '.join('--cov-report %s' % output
-                         for output in self.pytest_cov.split(','))
-      cov = ' --cov openhtf ' + outputs
+      for output in self.pytest_cov.split(','):
+        cov.extend(('--cov-report', output))
 
     sys.argv = [sys.argv[0]]
     print('invoking pytest.main with %s' % (self.pytest_args + cov))

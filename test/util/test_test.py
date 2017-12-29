@@ -40,7 +40,7 @@ class MyPlug(plugs.BasePlug):
 @measurements.measures('passes', validators=[validators.in_range(1, 10)])
 @measurements.measures('fails', validators=[validators.in_range(1, 10)])
 @measurements.measures('unset_measurement')
-def test_phase(phase_data, my_plug):
+def htf_phase(phase_data, my_plug):
   phase_data.logger.error('in phase_data %s', id(phase_data))
   phase_data.logger.error('in measurements %s', id(phase_data.measurements))
   phase_data.measurements.test_measurement = my_plug.do_stuff('stuff_args')
@@ -76,11 +76,11 @@ class TestTest(test.TestCase):
   def test_patch_plugs_phase(self, mock_plug):
     mock_plug.do_stuff.return_value = 0xBEEF
 
-    phase_record = yield test_phase
+    phase_record = yield htf_phase
 
     mock_plug.do_stuff.assert_called_with('stuff_args')
     self.assertPhaseContinue(phase_record)
-    self.assertEquals('test_phase', phase_record.name)
+    self.assertEquals('htf_phase', phase_record.name)
     self.assertMeasured(phase_record, 'test_measurement', 0xBEEF)
     self.assertMeasured(phase_record, 'othr_measurement', 0xDEAD)
     self.assertMeasurementPass(phase_record, 'passes')
@@ -90,7 +90,7 @@ class TestTest(test.TestCase):
   def test_patch_plugs_test(self, mock_plug):
     mock_plug.do_stuff.return_value = 0xBEEF
 
-    test_record = yield openhtf.Test(phase_retval(None), test_phase)
+    test_record = yield openhtf.Test(phase_retval(None), htf_phase)
     mock_plug.do_stuff.assert_called_with('stuff_args')
     # The test fails because the 'fails' measurement fails.
     self.assertTestFail(test_record)

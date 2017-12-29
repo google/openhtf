@@ -24,8 +24,8 @@ from openhtf import core
 from openhtf import PhaseResult
 from openhtf import plugs
 from openhtf import util
-from openhtf.core.phase_executor import PhaseExecutor
-from openhtf.core.test_state import TestState
+from openhtf.core import phase_executor
+from openhtf.core import test_state
 
 from openhtf.util import conf
 from openhtf.util import logs
@@ -118,7 +118,7 @@ class TestExecutor(unittest.TestCase):
 
   def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
-    phase_thread = core.phase_executor.PhaseExecutorThread(phase_one, ' ')
+    phase_thread = phase_executor.PhaseExecutorThread(phase_one, ' ')
     name = str(phase_thread)
     found = True
     for item in check_list:
@@ -202,12 +202,12 @@ class TestExecutor(unittest.TestCase):
 class TestPhaseExecutor(unittest.TestCase):
 
   def setUp(self):
-    self.test_state = mock.MagicMock(spec=TestState,
+    self.test_state = mock.MagicMock(spec=test_state.TestState,
                                      plug_manager=plugs.PlugManager(),
                                      logger=mock.MagicMock())
     self.test_state.plug_manager.initialize_plugs([
         UnittestPlug, MoreRepeatsUnittestPlug])
-    self.phase_executor = PhaseExecutor(self.test_state)
+    self.phase_executor = phase_executor.PhaseExecutor(self.test_state)
 
   def test_execute_continue_phase(self):
     result = self.phase_executor.execute_phase(phase_two)
