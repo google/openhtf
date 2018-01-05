@@ -22,6 +22,7 @@ import collections
 import difflib
 import itertools
 import logging
+import math
 import numbers
 import pprint
 import struct
@@ -102,7 +103,8 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
     assert first == second
 
 
-def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
+def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
+                          json_safe=True):
   """Recursively convert objects into base types.
 
   This is used to convert some special types of objects used internally into
@@ -124,6 +126,11 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
   to something else).  If tuples should be converted to lists (e.g. for an
   encoding that does not differentiate between the two), pass 'tuple_type=list'
   as an argument.
+
+  If `json_safe` is True, then the float 'inf', '-inf', and 'nan' values will be
+  converted to strings. This ensures that the returned dictionary can be passed
+  to json.dumps to create valid JSON. Otherwise, json.dumps may return values
+  such as NaN which are not valid JSON.
   """
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, str), 'Pass a real iterable!'
@@ -147,16 +154,21 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple):
                convert_to_base_types(v, ignore_keys, tuple_type)
             for k, v in obj.items() if k not in ignore_keys}
   elif isinstance(obj, list):
-    return [convert_to_base_types(val, ignore_keys, tuple_type) for val in obj]
+    return [convert_to_base_types(val, ignore_keys, tuple_type, json_safe)
+            for val in obj]
   elif isinstance(obj, tuple):
     return tuple_type(
-        convert_to_base_types(value, ignore_keys, tuple_type) for value in obj)
+        convert_to_base_types(value, ignore_keys, tuple_type, json_safe)
+        for value in obj)
 
   # Convert numeric types (e.g. numpy ints and floats) into built-in types.
   elif isinstance(obj, numbers.Integral):
     return long(obj)
   elif isinstance(obj, numbers.Real):
-    return float(obj)
+    as_float = float(obj)
+    if json_safe and (math.isinf(as_float) or math.isnan(as_float)):
+      return str(as_float)
+    return as_float
 
   # Convert all other types to strings.
   return str(obj)

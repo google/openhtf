@@ -175,7 +175,7 @@ class TestState(util.SubscribableStateMixin):
         return copy.deepcopy(attachment)
 
 
-    test.logger.warning('Could not find attachment: %s', attachment_name)
+    self.logger.warning('Could not find attachment: %s', attachment_name)
     return None
 
   def get_measurement(self, measurement_name):
@@ -206,7 +206,7 @@ class TestState(util.SubscribableStateMixin):
         measurement = phase_record.measurements[measurement_name]
         return ImmutableMeasurement.FromMeasurement(measurement)
 
-    test.logger.warning('Could not find measurement: %s', measurement_name)
+    self.logger.warning('Could not find measurement: %s', measurement_name)
     return None
 
   @contextlib.contextmanager
