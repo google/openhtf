@@ -26,6 +26,7 @@ from pkg_resources import get_distribution, DistributionNotFound
 import mutablerecords
 
 from openhtf.util import threads
+import collections
 
 
 def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable=invalid-name
@@ -43,7 +44,7 @@ def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable
   logger = logger or logging.getLogger()
   def _gen():  # pylint: disable=missing-docstring
     while True:
-      for _ in xrange(n):
+      for _ in range(n):
         yield False
       logger.log(level, message, *args)
       yield True
@@ -145,7 +146,7 @@ def format_string(target, kwargs):
     return target
   if callable(target):
     return target(**kwargs)
-  if not isinstance(target, basestring):
+  if not isinstance(target, str):
     return target
   if '{' in target:
     return partial_format(target, **kwargs)

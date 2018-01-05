@@ -30,7 +30,7 @@ function, but rather a USB function - listing devices with a specific interface
 class, subclass, and protocol.
 """
 
-import cStringIO
+import io
 import logging
 import os.path
 
@@ -142,7 +142,7 @@ class AdbDevice(object):
       timeout_ms: Expected timeout for any part of the push.
     """
     mtime = 0
-    if isinstance(source_file, basestring):
+    if isinstance(source_file, str):
       mtime = os.path.getmtime(source_file)
       source_file = open(source_file)
 
@@ -161,15 +161,15 @@ class AdbDevice(object):
     Returns:
       The file data if dest_file is not set, None otherwise.
     """
-    if isinstance(dest_file, basestring):
+    if isinstance(dest_file, str):
       dest_file = open(dest_file, 'w')
     elif not dest_file:
-      dest_file = cStringIO.StringIO()
+      dest_file = io.StringIO()
     self.filesync_service.recv(device_filename, dest_file,
                                timeouts.PolledTimeout.from_millis(timeout_ms))
     # An empty call to cStringIO.StringIO returns an instance of
     # cStringIO.OutputType.
-    if isinstance(dest_file, cStringIO.OutputType):
+    if isinstance(dest_file, io.OutputType):
       return dest_file.getvalue()
 
   def list(self, device_path, timeout_ms=None):

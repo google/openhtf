@@ -45,6 +45,7 @@ from openhtf.core import phase_executor
 from openhtf.core import test_record
 from openhtf.util import conf
 from openhtf.util import logs
+from past.builtins import long
 
 conf.declare('allow_unset_measurements', default_value=False,
              description='If True, unset measurements do not cause Tests to '
@@ -117,6 +118,7 @@ class TestState(util.SubscribableStateMixin):
 
     self.test_record = test_record.TestRecord(
         dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
+        start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
     self.logger = logs.initialize_record_logger(
@@ -297,13 +299,12 @@ class TestState(util.SubscribableStateMixin):
       result = phase_execution_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
-        description = str(result.exc_val).decode('utf8', 'replace')
+        description = str(result.exc_val)
       else:
         # openhtf.util.threads.ThreadTerminationError gets str'd directly.
         code = str(type(phase_execution_outcome.phase_result).__name__)
-        description = str(phase_execution_outcome.phase_result).decode(
-            'utf8', 'replace')
-      self.test_record.add_outcome_details(code, description)
+        description = str(phase_execution_outcome.phase_result)
+        self.test_record.add_outcome_details(code, description)
       self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
@@ -490,7 +491,7 @@ class PhaseState(mutablerecords.Record(
     Any UNSET measurements will cause the Phase to FAIL unless
     conf.allow_unset_measurements is set True.
     """
-    for measurement in self.measurements.itervalues():
+    for measurement in self.measurements.values():
       # Clear notification callbacks for later serialization.
       measurement.set_notification_callback(None)
       # Validate multi-dimensional measurements now that we have all values.
@@ -506,7 +507,7 @@ class PhaseState(mutablerecords.Record(
       allowed_outcomes.add(measurements.Outcome.UNSET)
 
     if any(meas.outcome not in allowed_outcomes
-           for meas in self.phase_record.measurements.itervalues()):
+           for meas in self.phase_record.measurements.values()):
       return False
     return True
 

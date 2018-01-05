@@ -22,7 +22,7 @@ function that is used to send one-shot messages to a multicast socket.
 
 
 import logging
-import Queue
+import queue
 import socket
 import struct
 import sys
@@ -156,10 +156,10 @@ def send(query,
         socket.IP_MULTICAST_IF,
         struct.pack('!L', LOCALHOST_ADDRESS))
   sock.settimeout(timeout_s)
-  sock.sendto(query, (address, port))
+  sock.sendto(query.encode('utf-8'), (address, port))
 
   # Set up our thread-safe Queue for handling responses.
-  recv_queue = Queue.Queue()
+  recv_queue = queue.Queue()
   def _handle_responses():
     while True:
       try:

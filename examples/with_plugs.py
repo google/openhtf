@@ -25,6 +25,7 @@ can create 1 phase with 4 subclasses of the same plug and use with_plugs() to
 end up with the 4 phases you want.
 """
 
+from __future__ import print_function
 import subprocess
 import time
 
@@ -52,7 +53,7 @@ class PingPlug(plugs.BasePlug):
 
   def run(self, count):
     command = self._get_command(count)
-    print "running: %s" % ' '.join(command)
+    print("running: %s" % ' '.join(command))
     return subprocess.call(command)
 
 

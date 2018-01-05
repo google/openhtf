@@ -63,6 +63,7 @@ Test record logs are by default output to stdout at a debug level.  There is
 no way to change this, if you don't like it redirect stdout to /dev/null.
 """
 
+from past.builtins import basestring
 import argparse
 import collections
 import logging
@@ -181,7 +182,6 @@ class RecordHandler(logging.Handler):
     if record.exc_info:
       message += '\n' + ''.join(traceback.format_exception(
           *record.exc_info))
-    message = message.decode('utf8', 'replace')
 
     log_record = LogRecord(
         record.levelno, record.name, os.path.basename(record.pathname),
@@ -212,7 +212,7 @@ def setup_logger():
       file_handler.addFilter(MAC_FILTER)
       logger.addHandler(file_handler)
     except IOError as exception:
-      print ('Failed to set up log file due to error: %s. '
+      print('Failed to set up log file due to error: %s. '
              'Continuing anyway.' % exception)
 
   if not QUIET:

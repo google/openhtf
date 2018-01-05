@@ -45,7 +45,7 @@ class ConsoleSummary():
         new_phase = True
         phase_time_sec = (float(phase.end_time_millis)
                           - float(phase.start_time_millis)) / 1000.0
-        for name, measurement in phase.measurements.iteritems():
+        for name, measurement in phase.measurements.items():
           if measurement.outcome == meas_module.Outcome.FAIL:
             if new_phase:
               output_lines.append('failed phase: %s [ran for %.2f sec]' %

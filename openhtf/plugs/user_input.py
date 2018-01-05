@@ -21,6 +21,8 @@ frontends alike. Any other part of the framework that needs to access shared
 prompt state should use the openhtf.prompts pseudomodule.
 """
 
+from __future__ import print_function
+from builtins import input
 import collections
 import functools
 import logging
@@ -73,7 +75,7 @@ class ConsolePrompt(threading.Thread):
     """Mark this ConsolePrompt as stopped."""
     self._stopped = True
     if not self._answered:
-      print "Nevermind; prompt was answered from elsewhere."
+      print("Nevermind; prompt was answered from elsewhere.")
 
   def run(self):
     """Main logic for this thread to execute."""
@@ -81,12 +83,12 @@ class ConsolePrompt(threading.Thread):
       if platform.system() == 'Windows':
         # Windows doesn't support file-like objects for select(), so fall back
         # to raw_input().
-        response = raw_input(self._message + '\n\r')
+        response = input(self._message + '\n\r')
         self._answered = True
         self._callback(response)
       else:
         # First, display the prompt to the console.
-        print self._message
+        print(self._message)
 
         # Before reading, clear any lingering buffered terminal input.
         if sys.stdin.isatty():
@@ -104,14 +106,14 @@ class ConsolePrompt(threading.Thread):
                   # We're running in the background somewhere, so the only way
                   # to respond to this prompt is the UI. Let's just wait for
                   # that to happen now. We'll give them a week :)
-                  print "Waiting for a non-console response."
+                  print("Waiting for a non-console response.")
                   time.sleep(60*60*24*7)
                 else:
                   # They hit ^D (to insert EOF). Tell them to hit ^C if they
                   # want to actually quit.
-                  print "Hit ^C (Ctrl+c) to exit."
+                  print("Hit ^C (Ctrl+c) to exit.")
                   break
-              line += new
+              line += new.decode('utf-8')
               if '\n' in line:
                 response = line[:line.find('\n')]
                 self._answered = True
@@ -212,7 +214,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     Returns:
       True if the prompt was used, otherwise False.
     """
-    if isinstance(prompt_id, basestring):
+    if isinstance(prompt_id, str):
       prompt_id = uuid.UUID(prompt_id)
     _LOG.debug('Responding to prompt (%s): "%s"', prompt_id.hex, response)
     with self._cond:

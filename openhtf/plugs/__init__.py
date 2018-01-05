@@ -223,7 +223,7 @@ def plug(update_kwargs=True, **plugs):
   Raises:
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
-  for a_plug in plugs.itervalues():
+  for a_plug in plugs.values():
     if not (isinstance(a_plug, PlugPlaceholder) or issubclass(a_plug, BasePlug)):
       raise InvalidPlugError(
           'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
@@ -250,7 +250,7 @@ def plug(update_kwargs=True, **plugs):
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
     phase_desc.plugs.extend([
         openhtf.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
-        for name, a_plug in plugs.iteritems()])
+        for name, a_plug in plugs.items()])
     return phase_desc
   return result
 
@@ -307,7 +307,7 @@ class PlugManager(object):
     return {
         'plug_descriptors': self._plug_descriptors,
         'plug_states': {name: plug._asdict()
-                        for name, plug in self._plugs_by_name.iteritems()},
+                        for name, plug in self._plugs_by_name.items()},
         'xmlrpc_port': self._xmlrpc_server and
                        self._xmlrpc_server.socket.getsockname()[1]
     }
@@ -325,7 +325,7 @@ class PlugManager(object):
     # Create a list of (method, method_name) pairs.
     plug_methods = []
 
-    for name, plug in self._plugs_by_name.iteritems():
+    for name, plug in self._plugs_by_name.items():
       if not plug.enable_remote:
         continue
 
@@ -482,7 +482,7 @@ class PlugManager(object):
       self._xmlrpc_server = None
 
     _LOG.debug('Tearing down all plugs.')
-    for a_plug in self._plugs_by_type.itervalues():
+    for a_plug in self._plugs_by_type.values():
       thread = _PlugTearDownThread(a_plug)
       thread.start()
       timeout_s = (conf.plug_teardown_timeout_s
@@ -528,5 +528,5 @@ class PlugManager(object):
 
   def get_frontend_aware_plug_names(self):
     """Returns the names of frontend-aware plugs."""
-    return [name for name, plug in self._plugs_by_name.iteritems()
+    return [name for name, plug in self._plugs_by_name.items()
             if isinstance(plug, FrontendAwareBasePlug)]

@@ -69,7 +69,7 @@ import os
 import socket
 import threading
 import time
-import xmlrpclib
+import xmlrpc.client
 
 import mutablerecords
 
@@ -83,10 +83,11 @@ from openhtf.util import multicast
 from openhtf.util import threads
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
+from past.builtins import long
 
 # Fix for xmlrpclib to use <i8> for longs and ints instead of <int>, because our
 # timestamps are in millis, which are too big for 4-byte ints.
-xmlrpclib.Marshaller.dispatch[long] = xmlrpclib.Marshaller.dispatch[int] = (
+xmlrpc.client.Marshaller.dispatch[long] = xmlrpc.client.Marshaller.dispatch[int] = (
     lambda _, v, w: w('<value><i8>%d</i8></value>' % v))
 
 _LOG = logging.getLogger(__name__)
@@ -408,7 +409,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     try:
       remote_state_dict = self.proxy_factory(timeout_s + 1).wait_for_update(
           self.test_uid, summary_dict, timeout_s)
-    except xmlrpclib.Fault as fault:
+    except xmlrpc.client.Fault as fault:
       # TODO(madsci): This is a super kludge, eventually implement the
       # ReraisingMixin for ServerProxy, but that's hard, so do this for now.
       if 'openhtf.io.station_api.UpdateTimeout' in fault.faultString:
@@ -770,7 +771,7 @@ class StationApi(object):
   def _summary_for_state_dict(state_dict):
     """Return a dict for state with counts swapped in for phase/log records."""
     state_dict_summary = {
-        k: v for k, v in state_dict.iteritems() if k != 'plugs'}
+        k: v for k, v in state_dict.items() if k != 'plugs'}
     state_dict_summary['test_record'] = data.convert_to_base_types(
         state_dict_summary['test_record'])
     state_dict_summary['test_record']['phases'] = len(

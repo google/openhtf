@@ -91,12 +91,13 @@ class PhaseExecutionOutcome(collections.namedtuple(
   other value will raise an InvalidPhaseResultError.
   """
 
-  def __init__(self, phase_result):
+  def __new__(cls, phase_result):
     if (phase_result is not None and
         not isinstance(phase_result, (openhtf.PhaseResult, ExceptionInfo)) and
         not isinstance(phase_result, threads.ThreadTerminationError)):
       raise InvalidPhaseResultError('Invalid phase result', phase_result)
-    super(PhaseExecutionOutcome, self).__init__(phase_result)
+    self = super(PhaseExecutionOutcome, cls).__new__(cls, phase_result)
+    return self
 
   @property
   def is_fail_and_continue(self):
@@ -208,7 +209,7 @@ class PhaseExecutor(object):
       hit its limit for repetitions.
     """
     repeat_count = 1
-    repeat_limit = phase.options.repeat_limit or sys.maxint
+    repeat_limit = phase.options.repeat_limit or sys.maxsize
     while not self._stopping.is_set():
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome = self._execute_phase_once(phase, is_last_repeat)
@@ -260,7 +261,7 @@ class PhaseExecutor(object):
 
     if phase_thread.is_alive():
       phase_thread.kill()
-    
+
       _LOG.debug('Waiting for cancelled phase to exit: %s', phase_thread)
       timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
       while phase_thread.is_alive() and not timeout.has_expired():

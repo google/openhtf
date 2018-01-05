@@ -14,18 +14,27 @@
 
 """Utility helpers for xmlrpclib."""
 
-import httplib
-import SimpleXMLRPCServer
-import SocketServer
+import http.client
+import xmlrpc.server
+import os
+import socketserver
+import sys
 import threading
-import xmlrpclib
+import xmlrpc.client
+import collections
 
 DEFAULT_PROXY_TIMEOUT_S = 3
 
+# https://github.com/PythonCharmers/python-future/issues/280
+if sys.version_info[0] < 3:
+  from SimpleXMLRPCServer import SimpleXMLRPCServer
+else:
+  from xmlrpc.server import SimpleXMLRPCServer as SimpleXMLRPCServer
 
-class TimeoutHTTPConnection(httplib.HTTPConnection):
+
+class TimeoutHTTPConnection(http.client.HTTPConnection):
   def __init__(self, timeout_s, *args, **kwargs):
-    httplib.HTTPConnection.__init__(self, *args, **kwargs)
+    http.client.HTTPConnection.__init__(self, *args, **kwargs)
     self.timeout_s = timeout_s
 
   def settimeout(self, timeout_s):
@@ -33,13 +42,13 @@ class TimeoutHTTPConnection(httplib.HTTPConnection):
     self.sock.settimeout(self.timeout_s)
 
   def connect(self):
-    httplib.HTTPConnection.connect(self)
+    http.client.HTTPConnection.connect(self)
     self.sock.settimeout(self.timeout_s)
 
 
-class TimeoutTransport(xmlrpclib.Transport):
+class TimeoutTransport(xmlrpc.client.Transport):
   def __init__(self, timeout_s, *args, **kwargs):
-    xmlrpclib.Transport.__init__(self, *args, **kwargs)
+    xmlrpc.client.Transport.__init__(self, *args, **kwargs)
     self._connection = None
     self.timeout_s = timeout_s
 
@@ -54,7 +63,7 @@ class TimeoutTransport(xmlrpclib.Transport):
     return self._connection[1]
 
 
-class BaseServerProxy(xmlrpclib.ServerProxy, object):
+class BaseServerProxy(xmlrpc.client.ServerProxy, object):
   """New-style base class for ServerProxy, allows for use of Mixins below."""
 
 
@@ -82,7 +91,7 @@ class LockedProxyMixin(object):
 
   def __getattr__(self, attr):
     method = super(LockedProxyMixin, self).__getattr__(attr)
-    if callable(method):
+    if isinstance(method, collections.Callable):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _wrapper(*args):
         with self._lock:
@@ -99,6 +108,6 @@ class LockedTimeoutProxy(TimeoutProxyMixin, LockedProxyMixin, BaseServerProxy):
 
 
 class SimpleThreadedXmlRpcServer(
-    SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
+    socketserver.ThreadingMixIn, SimpleXMLRPCServer):
   """Helper for handling multiple simultaneous RPCs in threads."""
   daemon_threads = True

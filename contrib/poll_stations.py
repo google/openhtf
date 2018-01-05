@@ -30,9 +30,10 @@ Outputs something like, which updates regularly:
 
 """
 
+from __future__ import print_function
 import logging
 import os
-import Queue
+import queue
 import socket
 import sys
 import threading
@@ -111,7 +112,7 @@ class StationList(object):
   """
 
   def __init__(self):
-    self.update_queue = Queue.Queue()
+    self.update_queue = queue.Queue()
     self.stations = set()
     # Really, these threads should be tracked on a per-station basis, because
     # two stations *could* have RemoteTest instances that would compare equal
@@ -168,7 +169,7 @@ class StationList(object):
   def print_station(self, station):
     print(station)
     try:
-      for remote_test in station.tests.itervalues():
+      for remote_test in station.tests.values():
         # Trigger an update of the local history cache and state.
         remote_test.state
         remote_test.history
@@ -182,7 +183,7 @@ class StationList(object):
           self.update_threads[remote_test] = update_thread
     except socket.error as e:
       print(' |-- Connection Error: %s' % e)
-    print
+    print()
 
   def check_for_stations(self):
     """Discover for new stations, doesn't remove any stations."""
@@ -199,7 +200,7 @@ class StationList(object):
       station_list.check_for_stations()
       try:
         self.update(self.update_queue.get(timeout=5))
-      except Queue.Empty:
+      except queue.Empty:
         pass
 
 

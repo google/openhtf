@@ -58,6 +58,8 @@ import abc
 import numbers
 import re
 import sys
+from past.builtins import basestring
+from future.utils import with_metaclass
 from openhtf import util
 
 _VALIDATORS = {}
@@ -81,17 +83,13 @@ def create_validator(name, *args, **kwargs):
 _identity = lambda x: x
 
 
-class ValidatorBase(object):
-  __metaclass__ = abc.ABCMeta
-
+class ValidatorBase(with_metaclass(abc.ABCMeta, object)):
   @abc.abstractmethod
   def __call__(self, value):
     """Should validate value, returning a boolean result."""
 
 
-class RangeValidatorBase(ValidatorBase):
-  __metaclass__ = abc.ABCMeta
-
+class RangeValidatorBase(with_metaclass(abc.ABCMeta, ValidatorBase)):
   @abc.abstractproperty
   def minimum(self):
     """Should return the minimum, inclusive value of the range."""

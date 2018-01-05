@@ -71,4 +71,4 @@ def reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid
   line_msg = 'line %s: ' % last_lineno
   if message:
     line_msg += str(message)
-  raise exc_type(line_msg, *args, **kwargs), None, sys.exc_info()[2]
+  raise exc_type(line_msg, *args, **kwargs).raise_with_traceback(sys.exc_info()[2])
