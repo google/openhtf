@@ -54,7 +54,7 @@ class BuildProtoCommand(Command):
     self.skip_proto = False
     try:
       prefix = subprocess.check_output(
-          'pkg-config --variable prefix protobuf'.split()).strip()
+          'pkg-config --variable prefix protobuf'.split()).strip().decode('utf-8')
     except (subprocess.CalledProcessError, OSError):
       if platform.system() == 'Linux':
         # Default to /usr?
@@ -67,8 +67,15 @@ class BuildProtoCommand(Command):
               'Windows. OpenHTF will be installed without it.')
         self.skip_proto = True
 
-    self.protoc = os.path.join(prefix, b'bin', b'protoc')
-    self.protodir = os.path.join(prefix, b'include')
+    maybe_protoc = os.path.join(prefix, 'bin', 'protoc')
+    if os.path.isfile(maybe_protoc) and os.access(maybe_protoc, os.X_OK):
+        self.protoc = maybe_protoc
+    else:
+        print('Warning: protoc not found at %s' % maybe_protoc)
+        print('setup will attempt to run protoc with no prefix.')
+        self.protoc = 'protoc'
+
+    self.protodir = os.path.join(prefix, 'include')
     self.indir = os.getcwd()
     self.outdir = os.getcwd()
 
@@ -79,8 +86,11 @@ class BuildProtoCommand(Command):
     if self.skip_proto:
       print('Skipping building protocol buffers.')
       return
+
     # Build regular proto files.
-    protos = glob.glob(os.path.join(self.indir, 'openhtf', 'output', 'proto', '*.proto'))
+    protos = glob.glob(
+        os.path.join(self.indir, 'openhtf', 'output', 'proto', '*.proto'))
+
     if protos:
       print('Attempting to build proto files:\n%s' % '\n'.join(protos))
       cmd = [
@@ -93,9 +103,12 @@ class BuildProtoCommand(Command):
         subprocess.check_call(cmd)
       except OSError as e:
         if e.errno == errno.ENOENT:
-          print('Could not find the protobuf compiler at %s' % self.protoc)
-          print('On many Linux systems, this is fixed by installing the '
-                 '"protobuf-compiler" and "libprotobuf-dev" packages.')
+          print('Could not find the protobuf compiler at \'%s\'' % self.protoc)
+          if sys.platform.startswith('linux'):
+            print('On many Linux systems, this is fixed by installing the '
+                  '"protobuf-compiler" and "libprotobuf-dev" packages.')
+          elif sys.platform == 'darwin':
+            print('On Mac, protobuf is often installed via homebrew.')
         raise
       except subprocess.CalledProcessError:
         print('Could not build proto files.')
