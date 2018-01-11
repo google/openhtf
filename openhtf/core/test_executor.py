@@ -109,8 +109,8 @@ class TestExecutor(threads.KillableThread):
   def wait(self):
     """Waits until death."""
     try:
-      # Timeout needed for SIGINT handling. Timeout is not actually used.
-      self.join(60)
+      # Timeout needed for SIGINT handling. Set to a year.
+      self.join(31557600)
     except KeyboardInterrupt:
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
