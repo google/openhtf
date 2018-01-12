@@ -253,7 +253,8 @@ class Test(object):
 
       self._executor = core.TestExecutor(
           self._test_desc, self.make_uid(), trigger,
-          self._test_options.teardown_function)
+          self._test_options.teardown_function,
+          self._test_options.failure_exceptions)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
       self._executor.start()
@@ -283,6 +284,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'name': 'OpenHTF Test',
     'output_callbacks': list,
     'teardown_function': None,
+    'failure_exceptions': list,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
@@ -291,6 +293,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
       use add_output_callbacks(), but you can pass [] here to reset them.
   teardown_function: Function to run at teardown.  We pass the same arguments to
       it as a phase.
+  failure_exceptions: Exceptions to cause a test FAIL instead of ERROR.
   """
 
 
