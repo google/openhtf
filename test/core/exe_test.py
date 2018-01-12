@@ -64,12 +64,6 @@ def phase_one(test, test_plug):
   time.sleep(1)
   print('phase_one completed')
 
-  def increment(self):
-    """Increment our value, return the previous value."""
-    self.value += self.increment_size
-    a = 1 + 'a'
-    return self.value - self.increment_size
-
 @plugs.plug(test_plug=UnittestPlug)
 def phase_two(test, test_plug):
   del test  # Unused.
