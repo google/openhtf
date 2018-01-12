@@ -52,27 +52,6 @@ class UnittestPlug(plugs.BasePlug):
     self.count += 1
     return self.count >= self.return_continue_count
 
-class BadPlug(plugs.BasePlug):   # pylint: disable=no-init
-
-  return_continue_count = 4
-
-  def __init__(self):
-    self.count = 0
-
-  def setup_cap(self):
-    print('Set up the plugs instance.')
-
-  def tear_down_cap(self):
-    print('Tear down the plugs instance.')
-
-  def do_stuff(self):
-    print('Plugs-specific functionality.')
-
-  def increment(self):
-    self.count += 1
-    a = 'a' + 1
-    return self.count >= self.return_continue_count
-
 
 class MoreRepeatsUnittestPlug(UnittestPlug):
   return_continue_count = 100
@@ -124,13 +103,6 @@ def phase_return_skip(test):
 def phase_return_fail_and_continue(test):
   del test  # Unused.
   return openhtf.PhaseResult.FAIL_AND_CONTINUE
-
-@openhtf.PhaseOptions()
-@plugs.plug(test_plug=BadPlug.placeholder)
-def phase_exception(test, test_plug):
-  del test  # Unused.
-  del test_plug  # Unused.
-  time.sleep(1)
 
 class TestExecutor(unittest.TestCase):
 
