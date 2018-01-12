@@ -112,7 +112,7 @@ def attachments(test):
       os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
   test_attachment = test.get_attachment('test_attachment')
-  assert test_attachment == 'This is test attachment data.'
+  assert test_attachment.data == 'This is test attachment data.'
 
 
 @htf.TestPhase(run_if=lambda: False)
@@ -124,7 +124,7 @@ def analysis(test):
   level_all = test.get_measurement('level_all')
   assert level_all.value == 9
   test_attachment = test.get_attachment('test_attachment')
-  assert test_attachment == 'This is test attachment data.'
+  assert test_attachment.data == 'This is test attachment data.'
   lots_of_dims = test.get_measurement('lots_of_dims')
   assert lots_of_dims.value == [
       (1, 21, 101, 123),
