@@ -26,6 +26,7 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.core.phase_executor import PhaseExecutor
 from openhtf.core.test_state import TestState
+from openhtf.core.test_record import Outcome
 
 from openhtf.util import conf
 from openhtf.util import logs
@@ -51,6 +52,27 @@ class UnittestPlug(plugs.BasePlug):
     self.count += 1
     return self.count >= self.return_continue_count
 
+class BadPlug(plugs.BasePlug):   # pylint: disable=no-init
+
+  return_continue_count = 4
+
+  def __init__(self):
+    self.count = 0
+
+  def setup_cap(self):
+    print('Set up the plugs instance.')
+
+  def tear_down_cap(self):
+    print('Tear down the plugs instance.')
+
+  def do_stuff(self):
+    print('Plugs-specific functionality.')
+
+  def increment(self):
+    self.count += 1
+    a = 'a' + 1
+    return self.count >= self.return_continue_count
+
 
 class MoreRepeatsUnittestPlug(UnittestPlug):
   return_continue_count = 100
@@ -63,6 +85,11 @@ def phase_one(test, test_plug):
   time.sleep(1)
   print('phase_one completed')
 
+  def increment(self):
+    """Increment our value, return the previous value."""
+    self.value += self.increment_size
+    a = 1 + 'a'
+    return self.value - self.increment_size
 
 @plugs.plug(test_plug=UnittestPlug)
 def phase_two(test, test_plug):
@@ -98,12 +125,53 @@ def phase_return_fail_and_continue(test):
   del test  # Unused.
   return openhtf.PhaseResult.FAIL_AND_CONTINUE
 
+@openhtf.PhaseOptions()
+@plugs.plug(test_plug=BadPlug.placeholder)
+def phase_exception(test, test_plug):
+  del test  # Unused.
+  del test_plug  # Unused.
+  time.sleep(1)
 
 class TestExecutor(unittest.TestCase):
+
+  class TestDummyExceptionError(Exception):
+    """Exception to be thrown by failure_phase."""
 
   def setUp(self):
     logs.setup_logger()
     self.test_plug_type = UnittestPlug
+
+  def test_failures(self):
+    """ Tests that an exception that would normally cause an ERROR outcome will instead cause FAIL. """
+    @openhtf.PhaseOptions()
+    def start_phase(test):
+      test.dut_id = 'DUT ID'
+
+    @openhtf.PhaseOptions()
+    def failure_phase(test):
+      del test  # Unused.
+      raise self.TestDummyExceptionError
+
+    # Configure test to throw exception midrun, and check that this causes
+    # Outcome = ERROR.
+    ev = threading.Event()
+    test = openhtf.Test(failure_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
+                                 teardown_function=lambda: ev.set()) # pylint: disable=unnecessary-lambda
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.ERROR)
+
+    # Same as above, but now specify that the TestDummyExceptionError should
+    # instead be a FAIL outcome.
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
+                                 teardown_function=lambda: ev.set(), # pylint: disable=unnecessary-lambda
+                                 failure_exceptions=[self.TestDummyExceptionError])
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.FAIL)
 
   def test_plug_map(self):
     test = openhtf.Test(phase_one, phase_two)
@@ -234,3 +302,6 @@ class TestPhaseExecutor(unittest.TestCase):
   def test_execute_phase_return_fail_and_continue(self):
     result = self.phase_executor.execute_phase(phase_return_fail_and_continue)
     self.assertEqual(PhaseResult.FAIL_AND_CONTINUE, result.phase_result)
+
+if __name__ == '__main__':
+      unittest.main()
