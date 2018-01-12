@@ -112,7 +112,7 @@ class TestState(util.SubscribableStateMixin):
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])  # pylint: disable=invalid-name
 
-  def __init__(self, test_desc, execution_uid):
+  def __init__(self, test_desc, execution_uid, failure_exceptions):
     super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
@@ -127,6 +127,7 @@ class TestState(util.SubscribableStateMixin):
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
+    self.failure_exceptions = failure_exceptions
 
   @property
   def test_api(self):
@@ -294,8 +295,6 @@ class TestState(util.SubscribableStateMixin):
 
     # Handle a few cases where the test is ending prematurely.
     if phase_execution_outcome.raised_exception:
-      self.logger.error('Finishing test execution early due to phase '
-                        'exception, outcome ERROR.')
       result = phase_execution_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
@@ -305,7 +304,14 @@ class TestState(util.SubscribableStateMixin):
         code = str(type(phase_execution_outcome.phase_result).__name__)
         description = str(phase_execution_outcome.phase_result)
         self.test_record.add_outcome_details(code, description)
-      self._finalize(test_record.Outcome.ERROR)
+      if self._exception_is_failure(phase_execution_outcome.exception_value):
+        self.logger.error('Finishing test execution early due to phase '
+                          'exception, outcome FAIL, because exception was specified as FAIL, not ERROR.')
+        self._finalize(test_record.Outcome.FAIL)
+      else:
+        self.logger.error('Finishing test execution early due to phase '
+                          'exception, outcome ERROR.')
+        self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
@@ -386,6 +392,12 @@ class TestState(util.SubscribableStateMixin):
         self.test_record.outcome == test_record.Outcome.ABORTED):
       self.logger.debug('Test already aborted.')
       return True
+    return False
+
+  def _exception_is_failure(self, exc):
+    for exception in self.failure_exceptions:
+      if isinstance(exc, exception):
+        return True
     return False
 
   def __str__(self):

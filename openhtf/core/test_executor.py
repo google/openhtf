@@ -50,7 +50,7 @@ class TestExecutor(threads.KillableThread):
   daemon = True
 
   def __init__(self, test_descriptor, execution_uid, test_start,
-               teardown_function=None):
+               teardown_function=None, failure_exceptions=list()):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
 
@@ -71,6 +71,7 @@ class TestExecutor(threads.KillableThread):
     self._lock = threading.Lock()
     self._exit_stack = None
     self.uid = execution_uid
+    self.failure_exceptions = failure_exceptions
 
   def stop(self):
     """Stop this test."""
