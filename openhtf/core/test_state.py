@@ -112,7 +112,7 @@ class TestState(util.SubscribableStateMixin):
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])  # pylint: disable=invalid-name
 
-  def __init__(self, test_desc, execution_uid, failure_exceptions):
+  def __init__(self, test_desc, execution_uid, failure_exceptions=None):
     super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
@@ -127,6 +127,9 @@ class TestState(util.SubscribableStateMixin):
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
+
+    if failure_exceptions is None:
+      failure_exceptions = list()
     self.failure_exceptions = failure_exceptions
 
   @property
