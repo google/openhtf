@@ -123,6 +123,10 @@ class PhaseExecutionOutcome(collections.namedtuple(
     return self.phase_result is None
 
   @property
+  def exception_value(self):
+    return self.phase_result.exc_val
+
+  @property
   def raised_exception(self):
     """True if the phase in question raised an exception."""
     return isinstance(self.phase_result, (

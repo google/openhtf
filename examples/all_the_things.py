@@ -164,5 +164,5 @@ if __name__ == '__main__':
   #    test.add_output_callbacks(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
 
-  test.configure(teardown_function=teardown)
+  test.configure(teardown_function=teardown, failure_exceptions=[TypeError])
   test.execute(test_start=user_input.prompt_for_test_start())
