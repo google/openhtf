@@ -73,6 +73,11 @@ from openhtf import util
 from openhtf.util import validators
 from openhtf.util import units
 
+try:
+  import pandas
+except ImportError:
+  pandas = None
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -254,6 +259,21 @@ class Measurement(  # pylint: disable=no-init
         retval[attr] = getattr(self, attr)
     return retval
 
+  def to_dataframe(self, columns=None):
+    """Convert a multi-dim to a pandas dataframe."""
+    if not isinstance(self.measured_value, DimensionedMeasuredValue):
+      raise TypeError('Cannot convert to pandas.DataFrame')
+    if not self.measured_value.is_value_set:
+      raise ValueError('Must set value to conver to pandas.DataFrame')
+
+    if columns is None:
+      columns = [d.name for d in self.dimensions]
+      columns += [self.units.name if self.units else 'value']
+
+    dataframe = self.measured_value.to_dataframe(columns)
+
+    return dataframe
+
 
 class MeasuredValue(
     mutablerecords.Record('MeasuredValue', ['name'],
@@ -367,6 +387,13 @@ class DimensionedMeasuredValue(mutablerecords.Record(
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return [dimensions + (value,) for dimensions, value in
             self.value_dict.items()]
+
+  def to_dataframe(self, columns=None):
+    """Converts to a `pandas.DataFrame`"""
+    if not pandas:
+      raise RuntimeError('Install pandas to convert to pandas.DataFrame')
+    return pandas.DataFrame.from_records(self.value, columns=columns)
+
 
 
 class Collection(mutablerecords.Record('Collection', ['_measurements'])):
