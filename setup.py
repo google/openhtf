@@ -203,6 +203,7 @@ setup(
     ],
     tests_require=[
         'mock>=2.0.0',
+        'pandas>=0.22.0',
         'pytest>=2.9.2',
         'pytest-cov>=2.2.1',
     ],
