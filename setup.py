@@ -126,7 +126,6 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 INSTALL_REQUIRES = [
     'contextlib2>=0.5.1,<1.0',
-    'enum34>=1.1.2,<2.0;python_version<"3.4"',
     'future>=0.16.0',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
@@ -136,6 +135,11 @@ INSTALL_REQUIRES = [
     'sockjs-tornado>=1.0.3,<2.0',
     'tornado>=4.3,<5.0',
 ]
+# Not all versions of setuptools support semicolon syntax for specifying
+# platform-specific dependencies, so we do it the old school way.
+if sys.version_info < (3,4):
+  INSTALL_REQUIRES.append('enum34>=1.1.2,<2.0')
+
 
 
 class PyTestCommand(test):
@@ -174,7 +178,7 @@ class PyTestCommand(test):
 
 setup(
     name='openhtf',
-    version='1.2.0',
+    version='1.2.1',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
     author_email='madsci@google.com',
