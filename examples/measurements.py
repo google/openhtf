@@ -47,6 +47,8 @@ Some constraints on measurements:
 # Import openhtf with an abbreviated name, as we'll be using a bunch of stuff
 # from it throughout our test scripts. See __all__ at the top of
 # openhtf/__init__.py for details on what's in top-of-module namespace.
+import random
+
 import openhtf as htf
 
 # Import this output mechanism as it's the specific one we want to use.
@@ -117,11 +119,40 @@ def inline_phase(test):
   # Let's log a message so the operator knows the test should fail.
   test.logger.info('Set inline_kwargs to a failing value, test should FAIL!')
 
+# A multidim measurement including how to convert to a pandas dataframe and
+# a numpy array.
+@htf.measures(htf.Measurement('power_time_series').with_dimensions('ms', 'V', 'A'))
+@htf.measures(htf.Measurement('average_voltage').with_units('V'))
+@htf.measures(htf.Measurement('average_current').with_units('A'))
+@htf.measures(htf.Measurement('resistance').with_units('ohm').in_range(9, 11))
+def multdim_measurements(test):
+  for t in range(10):
+    resistance = 10
+    voltage = 10 + 10.0*t
+    current = voltage/resistance + .01*random.random()
+    dimensions = (t, voltage, current)
+    test.measurements['power_time_series'][dimensions] = 0
+
+  # When accessing your multi-dim a DimensionedMeasuredValue will be returned.
+  dim_measured_value = test.measurements['power_time_series']
+
+  # Let's convert that to a pandas dataframe
+  power_df = dim_measured_value.to_dataframe(columns=['ms', 'V', 'A', 'n/a'])
+  test.measurements['average_voltage'] = power_df.mean()['V']
+
+  # We can convert the dataframe to a numpy array as well
+  power_array = power_df.as_matrix()
+  test.measurements['average_current'] = power_array.mean(axis=0)[2]
+
+  # Finally, let's estimate the resistance
+  test.measurements['resistance'] = (
+    test.measurements['average_voltage'] / test.measurements['average_current'])
+
 
 if __name__ == '__main__':
   # We instantiate our OpenHTF test with the phases we want to run as args.
   test = htf.Test(hello_phase, again_phase, lots_of_measurements,
-                  measure_seconds, inline_phase)
+                  measure_seconds, inline_phase, multdim_measurements)
 
   # In order to view the result of the test, we have to output it somewhere,
   # and a local JSON file is a convenient way to do this.  Custom output
