@@ -119,13 +119,16 @@ def inline_phase(test):
   # Let's log a message so the operator knows the test should fail.
   test.logger.info('Set inline_kwargs to a failing value, test should FAIL!')
 
+
 # A multidim measurement including how to convert to a pandas dataframe and
 # a numpy array.
-@htf.measures(htf.Measurement('power_time_series').with_dimensions('ms', 'V', 'A'))
+@htf.measures(htf.Measurement('power_time_series')
+              .with_dimensions('ms', 'V', 'A'))
 @htf.measures(htf.Measurement('average_voltage').with_units('V'))
 @htf.measures(htf.Measurement('average_current').with_units('A'))
 @htf.measures(htf.Measurement('resistance').with_units('ohm').in_range(9, 11))
 def multdim_measurements(test):
+  # Create some fake current and voltage over time data
   for t in range(10):
     resistance = 10
     voltage = 10 + 10.0*t
@@ -133,7 +136,8 @@ def multdim_measurements(test):
     dimensions = (t, voltage, current)
     test.measurements['power_time_series'][dimensions] = 0
 
-  # When accessing your multi-dim a DimensionedMeasuredValue will be returned.
+  # When accessing your multi-dim measurement a DimensionedMeasuredValue
+  # is returned.
   dim_measured_value = test.measurements['power_time_series']
 
   # Let's convert that to a pandas dataframe
@@ -146,7 +150,8 @@ def multdim_measurements(test):
 
   # Finally, let's estimate the resistance
   test.measurements['resistance'] = (
-    test.measurements['average_voltage'] / test.measurements['average_current'])
+      test.measurements['average_voltage'] /
+      test.measurements['average_current'])
 
 
 if __name__ == '__main__':
