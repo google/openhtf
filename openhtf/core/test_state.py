@@ -127,10 +127,7 @@ class TestState(util.SubscribableStateMixin):
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
-
-    if failure_exceptions is None:
-      failure_exceptions = list()
-    self.failure_exceptions = failure_exceptions
+    self.failure_exceptions = failure_exceptions or []
 
   @property
   def test_api(self):
@@ -307,7 +304,7 @@ class TestState(util.SubscribableStateMixin):
         code = str(type(phase_execution_outcome.phase_result).__name__)
         description = str(phase_execution_outcome.phase_result)
         self.test_record.add_outcome_details(code, description)
-      if self._exception_is_failure(phase_execution_outcome.exception_value):
+      if self._outcome_is_failure_exception(phase_execution_outcome):
         self.logger.error('Finishing test execution early due to phase '
                           'exception, outcome FAIL, because exception was specified as FAIL, not ERROR.')
         self._finalize(test_record.Outcome.FAIL)
@@ -397,10 +394,11 @@ class TestState(util.SubscribableStateMixin):
       return True
     return False
 
-  def _exception_is_failure(self, exc):
-    for exception in self.failure_exceptions:
-      if isinstance(exc, exception):
+  def _outcome_is_failure_exception(self, outcome):
+    for failure_exception in self.failure_exceptions:
+      if isinstance(outcome.phase_result.exc_val, failure_exception):
         return True
+    print 'falseywalsey'
     return False
 
   def __str__(self):
