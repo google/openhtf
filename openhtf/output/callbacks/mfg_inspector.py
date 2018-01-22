@@ -156,7 +156,7 @@ def _extract_attachments(phase, testrun, used_parameter_names):
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
-    if (isinstance(attachment_data, unicode) or
+    if (sys.version_info[0] < 3 and isinstance(attachment_data, unicode) or
         sys.version_info[0] >= 3 and isinstance(attachment_data, str)):
       attachment_data = attachment_data.encode('utf-8')
     testrun_param.value_binary = attachment_data
