@@ -31,7 +31,6 @@ import json
 import logging
 import numbers
 import os
-import sys
 import threading
 import zlib
 try:
