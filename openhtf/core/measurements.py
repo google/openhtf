@@ -180,10 +180,14 @@ class Measurement(  # pylint: disable=no-init
     """Return the UnitDescriptor or convert a string to one."""
     if isinstance(unit_desc, str) or unit_desc is None:
       unit_desc = units.Unit(unit_desc)
-    if not isinstance(unit_desc, units.UnitDescriptor):
+
+    if any([isinstance(unit_desc, units.UnitDescriptor),
+            isinstance(unit_desc, units.CustomUnit)]):
+      return unit_desc
+    else:
+
       raise TypeError('Invalid units for measurement %s: %s' % (self.name,
                                                                 unit_desc))
-    return unit_desc
 
   def with_units(self, unit_desc):
     """Declare the units for this Measurement, returns self for chaining."""

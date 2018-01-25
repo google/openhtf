@@ -43,6 +43,20 @@ import collections
 
 UnitDescriptor = collections.namedtuple('UnitDescriptor', 'name code suffix')
 
+class CustomUnit(object):
+  """Allows the test author to define a custom unit that has similar api
+     to UnitDescriptor."""
+  def __init__(self, name):
+    self.name = name
+
+  @property
+  def code(self):
+    return self.name
+
+  @property
+  def suffix(self):
+    return self.name
+
 ALL_UNITS = []
 
 # pylint: disable=line-too-long
