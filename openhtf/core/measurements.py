@@ -328,7 +328,6 @@ class Dimension(object):
     self.description = description
     self.unit = unit
 
-
   @classmethod
   def from_unit_descriptor(cls, unit_desc):
     return cls(unit=unit_desc)
