@@ -39,7 +39,7 @@ from enum import Enum
 from openhtf import core
 from openhtf import plugs
 from openhtf import util
-from openhtf.core.measurements import Measurement, measures
+from openhtf.core.measurements import Measurement, measures, Dimension
 from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
 from openhtf.core import station_api

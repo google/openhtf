@@ -45,7 +45,7 @@ class TestMeasurements(htf_test.TestCase):
     self.assertMeasurementPass(record, 'specified_as_args')
 
   @htf_test.yields_phases
-  def test_measurements_with_dimenstions(self):
+  def test_measurements_with_dimensions(self):
     record = yield all_the_things.dimensions
     self.assertNotMeasured(record, 'unset_dims')
     self.assertMeasured(record, 'dimensions',
