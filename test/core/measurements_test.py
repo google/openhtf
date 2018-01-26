@@ -36,6 +36,12 @@ _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
 
 class TestMeasurements(htf_test.TestCase):
 
+  def setUp(self):
+    # Ensure most measurements features work without pandas.
+    pandas_patch = mock.patch.object(measurements, 'pandas', None)
+    pandas_patch.start()
+    self.addCleanup(pandas_patch.stop)
+
   def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
     self.assertRaises(TypeError, htf.Measurement('bad_units').with_units, 1701)
