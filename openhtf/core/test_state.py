@@ -304,7 +304,7 @@ class TestState(util.SubscribableStateMixin):
         # openhtf.util.threads.ThreadTerminationError gets str'd directly.
         code = str(type(phase_execution_outcome.phase_result).__name__)
         description = str(phase_execution_outcome.phase_result)
-        self.test_record.add_outcome_details(code, description)
+      self.test_record.add_outcome_details(code, description)
       self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
