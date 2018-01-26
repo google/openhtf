@@ -187,7 +187,7 @@ class Measurement(  # pylint: disable=no-init
 
   def _maybe_make_dimension(self, dimension):
     """Return a `measurements.Dimension` instance."""
-    # For backwards compatibility the dimension can be either a Dimension, a
+    # For backwards compatibility the argument can be either a Dimension, a
     # string or a `units.UnitDescriptor`.
     if isinstance(dimension, Dimension):
       return dimension
@@ -335,7 +335,7 @@ class Dimension(object):
   @classmethod
   def from_string(cls, string):
     """Convert a string into a Dimension"""
-    # Note:There is some ambiguity as to whether the string passed is intended
+    # Note: There is some ambiguity as to whether the string passed is intended
     # to become a unit looked up by name or suffix, or a Dimension descriptor.
     if string in units.UNITS_BY_ALL:
       return cls(description=string, unit=units.Unit(string))
@@ -359,12 +359,11 @@ class Dimension(object):
 
   def _asdict(self):
     return {
-      'code': self.code,
-      'description': self.description,
-      'name': self.name,
-      'suffix': self.suffix,
+        'code': self.code,
+        'description': self.description,
+        'name': self.name,
+        'suffix': self.suffix,
     }
-
 
 
 class DimensionedMeasuredValue(mutablerecords.Record(
