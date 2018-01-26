@@ -19,6 +19,10 @@ The test cases here need improvement - they should check for things that we
 actually care about.
 """
 
+from openhtf.core import measurements
+
+import mock
+
 from examples import all_the_things
 import openhtf as htf
 from openhtf.core.measurements import Outcome
@@ -84,9 +88,15 @@ class TestMeasurements(htf_test.TestCase):
 
 class TestMeasurement(htf_test.TestCase):
 
+  @mock.patch.object(measurements, 'pandas', None)
+  def test_to_dataframe__no_pandas(self):
+    with self.assertRaises(RuntimeError):
+      self.test_to_dataframe(units=True)
+
   def test_to_dataframe(self, units=True):
     measurement = htf.Measurement('test_multidim')
-    measurement.with_dimensions('ms', 'assembly', 'zone')
+    measurement.with_dimensions('ms', 'assembly',
+                                htf.Dimension('my_zone', 'zone'))
 
     if units:
       measurement.with_units('°C')
@@ -105,7 +115,7 @@ class TestMeasurement(htf_test.TestCase):
 
     df = measurement.to_dataframe()
     coordinates = (1, 'A', 2)
-    query = '(millisecond == %s) & (assembly == "%s") & (zone == %s)' % (
+    query = '(ms == %s) & (assembly == "%s") & (my_zone == %s)' % (
         coordinates)
 
     self.assertEqual(
