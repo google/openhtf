@@ -142,7 +142,7 @@ def multdim_measurements(test):
 
   # Let's convert that to a pandas dataframe
   power_df = dim_measured_value.to_dataframe(columns=['ms', 'V', 'A', 'n/a'])
-  test.measurements['average_voltage'] = power_df.mean()['V']
+  test.measurements['average_voltage'] = power_df['V'].mean()
 
   # We can convert the dataframe to a numpy array as well
   power_array = power_df.as_matrix()

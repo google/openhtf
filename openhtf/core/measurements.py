@@ -262,9 +262,9 @@ class Measurement(  # pylint: disable=no-init
   def to_dataframe(self, columns=None):
     """Convert a multi-dim to a pandas dataframe."""
     if not isinstance(self.measured_value, DimensionedMeasuredValue):
-      raise TypeError('Cannot convert to pandas.DataFrame')
-    if not self.measured_value.is_value_set:
-      raise ValueError('Must set value to conver to pandas.DataFrame')
+      raise TypeError(
+        'Only a dimensioned measurement can be converted to a DataFrame')
+
 
     if columns is None:
       columns = [d.name for d in self.dimensions]
@@ -390,6 +390,8 @@ class DimensionedMeasuredValue(mutablerecords.Record(
 
   def to_dataframe(self, columns=None):
     """Converts to a `pandas.DataFrame`"""
+    if not self.is_value_set:
+      raise ValueError('Value must be set before converting to a DataFrame.')
     if not pandas:
       raise RuntimeError('Install pandas to convert to pandas.DataFrame')
     return pandas.DataFrame.from_records(self.value, columns=columns)
