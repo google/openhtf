@@ -199,7 +199,7 @@ class Measurement(  # pylint: disable=no-init
     if isinstance(dimension, units.UnitDescriptor):
       return Dimension.from_unit_descriptor(dimension)
     if isinstance(dimension, str):
-      return Dimension.from_string(string)
+      return Dimension.from_string(dimension)
 
     raise TypeError('Cannot convert %s to a dimension', dimension)
 

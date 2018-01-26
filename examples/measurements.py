@@ -142,10 +142,12 @@ def multdim_measurements(test):
 
   # Let's convert that to a pandas dataframe
   power_df = dim_measured_value.to_dataframe(columns=['ms', 'V', 'A', 'n/a'])
+  test.logger.info('This is what a dataframe looks like:\n%s', power_df)
   test.measurements['average_voltage'] = power_df['V'].mean()
 
   # We can convert the dataframe to a numpy array as well
   power_array = power_df.as_matrix()
+  test.logger.info('This is the same data in a numpy array:\n%s', power_array)
   test.measurements['average_current'] = power_array.mean(axis=0)[2]
 
   # Finally, let's estimate the resistance
