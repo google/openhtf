@@ -33,6 +33,10 @@ import numbers
 import os
 import threading
 import zlib
+try:
+  from past.types import unicode
+except ImportError:
+  pass
 
 import httplib2
 import oauth2client.client
@@ -155,8 +159,8 @@ def _extract_attachments(phase, testrun, used_parameter_names):
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
-    if isinstance(attachment_data, str):
-      attachment_data = attachment_data.encode('utf8')
+    if isinstance(attachment_data, unicode):
+      attachment_data = attachment_data.encode('utf-8')
     testrun_param.value_binary = attachment_data
     if mimetype in MIMETYPE_MAP:
       testrun_param.type = MIMETYPE_MAP[mimetype]

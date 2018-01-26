@@ -190,6 +190,19 @@ class Measurement(  # pylint: disable=no-init
                                                                 unit_desc))
     return unit_desc
 
+  def _maybe_make_dimension(self, dimension):
+    """Return a `measurements.Dimension` instance."""
+    # For backwards compatibility the argument can be either a Dimension, a
+    # string or a `units.UnitDescriptor`.
+    if isinstance(dimension, Dimension):
+      return dimension
+    if isinstance(dimension, units.UnitDescriptor):
+      return Dimension.from_unit_descriptor(dimension)
+    if isinstance(dimension, str):
+      return Dimension.from_string(string)
+
+    raise TypeError('Cannot convert %s to a dimension', dimension)
+
   def with_units(self, unit_desc):
     """Declare the units for this Measurement, returns self for chaining."""
     self.units = self._maybe_make_unit_desc(unit_desc)
@@ -198,7 +211,7 @@ class Measurement(  # pylint: disable=no-init
   def with_dimensions(self, *dimensions):
     """Declare dimensions for this Measurement, returns self for chaining."""
     self.dimensions = tuple(
-        self._maybe_make_unit_desc(dim) for dim in dimensions)
+        self._maybe_make_dimension(dim) for dim in dimensions)
     return self
 
   def with_validator(self, validator):
@@ -322,6 +335,55 @@ class MeasuredValue(
       _LOG.warning('Measurement %s is set to None', self.name)
     self.stored_value = value
     self.is_value_set = True
+
+
+class Dimension(object):
+  """Dimension for multi-dim Measurements.
+
+  Dimensions optionally include a unit and a description.  This is intended
+  as a drop-in replacement for UnitDescriptor for backwards compatibility.
+  """
+
+  def __init__(self, description='', unit=units.NO_DIMENSION):
+    self.description = description
+    self.unit = unit
+
+  @classmethod
+  def from_unit_descriptor(cls, unit_desc):
+    return cls(unit=unit_desc)
+
+  @classmethod
+  def from_string(cls, string):
+    """Convert a string into a Dimension"""
+    # Note: There is some ambiguity as to whether the string passed is intended
+    # to become a unit looked up by name or suffix, or a Dimension descriptor.
+    if string in units.UNITS_BY_ALL:
+      return cls(description=string, unit=units.Unit(string))
+    else:
+      return cls(description=string)
+
+  @property
+  def code(self):
+    """Provides backwards compatibility to `units.UnitDescriptor` api."""
+    return self.unit.code
+
+  @property
+  def suffix(self):
+    """Provides backwards compatibility to `units.UnitDescriptor` api."""
+    return self.unit.suffix
+
+  @property
+  def name(self):
+    """Provides backwards compatibility to `units.UnitDescriptor` api."""
+    return self.description or self.unit.name
+
+  def _asdict(self):
+    return {
+        'code': self.code,
+        'description': self.description,
+        'name': self.name,
+        'suffix': self.suffix,
+    }
 
 
 class DimensionedMeasuredValue(mutablerecords.Record(
