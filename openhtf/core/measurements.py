@@ -348,6 +348,12 @@ class Dimension(object):
     self.description = description
     self.unit = unit
 
+  def __eq__(self, other):
+    return (self.description == other.description and self.unit == other.unit)
+
+  def __str__(self):
+    return str(self._asdict())
+
   @classmethod
   def from_unit_descriptor(cls, unit_desc):
     return cls(unit=unit_desc)
