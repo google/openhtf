@@ -53,14 +53,13 @@ in this module, which take's a Test's UID and returns a Python Logger:
     helper.test_uid = my_test.uid
     my_test.Excute()
 
-Framework logs are by default output only to stderr at a warning level.  They
-can be additionally logged to a file (with a different level) via the
---log-file and --log-file-level flags.  The --quiet flag may be set to suppress
-all framework log output to stderr.  The --verbosity flag may be used to set
-the log level threshold for framework logs output to stderr.
-
-Test record logs are by default output to stdout at a debug level.  There is
-no way to change this, if you don't like it redirect stdout to /dev/null.
+The --framework-verbosity flag controls logs from the framework (output to
+stderr), and the --testrecord-verbosity flag controls logs from the test record
+(output to stdout).  Each of these flags can be set to 'debug', 'info',
+'warning', 'error', 'critical', or 'off'.  Test record logs are by default
+output to stdout at a info level, and framework logs are by default output to
+stderr at a warning level.  Framework logs can be additionally logged to a file
+(with a different level) via the --log-file and --log-file-level flags.
 """
 
 from past.builtins import basestring
