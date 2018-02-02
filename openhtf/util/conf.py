@@ -446,6 +446,22 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
         retval[key] = value
     return retval
 
+  @property
+  def help_text(self):
+    """Return a string with all config keys and their descriptions."""
+    result = []
+    for name in sorted(self._declarations.keys()):
+      result.append(name)
+      result.append('-' * len(name))
+      if self._declarations[name].description:
+        result.append(self._declarations[name].description.strip())
+      else:
+        result.append('(no description found)')
+      result.append('')
+      result.append('')
+    return '\n'.join(result)
+
+
   def save_and_restore(self, _func=None, **config_values):
     """Decorator for saving conf state and restoring it after a function.
 

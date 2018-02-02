@@ -190,7 +190,10 @@ class Test(object):
     """Update test-wide configuration options. See TestOptions for docs."""
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
-    create_arg_parser(add_help=True).parse_known_args()
+    known_args, _ = create_arg_parser(add_help=True).parse_known_args()
+    if known_args.config_help:
+      sys.stdout.write(conf.help_text)
+      sys.exit(0)
     logs.setup_logger()
     for key, value in kwargs.items():
       setattr(self._test_options, key, value)
@@ -328,9 +331,14 @@ def create_arg_parser(add_help=False):
           'My args title', parents=[openhtf.create_arg_parser()])
   >>> parser.parse_args()
   """
-  return argparse.ArgumentParser('OpenHTF-based testing', parents=[
+  parser = argparse.ArgumentParser('OpenHTF-based testing', parents=[
       conf.ARG_PARSER, phase_executor.ARG_PARSER, logs.ARG_PARSER],
       add_help=add_help)
+  parser.add_argument(
+      '--config-help', action='store_true',
+      help='Instead of executing the test, simply print all available config '
+      'keys and their description strings.')
+  return parser
 
 
 # Result of a phase.
