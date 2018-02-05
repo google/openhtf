@@ -239,17 +239,17 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     self._modules = kwargs
     self._declarations = {}
     self.ARG_PARSER = parser
-    
+
     # Parse just the flags we care about, since this happens at import time.
     self._flags, _ = parser.parse_known_args()
     self._flag_values = {}
-    
+
     # Populate flag_values from flags now.
     self.load_flag_values()
 
     # Initialize self._loaded_values and load from --config-file if it's set.
     self.reset()
-  
+
   def load_flag_values(self, flags=None):
     """Load flag values given from command line flags.
 
@@ -453,10 +453,16 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     for name in sorted(self._declarations.keys()):
       result.append(name)
       result.append('-' * len(name))
-      if self._declarations[name].description:
-        result.append(self._declarations[name].description.strip())
+      decl = self._declarations[name]
+      if decl.description:
+        result.append(decl.description.strip())
       else:
         result.append('(no description found)')
+      if decl.has_default:
+        result.append('')
+        quotes = '"' if type(decl.default_value) is str else ''
+        result.append('  default_value={quotes}{val}{quotes}'.format(
+            quotes=quotes, val=decl.default_value))
       result.append('')
       result.append('')
     return '\n'.join(result)
