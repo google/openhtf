@@ -467,7 +467,6 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       result.append('')
     return '\n'.join(result)
 
-
   def save_and_restore(self, _func=None, **config_values):
     """Decorator for saving conf state and restoring it after a function.
 
