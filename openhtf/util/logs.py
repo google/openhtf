@@ -53,14 +53,13 @@ in this module, which take's a Test's UID and returns a Python Logger:
     helper.test_uid = my_test.uid
     my_test.Excute()
 
-Framework logs are by default output only to stderr at a warning level.  They
-can be additionally logged to a file (with a different level) via the
---log-file and --log-file-level flags.  The --quiet flag may be set to suppress
-all framework log output to stderr.  The --verbosity flag may be used to set
-the log level threshold for framework logs output to stderr.
-
-Test record logs are by default output to stdout at a debug level.  There is
-no way to change this, if you don't like it redirect stdout to /dev/null.
+The --framework-verbosity flag controls logs from the framework (output to
+stderr), and the --testrecord-verbosity flag controls logs from the test record
+(output to stdout).  Each of these flags can be set to 'debug', 'info',
+'warning', 'error', 'critical', or 'off'.  Test record logs are by default
+output to stdout at a info level, and framework logs are by default output to
+stderr at a warning level.  Framework logs can be additionally logged to a file
+(with a different level) via the --log-file and --log-file-level flags.
 """
 
 from past.builtins import basestring
@@ -77,20 +76,24 @@ from openhtf.util import argv
 from openhtf.util import functions
 
 
-DEFAULT_LEVEL = 'warning'
+DEFAULT_FRAMEWORK_LEVEL = 'warning'
 DEFAULT_LOGFILE_LEVEL = 'warning'
+DEFAULT_TESTRECORD_LEVEL = 'info'
 QUIET = False
 LOGFILE = None
 
-LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
+LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical', 'off']
 ARG_PARSER = argv.ModuleParser()
 ARG_PARSER.add_argument(
-    '--verbosity', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
-    action=argv.StoreInModule, target='%s.DEFAULT_LEVEL' % __name__,
+    '--framework-verbosity', default=DEFAULT_FRAMEWORK_LEVEL,
+    choices=LEVEL_CHOICES, action=argv.StoreInModule,
+    target='%s.DEFAULT_FRAMEWORK_LEVEL' % __name__,
     help='Console log verbosity level (stderr).')
 ARG_PARSER.add_argument(
-    '--quiet', action=argv.StoreInModule, target='%s.QUIET' % __name__,
-    proxy=argparse._StoreTrueAction, help="Don't output logs to stderr.")
+    '--testrecord-verbosity', default=DEFAULT_TESTRECORD_LEVEL,
+    choices=LEVEL_CHOICES, action=argv.StoreInModule,
+    target='%s.DEFAULT_TESTRECORD_LEVEL' % __name__,
+    help='Console log verbosity level (stdout).')
 ARG_PARSER.add_argument(
     '--log-file', action=argv.StoreInModule, target='%s.LOGFILE' % __name__,
     help='Filename to output logs to, if any.')
@@ -116,10 +119,11 @@ def initialize_record_logger(test_uid, test_record, notify_update):
   logger = get_record_logger_for(test_uid)
   # All record loggers have a shared parent that's separately configured, so
   # we want to propagate to that logger.
-  logger.propagate = True
-  logger.setLevel(logging.DEBUG)
-  # Just in case, make sure we don't have any extra handlers hanging around.
-  logger.handlers = [RecordHandler(test_record, notify_update)]
+  if DEFAULT_TESTRECORD_LEVEL != 'off':
+    logger.propagate = True
+    logger.setLevel(DEFAULT_TESTRECORD_LEVEL.upper())
+    # Just in case, make sure we don't have any extra handlers hanging around.
+    logger.handlers = [RecordHandler(test_record, notify_update)]
   return logger
 
 
@@ -194,10 +198,11 @@ class RecordHandler(logging.Handler):
 @functions.call_once
 def setup_logger():
   """Configure logging for OpenHTF."""
-  record_logger = logging.getLogger(RECORD_LOGGER)
-  record_logger.propagate = False
-  record_logger.setLevel(logging.DEBUG)
-  record_logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+  if DEFAULT_TESTRECORD_LEVEL != 'off':
+    record_logger = logging.getLogger(RECORD_LOGGER)
+    record_logger.propagate = False
+    record_logger.setLevel(logging.INFO)
+    record_logger.addHandler(logging.StreamHandler(stream=sys.stdout))
 
   logger = logging.getLogger(LOGGER_PREFIX)
   logger.propagate = False
@@ -215,9 +220,9 @@ def setup_logger():
       print('Failed to set up log file due to error: %s. '
              'Continuing anyway.' % exception)
 
-  if not QUIET:
+  if DEFAULT_FRAMEWORK_LEVEL != 'off':
     console_handler = logging.StreamHandler(stream=sys.stderr)
     console_handler.setFormatter(formatter)
-    console_handler.setLevel(DEFAULT_LEVEL.upper())
+    console_handler.setLevel(DEFAULT_FRAMEWORK_LEVEL.upper())
     console_handler.addFilter(MAC_FILTER)
     logger.addHandler(console_handler)
