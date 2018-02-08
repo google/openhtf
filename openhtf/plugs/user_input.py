@@ -45,6 +45,8 @@ if platform.system() != 'Windows':
 
 _LOG = logging.getLogger(__name__)
 
+PROMPT = '--> '
+
 
 class PromptInputError(Exception):
   """Raised in the event that a prompt returns without setting the response."""
@@ -84,12 +86,13 @@ class ConsolePrompt(threading.Thread):
       if platform.system() == 'Windows':
         # Windows doesn't support file-like objects for select(), so fall back
         # to raw_input().
-        response = input(self._message + '\n\r')
+        response = input(''.join((self._message, '\n\r', PROMPT)))
         self._answered = True
         self._callback(response)
       else:
         # First, display the prompt to the console.
-        print(self._message)
+        sys.stdout.write(''.join((self._message, '\n', PROMPT)))
+        sys.stdout.flush()
 
         # Before reading, clear any lingering buffered terminal input.
         if sys.stdin.isatty():

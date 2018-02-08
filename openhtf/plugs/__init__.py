@@ -398,6 +398,10 @@ class PlugManager(object):
     """
     types = plug_types if plug_types is not None else self._plug_types
     for plug_type in types:
+      # Create a logger for this plug. All plug loggers go under the 'plug'
+      # sub-logger in the logger hierarchy.
+      plug_logger = logging.getLogger(
+            '.'.join((self._logger.name, 'plug', plug_type.__name__)))
       if plug_type in self._plugs_by_type:
         continue
       try:
@@ -410,7 +414,7 @@ class PlugManager(object):
               'Do not override "logger" in your plugs.', plug_type)
 
         # Override the logger so that __init__'s logging goes into the record.
-        plug_type.logger = self._logger
+        plug_type.logger = plug_logger
         try:
           plug_instance = plug_type()
         finally:
@@ -424,7 +428,7 @@ class PlugManager(object):
               'Do not set "self.logger" in __init__ in your plugs', plug_type)
         else:
           # Now the instance has its own copy of the test logger.
-          plug_instance.logger = self._logger
+          plug_instance.logger = plug_logger
       except Exception:  # pylint: disable=broad-except
         self._logger.exception('Exception instantiating plug type %s', plug_type)
         self.tear_down_plugs()

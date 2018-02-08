@@ -195,7 +195,7 @@ class Test(object):
     if known_args.config_help:
       sys.stdout.write(conf.help_text)
       sys.exit(0)
-    logs.setup_logger()
+    logs.configure_cli_logging()
     for key, value in six.iteritems(kwargs):
       setattr(self._test_options, key, value)
 
@@ -339,7 +339,7 @@ def create_arg_parser(add_help=False):
   >>> parser.parse_args()
   """
   parser = argparse.ArgumentParser('OpenHTF-based testing', parents=[
-      conf.ARG_PARSER, phase_executor.ARG_PARSER, logs.ARG_PARSER],
+      conf.ARG_PARSER, logs.ARG_PARSER, phase_executor.ARG_PARSER],
       add_help=add_help)
   parser.add_argument(
       '--config-help', action='store_true',
@@ -553,6 +553,10 @@ class PhaseDescriptor(mutablerecords.Record(
         len(arg_info.args) > len(kwargs)):
       # Underlying function has room for test_api as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
+      # Update test_state's logger so that it's a phase-specific one.
+      test_state.logger = logging.getLogger(
+          '.'.join((logs.get_record_logger_for(test_state.execution_uid).name,
+                    'phase', self.name)))
       return self.func(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)

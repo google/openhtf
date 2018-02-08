@@ -108,7 +108,8 @@ class TestState(util.SubscribableStateMixin):
 
   Attributes:
     test_record: TestRecord instance for the currently running test.
-    logger: Logger that logs to test_record's log_records attribute.
+    logger: Logger that logs to test_record's log_records attribute. May be
+        overridden with more specific (phase) loggers during execution.
     running_phase_state: PhaseState object for the currently running phase,
         if any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
@@ -143,7 +144,7 @@ class TestState(util.SubscribableStateMixin):
     """Create a TestApi for access to this TestState.
 
     The returned TestApi should be passed as the first argument to test
-    phases.  Note that the return value is none if there is no
+    phases.  Note that the return value is None if there is no
     self.running_phase_state set.  As such, this attribute should only
     be accessed within a RunningPhaseContext().
 

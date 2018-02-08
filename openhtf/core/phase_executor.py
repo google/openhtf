@@ -158,7 +158,7 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def _thread_exception(self, *args):
     self._phase_execution_outcome = PhaseExecutionOutcome(ExceptionInfo(*args))
-    self._test_state.logger.exception('Phase %s raised an exception', self.name)
+    self._test_state.logger.critical('Phase %s raised an exception', self.name)
 
   def join_or_die(self):
     """Wait for thread to finish, returning a PhaseExecutionOutcome instance."""

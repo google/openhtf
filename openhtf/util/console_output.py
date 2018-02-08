@@ -53,11 +53,13 @@ def banner_print(msg, color='', width=60, file=sys.stdout):
   Example:
 
     >>> banner_print('Foo Bar Baz')
+
     ======================== Foo Bar Baz =======================
+
   """
   lpad = int(math.ceil((width - len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - len(msg) - 2) / 2.0)) * '='
-  file.write('{color}{lpad} {msg} {rpad}{reset}\n'.format(
+  file.write('\n{color}{lpad} {msg} {rpad}{reset}\n\n'.format(
       color=color, lpad=lpad, msg=msg, rpad=rpad,
       reset=colorama.Style.RESET_ALL))
   file.flush()
@@ -204,17 +206,19 @@ def action_result_context(action_text,
     ...
   """
   logger.info(action_text)
-  file.write(action_text)
-  file.write((width - status_width - len(action_text)) * ' ')
+  file.write(''.join((action_text, '\r')))
+  spacing = (width - status_width - len(action_text)) * ' '
   file.flush()
   result = ActionResult()
   try:
     yield result
   except Exception as err:
+    file.write(''.join((action_text, spacing)))
     bracket_print(fail_text, width=status_width, color=colorama.Fore.RED)
     logger.info('%s: %s', action_text, fail_text)
     if not isinstance(err, ActionFailedError):
       raise
+  file.write(''.join((action_text, spacing)))
   if result.success:
     bracket_print(succeed_text, width=status_width, color=colorama.Fore.GREEN)
     logger.info('%s: %s', action_text, succeed_text)

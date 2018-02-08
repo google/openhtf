@@ -65,6 +65,7 @@ Test record logs are by default output to stdout at a debug level.  Use the
 
 import argparse
 import collections
+import datetime
 import logging
 import os
 import re
@@ -77,54 +78,34 @@ from openhtf.util import functions
 import six
 
 
-DEFAULT_LEVEL = 'warning'
-DEFAULT_RECORD_VERBOSITY = 'debug'
-DEFAULT_LOGFILE_LEVEL = 'warning'
-QUIET = False
-LOGFILE = None
-
-LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
 ARG_PARSER = argv.ModuleParser()
-ARG_PARSER.add_argument(
-    '--verbosity', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
-    action=argv.StoreInModule, target='%s.DEFAULT_LEVEL' % __name__,
-    help='Console log verbosity level (stderr).')
-ARG_PARSER.add_argument(
-    '--test-record-verbosity', default=DEFAULT_RECORD_VERBOSITY, choices=LEVEL_CHOICES,
-    action=argv.StoreInModule, target='%s.DEFAULT_RECORD_VERBOSITY' % __name__,
-    help='Console log verbosity level for test record (not framework logger).')
-ARG_PARSER.add_argument(
-    '--quiet', action=argv.StoreInModule, target='%s.QUIET' % __name__,
-    proxy=argparse._StoreTrueAction, help="Don't output logs to stderr.")
-ARG_PARSER.add_argument(
-    '--log-file', action=argv.StoreInModule, target='%s.LOGFILE' % __name__,
-    help='Filename to output logs to, if any.')
-ARG_PARSER.add_argument(
-    '--log-file-level', default=DEFAULT_LOGFILE_LEVEL, choices=LEVEL_CHOICES,
-    action=argv.StoreInModule, target='%s.DEFAULT_LOGFILE_LEVEL' % __name__,
-    help='Logging verbosity level for log file output.')
+ARG_PARSER.add_argument('-v', action='append_const', const='v')
 
 LOGGER_PREFIX = 'openhtf'
-RECORD_LOGGER = '.'.join((LOGGER_PREFIX, 'test_record'))
+RECORD_LOGGER_PREFIX = '.'.join((LOGGER_PREFIX, 'test_record'))
 
 _LOGONCE_SEEN = set()
+
 
 LogRecord = collections.namedtuple(
     'LogRecord', 'level logger_name source lineno timestamp_millis message')
 
 
 def get_record_logger_for(test_uid):
-  return logging.getLogger('.'.join((RECORD_LOGGER, test_uid)))
+  return logging.getLogger('.'.join((RECORD_LOGGER_PREFIX, test_uid)))
 
 
 def initialize_record_logger(test_uid, test_record, notify_update):
+  htf_logger = logging.getLogger(LOGGER_PREFIX)
+  htf_logger.propagate = False
+  # Add the handler for this test record to the main OpenHTF logger.
+  htf_logger.addHandler(RecordHandler(test_uid, test_record, notify_update))
+  # Also create a sub-logger specific to this test UID and return it.
   logger = get_record_logger_for(test_uid)
   # All record loggers have a shared parent that's separately configured, so
   # we want to propagate to that logger.
   logger.propagate = True
   logger.setLevel(logging.DEBUG)
-  # Just in case, make sure we don't have any extra handlers hanging around.
-  logger.handlers = [RecordHandler(test_record, notify_update)]
   return logger
 
 
@@ -162,19 +143,39 @@ class MacAddressLogFilter(logging.Filter):
         record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.getMessage())
     return True
 
-
 # We use one shared instance of this, it has no internal state.
 MAC_FILTER = MacAddressLogFilter()
+
+
+class TestUidFilter(logging.Filter):
+  """Only allow logs to pass whose logger source matches the given uid."""
+  def __init__(self, test_uid):
+    super(TestUidFilter, self).__init__()
+    self.test_uid = test_uid
+
+  def filter(self, record):
+    # Only filter logs that from individual test instances. Framework logs go
+    # to every test instance's test record to make station debugging easier.
+    if record.name.startswith(RECORD_LOGGER_PREFIX):
+      _, suffix = record.name.split(RECORD_LOGGER_PREFIX)
+      if suffix:
+        test_uid = suffix.split('.')[0]
+        return True if test_uid == self.test_uid else False
+    return True
 
 
 class RecordHandler(logging.Handler):
   """A handler to save logs to an HTF TestRecord."""
 
-  def __init__(self, test_record, notify_update):
+  def __init__(self, test_uid, test_record, notify_update):
+    # Record handlers get the DEBUG logging level since we don't want any
+    # information to be lost.
     super(RecordHandler, self).__init__(level=logging.DEBUG)
+    self.test_uid = test_uid
     self._test_record = test_record
     self._notify_update = notify_update
     self.addFilter(MAC_FILTER)
+    self.addFilter(TestUidFilter(test_uid))
 
   def emit(self, record):
     """Save a logging.LogRecord to our test record.
@@ -199,40 +200,48 @@ class RecordHandler(logging.Handler):
     self._notify_update()
 
 
+class CliFormatter(logging.Formatter):
+  """Formats log messages for printing to the CLI."""
+  def format(self, record):
+    """Format the record as tersely as possible but preserve info."""
+    super(CliFormatter, self).format(record)
+    localized_time = datetime.datetime.fromtimestamp(record.created)
+    terse_time = localized_time.strftime(u'%H:%M:%S')
+    terse_level = record.levelname[0]
+    terse_name = record.name.split('.')[-1]
+    if record.name.startswith(RECORD_LOGGER_PREFIX):
+      # The [1:] split used here is to discard the extra leading dot.
+      loggers = record.name.split(RECORD_LOGGER_PREFIX)[1][1:].split('.')
+      # If nested under a test record, show where the message came from.
+      if len(loggers) > 1:
+        terse_name = '<{type}: {identifier}>'.format(
+            type=loggers[1], # First thing after UUID should be the logger type.
+            identifier=loggers[-1]) # Last thing should uniquely id the logger.
+      else:
+        # Fall back to using the last five characters of the test UUID.
+        terse_name = '<test %s>' % loggers[0][-5:]
+    return '{lvl} {time} {logger} - {msg}'.format(lvl=terse_level,
+                                                     time=terse_time,
+                                                     logger=terse_name,
+                                                     msg=record.message)
+
+
 @functions.call_once
-def setup_logger():
-  """Configure logging for OpenHTF."""
-  record_logger = logging.getLogger(RECORD_LOGGER)
-  record_logger.propagate = False
-  record_logger.setLevel(logging.DEBUG)
+def configure_cli_logging():
+  """Configure OpenHTF to log to the CLI based on verbosity arg."""
+  args, _ = ARG_PARSER.parse_known_args()
+  if not args.v: # The default behavior is not to log anything to the CLI.
+    return
+  logging_level = None
+  if len(args.v) == 1:
+    logging_level = logging.INFO
+  elif len(args.v) == 2:
+    logging_level = logging.DEBUG
+  elif len(args.v) > 2:
+    logging_level = logging.NOTSET
 
-  # TODO: make printed timestamp optional?
-  record_console_handler_formatter = logging.Formatter(
-    u'[%(asctime)s]    %(message)s', '%H:%M:%S')
-  record_console_handler = logging.StreamHandler(stream=sys.stdout)
-  record_console_handler.setFormatter(record_console_handler_formatter)
-  record_console_handler.setLevel(DEFAULT_RECORD_VERBOSITY.upper())
-  record_logger.addHandler(record_console_handler)
-
-  logger = logging.getLogger(LOGGER_PREFIX)
-  logger.propagate = False
-  logger.setLevel(logging.DEBUG)
-  formatter = logging.Formatter(u'%(asctime)s - %(levelname)s - %(message)s')
-  if LOGFILE:
-    try:
-      cur_time = str(util.time_millis())
-      file_handler = logging.FileHandler('%s.%s' % (LOGFILE, cur_time))
-      file_handler.setFormatter(formatter)
-      file_handler.setLevel(DEFAULT_LOGFILE_LEVEL.upper())
-      file_handler.addFilter(MAC_FILTER)
-      logger.addHandler(file_handler)
-    except IOError as exception:
-      print('Failed to set up log file due to error: %s. '
-             'Continuing anyway.' % exception)
-
-  if not QUIET:
-    console_handler = logging.StreamHandler(stream=sys.stderr)
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(DEFAULT_LEVEL.upper())
-    console_handler.addFilter(MAC_FILTER)
-    logger.addHandler(console_handler)
+  cli_handler = logging.StreamHandler(stream=sys.stdout)
+  cli_handler.setFormatter(CliFormatter())
+  cli_handler.setLevel(logging_level)
+  cli_handler.addFilter(MAC_FILTER)
+  logging.getLogger(LOGGER_PREFIX).addHandler(cli_handler)
