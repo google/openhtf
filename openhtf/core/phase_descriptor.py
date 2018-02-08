@@ -242,12 +242,3 @@ class PhaseDescriptor(mutablerecords.Record(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)
     return self.func(**kwargs)
-
-
-class RemotePhaseDescriptor(mutablerecords.Record('RemotePhaseDescriptor', [
-    'id', 'name', 'doc'], PhaseDescriptor.optional_attributes)):
-  """Representation of a PhaseDescriptor on a remote test (see station_api).
-
-  This is static information attached to a RemoteTest.  It's defined here to
-  avoid a circular dependency with station_api.
-  """

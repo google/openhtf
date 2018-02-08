@@ -1,0 +1,57 @@
+<div *ngIf="!hasError" class="nav-bar">
+  <em *ngIf="isLoading">
+    Loading…
+  </em>
+  <span *ngIf="!isLoading && !anyStationFound">
+    Connected to server. No stations found.
+  </span>
+  <span *ngIf="!isLoading && anyStationFound">
+    Found {{ stationCount }} {{ stationCount === 1 ? 'station' : 'stations' }}.
+  </span>
+
+  <div class="u-flex-grow"></div>
+
+  <button
+    *ngIf="!isLoading"
+    (click)="manualReload()"
+    type="button"
+    class="htf-link-button">
+    Refresh station list
+  </button>
+</div>
+
+<ul class="station-list" *ngIf="!isLoading && !hasError && anyStationFound">
+  <li *ngFor="let station of stations | objectToSortedValues:'label'">
+    <button
+      type="button"
+      class="u-text-align-left"
+      [class.is-unreachable]="!isReachable(station)"
+      (click)="select(station)">
+
+      <div class="u-display-flex">
+        <div class="station-label">
+          {{ station.label }} ({{ station.status | statusToText }})
+        </div>
+        <div class="u-flex-grow"></div>
+        <div class="htf-support-text">
+          {{ station.host }}:{{ station.port }}
+        </div>
+      </div>
+      <div *ngIf="station.testDescription" class="station-description u-push-top-third">
+        {{ station.testDescription }}
+      </div>
+
+    </button>
+  </li>
+</ul>
+
+<div *ngIf="hasError">
+  Could not connect to the server.
+  {{ (retryCountdown | async) || 'Retrying in…' }}
+  <button
+    type="button"
+    class="htf-link-button"
+    (click)="manualRetry()">
+    Try again.
+  </button>
+</div>

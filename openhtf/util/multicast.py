@@ -20,14 +20,12 @@ socket and invokes a callback function for each message recieved, and a send()
 function that is used to send one-shot messages to a multicast socket.
 """
 
-
 import logging
 import socket
 import struct
 import sys
 import threading
 from six.moves import queue
-
 
 _LOG = logging.getLogger(__name__)
 

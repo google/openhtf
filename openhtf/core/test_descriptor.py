@@ -22,6 +22,7 @@ test is a series of Phases that are executed by the OpenHTF framework.
 import argparse
 import collections
 import logging
+import os
 import sys
 import textwrap
 import threading
@@ -36,7 +37,6 @@ import mutablerecords
 from openhtf import util
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
-from openhtf.core import station_api
 from openhtf.core import test_executor
 from openhtf.core import test_record
 
@@ -145,10 +145,6 @@ class Test(object):
     else:
       self.configure()
 
-    # This is a noop if the server is already running, otherwise start it now
-    # that we have at least one Test instance.
-    station_api.start_server()
-
   @classmethod
   def from_uid(cls, test_uid):
     """Get Test by UID.
@@ -176,15 +172,13 @@ class Test(object):
     """Returns the next test execution's UID.
 
     This identifier must be unique but trackable across invocations of
-    execute(). Therefore, it's made of three parts separated by ':'
+    execute(). Therefore, it's made of four parts separated by ':'
     * Process-specific (decided on process start up)
     * Test descriptor-specific (decided on descriptor creation)
     * Execution-specific (decided on test start)
     """
-    return ':'.join([
-        station_api.STATION_API.UID, self.descriptor.uid,
-        uuid.uuid4().hex[:16]
-    ])
+    return '%s:%s:%s:%s' % (os.getpid(), self.descriptor.uid,
+                            uuid.uuid4().hex[:16], util.time_millis())
 
   @property
   def descriptor(self):
@@ -223,7 +217,6 @@ class Test(object):
       _LOG.error('Received SIGINT, stopping all tests.')
       for test in cls.TEST_INSTANCES.values():
         test.stop_from_sig_int()
-    station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.

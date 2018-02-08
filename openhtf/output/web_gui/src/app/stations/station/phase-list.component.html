@@ -1,0 +1,23 @@
+<div class="htf-layout-widget" *ngIf="test">
+
+  <div class="htf-layout-widget-header">
+    <div>Phases</div>
+    <div class="u-flex-grow"></div>
+    <button
+      type="button"
+      class="htf-rounded-button-grey"
+      (click)="toggleMeasurements()">
+      {{ showMeasurements ? 'Collapse' : 'Expand' }} all
+    </button>
+  </div>
+
+  <ul class="htf-layout-widget-list">
+    <li *ngFor="let phase of test.phases">
+      <htf-phase
+        [phase]="phase"
+        [expand]="showMeasurements">
+      </htf-phase>
+    </li>
+  </ul>
+
+</div>
