@@ -454,7 +454,7 @@ class UploadToMfgInspector(object):
     if isinstance(testrun, test_runs_pb2.TestRun):
       serialized_run = testrun.SerializeToString()
     elif os.path.isfile(testrun):
-      with open(testrun) as testrun_file:
+      with open(testrun, 'rb') as testrun_file:
         serialized_run = testrun_file.read()
     else:
       InvalidTestRunError('Invalid test run data')
