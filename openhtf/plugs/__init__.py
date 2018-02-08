@@ -103,8 +103,6 @@ import threading
 import time
 import types
 
-import mutablerecords
-
 import openhtf
 from openhtf import util
 from openhtf.util import classproperty
@@ -305,9 +303,14 @@ class PlugManager(object):
 
   def _asdict(self):
     return {
-        'plug_descriptors': self._plug_descriptors,
-        'plug_states': {name: plug._asdict()
-                        for name, plug in self._plugs_by_name.items()},
+        'plug_descriptors': {
+            name: dict(descriptor._asdict())  # Convert OrderedDict to dict.
+            for name, descriptor in self._plug_descriptors.items()
+        },
+        'plug_states': {
+            name: plug._asdict()
+            for name, plug in self._plugs_by_name.items()
+        },
         'xmlrpc_port': self._xmlrpc_server and
                        self._xmlrpc_server.socket.getsockname()[1]
     }
