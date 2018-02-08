@@ -261,7 +261,7 @@ class Test(object):
           self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
-      sys.excepthook = exceptions.get_handler_for_logger(
+      sys.excepthook = exceptions.get_exc_handler_for_logger(
           self._executor.test_state.logger)
       self._executor.start()
 

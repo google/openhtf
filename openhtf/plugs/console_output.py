@@ -13,40 +13,22 @@
 # limitations under the License.
 
 
-"""User input module for OpenHTF.
+"""Console output utilities for OpenHTF.
 
-Allows tests to prompt for user input using the framework, so prompts can be
-presented via the CLI interface, the included web frontend, and custom
-frontends alike. Any other part of the framework that needs to access shared
-prompt state should use the openhtf.prompts pseudomodule.
+This module provides a few conviences to help formatting output for the CLI, as
+well as for forking output to both a logger (for use with test record loggers)
+and to the CLI directly (through sys.stdout).
 """
 
-from __future__ import print_function
-from builtins import input
-import collections
-import functools
 import logging
 import math
-import os
-import platform
-import select
 import sys
-import threading
 import time
-import uuid
 
 import colorama
 import contextlib2 as contextlib
 
-from openhtf import PhaseOptions
-from openhtf import plugs
-from openhtf.util import argv
-from openhtf.util import exceptions
-
-
-if platform.system() != 'Windows':
-  import termios
-
+# Colorama module has to be initialized before use.
 colorama.init()
 
 _LOG = logging.getLogger(__name__)
@@ -57,6 +39,22 @@ class ActionFailedError(Exception):
 
 
 def banner_print(msg, color='', width=60, file=sys.stdout):
+  """Print the message as a banner with a fixed width.fixed
+
+  Args:
+    msg: The message to print.
+    color: Optional colorama color string to be applied to the message. You can
+        concatenate colorama color strings together in order to get any set of
+        effects you want.
+    width: Total width for the resulting banner.
+    file: A file object to which the banner text will be written. Intended for
+        use with CLI output file objects like sys.stdout.
+
+  Example:
+
+    >>> banner_print('Foo Bar Baz')
+    ======================== Foo Bar Baz =======================
+  """
   lpad = int(math.ceil((width - len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - len(msg) - 2) / 2.0)) * '='
   file.write('{color}{lpad} {msg} {rpad}\n'.format(
@@ -66,7 +64,17 @@ def banner_print(msg, color='', width=60, file=sys.stdout):
 
 
 def bracket_print(msg, color='', width=8, file=sys.stdout):
-  """Prints the message in brackets in the specified color and end the line."""
+  """Prints the message in brackets in the specified color and end the line.
+
+  Args:
+    msg: The message to put inside the brackets (a brief status message).
+    color: Optional colorama color string to be applied to the message. You can
+        concatenate colorama color strings together in order to get any set of
+        effects you want.
+    width: Total desired width of the bracketed message.
+    file: A file object to which the baracketed text will be written. Intended
+        for use with CLI output file objects like sys.stdout.
+    """
   lpad = int(math.ceil((width - 2 - len(msg)) / 2.0)) * ' '
   rpad = int(math.floor((width - 2 - len(msg)) / 2.0)) * ' '
   file.write('[{lpad}{bright}{color}{msg}{reset}{rpad}]'.format(
@@ -140,21 +148,21 @@ def action_result_context(action_text,
       time.sleep(2)
       import textwrap
       raise RuntimeError(textwrap.dedent('''\
-          Crap, there was a raise in the mix.
+          Uh oh, looks like there was a raise in the mix.
 
           If you see this message, it means you are running the console_output
           module directly rather than using it as a library. Things to try:
 
             * Not running it as a module.
-            * Running it as a module and not worrying about it.
-            * Use the magic words.'''))
+            * Running it as a module and enjoying the preview text.
+            * Getting another coffee.'''))
 
   Example output:
     Doing an action that will succeed...                [  OK  ]
     Doing an action with unset result...                [ ???? ]
     Doing an action that will fail...                   [ FAIL ]
     Doing an action that will raise...                  [ FAIL ]
-
+    ...
   """
   logger.info(action_text)
   file.write(action_text)
@@ -179,7 +187,6 @@ def action_result_context(action_text,
 # If invoked as a runnable module, this module will invoke its action result
 # context in order to print colorized example output.
 if __name__ == '__main__':
-  sys.excepthook = exceptions.get_handler_for_logger(_LOG)
   banner_print('Running pre-flight checks.')
 
   with action_result_context('Doing an action that will succeed...') as act:
@@ -197,11 +204,11 @@ if __name__ == '__main__':
     time.sleep(2)
     import textwrap
     raise RuntimeError(textwrap.dedent('''\
-        Crap, there was a raise in the mix.
+        Uh oh, looks like there was a raise in the mix.
 
         If you see this message, it means you are running the console_output
         module directly rather than using it as a library. Things to try:
 
           * Not running it as a module.
-          * Running it as a module and not worrying about it.
-          * Use the magic words.'''))
+          * Running it as a module and enjoying the preview text.
+          * Getting another coffee.'''))
