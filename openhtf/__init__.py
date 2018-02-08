@@ -47,7 +47,6 @@ from openhtf.core import test_record
 from openhtf.plugs import plug
 from openhtf.util import conf
 from openhtf.util import data
-from openhtf.util import exceptions
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
@@ -229,7 +228,6 @@ class Test(object):
                   that returns a DUT ID. If neither is provided, defaults to not
                   setting the DUT ID.
     """
-    old_exception_handler = sys.excepthook
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
@@ -261,8 +259,6 @@ class Test(object):
           self._test_options.teardown_function)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
-      sys.excepthook = exceptions.get_exc_handler_for_logger(
-          self._executor.test_state.logger)
       self._executor.start()
 
     try:
@@ -282,7 +278,6 @@ class Test(object):
       finally:
         del self.TEST_INSTANCES[self.uid]
         self._executor = None
-        sys.excepthook = old_exception_handler
 
     return final_state.test_record.outcome == test_record.Outcome.PASS
 

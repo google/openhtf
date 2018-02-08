@@ -24,6 +24,7 @@ import openhtf
 from openhtf.core import phase_executor
 from openhtf.core import test_state
 from openhtf.util import conf
+from openhtf.util import exceptions
 from openhtf.util import threads
 
 
@@ -120,6 +121,8 @@ class TestExecutor(threads.KillableThread):
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
       self.test_state = test_state.TestState(self._test_descriptor, self.uid)
+      sys.excepthook = exceptions.get_exc_handler_for_logger(
+          self.test_state.logger)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stacks must be done while holding this lock.
