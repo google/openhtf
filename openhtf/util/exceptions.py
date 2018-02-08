@@ -17,6 +17,26 @@
 
 import inspect
 import sys
+import traceback
+
+import colorama
+
+
+def get_handler_for_logger(logger):
+  """Stack trace goes to the logger, just the message goes to the CLI."""
+  def exception_handler(exc_type, exc_instance, tb):
+    message = str(exc_instance)
+    if not message:
+      message = 'An exception of type "{type}" was raised.'.format(
+          type=exc_type.__name__)
+    logger.critical('{tb}\n{msg}'.format(
+        tb=''.join(traceback.format_exception(exc_type, exc_instance, tb)),
+        msg=message))
+    sys.stderr.write('\n{bright}{red}Error: {normal}{reset}{msg}\n'.format(
+        bright=colorama.Style.BRIGHT, red=colorama.Fore.RED,
+        normal=colorama.Style.NORMAL, reset='',#colorama.Style.RESET_ALL,
+        msg=message))
+  return exception_handler
 
 
 def reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid-name
