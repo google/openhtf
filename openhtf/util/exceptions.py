@@ -17,7 +17,6 @@
 
 import inspect
 import sys
-import traceback
 
 
 def reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid-name
