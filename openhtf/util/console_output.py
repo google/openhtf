@@ -85,6 +85,28 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
   file.flush()
 
 
+def print(msg, color='', file=sys.stdout, logger=_LOG):
+  """Print the message to file and also log it.
+
+  This function is intended as a 'tee' mechanism to enable the CLI interface as
+  a first-class citizen, while ensuring that everything the operator sees also
+  has an analogous logging entry in the test record for later inspection.
+
+  Args:
+    msg: The message to print/log.
+    color: Optional colorama color string to be applied to the message. You can
+        concatenate colorama color strings together in order to get any set of
+        effects you want.
+    file: A file object to which the baracketed text will be written. Intended
+        for use with CLI output file objects like sys.stdout.
+    logger: logger: Logger to which to send analogous output for each message.
+        Intended for use with test record loggers.
+  """
+  file.write('{color}{msg}{reset}'.format(
+      color=color, msg=msg, reset=colorama.Style.RESET_ALL))
+  logger.info('-> {}'.format(msg))
+
+
 class ActionResult(object):
   """Used with an action_result_context to signal the result of an action."""
   def __init__(self):
@@ -172,16 +194,16 @@ def action_result_context(action_text,
   try:
     yield result
   except Exception as err:
-    logger.info('%s: %s', action_text, fail_text)
     bracket_print(fail_text, width=status_width, color=colorama.Fore.RED)
+    logger.info('%s: %s', action_text, fail_text)
     if not isinstance(err, ActionFailedError):
       raise
   if result.success:
-    logger.info('%s: %s', action_text, succeed_text)
     bracket_print(succeed_text, width=status_width, color=colorama.Fore.GREEN)
+    logger.info('%s: %s', action_text, succeed_text)
   elif result.success is None:
-    logger.info('%s: %s', action_text, 'Result unknown.')
     bracket_print(unknown_text, width=status_width, color=colorama.Fore.YELLOW)
+    logger.info('%s: %s', action_text, 'Result unknown.')
 
 
 # If invoked as a runnable module, this module will invoke its action result
