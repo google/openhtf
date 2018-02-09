@@ -19,39 +19,6 @@ import inspect
 import sys
 import traceback
 
-import colorama
-
-# Colorama module has to be initialized before use.
-colorama.init()
-
-
-def get_exc_handler_for_logger(logger, file=sys.stderr):
-  """Make an exception handler that makes the CLI interface more friendly.
-
-  Args:
-    logger: A logger to which the full stack trace for uncaught excpeptions
-        will be sent. Intended for use with test record loggers.
-    file: A file object to which just the error message (no stack trace) will
-        be sent. Intended to be used as CLI output.
-  Returns:
-    A function that can be used as an exception handler. Set sys.excepthook to
-    the returned function in order to use it as the exception handler.
-  """
-  def exception_handler(exc_type, exc_instance, tb):
-    """Exception handler with normal output to logger, terse output to CLI."""
-    message = str(exc_instance)
-    if not message:
-      message = 'An exception of type "{type}" was raised.'.format(
-          type=exc_type.__name__)
-    logger.critical('{tb}\n{msg}'.format(
-        tb=''.join(traceback.format_exception(exc_type, exc_instance, tb)),
-        msg=message))
-    file.write('\n{bright}{red}Error: {normal}{msg}\n'.format(
-        bright=colorama.Style.BRIGHT, red=colorama.Fore.RED,
-        normal=colorama.Style.NORMAL, msg=message))
-    file.flush()
-  return exception_handler
-
 
 def reraise(exc_type, message=None, *args, **kwargs):  # pylint: disable=invalid-name
   """reraises an exception for exception translation.

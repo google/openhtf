@@ -85,7 +85,7 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
   file.flush()
 
 
-def print(msg, color='', file=sys.stdout, logger=_LOG):
+def cli_print(msg, color='', file=sys.stdout, logger=_LOG):
   """Print the message to file and also log it.
 
   This function is intended as a 'tee' mechanism to enable the CLI interface as
@@ -105,6 +105,23 @@ def print(msg, color='', file=sys.stdout, logger=_LOG):
   file.write('{color}{msg}{reset}'.format(
       color=color, msg=msg, reset=colorama.Style.RESET_ALL))
   logger.info('-> {}'.format(msg))
+
+
+def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
+  """Print the error message to the file in the specified color.
+
+  Args:
+    msg: The error message to be printed.
+    color: Optional colorama color string to be applied to the message. You can
+        concatenate colorama color strings together here, but note that style
+        strings will not be applied.
+    file: A file object to which the baracketed text will be written. Intended
+        for use with CLI output file objects, specifically sys.stderr.
+  """
+  file.write('\n{bright}{color}Error: {normal}{msg}\n'.format(
+      bright=colorama.Style.BRIGHT, color=color,
+      normal=colorama.Style.NORMAL, msg=msg))
+  file.flush()
 
 
 class ActionResult(object):
