@@ -108,7 +108,8 @@ class TestExecutor(unittest.TestCase):
     self.test_plug_type = UnittestPlug
 
   def test_failures(self):
-    """ Tests that an exception that would normally cause an ERROR outcome will instead cause FAIL. """
+    """Tests that specified exception will cause FAIL not ERROR."""
+
     @openhtf.PhaseOptions()
     def start_phase(test):
       test.dut_id = 'DUT ID'
@@ -122,8 +123,8 @@ class TestExecutor(unittest.TestCase):
     # Outcome = ERROR.
     ev = threading.Event()
     test = openhtf.Test(failure_phase)
-    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=lambda: ev.set()) # pylint: disable=unnecessary-lambda
+    executor = core.TestExecutor(
+        test.descriptor, 'uid', start_phase, test_options=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -269,5 +270,6 @@ class TestPhaseExecutor(unittest.TestCase):
     result = self.phase_executor.execute_phase(phase_return_fail_and_continue)
     self.assertEqual(PhaseResult.FAIL_AND_CONTINUE, result.phase_result)
 
+
 if __name__ == '__main__':
-      unittest.main()
+  unittest.main()

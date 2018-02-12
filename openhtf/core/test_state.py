@@ -305,12 +305,13 @@ class TestState(util.SubscribableStateMixin):
         description = str(phase_execution_outcome.phase_result)
         self.test_record.add_outcome_details(code, description)
       if self._outcome_is_failure_exception(phase_execution_outcome):
-        self.logger.error('Finishing test execution early due to phase '
-                          'exception, outcome FAIL, because exception was specified as FAIL, not ERROR.')
+        self.logger.error('Outcome will be FAIL since exception was of type %s'
+                          % phase_execution_outcome.phase_result.exc_val)
         self._finalize(test_record.Outcome.FAIL)
       else:
         self.logger.error('Finishing test execution early due to phase '
-                          'exception, outcome ERROR.')
+                          'exception %s, outcome ERROR.' %
+                          phase_execution_outcome.phase_result.exc_val)
         self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
@@ -395,23 +396,24 @@ class TestState(util.SubscribableStateMixin):
     return False
 
   def _outcome_is_failure_exception(self, outcome):
-    for failure_exception in self.failure_exceptions:
+    for failure_exception in self.test_options.failure_exceptions:
       if isinstance(outcome.phase_result.exc_val, failure_exception):
         return True
-    print 'falseywalsey'
     return False
 
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
-        type(self).__name__, self.test_record.dut_id,
-        self.test_record.station_id, self.last_run_phase_name,
+        type(self).__name__,
+        self.test_record.dut_id,
+        self.test_record.station_id,
+        self.last_run_phase_name,
     )
 
 
-class PhaseState(mutablerecords.Record(
-    'PhaseState',
-    ['name', 'phase_record', 'measurements', 'options'],
-    {'hit_repeat_limit': False})):
+class PhaseState(
+    mutablerecords.Record('PhaseState',
+                          ['name', 'phase_record', 'measurements', 'options'],
+                          {'hit_repeat_limit': False})):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
