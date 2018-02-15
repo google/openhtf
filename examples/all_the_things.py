@@ -87,7 +87,8 @@ def set_measurements(test):
     htf.Measurement('unset_dims').with_dimensions(units.HERTZ),
     htf.Measurement('dimensions').with_dimensions(units.HERTZ),
     htf.Measurement('lots_of_dims').with_dimensions(
-        units.HERTZ, units.SECOND, units.RADIAN))
+        units.HERTZ, units.SECOND,
+        htf.Dimension(description='my_angle', unit=units.RADIAN)))
 def dimensions(test):
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim

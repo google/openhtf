@@ -1,3 +1,4 @@
+# coding: utf-8
 # Copyright 2016 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +19,13 @@ The test cases here need improvement - they should check for things that we
 actually care about.
 """
 
+from openhtf.core import measurements
+
+import mock
+
 from examples import all_the_things
 import openhtf as htf
+from openhtf.core.measurements import Outcome
 from openhtf.util import test as htf_test
 
 
@@ -29,6 +35,12 @@ _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
 
 
 class TestMeasurements(htf_test.TestCase):
+
+  def setUp(self):
+    # Ensure most measurements features work without pandas.
+    pandas_patch = mock.patch.object(measurements, 'pandas', None)
+    pandas_patch.start()
+    self.addCleanup(pandas_patch.stop)
 
   def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
@@ -45,7 +57,7 @@ class TestMeasurements(htf_test.TestCase):
     self.assertMeasurementPass(record, 'specified_as_args')
 
   @htf_test.yields_phases
-  def test_measurements_with_dimenstions(self):
+  def test_measurements_with_dimensions(self):
     record = yield all_the_things.dimensions
     self.assertNotMeasured(record, 'unset_dims')
     self.assertMeasured(record, 'dimensions',
@@ -78,3 +90,43 @@ class TestMeasurements(htf_test.TestCase):
     self.assertEqual(list(record.measurements.keys()),
                      ['replaced_min_only', 'replaced_max_only',
                       'replaced_min_max'])
+
+
+class TestMeasurement(htf_test.TestCase):
+
+  @mock.patch.object(measurements, 'pandas', None)
+  def test_to_dataframe__no_pandas(self):
+    with self.assertRaises(RuntimeError):
+      self.test_to_dataframe(units=True)
+
+  def test_to_dataframe(self, units=True):
+    measurement = htf.Measurement('test_multidim')
+    measurement.with_dimensions('ms', 'assembly',
+                                htf.Dimension('my_zone', 'zone'))
+
+    if units:
+      measurement.with_units('°C')
+      measure_column_name = 'degree Celsius'
+    else:
+      measure_column_name = 'value'
+
+    for t in range(5):
+      for assembly in ['A', 'B', 'C']:
+        for zone in range(3):
+          temp = zone + t
+          dims = (t, assembly, zone)
+          measurement.measured_value[dims] = temp
+
+    measurement.outcome = Outcome.PASS
+
+    df = measurement.to_dataframe()
+    coordinates = (1, 'A', 2)
+    query = '(ms == %s) & (assembly == "%s") & (my_zone == %s)' % (
+        coordinates)
+
+    self.assertEqual(
+        measurement.measured_value[coordinates],
+        df.query(query)[measure_column_name].values[0])
+
+  def test_to_dataframe__no_units(self):
+    self.test_to_dataframe(units=False)

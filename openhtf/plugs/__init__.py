@@ -482,8 +482,9 @@ class PlugManager(object):
       self._xmlrpc_server = None
 
     _LOG.debug('Tearing down all plugs.')
-    for a_plug in self._plugs_by_type.values():
-      thread = _PlugTearDownThread(a_plug)
+    for plug_type, plug_instance in self._plugs_by_type.items():
+      thread = _PlugTearDownThread(plug_instance,
+          name='<PlugTearDownThread: %s>' % plug_type)
       thread.start()
       timeout_s = (conf.plug_teardown_timeout_s
                    if conf.plug_teardown_timeout_s
@@ -491,7 +492,8 @@ class PlugManager(object):
       thread.join(timeout_s)
       if thread.is_alive():
         thread.kill()
-        _LOG.warning('Killed tearDown for plug %s after timeout.', a_plug)
+        _LOG.warning('Killed tearDown for plug %s after timeout.',
+                     plug_instance)
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
