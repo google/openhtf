@@ -303,7 +303,7 @@ class TestState(util.SubscribableStateMixin):
         # openhtf.util.threads.ThreadTerminationError gets str'd directly.
         code = str(type(phase_execution_outcome.phase_result).__name__)
         description = str(phase_execution_outcome.phase_result)
-        self.test_record.add_outcome_details(code, description)
+      self.test_record.add_outcome_details(code, description)
       if self._outcome_is_failure_exception(phase_execution_outcome):
         self.logger.error('Outcome will be FAIL since exception was of type %s'
                           % phase_execution_outcome.phase_result.exc_val)
