@@ -124,7 +124,7 @@ class TestExecutor(unittest.TestCase):
     ev = threading.Event()
     test = openhtf.Test(failure_phase)
     executor = core.TestExecutor(
-        test.descriptor, 'uid', start_phase, test_options=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test.descriptor, 'uid', start_phase, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
