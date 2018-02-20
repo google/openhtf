@@ -72,7 +72,7 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
         concatenate colorama color strings together in order to get any set of
         effects you want.
     width: Total desired width of the bracketed message.
-    file: A file object to which the baracketed text will be written. Intended
+    file: A file object to which the bracketed text will be written. Intended
         for use with CLI output file objects like sys.stdout.
     """
   lpad = int(math.ceil((width - 2 - len(msg)) / 2.0)) * ' '
