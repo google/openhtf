@@ -62,6 +62,9 @@ class OutputToFile(object):
   serialize_test_record() method.  Additionally, subclasses may implement
   more complex file naming mechanisms by overriding the open_file() method.
 
+  Output directory can be specified by adding the 'output_dir' value to the
+  test record metadata; useful if directory is created during test execution.
+
   Args:
     test_record: The TestRecord to write out to a file.
   """
@@ -86,6 +89,8 @@ class OutputToFile(object):
     record_dict = data.convert_to_base_types(
         test_record, ignore_keys=('code_info', 'phases', 'log_records'))
     pattern = self.filename_pattern
+    if 'output_dir' in test_record.metadata:
+      pattern = ''.join(('{metadata[output_dir]}/', pattern))
     if isinstance(pattern, str) or callable(pattern):
       output_file = self.open_file(util.format_string(pattern, record_dict))
       try:
