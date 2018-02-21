@@ -92,7 +92,7 @@ ARG_PARSER.add_argument(
 ARG_PARSER.add_argument(
     '--test-record-verbosity', default=DEFAULT_RECORD_VERBOSITY, choices=LEVEL_CHOICES,
     action=argv.StoreInModule, target='%s.DEFAULT_RECORD_VERBOSITY' % __name__,
-    help='Console log verbosity level for test record (not framework logger) (stderr).')
+    help='Console log verbosity level for test record (not framework logger).')
 ARG_PARSER.add_argument(
     '--quiet', action=argv.StoreInModule, target='%s.QUIET' % __name__,
     proxy=argparse._StoreTrueAction, help="Don't output logs to stderr.")
