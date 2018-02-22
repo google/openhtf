@@ -57,9 +57,9 @@ def banner_print(msg, color='', width=60, file=sys.stdout):
   """
   lpad = int(math.ceil((width - len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - len(msg) - 2) / 2.0)) * '='
-  file.write('{color}{lpad} {msg} {rpad}\n'.format(
-      color=color, lpad=lpad, msg=msg, rpad=rpad))
-  file.write(colorama.Style.RESET_ALL)
+  file.write('{color}{lpad} {msg} {rpad}{reset}\n'.format(
+      color=color, lpad=lpad, msg=msg, rpad=rpad,
+      reset=colorama.Style.RESET_ALL))
   file.flush()
 
 
@@ -85,7 +85,7 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
   file.flush()
 
 
-def cli_print(msg, color='', file=sys.stdout, logger=_LOG):
+def cli_print(msg, color='', end='\n', file=sys.stdout, logger=_LOG):
   """Print the message to file and also log it.
 
   This function is intended as a 'tee' mechanism to enable the CLI interface as
@@ -102,8 +102,8 @@ def cli_print(msg, color='', file=sys.stdout, logger=_LOG):
     logger: logger: Logger to which to send analogous output for each message.
         Intended for use with test record loggers.
   """
-  file.write('{color}{msg}{reset}'.format(
-      color=color, msg=msg, reset=colorama.Style.RESET_ALL))
+  file.write('{color}{msg}{reset}{end}'.format(
+      color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
   logger.info('-> {}'.format(msg))
 
 
