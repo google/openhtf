@@ -24,6 +24,8 @@ import openhtf
 from openhtf.core import phase_executor
 from openhtf.core import test_state
 from openhtf.util import conf
+from openhtf.util import console_output
+from openhtf.util import exceptions
 from openhtf.util import threads
 
 
@@ -179,6 +181,12 @@ class TestExecutor(threads.KillableThread):
     if self._do_teardown_function and self._teardown_function:
       phase_exec.execute_phase(self._teardown_function)
     self.test_state.plug_manager.tear_down_plugs()
+    # Make sure if there was an error during test execution that the error
+    # message is printed last and in a noticeable color so it doesn't get
+    # scrolled off the screen or missed.
+    if self.test_state.test_record.outcome.name == 'ERROR':
+      for detail in self.test_state.test_record.outcome_details:
+        console_output.error_print(detail.description)
 
   def _execute_test_phases(self, phase_exec):
     """Executes one test's phases from start to finish."""

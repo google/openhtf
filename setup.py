@@ -125,6 +125,7 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 
 INSTALL_REQUIRES = [
+    'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
     'future>=0.16.0',
     'mutablerecords>=0.4.1,<2.0',
