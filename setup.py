@@ -76,7 +76,7 @@ class BuildProtoCommand(Command):
     if not self.protoc:
       self.protoc = find_executable('protoc')
       pc_path = os.path.dirname(find_executable('protoc'))
-      self.protodir = os.path.abspath(os.path.join(os.path.dirname(pc_path), '../lib'))
+      self.protodir = os.path.abspath(os.path.join(os.path.dirname(pc_path), os.path.pardir, 'lib'))
     else:
       self.protodir = os.path.join(prefix, 'include')
     self.indir = os.getcwd()
