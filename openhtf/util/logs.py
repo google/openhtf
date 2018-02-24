@@ -59,8 +59,8 @@ can be additionally logged to a file (with a different level) via the
 all framework log output to stderr.  The --verbosity flag may be used to set
 the log level threshold for framework logs output to stderr.
 
-Test record logs are by default output to stdout at a debug level.  There is
-no way to change this, if you don't like it redirect stdout to /dev/null.
+Test record logs are by default output to stdout at a debug level.  Use the
+--test-record-verbosity flag to select a different level of chatter.
 """
 
 from past.builtins import basestring
@@ -78,6 +78,7 @@ from openhtf.util import functions
 
 
 DEFAULT_LEVEL = 'warning'
+DEFAULT_RECORD_VERBOSITY = 'debug'
 DEFAULT_LOGFILE_LEVEL = 'warning'
 QUIET = False
 LOGFILE = None
@@ -88,6 +89,10 @@ ARG_PARSER.add_argument(
     '--verbosity', default=DEFAULT_LEVEL, choices=LEVEL_CHOICES,
     action=argv.StoreInModule, target='%s.DEFAULT_LEVEL' % __name__,
     help='Console log verbosity level (stderr).')
+ARG_PARSER.add_argument(
+    '--test-record-verbosity', default=DEFAULT_RECORD_VERBOSITY, choices=LEVEL_CHOICES,
+    action=argv.StoreInModule, target='%s.DEFAULT_RECORD_VERBOSITY' % __name__,
+    help='Console log verbosity level for test record (not framework logger).')
 ARG_PARSER.add_argument(
     '--quiet', action=argv.StoreInModule, target='%s.QUIET' % __name__,
     proxy=argparse._StoreTrueAction, help="Don't output logs to stderr.")
@@ -197,7 +202,14 @@ def setup_logger():
   record_logger = logging.getLogger(RECORD_LOGGER)
   record_logger.propagate = False
   record_logger.setLevel(logging.DEBUG)
-  record_logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+
+  # TODO: make printed timestamp optional?
+  record_console_handler_formatter = logging.Formatter(
+    '[%(asctime)s]    %(message)s', '%H:%M:%S')
+  record_console_handler = logging.StreamHandler(stream=sys.stdout)
+  record_console_handler.setFormatter(record_console_handler_formatter)
+  record_console_handler.setLevel(DEFAULT_RECORD_VERBOSITY.upper())
+  record_logger.addHandler(record_console_handler)
 
   logger = logging.getLogger(LOGGER_PREFIX)
   logger.propagate = False
