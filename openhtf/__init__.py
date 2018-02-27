@@ -296,7 +296,10 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
       use add_output_callbacks(), but you can pass [] here to reset them.
   teardown_function: Function to run at teardown.  We pass the same arguments to
       it as a phase.
-  failure_exceptions: Exceptions to cause a test FAIL instead of ERROR.
+  failure_exceptions: Exceptions to cause a test FAIL instead of ERROR. When a
+      test run exits early due to an exception, the run will be marked as a FAIL
+      if the raised exception matches one of the types in this list. Otherwise,
+      the run is marked as ERROR.
   """
 
 
