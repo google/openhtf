@@ -112,7 +112,7 @@ class TestState(util.SubscribableStateMixin):
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])  # pylint: disable=invalid-name
 
-  def __init__(self, test_desc, execution_uid):
+  def __init__(self, test_desc, execution_uid, failure_exceptions=None):
     super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
@@ -127,6 +127,7 @@ class TestState(util.SubscribableStateMixin):
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
+    self.failure_exceptions = failure_exceptions or []
 
   @property
   def test_api(self):
@@ -294,8 +295,6 @@ class TestState(util.SubscribableStateMixin):
 
     # Handle a few cases where the test is ending prematurely.
     if phase_execution_outcome.raised_exception:
-      self.logger.error('Finishing test execution early due to phase '
-                        'exception, outcome ERROR.')
       result = phase_execution_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
@@ -305,7 +304,15 @@ class TestState(util.SubscribableStateMixin):
         code = str(type(phase_execution_outcome.phase_result).__name__)
         description = str(phase_execution_outcome.phase_result)
       self.test_record.add_outcome_details(code, description)
-      self._finalize(test_record.Outcome.ERROR)
+      if self._outcome_is_failure_exception(phase_execution_outcome):
+        self.logger.error('Outcome will be FAIL since exception was of type %s'
+                          % phase_execution_outcome.phase_result.exc_val)
+        self._finalize(test_record.Outcome.FAIL)
+      else:
+        self.logger.error('Finishing test execution early due to phase '
+                          'exception %s, outcome ERROR.' %
+                          phase_execution_outcome.phase_result.exc_val)
+        self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
                         'timeout, outcome TIMEOUT.')
@@ -388,17 +395,25 @@ class TestState(util.SubscribableStateMixin):
       return True
     return False
 
+  def _outcome_is_failure_exception(self, outcome):
+    for failure_exception in self.failure_exceptions:
+      if isinstance(outcome.phase_result.exc_val, failure_exception):
+        return True
+    return False
+
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
-        type(self).__name__, self.test_record.dut_id,
-        self.test_record.station_id, self.last_run_phase_name,
+        type(self).__name__,
+        self.test_record.dut_id,
+        self.test_record.station_id,
+        self.last_run_phase_name,
     )
 
 
-class PhaseState(mutablerecords.Record(
-    'PhaseState',
-    ['name', 'phase_record', 'measurements', 'options'],
-    {'hit_repeat_limit': False})):
+class PhaseState(
+    mutablerecords.Record('PhaseState',
+                          ['name', 'phase_record', 'measurements', 'options'],
+                          {'hit_repeat_limit': False})):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
