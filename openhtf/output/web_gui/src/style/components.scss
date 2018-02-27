@@ -1,0 +1,148 @@
+// Common subcomponents shared by various components.
+
+@import 'mixins';
+@import 'vars';
+
+@mixin rounded-button($fill-color, $text-color) {
+  @include htf-unstyle-button;
+  background: $fill-color;
+  border-radius: 16px;
+  border: 1px solid $fill-color;
+  color: $text-color;
+  cursor: pointer;
+  display: inline-block;
+  font-size: 12px;
+  height: 32px;
+  padding: 0 20px;
+  text-transform: uppercase;
+  transition: 300ms ease border-color, 300ms ease background;
+
+  &:focus {
+    border-color: darken($fill-color, 10%);
+  }
+
+  &:active,
+  &:hover {
+    background: lighten($fill-color, 15%);
+    border-color: lighten($fill-color, 15%);
+  }
+
+  &:disabled {
+    background: lighten($fill-color, 25%);
+    border-color: lighten($fill-color, 25%);;
+  }
+}
+
+.htf-rounded-button-blue {
+  @include rounded-button($theme-blue, $theme-white);
+}
+
+.htf-rounded-button-red {
+  @include rounded-button($theme-red, $theme-white);
+}
+
+.htf-rounded-button-grey {
+  @include rounded-button($border-light-grey, $theme-dark-grey);
+  font-weight: bold;
+
+  &:active,
+  &:hover {
+    background: darken($border-light-grey, 10%);
+  }
+}
+
+.htf-link-button {
+  @include htf-unstyle-button;
+  @include htf-link-styling;
+  font-size: $font-size-small;
+  cursor: pointer;
+}
+
+.htf-support-text {
+  color: $text-grey;
+  font-size: $font-size-small;
+}
+
+.htf-status-indicator {
+  background: rgba($theme-dark-grey, .1);
+  font-size: $font-size-small;
+  font-weight: bold;
+  height: 100%;
+  margin-left: $widget-inner-padding;
+  margin-right: -$widget-inner-padding;
+  min-width: 100px;
+  text-align: center;
+  width: 100px;
+
+  // We use the ng- prefix to indicate CSS classes that are added dynamically.
+  // See status-pipes.ts.
+
+  &.ng-status-fail {
+    background: rgba($theme-red, .1);
+    color: darken($theme-red, 10%);
+  }
+
+  // This is unused.
+  // &.ng-status-online {}
+
+  &.ng-status-pass {
+    background: rgba($theme-green, .1);
+    color: darken($theme-green, 10%);
+  }
+
+  // Use default styling.
+  // &.ng-status-pending {}
+
+  &.ng-status-running {
+    background: rgba($theme-blue, .1);
+    color: darken($theme-blue, 10%);
+  }
+
+  // This is unused.
+  // &.ng-status-unreachable {}
+
+  &.ng-status-warning {
+    background: rgba($theme-yellow, .18);
+    color: darken($theme-yellow, 20%);
+  }
+}
+
+.ng-tooltip-host {
+  position: relative;
+  cursor: pointer;
+}
+
+.ng-tooltip {
+  background: $tooltip-background;
+  border-radius: 3px;
+  color: $text-white;
+  font-size: $font-size-small;
+  line-height: initial;
+  max-width: 500px;
+  opacity: 0;
+  padding: 8px;
+  pointer-events: none;
+  position: absolute;
+  right: -15px;
+  top: 50%;
+  transform: translateX(100%) translateY(-50%);
+  transition: 200ms ease opacity;
+  word-wrap: break-word;
+
+  &.ng-tooltip--is-visible {
+    opacity: 1
+  }
+
+  &::before {
+    border-bottom: 6px solid transparent;
+    border-right: 6px solid $tooltip-background;
+    border-top: 6px solid transparent;
+    content: '';
+    height: 0;
+    left: 0;
+    position: absolute;
+    top: 50%;
+    transform: translateX(-100%) translateY(-50%);
+    width: 0;
+  }
+}

@@ -1,0 +1,51 @@
+<div class="htf-layout-widget" *ngIf="test">
+
+  <div class="htf-layout-widget-header">
+    <div>Current test: {{ test.name }}</div>
+    <div *ngIf="test.startTimeMillis">
+      &nbsp;{{ test | elapsedTime:'(%s)' }}
+    </div>
+    <div class="u-flex-grow"></div>
+    <div
+      class="htf-status-indicator"
+      [ngClass]="test.status | statusToClass">
+      {{ test.status | statusToText }}
+    </div>
+  </div>
+
+  <div class="htf-layout-widget-body">
+    <div class="u-display-flex">
+      <div>
+        DUT: {{ test.dutId === null ? '—' : test.dutId }}
+      </div>
+      <div class="u-flex-grow"></div>
+      <div>
+        Started: {{ test.startTimeMillis ? (test.startTimeMillis | date:'medium') : '—' }}
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-bar-container htf-layout-widget-body">
+    <div>
+      Ran {{ completedPhaseCount }} of {{ this.test.phases.length }}
+      {{ completedPhaseCount === 1? 'phase' : 'phases' }}
+    </div>
+    <htf-progress-bar [value]="progressValue"></htf-progress-bar>
+  </div>
+
+  <div *ngIf="runningPhase !== null" class="phase-container htf-layout-widget-body">
+    <htf-phase [phase]="runningPhase" [expand]="true"></htf-phase>
+  </div>
+</div>
+
+<!-- Empty state -->
+<div class="htf-layout-widget" *ngIf="!test">
+  <div class="htf-layout-widget-header">
+    <div>Test: —</div>
+  </div>
+  <div class="htf-layout-widget-body">
+    <div class="htf-support-text">
+      <em>No test information to display</em>
+    </div>
+  </div>
+</div>
