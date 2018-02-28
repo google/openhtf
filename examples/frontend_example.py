@@ -13,10 +13,7 @@
 # limitations under the License.
 
 
-"""Simple OpenHTF test which launches the web GUI client.
-
-DO NOT MERGE
-"""
+"""Simple OpenHTF test which launches the web GUI client."""
 
 import logging
 import openhtf as htf
@@ -37,7 +34,7 @@ if __name__ == '__main__':
   conf.load(station_server_port='4444')
   with station_server.StationServer() as server:
     web_launcher.launch('http://localhost:4444')
-    for i in xrange(5):
+    for i in range(5):
       test = htf.Test(hello_world)
       test.add_output_callbacks(server.publish_final_state)
       test.execute(test_start=user_input.prompt_for_test_start())
