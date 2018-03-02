@@ -205,7 +205,7 @@ def setup_logger():
 
   # TODO: make printed timestamp optional?
   record_console_handler_formatter = logging.Formatter(
-    '[%(asctime)s]    %(message)s', '%H:%M:%S')
+    u'[%(asctime)s]    %(message)s', '%H:%M:%S')
   record_console_handler = logging.StreamHandler(stream=sys.stdout)
   record_console_handler.setFormatter(record_console_handler_formatter)
   record_console_handler.setLevel(DEFAULT_RECORD_VERBOSITY.upper())
@@ -214,7 +214,7 @@ def setup_logger():
   logger = logging.getLogger(LOGGER_PREFIX)
   logger.propagate = False
   logger.setLevel(logging.DEBUG)
-  formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+  formatter = logging.Formatter(u'%(asctime)s - %(levelname)s - %(message)s')
   if LOGFILE:
     try:
       cur_time = str(util.time_millis())
