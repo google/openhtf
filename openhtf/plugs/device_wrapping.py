@@ -20,11 +20,7 @@ just need to put that interface in plug form to get it into your test phase.
 Device-wrapping plugs are your friends in such times.
 """
 
-from contextlib import contextmanager
 import functools
-import textwrap
-import threading
-import serial
 
 import openhtf
 
@@ -40,7 +36,7 @@ def short_repr(obj, max_len=40):
   obj_repr = repr(obj)
   if len(obj_repr) <= max_len:
     return obj_repr
-  return '<{} of length {}>'.format(type(arg).__name__, len(obj_repr))
+  return '<{} of length {}>'.format(type(obj).__name__, len(obj_repr))
 
 
 class DeviceWrappingPlug(openhtf.plugs.BasePlug):
@@ -79,7 +75,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
   def __getattr__(self, attr):
     if self._device is None:
       raise openhtf.plugs.InvalidPlugError(
-        'DeviceWrappingPlug instances must set the _device attribute.')
+          'DeviceWrappingPlug instances must set the _device attribute.')
 
     attribute = getattr(self._device, attr)
 
