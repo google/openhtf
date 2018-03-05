@@ -79,7 +79,7 @@ class ImmutableMeasurement(collections.namedtuple(
     if isinstance(measured_value, measurements.DimensionedMeasuredValue):
       value = measured_value.CopyRecord(
         value_dict=copy.deepcopy(measured_value.value))
-    else
+    else:
       value = (copy.deepcopy(measured_value.value)
                if measured_value.is_value_set else None)
 
