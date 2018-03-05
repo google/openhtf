@@ -82,7 +82,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
 
     attribute = getattr(self._device, attr)
 
-    if not verbose or not callable(attribute):
+    if not self.verbose or not callable(attribute):
       return attribute
 
     # Attribute callable; return a wrapper that logs calls with args and kwargs.
