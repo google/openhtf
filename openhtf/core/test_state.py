@@ -29,6 +29,7 @@ import contextlib
 import copy
 import logging
 import mimetypes
+import mutablerecords
 import os
 import socket
 
@@ -77,8 +78,10 @@ class ImmutableMeasurement(collections.namedtuple(
   def FromMeasurement(cls, measurement):
     measured_value = measurement.measured_value
     if isinstance(measured_value, measurements.DimensionedMeasuredValue):
-      value = measured_value.CopyRecord(
-        value_dict=copy.deepcopy(measured_value.value))
+      value = mutablerecords.CopyRecord(
+          measured_value,
+          value_dict=copy.deepcopy(measured_value.value_dict)
+      )
     else:
       value = (copy.deepcopy(measured_value.value)
                if measured_value.is_value_set else None)
