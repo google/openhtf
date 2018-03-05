@@ -68,6 +68,9 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
     openhtf.plugs.InvalidPlugError: The _device attribute has the value None
         when attribute access is attempted.
   """
+
+  verbose = True # overwrite on subclass to disable loggging_wrapper.
+
   def __init__(self, device):
     super(DeviceWrappingPlug, self).__init__()
     self._device = device
@@ -79,7 +82,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
 
     attribute = getattr(self._device, attr)
 
-    if not callable(attribute):
+    if not verbose or not callable(attribute):
       return attribute
 
     # Attribute callable; return a wrapper that logs calls with args and kwargs.

@@ -224,7 +224,7 @@ class PhaseOrTestIterator(collections.Iterator):
       self.last_result = self._handle_phase(
           openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
     return phase_or_test, self.last_result
-  
+
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
@@ -313,7 +313,13 @@ def patch_plugs(**mock_plugs):
       else:
         raise ValueError('Invalid plug type specification %s="%s"' % (
             plug_arg_name, plug_fullname))
-      plug_mock = mock.create_autospec(plug_type, spec_set=True, instance=True)
+      if issubclass(plug_type, device_wrapping.DeviceWrappingPlug):
+        # We can't strictly spec because calls to attributes are proxied to the
+        # underlying device.
+        plug_mock = mock.MagicMock()
+      else:
+        plug_mock = mock.create_autospec(plug_type, spec_set=True,
+                                         instance=True)
       plug_typemap[plug_type] = plug_mock
       plug_kwargs[plug_arg_name] = plug_mock
 
@@ -336,7 +342,7 @@ class TestCase(unittest.TestCase):
     if inspect.isgeneratorfunction(test_method):
       raise ValueError(
           "%s yields without @openhtf.util.test.yields_phases" % methodName)
-    
+
     # Mock the station api server.
     station_api_server_patcher = mock.patch.object(station_api, 'ApiServer')
     self.mock_api_server = station_api_server_patcher.start()
