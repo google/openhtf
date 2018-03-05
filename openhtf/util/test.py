@@ -131,6 +131,7 @@ from openhtf.core import phase_executor
 from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import test_state
+from openhtf.plugs import device_wrapping
 from openhtf.util import conf
 
 
