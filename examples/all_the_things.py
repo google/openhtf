@@ -133,6 +133,8 @@ def analysis(test):
       (3, 23, 103, 129),
       (4, 24, 104, 132)
   ]
+  test.logger.info('Pandas datafram of lots_of_dims \n:%s',
+                   lots_of_dims.value.to_dataframe())
 
 
 def teardown(test):
