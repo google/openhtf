@@ -57,7 +57,7 @@ def make_wire_commands(*ids):
   cmd_to_wire = {
       cmd: sum(ord(c) << (i * 8) for i, c in enumerate(cmd)) for cmd in ids
   }
-  wire_to_cmd = {wire: cmd for cmd, wire in six.iteritems(cmd_to_wire.items())}
+  wire_to_cmd = {wire: cmd for cmd, wire in six.iteritems(cmd_to_wire)}
   return cmd_to_wire, wire_to_cmd
 
 
