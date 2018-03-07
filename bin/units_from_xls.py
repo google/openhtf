@@ -47,6 +47,7 @@ import re
 import sys
 from tempfile import mkstemp
 
+import six
 import xlrd
 
 
@@ -245,7 +246,7 @@ def unit_key_from_name(name):
   """Return a legal python name for the given name for use as a unit key."""
   result = name
 
-  for old, new in UNIT_KEY_REPLACEMENTS.items():
+  for old, new in six.iteritems(UNIT_KEY_REPLACEMENTS):
     result = result.replace(old, new)
 
   # Collapse redundant underscores and convert to uppercase.

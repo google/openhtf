@@ -72,6 +72,7 @@ import openhtf
 from openhtf import util
 from openhtf.util import validators
 from openhtf.util import units
+import six
 
 try:
   import pandas
@@ -416,7 +417,7 @@ class DimensionedMeasuredValue(mutablerecords.Record(
 
   def __iter__(self):  # pylint: disable=invalid-name
     """Iterate over items, allows easy conversion to a dict."""
-    return iter(self.value_dict.items())
+    return iter(six.iteritems(self.value_dict))
 
   def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
     coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
@@ -457,7 +458,7 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     if not self.is_value_set:
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return [dimensions + (value,) for dimensions, value in
-            self.value_dict.items()]
+            six.iteritems(self.value_dict)]
 
   def to_dataframe(self, columns=None):
     """Converts to a `pandas.DataFrame`"""
@@ -521,7 +522,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
   def __iter__(self):  # pylint: disable=invalid-name
     """Extract each MeasurementValue's value."""
     return ((key, meas.measured_value.value)
-            for key, meas in self._measurements.items())
+            for key, meas in six.iteritems(self._measurements))
 
   def __setattr__(self, name, value):  # pylint: disable=invalid-name
     self[name] = value

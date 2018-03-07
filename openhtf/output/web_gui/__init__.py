@@ -54,6 +54,7 @@ import socket
 import sys
 import threading
 
+import six
 import sockjs.tornado
 import tornado.ioloop
 import tornado.web
@@ -253,7 +254,7 @@ class StationStore(threading.Thread):
     self.join()
 
   def watch_tests(self, hostport):
-    for test_uid, remote_test in self.stations[hostport].tests.items():
+    for test_uid, remote_test in six.iteritems(self.stations[hostport].tests):
       if (hostport, test_uid) not in self._watchers:
         self._watchers[hostport, test_uid] = TestWatcher(
             hostport, remote_test, self._on_update_callback)
@@ -322,7 +323,7 @@ class DashboardPubSub(PubSub):
   def publish_discovery_update(cls, stations):
     """Look for changes in high-level station info and publish if changed."""
     new_stations = {}
-    for (host, port), station in stations.items():
+    for (host, port), station in six.iteritems(stations):
       new_stations['%s:%s' % (host, port)] = {
           'station_id': station.station_id,
           'host': host,
@@ -377,7 +378,7 @@ class StationPubSub(PubSub):
 
     try:
       self._store.watch_tests(hostport)
-      for test_uid, remote_test in self._store[hostport].tests.items():
+      for test_uid, remote_test in six.iteritems(self._store[hostport].tests):
         self.send(self.make_msg(test_uid, remote_test.state))
     except station_api.StationUnreachableError:
       _LOG.debug('Station %s unreachable during on_subscribe.', hostport)

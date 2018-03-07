@@ -84,6 +84,7 @@ from openhtf.util import threads
 from openhtf.util import timeouts
 from openhtf.util import xmlrpcutil
 from past.builtins import long
+import six
 
 # Fix for xmlrpclib to use <i8> for longs and ints instead of <int>, because our
 # timestamps are in millis, which are too big for 4-byte ints.
@@ -771,7 +772,7 @@ class StationApi(object):
   def _summary_for_state_dict(state_dict):
     """Return a dict for state with counts swapped in for phase/log records."""
     state_dict_summary = {
-        k: v for k, v in state_dict.items() if k != 'plugs'}
+        k: v for k, v in six.iteritems(state_dict) if k != 'plugs'}
     state_dict_summary['test_record'] = data.convert_to_base_types(
         state_dict_summary['test_record'])
     state_dict_summary['test_record']['phases'] = len(

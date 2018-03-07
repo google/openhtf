@@ -22,11 +22,11 @@ function that is used to send one-shot messages to a multicast socket.
 
 
 import logging
-import queue
 import socket
 import struct
 import sys
 import threading
+from six.moves import queue
 
 
 _LOG = logging.getLogger(__name__)

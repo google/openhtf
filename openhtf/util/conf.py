@@ -165,6 +165,7 @@ import threading
 import yaml
 
 import mutablerecords
+import six
 
 from . import argv
 from . import threads
@@ -408,7 +409,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
           files before declarations have been evaluated.
     """
     undeclared_keys = []
-    for key, value in dictionary.items():
+    for key, value in six.iteritems(dictionary):
       # Warn in this case.  We raise if you try to access a config key that
       # hasn't been declared, but we don't raise here so that you can use
       # configuration files that are supersets of required configuration for
@@ -441,9 +442,10 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     retval.update(self._loaded_values)
     # Only update keys that are declared so we don't allow injecting
     # un-declared keys via commandline flags.
-    for key, value in self._flag_values.items():
-      if key in self._declarations:
-        retval[key] = value
+    if self._flag_values:
+      for key, value in six.iteritems(self._flag_values):
+        if key in self._declarations:
+          retval[key] = value
     return retval
 
   @property

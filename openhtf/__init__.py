@@ -50,6 +50,7 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
+import six
 
 
 __version__ = util.get_version()
@@ -195,7 +196,7 @@ class Test(object):
       sys.stdout.write(conf.help_text)
       sys.exit(0)
     logs.setup_logger()
-    for key, value in kwargs.items():
+    for key, value in six.iteritems(kwargs):
       setattr(self._test_options, key, value)
 
   @classmethod
@@ -404,7 +405,7 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
         self, name=util.format_string(self.name, kwargs))
 
   def update(self, **kwargs):
-    for key, value in kwargs.items():
+    for key, value in six.iteritems(kwargs):
       if key not in self.__slots__:
         raise AttributeError('Type %s does not have attribute %s' % (
             type(self).__name__, key))
@@ -495,7 +496,7 @@ class PhaseDescriptor(mutablerecords.Record(
     plugs_by_name = {plug.name: plug for plug in self.plugs}
     new_plugs = dict(plugs_by_name)
 
-    for name, sub_class in subplugs.items():
+    for name, sub_class in six.iteritems(subplugs):
       original_plug = plugs_by_name.get(name)
       accept_substitute = True
       if original_plug is None:

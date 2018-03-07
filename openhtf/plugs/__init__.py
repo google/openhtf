@@ -110,6 +110,7 @@ from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import threads
 from openhtf.util import xmlrpcutil
+import six
 
 
 _LOG = logging.getLogger(__name__)
@@ -248,7 +249,7 @@ def plug(update_kwargs=True, **plugs):
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
     phase_desc.plugs.extend([
         openhtf.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
-        for name, a_plug in plugs.items()])
+        for name, a_plug in six.iteritems(plugs)])
     return phase_desc
   return result
 
@@ -305,11 +306,11 @@ class PlugManager(object):
     return {
         'plug_descriptors': {
             name: dict(descriptor._asdict())  # Convert OrderedDict to dict.
-            for name, descriptor in self._plug_descriptors.items()
+            for name, descriptor in six.iteritems(self._plug_descriptors)
         },
         'plug_states': {
             name: plug._asdict()
-            for name, plug in self._plugs_by_name.items()
+            for name, plug in six.iteritems(self._plugs_by_name)
         },
         'xmlrpc_port': self._xmlrpc_server and
                        self._xmlrpc_server.socket.getsockname()[1]
@@ -328,7 +329,7 @@ class PlugManager(object):
     # Create a list of (method, method_name) pairs.
     plug_methods = []
 
-    for name, plug in self._plugs_by_name.items():
+    for name, plug in six.iteritems(self._plugs_by_name):
       if not plug.enable_remote:
         continue
 
@@ -485,7 +486,7 @@ class PlugManager(object):
       self._xmlrpc_server = None
 
     _LOG.debug('Tearing down all plugs.')
-    for plug_type, plug_instance in self._plugs_by_type.items():
+    for plug_type, plug_instance in six.iteritems(self._plugs_by_type):
       thread = _PlugTearDownThread(plug_instance,
           name='<PlugTearDownThread: %s>' % plug_type)
       thread.start()
@@ -533,5 +534,5 @@ class PlugManager(object):
 
   def get_frontend_aware_plug_names(self):
     """Returns the names of frontend-aware plugs."""
-    return [name for name, plug in self._plugs_by_name.items()
+    return [name for name, plug in six.iteritems(self._plugs_by_name)
             if isinstance(plug, FrontendAwareBasePlug)]
