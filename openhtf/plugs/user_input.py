@@ -22,7 +22,6 @@ prompt state should use the openhtf.prompts pseudomodule.
 """
 
 from __future__ import print_function
-from builtins import input
 import collections
 import functools
 import logging
@@ -37,6 +36,7 @@ import uuid
 from openhtf import PhaseOptions
 from openhtf import plugs
 from openhtf.util import argv
+from six.moves import input
 
 
 if platform.system() != 'Windows':
