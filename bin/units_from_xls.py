@@ -159,10 +159,10 @@ UNIT_KEY_REPLACEMENTS = {' ': '_',
                          '15': 'FIFTEEN',
                          '30': 'THIRTY',
                          '\\': '_',
-                         chr(160): '_',
-                         chr(176): 'DEG_',
-                         chr(186): 'DEG_',
-                         chr(8211): '_',
+                         six.unichr(160): '_',
+                         six.unichr(176): 'DEG_',
+                         six.unichr(186): 'DEG_',
+                         six.unichr(8211): '_',
                         }
 
 
@@ -218,7 +218,7 @@ def unit_defs_from_sheet(sheet, column_names):
     rows = sheet.get_rows()
     
     # Find the indices for the columns we care about.
-    for idx, cell in enumerate(next(rows)):
+    for idx, cell in enumerate(six.next(rows)):
       if cell.value in column_names:
         col_indices[cell.value] = idx
 

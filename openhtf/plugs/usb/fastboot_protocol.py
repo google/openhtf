@@ -24,6 +24,7 @@ import struct
 
 from . import usb_exceptions
 from openhtf.util import argv
+import six
 
 
 FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB = 1024
@@ -175,7 +176,7 @@ class FastbootProtocol(object):
     """Sends the data to the device, tracking progress with the callback."""
     if progress_callback:
       progress = self._handle_progress(length, progress_callback)
-      next(progress)
+      six.next(progress)
     while length:
       tmp = data.read(FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB * 1024)
       length -= len(tmp)

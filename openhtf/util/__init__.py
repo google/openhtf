@@ -15,6 +15,7 @@
 
 """One-off utilities."""
 
+import collections
 import logging
 import re
 import threading
@@ -26,7 +27,7 @@ from pkg_resources import get_distribution, DistributionNotFound
 import mutablerecords
 
 from openhtf.util import threads
-import collections
+import six
 
 
 def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable=invalid-name
@@ -49,7 +50,7 @@ def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable
       logger.log(level, message, *args)
       yield True
   gen = _gen()
-  return lambda: next(gen)
+  return lambda: six.next(gen)
 
 
 def log_every_n(n, level, message, *args):  # pylint: disable=invalid-name
