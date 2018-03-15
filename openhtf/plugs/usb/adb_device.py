@@ -30,7 +30,10 @@ function, but rather a USB function - listing devices with a specific interface
 class, subclass, and protocol.
 """
 
-import io
+try:
+  import cStringIO as io
+except ImportError:
+  import io
 import logging
 import os.path
 

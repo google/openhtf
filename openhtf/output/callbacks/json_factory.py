@@ -5,6 +5,7 @@ import json
 
 from openhtf.output import callbacks
 from openhtf.util import data
+import six
 
 
 class OutputToJSON(callbacks.OutputToFile):
@@ -44,7 +45,7 @@ class OutputToJSON(callbacks.OutputToFile):
                                          json_safe=(not self.allow_nan))
     if self.inline_attachments:
       for phase, original_phase in zip(as_dict['phases'], test_record.phases):
-        for name, attachment in phase['attachments'].items():
+        for name, attachment in six.iteritems(phase['attachments']):
           original_data = original_phase.attachments[name].data
           attachment['data'] = base64.standard_b64encode(original_data).decode('utf-8')
     return as_dict

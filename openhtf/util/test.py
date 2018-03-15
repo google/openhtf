@@ -133,6 +133,7 @@ from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
 from openhtf.util import conf
+import six
 
 
 class InvalidTestError(Exception):
@@ -173,7 +174,7 @@ class PhaseOrTestIterator(collections.Iterator):
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(plug_cls for plug_cls in plug_types if
                                        plug_cls not in self.mock_plugs)
-    for plug_type, plug_value in self.mock_plugs.items():
+    for plug_type, plug_value in six.iteritems(self.mock_plugs):
       self.plug_manager.update_plug(plug_type, plug_value)
 
   @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
@@ -198,7 +199,7 @@ class PhaseOrTestIterator(collections.Iterator):
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
-    for plug_type, plug_value in self.mock_plugs.items():
+    for plug_type, plug_value in six.iteritems(self.mock_plugs):
       self.plug_manager.update_plug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
@@ -300,7 +301,7 @@ def patch_plugs(**mock_plugs):
     # Make MagicMock instances for the plugs.
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
-    for plug_arg_name, plug_fullname in mock_plugs.items():
+    for plug_arg_name, plug_fullname in six.iteritems(mock_plugs):
       if isinstance(plug_fullname, basestring):
         try:
           plug_module, plug_typename = plug_fullname.rsplit('.', 1)

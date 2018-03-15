@@ -32,6 +32,7 @@ from mutablerecords import records
 from past.builtins import long
 
 from enum import Enum
+import six
 
 # Used by convert_to_base_types().
 PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), str}
@@ -152,7 +153,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   if isinstance(obj, dict):
     return {convert_to_base_types(k, ignore_keys, tuple_type):
                convert_to_base_types(v, ignore_keys, tuple_type)
-            for k, v in obj.items() if k not in ignore_keys}
+            for k, v in six.iteritems(obj) if k not in ignore_keys}
   elif isinstance(obj, list):
     return [convert_to_base_types(val, ignore_keys, tuple_type, json_safe)
             for val in obj]
@@ -194,7 +195,7 @@ def total_size(obj):
 
     if isinstance(current_obj, dict):
       size += sum(map(sizeof, itertools.chain.from_iterable(
-          current_obj.items())))
+          six.iteritems(current_obj))))
     elif (isinstance(current_obj, collections.Iterable) and
           not isinstance(current_obj, str)):
       size += sum(sizeof(item) for item in current_obj)

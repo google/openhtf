@@ -34,6 +34,7 @@ except ImportError:
 
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.plugs.usb import usb_handle
+import six
 
 _LOG = logging.getLogger(__name__)
 
@@ -159,14 +160,14 @@ class LibUsbHandle(usb_handle.UsbHandle):
     handle_iter = cls.iter_open(**kwargs)
 
     try:
-      handle = next(handle_iter)
+      handle = six.next(handle_iter)
     except StopIteration:
       # No matching interface, raise.
       raise usb_exceptions.DeviceNotFoundError(
           'Open failed with args: %s', kwargs)
 
     try:
-      multiple_handle = next(handle_iter)
+      multiple_handle = six.next(handle_iter)
     except StopIteration:
       # Exactly one matching device, return it.
       return handle

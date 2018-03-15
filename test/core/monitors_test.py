@@ -15,11 +15,11 @@
 import unittest
 import time
 import mock
-import queue
 
 import openhtf
 from openhtf import plugs
 from openhtf.core import monitors
+from six.moves import queue
 
 
 class EmptyPlug(plugs.BasePlug):

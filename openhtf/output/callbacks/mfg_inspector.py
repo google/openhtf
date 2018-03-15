@@ -49,6 +49,7 @@ from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_pb2
 from openhtf.output.proto import units_pb2
 from openhtf.util import validators
+import six
 
 
 # pylint: disable=no-member
@@ -71,7 +72,7 @@ OUTCOME_MAP = {
 UOM_CODE_MAP = {
     u.GetOptions().Extensions[units_pb2.uom_code]: num
     for num, u in
-    units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.items()
+    six.iteritems(units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
 }
 # pylint: enable=no-member
 
@@ -155,7 +156,7 @@ def _attach_json(record, testrun):
 
 def _extract_attachments(phase, testrun, used_parameter_names):
   """Extract attachments, just copy them over."""
-  for name, (attachment_data, mimetype) in sorted(phase.attachments.items()):
+  for name, (attachment_data, mimetype) in sorted(six.iteritems(phase.attachments)):
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
@@ -218,7 +219,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
   mangled_parameters = {}
   for phase in record.phases:
     _extract_attachments(phase, testrun, used_parameter_names)
-    for name, measurement in sorted(phase.measurements.items()):
+    for name, measurement in sorted(six.iteritems(phase.measurements)):
       tr_name = _ensure_unique_parameter_name(name, used_parameter_names)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
@@ -288,7 +289,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
 
 def _add_mangled_parameters(testrun, mangled_parameters, used_parameter_names):
   """Add any mangled parameters we generated from multidim measurements."""
-  for mangled_name, mangled_param in sorted(mangled_parameters.items()):
+  for mangled_name, mangled_param in sorted(six.iteritems(mangled_parameters)):
     if mangled_name != _ensure_unique_parameter_name(mangled_name,
                                                      used_parameter_names):
       logging.warning('Mangled name %s in use by non-mangled parameter',

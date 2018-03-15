@@ -76,6 +76,7 @@ from openhtf.plugs.usb import adb_protocol
 from openhtf.plugs.usb import usb_exceptions
 
 from openhtf.util import timeouts
+import six
 
 
 class AsyncCommandHandle(object):
@@ -112,7 +113,7 @@ class AsyncCommandHandle(object):
     """
     self.stream = stream
     self.stdin = stdin
-    self.stdout = stdout or io.StringIO()
+    self.stdout = stdout or six.StringIO()
     self.force_closed_or_timeout = False
 
     self.reader_thread = threading.Thread(target=self._reader_thread_proc,

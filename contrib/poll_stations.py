@@ -33,7 +33,6 @@ Outputs something like, which updates regularly:
 from __future__ import print_function
 import logging
 import os
-import queue
 import socket
 import sys
 import threading
@@ -42,6 +41,7 @@ import time
 
 from openhtf.core import station_api
 from openhtf.util import threads
+from six.moves import queue
 
 
 def fmt_time(time_millis=None):

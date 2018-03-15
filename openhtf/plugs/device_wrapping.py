@@ -23,6 +23,7 @@ Device-wrapping plugs are your friends in such times.
 import functools
 
 import openhtf
+import six
 
 
 def short_repr(obj, max_len=40):
@@ -90,7 +91,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
     def logging_wrapper(*args, **kwargs):
       args_strings = tuple(short_repr(arg) for arg in args)
       kwargs_strings = tuple(
-          ('%s=%s' % (key, short_repr(val)) for key, val in kwargs.items()))
+          ('%s=%s' % (key, short_repr(val)) for key, val in six.iteritems(kwargs)))
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
         log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))
