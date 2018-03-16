@@ -30,10 +30,7 @@ function, but rather a USB function - listing devices with a specific interface
 class, subclass, and protocol.
 """
 
-try:
-  import cStringIO as io
-except ImportError:
-  import io
+import io
 import logging
 import os.path
 
@@ -164,15 +161,14 @@ class AdbDevice(object):
     Returns:
       The file data if dest_file is not set, None otherwise.
     """
+    should_return_data = dest_file is None
     if isinstance(dest_file, str):
       dest_file = open(dest_file, 'w')
-    elif not dest_file:
+    elif dest_file is None:
       dest_file = io.StringIO()
     self.filesync_service.recv(device_filename, dest_file,
                                timeouts.PolledTimeout.from_millis(timeout_ms))
-    # An empty call to cStringIO.StringIO returns an instance of
-    # cStringIO.OutputType.
-    if isinstance(dest_file, io.OutputType):
+    if should_return_data
       return dest_file.getvalue()
 
   def list(self, device_path, timeout_ms=None):
