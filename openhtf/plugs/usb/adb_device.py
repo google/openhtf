@@ -168,7 +168,7 @@ class AdbDevice(object):
       dest_file = io.StringIO()
     self.filesync_service.recv(device_filename, dest_file,
                                timeouts.PolledTimeout.from_millis(timeout_ms))
-    if should_return_data
+    if should_return_data:
       return dest_file.getvalue()
 
   def list(self, device_path, timeout_ms=None):
