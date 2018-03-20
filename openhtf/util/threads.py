@@ -83,6 +83,17 @@ class KillableThread(ExceptionSafeThread):
   """Killable thread raises an internal exception when killed.
 
   Based on recipe available at http://tomerfiliba.com/recipes/Thread2/
+
+  Important Note:
+    From PyThreadState_SetAsyncExc documentation:  "To prevent naive misuse,
+    you must write your own C extension to call this. Must be called with the
+    GIL held."
+
+    We do not implement C extension and are not holding GIL so are susceptible
+    to race condition, we've tried to make KillabelThread robust to those race
+    conditions.
+
+
   """
 
   def kill(self):
