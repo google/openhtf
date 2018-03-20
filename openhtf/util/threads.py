@@ -95,7 +95,7 @@ class KillableThread(ExceptionSafeThread):
     assert self.is_alive(), 'Only running threads have a thread identity'
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
         ctypes.c_long(self.ident), ctypes.py_object(exc_type))
-    if result == 0:
+    if result == 0 and self.is_alive():
       raise ValueError('Thread ID was invalid.', self.ident)
     elif result != 1:
       # Something bad happened, call with a NULL exception to undo.
