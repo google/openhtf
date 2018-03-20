@@ -60,7 +60,7 @@ class ExceptionSafeThread(threading.Thread):
       self._thread_proc()
     except Exception:  # pylint: disable=broad-except
       if not self._thread_exception(*sys.exc_info()):
-        logging.exception('Thread raised an exception: %s', self.name)
+        _LOG.exception('Thread raised an exception: %s', self.name)
         raise
     finally:
       self._thread_finished()
@@ -92,7 +92,7 @@ class KillableThread(ExceptionSafeThread):
 
   def async_raise(self, exc_type):
     """Raise the exception."""
-    assert self.is_alive(), 'Only running threads have a thread identity'
+    assert self.ident is not None, 'Only started threads have a thread identity'
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
         ctypes.c_long(self.ident), ctypes.py_object(exc_type))
     if result == 0 and self.is_alive():
@@ -100,7 +100,8 @@ class KillableThread(ExceptionSafeThread):
     elif result != 1:
       # Something bad happened, call with a NULL exception to undo.
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
-      raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
+      raise RuntimeError('PyThreadState_SetAsyncExc %s failed: %s',
+                         self.ident, result)
 
   def _thread_exception(self, exc_type, exc_val, exc_tb):
     """Suppress the exception when we're kill()'d."""
