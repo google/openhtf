@@ -92,12 +92,19 @@ class KillableThread(ExceptionSafeThread):
 
   def async_raise(self, exc_type):
     """Raise the exception."""
+    # Should only be called on a started thread so raise otherwise
     assert self.ident is not None, 'Only started threads have a thread identity'
+
+    # If the thread has died we don't want to raise an exception so log.
+    if not self.is_alive():
+      _LOG.debug('Not raising %s because thread %s (%s) is not alive',
+                 exc_type, self.name, self.ident)
+
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
         ctypes.c_long(self.ident), ctypes.py_object(exc_type))
     if result == 0 and self.is_alive():
       raise ValueError('Thread ID was invalid.', self.ident)
-    elif result != 1:
+    elif result > 1:
       # Something bad happened, call with a NULL exception to undo.
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
       raise RuntimeError('PyThreadState_SetAsyncExc %s failed: %s',
