@@ -68,7 +68,6 @@ Some examples of how to use this service:
   # output.getvalue() now contains the output of the arecord command.
 """
 
-import io
 import threading
 import time
 

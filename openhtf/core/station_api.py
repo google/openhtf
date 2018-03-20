@@ -413,7 +413,7 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
     except xmlrpc.client.Fault as fault:
       # TODO(madsci): This is a super kludge, eventually implement the
       # ReraisingMixin for ServerProxy, but that's hard, so do this for now.
-      if 'openhtf.io.station_api.UpdateTimeout' in fault.faultString:
+      if 'openhtf.core.station_api.UpdateTimeout' in fault.faultString:
         return self.cached_state
       raise
 
