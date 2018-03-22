@@ -36,6 +36,7 @@ import uuid
 from openhtf import PhaseOptions
 from openhtf import plugs
 from openhtf.util import argv
+import six
 from six.moves import input
 
 
