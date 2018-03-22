@@ -147,7 +147,7 @@ def format_string(target, kwargs):
     return target
   if callable(target):
     return target(**kwargs)
-  if not isinstance(target, str):
+  if not isinstance(target, six.string_types):
     return target
   if '{' in target:
     return partial_format(target, **kwargs)

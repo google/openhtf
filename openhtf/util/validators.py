@@ -58,9 +58,9 @@ import abc
 import numbers
 import re
 import sys
-from past.builtins import basestring
 from future.utils import with_metaclass
 from openhtf import util
+import six
 
 _VALIDATORS = {}
 
@@ -173,8 +173,8 @@ register(in_range, name='in_range')
 def equals(value, type=None):
   if isinstance(value, numbers.Number):
     return InRange(minimum=value, maximum=value, type=type)
-  elif isinstance(value, basestring):
-    assert type is None or issubclass(type, basestring), (
+  elif isinstance(value, six.string_types):
+    assert type is None or issubclass(type, six.string_types), (
         'Cannot use a non-string type when matching a string')
     return matches_regex('^{}$'.format(re.escape(value)))
   else:

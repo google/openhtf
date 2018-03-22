@@ -119,7 +119,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
       skipped.
     - Enum instances are converted to strings via their .name attribute.
     - Real and integral numbers are converted to built-in types.
-    - Byte and unicode strings are left alone (instances of basestring).
+    - Byte and unicode strings are left alone (instances of six.string_types).
     - Other non-None values are converted to strings via str().
 
   The return value contains only the Python built-in types: dict, list, tuple,
@@ -134,7 +134,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   such as NaN which are not valid JSON.
   """
   # Because it's *really* annoying to pass a single string accidentally.
-  assert not isinstance(ignore_keys, str), 'Pass a real iterable!'
+  assert not isinstance(ignore_keys, six.string_types), 'Pass a real iterable!'
 
   if type(obj) in PASSTHROUGH_TYPES:
     return obj
@@ -197,7 +197,7 @@ def total_size(obj):
       size += sum(map(sizeof, itertools.chain.from_iterable(
           six.iteritems(current_obj))))
     elif (isinstance(current_obj, collections.Iterable) and
-          not isinstance(current_obj, str)):
+          not isinstance(current_obj, six.string_types)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
       size += sum(sizeof(getattr(current_obj, attr))
