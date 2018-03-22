@@ -142,7 +142,7 @@ class AdbDevice(object):
       timeout_ms: Expected timeout for any part of the push.
     """
     mtime = 0
-    if isinstance(source_file, str):
+    if isinstance(source_file, six.string_types):
       mtime = os.path.getmtime(source_file)
       source_file = open(source_file)
 
@@ -162,7 +162,7 @@ class AdbDevice(object):
       The file data if dest_file is not set, None otherwise.
     """
     should_return_data = dest_file is None
-    if isinstance(dest_file, str):
+    if isinstance(dest_file, six.string_types):
       dest_file = open(dest_file, 'w')
     elif dest_file is None:
       dest_file = six.StringIO()

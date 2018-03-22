@@ -36,6 +36,7 @@ import uuid
 from openhtf import PhaseOptions
 from openhtf import plugs
 from openhtf.util import argv
+import six
 from six.moves import input
 
 
@@ -214,7 +215,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     Returns:
       True if the prompt was used, otherwise False.
     """
-    if isinstance(prompt_id, str):
+    if isinstance(prompt_id, six.string_types):
       prompt_id = uuid.UUID(prompt_id)
     _LOG.debug('Responding to prompt (%s): "%s"', prompt_id.hex, response)
     with self._cond:

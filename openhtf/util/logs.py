@@ -63,7 +63,6 @@ Test record logs are by default output to stdout at a debug level.  Use the
 --test-record-verbosity flag to select a different level of chatter.
 """
 
-from past.builtins import basestring
 import argparse
 import collections
 import logging
@@ -75,6 +74,7 @@ import traceback
 from openhtf import util
 from openhtf.util import argv
 from openhtf.util import functions
+import six
 
 
 DEFAULT_LEVEL = 'warning'
@@ -155,7 +155,7 @@ class MacAddressLogFilter(logging.Filter):
       record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.msg)
       record.args = tuple([
           self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
-          if isinstance(arg, basestring)
+          if isinstance(arg, six.string_types)
           else arg for arg in record.args])
     return True
 

@@ -570,7 +570,7 @@ def measures(*measurements, **kwargs):
     """Turn strings into Measurement objects if necessary."""
     if isinstance(meas, Measurement):
       return meas
-    elif isinstance(meas, str):
+    elif isinstance(meas, six.string_types):
       return Measurement(meas, **kwargs)
     raise InvalidMeasurementType('Expected Measurement or string', meas)
 
