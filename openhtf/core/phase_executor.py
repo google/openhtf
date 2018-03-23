@@ -253,11 +253,12 @@ class PhaseExecutor(object):
     Args:
       timeout_s: int or None, timeout in seconds to wait for the phase to stop.
     """
-    self._stopping.set()
     phase_thread = self._current_phase_thread
 
     if not phase_thread:
       return
+
+    self._stopping.set()
 
     if phase_thread.is_alive():
       phase_thread.kill()
@@ -271,5 +272,5 @@ class PhaseExecutor(object):
     # Clear the currently running phase, whether it finished or timed out.
     self.test_state.stop_running_phase()
 
-    # Clear stopping once we're done, in case we're used againu
+    # Clear stopping once we're done, in case we're used again.
     self._stopping.clear()
