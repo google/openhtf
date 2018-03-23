@@ -150,7 +150,13 @@ class TestExecutor(threads.KillableThread):
       # Full plug initialization happens _after_ the start trigger, as close to
       # test execution as possible, for the best chance of test equipment being
       # in a known-good state at the start of test execution.
-      self.test_state.plug_manager.initialize_plugs()
+      try:
+        self.test_state.plug_manager.initialize_plugs()
+      except Exception:  # pylint: disable=broad-except
+        # Exit early if plug initialization failed.
+        self.test_state.finalize_on_failed_plug_initialization(
+            phase_executor.ExceptionInfo(*sys.exc_info()))
+        return
 
       # Everything is set, set status and begin test execution.
       self._execute_test_phases(phase_exec)

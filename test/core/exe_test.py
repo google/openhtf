@@ -57,12 +57,24 @@ class MoreRepeatsUnittestPlug(UnittestPlug):
   return_continue_count = 100
 
 
+class FailPlug(plugs.BasePlug):
+
+  def __init__(self):
+    raise Exception('Failed to init plug')
+
+
+@openhtf.PhaseOptions()
+def start_phase(test):
+  test.dut_id = 'DUT ID'
+
+
 @openhtf.PhaseOptions()
 def phase_one(test, test_plug):
   del test  # Unused.
   del test_plug  # Unused.
   time.sleep(1)
   print('phase_one completed')
+
 
 @plugs.plug(test_plug=UnittestPlug)
 def phase_two(test, test_plug):
@@ -98,6 +110,7 @@ def phase_return_fail_and_continue(test):
   del test  # Unused.
   return openhtf.PhaseResult.FAIL_AND_CONTINUE
 
+
 class TestExecutor(unittest.TestCase):
 
   class TestDummyExceptionError(Exception):
@@ -109,10 +122,6 @@ class TestExecutor(unittest.TestCase):
 
   def test_failures(self):
     """Tests that specified exception will cause FAIL not ERROR."""
-
-    @openhtf.PhaseOptions()
-    def start_phase(test):
-      test.dut_id = 'DUT ID'
 
     @openhtf.PhaseOptions()
     def failure_phase(test):
@@ -133,8 +142,9 @@ class TestExecutor(unittest.TestCase):
     # Same as above, but now specify that the TestDummyExceptionError should
     # instead be a FAIL outcome.
     executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=lambda: ev.set(), # pylint: disable=unnecessary-lambda
-                                 failure_exceptions=[self.TestDummyExceptionError])
+                                 teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+                                 failure_exceptions=[
+                                     self.TestDummyExceptionError])
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -204,10 +214,6 @@ class TestExecutor(unittest.TestCase):
   def test_cancel_phase(self):
 
     @openhtf.PhaseOptions()
-    def start_phase(test):
-      test.dut_id = 'DUT ID'
-
-    @openhtf.PhaseOptions()
     def cancel_phase(test):
       del test  # Unused.
       # See above cancel_phase for explanations.
@@ -230,6 +236,40 @@ class TestExecutor(unittest.TestCase):
     self.assertLessEqual(record.start_time_millis, util.time_millis())
     self.assertLessEqual(record.start_time_millis, record.end_time_millis)
     self.assertLessEqual(record.end_time_millis, util.time_millis())
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+
+  def test_failure_during_plug_init(self):
+
+    @plugs.plug(fail=FailPlug)
+    def fail_plug_phase(fail):
+      del fail
+
+    ev = threading.Event()
+    test = openhtf.Test(fail_plug_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', None,
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.ERROR)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+
+  def test_failure_during_plug_init_with_dut_id(self):
+
+    @plugs.plug(fail=FailPlug)
+    def fail_plug_phase(fail):
+      del fail
+
+    ev = threading.Event()
+    test = openhtf.Test(fail_plug_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.ERROR)
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
 
