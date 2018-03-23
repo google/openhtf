@@ -60,7 +60,7 @@ class ExceptionSafeThread(threading.Thread):
       self._thread_proc()
     except Exception:  # pylint: disable=broad-except
       if not self._thread_exception(*sys.exc_info()):
-        logging.exception('Thread raised an exception: %s', self.name)
+        _LOG.exception('Thread raised an exception: %s', self.name)
         raise
     finally:
       self._thread_finished()
@@ -83,6 +83,14 @@ class KillableThread(ExceptionSafeThread):
   """Killable thread raises an internal exception when killed.
 
   Based on recipe available at http://tomerfiliba.com/recipes/Thread2/
+
+  Note: To fully address race conditions involved with the use of
+  PyThreadState_SetAsyncExc, the GIL must be held from when the thread is
+  checked to when it's async-raised. In this case, we're not doing that, and
+  there remains the remote possibility that a thread identifier is reused and we
+  accidentally kill the wrong thread.
+
+
   """
 
   def kill(self):
@@ -92,15 +100,25 @@ class KillableThread(ExceptionSafeThread):
 
   def async_raise(self, exc_type):
     """Raise the exception."""
-    assert self.is_alive(), 'Only running threads have a thread identity'
+    # Should only be called on a started thread so raise otherwise
+    assert self.ident is not None, 'Only started threads have thread identifier'
+
+    # If the thread has died we don't want to raise an exception so log.
+    if not self.is_alive():
+      _LOG.debug('Not raising %s because thread %s (%s) is not alive',
+                 exc_type, self.name, self.ident)
+      return
+
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
         ctypes.c_long(self.ident), ctypes.py_object(exc_type))
-    if result == 0:
+    if result == 0 and self.is_alive():
+      # Don't raise an exception an error unnecessarily if the thread is dead.
       raise ValueError('Thread ID was invalid.', self.ident)
-    elif result != 1:
+    elif result > 1:
       # Something bad happened, call with a NULL exception to undo.
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
-      raise SystemError('PyThreadState_SetAsyncExc failed.', self.ident)
+      raise RuntimeError('Error: PyThreadState_SetAsyncExc %s %s (%s) %s',
+                         exc_type, self.name, self.ident, result)
 
   def _thread_exception(self, exc_type, exc_val, exc_tb):
     """Suppress the exception when we're kill()'d."""
