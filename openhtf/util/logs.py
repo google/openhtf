@@ -152,7 +152,7 @@ class MacAddressLogFilter(logging.Filter):
   def filter(self, record):
     if self.MAC_REPLACE_RE.search(record.getMessage()):
       # Update all the things to have no mac address in them
-      if isinstance(record.msg, six.string_types:
+      if isinstance(record.msg, six.string_types):
         record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.msg)
         record.args = tuple([
             self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
