@@ -335,6 +335,17 @@ class TestState(util.SubscribableStateMixin):
                                            'A phase stopped the test run.')
       self._finalize(test_record.Outcome.FAIL)
 
+  def finalize_on_failed_plug_initialization(self, except_info):
+    if self._is_aborted():
+      return
+
+    self.logger.error('Finishing test execution early due to failed plug '
+                      'initialization.')
+    code = except_info.exc_type.__name__
+    description = str(except_info.exc_val)
+    self.test_record.add_outcome_details(code, description)
+    self._finalize(test_record.Outcome.ERROR)
+
   def finalize_normally(self):
     """Mark the state as finished.
 
@@ -380,12 +391,13 @@ class TestState(util.SubscribableStateMixin):
     aborting = test_outcome == test_record.Outcome.ABORTED
     assert not self.is_finalized or aborting, (
         'Test already completed with status %s!' % self._status.name)
+
+    self.test_record.outcome = test_outcome
+
     # Sanity check to make sure we have a DUT ID by the end of the test.
     if not self.test_record.dut_id:
       raise BlankDutIdError(
           'Blank or missing DUT ID, HTF requires a non-blank ID.')
-
-    self.test_record.outcome = test_outcome
 
     # If we've reached here without 'starting' the test, then we 'start' it just
     # so we can properly 'end' it.

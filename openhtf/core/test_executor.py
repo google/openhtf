@@ -150,10 +150,21 @@ class TestExecutor(threads.KillableThread):
       # Full plug initialization happens _after_ the start trigger, as close to
       # test execution as possible, for the best chance of test equipment being
       # in a known-good state at the start of test execution.
-      self.test_state.plug_manager.initialize_plugs()
+      if not self._initialize_plugs():
+        return
 
       # Everything is set, set status and begin test execution.
       self._execute_test_phases(phase_exec)
+
+  def _initialize_plugs(self, plug_types=None):
+    try:
+      self.test_state.plug_manager.initialize_plugs(plug_types=plug_types)
+      return True
+    except Exception:  # pylint: disable=broad-except
+      # Exit early if plug initializaion failed.
+      self.test_state.finalize_on_failed_plug_initialization(
+          phase_executor.ExceptionInfo(*sys.exc_info()))
+      return False
 
   def _execute_test_start(self, phase_exec):
     """Run the start trigger phase, and check that the DUT ID is set after.
@@ -163,11 +174,17 @@ class TestExecutor(threads.KillableThread):
 
     Args:
       phase_exec: openhtf.core.phase_executor.PhaseExecutor instance.
+
+    Returns:
+      True if there was a terminal error either setting up or running the test
+      start phase.
     """
     # Have the phase executor run the start trigger phase. Do partial plug
     # initialization for just the plugs needed by the start trigger phase.
-    self.test_state.plug_manager.initialize_plugs(
-        (phase_plug.cls for phase_plug in self._test_start.plugs))
+    if not self._initialize_plugs(
+        plug_types=[phase_plug.cls for phase_plug in self._test_start.plugs]):
+      return True
+
     outcome = phase_exec.execute_phase(self._test_start)
     if outcome.is_terminal:
       self.test_state.finalize_from_phase_outcome(outcome)

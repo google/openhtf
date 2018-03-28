@@ -57,12 +57,31 @@ class MoreRepeatsUnittestPlug(UnittestPlug):
   return_continue_count = 100
 
 
+class FailedPlugError(Exception):
+  """Exception for the failed plug."""
+
+
+FAIL_PLUG_MESSAGE = 'Failed'
+
+
+class FailPlug(plugs.BasePlug):
+
+  def __init__(self):
+    raise FailedPlugError(FAIL_PLUG_MESSAGE)
+
+
+@openhtf.PhaseOptions()
+def start_phase(test):
+  test.dut_id = 'DUT ID'
+
+
 @openhtf.PhaseOptions()
 def phase_one(test, test_plug):
   del test  # Unused.
   del test_plug  # Unused.
   time.sleep(1)
   print('phase_one completed')
+
 
 @plugs.plug(test_plug=UnittestPlug)
 def phase_two(test, test_plug):
@@ -98,6 +117,12 @@ def phase_return_fail_and_continue(test):
   del test  # Unused.
   return openhtf.PhaseResult.FAIL_AND_CONTINUE
 
+
+@plugs.plug(fail=FailPlug)
+def fail_plug_phase(fail):
+  del fail
+
+
 class TestExecutor(unittest.TestCase):
 
   class TestDummyExceptionError(Exception):
@@ -109,10 +134,6 @@ class TestExecutor(unittest.TestCase):
 
   def test_failures(self):
     """Tests that specified exception will cause FAIL not ERROR."""
-
-    @openhtf.PhaseOptions()
-    def start_phase(test):
-      test.dut_id = 'DUT ID'
 
     @openhtf.PhaseOptions()
     def failure_phase(test):
@@ -133,8 +154,9 @@ class TestExecutor(unittest.TestCase):
     # Same as above, but now specify that the TestDummyExceptionError should
     # instead be a FAIL outcome.
     executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=lambda: ev.set(), # pylint: disable=unnecessary-lambda
-                                 failure_exceptions=[self.TestDummyExceptionError])
+                                 teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+                                 failure_exceptions=[
+                                     self.TestDummyExceptionError])
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -204,10 +226,6 @@ class TestExecutor(unittest.TestCase):
   def test_cancel_phase(self):
 
     @openhtf.PhaseOptions()
-    def start_phase(test):
-      test.dut_id = 'DUT ID'
-
-    @openhtf.PhaseOptions()
     def cancel_phase(test):
       del test  # Unused.
       # See above cancel_phase for explanations.
@@ -232,6 +250,54 @@ class TestExecutor(unittest.TestCase):
     self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
+
+  def test_failure_during_plug_init(self):
+    ev = threading.Event()
+    test = openhtf.Test(fail_plug_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', None,
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.ERROR)
+    self.assertEqual(record.outcome_details[0].code, FailedPlugError.__name__)
+    self.assertEqual(record.outcome_details[0].description, FAIL_PLUG_MESSAGE)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+
+  def test_failure_during_plug_init_with_dut_id(self):
+    ev = threading.Event()
+    test = openhtf.Test(fail_plug_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.ERROR)
+    self.assertEqual(record.outcome_details[0].code, FailedPlugError.__name__)
+    self.assertEqual(record.outcome_details[0].description, FAIL_PLUG_MESSAGE)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+
+  def test_failure_during_start_phase_plug_init(self):
+    def never_gonna_run_phase():
+      ev2.set()
+
+    ev = threading.Event()
+    ev2 = threading.Event()
+
+    test = openhtf.Test(never_gonna_run_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', fail_plug_phase,
+                                 teardown_function=lambda: ev.set())  # pyling: disable=unnecessary-lambda
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.ERROR)
+    self.assertEqual(record.outcome_details[0].code, FailedPlugError.__name__)
+    self.assertEqual(record.outcome_details[0].description, FAIL_PLUG_MESSAGE)
+    # Teardown function should *NOT* be executed.
+    self.assertFalse(ev.is_set())
+    self.assertFalse(ev2.is_set())
 
 
 class TestPhaseExecutor(unittest.TestCase):
