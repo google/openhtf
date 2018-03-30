@@ -47,7 +47,6 @@ from openhtf.output import callbacks
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_pb2
-from openhtf.output.proto import units_pb2
 from openhtf.util import validators
 import six
 
@@ -70,9 +69,9 @@ OUTCOME_MAP = {
 }
 
 UOM_CODE_MAP = {
-    u.GetOptions().Extensions[units_pb2.uom_code]: num
+    u.GetOptions().Extensions[test_runs_pb2.uom_code]: num
     for num, u in
-    six.iteritems(units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
+    six.iteritems(test_runs_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
 }
 # pylint: enable=no-member
 
