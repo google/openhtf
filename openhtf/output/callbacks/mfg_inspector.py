@@ -50,7 +50,8 @@ from openhtf.output.proto import test_runs_pb2
 from openhtf.util import validators
 import six
 
-print test_runs_pb2.__dict__
+with open(test_runs_pb2.__file__, 'r') as file:
+  print(file.read())
 
 # pylint: disable=no-member
 MIMETYPE_MAP = {
