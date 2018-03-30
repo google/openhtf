@@ -69,9 +69,10 @@ OUTCOME_MAP = {
 }
 
 UOM_CODE_MAP = {
-    u.GetOptions().Extensions[test_runs_pb2.uom_code]: num
-    for num, u in
-    six.iteritems(test_runs_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
+    u.GetOptions().Extensions[
+        test_runs_pb2.openhtf.output.proto.units_pb2.uom_code]: num
+    for num, u in six.iteritems(
+        test_runs_pb2.openhtf.output.proto.units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
 }
 # pylint: enable=no-member
 
