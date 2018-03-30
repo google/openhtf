@@ -50,9 +50,6 @@ from openhtf.output.proto import test_runs_pb2
 from openhtf.util import validators
 import six
 
-with open(test_runs_pb2.__file__, 'r') as file:
-  print(file.read())
-
 # pylint: disable=no-member
 MIMETYPE_MAP = {
     'image/jpeg': test_runs_pb2.JPG,
@@ -72,9 +69,9 @@ OUTCOME_MAP = {
 
 UOM_CODE_MAP = {
     u.GetOptions().Extensions[
-        test_runs_pb2.openhtf.output.proto.units_pb2.uom_code]: num
+        test_runs_pb2.uom_code]: num
     for num, u in six.iteritems(
-        test_runs_pb2.openhtf.output.proto.units_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
+        test_runs_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
 }
 # pylint: enable=no-member
 
