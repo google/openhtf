@@ -74,6 +74,7 @@ class TestExecutor(threads.KillableThread):
     self._exit_stack = None
     self.uid = execution_uid
     self.failure_exceptions = failure_exceptions
+    self._latest_outcome = None
 
   def stop(self):
     """Stop this test."""
@@ -150,21 +151,29 @@ class TestExecutor(threads.KillableThread):
       # Full plug initialization happens _after_ the start trigger, as close to
       # test execution as possible, for the best chance of test equipment being
       # in a known-good state at the start of test execution.
-      if not self._initialize_plugs():
+      if self._initialize_plugs():
         return
 
       # Everything is set, set status and begin test execution.
       self._execute_test_phases(phase_exec)
 
   def _initialize_plugs(self, plug_types=None):
+    """Initialize plugs.
+
+    Args:
+      plug_types: optional list of plug classes to initialize.
+
+    Returns:
+      True if there was an error initializing the plugs.
+    """
     try:
       self.test_state.plug_manager.initialize_plugs(plug_types=plug_types)
-      return True
-    except Exception:  # pylint: disable=broad-except
-      # Exit early if plug initializaion failed.
-      self.test_state.finalize_on_failed_plug_initialization(
-          phase_executor.ExceptionInfo(*sys.exc_info()))
       return False
+    except Exception:  # pylint: disable=broad-except
+      # Record the equivalent failure outcome and exit early.
+      self._latest_outcome = phase_executor.PhaseExecutionOutcome(
+          phase_executor.ExceptionInfo(*sys.exc_info()))
+      return True
 
   def _execute_test_start(self, phase_exec):
     """Run the start trigger phase, and check that the DUT ID is set after.
@@ -181,25 +190,36 @@ class TestExecutor(threads.KillableThread):
     """
     # Have the phase executor run the start trigger phase. Do partial plug
     # initialization for just the plugs needed by the start trigger phase.
-    if not self._initialize_plugs(
-        plug_types=[phase_plug.cls for phase_plug in self._test_start.plugs]):
+    if self._initialize_plugs(plug_types=[
+        phase_plug.cls for phase_plug in self._test_start.plugs]):
       return True
 
-    outcome = phase_exec.execute_phase(self._test_start)
-    if outcome.is_terminal:
-      self.test_state.finalize_from_phase_outcome(outcome)
+    self._latest_outcome = phase_exec.execute_phase(self._test_start)
+    if self._latest_outcome.is_terminal:
+      return True
 
     if self.test_state.test_record.dut_id is None:
       _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
                    ' to do so to prevent a BlankDutIdError when the test ends.')
-    return outcome.is_terminal
+    return False
 
   def _execute_test_teardown(self, phase_exec):
     phase_exec.stop(timeout_s=conf.cancel_timeout_s)
     phase_exec.reset_stop()
     if self._do_teardown_function and self._teardown_function:
-      phase_exec.execute_phase(self._teardown_function)
+      outcome = phase_exec.execute_phase(self._teardown_function)
+      # Ignore teardown phase outcome if there is already a terminal error.
+      if not self._latest_outcome or not self._latest_outcome.is_terminal:
+        self._latest_outcome = outcome
+    # Plug teardown does not affect the test outcome.
     self.test_state.plug_manager.tear_down_plugs()
+
+    # Now finalize the test state.
+    if self._latest_outcome and self._latest_outcome.is_terminal:
+      self.test_state.finalize_from_phase_outcome(self._latest_outcome)
+    else:
+      self.test_state.finalize_normally()
+
     # Make sure if there was an error during test execution that the error
     # message is printed last and in a noticeable color so it doesn't get
     # scrolled off the screen or missed.
@@ -213,12 +233,9 @@ class TestExecutor(threads.KillableThread):
 
     try:
       for phase in self._test_descriptor.phases:
-        outcome = phase_exec.execute_phase(phase)
-        if outcome.is_terminal:
-          self.test_state.finalize_from_phase_outcome(outcome)
+        self._latest_outcome = phase_exec.execute_phase(phase)
+        if self._latest_outcome.is_terminal:
           break
-      else:
-        self.test_state.finalize_normally()
     except KeyboardInterrupt:
       self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
       raise
