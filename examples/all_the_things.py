@@ -28,7 +28,7 @@ from openhtf.plugs import user_input
 from openhtf.output import callbacks
 from openhtf.output.callbacks import json_factory
 
-from openhtf.examples import example_plugs
+from examples import example_plugs
 
 
 @htf.plug(example=example_plugs.ExamplePlug)
