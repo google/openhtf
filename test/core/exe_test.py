@@ -335,7 +335,3 @@ class TestPhaseExecutor(unittest.TestCase):
   def test_execute_phase_return_fail_and_continue(self):
     result = self.phase_executor.execute_phase(phase_return_fail_and_continue)
     self.assertEqual(PhaseResult.FAIL_AND_CONTINUE, result.phase_result)
-
-
-if __name__ == '__main__':
-  unittest.main()

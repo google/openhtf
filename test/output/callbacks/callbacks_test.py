@@ -20,8 +20,9 @@ actually care for.
 
 import sys
 from io import BytesIO, StringIO
+import unittest
 
-from examples import all_the_things
+from openhtf.examples import all_the_things
 import openhtf as htf
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
