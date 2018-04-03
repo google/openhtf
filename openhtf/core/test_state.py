@@ -335,17 +335,6 @@ class TestState(util.SubscribableStateMixin):
                                            'A phase stopped the test run.')
       self._finalize(test_record.Outcome.FAIL)
 
-  def finalize_on_failed_plug_initialization(self, except_info):
-    if self._is_aborted():
-      return
-
-    self.logger.error('Finishing test execution early due to failed plug '
-                      'initialization.')
-    code = except_info.exc_type.__name__
-    description = str(except_info.exc_val)
-    self.test_record.add_outcome_details(code, description)
-    self._finalize(test_record.Outcome.ERROR)
-
   def finalize_normally(self):
     """Mark the state as finished.
 

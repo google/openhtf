@@ -123,6 +123,18 @@ def fail_plug_phase(fail):
   del fail
 
 
+def blank_phase():
+  pass
+
+
+class TeardownError(Exception):
+  pass
+
+
+def teardown_fail():
+  raise TeardownError()
+
+
 class TestExecutor(unittest.TestCase):
 
   class TestDummyExceptionError(Exception):
@@ -288,7 +300,7 @@ class TestExecutor(unittest.TestCase):
 
     test = openhtf.Test(never_gonna_run_phase)
     executor = core.TestExecutor(test.descriptor, 'uid', fail_plug_phase,
-                                 teardown_function=lambda: ev.set())  # pyling: disable=unnecessary-lambda
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -298,6 +310,33 @@ class TestExecutor(unittest.TestCase):
     # Teardown function should *NOT* be executed.
     self.assertFalse(ev.is_set())
     self.assertFalse(ev2.is_set())
+
+  def test_error_during_teardown(self):
+    test = openhtf.Test(blank_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
+                                 teardown_function=teardown_fail)
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.ERROR)
+    self.assertEqual(record.outcome_details[0].code, TeardownError.__name__)
+
+  def test_log_during_teardown(self):
+    message = 'hello'
+
+    def teardown_log(test):
+      test.logger.info(message)
+
+    test = openhtf.Test(blank_phase)
+    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
+                                 teardown_function=teardown_log)
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.outcome, Outcome.PASS)
+    log_records = [log_record for log_record in record.log_records
+                   if log_record.message == message]
+    self.assertTrue(log_records)
 
 
 class TestPhaseExecutor(unittest.TestCase):
