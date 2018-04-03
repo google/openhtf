@@ -17,7 +17,7 @@ declare var jsonpatch; // Global provided by the fast-json-patch package.
 
 import {Injectable} from 'angular2/core';
 import {Headers, Http, RequestOptions} from 'angular2/http';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import 'rxjs/add/observable/throw';
 import 'rxjs/add/operator/catch';
 
