@@ -20,6 +20,7 @@ actually care for.
 
 import sys
 from io import BytesIO, StringIO
+import unittest
 
 from examples import all_the_things
 import openhtf as htf
