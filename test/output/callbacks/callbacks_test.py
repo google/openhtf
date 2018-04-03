@@ -73,4 +73,3 @@ class TestConsoleSummary(test.TestCase):
     instance = console_summary.ConsoleSummary()
     for outcome in htf.test_record.Outcome:
         self.assertIn(outcome, instance.color_table)
-
