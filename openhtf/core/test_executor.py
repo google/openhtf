@@ -196,6 +196,7 @@ class TestExecutor(threads.KillableThread):
 
   def _execute_test_teardown(self, phase_exec):
     phase_exec.stop(timeout_s=conf.cancel_timeout_s)
+    phase_exec.reset_stop()
     if self._do_teardown_function and self._teardown_function:
       phase_exec.execute_phase(self._teardown_function)
     self.test_state.plug_manager.tear_down_plugs()

@@ -193,6 +193,9 @@ class PhaseExecutor(object):
 
   def __init__(self, test_state):
     self.test_state = test_state
+    # This lock exists to prevent stop() calls from being ignored if called when
+    # _execute_phase_once is setting up the next phase thread.
+    self._current_phase_thread_lock = threading.Lock()
     self._current_phase_thread = None
     self._stopping = threading.Event()
 
@@ -232,17 +235,34 @@ class PhaseExecutor(object):
 
     with self.test_state.running_phase_context(phase_desc) as phase_state:
       _LOG.info('Executing phase %s', phase_desc.name)
-      phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
-      phase_thread.start()
-      self._current_phase_thread = phase_thread
+      with self._current_phase_thread_lock:
+        # Checking _stopping must be in the lock context, otherwise there is a
+        # race condition: this thread checks _stopping and then switches to
+        # another thread where stop() sets _stopping and checks
+        # _current_phase_thread (which would not be set yet).  In that case, the
+        # new phase thread will be still be started.
+        if self._stopping.is_set():
+          # PhaseRecord will be written at this point, so ensure that it has a
+          # Killed result.
+          result = PhaseExecutionOutcome(threads.ThreadTerminationError())
+          phase_state.result = result
+          return result
+        phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
+        phase_thread.start()
+        self._current_phase_thread = phase_thread
+
       result = phase_state.result = phase_thread.join_or_die()
       if phase_state.result.is_repeat and is_last_repeat:
         _LOG.error('Phase returned REPEAT, exceeding repeat_limit.')
         phase_state.hit_repeat_limit = True
         result = PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
+      self._current_phase_thread = None
 
     _LOG.debug('Phase finished with result %s', result)
     return result
+
+  def reset_stop(self):
+    self._stopping.clear()
 
   def stop(self, timeout_s=None):
     """Stops execution of the current phase, if any.
@@ -253,12 +273,11 @@ class PhaseExecutor(object):
     Args:
       timeout_s: int or None, timeout in seconds to wait for the phase to stop.
     """
-    phase_thread = self._current_phase_thread
-
-    if not phase_thread:
-      return
-
     self._stopping.set()
+    with self._current_phase_thread_lock:
+      phase_thread = self._current_phase_thread
+      if not phase_thread:
+        return
 
     if phase_thread.is_alive():
       phase_thread.kill()
@@ -271,6 +290,3 @@ class PhaseExecutor(object):
                  "didn't" if phase_thread.is_alive() else 'did')
     # Clear the currently running phase, whether it finished or timed out.
     self.test_state.stop_running_phase()
-
-    # Clear stopping once we're done, in case we're used again.
-    self._stopping.clear()
