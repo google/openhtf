@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import six
 import socket
 import sys
 import threading
@@ -42,7 +43,7 @@ _WAIT_FOR_EXECUTING_TEST_POLL_S = 0.1
 
 STATION_SERVER_TYPE = 'station'
 
-MIMETYPE_REVERSE_MAP = {v: k for k, v in mfg_inspector.MIMETYPE_MAP.iteritems()}
+MIMETYPE_REVERSE_MAP = {v: k for k, v in six.iteritems(mfg_inspector.MIMETYPE_MAP)}
 TEST_STATUS_COMPLETED = 'COMPLETED'
 
 conf.declare('frontend_throttle_s', default_value=_DEFAULT_FRONTEND_THROTTLE_S,
@@ -64,7 +65,7 @@ def _get_executing_test():
     test: The test that was executing when this function was called, or None.
     test_state: The state of the executing test, or None.
   """
-  tests = openhtf.Test.TEST_INSTANCES.values()
+  tests = list(openhtf.Test.TEST_INSTANCES.values())
 
   if not tests:
     return None, None
@@ -333,7 +334,7 @@ class PlugsHandler(BaseTestHandler):
       return
 
     try:
-      request = json.loads(self.request.body)
+      request = json.loads(self.request.body.decode('utf-8'))
       method_name = request['method']
       args = request['args']
     except (KeyError, ValueError):
