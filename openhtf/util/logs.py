@@ -159,7 +159,8 @@ class TestUidFilter(logging.Filter):
     if record.name.startswith(RECORD_LOGGER_PREFIX):
       _, suffix = record.name.split(RECORD_LOGGER_PREFIX)
       if suffix:
-        test_uid = suffix.split('.')[0]
+        # Note that index 0 is an empty string because of the leading dot.
+        test_uid = suffix.split('.')[1]
         return True if test_uid == self.test_uid else False
     return True
 

@@ -49,8 +49,6 @@ def main():
                       help='Path to a custom web frontend.')
   args = parser.parse_args()
 
-  logs.setup_logger()
-
   if args.custom_frontend is not None:
     frontend_path = args.custom_frontend
   else:

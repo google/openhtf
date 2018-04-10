@@ -64,6 +64,7 @@ class PlugsTest(test.TestCase):
 
   def setUp(self):
     self.logger = mock.MagicMock()
+    self.logger.configure_mock(name='mock.logger.for.openhtf')
     self.plug_manager = plugs.PlugManager({AdderPlug}, self.logger)
     AdderPlug.INSTANCE_COUNT = 0
 

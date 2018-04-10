@@ -141,7 +141,6 @@ class TestExecutor(unittest.TestCase):
     """Exception to be thrown by failure_phase."""
 
   def setUp(self):
-    logs.setup_logger()
     self.test_plug_type = UnittestPlug
 
   def test_failures(self):
@@ -342,9 +341,12 @@ class TestExecutor(unittest.TestCase):
 class TestPhaseExecutor(unittest.TestCase):
 
   def setUp(self):
-    self.test_state = mock.MagicMock(spec=TestState,
-                                     plug_manager=plugs.PlugManager(),
-                                     logger=mock.MagicMock())
+    mock_logger = mock.Mock()
+    mock_logger.configure_mock(name='mock.logger.for.openhtf')
+    self.test_state = mock.MagicMock(
+        spec=TestState,
+        plug_manager=plugs.PlugManager(logger=mock_logger),
+        execution_uid='01234567890')
     self.test_state.plug_manager.initialize_plugs([
         UnittestPlug, MoreRepeatsUnittestPlug])
     self.phase_executor = PhaseExecutor(self.test_state)
