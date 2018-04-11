@@ -68,8 +68,8 @@ from enum import Enum
 
 import mutablerecords
 
-import openhtf
 from openhtf import util
+from openhtf.core import phase_descriptor
 from openhtf.util import validators
 from openhtf.util import units
 import six
@@ -589,7 +589,7 @@ def measures(*measurements, **kwargs):
   # 'measurements' is guaranteed to be a list of Measurement objects here.
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
-    phase = openhtf.PhaseDescriptor.wrap_or_copy(wrapped_phase)
+    phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(wrapped_phase)
     duplicate_names = (set(m.name for m in measurements) &
                        set(m.name for m in phase.measurements))
     if duplicate_names:

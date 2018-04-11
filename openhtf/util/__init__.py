@@ -21,12 +21,9 @@ import re
 import threading
 import time
 import weakref
-from datetime import datetime
-from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
 
-from openhtf.util import threads
 import six
 
 
@@ -61,22 +58,6 @@ def log_every_n(n, level, message, *args):  # pylint: disable=invalid-name
 def time_millis():  # pylint: disable=invalid-name
   """The time in milliseconds."""
   return int(time.time() * 1000)
-
-
-def get_version():
-  """Return the version string of the 'openhtf' package.
-
-  Note: the version number doesn't seem to get properly set when using ipython.
-  """
-  version = 'Unknown'
-
-  try:
-    version = get_distribution('openhtf')
-
-  except DistributionNotFound:
-    version = 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
-
-  return version
 
 
 class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):

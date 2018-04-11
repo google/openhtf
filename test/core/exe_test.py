@@ -20,12 +20,11 @@ import unittest
 import mock
 
 import openhtf
-from openhtf import core
-from openhtf import PhaseResult
 from openhtf import plugs
 from openhtf import util
-from openhtf.core.phase_executor import PhaseExecutor
-from openhtf.core.test_state import TestState
+from openhtf.core import test_executor
+from openhtf.core import phase_executor
+from openhtf.core import test_state
 from openhtf.core.test_record import Outcome
 
 from openhtf.util import conf
@@ -135,7 +134,7 @@ def teardown_fail():
   raise TeardownError()
 
 
-class TestExecutor(unittest.TestCase):
+class TestExecutorTest(unittest.TestCase):
 
   class TestDummyExceptionError(Exception):
     """Exception to be thrown by failure_phase."""
@@ -156,7 +155,7 @@ class TestExecutor(unittest.TestCase):
     # Outcome = ERROR.
     ev = threading.Event()
     test = openhtf.Test(failure_phase)
-    executor = core.TestExecutor(
+    executor = test_executor.TestExecutor(
         test.descriptor, 'uid', start_phase, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
@@ -165,10 +164,12 @@ class TestExecutor(unittest.TestCase):
 
     # Same as above, but now specify that the TestDummyExceptionError should
     # instead be a FAIL outcome.
-    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
-                                 failure_exceptions=[
-                                     self.TestDummyExceptionError])
+    executor = test_executor.TestExecutor(
+        test.descriptor,
+        'uid',
+        start_phase,
+        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+        failure_exceptions=[self.TestDummyExceptionError])
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -180,14 +181,14 @@ class TestExecutor(unittest.TestCase):
 
   # Mock test execution.
   def test_test_executor(self):
-    mock_starter = mock.Mock(spec=core.TestExecutor)
+    mock_starter = mock.Mock(spec=test_executor.TestExecutor)
     mock_starter.start()
     mock_starter.wait()
     mock_starter.stop()
 
   def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
-    phase_thread = core.phase_executor.PhaseExecutorThread(phase_one, ' ')
+    phase_thread = phase_executor.PhaseExecutorThread(phase_one, ' ')
     name = str(phase_thread)
     found = True
     for item in check_list:
@@ -222,8 +223,11 @@ class TestExecutor(unittest.TestCase):
     ev = threading.Event()
     test = openhtf.Test()
     # Cancel during test start phase.
-    executor = core.TestExecutor(test.descriptor, 'uid', cancel_phase,
-                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor = test_executor.TestExecutor(
+        test.descriptor,
+        'uid',
+        cancel_phase,
+        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -251,8 +255,8 @@ class TestExecutor(unittest.TestCase):
     ev = threading.Event()
     test = openhtf.Test(cancel_phase)
     # Cancel during test start phase.
-    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -266,8 +270,8 @@ class TestExecutor(unittest.TestCase):
   def test_failure_during_plug_init(self):
     ev = threading.Event()
     test = openhtf.Test(fail_plug_phase)
-    executor = core.TestExecutor(test.descriptor, 'uid', None,
-                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', None, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -280,8 +284,8 @@ class TestExecutor(unittest.TestCase):
   def test_failure_during_plug_init_with_dut_id(self):
     ev = threading.Event()
     test = openhtf.Test(fail_plug_phase)
-    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -299,8 +303,11 @@ class TestExecutor(unittest.TestCase):
     ev2 = threading.Event()
 
     test = openhtf.Test(never_gonna_run_phase)
-    executor = core.TestExecutor(test.descriptor, 'uid', fail_plug_phase,
-                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor = test_executor.TestExecutor(
+        test.descriptor,
+        'uid',
+        fail_plug_phase,
+        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -313,8 +320,8 @@ class TestExecutor(unittest.TestCase):
 
   def test_error_during_teardown(self):
     test = openhtf.Test(blank_phase)
-    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=teardown_fail)
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, teardown_function=teardown_fail)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -328,8 +335,8 @@ class TestExecutor(unittest.TestCase):
       test.logger.info(message)
 
     test = openhtf.Test(blank_phase)
-    executor = core.TestExecutor(test.descriptor, 'uid', start_phase,
-                                 teardown_function=teardown_log)
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, teardown_function=teardown_log)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -342,35 +349,35 @@ class TestExecutor(unittest.TestCase):
 class TestPhaseExecutor(unittest.TestCase):
 
   def setUp(self):
-    self.test_state = mock.MagicMock(spec=TestState,
+    self.test_state = mock.MagicMock(spec=test_state.TestState,
                                      plug_manager=plugs.PlugManager(),
                                      logger=mock.MagicMock())
     self.test_state.plug_manager.initialize_plugs([
         UnittestPlug, MoreRepeatsUnittestPlug])
-    self.phase_executor = PhaseExecutor(self.test_state)
+    self.phase_executor = phase_executor.PhaseExecutor(self.test_state)
 
   def test_execute_continue_phase(self):
     result = self.phase_executor.execute_phase(phase_two)
-    self.assertEqual(PhaseResult.CONTINUE, result.phase_result)
+    self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
 
   def test_execute_repeat_okay_phase(self):
     result = self.phase_executor.execute_phase(
         phase_repeat.with_plugs(test_plug=UnittestPlug))
-    self.assertEqual(PhaseResult.CONTINUE, result.phase_result)
+    self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
 
   def test_execute_repeat_limited_phase(self):
     result = self.phase_executor.execute_phase(
         phase_repeat.with_plugs(test_plug=MoreRepeatsUnittestPlug))
-    self.assertEqual(PhaseResult.STOP, result.phase_result)
+    self.assertEqual(openhtf.PhaseResult.STOP, result.phase_result)
 
   def test_execute_run_if_false(self):
     result = self.phase_executor.execute_phase(phase_skip_from_run_if)
-    self.assertEqual(PhaseResult.SKIP, result.phase_result)
+    self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
 
   def test_execute_phase_return_skip(self):
     result = self.phase_executor.execute_phase(phase_return_skip)
-    self.assertEqual(PhaseResult.SKIP, result.phase_result)
+    self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
 
   def test_execute_phase_return_fail_and_continue(self):
     result = self.phase_executor.execute_phase(phase_return_fail_and_continue)
-    self.assertEqual(PhaseResult.FAIL_AND_CONTINUE, result.phase_result)
+    self.assertEqual(openhtf.PhaseResult.FAIL_AND_CONTINUE, result.phase_result)

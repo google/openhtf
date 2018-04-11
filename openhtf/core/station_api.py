@@ -77,6 +77,7 @@ import openhtf
 from openhtf import util
 from openhtf.core import history
 from openhtf.core import test_state
+from openhtf.core import phase_descriptor
 from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import multicast
@@ -395,7 +396,9 @@ class RemoteTest(mutablerecords.Record('RemoteTest', [
       descriptors = self.shared_proxy.get_phase_descriptors(self.test_uid)
       if descriptors:
         self.cached_phase_descriptors = [
-            openhtf.RemotePhaseDescriptor(**desc) for desc in descriptors]
+            phase_descriptor.RemotePhaseDescriptor(**desc)
+            for desc in descriptors
+        ]
     return self.cached_phase_descriptors
 
   def wait_for_update(self, timeout_s=1):
