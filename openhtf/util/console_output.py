@@ -45,8 +45,8 @@ class ActionFailedError(Exception):
 
 def _printed_len(some_string):
   """Compute the visible length of the string when printed."""
-  return len(filter(lambda x: x in string.printable,
-                    ANSI_ESC_RE.sub('', some_string)))
+  return len([x for  x in ANSI_ESC_RE.sub('', some_string)
+              if x in string.printable])
 
 
 def _linesep_for_file(file):
