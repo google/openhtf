@@ -55,6 +55,7 @@ def _linesep_for_file(file):
     return os.linesep
   return '\n'
 
+
 def banner_print(msg, color='', width=60, file=sys.stdout):
   """Print the message as a banner with a fixed width.fixed
 
