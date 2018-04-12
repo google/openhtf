@@ -32,9 +32,10 @@ import uuid
 import weakref
 from types import LambdaType
 
-import mutablerecords
-
 from enum import Enum
+import colorama
+import mutablerecords
+import six
 
 from openhtf import core
 from openhtf import plugs
@@ -46,11 +47,11 @@ from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.plugs import plug
 from openhtf.util import conf
+from openhtf.util import console_output
 from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
-import six
 
 
 __version__ = util.get_version()
@@ -257,6 +258,7 @@ class Test(object):
 
       self._executor = core.TestExecutor(
           self._test_desc, self.make_uid(), trigger,
+          self._test_options.default_dut_id,
           self._test_options.teardown_function,
           self._test_options.failure_exceptions)
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
@@ -275,8 +277,25 @@ class Test(object):
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
-            _LOG.exception(
+            _LOG.error(
                 'Output callback %s raised; continuing anyway', output_cb)
+        # Make sure the final outcome of the test is printed last and in a
+        # noticeable color so it doesn't get scrolled off the screen or missed.
+        if final_state.test_record.outcome == test_record.Outcome.ERROR:
+          for detail in final_state.test_record.outcome_details:
+            console_output.error_print(detail.description)
+        else:
+          colors = collections.defaultdict(lambda: 'colorama.Style.BRIGHT')
+          colors[test_record.Outcome.PASS] = ''.join((colorama.Style.BRIGHT,
+                                                      colorama.Fore.GREEN))
+          colors[test_record.Outcome.FAIL] = ''.join((colorama.Style.BRIGHT,
+                                                      colorama.Fore.RED))
+          msg_template = "test: {name}  outcome: {color}{outcome}{rst}"
+          console_output.banner_print(msg_template.format(
+              name=final_state.test_record.metadata['test_name'],
+              color=colors[final_state.test_record.outcome],
+              outcome=final_state.test_record.outcome.name,
+              rst=colorama.Style.RESET_ALL))
       finally:
         del self.TEST_INSTANCES[self.uid]
         self._executor = None
@@ -285,10 +304,11 @@ class Test(object):
 
 
 class TestOptions(mutablerecords.Record('TestOptions', [], {
-    'name': 'OpenHTF Test',
+    'name': 'openhtf_test',
     'output_callbacks': list,
     'teardown_function': None,
     'failure_exceptions': list,
+    'default_dut_id': 'UNKNOWN_DUT',
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
@@ -301,6 +321,8 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
       test run exits early due to an exception, the run will be marked as a FAIL
       if the raised exception matches one of the types in this list. Otherwise,
       the run is marked as ERROR.
+  default_dut_id: The DUT ID that will be used if the start trigger and all
+      subsequent phases fail to set one.
   """
 
 

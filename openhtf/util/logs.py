@@ -110,12 +110,12 @@ def initialize_record_logger(test_uid, test_record, notify_update):
   htf_logger.propagate = False
   # Add the handler for this test record to the main OpenHTF logger.
   htf_logger.addHandler(RecordHandler(test_uid, test_record, notify_update))
+  htf_logger.setLevel(logging.DEBUG)  # Log everything to the test record.
   # Also create a sub-logger specific to this test UID and return it.
   logger = get_record_logger_for(test_uid)
   # All record loggers have a shared parent that's separately configured, so
   # we want to propagate to that logger.
   logger.propagate = True
-  logger.setLevel(logging.DEBUG)
   return logger
 
 

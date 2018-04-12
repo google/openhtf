@@ -32,6 +32,7 @@ import mimetypes
 import mutablerecords
 import os
 import socket
+import traceback
 
 from enum import Enum
 
@@ -320,12 +321,12 @@ class TestState(util.SubscribableStateMixin):
                           % phase_execution_outcome.phase_result.exc_val)
         self._finalize(test_record.Outcome.FAIL)
       else:
-        self.logger.error('Finishing test execution early due to phase '
+        self.logger.critical('Finishing test execution early due to phase '
                           'exception %s, outcome ERROR.' %
                           phase_execution_outcome.phase_result.exc_val)
         # Enable CLI printing of the fill traceback with the -v flag.
-        self.logger.info('Traceback:%s%s', os.linesep,
-                         phase_execution_outcome.phase_result.exc_tb)
+        self.logger.critical('Traceback:%s%s', os.linesep, ''.join(
+            traceback.format_tb(phase_execution_outcome.phase_result.exc_tb)))
         self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
@@ -387,11 +388,6 @@ class TestState(util.SubscribableStateMixin):
         'Test already completed with status %s!' % self._status.name)
 
     self.test_record.outcome = test_outcome
-
-    # Sanity check to make sure we have a DUT ID by the end of the test.
-    if not self.test_record.dut_id:
-      raise BlankDutIdError(
-          'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     # If we've reached here without 'starting' the test, then we 'start' it just
     # so we can properly 'end' it.
