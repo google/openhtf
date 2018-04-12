@@ -72,17 +72,26 @@ import re
 import sys
 import traceback
 
-from openhtf import util
 from openhtf.util import argv
 from openhtf.util import functions
 import six
 
 
+# The number of v's provided as command line arguments to control verbosity.
+# Will be overridden if the ARG_PARSER below parses the -v argument.
+CLI_VERBOSITY = 0
+
 ARG_PARSER = argv.ModuleParser()
-ARG_PARSER.add_argument('-v', action='append_const', const='v')
+ARG_PARSER.add_argument(
+    '-v', action=argv.StoreRepsInModule, target='%s.CLI_VERBOSITY' % __name__,
+    help='Console logging verbosity. Can be repeated to increase verbosity.')
 
 LOGGER_PREFIX = 'openhtf'
 RECORD_LOGGER_PREFIX = '.'.join((LOGGER_PREFIX, 'test_record'))
+RECORD_LOGGER_RE = re.compile(
+    r'%s\.(?P<test_uid>[^.]*)\.?' % RECORD_LOGGER_PREFIX)
+SUBSYSTEM_LOGGER_RE = re.compile(
+    r'%s\.[^.]*\.(?P<subsys>plug|phase)\.(?P<id>[^.]*)' % RECORD_LOGGER_PREFIX)
 
 _LOGONCE_SEEN = set()
 
@@ -97,6 +106,7 @@ def get_record_logger_for(test_uid):
 
 def initialize_record_logger(test_uid, test_record, notify_update):
   htf_logger = logging.getLogger(LOGGER_PREFIX)
+  # Avoid duplicate logging if other loggers are configured.
   htf_logger.propagate = False
   # Add the handler for this test record to the main OpenHTF logger.
   htf_logger.addHandler(RecordHandler(test_uid, test_record, notify_update))
@@ -156,13 +166,8 @@ class TestUidFilter(logging.Filter):
   def filter(self, record):
     # Only filter logs that from individual test instances. Framework logs go
     # to every test instance's test record to make station debugging easier.
-    if record.name.startswith(RECORD_LOGGER_PREFIX):
-      _, suffix = record.name.split(RECORD_LOGGER_PREFIX)
-      if suffix:
-        # Note that index 0 is an empty string because of the leading dot.
-        test_uid = suffix.split('.')[1]
-        return True if test_uid == self.test_uid else False
-    return True
+    match = RECORD_LOGGER_RE.match(record.name)
+    return not match or (match.group('test_uid') == self.test_uid)
 
 
 class RecordHandler(logging.Handler):
@@ -210,39 +215,41 @@ class CliFormatter(logging.Formatter):
     terse_time = localized_time.strftime(u'%H:%M:%S')
     terse_level = record.levelname[0]
     terse_name = record.name.split('.')[-1]
-    if record.name.startswith(RECORD_LOGGER_PREFIX):
-      # The [1:] split used here is to discard the extra leading dot.
-      loggers = record.name.split(RECORD_LOGGER_PREFIX)[1][1:].split('.')
-      # If nested under a test record, show where the message came from.
-      if len(loggers) > 1:
-        terse_name = '<{type}: {identifier}>'.format(
-            type=loggers[1], # First thing after UUID should be the logger type.
-            identifier=loggers[-1]) # Last thing should uniquely id the logger.
+    match = RECORD_LOGGER_RE.match(record.name)
+    if match:
+      # Figure out which OpenHTF subsystem the record came from.
+      subsys_match = SUBSYSTEM_LOGGER_RE.match(record.name)
+      if subsys_match:
+        terse_name = '<{subsys}: {id}>'.format(
+            subsys=subsys_match.group('subsys'),
+            id=subsys_match.group('id'))
       else:
         # Fall back to using the last five characters of the test UUID.
-        terse_name = '<test %s>' % loggers[0][-5:]
+        terse_name = '<test %s>' % match.group('test_uid')[-5:]
     return '{lvl} {time} {logger} - {msg}'.format(lvl=terse_level,
-                                                     time=terse_time,
-                                                     logger=terse_name,
-                                                     msg=record.message)
+                                                  time=terse_time,
+                                                  logger=terse_name,
+                                                  msg=record.message)
 
 
 @functions.call_once
 def configure_cli_logging():
   """Configure OpenHTF to log to the CLI based on verbosity arg."""
-  args, _ = ARG_PARSER.parse_known_args()
-  if not args.v: # The default behavior is not to log anything to the CLI.
-    return
+  if CLI_VERBOSITY == 0:
+    return # The default behavior is not to log anything to the CLI.
   logging_level = None
-  if len(args.v) == 1:
+  if CLI_VERBOSITY == 1:
     logging_level = logging.INFO
-  elif len(args.v) == 2:
+  elif CLI_VERBOSITY == 2:
     logging_level = logging.DEBUG
-  elif len(args.v) > 2:
+  elif CLI_VERBOSITY > 2:
     logging_level = logging.NOTSET
 
   cli_handler = logging.StreamHandler(stream=sys.stdout)
   cli_handler.setFormatter(CliFormatter())
   cli_handler.setLevel(logging_level)
   cli_handler.addFilter(MAC_FILTER)
-  logging.getLogger(LOGGER_PREFIX).addHandler(cli_handler)
+  htf_logger = logging.getLogger(LOGGER_PREFIX)
+  htf_logger.addHandler(cli_handler)
+  # We don't want duplicate logging if other loggers are configured.
+  htf_logger.propagate = False

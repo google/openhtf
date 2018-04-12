@@ -86,12 +86,14 @@ class ConsolePrompt(threading.Thread):
       if platform.system() == 'Windows':
         # Windows doesn't support file-like objects for select(), so fall back
         # to raw_input().
-        response = input(''.join((self._message, '\n\r', PROMPT)))
+        response = input(''.join((self._message,
+                                  os.linesep,
+                                  PROMPT)))
         self._answered = True
         self._callback(response)
       else:
         # First, display the prompt to the console.
-        sys.stdout.write(''.join((self._message, '\n', PROMPT)))
+        sys.stdout.write(''.join((self._message, os.linesep, PROMPT)))
         sys.stdout.flush()
 
         # Before reading, clear any lingering buffered terminal input.

@@ -133,7 +133,8 @@ class TestState(util.SubscribableStateMixin):
         metadata=copy.deepcopy(test_desc.metadata))
     self.logger = logs.initialize_record_logger(
         execution_uid, self.test_record, self.notify_update)
-    self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
+    self.plug_manager = plugs.PlugManager(
+        test_desc.plug_types, self.logger.name)
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
@@ -322,6 +323,9 @@ class TestState(util.SubscribableStateMixin):
         self.logger.error('Finishing test execution early due to phase '
                           'exception %s, outcome ERROR.' %
                           phase_execution_outcome.phase_result.exc_val)
+        # Enable CLI printing of the fill traceback with the -v flag.
+        self.logger.info('Traceback:%s%s', os.linesep,
+                         phase_execution_outcome.phase_result.exc_tb)
         self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '

@@ -22,6 +22,7 @@ and to the CLI directly (through sys.stdout).
 
 import logging
 import math
+import os
 import sys
 import time
 
@@ -37,6 +38,12 @@ _LOG = logging.getLogger(__name__)
 class ActionFailedError(Exception):
   """Raised (and caught) when an action is marked as failed."""
 
+
+def _linesep_for_file(file):
+  """Determine which line separator to use based on the file's mode."""
+  if 'b' in file.mode:
+    return os.linesep
+  return '\n'
 
 def banner_print(msg, color='', width=60, file=sys.stdout):
   """Print the message as a banner with a fixed width.fixed
@@ -59,8 +66,8 @@ def banner_print(msg, color='', width=60, file=sys.stdout):
   """
   lpad = int(math.ceil((width - len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - len(msg) - 2) / 2.0)) * '='
-  file.write('\n{color}{lpad} {msg} {rpad}{reset}\n\n'.format(
-      color=color, lpad=lpad, msg=msg, rpad=rpad,
+  file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
+      sep=_linesep_for_file(file), color=color, lpad=lpad, msg=msg, rpad=rpad,
       reset=colorama.Style.RESET_ALL))
   file.flush()
 
@@ -83,11 +90,11 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
       lpad=lpad, bright=colorama.Style.BRIGHT, color=color, msg=msg,
       reset=colorama.Style.RESET_ALL, rpad=rpad))
   file.write(colorama.Style.RESET_ALL)
-  file.write('\n')
+  file.write(_linesep_for_file(file))
   file.flush()
 
 
-def cli_print(msg, color='', end='\n', file=sys.stdout, logger=_LOG):
+def cli_print(msg, color='', end=None, file=sys.stdout, logger=_LOG):
   """Print the message to file and also log it.
 
   This function is intended as a 'tee' mechanism to enable the CLI interface as
@@ -99,11 +106,14 @@ def cli_print(msg, color='', end='\n', file=sys.stdout, logger=_LOG):
     color: Optional colorama color string to be applied to the message. You can
         concatenate colorama color strings together in order to get any set of
         effects you want.
+    end: A custom line-ending string to print instead of newline.
     file: A file object to which the baracketed text will be written. Intended
         for use with CLI output file objects like sys.stdout.
     logger: logger: Logger to which to send analogous output for each message.
         Intended for use with test record loggers.
   """
+  if end is None:
+    end = _linesep_for_file(file)
   file.write('{color}{msg}{reset}{end}'.format(
       color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
   logger.info('-> {}'.format(msg))
@@ -120,8 +130,8 @@ def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
     file: A file object to which the baracketed text will be written. Intended
         for use with CLI output file objects, specifically sys.stderr.
   """
-  file.write('\n{bright}{color}Error: {normal}{msg}\n'.format(
-      bright=colorama.Style.BRIGHT, color=color,
+  file.write('{sep}{bright}{color}Error: {normal}{msg}{sep}'.format(
+      sep=_linesep_for_file(file), bright=colorama.Style.BRIGHT, color=color,
       normal=colorama.Style.NORMAL, msg=msg))
   file.flush()
 

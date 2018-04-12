@@ -341,11 +341,9 @@ class TestExecutor(unittest.TestCase):
 class TestPhaseExecutor(unittest.TestCase):
 
   def setUp(self):
-    mock_logger = mock.Mock()
-    mock_logger.configure_mock(name='mock.logger.for.openhtf')
     self.test_state = mock.MagicMock(
         spec=TestState,
-        plug_manager=plugs.PlugManager(logger=mock_logger),
+        plug_manager=plugs.PlugManager(logger_name='mock.logger.for.openhtf'),
         execution_uid='01234567890')
     self.test_state.plug_manager.initialize_plugs([
         UnittestPlug, MoreRepeatsUnittestPlug])
