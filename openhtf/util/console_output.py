@@ -56,8 +56,10 @@ def _linesep_for_file(file):
   return '\n'
 
 
-def banner_print(msg, color='', width=60, file=sys.stdout):
-  """Print the message as a banner with a fixed width.fixed
+def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
+  """Print the message as a banner with a fixed width.
+
+  Also logs the message (un-bannered) to the given logger at the debug level.
 
   Args:
     msg: The message to print.
@@ -75,6 +77,7 @@ def banner_print(msg, color='', width=60, file=sys.stdout):
     ======================== Foo Bar Baz =======================
 
   """
+  logger.debug(ANSI_ESC_RE.sub('', msg))
   lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
   file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
@@ -226,7 +229,7 @@ def action_result_context(action_text,
     Doing an action that will raise...                  [ FAIL ]
     ...
   """
-  logger.debug(action_text)
+  logger.debug('Action - %s', action_text)
   file.write(''.join((action_text, '\r')))
   spacing = (width - status_width - _printed_len(action_text)) * ' '
   file.flush()
@@ -236,16 +239,16 @@ def action_result_context(action_text,
   except Exception as err:
     file.write(''.join((action_text, spacing)))
     bracket_print(fail_text, width=status_width, color=colorama.Fore.RED)
-    logger.debug('%s: %s', action_text, fail_text)
+    logger.debug('Result - %s [ %s ]', action_text, fail_text)
     if not isinstance(err, ActionFailedError):
       raise
   file.write(''.join((action_text, spacing)))
   if result.success:
     bracket_print(succeed_text, width=status_width, color=colorama.Fore.GREEN)
-    logger.debug('%s: %s', action_text, succeed_text)
+    logger.debug('Result - %s [ %s ]', action_text, succeed_text)
   elif result.success is None:
     bracket_print(unknown_text, width=status_width, color=colorama.Fore.YELLOW)
-    logger.debug('%s: %s', action_text, 'Result unknown.')
+    logger.debug('Result - %s [ %s ]', action_text, unknown_text)
 
 
 # If invoked as a runnable module, this module will invoke its action result

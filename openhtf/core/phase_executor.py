@@ -65,6 +65,9 @@ class ExceptionInfo(collections.namedtuple(
         'exc_tb': ''.join(traceback.format_exception(*self)),
     }
 
+  def __str__(self):
+    return self.exc_type.__name__
+
 
 class InvalidPhaseResultError(Exception):
   """Raised when PhaseExecutionOutcome is created with invalid phase result."""
@@ -158,7 +161,8 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def _thread_exception(self, *args):
     self._phase_execution_outcome = PhaseExecutionOutcome(ExceptionInfo(*args))
-    self._test_state.logger.critical('Phase %s raised an exception', self.name)
+    self._test_state.logger.critical(
+        'Phase %s raised an exception', self._phase_desc.name)
     return True  # Never propagate exceptions upward.
 
   def join_or_die(self):
@@ -230,12 +234,12 @@ class PhaseExecutor(object):
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
-      _LOG.info('Phase %s skipped due to run_if returning falsey.',
+      _LOG.debug('Phase %s skipped due to run_if returning falsey.',
                 phase_desc.name)
       return PhaseExecutionOutcome(openhtf.PhaseResult.SKIP)
 
     with self.test_state.running_phase_context(phase_desc) as phase_state:
-      _LOG.info('Executing phase %s', phase_desc.name)
+      _LOG.debug('Executing phase %s', phase_desc.name)
       with self._current_phase_thread_lock:
         # Checking _stopping must be in the lock context, otherwise there is a
         # race condition: this thread checks _stopping and then switches to
@@ -259,7 +263,8 @@ class PhaseExecutor(object):
         result = PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
       self._current_phase_thread = None
 
-    _LOG.debug('Phase finished with result %s', result)
+    _LOG.debug('Phase %s finished with result %s', phase_desc.name,
+               result.phase_result)
     return result
 
   def reset_stop(self):

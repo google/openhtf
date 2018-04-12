@@ -321,9 +321,9 @@ class TestState(util.SubscribableStateMixin):
                           % phase_execution_outcome.phase_result.exc_val)
         self._finalize(test_record.Outcome.FAIL)
       else:
-        self.logger.critical('Finishing test execution early due to phase '
-                          'exception %s, outcome ERROR.' %
-                          phase_execution_outcome.phase_result.exc_val)
+        self.logger.critical(
+            'Finishing test execution early due to an exception raised during '
+            'phase execution; outcome ERROR.')
         # Enable CLI printing of the fill traceback with the -v flag.
         self.logger.critical('Traceback:%s%s', os.linesep, ''.join(
             traceback.format_tb(phase_execution_outcome.phase_result.exc_tb)))
@@ -370,14 +370,14 @@ class TestState(util.SubscribableStateMixin):
       # Otherwise, the test run was successful.
       self._finalize(test_record.Outcome.PASS)
 
-    self.logger.info('Finishing test execution normally with outcome %s.',
+    self.logger.debug('Finishing test execution normally with outcome %s.',
                      self.test_record.outcome.name)
 
   def abort(self):
     if self._is_aborted():
       return
 
-    self.logger.info('Finishing test execution early due to '
+    self.logger.debug('Finishing test execution early due to '
                      'test abortion, outcome ABORTED.')
     self.test_record.add_outcome_details('ABORTED', 'Test aborted by operator.')
     self._finalize(test_record.Outcome.ABORTED)

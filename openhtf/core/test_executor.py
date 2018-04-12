@@ -79,7 +79,7 @@ class TestExecutor(threads.KillableThread):
 
   def stop(self):
     """Stop this test."""
-    _LOG.info('Stopping test executor.')
+    _LOG.debug('Stopping test executor.')
     # Deterministically mark the test as aborted.
     self.finalize()
     # Cause the exit stack to collapse immediately.
@@ -109,7 +109,7 @@ class TestExecutor(threads.KillableThread):
       _LOG.warning('DUT ID is still not set; using default.')
       self.test_state.test_record.dut_id = self._default_dut_id
     if not self.test_state.is_finalized:
-      self.test_state.logger.info('Finishing test with outcome ABORTED.')
+      self.test_state.logger.debug('Finishing test with outcome ABORTED.')
       self.test_state.abort()
 
     return self.test_state
@@ -124,7 +124,7 @@ class TestExecutor(threads.KillableThread):
         # Seconds in a year.
         self.join(31557600)
     except KeyboardInterrupt:
-      self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
+      self.test_state.logger.debug('KeyboardInterrupt caught, aborting test.')
       raise
 
   def _thread_proc(self):
@@ -236,5 +236,5 @@ class TestExecutor(threads.KillableThread):
         if self._latest_outcome.is_terminal:
           break
     except KeyboardInterrupt:
-      self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
+      self.test_state.logger.debug('KeyboardInterrupt caught, aborting test.')
       raise
