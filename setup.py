@@ -203,6 +203,9 @@ setup(
         'update_units': [
             'xlrd>=1.0.0,<2.0',
         ],
+        'serial_collection_plug': [
+            'pyserial>=3.3.0,<4.0',
+        ],
     },
     setup_requires=[
         'wheel>=0.29.0,<1.0',
