@@ -63,8 +63,8 @@ class TearDownRaisesPlug2(plugs.BasePlug):
 class PlugsTest(test.TestCase):
 
   def setUp(self):
-    self.logger = mock.MagicMock()
-    self.plug_manager = plugs.PlugManager({AdderPlug}, self.logger)
+    self.plug_manager = plugs.PlugManager(
+        {AdderPlug}, logger_name='mock.logger.for.openhtf')
     AdderPlug.INSTANCE_COUNT = 0
 
   def tearDown(self):

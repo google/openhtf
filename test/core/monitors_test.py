@@ -29,7 +29,7 @@ class EmptyPlug(plugs.BasePlug):
 class TestMonitors(unittest.TestCase):
 
   def setUp(self):
-    self.test_state = mock.MagicMock()
+    self.test_state = mock.MagicMock(execution_uid='01234567890')
 
     def provide_plugs(plugs):
       return {name: cls() for name, cls in plugs}

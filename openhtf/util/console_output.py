@@ -22,6 +22,9 @@ and to the CLI directly (through sys.stdout).
 
 import logging
 import math
+import os
+import re
+import string
 import sys
 import time
 
@@ -33,13 +36,30 @@ colorama.init()
 
 _LOG = logging.getLogger(__name__)
 
+ANSI_ESC_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+
 
 class ActionFailedError(Exception):
   """Raised (and caught) when an action is marked as failed."""
 
 
-def banner_print(msg, color='', width=60, file=sys.stdout):
-  """Print the message as a banner with a fixed width.fixed
+def _printed_len(some_string):
+  """Compute the visible length of the string when printed."""
+  return len([x for  x in ANSI_ESC_RE.sub('', some_string)
+              if x in string.printable])
+
+
+def _linesep_for_file(file):
+  """Determine which line separator to use based on the file's mode."""
+  if 'b' in file.mode:
+    return os.linesep
+  return '\n'
+
+
+def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
+  """Print the message as a banner with a fixed width.
+
+  Also logs the message (un-bannered) to the given logger at the debug level.
 
   Args:
     msg: The message to print.
@@ -53,12 +73,15 @@ def banner_print(msg, color='', width=60, file=sys.stdout):
   Example:
 
     >>> banner_print('Foo Bar Baz')
+
     ======================== Foo Bar Baz =======================
+
   """
-  lpad = int(math.ceil((width - len(msg) - 2) / 2.0)) * '='
-  rpad = int(math.floor((width - len(msg) - 2) / 2.0)) * '='
-  file.write('{color}{lpad} {msg} {rpad}{reset}\n'.format(
-      color=color, lpad=lpad, msg=msg, rpad=rpad,
+  logger.debug(ANSI_ESC_RE.sub('', msg))
+  lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
+  rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
+  file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
+      sep=_linesep_for_file(file), color=color, lpad=lpad, msg=msg, rpad=rpad,
       reset=colorama.Style.RESET_ALL))
   file.flush()
 
@@ -75,17 +98,17 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
     file: A file object to which the bracketed text will be written. Intended
         for use with CLI output file objects like sys.stdout.
     """
-  lpad = int(math.ceil((width - 2 - len(msg)) / 2.0)) * ' '
-  rpad = int(math.floor((width - 2 - len(msg)) / 2.0)) * ' '
+  lpad = int(math.ceil((width - 2 - _printed_len(msg)) / 2.0)) * ' '
+  rpad = int(math.floor((width - 2 - _printed_len(msg)) / 2.0)) * ' '
   file.write('[{lpad}{bright}{color}{msg}{reset}{rpad}]'.format(
       lpad=lpad, bright=colorama.Style.BRIGHT, color=color, msg=msg,
       reset=colorama.Style.RESET_ALL, rpad=rpad))
   file.write(colorama.Style.RESET_ALL)
-  file.write('\n')
+  file.write(_linesep_for_file(file))
   file.flush()
 
 
-def cli_print(msg, color='', end='\n', file=sys.stdout, logger=_LOG):
+def cli_print(msg, color='', end=None, file=sys.stdout, logger=_LOG):
   """Print the message to file and also log it.
 
   This function is intended as a 'tee' mechanism to enable the CLI interface as
@@ -97,14 +120,17 @@ def cli_print(msg, color='', end='\n', file=sys.stdout, logger=_LOG):
     color: Optional colorama color string to be applied to the message. You can
         concatenate colorama color strings together in order to get any set of
         effects you want.
+    end: A custom line-ending string to print instead of newline.
     file: A file object to which the baracketed text will be written. Intended
         for use with CLI output file objects like sys.stdout.
     logger: logger: Logger to which to send analogous output for each message.
         Intended for use with test record loggers.
   """
+  if end is None:
+    end = _linesep_for_file(file)
   file.write('{color}{msg}{reset}{end}'.format(
       color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
-  logger.info('-> {}'.format(msg))
+  logger.debug('-> {}'.format(msg))
 
 
 def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
@@ -118,9 +144,9 @@ def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
     file: A file object to which the baracketed text will be written. Intended
         for use with CLI output file objects, specifically sys.stderr.
   """
-  file.write('\n{bright}{color}Error: {normal}{msg}\n'.format(
-      bright=colorama.Style.BRIGHT, color=color,
-      normal=colorama.Style.NORMAL, msg=msg))
+  file.write('{sep}{bright}{color}Error: {normal}{msg}{sep}{reset}'.format(
+      sep=_linesep_for_file(file), bright=colorama.Style.BRIGHT, color=color,
+      normal=colorama.Style.NORMAL, msg=msg, reset=colorama.Style.RESET_ALL))
   file.flush()
 
 
@@ -203,24 +229,26 @@ def action_result_context(action_text,
     Doing an action that will raise...                  [ FAIL ]
     ...
   """
-  logger.info(action_text)
-  file.write(action_text)
-  file.write((width - status_width - len(action_text)) * ' ')
+  logger.debug('Action - %s', action_text)
+  file.write(''.join((action_text, '\r')))
+  spacing = (width - status_width - _printed_len(action_text)) * ' '
   file.flush()
   result = ActionResult()
   try:
     yield result
   except Exception as err:
+    file.write(''.join((action_text, spacing)))
     bracket_print(fail_text, width=status_width, color=colorama.Fore.RED)
-    logger.info('%s: %s', action_text, fail_text)
+    logger.debug('Result - %s [ %s ]', action_text, fail_text)
     if not isinstance(err, ActionFailedError):
       raise
+  file.write(''.join((action_text, spacing)))
   if result.success:
     bracket_print(succeed_text, width=status_width, color=colorama.Fore.GREEN)
-    logger.info('%s: %s', action_text, succeed_text)
+    logger.debug('Result - %s [ %s ]', action_text, succeed_text)
   elif result.success is None:
     bracket_print(unknown_text, width=status_width, color=colorama.Fore.YELLOW)
-    logger.info('%s: %s', action_text, 'Result unknown.')
+    logger.debug('Result - %s [ %s ]', action_text, unknown_text)
 
 
 # If invoked as a runnable module, this module will invoke its action result
