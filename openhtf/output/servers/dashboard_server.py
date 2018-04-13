@@ -1,13 +1,21 @@
-"""HTTP server serving a list of stations found via multicast."""
+"""Serves a list of stations found via multicast.
+
+Run with:
+    python -m openhtf.output.servers.dashboard_server
+"""
 
 import argparse
 import collections
 import json
 import logging
 import os
+import six
 import socket
 import threading
 import time
+
+import sockjs.tornado
+import tornado.web
 
 from openhtf.core import station_api
 from openhtf.output.web_gui_server import pub_sub
@@ -15,8 +23,6 @@ from openhtf.output.web_gui_server import web_gui_server
 from openhtf.output.web_gui_server import web_launcher
 from openhtf.util import data
 from openhtf.util import multicast
-import sockjs.tornado
-import tornado.web
 
 _LOG = logging.getLogger(__name__)
 
@@ -57,7 +63,7 @@ class StationListHandler(tornado.web.RequestHandler):
 
 
 class DashboardPubSub(pub_sub.PubSub):
-  """Pub/sub endpoint for the list of available stations."""
+  """WebSocket endpoint for the list of available stations."""
   _lock = threading.Lock()  # Required by pub_sub.PubSub.
   subscribers = set()  # Required by pub_sub.PubSub.
   last_message = None
@@ -75,7 +81,7 @@ class DashboardPubSub(pub_sub.PubSub):
     with cls.station_map_lock:
 
       # By default, assume old stations are unreachable.
-      for host_port, station_info in cls.station_map.iteritems():
+      for host_port, station_info in six.iteritems(cls.station_map):
         cls.station_map[host_port] = station_info._replace(status='UNREACHABLE')
 
       for station_info in station_info_list:

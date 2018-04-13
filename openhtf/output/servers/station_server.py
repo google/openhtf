@@ -1,9 +1,8 @@
-"""HTTP server serving station info and an Angular frontend / web GUI.
+"""Serves an Angular frontend and information about a running OpenHTF test.
 
-This module is comparable to OpenHTF's output.web_gui module. Some differences:
-- Serves info about a single station only.
-- Designed to run in the same process as an HTF test, instead of using the
-      XML-RPC-based station API.
+This server does not currently support more than one test running in the same
+process. However, the dashboard server (dashboard_server.py) can be used to
+aggregate info from multiple station servers with a single frontend.
 """
 
 import contextlib
@@ -20,6 +19,9 @@ import threading
 import time
 import types
 
+import sockjs.tornado
+import tornado.web
+
 import openhtf
 from openhtf.output.callbacks import mfg_inspector
 from openhtf.output.web_gui_server import pub_sub
@@ -27,13 +29,20 @@ from openhtf.output.web_gui_server import web_gui_server
 from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import functions
+from openhtf.util import logs
 from openhtf.util import multicast
 from openhtf.util import timeouts
-import sockjs.tornado
-import tornado.web
 
+STATION_SERVER_LOGGER = '.'.join(logs.LOGGER_PREFIX, 'station_server')
 
-_LOG = logging.getLogger('chauffeurhtf.station_server')
+STATION_SERVER_TYPE = 'station'
+
+MIMETYPE_REVERSE_MAP = {
+    v: k for k, v in six.iteritems(mfg_inspector.MIMETYPE_MAP)
+}
+TEST_STATUS_COMPLETED = 'COMPLETED'
+
+_LOG = logging.getLogger(STATION_SERVER_LOGGER)
 
 # Constants related to response times within the server.
 _CHECK_FOR_FINISHED_TEST_POLL_S = 0.5
@@ -41,15 +50,12 @@ _DEFAULT_FRONTEND_THROTTLE_S = 0.15
 _WAIT_FOR_ANY_EVENT_POLL_S = 0.05
 _WAIT_FOR_EXECUTING_TEST_POLL_S = 0.1
 
-STATION_SERVER_TYPE = 'station'
-
-MIMETYPE_REVERSE_MAP = {v: k for k, v in six.iteritems(mfg_inspector.MIMETYPE_MAP)}
-TEST_STATUS_COMPLETED = 'COMPLETED'
-
 conf.declare('frontend_throttle_s', default_value=_DEFAULT_FRONTEND_THROTTLE_S,
-             description='Min wait between successive updates to the frontend.')
+             description=('Min wait time between successive updates to the '
+                          'frontend.'))
 conf.declare('station_server_port', default_value=0,
-             description='Port on which to serve the station server.')
+             description=('Port on which to serve the app. If set to zero (the '
+                          'default) then an arbitrary port will be chosen.'))
 
 
 def _get_executing_test():
@@ -65,7 +71,7 @@ def _get_executing_test():
     test: The test that was executing when this function was called, or None.
     test_state: The state of the executing test, or None.
   """
-  tests = list(openhtf.Test.TEST_INSTANCES.values())
+  tests = list(six.itervalues(openhtf.Test.TEST_INSTANCES.values()))
 
   if not tests:
     return None, None
@@ -87,7 +93,17 @@ def _get_executing_test():
 
 
 def _test_state_from_record(test_record_dict, execution_uid=None):
-  """Convert a test record dict to a test state dict."""
+  """Convert a test record dict to a test state dict.
+
+  Args:
+    test_record_dict: An OpenHTF TestRecord, converted to base types.
+    execution_uid: Execution ID of the running test.
+
+  Returns:
+    Dictionary representation of a test's final state. On top of the fields from
+        TestState._asdict() we add 'execution_uid' which is needed by the
+        frontend app.
+  """
   return {
       'execution_uid': execution_uid,
       'plugs': {
@@ -101,7 +117,15 @@ def _test_state_from_record(test_record_dict, execution_uid=None):
 
 
 def _wait_for_any_event(events, timeout_s):
-  """Wait for any in a list of threading.Event's to be set."""
+  """Wait for any in a list of threading.Event's to be set.
+
+  Args:
+    events: List of threading.Event's.
+    timeout_s: Max duration in seconds to wait before returning.
+
+  Returns: True if at least one event was set before the timeout expired,
+      otherwise False.
+  """
   def any_event_set():
     return any(event.is_set() for event in events)
 
@@ -112,7 +136,13 @@ def _wait_for_any_event(events, timeout_s):
 
 
 class StationWatcher(threading.Thread):
-  """Watches for any change in the executing test state of this station."""
+  """Watches for changes in the state of the currently running OpenHTF test.
+
+  The StationWatcher uses an event-based mechanism to detect changes in test
+  state. This means we rely on the OpenHTF framework to call notify_update()
+  when a change occurs. Authors of frontend-aware plugs must ensure that
+  notify_update() is called when a change occurs to that plug's state.
+  """
   daemon = True
 
   def __init__(self, update_callback):
@@ -120,17 +150,20 @@ class StationWatcher(threading.Thread):
     self._update_callback = update_callback
 
   def run(self):
+    """Call self._poll_for_update() in a loop and handle errors."""
     while True:
       try:
         self._poll_for_update()
       except RuntimeError as error:
-        # Logging a message triggers a call to notify_update(), meaning we will
-        # automatically retry publishing the dropped update.
+        # Note that because logging triggers a call to notify_update(), by
+        # logging a message, we automatically retry publishing the update
+        # after an error occurs.
         if error.message == 'dictionary changed size during iteration':
           # These errors occur occasionally and it is infeasible to get rid of
-          # them entirely since notify_update() should run asynchronously.
-          # Ignore the error and retry quickly.
-          _LOG.debug('Error in station watcher: %s', exc_info=sys.exc_info())
+          # them entirely unless data.convert_to_base_types() is made
+          # thread-safe. Ignore the error and retry quickly.
+          _LOG.debug('Ignoring (probably harmless) error in station watcher: '
+                     '`dictionary changed size during iteration`.')
           time.sleep(0.1)
         else:
           _LOG.exception('Error in station watcher: %s', error)
@@ -141,7 +174,7 @@ class StationWatcher(threading.Thread):
 
   @functions.call_at_most_every(float(conf.frontend_throttle_s))
   def _poll_for_update(self):
-    """Calls callback with the current test state, then waits for a change."""
+    """Call the callback with the current test state, then wait for a change."""
     test, test_state = _get_executing_test()
 
     if test is None:
@@ -158,7 +191,8 @@ class StationWatcher(threading.Thread):
     ]
     events = [event] + plug_events
 
-    # Wait for the executing test, its state, or a plug state to change.
+    # Wait for the test state or a plug state to change, or for the previously
+    # executing test to finish.
     while not _wait_for_any_event(events, _CHECK_FOR_FINISHED_TEST_POLL_S):
       new_test, _ = _get_executing_test()
       if test != new_test:
@@ -168,19 +202,25 @@ class StationWatcher(threading.Thread):
   def _to_dict_with_event(cls, test_state):
     """Process a test state into the format we want to send to the frontend."""
     original_dict, event = test_state.asdict_with_event()
-    # Note: This may produce a RuntimeError if a dict in the state is modified
-    # while we iterate over it.
+
+    # This line may produce a 'dictionary changed size during iteration' error.
     test_state_dict = data.convert_to_base_types(original_dict)
+
     test_state_dict['execution_uid'] = test_state.execution_uid
     return test_state_dict, event
 
 
 class DashboardPubSub(sockjs.tornado.SockJSConnection):
-  """Pub/sub endpoint for the list of available stations.
+  """WebSocket endpoint for the list of available stations.
 
   In this case, there is always exactly one available station: the station
   running the StationServer. See dashboard_server.py for an implementation of
-  the dashboard pub/sub endpoint for multiple stations.
+  the dashboard WebSocket endpoint for multiple stations.
+
+  TODO(Kenadia): Remove this endpoint from the station server. Since the
+  frontend knows whether it is running off of a station server or dashboard
+  server, it should be smart enough not to look for this endpoint on the station
+  server.
   """
   port = None  # Set by for_port().
 
@@ -208,15 +248,16 @@ class DashboardPubSub(sockjs.tornado.SockJSConnection):
 
 
 class StationPubSub(pub_sub.PubSub):
-  """Pub/sub endpoint for station/test updates.
+  """WebSocket endpoint for test updates.
 
-  This endpoint provides information about the station that is running this
-  StationServer. Two types of messages are sent: 'update' and 'record'.
+  The endpoint provides information about the test that is currently running
+  with this StationServer. Two types of message are sent: 'update' and 'record',
+  where 'record' indicates the final state of a test.
   """
   _lock = threading.Lock()  # Required by pub_sub.PubSub.
   subscribers = set()  # Required by pub_sub.PubSub.
   _last_execution_uid = None
-  _last_update = None
+  _last_message = None
 
   @classmethod
   def publish_test_record(cls, test_record):
@@ -232,23 +273,23 @@ class StationPubSub(pub_sub.PubSub):
 
   @classmethod
   def _publish_test_state(cls, test_state_dict, message_type):
-    cls._last_execution_uid = test_state_dict['execution_uid']
     message = {
         'state': test_state_dict,
         'test_uid': test_state_dict['execution_uid'],
         'type': message_type,
     }
     super(StationPubSub, cls).publish(message)
-    cls._last_update = message
+    cls._last_execution_uid = test_state_dict['execution_uid']
+    cls._last_message = message
 
   def on_subscribe(self, info):
-    """Send the latest update to new subscribers when they connect."""
-    if self._last_update is not None:
-      self.send(self._last_update)
+    """Send the more recent test state to new subscribers when they connect."""
+    if self._last_message is not None:
+      self.send(self._last_message)
 
 
 class BaseTestHandler(web_gui_server.CorsRequestHandler):
-  """Base class for non-socket endpoints that get test data."""
+  """Base class for HTTP endpoints that get test data."""
 
   def get_test(self, test_uid):
     """Get the specified test. Write 404 and return None if it is not found."""
@@ -271,7 +312,7 @@ class AttachmentsHandler(BaseTestHandler):
     if test_state is None:
       return
 
-    # Find the phase matching phase_descriptor_id.
+    # Find the phase matching `phase_descriptor_id`.
     running_phase = test_state.running_phase_state
     phase_records = itertools.chain(
         test_state.test_record.phases,
@@ -288,7 +329,7 @@ class AttachmentsHandler(BaseTestHandler):
       self.set_status(404)
       return
 
-    # Find the attachment matching attachment_name.
+    # Find the attachment matching `attachment_name`.
     if attachment_name in matched_phase.attachments:
       attachment = matched_phase.attachments[attachment_name]
     else:
@@ -313,12 +354,12 @@ class PhasesHandler(BaseTestHandler):
         dict(id=id(phase), **data.convert_to_base_types(phase))
         for phase in test.descriptor.phases]
 
-    # Wrap value in a dict because writing a list directly is not allowed.
+    # Wrap value in a dict because writing a list directly is prohibited.
     self.write({'data': phase_descriptors})
 
 
 class PlugsHandler(BaseTestHandler):
-  """POST endpoints for plug responses."""
+  """POST endpoints to receive plug responses from the frontend."""
 
   def post(self, test_uid, plug_name):
     _, test_state = self.get_test(test_uid)
@@ -326,8 +367,8 @@ class PlugsHandler(BaseTestHandler):
     if test_state is None:
       return
 
+    # Find the plug matching `plug_name`.
     plug = test_state.plug_manager.get_plug_by_class_path(plug_name)
-
     if plug is None:
       self.write('Unknown plug %s' % plug_name)
       self.set_status(404)
@@ -344,7 +385,6 @@ class PlugsHandler(BaseTestHandler):
 
     method = getattr(plug, method_name, None)
 
-    # Note: Unlike OpenHTF's station API we allow access to a plug's tearDown().
     if not (plug.enable_remote and
             isinstance(method, types.MethodType) and
             not method_name.startswith('_') and
@@ -416,6 +456,7 @@ class HistoryListHandler(BaseHistoryHandler):
           'start_time_millis': start_time_millis,
       })
 
+    # Wrap value in a dict because writing a list directly is prohibited.
     self.write({'data': history_items})
 
 
@@ -423,28 +464,10 @@ class HistoryItemHandler(BaseHistoryHandler):
   """GET endpoint for a test record from the history."""
 
   def get(self, file_name):
-    self.write('TODO')
+    # TODO(Kenadia): Implement the history item handler. The implementation
+    # depends on the format used to store test records on disk.
+    self.write('Not implemented.')
     self.set_status(500)
-
-    # DO NOT MERGE
-    # try:
-    #   with open(os.path.join(self.history_path, file_name)) as f:
-    #     mfg_event = mfg_event_pb2.MfgEvent()
-    #     mfg_event.ParseFromString(f.read())
-    # except IOError as e:
-    #   # E.g. User does not have read permissions for the file.
-    #   self.write(repr(e))
-    #   self.set_status(500)
-    #   return
-    # try:
-    #   test_record = steam_engine.TestRecordFromMfgEvent(mfg_event)
-    # except ValueError as e:
-    #   # E.g. cannot find test record JSON attachment in MfgEvent.
-    #   self.write(repr(e))
-    #   self.set_status(500)
-    #   return
-    # test_state = _test_state_from_record(test_record)
-    # self.write(test_state)
 
 
 class HistoryAttachmentsHandler(BaseHistoryHandler):
@@ -452,47 +475,22 @@ class HistoryAttachmentsHandler(BaseHistoryHandler):
 
   The sha1 query parameter is optional and used as a backup to identify an
   attachment if the name does not match any known name. Including this parameter
-  is recommended, as we currently modify attachment names when storing them on
-  the MfgEvent in the case where multiple attachments have the same name.
+  is recommended, as some systems may modify attachment names when storing them
+  on the MfgEvent in the case where multiple attachments have the same name.
   """
 
   def get(self, file_name, attachment_name):
-    with open(os.path.join(self.history_path, file_name)) as f:
-      mfg_event = mfg_event_pb2.MfgEvent()
-      mfg_event.ParseFromString(f.read())
-    attachments = mfg_event.attachment
-
-    # Find the attachment by exact name match.
-    for attachment in attachments:
-      if attachment.name == attachment_name:
-        self._write_attachment(attachment)
-        return
-
-    # Fall back to matching by sha1 if it is available.
-    sha1 = self.get_argument('sha1', default=None, strip=True)
-    if sha1 is not None:
-      for attachment in attachments:
-        if sha1 == hashlib.sha1(attachment.value_binary).hexdigest():
-          self._write_attachment(attachment)
-          return
-
-    self.write('Unknown attachment %s' % attachment_name)
-    self.set_status(404)
-
-  def _write_attachment(self, attachment):
-    if attachment.HasField('mime_type'):
-      self.set_header('Content-Type', attachment.mime_type)
-    elif attachment.HasField('type'):
-      if attachment.type in MIMETYPE_REVERSE_MAP:
-        self.set_header('Content-Type', MIMETYPE_REVERSE_MAP[attachment.type])
-    self.write(attachment.value_binary)
+    # TODO(Kenadia): Implement the history item handler. The implementation
+    # depends on the format used to store test records on disk.
+    self.write('Not implemented.')
+    self.set_status(500)
 
 
 class StationMulticast(multicast.MulticastListener):
   """Announce the existence of a station server to any searching dashboards."""
 
   def __init__(self, station_server_port):
-    # Make kwargs from multicast config.
+    # Make kwargs from multicast config in station_api.py.
     kwargs = {
         attr: conf['station_discovery_%s' % attr]
         for attr in ('address', 'port', 'ttl')
@@ -530,7 +528,7 @@ class StationMulticast(multicast.MulticastListener):
 
 
 class StationServer(web_gui_server.WebGuiServer):
-  """Provides endpoints for interacting with an OpenHTF station.
+  """Provides endpoints for interacting with an OpenHTF test.
 
   Also serves an Angular frontend that interfaces with those endpoints.
 
