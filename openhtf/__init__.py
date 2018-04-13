@@ -23,6 +23,7 @@ import inspect
 import itertools
 import json
 import logging
+import os
 import signal
 import socket
 import sys
@@ -162,12 +163,8 @@ class Test(object):
     * Execution-specific (decided on test start)
     * The current time
     """
-    return ':'.join([
-        os.getpid(),
-        self.descriptor.uid,
-        uuid.uuid4().hex[:16],
-        util.time_millis(),
-    ])
+    return '%s:%s:%s:%s' % (os.getpid(), self.descriptor.uid,
+                            uuid.uuid4().hex[:16], util.time_millis())
 
   @property
   def descriptor(self):

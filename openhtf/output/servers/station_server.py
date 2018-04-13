@@ -33,7 +33,7 @@ from openhtf.util import logs
 from openhtf.util import multicast
 from openhtf.util import timeouts
 
-STATION_SERVER_LOGGER = '.'.join(logs.LOGGER_PREFIX, 'station_server')
+STATION_SERVER_LOGGER = '.'.join([logs.LOGGER_PREFIX, 'station_server'])
 
 STATION_SERVER_TYPE = 'station'
 
@@ -77,7 +77,7 @@ def _get_executing_test():
     test: The test that was executing when this function was called, or None.
     test_state: The state of the executing test, or None.
   """
-  tests = list(six.itervalues(openhtf.Test.TEST_INSTANCES.values()))
+  tests = list(six.itervalues(openhtf.Test.TEST_INSTANCES))
 
   if not tests:
     return None, None

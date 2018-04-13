@@ -79,7 +79,7 @@ class ConsolePrompt(threading.Thread):
     """Mark this ConsolePrompt as stopped."""
     self._stopped = True
     if not self._answered:
-      print("Nevermind; prompt was answered from elsewhere.")
+      _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
 
   def run(self):
     """Main logic for this thread to execute."""

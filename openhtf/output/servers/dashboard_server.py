@@ -17,6 +17,7 @@ import time
 import sockjs.tornado
 import tornado.web
 
+from openhtf.output.servers import station_server
 from openhtf.output.web_gui_server import pub_sub
 from openhtf.output.web_gui_server import web_gui_server
 from openhtf.output.web_gui_server import web_launcher
