@@ -29,17 +29,14 @@ import contextlib
 import copy
 import logging
 import mimetypes
-import mutablerecords
 import os
 import socket
 import traceback
 
 from enum import Enum
-
 import mutablerecords
 
 import openhtf
-
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
@@ -69,6 +66,7 @@ class BlankDutIdError(Exception):
 
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
+
 
 class ImmutableMeasurement(collections.namedtuple(
     'ImmutableMeasurement',
@@ -186,7 +184,6 @@ class TestState(util.SubscribableStateMixin):
       if attachment_name in phase_record.attachments:
         attachment = phase_record.attachments[attachment_name]
         return copy.deepcopy(attachment)
-
 
     self.logger.warning('Could not find attachment: %s', attachment_name)
     return None
@@ -371,14 +368,14 @@ class TestState(util.SubscribableStateMixin):
       self._finalize(test_record.Outcome.PASS)
 
     self.logger.debug('Finishing test execution normally with outcome %s.',
-                     self.test_record.outcome.name)
+                      self.test_record.outcome.name)
 
   def abort(self):
     if self._is_aborted():
       return
 
     self.logger.debug('Finishing test execution early due to '
-                     'test abortion, outcome ABORTED.')
+                      'test abortion, outcome ABORTED.')
     self.test_record.add_outcome_details('ABORTED', 'Test aborted by operator.')
     self._finalize(test_record.Outcome.ABORTED)
 
