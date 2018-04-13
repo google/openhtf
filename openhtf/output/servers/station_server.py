@@ -33,8 +33,6 @@ from openhtf.util import logs
 from openhtf.util import multicast
 from openhtf.util import timeouts
 
-STATION_SERVER_LOGGER = '.'.join([logs.LOGGER_PREFIX, 'station_server'])
-
 STATION_SERVER_TYPE = 'station'
 
 MIMETYPE_REVERSE_MAP = {
@@ -43,7 +41,7 @@ MIMETYPE_REVERSE_MAP = {
 MULTICAST_QUERY = 'OPENHTF_DISCOVERY'
 TEST_STATUS_COMPLETED = 'COMPLETED'
 
-_LOG = logging.getLogger(STATION_SERVER_LOGGER)
+_LOG = logging.getLogger(__name__)
 
 # Constants related to response times within the server.
 _CHECK_FOR_FINISHED_TEST_POLL_S = 0.5
@@ -555,6 +553,16 @@ class StationServer(web_gui_server.WebGuiServer):
   """
 
   def __init__(self, history_path=None):
+    # Disable tornado's logging.
+    # TODO(Kenadia): Enable these logs if verbosity flag is at least -vvv.
+    #     I think this will require changing how StoreRepsInModule works.
+    #     Currently, if we call logs.ARG_PARSER.parse_known_args() multiple
+    #     times, we multiply the number of v's that we get.
+    tornado_logger = logging.getLogger('tornado')
+    tornado_logger.propagate = False
+    if not tornado_logger.handlers:
+      tornado_logger.addHandler(logging.NullHandler())
+
     # Bind port early so that the correct port number can be used in the routes.
     sockets, port = web_gui_server.bind_port(int(conf.station_server_port))
 

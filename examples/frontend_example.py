@@ -15,7 +15,6 @@
 
 """Simple OpenHTF test which launches the web GUI client."""
 
-import logging
 import openhtf as htf
 from openhtf.util import conf
 
@@ -30,7 +29,6 @@ def hello_world(test):
 
 
 if __name__ == '__main__':
-  logging.basicConfig(level=logging.DEBUG)
   conf.load(station_server_port='4444')
   with station_server.StationServer() as server:
     web_launcher.launch('http://localhost:4444')
