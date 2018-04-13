@@ -110,14 +110,13 @@ class TestConf(unittest.TestCase):
         'example_plug_increment_size': 1,
         'allow_unset_measurements': False,
         'capture_source': False,
-        'station_discovery_string': 'OPENHTF_DISCOVERY',
         'station_id': 'station_id',
         'other_flag': 'other_value',
         'plug_teardown_timeout_s': 0,
         'string_default': 'default',
         'none_default': None,
         'teardown_timeout_s': 30,
-        'max_history_size_mb': 256}, conf._asdict())
+    }, conf._asdict())
 
   def test_undeclared(self):
     with self.assertRaises(conf.UndeclaredKeyError):
