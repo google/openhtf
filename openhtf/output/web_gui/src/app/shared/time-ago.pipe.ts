@@ -4,8 +4,7 @@
 
 import { Pipe, PipeTransform } from '@angular/core';
 
-// DO NOT MERGE
-// We need to find an open-source implementation of the `relative` function.
+// TODO(Kenadia): Find an open-source implementation of the `relative` function.
 const relative = {
   format(_value: number) {
     return 'TODO';
