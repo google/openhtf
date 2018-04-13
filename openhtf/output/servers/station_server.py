@@ -40,6 +40,7 @@ STATION_SERVER_TYPE = 'station'
 MIMETYPE_REVERSE_MAP = {
     v: k for k, v in six.iteritems(mfg_inspector.MIMETYPE_MAP)
 }
+MULTICAST_QUERY = 'OPENHTF_DISCOVERY'
 TEST_STATUS_COMPLETED = 'COMPLETED'
 
 _LOG = logging.getLogger(STATION_SERVER_LOGGER)
@@ -56,6 +57,11 @@ conf.declare('frontend_throttle_s', default_value=_DEFAULT_FRONTEND_THROTTLE_S,
 conf.declare('station_server_port', default_value=0,
              description=('Port on which to serve the app. If set to zero (the '
                           'default) then an arbitrary port will be chosen.'))
+
+# These have default values in openhtf.util.multicast.py.
+conf.declare('station_discovery_address')
+conf.declare('station_discovery_port')
+conf.declare('station_discovery_ttl')
 
 
 def _get_executing_test():
@@ -490,7 +496,7 @@ class StationMulticast(multicast.MulticastListener):
   """Announce the existence of a station server to any searching dashboards."""
 
   def __init__(self, station_server_port):
-    # Make kwargs from multicast config in station_api.py.
+    # These have default values in openhtf.util.multicast.py.
     kwargs = {
         attr: conf['station_discovery_%s' % attr]
         for attr in ('address', 'port', 'ttl')
@@ -500,7 +506,7 @@ class StationMulticast(multicast.MulticastListener):
     self.station_server_port = station_server_port
 
   def _make_message(self, message):
-    if message != conf.station_discovery_string:
+    if message != MULTICAST_QUERY:
       if message == 'OPENHTF_PING':
         # Don't log for the old multicast string.
         return

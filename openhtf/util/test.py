@@ -127,7 +127,6 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
 from openhtf.core import phase_executor
-from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
@@ -176,7 +175,6 @@ class PhaseOrTestIterator(collections.Iterator):
     for plug_type, plug_value in six.iteritems(self.mock_plugs):
       self.plug_manager.update_plug(plug_type, plug_value)
 
-  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
@@ -194,7 +192,6 @@ class PhaseOrTestIterator(collections.Iterator):
     executor._execute_phase_once(phase_desc, is_last_repeat=False)
     return test_state_.test_record.phases[-1]
 
-  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
@@ -343,11 +340,6 @@ class TestCase(unittest.TestCase):
     if inspect.isgeneratorfunction(test_method):
       raise ValueError(
           "%s yields without @openhtf.util.test.yields_phases" % methodName)
-
-    # Mock the station api server.
-    station_api_server_patcher = mock.patch.object(station_api, 'ApiServer')
-    self.mock_api_server = station_api_server_patcher.start()
-    self.addCleanup(self.mock_api_server.stop)
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.

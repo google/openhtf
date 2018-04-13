@@ -17,7 +17,6 @@ import time
 import sockjs.tornado
 import tornado.web
 
-from openhtf.core import station_api
 from openhtf.output.web_gui_server import pub_sub
 from openhtf.output.web_gui_server import web_gui_server
 from openhtf.output.web_gui_server import web_launcher
@@ -33,9 +32,10 @@ StationInfo = collections.namedtuple(
     'cell host port station_id status test_description test_name')
 
 
-def _discover(station_discovery_string, **kwargs):
+def _discover(**kwargs):
   """Yields info about station servers announcing themselves via multicast."""
-  for host, response in multicast.send(station_discovery_string, **kwargs):
+  query = station_server.MULTICAST_QUERY
+  for host, response in multicast.send(query, **kwargs):
     try:
       result = json.loads(response)
     except ValueError:
@@ -145,12 +145,8 @@ def main():
                       help='Whether to automatically open web GUI.')
   parser.add_argument('--dashboard-server-port', type=int, default=12000,
                       help='Port on which to serve the dashboard server.')
-  parser.add_argument('--station-discovery-string', type=str,
-                      default=station_api.DEFAULT_DISCOVERY_STRING,
-                      help=('String identifier used by both the station and '
-                            'dashboard when communicating over multicast.'))
 
-  # These have defaults in openhtf.util.multicast, we'll use those if not set.
+  # These have default values in openhtf.util.multicast.py.
   parser.add_argument('--station-discovery-address', type=str)
   parser.add_argument('--station-discovery-port', type=int)
   parser.add_argument('--station-discovery-ttl', type=int)
@@ -183,7 +179,7 @@ def main():
 
     # Exit on CTRL+C.
     while True:
-      stations = _discover(args.station_discovery_string, **multicast_kwargs)
+      stations = _discover(**multicast_kwargs)
       DashboardPubSub.update_stations(list(stations))
       DashboardPubSub.publish_if_new()
       time.sleep(args.discovery_interval_s)

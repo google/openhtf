@@ -43,7 +43,6 @@ from openhtf import util
 from openhtf.core.measurements import Dimension, Measurement, measures
 from openhtf.core.monitors import monitors
 from openhtf.core import phase_executor
-from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.plugs import plug
 from openhtf.util import conf
@@ -134,10 +133,6 @@ class Test(object):
     else:
       self.configure()
 
-    # This is a noop if the server is already running, otherwise start it now
-    # that we have at least one Test instance.
-    station_api.start_server()
-
   @classmethod
   def from_uid(cls, test_uid):
     """Get Test by UID.
@@ -161,13 +156,18 @@ class Test(object):
     """Returns the next test execution's UID.
 
     This identifier must be unique but trackable across invocations of
-    execute(). Therefore, it's made of three parts separated by ':'
+    execute(). Therefore, it's made of four parts separated by ':'
     * Process-specific (decided on process start up)
     * Test descriptor-specific (decided on descriptor creation)
     * Execution-specific (decided on test start)
+    * The current time
     """
     return ':'.join([
-        station_api.STATION_API.UID, self.descriptor.uid, uuid.uuid4().hex[:16]])
+        os.getpid(),
+        self.descriptor.uid,
+        uuid.uuid4().hex[:16],
+        util.time_millis(),
+    ])
 
   @property
   def descriptor(self):
@@ -206,7 +206,6 @@ class Test(object):
       _LOG.error('Received SIGINT, stopping all tests.')
       for test in cls.TEST_INSTANCES.values():
         test.stop_from_sig_int()
-    station_api.stop_server()
     # The default SIGINT handler does this. If we don't, then nobody above
     # us is notified of the event. This will raise this exception in the main
     # thread.
@@ -583,15 +582,6 @@ class PhaseDescriptor(mutablerecords.Record(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)
     return self.func(**kwargs)
-
-
-class RemotePhaseDescriptor(mutablerecords.Record('RemotePhaseDescriptor', [
-    'id', 'name', 'doc'], PhaseDescriptor.optional_attributes)):
-  """Representation of a PhaseDescriptor on a remote test (see station_api).
-
-  This is static information attached to a RemoteTest.  It's defined here to
-  avoid a circular dependency with station_api.
-  """
 
 
 class TestApi(collections.namedtuple('TestApi', [
