@@ -22,6 +22,7 @@ from openhtf.output.servers import station_server
 from openhtf.output.web_gui_server import web_launcher
 from openhtf.plugs import user_input
 
+
 @htf.measures(htf.Measurement('hello_world_measurement'))
 def hello_world(test):
   test.logger.info('Hello World!')
