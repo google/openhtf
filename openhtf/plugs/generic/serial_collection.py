@@ -18,9 +18,15 @@
 Allows for writing out to a serial port.
 """
 
-from contextlib import contextmanager
+import logging
 import threading
-import serial
+
+try:
+  import serial
+except ImportError:
+  logging.error('Failed to import pyserial. Please install the `serial_collection_plug` extra, '
+                'e.g. via `pip install openhtf[serial_collection_plug]`.')
+  raise
 
 import openhtf
 from openhtf.util import conf
@@ -37,7 +43,15 @@ conf.declare(
 
 
 class SerialCollectionPlug(openhtf.plugs.BasePlug):
-  """Plug that collects data from a serial port."""
+  """Plug that collects data from a serial port.
+
+  Spawns a thread that will open the configured serial port, continuously
+  poll the port for data, and write the data to the destination file as it is
+  received. If any serial errors are encountered during the lifetime of the
+  polling thread, data collection stops and an error message is logged.
+  Otherwise, data collection stops and the serial port is closed when
+  stop_collection() is called.
+  """
   SERIAL_EXCEPTIONS = (serial.SerialException,
                        serial.SerialTimeoutException,
                        ValueError)
@@ -51,37 +65,34 @@ class SerialCollectionPlug(openhtf.plugs.BasePlug):
                                  baudrate=serial_collection_baud,
                                  timeout=1)
     self._serial.port = serial_collection_port
+    self._collect = False
+    self._collection_thread = None
 
-  @contextmanager
-  def save_data(self, dest):
-    """Save serial data to the named destination while in context.
-
-    Spawns a thread that will open the configured serial port, continously
-    poll the port for data, and write the data to the destination file as it is
-    received. If any serial errors are encountered during the lifetime of the
-    polling thread, data collection stops and an error message is logged.
-    Otherwise, data collection stops and the serial port is closed when the
-    context is exited.
-    """
-    collect = True
+  def start_collection(self, dest):
     def _poll():
-      with open(dest, 'w+') as outfile:
-        while collect:
-          data = self._serial.readline().decode()
-          outfile.write(data)
+      try:
+        with open(dest, 'w+') as outfile:
+          while self._collect:
+            data = self._serial.readline().decode()
+            outfile.write(data)
+      except self.SERIAL_EXCEPTIONS:
+        self.logger.error('Serial port error. Stopping data collection.',
+                          exc_info=True)
 
-    collection_thread = threading.Thread(target=_poll)
-    collection_thread.daemon = True
-    try:
-      self.logger.debug(
-          'Starting serial data collection on %s.' % self._serial.port)
-      self._serial.open()
-      collection_thread.start()
-      yield
-    except self.SERIAL_EXCEPTIONS:
-      self.logger.error('Serial port error. Stopping data collection.',
-                        exc_info=True)
-    finally:
-      collect = False
-      collection_thread.join()
-      self._serial.close()
+    self._collect = True
+    self._collection_thread = threading.Thread(target=_poll)
+    self._collection_thread.daemon = True
+    self.logger.debug(
+        'Starting serial data collection on port %s.' % self._serial.port)
+    self._serial.open()
+    self._collection_thread.start()
+
+  def stop_collection(self):
+    if (self._collection_thread is None or
+        not self._collection_thread.is_alive()):
+      self.logger.warning(
+          'Data collection was not running, cannot be stopped.')
+      return
+    self._collect = False
+    self._collection_thread.join()
+    self._serial.close()
