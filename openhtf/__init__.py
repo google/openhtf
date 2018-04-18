@@ -33,9 +33,6 @@ from types import LambdaType
 import uuid
 import weakref
 
-from enum import Enum
-import mutablerecords
-
 from openhtf import plugs
 from openhtf.core import phase_executor
 from openhtf.core import station_api
@@ -52,6 +49,7 @@ from openhtf.core.test_descriptor import TestApi
 from openhtf.core.test_descriptor import TestDescriptor
 from openhtf.plugs import plug
 from openhtf.util import conf
+from openhtf.util import console_output
 from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs

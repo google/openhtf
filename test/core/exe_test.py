@@ -140,7 +140,6 @@ class TestExecutorTest(unittest.TestCase):
     """Exception to be thrown by failure_phase."""
 
   def setUp(self):
-    logs.setup_logger()
     self.test_plug_type = UnittestPlug
 
   def test_failures(self):
@@ -156,7 +155,8 @@ class TestExecutorTest(unittest.TestCase):
     ev = threading.Event()
     test = openhtf.Test(failure_phase)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test.descriptor, 'uid', start_phase, 'dut',
+        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -168,6 +168,7 @@ class TestExecutorTest(unittest.TestCase):
         test.descriptor,
         'uid',
         start_phase,
+        'dut',
         teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
         failure_exceptions=[self.TestDummyExceptionError])
     executor.start()
@@ -227,14 +228,18 @@ class TestExecutorTest(unittest.TestCase):
         test.descriptor,
         'uid',
         cancel_phase,
+        'dut',
         teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
     self.assertEqual(record.phases[0].name, cancel_phase.name)
-    # The test will end before it starts because the test never actually
-    # started, we canceled it inside of test_start.
-    self.assertLessEqual(record.end_time_millis, record.start_time_millis)
+    # The test will end at the same time it starts because the test never
+    # actually started, we canceled it inside of test_start, resulting in a
+    # short vacuous start. Start and end times should be no more than a
+    # millisecond or two apart in that case.
+    self.assertLess(record.end_time_millis - record.start_time_millis, 2)
     self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should not be executed.
     self.assertFalse(ev.wait(3))
@@ -256,7 +261,8 @@ class TestExecutorTest(unittest.TestCase):
     test = openhtf.Test(cancel_phase)
     # Cancel during test start phase.
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test.descriptor, 'uid', start_phase, 'dut',
+        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -270,8 +276,8 @@ class TestExecutorTest(unittest.TestCase):
   def test_failure_during_plug_init(self):
     ev = threading.Event()
     test = openhtf.Test(fail_plug_phase)
-    executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', None, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    executor = test_executor.TestExecutor(test.descriptor, 'uid', None, 'dut',
+                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -284,8 +290,10 @@ class TestExecutorTest(unittest.TestCase):
   def test_failure_during_plug_init_with_dut_id(self):
     ev = threading.Event()
     test = openhtf.Test(fail_plug_phase)
+
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test.descriptor, 'uid', start_phase, 'dut',
+        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -307,6 +315,7 @@ class TestExecutorTest(unittest.TestCase):
         test.descriptor,
         'uid',
         fail_plug_phase,
+        'dut'
         teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()
@@ -321,7 +330,8 @@ class TestExecutorTest(unittest.TestCase):
   def test_error_during_teardown(self):
     test = openhtf.Test(blank_phase)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, teardown_function=teardown_fail)
+        test.descriptor, 'uid', start_phase, 'dut',
+        teardown_function=teardown_fail)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -336,7 +346,8 @@ class TestExecutorTest(unittest.TestCase):
 
     test = openhtf.Test(blank_phase)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, teardown_function=teardown_log)
+        test.descriptor, 'uid', start_phase, 'dut',
+        teardown_function=teardown_log)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -349,9 +360,10 @@ class TestExecutorTest(unittest.TestCase):
 class TestPhaseExecutor(unittest.TestCase):
 
   def setUp(self):
-    self.test_state = mock.MagicMock(spec=test_state.TestState,
-                                     plug_manager=plugs.PlugManager(),
-                                     logger=mock.MagicMock())
+    self.test_state = mock.MagicMock(
+        spec=test_state.TestState,
+        plug_manager=plugs.PlugManager(logger_name='mock.logger.for.openhtf'),
+        execution_uid='01234567890')
     self.test_state.plug_manager.initialize_plugs([
         UnittestPlug, MoreRepeatsUnittestPlug])
     self.phase_executor = phase_executor.PhaseExecutor(self.test_state)

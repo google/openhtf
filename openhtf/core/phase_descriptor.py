@@ -232,6 +232,10 @@ class PhaseDescriptor(mutablerecords.Record(
         len(arg_info.args) > len(kwargs)):
       # Underlying function has room for test_api as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
+      # Update test_state's logger so that it's a phase-specific one.
+      test_state.logger = logging.getLogger(
+          '.'.join((logs.get_record_logger_for(test_state.execution_uid).name,
+                    'phase', self.name)))
       return self.func(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)

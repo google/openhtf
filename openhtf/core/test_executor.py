@@ -22,9 +22,9 @@ import contextlib2 as contextlib
 
 import openhtf
 from openhtf.core import phase_executor
+from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
-from openhtf.util import console_output
 from openhtf.util import exceptions
 from openhtf.util import threads
 
@@ -51,7 +51,7 @@ class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
   daemon = True
 
-  def __init__(self, test_descriptor, execution_uid, test_start,
+  def __init__(self, test_descriptor, execution_uid, test_start, default_dut_id,
                teardown_function=None, failure_exceptions=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
@@ -74,11 +74,12 @@ class TestExecutor(threads.KillableThread):
     self._exit_stack = None
     self.uid = execution_uid
     self.failure_exceptions = failure_exceptions
+    self._default_dut_id = default_dut_id
     self._latest_outcome = None
 
   def stop(self):
     """Stop this test."""
-    _LOG.info('Stopping test executor.')
+    _LOG.debug('Stopping test executor.')
     # Deterministically mark the test as aborted.
     self.finalize()
     # Cause the exit stack to collapse immediately.
@@ -104,8 +105,11 @@ class TestExecutor(threads.KillableThread):
     """
     if not self.test_state:
       raise TestStopError('Test Stopped.')
+    if self.test_state.test_record.dut_id is None:
+      _LOG.warning('DUT ID is still not set; using default.')
+      self.test_state.test_record.dut_id = self._default_dut_id
     if not self.test_state.is_finalized:
-      self.test_state.logger.info('Finishing test with outcome ABORTED.')
+      self.test_state.logger.debug('Finishing test with outcome ABORTED.')
       self.test_state.abort()
 
     return self.test_state
@@ -120,14 +124,17 @@ class TestExecutor(threads.KillableThread):
         # Seconds in a year.
         self.join(31557600)
     except KeyboardInterrupt:
-      self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
+      self.test_state.logger.debug('KeyboardInterrupt caught, aborting test.')
       raise
 
   def _thread_proc(self):
     """Handles one whole test from start to finish."""
     with contextlib.ExitStack() as exit_stack:
       # Top level steps required to run a single iteration of the Test.
-      self.test_state = test_state.TestState(self._test_descriptor, self.uid, failure_exceptions=self.failure_exceptions)
+      self.test_state = test_state.TestState(
+          self._test_descriptor,
+          self.uid,
+          failure_exceptions=self.failure_exceptions)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stacks must be done while holding this lock.
@@ -199,8 +206,7 @@ class TestExecutor(threads.KillableThread):
       return True
 
     if self.test_state.test_record.dut_id is None:
-      _LOG.warning('Start trigger did not set DUT ID. A later phase will need'
-                   ' to do so to prevent a BlankDutIdError when the test ends.')
+      _LOG.warning('Start trigger did not set a DUT ID.')
     return False
 
   def _execute_test_teardown(self, phase_exec):
@@ -220,13 +226,6 @@ class TestExecutor(threads.KillableThread):
     else:
       self.test_state.finalize_normally()
 
-    # Make sure if there was an error during test execution that the error
-    # message is printed last and in a noticeable color so it doesn't get
-    # scrolled off the screen or missed.
-    if self.test_state.test_record.outcome.name == 'ERROR':
-      for detail in self.test_state.test_record.outcome_details:
-        console_output.error_print(detail.description)
-
   def _execute_test_phases(self, phase_exec):
     """Executes one test's phases from start to finish."""
     self.test_state.set_status_running()
@@ -237,5 +236,5 @@ class TestExecutor(threads.KillableThread):
         if self._latest_outcome.is_terminal:
           break
     except KeyboardInterrupt:
-      self.test_state.logger.info('KeyboardInterrupt caught, aborting test.')
+      self.test_state.logger.debug('KeyboardInterrupt caught, aborting test.')
       raise

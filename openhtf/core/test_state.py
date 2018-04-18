@@ -29,16 +29,14 @@ import contextlib
 import copy
 import logging
 import mimetypes
-import mutablerecords
 import os
 import socket
+import traceback
 
 from enum import Enum
-
 import mutablerecords
 
 import openhtf
-
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
@@ -68,6 +66,7 @@ class BlankDutIdError(Exception):
 
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
+
 
 class ImmutableMeasurement(collections.namedtuple(
     'ImmutableMeasurement',
@@ -108,7 +107,8 @@ class TestState(util.SubscribableStateMixin):
 
   Attributes:
     test_record: TestRecord instance for the currently running test.
-    logger: Logger that logs to test_record's log_records attribute.
+    logger: Logger that logs to test_record's log_records attribute. May be
+        overridden with more specific (phase) loggers during execution.
     running_phase_state: PhaseState object for the currently running phase,
         if any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
@@ -132,7 +132,8 @@ class TestState(util.SubscribableStateMixin):
         metadata=copy.deepcopy(test_desc.metadata))
     self.logger = logs.initialize_record_logger(
         execution_uid, self.test_record, self.notify_update)
-    self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
+    self.plug_manager = plugs.PlugManager(
+        test_desc.plug_types, self.logger.name)
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
@@ -143,7 +144,7 @@ class TestState(util.SubscribableStateMixin):
     """Create a TestApi for access to this TestState.
 
     The returned TestApi should be passed as the first argument to test
-    phases.  Note that the return value is none if there is no
+    phases.  Note that the return value is None if there is no
     self.running_phase_state set.  As such, this attribute should only
     be accessed within a RunningPhaseContext().
 
@@ -183,7 +184,6 @@ class TestState(util.SubscribableStateMixin):
       if attachment_name in phase_record.attachments:
         attachment = phase_record.attachments[attachment_name]
         return copy.deepcopy(attachment)
-
 
     self.logger.warning('Could not find attachment: %s', attachment_name)
     return None
@@ -318,9 +318,12 @@ class TestState(util.SubscribableStateMixin):
                           % phase_execution_outcome.phase_result.exc_val)
         self._finalize(test_record.Outcome.FAIL)
       else:
-        self.logger.error('Finishing test execution early due to phase '
-                          'exception %s, outcome ERROR.' %
-                          phase_execution_outcome.phase_result.exc_val)
+        self.logger.critical(
+            'Finishing test execution early due to an exception raised during '
+            'phase execution; outcome ERROR.')
+        # Enable CLI printing of the fill traceback with the -v flag.
+        self.logger.critical('Traceback:%s%s', os.linesep, ''.join(
+            traceback.format_tb(phase_execution_outcome.phase_result.exc_tb)))
         self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.logger.error('Finishing test execution early due to phase '
@@ -364,15 +367,15 @@ class TestState(util.SubscribableStateMixin):
       # Otherwise, the test run was successful.
       self._finalize(test_record.Outcome.PASS)
 
-    self.logger.info('Finishing test execution normally with outcome %s.',
-                     self.test_record.outcome.name)
+    self.logger.debug('Finishing test execution normally with outcome %s.',
+                      self.test_record.outcome.name)
 
   def abort(self):
     if self._is_aborted():
       return
 
-    self.logger.info('Finishing test execution early due to '
-                     'test abortion, outcome ABORTED.')
+    self.logger.debug('Finishing test execution early due to '
+                      'test abortion, outcome ABORTED.')
     self.test_record.add_outcome_details('ABORTED', 'Test aborted by operator.')
     self._finalize(test_record.Outcome.ABORTED)
 
@@ -382,11 +385,6 @@ class TestState(util.SubscribableStateMixin):
         'Test already completed with status %s!' % self._status.name)
 
     self.test_record.outcome = test_outcome
-
-    # Sanity check to make sure we have a DUT ID by the end of the test.
-    if not self.test_record.dut_id:
-      raise BlankDutIdError(
-          'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     # If we've reached here without 'starting' the test, then we 'start' it just
     # so we can properly 'end' it.
