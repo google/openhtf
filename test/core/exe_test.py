@@ -315,7 +315,7 @@ class TestExecutorTest(unittest.TestCase):
         test.descriptor,
         'uid',
         fail_plug_phase,
-        'dut'
+        'dut',
         teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
     executor.start()
     executor.wait()

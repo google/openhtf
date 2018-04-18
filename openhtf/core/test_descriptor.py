@@ -80,7 +80,7 @@ def create_arg_parser(add_help=False):
   """
   parser = argparse.ArgumentParser(
       'OpenHTF-based testing',
-      parents=[conf.ARG_PARSER, logs.ARG_PARSER, phase_executor.ARG_PARSER]],
+      parents=[conf.ARG_PARSER, logs.ARG_PARSER, phase_executor.ARG_PARSER],
       add_help=add_help)
   parser.add_argument(
       '--config-help', action='store_true',

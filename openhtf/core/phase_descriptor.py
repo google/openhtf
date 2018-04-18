@@ -19,6 +19,7 @@ Phases in OpenHTF are distinct steps in a test.  Each phase is an instance
 of PhaseDescritor class.
 
 """
+import logging
 import inspect
 import sys
 
@@ -29,6 +30,7 @@ from openhtf import util
 from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
+from openhtf.util import logs
 
 import six
 
