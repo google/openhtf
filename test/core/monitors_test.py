@@ -16,7 +16,6 @@ import unittest
 import time
 import mock
 
-import openhtf
 from openhtf import plugs
 from openhtf.core import monitors
 from six.moves import queue

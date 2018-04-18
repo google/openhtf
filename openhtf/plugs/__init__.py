@@ -103,8 +103,10 @@ import threading
 import time
 import types
 
-import openhtf
+import mutablerecords
+
 from openhtf import util
+import openhtf.core.phase_descriptor
 from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
@@ -128,7 +130,12 @@ PlugDescriptor = collections.namedtuple('PlugDescriptor', ['mro'])  # pylint: di
 # Use the with_plugs() method to provide the plug before test execution. The
 # with_plugs() method checks to make sure the substitute plug is a subclass of
 # the PlugPlaceholder's base_class.
-PlugPlaceholder = collections.namedtuple('PlugPlaceholder', ['base_class'])  # pylint: disable-invalid-name
+PlugPlaceholder = collections.namedtuple('PlugPlaceholder', ['base_class'])  # pylint: disable=invalid-name
+
+
+class PhasePlug(mutablerecords.Record(
+    'PhasePlug', ['name', 'cls'], {'update_kwargs': True})):
+  """Information about the use of a plug in a phase."""
 
 
 class PlugOverrideError(Exception):
@@ -202,7 +209,7 @@ class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
   enable_remote = True
 
 
-def plug(update_kwargs=True, **plugs):
+def plug(update_kwargs=True, **plugs_map):
   """Creates a decorator that passes in plugs when invoked.
 
   This function returns a decorator for a function that will replace positional
@@ -214,7 +221,7 @@ def plug(update_kwargs=True, **plugs):
 
   Args:
     update_kwargs: If true, makes the decorated phase take this plug as a kwarg.
-    plugs: Dict mapping name to Plug type.
+    **plugs_map: Dict mapping name to Plug type.
 
   Returns:
     A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
@@ -222,8 +229,9 @@ def plug(update_kwargs=True, **plugs):
   Raises:
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
-  for a_plug in plugs.values():
-    if not (isinstance(a_plug, PlugPlaceholder) or issubclass(a_plug, BasePlug)):
+  for a_plug in plugs_map.values():
+    if not (isinstance(a_plug, PlugPlaceholder)
+            or issubclass(a_plug, BasePlug)):
       raise InvalidPlugError(
           'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
           'for one' % a_plug)
@@ -242,15 +250,17 @@ def plug(update_kwargs=True, **plugs):
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-    phase_desc = openhtf.PhaseDescriptor.wrap_or_copy(func)
-    duplicates = frozenset(p.name for p in phase_desc.plugs) & frozenset(plugs)
+    phase = openhtf.core.phase_descriptor.PhaseDescriptor.wrap_or_copy(func)
+    duplicates = (frozenset(p.name for p in phase.plugs) &
+                  frozenset(plugs_map))
     if duplicates:
       raise DuplicatePlugError(
           'Plugs %s required multiple times on phase %s' % (duplicates, func))
-    phase_desc.plugs.extend([
-        openhtf.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
-        for name, a_plug in six.iteritems(plugs)])
-    return phase_desc
+
+    phase.plugs.extend([
+        PhasePlug(name, a_plug, update_kwargs=update_kwargs)
+        for name, a_plug in six.iteritems(plugs_map)])
+    return phase
   return result
 
 
@@ -493,7 +503,7 @@ class PlugManager(object):
     _LOG.debug('Tearing down all plugs.')
     for plug_type, plug_instance in six.iteritems(self._plugs_by_type):
       thread = _PlugTearDownThread(plug_instance,
-          name='<PlugTearDownThread: %s>' % plug_type)
+                                   name='<PlugTearDownThread: %s>' % plug_type)
       thread.start()
       timeout_s = (conf.plug_teardown_timeout_s
                    if conf.plug_teardown_timeout_s
