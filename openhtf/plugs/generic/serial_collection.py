@@ -52,9 +52,8 @@ class SerialCollectionPlug(openhtf.plugs.BasePlug):
   Otherwise, data collection stops and the serial port is closed when
   stop_collection() is called.
   """
-  SERIAL_EXCEPTIONS = (serial.SerialException,
-                       serial.SerialTimeoutException,
-                       ValueError)
+  # Serial library can raise these exceptions
+  SERIAL_EXCEPTIONS = (serial.SerialException, ValueError)
 
   @conf.inject_positional_args
   def __init__(self, serial_collection_port, serial_collection_baud):
@@ -87,9 +86,14 @@ class SerialCollectionPlug(openhtf.plugs.BasePlug):
     self._serial.open()
     self._collection_thread.start()
 
+  @property
+  def is_collecting(self):
+    if self._collection_thread is not None:
+      return self._collection_thread.is_alive()
+    return False
+
   def stop_collection(self):
-    if (self._collection_thread is None or
-        not self._collection_thread.is_alive()):
+    if not self.is_collecting:
       self.logger.warning(
           'Data collection was not running, cannot be stopped.')
       return
