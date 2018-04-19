@@ -121,7 +121,7 @@ export function makeTest(
     phases.push(makePhase(rawState.running_phase_state, true));
   }
 
-  // TOOD(kschiller): Make the guarantee that a test state is immutable. Then
+  // TODO(kenadia): Make the guarantee that a test state is immutable. Then
   // we should no longer need to preprocess this here or add the attachments
   // directly to the test state.
   //

@@ -7,7 +7,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 // TODO(Kenadia): Find an open-source implementation of the `relative` function.
 const relative = {
   format(_value: number) {
-    return 'TODO';
+    return '—';
   }
 };
 
