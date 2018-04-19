@@ -35,7 +35,6 @@ import weakref
 
 from openhtf import plugs
 from openhtf.core import phase_executor
-from openhtf.core import station_api
 from openhtf.core import test_record
 from openhtf.core.measurements import Dimension
 from openhtf.core.measurements import Measurement

@@ -111,7 +111,6 @@ from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import threads
-from openhtf.util import xmlrpcutil
 import six
 
 
@@ -327,47 +326,6 @@ class PlugManager(object):
                        self._xmlrpc_server.socket.getsockname()[1]
     }
 
-  def _create_or_update_rpc_server(self):
-    """Create or update the XML-RPC server for remote access to plugs.
-
-    We register on the server the public methods (ones that don't start with _)
-    of those plugs which have enable_remote set to True.
-
-    Those methods are then available via RPC calls to:
-      'plugs.<plug_module>.<plug_type>.<plug_method>'
-    """
-
-    # Create a list of (method, method_name) pairs.
-    plug_methods = []
-
-    for name, plug in six.iteritems(self._plugs_by_name):
-      if not plug.enable_remote:
-        continue
-
-      for attr_name in dir(plug):
-        attr = getattr(plug, attr_name)
-        if (isinstance(attr, types.MethodType) and
-            not attr_name.startswith('_') and
-            attr_name != 'tearDown' and
-            attr_name not in plug.disable_remote_attrs):
-          plug_methods.append((attr, '.'.join(('plugs', name, attr_name))))
-
-    if not plug_methods or conf.station_api_port is None:
-      return
-
-    if not self._xmlrpc_server:
-      _LOG.debug('Starting PlugManager XML-RPC server.')
-      self._xmlrpc_server = xmlrpcutil.SimpleThreadedXmlRpcServer((
-        conf.station_api_bind_address, 0))
-      self._xmlrpc_server.register_introspection_functions()
-      server_thread = threading.Thread(target=self._xmlrpc_server.serve_forever,
-                                       name='PlugManager-XMLRPCServer')
-      server_thread.daemon = True
-      server_thread.start()
-
-    for method, name in plug_methods:
-      self._xmlrpc_server.register_function(method, name=name)
-
   def _make_plug_descriptor(self, plug_type):
     """Returns the plug descriptor, containing info about this plug type."""
     return PlugDescriptor(self.get_plug_mro(plug_type))
@@ -445,7 +403,6 @@ class PlugManager(object):
         self.tear_down_plugs()
         raise
       self.update_plug(plug_type, plug_instance)
-    self._create_or_update_rpc_server()
 
   def get_plug_by_class_path(self, plug_name):
     """Get a plug instance by name (class path).

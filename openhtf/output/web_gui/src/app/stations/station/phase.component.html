@@ -1,0 +1,44 @@
+<div class="htf-layout-header" [class.header-with-measurements]="showMeasurements">
+  <span class="u-clamp-text">
+    <span class="phase-name">{{ phase.name }}</span>
+    <span *ngIf="phase.status !== PhaseStatus.waiting">
+      &nbsp;{{ phase | elapsedTime:'(%s)' }}
+    </span>
+  </span>
+
+  <div class="u-flex-grow"></div>
+  <div
+    class="htf-status-indicator"
+    [ngClass]="phase.status | statusToClass">
+    {{ phase.status | statusToText }}
+  </div>
+</div>
+
+<table
+  *ngIf="showMeasurements"
+  class="measurement-list"
+  [ngClass]="phase.status | statusToClass">
+  <thead>
+    <td class="measurement-column-name">Measurement name</td>
+    <td class="measurement-column-value">Value</td>
+    <td class="measurement-column-validators">Validators</td>
+    <td class="measurement-column-result">Result</td>
+  </thead>
+  <tbody>
+    <tr *ngFor="let measurement of phase.measurements">
+      <td class="measurement-column-name">{{ measurement.name }}</td>
+      <td class="measurement-column-value">
+        <htf-trimmed-text [maxChars]="80" [content]="measurement.measuredValue">
+        </htf-trimmed-text>
+      </td>
+      <td class="measurement-column-validators">{{ measurement.validators }}</td>
+      <td
+        [ngSwitch]="measurement.status"
+        class="measurement-column-result">
+        <span *ngSwitchCase="MeasurementStatus.pass">Pass</span>
+        <span *ngSwitchCase="MeasurementStatus.fail">Fail</span>
+        <span *ngSwitchDefault>—</span>
+      </td>
+    </tr>
+  </tbody>
+</table>
