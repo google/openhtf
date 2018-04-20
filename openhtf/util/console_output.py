@@ -26,15 +26,30 @@ import os
 import re
 import string
 import sys
+import textwrap
 import time
 
 import colorama
 import contextlib2 as contextlib
 
+from openhtf.util import argv
+
 # Colorama module has to be initialized before use.
 colorama.init()
 
 _LOG = logging.getLogger(__name__)
+
+# If True, all CLI output through this module will be suppressed, as well as any
+# logging that uses a CliQuietFilter.
+CLI_QUIET = False
+
+ARG_PARSER = argv.ModuleParser()
+ARG_PARSER.add_argument(
+    '--quiet', action=argv.StoreTrueInModule, target='%s.CLI_QUIET' % __name__,
+    help=textwrap.dedent('''\
+        Suppress all CLI output from OpenHTF's printing functions and logging.
+        This flag will override any verbosity levels set with -v.'''))
+
 
 ANSI_ESC_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 
@@ -77,6 +92,8 @@ def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
     ======================== Foo Bar Baz =======================
 
   """
+  if CLI_QUIET:
+    return
   logger.debug(ANSI_ESC_RE.sub('', msg))
   lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
@@ -98,6 +115,8 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
     file: A file object to which the bracketed text will be written. Intended
         for use with CLI output file objects like sys.stdout.
     """
+  if CLI_QUIET:
+    return
   lpad = int(math.ceil((width - 2 - _printed_len(msg)) / 2.0)) * ' '
   rpad = int(math.floor((width - 2 - _printed_len(msg)) / 2.0)) * ' '
   file.write('[{lpad}{bright}{color}{msg}{reset}{rpad}]'.format(
@@ -128,8 +147,9 @@ def cli_print(msg, color='', end=None, file=sys.stdout, logger=_LOG):
   """
   if end is None:
     end = _linesep_for_file(file)
-  file.write('{color}{msg}{reset}{end}'.format(
-      color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
+  if not CLI_QUIET:
+    file.write('{color}{msg}{reset}{end}'.format(
+        color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
   logger.debug('-> {}'.format(msg))
 
 
@@ -144,6 +164,8 @@ def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
     file: A file object to which the baracketed text will be written. Intended
         for use with CLI output file objects, specifically sys.stderr.
   """
+  if CLI_QUIET:
+    return
   file.write('{sep}{bright}{color}Error: {normal}{msg}{sep}{reset}'.format(
       sep=_linesep_for_file(file), bright=colorama.Style.BRIGHT, color=color,
       normal=colorama.Style.NORMAL, msg=msg, reset=colorama.Style.RESET_ALL))
@@ -230,19 +252,22 @@ def action_result_context(action_text,
     ...
   """
   logger.debug('Action - %s', action_text)
-  file.write(''.join((action_text, '\r')))
+  if not CLI_QUIET:
+    file.write(''.join((action_text, '\r')))
   spacing = (width - status_width - _printed_len(action_text)) * ' '
   file.flush()
   result = ActionResult()
   try:
     yield result
   except Exception as err:
-    file.write(''.join((action_text, spacing)))
-    bracket_print(fail_text, width=status_width, color=colorama.Fore.RED)
+    if not CLI_QUIET:
+      file.write(''.join((action_text, spacing)))
+      bracket_print(fail_text, width=status_width, color=colorama.Fore.RED)
     logger.debug('Result - %s [ %s ]', action_text, fail_text)
     if not isinstance(err, ActionFailedError):
       raise
-  file.write(''.join((action_text, spacing)))
+  if not CLI_QUIET:
+    file.write(''.join((action_text, spacing)))
   if result.success:
     bracket_print(succeed_text, width=status_width, color=colorama.Fore.GREEN)
     logger.debug('Result - %s [ %s ]', action_text, succeed_text)
@@ -279,3 +304,14 @@ if __name__ == '__main__':
           * Not running it as a module.
           * Running it as a module and enjoying the preview text.
           * Getting another coffee.'''))
+
+
+class CliQuietFilter(logging.Filter):
+  """Filter that suppresses logging output if the --quiet CLI option is set.
+
+  Note that the --quiet CLI option is stored in the CLI_QUIET member of this
+  module, and can thus be overidden in test scripts. This filter should only
+  be used with loggers that print to the CLI.
+  """
+  def filter(self, record):
+    return not CLI_QUIET
