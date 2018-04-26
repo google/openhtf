@@ -118,12 +118,12 @@ class InRange(RangeValidatorBase):
 
   @property
   def minimum(self):
-    converter = self._type or _identity
+    converter = self._type if self._type is not None else _identity
     return converter(self._minimum)
 
   @property
   def maximum(self):
-    converter = self._type or _identity
+    converter = self._type if self._type is not None else _identity
     return converter(self._maximum)
 
   def with_args(self, **kwargs):
@@ -189,7 +189,7 @@ class Equals(object):
 
   @property
   def expected(self):
-    converter = self._type or _identity
+    converter = self._type if self._type is not None else _identity
     return converter(self._expected)
 
   def __call__(self, value):
