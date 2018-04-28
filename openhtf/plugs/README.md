@@ -1,10 +1,10 @@
-# Usefull thinks!
-## Template to create Plugs
-* (Plug Template)[https://github.com/jo-nas/openhtf_plug_template]: A cookiecutter template for OpenHTF plugs.
+# Plugs
 
-# List of Plugins
-* (OpenOCD Plug)[https://github.com/jo-nas/openocd_plug]: This Plug can handle commands from OpenOCD.
-* (Denkovi Relais Plug)[https://github.com/jo-nas/denkovi_plug]: A package for openhtf plugs to control the denkovi relay boards.
-* (Visa Plug)[https://github.com/jo-nas/visa_plug]: This Package contains some basic Visa Device functionality.
-* (Hameg Plugs for Openhtf)[https://github.com/jo-nas/hameg_plug]: This package contains some Hameg Plugs for the OpenHTF Framework.
-* (OpenOCD Plug)[https://github.com/jo-nas/openocd_plug]: This Plug can handle commands from OpenOCD.
+A plug is a piece of code which provides an interface for OpenHTF to interact with a particular type of hardware, e.g. the DUT itself or a piece of test equipment. OpenHTF comes packaged with some useful plugs, and supports the creation of custom plugs as well.
+
+## Known Third-Party Plugs
+
+* [Denkovi Relais Plug](https://github.com/jo-nas/denkovi_plug): Plugs for controlling Denkovi relay boards.
+* [Hameg Plugs for Openhtf](https://github.com/jo-nas/hameg_plug): A plug for controlling a Hameg programmable power supply.
+* [OpenOCD Plug](https://github.com/jo-nas/openocd_plug): A plug to handle commands from OpenOCD.
+* [Visa Plug](https://github.com/jo-nas/visa_plug): Plugs with basic functionality for interfacing with devices which follow the Virtual Instrument Software Architecture (VISA) standard.
