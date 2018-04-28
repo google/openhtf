@@ -118,16 +118,18 @@ class InRange(RangeValidatorBase):
 
   @property
   def minimum(self):
-    return self._minimum
+    converter = self._type if self._type is not None else _identity
+    return converter(self._minimum)
 
   @property
   def maximum(self):
-    return self._maximum
+    converter = self._type if self._type is not None else _identity
+    return converter(self._maximum)
 
   def with_args(self, **kwargs):
     return type(self)(
-        minimum=util.format_string(self.minimum, kwargs),
-        maximum=util.format_string(self.maximum, kwargs),
+        minimum=util.format_string(self._minimum, kwargs),
+        maximum=util.format_string(self._maximum, kwargs),
         type=self._type,
     )
 
@@ -138,12 +140,9 @@ class InRange(RangeValidatorBase):
     # Check for nan
     if math.isnan(value):
       return False
-    converter = self._type or _identity
-    minimum = converter(self.minimum)
-    maximum = converter(self.maximum)
-    if minimum is not None and value < minimum:
+    if self.minimum is not None and value < self.minimum:
       return False
-    if maximum is not None and value > maximum:
+    if self.maximum is not None and value > self.maximum:
       return False
     return True
 
@@ -185,12 +184,16 @@ class Equals(object):
   """Validator to verify an object is equal to the expected value."""
 
   def __init__(self, expected, type=None):
-    self.expected = expected
+    self._expected = expected
     self._type = type
 
+  @property
+  def expected(self):
+    converter = self._type if self._type is not None else _identity
+    return converter(self._expected)
+
   def __call__(self, value):
-    converter = self._type or _identity
-    return value == converter(self.expected)
+    return value == self.expected
 
   def __str__(self):
     return "'x' is equal to '%s'" % self.expected

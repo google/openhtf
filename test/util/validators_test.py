@@ -56,6 +56,14 @@ class TestInRange(unittest.TestCase):
     validator_c = validators.InRange(maximum=10)
     self.assertNotEqual(validator_a, validator_c)
 
+  def test_with_custom_type(self):
+    hex_int = lambda x: int(x, 16)
+    test_validator = validators.InRange('0x10', '0x12', type=hex_int)
+    self.assertTrue(test_validator(0x11))
+    self.assertFalse(test_validator(0x9))
+    self.assertEqual(test_validator.minimum, 0x10)
+    self.assertEqual(test_validator.maximum, 0x12)
+
 
 class TestEqualsValidator(unittest.TestCase):
 
@@ -68,6 +76,11 @@ class TestEqualsValidator(unittest.TestCase):
       A = 10
     my_type = MyType()
     self.assertTrue(validators.Equals(my_type)(my_type))
+
+  def test_with_custom_type(self):
+    hex_int = lambda x: int(x, 16)
+    self.assertTrue(validators.Equals('0x12', type=hex_int)(0x12))
+    self.assertEqual(validators.Equals('0x12', type=hex_int).expected, 0x12)
 
   def test_str_does_not_raise(self):
     equality_validator = validators.Equals(1)
