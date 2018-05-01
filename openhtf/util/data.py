@@ -30,12 +30,13 @@ import sys
 
 from mutablerecords import records
 from past.builtins import long
+from past.builtins import unicode
 
 from enum import Enum
 import six
 
 # Used by convert_to_base_types().
-PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), str}
+PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
 
 
 def pprint_diff(first, second, first_name='first', second_name='second'):
