@@ -251,11 +251,17 @@ class Measurement(  # pylint: disable=no-init
   def validate(self):
     """Validate this measurement and update its 'outcome' field."""
     # PASS if all our validators return True, otherwise FAIL.
-    if all(v(self.measured_value.value) for v in self.validators):
-      self.outcome = Outcome.PASS
-    else:
+    try:
+      if all(v(self.measured_value.value) for v in self.validators):
+        self.outcome = Outcome.PASS
+      else:
+        self.outcome = Outcome.FAIL
+      return self
+    except Exception as e:  # pylint: disable=bare-except
+      _LOG.error('Validation for measurement %s raised an exception %s.',
+                 self.name, e)
       self.outcome = Outcome.FAIL
-    return self
+      raise
 
   def _asdict(self):
     """Convert this measurement to a dict of basic types."""
