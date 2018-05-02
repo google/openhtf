@@ -34,6 +34,33 @@ _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
                     'lineno', 'codeinfo', 'code_info', 'descriptor_id'}
 
 
+class BadValidatorError(Exception):
+  pass
+
+
+class BadPhaseError(Exception):
+  pass
+
+
+def bad_validator(value):
+  del value  # Unused.
+  raise BadValidatorError('This is a bad validator.')
+
+
+@htf.measures(htf.Measurement('bad').with_dimensions('a').with_validator(
+    bad_validator))
+def bad_validator_phase(test):
+  test.measurements.bad[1] = 1
+  test.measurements.bad[2] = 2
+
+
+@htf.measures(htf.Measurement('bad').with_dimensions('a').with_validator(
+    bad_validator))
+def bad_validator_with_error(test):
+  test.measurements.bad[2] = 2
+  raise BadPhaseError('Bad phase.')
+
+
 class TestMeasurements(htf_test.TestCase):
 
   def setUp(self):
@@ -91,6 +118,26 @@ class TestMeasurements(htf_test.TestCase):
                      ['replaced_min_only', 'replaced_max_only',
                       'replaced_min_max'])
 
+  @htf_test.yields_phases
+  def test_bad_validation(self):
+    record = yield bad_validator_phase
+    self.assertPhaseError(record, exc_type=BadValidatorError)
+    self.assertMeasurementFail(record, 'bad')
+
+  @htf_test.yields_phases
+  def test_bad_validation_with_other_phases(self):
+    test_record = yield htf.Test(bad_validator_phase, all_the_things.dimensions)
+    self.assertTestError(test_record, exc_type=BadValidatorError)
+    # Start phase and the bad validator phase only.
+    self.assertEqual(len(test_record.phases), 2)
+    self.assertPhaseError(test_record.phases[1], exc_type=BadValidatorError)
+
+  @htf_test.yields_phases
+  def test_bad_validation_with_error(self):
+    record = yield bad_validator_with_error
+    self.assertPhaseError(record, exc_type=BadPhaseError)
+    self.assertMeasurementFail(record, 'bad')
+
 
 class TestMeasurement(htf_test.TestCase):
 
@@ -130,3 +177,13 @@ class TestMeasurement(htf_test.TestCase):
 
   def test_to_dataframe__no_units(self):
     self.test_to_dataframe(units=False)
+
+  def test_bad_validator(self):
+    measurement = htf.Measurement('bad_measure')
+    measurement.with_dimensions('a')
+    measurement.with_validator(bad_validator)
+    measurement.measured_value['A'] = 1
+    measurement.measured_value['B'] = 2
+    with self.assertRaises(BadValidatorError):
+      measurement.validate()
+
