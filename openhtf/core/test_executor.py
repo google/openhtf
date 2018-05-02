@@ -22,10 +22,8 @@ import contextlib2 as contextlib
 
 import openhtf
 from openhtf.core import phase_executor
-from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
-from openhtf.util import exceptions
 from openhtf.util import threads
 
 
@@ -51,30 +49,18 @@ class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
   daemon = True
 
-  def __init__(self, test_descriptor, execution_uid, test_start, default_dut_id,
-               teardown_function=None, failure_exceptions=None):
+  def __init__(self, test_descriptor, execution_uid, test_start, test_options):
+    # DO NOT SUBMIT remove comment below.
+    # default_dut_id, teardown_function=None, failure_exceptions=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
 
-    # Force teardown function timeout, otherwise we can hang for a long time
-    # when shutting down, such as in response to a SIGINT.
-    timeout_s = conf.teardown_timeout_s
-    if hasattr(teardown_function, 'options') and hasattr(
-        teardown_function.options, 'timeout_s'):
-      timeout_s = teardown_function.options.timeout_s
-
-    self._teardown_function = (
-        teardown_function and
-        openhtf.PhaseDescriptor.wrap_or_copy(
-            teardown_function, timeout_s=timeout_s))
-
     self._test_descriptor = test_descriptor
     self._test_start = test_start
+    self._test_options = test_options
     self._lock = threading.Lock()
     self._exit_stack = None
     self.uid = execution_uid
-    self.failure_exceptions = failure_exceptions
-    self._default_dut_id = default_dut_id
     self._latest_outcome = None
 
   def stop(self):
@@ -107,7 +93,7 @@ class TestExecutor(threads.KillableThread):
       raise TestStopError('Test Stopped.')
     if self.test_state.test_record.dut_id is None:
       _LOG.warning('DUT ID is still not set; using default.')
-      self.test_state.test_record.dut_id = self._default_dut_id
+      self.test_state.test_record.dut_id = self._test_options.default_dut_id
     if not self.test_state.is_finalized:
       self.test_state.logger.debug('Finishing test with outcome ABORTED.')
       self.test_state.abort()
@@ -118,7 +104,7 @@ class TestExecutor(threads.KillableThread):
     """Waits until death."""
     try:
       # Timeout needed for SIGINT handling.
-      if (sys.version_info >= (3, 2)):
+      if sys.version_info >= (3, 2):
         self.join(threading.TIMEOUT_MAX)
       else:
         # Seconds in a year.
@@ -134,7 +120,7 @@ class TestExecutor(threads.KillableThread):
       self.test_state = test_state.TestState(
           self._test_descriptor,
           self.uid,
-          failure_exceptions=self.failure_exceptions)
+          self._test_options)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stacks must be done while holding this lock.
@@ -212,8 +198,19 @@ class TestExecutor(threads.KillableThread):
   def _execute_test_teardown(self, phase_exec):
     phase_exec.stop(timeout_s=conf.cancel_timeout_s)
     phase_exec.reset_stop()
-    if self._do_teardown_function and self._teardown_function:
-      outcome = phase_exec.execute_phase(self._teardown_function)
+    try:
+      timeout_s = self._test_options.teardown_function.options.timeout_s
+    except AttributeError:
+      # Force teardown function timeout, otherwise we can hang for a long time
+      # when shutting down, such as in response to a SIGINT.
+      timeout_s = conf.teardown_timeout_s
+
+    teardown_function = (
+        self._test_options.teardown_function and
+        openhtf.PhaseDescriptor.wrap_or_copy(
+            self._test_options.teardown_function, timeout_s=timeout_s))
+    if self._do_teardown_function and teardown_function:
+      outcome = phase_exec.execute_phase(teardown_function)
       # Ignore teardown phase outcome if there is already a terminal error.
       if not self._latest_outcome or not self._latest_outcome.is_terminal:
         self._latest_outcome = outcome

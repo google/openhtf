@@ -21,7 +21,7 @@ state.
 
 These classes also implement various logic and audit mechanisms for state
 transitions during the course of the lifetime of a single Execute()
-invokation of an openhtf.Test instance.
+invocation of an openhtf.Test instance.
 """
 
 import collections
@@ -76,6 +76,7 @@ class ImmutableMeasurement(collections.namedtuple(
 
   @classmethod
   def FromMeasurement(cls, measurement):
+    """Convert a Measurement into an ImmutableMeasurement."""
     measured_value = measurement.measured_value
     if isinstance(measured_value, measurements.DimensionedMeasuredValue):
       value = mutablerecords.CopyRecord(
@@ -105,6 +106,8 @@ class TestState(util.SubscribableStateMixin):
   Init Args:
     test_desc: openhtf.TestDescriptor instance describing the test to run,
         used to initialize some values here, but it is not modified.
+    execution_uid: a unique uuid use to identify a test being run.
+    test_options: test_options passed through from Test.
 
   Attributes:
     test_record: TestRecord instance for the currently running test.
@@ -122,7 +125,7 @@ class TestState(util.SubscribableStateMixin):
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])  # pylint: disable=invalid-name
 
-  def __init__(self, test_desc, execution_uid, failure_exceptions=None):
+  def __init__(self, test_desc, execution_uid, test_options):
     super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
@@ -138,7 +141,7 @@ class TestState(util.SubscribableStateMixin):
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
-    self.failure_exceptions = failure_exceptions or []
+    self.test_options = test_options
 
   @property
   def test_api(self):
@@ -405,7 +408,9 @@ class TestState(util.SubscribableStateMixin):
     return False
 
   def _outcome_is_failure_exception(self, outcome):
-    for failure_exception in self.failure_exceptions:
+    if not self.test_options.failure_exceptions:
+      return False
+    for failure_exception in self.test_options.failure_exceptions:
       if isinstance(outcome.phase_result.exc_val, failure_exception):
         return True
     return False
