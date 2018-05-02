@@ -17,8 +17,9 @@ import unittest
 import mock
 
 import openhtf
-from openhtf import plugs
 from openhtf.core import test_state
+from openhtf.core import test_descriptor
+
 
 @openhtf.measures('test_measurement')
 @openhtf.PhaseOptions(name='test_phase')
@@ -26,11 +27,13 @@ def test_phase():
   """Test docstring."""
   pass
 
+
 class TestTestApi(unittest.TestCase):
 
   def setUp(self):
-    test_descriptor = mock.MagicMock()
-    self.test_state = test_state.TestState(test_descriptor, 'testing-123')
+    mock_test_descriptor = mock.MagicMock()
+    self.test_state = test_state.TestState(mock_test_descriptor, 'testing-123',
+                                           test_descriptor.TestOptions())
     self.running_phase_state = test_state.PhaseState.from_descriptor(
         test_phase, lambda *args: None)
     self.test_state.running_phase_state = self.running_phase_state
@@ -39,7 +42,7 @@ class TestTestApi(unittest.TestCase):
   def test_get_attachment(self):
     attachment_name = 'attachment.txt'
     input_contents = 'This is some attachment text!'
-    mimetype='text/plain'
+    mimetype = 'text/plain'
     self.test_api.attach(attachment_name, input_contents, mimetype)
 
     output_attachment = self.test_api.get_attachment(attachment_name)

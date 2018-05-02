@@ -127,10 +127,10 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
 from openhtf.core import phase_executor
+from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
-from openhtf.util import conf
 import six
 
 
@@ -180,10 +180,14 @@ class PhaseOrTestIterator(collections.Iterator):
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
+    test_options = test_descriptor.TestOptions()
     with mock.patch(
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test_state_ = test_state.TestState(openhtf.TestDescriptor(
-          (phase_desc,), phase_desc.code_info, {}), 'Unittest:StubTest:UID')
+      test_state_ = test_state.TestState(
+          openhtf.TestDescriptor((phase_desc,), phase_desc.code_info, {}),
+          'Unittest:StubTest:UID',
+          test_options
+      )
       test_state_.mark_test_started()
 
     # Actually execute the phase, saving the result in our return value.
