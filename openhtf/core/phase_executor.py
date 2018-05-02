@@ -57,6 +57,7 @@ _LOG = logging.getLogger(__name__)
 
 class ExceptionInfo(collections.namedtuple(
     'ExceptionInfo', ['exc_type', 'exc_val', 'exc_tb'])):
+  """Wrap the description of a raised exception and its traceback."""
 
   def _asdict(self):
     return {
@@ -235,9 +236,10 @@ class PhaseExecutor(object):
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
       _LOG.debug('Phase %s skipped due to run_if returning falsey.',
-                phase_desc.name)
+                 phase_desc.name)
       return PhaseExecutionOutcome(openhtf.PhaseResult.SKIP)
 
+    override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
       _LOG.debug('Executing phase %s', phase_desc.name)
       with self._current_phase_thread_lock:
@@ -256,13 +258,16 @@ class PhaseExecutor(object):
         phase_thread.start()
         self._current_phase_thread = phase_thread
 
-      result = phase_state.result = phase_thread.join_or_die()
+      phase_state.result = phase_thread.join_or_die()
       if phase_state.result.is_repeat and is_last_repeat:
         _LOG.error('Phase returned REPEAT, exceeding repeat_limit.')
         phase_state.hit_repeat_limit = True
-        result = PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
+        override_result = PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
       self._current_phase_thread = None
 
+    # Refresh the result in case a validation for a partially set measurement
+    # raised an exception.
+    result = override_result or phase_state.result
     _LOG.debug('Phase %s finished with result %s', phase_desc.name,
                result.phase_result)
     return result

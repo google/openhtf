@@ -31,6 +31,7 @@ import logging
 import mimetypes
 import os
 import socket
+import sys
 import traceback
 
 from enum import Enum
@@ -519,7 +520,17 @@ class PhaseState(
       measurement.set_notification_callback(None)
       # Validate multi-dimensional measurements now that we have all values.
       if measurement.outcome is measurements.Outcome.PARTIALLY_SET:
-        measurement.validate()
+        try:
+          measurement.validate()
+        except Exception:  # pylint: disable=broad-except
+          # Record the exception as the new result.
+          if self.phase_record.result.is_terminal:
+            _LOG.exception(
+                'Measurement validation raised an exception, but phase result '
+                'is already terminal; logging additional exception here.')
+          else:
+            self.phase_record.result = phase_executor.PhaseExecutionOutcome(
+                phase_executor.ExceptionInfo(*sys.exc_info()))
 
     # Set final values on the PhaseRecord.
     self.phase_record.measurements = self.measurements
