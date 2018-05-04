@@ -50,8 +50,6 @@ class TestExecutor(threads.KillableThread):
   daemon = True
 
   def __init__(self, test_descriptor, execution_uid, test_start, test_options):
-    # DO NOT SUBMIT remove comment below.
-    # default_dut_id, teardown_function=None, failure_exceptions=None):
     super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None
 
@@ -198,18 +196,18 @@ class TestExecutor(threads.KillableThread):
   def _execute_test_teardown(self, phase_exec):
     phase_exec.stop(timeout_s=conf.cancel_timeout_s)
     phase_exec.reset_stop()
-    try:
-      timeout_s = self._test_options.teardown_function.options.timeout_s
-    except AttributeError:
-      # Force teardown function timeout, otherwise we can hang for a long time
-      # when shutting down, such as in response to a SIGINT.
-      timeout_s = conf.teardown_timeout_s
 
-    teardown_function = (
-        self._test_options.teardown_function and
-        openhtf.PhaseDescriptor.wrap_or_copy(
-            self._test_options.teardown_function, timeout_s=timeout_s))
-    if self._do_teardown_function and teardown_function:
+    if self._do_teardown_function and self._test_options.teardown_function:
+      try:
+        timeout_s = self._test_options.teardown_function.options.timeout_s
+      except AttributeError:
+        # Force teardown function timeout, otherwise we can hang for a long time
+        # when shutting down, such as in response to a SIGINT.
+        timeout_s = conf.teardown_timeout_s
+
+      teardown_function = openhtf.PhaseDescriptor.wrap_or_copy(
+          self._test_options.teardown_function, timeout_s=timeout_s)
+
       outcome = phase_exec.execute_phase(teardown_function)
       # Ignore teardown phase outcome if there is already a terminal error.
       if not self._latest_outcome or not self._latest_outcome.is_terminal:
