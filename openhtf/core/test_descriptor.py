@@ -309,7 +309,7 @@ class Test(object):
           for detail in final_state.test_record.outcome_details:
             console_output.error_print(detail.description)
         else:
-          colors = collections.defaultdict(lambda: 'colorama.Style.BRIGHT')
+          colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
           colors[test_record.Outcome.PASS] = ''.join((colorama.Style.BRIGHT,
                                                       colorama.Fore.GREEN))
           colors[test_record.Outcome.FAIL] = ''.join((colorama.Style.BRIGHT,
