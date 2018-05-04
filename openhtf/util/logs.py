@@ -65,21 +65,26 @@ import logging
 import os
 import re
 import sys
+import textwrap
 import traceback
 
 from openhtf.util import argv
+from openhtf.util import console_output
 from openhtf.util import functions
 import six
 
 
 # The number of v's provided as command line arguments to control verbosity.
 # Will be overridden if the ARG_PARSER below parses the -v argument.
-CLI_VERBOSITY = 0
+CLI_LOGGING_VERBOSITY = 0
 
 ARG_PARSER = argv.ModuleParser()
 ARG_PARSER.add_argument(
-    '-v', action=argv.StoreRepsInModule, target='%s.CLI_VERBOSITY' % __name__,
-    help='Console logging verbosity. Can be repeated to increase verbosity.')
+    '-v', action=argv.StoreRepsInModule,
+    target='%s.CLI_LOGGING_VERBOSITY' % __name__,
+    help=textwrap.dedent('''\
+        CLI logging verbosity. Can be repeated to increase verbosity (i.e. -v,
+        -vv, -vvv).'''))
 
 LOGGER_PREFIX = 'openhtf'
 RECORD_LOGGER_PREFIX = '.'.join((LOGGER_PREFIX, 'test_record'))
@@ -145,7 +150,8 @@ class MacAddressLogFilter(logging.Filter):
             if isinstance(arg, six.string_types)
             else arg for arg in record.args])
       else:
-        record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.getMessage())
+        record.msg = self.MAC_REPLACE_RE.sub(
+            self.MAC_REPLACEMENT, record.getMessage())
     return True
 
 # We use one shared instance of this, it has no internal state.
@@ -230,20 +236,24 @@ class CliFormatter(logging.Formatter):
 @functions.call_once
 def configure_cli_logging():
   """Configure OpenHTF to log to the CLI based on verbosity arg."""
-  if CLI_VERBOSITY == 0:
+  if CLI_LOGGING_VERBOSITY == 0:
     return # The default behavior is not to log anything to the CLI.
   logging_level = None
-  if CLI_VERBOSITY == 1:
+  if CLI_LOGGING_VERBOSITY == 1:
     logging_level = logging.INFO
-  elif CLI_VERBOSITY == 2:
+  elif CLI_LOGGING_VERBOSITY == 2:
     logging_level = logging.DEBUG
-  elif CLI_VERBOSITY > 2:
+  elif CLI_LOGGING_VERBOSITY > 2:
     logging_level = logging.NOTSET
 
   cli_handler = logging.StreamHandler(stream=sys.stdout)
   cli_handler.setFormatter(CliFormatter())
   cli_handler.setLevel(logging_level)
   cli_handler.addFilter(MAC_FILTER)
+  # Make sure we also suppress CLI logging (in addition to anything that would
+  # have been printed through the printing helper functions) if the user has set
+  # the --quiet flag in the console_output module.
+  cli_handler.addFilter(console_output.CliQuietFilter())
   htf_logger = logging.getLogger(LOGGER_PREFIX)
   htf_logger.addHandler(cli_handler)
   # We don't want duplicate logging if other loggers are configured.
