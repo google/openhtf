@@ -28,7 +28,6 @@ from openhtf.core import test_state
 from openhtf.core.test_record import Outcome
 
 from openhtf.util import conf
-from openhtf.util import logs
 
 
 class UnittestPlug(plugs.BasePlug):
@@ -154,9 +153,14 @@ class TestExecutorTest(unittest.TestCase):
     # Outcome = ERROR.
     ev = threading.Event()
     test = openhtf.Test(failure_phase)
+    test.configure(
+        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+        default_dut_id='dut',
+    )
+
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, 'dut',
-        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test.descriptor, 'uid', start_phase, test._test_options)
+
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -164,13 +168,11 @@ class TestExecutorTest(unittest.TestCase):
 
     # Same as above, but now specify that the TestDummyExceptionError should
     # instead be a FAIL outcome.
+    test.configure(
+        failure_exceptions=[self.TestDummyExceptionError]
+    )
     executor = test_executor.TestExecutor(
-        test.descriptor,
-        'uid',
-        start_phase,
-        'dut',
-        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
-        failure_exceptions=[self.TestDummyExceptionError])
+        test.descriptor, 'uid', start_phase, test._test_options)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -223,13 +225,18 @@ class TestExecutorTest(unittest.TestCase):
 
     ev = threading.Event()
     test = openhtf.Test()
+    test.configure(
+        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+        default_dut_id='dut',
+    )
+
     # Cancel during test start phase.
     executor = test_executor.TestExecutor(
         test.descriptor,
         'uid',
         cancel_phase,
-        'dut',
-        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test._test_options
+    )
 
     executor.start()
     executor.wait()
@@ -259,10 +266,14 @@ class TestExecutorTest(unittest.TestCase):
 
     ev = threading.Event()
     test = openhtf.Test(cancel_phase)
+    test.configure(
+        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+        default_dut_id='dut',
+    )
     # Cancel during test start phase.
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, 'dut',
-        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test.descriptor, 'uid', start_phase, test._test_options)
+
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -276,8 +287,12 @@ class TestExecutorTest(unittest.TestCase):
   def test_failure_during_plug_init(self):
     ev = threading.Event()
     test = openhtf.Test(fail_plug_phase)
-    executor = test_executor.TestExecutor(test.descriptor, 'uid', None, 'dut',
-                                 teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+    test.configure(
+        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+        default_dut_id='dut',
+    )
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', None, test._test_options)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -290,10 +305,13 @@ class TestExecutorTest(unittest.TestCase):
   def test_failure_during_plug_init_with_dut_id(self):
     ev = threading.Event()
     test = openhtf.Test(fail_plug_phase)
+    test.configure(
+        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+        default_dut_id='dut',
+    )
 
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, 'dut',
-        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test.descriptor, 'uid', start_phase, test._test_options)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -311,12 +329,16 @@ class TestExecutorTest(unittest.TestCase):
     ev2 = threading.Event()
 
     test = openhtf.Test(never_gonna_run_phase)
+    test.configure(
+        teardown_function=lambda: ev.set(),  # pylint: disable=unnecessary-lambda
+        default_dut_id='dut',
+    )
+
     executor = test_executor.TestExecutor(
         test.descriptor,
         'uid',
         fail_plug_phase,
-        'dut',
-        teardown_function=lambda: ev.set())  # pylint: disable=unnecessary-lambda
+        test._test_options)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -329,9 +351,13 @@ class TestExecutorTest(unittest.TestCase):
 
   def test_error_during_teardown(self):
     test = openhtf.Test(blank_phase)
+    test.configure(
+        teardown_function=teardown_fail,
+        default_dut_id='dut',
+    )
+
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, 'dut',
-        teardown_function=teardown_fail)
+        test.descriptor, 'uid', start_phase, test._test_options)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -345,9 +371,12 @@ class TestExecutorTest(unittest.TestCase):
       test.logger.info(message)
 
     test = openhtf.Test(blank_phase)
+    test.configure(
+        teardown_function=teardown_log,
+        default_dut_id='dut',
+    )
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, 'dut',
-        teardown_function=teardown_log)
+        test.descriptor, 'uid', start_phase, test._test_options)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record

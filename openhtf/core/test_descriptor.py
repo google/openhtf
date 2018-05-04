@@ -30,7 +30,6 @@ from types import LambdaType
 import uuid
 import weakref
 
-from enum import Enum
 import colorama
 import mutablerecords
 
@@ -77,6 +76,13 @@ def create_arg_parser(add_help=False):
   >>> parser = argparse.ArgumentParser(
           'My args title', parents=[openhtf.create_arg_parser()])
   >>> parser.parse_args()
+
+  Args:
+    add_help: boolean option passed through to arg parser.
+
+  Returns:
+    an `argparse.ArgumentParser`
+
   """
   parser = argparse.ArgumentParser(
       'OpenHTF-based testing',
@@ -272,10 +278,8 @@ class Test(object):
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
       self._executor = test_executor.TestExecutor(
-          self._test_desc, self.make_uid(), trigger,
-          self._test_options.default_dut_id,
-          self._test_options.teardown_function,
-          self._test_options.failure_exceptions)
+          self._test_desc, self.make_uid(), trigger, self._test_options)
+
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
       self._executor.start()
@@ -305,7 +309,7 @@ class Test(object):
                                                       colorama.Fore.GREEN))
           colors[test_record.Outcome.FAIL] = ''.join((colorama.Style.BRIGHT,
                                                       colorama.Fore.RED))
-          msg_template = "test: {name}  outcome: {color}{outcome}{rst}"
+          msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
           console_output.banner_print(msg_template.format(
               name=final_state.test_record.metadata['test_name'],
               color=colors[final_state.test_record.outcome],
