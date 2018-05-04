@@ -92,15 +92,14 @@ def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
     ======================== Foo Bar Baz =======================
 
   """
-  if CLI_QUIET:
-    return
   logger.debug(ANSI_ESC_RE.sub('', msg))
-  lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
-  rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
-  file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
-      sep=_linesep_for_file(file), color=color, lpad=lpad, msg=msg, rpad=rpad,
-      reset=colorama.Style.RESET_ALL))
-  file.flush()
+  if not CLI_QUIET:
+    lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
+    rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
+    file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
+        sep=_linesep_for_file(file), color=color, lpad=lpad, msg=msg, rpad=rpad,
+        reset=colorama.Style.RESET_ALL))
+    file.flush()
 
 
 def bracket_print(msg, color='', width=8, file=sys.stdout):
