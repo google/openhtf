@@ -408,8 +408,6 @@ class TestState(util.SubscribableStateMixin):
     return False
 
   def _outcome_is_failure_exception(self, outcome):
-    if not self.test_options.failure_exceptions:
-      return False
     for failure_exception in self.test_options.failure_exceptions:
       if isinstance(outcome.phase_result.exc_val, failure_exception):
         return True
