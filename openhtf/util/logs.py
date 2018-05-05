@@ -154,9 +154,6 @@ class MacAddressLogFilter(logging.Filter):
             self.MAC_REPLACEMENT, record.getMessage())
     return True
 
-# We use one shared instance of this, it has no internal state.
-MAC_FILTER = MacAddressLogFilter()
-
 
 class TestUidFilter(logging.Filter):
   """Only allow logs to pass whose logger source matches the given uid."""
@@ -173,6 +170,7 @@ class TestUidFilter(logging.Filter):
 
 class RecordHandler(logging.Handler):
   """A handler to save logs to an HTF TestRecord."""
+  FILTERS = list()  # List of filters to add to every RecordHandler
 
   def __init__(self, test_uid, test_record, notify_update):
     # Record handlers get the DEBUG logging level since we don't want any
@@ -181,7 +179,8 @@ class RecordHandler(logging.Handler):
     self.test_uid = test_uid
     self._test_record = test_record
     self._notify_update = notify_update
-    self.addFilter(MAC_FILTER)
+    for filter_class in self.FILTERS:
+      self.addFilter(filter_class())
     self.addFilter(TestUidFilter(test_uid))
 
   def emit(self, record):
@@ -234,7 +233,7 @@ class CliFormatter(logging.Formatter):
 
 
 @functions.call_once
-def configure_cli_logging():
+def configure_cli_logging(filters=None):
   """Configure OpenHTF to log to the CLI based on verbosity arg."""
   if CLI_LOGGING_VERBOSITY == 0:
     return # The default behavior is not to log anything to the CLI.
@@ -246,10 +245,15 @@ def configure_cli_logging():
   elif CLI_LOGGING_VERBOSITY > 2:
     logging_level = logging.NOTSET
 
+  # Stash configured filter classes in the RecordHandler class so they can be
+  # instantiated and added at RecordHandler instantiation.
+  RecordHandler.FILTERS = filters
+
   cli_handler = logging.StreamHandler(stream=sys.stdout)
   cli_handler.setFormatter(CliFormatter())
   cli_handler.setLevel(logging_level)
-  cli_handler.addFilter(MAC_FILTER)
+  for filter_class in filters:
+    cli_handler.addFilter(filter_class())
   # Make sure we also suppress CLI logging (in addition to anything that would
   # have been printed through the printing helper functions) if the user has set
   # the --quiet flag in the console_output module.

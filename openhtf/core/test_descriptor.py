@@ -218,7 +218,6 @@ class Test(object):
     if known_args.config_help:
       sys.stdout.write(conf.help_text)
       sys.exit(0)
-    logs.configure_cli_logging()
     for key, value in six.iteritems(kwargs):
       setattr(self._test_options, key, value)
 
@@ -256,6 +255,9 @@ class Test(object):
     Raises:
       InvalidTestStateError: if this test is already being executed.
     """
+    # Configure logging first so we get logs if anything goes wrong after.
+    logs.configure_cli_logging(filters=_test_options.logging_filters)
+
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
@@ -333,6 +335,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'teardown_function': None,
     'failure_exceptions': list,
     'default_dut_id': 'UNKNOWN_DUT',
+    'logging_filters': list,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
@@ -347,6 +350,8 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
       the run is marked as ERROR.
   default_dut_id: The DUT ID that will be used if the start trigger and all
       subsequent phases fail to set one.
+  logging_filters: List of logging.Filter classes. These will be applied to
+      all test record logging handlers as well as the CLI logging handler.
   """
 
 
