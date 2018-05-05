@@ -61,6 +61,7 @@ Test record logs are by default output to stdout at a debug level.  Use the
 import argparse
 import collections
 import datetime
+import functools
 import logging
 import os
 import re
@@ -232,7 +233,7 @@ class CliFormatter(logging.Formatter):
                                                   msg=record.message)
 
 
-@functions.call_once
+@functools.lru_cache
 def configure_cli_logging(filters=None):
   """Configure OpenHTF to log to the CLI based on verbosity arg."""
   if CLI_LOGGING_VERBOSITY == 0:
