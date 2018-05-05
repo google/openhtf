@@ -233,7 +233,6 @@ class CliFormatter(logging.Formatter):
                                                   msg=record.message)
 
 
-@functools.lru_cache
 def configure_cli_logging(filters=None):
   """Configure OpenHTF to log to the CLI based on verbosity arg."""
   if CLI_LOGGING_VERBOSITY == 0:
@@ -260,6 +259,10 @@ def configure_cli_logging(filters=None):
   # the --quiet flag in the console_output module.
   cli_handler.addFilter(console_output.CliQuietFilter())
   htf_logger = logging.getLogger(LOGGER_PREFIX)
+  if htf_logger.handlers:
+    _LOG.warning(
+        'The OpenHTF logger already has handlers attached. Are you calling'
+        'configure_cli_logging more than once?')
   htf_logger.addHandler(cli_handler)
   # We don't want duplicate logging if other loggers are configured.
   htf_logger.propagate = False
