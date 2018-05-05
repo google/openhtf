@@ -256,7 +256,7 @@ class Test(object):
       InvalidTestStateError: if this test is already being executed.
     """
     # Configure logging first so we get logs if anything goes wrong after.
-    logs.configure_cli_logging(filters=_test_options.logging_filters)
+    logs.configure_cli_logging(filters=self._test_options.logging_filters)
 
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
