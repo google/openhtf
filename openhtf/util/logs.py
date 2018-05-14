@@ -58,7 +58,6 @@ Test record logs are by default output to stdout at a debug level.  Use the
 --test-record-verbosity flag to select a different level of chatter.
 """
 
-import argparse
 import collections
 import datetime
 import logging
@@ -71,6 +70,7 @@ import traceback
 from openhtf.util import argv
 from openhtf.util import console_output
 from openhtf.util import functions
+from openhtf.util import threads
 import six
 
 
@@ -105,6 +105,7 @@ def get_record_logger_for(test_uid):
 
 
 def initialize_record_logger(test_uid, test_record, notify_update):
+  """Initialize the a record logger, which outputs to a test record."""
   htf_logger = logging.getLogger(LOGGER_PREFIX)
   # Avoid duplicate logging if other loggers are configured.
   htf_logger.propagate = False
@@ -160,6 +161,7 @@ MAC_FILTER = MacAddressLogFilter()
 
 class TestUidFilter(logging.Filter):
   """Only allow logs to pass whose logger source matches the given uid."""
+
   def __init__(self, test_uid):
     super(TestUidFilter, self).__init__()
     self.test_uid = test_uid
@@ -169,6 +171,16 @@ class TestUidFilter(logging.Filter):
     # to every test instance's test record to make station debugging easier.
     match = RECORD_LOGGER_RE.match(record.name)
     return not match or (match.group('test_uid') == self.test_uid)
+
+
+class KillableThreadSafeStreamHandler(logging.StreamHandler):
+
+  def handle(self, record):
+    # logging.Handler objects have an internal lock attribute that is a
+    # threading.RLock instance; it can cause deadlocks in Python 2.7 when a
+    # KillableThread is killed while its release method is running.
+    with threads.safe_lock_release_context(self.lock):
+      return super(KillableThreadSafeStreamHandler, self).handle(record)
 
 
 class RecordHandler(logging.Handler):
@@ -183,6 +195,13 @@ class RecordHandler(logging.Handler):
     self._notify_update = notify_update
     self.addFilter(MAC_FILTER)
     self.addFilter(TestUidFilter(test_uid))
+
+  def handle(self, record):
+    # logging.Handler objects have an internal lock attribute that is a
+    # threading.RLock instance; it can cause deadlocks in Python 2.7 when a
+    # KillableThread is killed while its release method is running.
+    with threads.safe_lock_release_context(self.lock):
+      return super(RecordHandler, self).handle(record)
 
   def emit(self, record):
     """Save a logging.LogRecord to our test record.
@@ -209,6 +228,7 @@ class RecordHandler(logging.Handler):
 
 class CliFormatter(logging.Formatter):
   """Formats log messages for printing to the CLI."""
+
   def format(self, record):
     """Format the record as tersely as possible but preserve info."""
     super(CliFormatter, self).format(record)
@@ -246,7 +266,7 @@ def configure_cli_logging():
   elif CLI_LOGGING_VERBOSITY > 2:
     logging_level = logging.NOTSET
 
-  cli_handler = logging.StreamHandler(stream=sys.stdout)
+  cli_handler = KillableThreadSafeStreamHandler(stream=sys.stdout)
   cli_handler.setFormatter(CliFormatter())
   cli_handler.setLevel(logging_level)
   cli_handler.addFilter(MAC_FILTER)

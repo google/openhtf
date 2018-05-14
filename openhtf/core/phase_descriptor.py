@@ -31,6 +31,7 @@ from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
 from openhtf.util import logs
+from openhtf.util import threads
 
 import six
 
@@ -234,10 +235,15 @@ class PhaseDescriptor(mutablerecords.Record(
         len(arg_info.args) > len(kwargs)):
       # Underlying function has room for test_api as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
-      # Update test_state's logger so that it's a phase-specific one.
-      test_state.logger = logging.getLogger(
-          '.'.join((logs.get_record_logger_for(test_state.execution_uid).name,
-                    'phase', self.name)))
+
+      # The logging module has a module _lock instance that is a threading.RLock
+      # instance; it can cause deadlocks in Python 2.7 when a KillableThread is
+      # killed while its release method is running.
+      with threads.safe_lock_release_context(logging._lock):  # pylint: disable=protected-access
+        # Update test_state's logger so that it is a phase-specific one.
+        test_state.logger = logging.getLogger(
+            '.'.join((logs.get_record_logger_for(test_state.execution_uid).name,
+                      'phase', self.name)))
       return self.func(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)
