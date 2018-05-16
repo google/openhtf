@@ -22,6 +22,7 @@ prompt state should use the openhtf.prompts pseudomodule.
 """
 
 from __future__ import print_function
+
 import collections
 import functools
 import logging
@@ -37,9 +38,9 @@ import uuid
 from openhtf import PhaseOptions
 from openhtf import plugs
 from openhtf.util import argv
+from openhtf.util import console_output
 import six
 from six.moves import input
-
 
 if platform.system() != 'Windows':
   import termios
@@ -67,11 +68,12 @@ Prompt = collections.namedtuple('Prompt', 'id message text_input')
 class ConsolePrompt(threading.Thread):
   """Thread that displays a prompt to the console and waits for a response."""
 
-  def __init__(self, message, callback):
+  def __init__(self, message, callback, color=''):
     super(ConsolePrompt, self).__init__()
     self.daemon = True
     self._message = message
     self._callback = callback
+    self._color = color
     self._stopped = False
     self._answered = False
 
@@ -94,7 +96,9 @@ class ConsolePrompt(threading.Thread):
         self._callback(response)
       else:
         # First, display the prompt to the console.
-        sys.stdout.write(''.join((self._message, os.linesep, PROMPT)))
+        console_output.cli_print(self._message, color=self._color,
+                                 end=os.linesep, logger=None)
+        console_output.cli_print(PROMPT, color=self._color, end='', logger=None)
         sys.stdout.flush()
 
         # Before reading, clear any lingering buffered terminal input.
@@ -149,7 +153,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
               'message': self._prompt.message,
               'text-input': self._prompt.text_input}
 
-  def _create_prompt(self, message, text_input):
+  def _create_prompt(self, message, text_input, cli_color):
     """Sets the prompt."""
     prompt_id = uuid.uuid4()
     _LOG.debug('Displaying prompt (%s): "%s"%s', prompt_id, message,
@@ -158,7 +162,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     self._response = None
     self._prompt = Prompt(id=prompt_id, message=message, text_input=text_input)
     self._console_prompt = ConsolePrompt(
-        message, functools.partial(self.respond, prompt_id))
+        message, functools.partial(self.respond, prompt_id), cli_color)
 
     self._console_prompt.start()
     self.notify_update()
@@ -171,7 +175,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     self._console_prompt = None
     self.notify_update()
 
-  def prompt(self, message, text_input=False, timeout_s=None):
+  def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
     """Prompt and wait for a user response to the given message.
 
     Args:
@@ -186,15 +190,15 @@ class UserInput(plugs.FrontendAwareBasePlug):
       MultiplePromptsError: There was already an existing prompt.
       PromptUnansweredError: Timed out waiting for the user to respond.
     """
-    self.start_prompt(message, text_input)
+    self.start_prompt(message, text_input, cli_color)
     return self.wait_for_prompt(timeout_s)
 
-  def start_prompt(self, message, text_input=False):
+  def start_prompt(self, message, text_input=False, cli_color=''):
     """Creates a prompt without blocking on the user's response."""
     with self._cond:
       if self._prompt:
         raise MultiplePromptsError
-      return self._create_prompt(message, text_input)
+      return self._create_prompt(message, text_input, cli_color)
 
   def wait_for_prompt(self, timeout_s=None):
     """Waits for and returns the user's response to the last prompt."""
