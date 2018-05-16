@@ -60,6 +60,9 @@ conf.declare('station_id', 'The name of this test station',
 
 _LOG = logging.getLogger(__name__)
 
+# Sentinel value indicating that the mimetype should be inferred.
+INFER_MIMETYPE = object()
+
 
 class BlankDutIdError(Exception):
   """DUT serial cannot be blank at the end of a test."""
@@ -472,13 +475,16 @@ class PhaseState(
   def attachments(self):
     return self.phase_record.attachments
 
-  def attach(self, name, data, mimetype=None):
+  def attach(self, name, data, mimetype=INFER_MIMETYPE):
     """Store the given data as an attachment with the given name.
 
     Args:
       name: Attachment name under which to store this data.
       data: Data to attach.
-      mimetype: If provided, will be saved in the attachment.
+      mimetype: One of the following:
+          INFER_MIMETYPE: The type will be guessed from the attachment name.
+          None: The type will be left unspecified.
+          A string: The type will be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
@@ -486,31 +492,39 @@ class PhaseState(
     """
     if name in self.phase_record.attachments:
       raise DuplicateAttachmentError('Duplicate attachment for %s' % name)
-    if mimetype and not mimetypes.guess_extension(mimetype):
+
+    if mimetype is INFER_MIMETYPE:
+      mimetype = mimetypes.guess_type(name)[0]
+    elif mimetype is not None and not mimetypes.guess_extension(mimetype):
       _LOG.warning('Unrecognized MIME type: "%s" for attachment "%s"',
                    mimetype, name)
+
     self.phase_record.attachments[name] = test_record.Attachment(data, mimetype)
 
-  def attach_from_file(self, filename, name=None, mimetype=None):
+  def attach_from_file(self, filename, name=None, mimetype=INFER_MIMETYPE):
     """Store the contents of the given filename as an attachment.
 
     Args:
       filename: The file to read data from to attach.
       name: If provided, override the attachment name, otherwise it will
         default to the filename.
-      mimetype: If provided, override the attachment mime type, otherwise the
-        mime type will be guessed based on the file extension.
+      mimetype: One of the following:
+          INFER_MIMETYPE: The type will be guessed first, from the file name,
+              and second (i.e. as a fallback), from the attachment name.
+          None: The type will be left unspecified.
+          A string: The type will be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
         the given name.
       IOError: Raised if the given filename couldn't be opened.
     """
+    if mimetype is INFER_MIMETYPE:
+      mimetype = mimetypes.guess_type(filename)[0] or mimetype
     with open(filename, 'rb') as f:  # pylint: disable=invalid-name
       self.attach(
           name if name is not None else os.path.basename(filename), f.read(),
-          mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
-              filename)[0])
+          mimetype=mimetype)
 
   def _finalize_measurements(self):
     """Perform end-of-phase finalization steps for measurements.

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 
 import mock
 
 import openhtf
-from openhtf.core import test_state
 from openhtf.core import test_descriptor
+from openhtf.core import test_state
 
 
 @openhtf.measures('test_measurement')
@@ -67,3 +68,21 @@ class TestTestApi(unittest.TestCase):
 
     measurement.value.append(4)
     self.assertNotEqual(measurement_val, measurement.value)
+
+  def test_infer_mime_type_from_file_name(self):
+    with tempfile.NamedTemporaryFile(suffix='.txt') as f:
+      f.write(b'Mock text contents.')
+      f.flush()
+      file_name = f.name
+      self.test_api.attach_from_file(file_name, 'attachment')
+    attachment = self.test_api.get_attachment('attachment')
+    self.assertEqual(attachment.mimetype, 'text/plain')
+
+  def test_infer_mime_type_from_attachment_name(self):
+    with tempfile.NamedTemporaryFile() as f:
+      f.write(b'Mock text contents.')
+      f.flush()
+      file_name = f.name
+      self.test_api.attach_from_file(file_name, 'attachment.png')
+    attachment = self.test_api.get_attachment('attachment.png')
+    self.assertEqual(attachment.mimetype, 'image/png')
