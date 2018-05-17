@@ -137,14 +137,18 @@ class TestState(util.SubscribableStateMixin):
         start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
-    self.logger = logs.initialize_record_logger(
+    logs.initialize_record_handler(
         execution_uid, self.test_record, self.notify_update)
+    self.logger = logs.get_record_logger_for(execution_uid)
     self.plug_manager = plugs.PlugManager(
         test_desc.plug_types, self.logger.name)
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
     self.test_options = test_options
+
+  def __del__(self):
+    logs.remove_record_handler(self.execution_uid)
 
   @property
   def test_api(self):
