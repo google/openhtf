@@ -218,7 +218,7 @@ class Test(object):
     if known_args.config_help:
       sys.stdout.write(conf.help_text)
       sys.exit(0)
-    logs.configure_cli_logging()
+    logs.initialize_logging()
     for key, value in six.iteritems(kwargs):
       setattr(self._test_options, key, value)
 

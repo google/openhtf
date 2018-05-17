@@ -300,16 +300,16 @@ class PlugManager(object):
     _plug_descriptors: Dict mapping plug type to plug descriptor.
   """
 
-  def __init__(self, plug_types=None, logger_name=None):
+  def __init__(self, plug_types=None, record_logger_name=None):
     self._plug_types = plug_types or set()
     for plug in self._plug_types:
       if isinstance(plug, PlugPlaceholder):
         raise InvalidPlugError('Plug %s is a placeholder, replace it using '
                                'with_plugs().' % plug)
-    self._logger_name = '.'.join((logger_name, 'plug'))
     self._plugs_by_type = {}
     self._plugs_by_name = {}
     self._plug_descriptors = {}
+    self.logger = logging.getLogger(record_logger_name).getChild('plug')
 
   def _asdict(self):
     return {
@@ -366,8 +366,7 @@ class PlugManager(object):
     for plug_type in types:
       # Create a logger for this plug. All plug loggers go under the 'plug'
       # sub-logger in the logger hierarchy.
-      plug_logger = logging.getLogger(
-          '.'.join((self._logger_name, plug_type.__name__)))
+      plug_logger = self.logger.getChild(plug_type.__name__)
       if plug_type in self._plugs_by_type:
         continue
       try:

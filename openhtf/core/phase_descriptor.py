@@ -241,9 +241,8 @@ class PhaseDescriptor(mutablerecords.Record(
       # killed while its release method is running.
       with threads.safe_lock_release_context(logging._lock):  # pylint: disable=protected-access
         # Update test_state's logger so that it is a phase-specific one.
-        test_state.logger = logging.getLogger(
-            '.'.join((logs.get_record_logger_for(test_state.execution_uid).name,
-                      'phase', self.name)))
+        record_logger = logs.get_record_logger_for(test_state.execution_uid)
+        test_state.logger = record_logger.getChild('phase').getChild(self.name)
       return self.func(
           test_state if self.options.requires_state else test_state.test_api,
           **kwargs)
