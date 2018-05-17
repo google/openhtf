@@ -112,7 +112,6 @@ def _test_state_from_record(test_record_dict, execution_uid=None):
       'execution_uid': execution_uid,
       'plugs': {
           'plug_states': {},
-          'xmlrpc_port': None,
       },
       'running_phase_state': None,
       'status': TEST_STATUS_COMPLETED,

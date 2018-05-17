@@ -310,7 +310,6 @@ class PlugManager(object):
     self._plugs_by_type = {}
     self._plugs_by_name = {}
     self._plug_descriptors = {}
-    self._xmlrpc_server = None
 
   def _asdict(self):
     return {
@@ -322,8 +321,6 @@ class PlugManager(object):
             name: plug._asdict()
             for name, plug in six.iteritems(self._plugs_by_name)
         },
-        'xmlrpc_port': self._xmlrpc_server and
-                       self._xmlrpc_server.socket.getsockname()[1]
     }
 
   def _make_plug_descriptor(self, plug_type):
@@ -451,12 +448,6 @@ class PlugManager(object):
     Any exceptions in tearDown() methods are logged, but do not get raised
     by this method.
     """
-    if self._xmlrpc_server:
-      _LOG.debug('Shutting down Plug XMLRPC Server.')
-      self._xmlrpc_server.shutdown()
-      self._xmlrpc_server.server_close()
-      self._xmlrpc_server = None
-
     _LOG.debug('Tearing down all plugs.')
     for plug_type, plug_instance in six.iteritems(self._plugs_by_type):
       thread = _PlugTearDownThread(plug_instance,
