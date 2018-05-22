@@ -27,6 +27,7 @@ import openhtf as htf
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.output.callbacks import mfg_inspector
+from openhtf.output.proto import test_runs_pb2
 from openhtf import util
 from openhtf.util import test
 
@@ -64,6 +65,21 @@ class TestOutput(test.TestCase):
     record = yield self._test
     testrun_output = BytesIO()
     mfg_inspector.OutputToTestRunProto(testrun_output)(record)
+
+    testrun = test_runs_pb2.TestRun()
+    testrun.ParseFromString(testrun_output.getvalue())
+    self.assertEqual(test_runs_pb2.FAIL, testrun.test_status)
+
+    for test_record_status, expected_status in [
+        (htf.test_record.Outcome.TIMEOUT, test_runs_pb2.TIMEOUT),
+        (htf.test_record.Outcome.ABORTED, test_runs_pb2.ABORTED),
+    ]:
+      record.outcome = test_record_status
+      testrun_output = BytesIO()
+      mfg_inspector.OutputToTestRunProto(testrun_output)(record)
+      testrun = test_runs_pb2.TestRun()
+      testrun.ParseFromString(testrun_output.getvalue())
+      self.assertEqual(expected_status, testrun.test_status)
 
 
 class TestConsoleSummary(test.TestCase):
