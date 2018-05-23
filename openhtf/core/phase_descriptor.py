@@ -16,16 +16,17 @@
 """Phases in OpenHTF.
 
 Phases in OpenHTF are distinct steps in a test.  Each phase is an instance
-of PhaseDescritor class.
+of PhaseDescriptor class.
 
 """
-import logging
 import inspect
+import logging
 import sys
 
 import enum
 import mutablerecords
 
+import openhtf
 from openhtf import util
 from openhtf.core import test_record
 import openhtf.plugs
@@ -34,6 +35,11 @@ from openhtf.util import logs
 from openhtf.util import threads
 
 import six
+
+
+class PhaseWrapError(Exception):
+  """Error with phase wrapping."""
+
 
 # Result of a phase.
 #
@@ -135,9 +141,15 @@ class PhaseDescriptor(mutablerecords.Record(
       func: A phase function or PhaseDescriptor instance.
       **options: Options to update on the result.
 
+    Raises:
+      PhaseWrapError: if func is a openhtf.PhaseGroup.
+
     Returns:
       A new PhaseDescriptor object.
     """
+    if isinstance(func, openhtf.PhaseGroup):
+      raise PhaseWrapError('Cannot wrap PhaseGroup <%s> as a phase.' % (
+          func.name or 'Unnamed'))
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
       # or kwargs.  See with_args() below for more details.
@@ -163,6 +175,17 @@ class PhaseDescriptor(mutablerecords.Record(
   def doc(self):
     return self.func.__doc__
 
+  def with_known_args(self, **kwargs):
+    """Send only known keyword-arguments to the phase when called."""
+    argspec = inspect.getargspec(self.func)
+    stored = {}
+    for key, arg in six.iteritems(kwargs):
+      if key in argspec.args or argspec.keywords:
+        stored[key] = arg
+    if stored:
+      return self.with_args(**stored)
+    return self
+
   def with_args(self, **kwargs):
     """Send these keyword-arguments to the phase when called."""
     # Make a copy so we can have multiple of the same phase with different args
@@ -173,8 +196,32 @@ class PhaseDescriptor(mutablerecords.Record(
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
+  def with_known_plugs(self, **subplugs):
+    """Substitute only known plugs for placeholders for this phase."""
+    return self._apply_with_plugs(subplugs, error_on_unknown=False)
+
   def with_plugs(self, **subplugs):
-    """Substitute plugs for placeholders for this phase."""
+    """Substitute plugs for placeholders for this phase, error on unknowns."""
+    return self._apply_with_plugs(subplugs, error_on_unknown=True)
+
+  def _apply_with_plugs(self, subplugs, error_on_unknown):
+    """Substitute plugs for placeholders for this phase.
+
+    Args:
+      subplugs: dict of plug name to plug class, plug classes to replace.
+      error_on_unknown: bool, if True, then error when an unknown plug name is
+          provided.
+
+    Raises:
+      openhtf.plugs.InvalidPlugError if for one of the plug names one of the
+      following is true:
+        - error_on_unknown is True and the plug name is not registered.
+        - The new plug subclass is not a subclass of the original.
+        - The original plug class is not a placeholder or automatic placeholder.
+
+    Returns:
+      PhaseDescriptor with updated plugs.
+    """
     plugs_by_name = {plug.name: plug for plug in self.plugs}
     new_plugs = dict(plugs_by_name)
 
@@ -182,6 +229,8 @@ class PhaseDescriptor(mutablerecords.Record(
       original_plug = plugs_by_name.get(name)
       accept_substitute = True
       if original_plug is None:
+        if not error_on_unknown:
+          continue
         accept_substitute = False
       elif isinstance(original_plug.cls, openhtf.plugs.PlugPlaceholder):
         accept_substitute = issubclass(sub_class, original_plug.cls.base_class)
@@ -235,6 +284,7 @@ class PhaseDescriptor(mutablerecords.Record(
         len(arg_info.args) > len(kwargs)):
       # Underlying function has room for test_api as an arg. If it doesn't
       # expect it but we miscounted args, we'll get another error farther down.
+      old_logger = test_state.logger
 
       # The logging module has a module _lock instance that is a threading.RLock
       # instance; it can cause deadlocks in Python 2.7 when a KillableThread is
@@ -244,7 +294,10 @@ class PhaseDescriptor(mutablerecords.Record(
         test_state.logger = logging.getLogger(
             '.'.join((logs.get_record_logger_for(test_state.execution_uid).name,
                       'phase', self.name)))
-      return self.func(
-          test_state if self.options.requires_state else test_state.test_api,
-          **kwargs)
+      try:
+        return self.func(
+            test_state if self.options.requires_state else test_state.test_api,
+            **kwargs)
+      finally:
+        test_state.logger = old_logger
     return self.func(**kwargs)

@@ -43,6 +43,7 @@ from openhtf.core.monitors import monitors
 from openhtf.core.phase_descriptor import PhaseDescriptor
 from openhtf.core.phase_descriptor import PhaseOptions
 from openhtf.core.phase_descriptor import PhaseResult
+from openhtf.core.phase_group import PhaseGroup
 from openhtf.core.test_descriptor import Test
 from openhtf.core.test_descriptor import TestApi
 from openhtf.core.test_descriptor import TestDescriptor
@@ -60,7 +61,7 @@ TestPhase = PhaseOptions  # pylint: disable=invalid-name
 
 
 def get_version():
-  """Return the version string of the 'openhtf' package.
+  """Returns the version string of the 'openhtf' package.
 
   Note: the version number doesn't seem to get properly set when using ipython.
   """
