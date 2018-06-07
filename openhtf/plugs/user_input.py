@@ -22,6 +22,7 @@ prompt state should use the openhtf.prompts pseudomodule.
 """
 
 from __future__ import print_function
+
 import collections
 import functools
 import logging
@@ -37,9 +38,9 @@ import uuid
 from openhtf import PhaseOptions
 from openhtf import plugs
 from openhtf.util import argv
+from openhtf.util import console_output
 import six
 from six.moves import input
-
 
 if platform.system() != 'Windows':
   import termios
@@ -67,11 +68,19 @@ Prompt = collections.namedtuple('Prompt', 'id message text_input')
 class ConsolePrompt(threading.Thread):
   """Thread that displays a prompt to the console and waits for a response."""
 
-  def __init__(self, message, callback):
+  def __init__(self, message, callback, color=''):
+    """Initializes a ConsolePrompt.
+
+    Args:
+      message: A string to be presented to the user.
+      callback: A function to be called with the response string.
+      color: An ANSI color code, or the empty string.
+    """
     super(ConsolePrompt, self).__init__()
     self.daemon = True
     self._message = message
     self._callback = callback
+    self._color = color
     self._stopped = False
     self._answered = False
 
@@ -94,7 +103,9 @@ class ConsolePrompt(threading.Thread):
         self._callback(response)
       else:
         # First, display the prompt to the console.
-        sys.stdout.write(''.join((self._message, os.linesep, PROMPT)))
+        console_output.cli_print(self._message, color=self._color,
+                                 end=os.linesep, logger=None)
+        console_output.cli_print(PROMPT, color=self._color, end='', logger=None)
         sys.stdout.flush()
 
         # Before reading, clear any lingering buffered terminal input.
@@ -149,8 +160,16 @@ class UserInput(plugs.FrontendAwareBasePlug):
               'message': self._prompt.message,
               'text-input': self._prompt.text_input}
 
-  def _create_prompt(self, message, text_input):
-    """Sets the prompt."""
+  def _create_prompt(self, message, text_input, cli_color):
+    """Set the prompt.
+
+    Called internally by start_prompt().
+
+    Args:
+      message: A string to be presented to the user.
+      text_input: A boolean indicating whether the user must respond with text.
+      cli_color: An ANSI color code, or the empty string.
+    """
     prompt_id = uuid.uuid4()
     _LOG.debug('Displaying prompt (%s): "%s"%s', prompt_id, message,
                ', Expects text' if text_input else '')
@@ -158,46 +177,69 @@ class UserInput(plugs.FrontendAwareBasePlug):
     self._response = None
     self._prompt = Prompt(id=prompt_id, message=message, text_input=text_input)
     self._console_prompt = ConsolePrompt(
-        message, functools.partial(self.respond, prompt_id))
+        message, functools.partial(self.respond, prompt_id), cli_color)
 
     self._console_prompt.start()
     self.notify_update()
     return prompt_id
 
   def remove_prompt(self):
-    """Ends the prompt."""
+    """Remove the prompt."""
     self._prompt = None
     self._console_prompt.Stop()
     self._console_prompt = None
     self.notify_update()
 
-  def prompt(self, message, text_input=False, timeout_s=None):
-    """Prompt and wait for a user response to the given message.
+  def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
+    """Set the prompt and wait for the user to respond.
 
     Args:
-      message: The message to display to the user.
-      text_input: True iff the user needs to provide a string back.
+      message: A string to be presented to the user.
+      text_input: A boolean indicating whether the user must respond with text.
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
+      cli_color: An ANSI color code, or the empty string.
 
     Returns:
-      The response from the user, or the empty string if text_input was False.
+      A string response, or the empty string if text_input was False.
 
     Raises:
       MultiplePromptsError: There was already an existing prompt.
       PromptUnansweredError: Timed out waiting for the user to respond.
     """
-    self.start_prompt(message, text_input)
+    self.start_prompt(message, text_input, cli_color)
     return self.wait_for_prompt(timeout_s)
 
-  def start_prompt(self, message, text_input=False):
-    """Creates a prompt without blocking on the user's response."""
+  def start_prompt(self, message, text_input=False, cli_color=''):
+    """Set the prompt.
+
+    This can be used in conjunction with remove_prompt() to prompt the user in
+    a non-blocking manner.
+
+    Args:
+      message: A string to be presented to the user.
+      text_input: A boolean indicating whether the user must respond with text.
+      cli_color: An ANSI color code, or the empty string.
+
+    Raises:
+      MultiplePromptsError: There was already an existing prompt.
+    """
     with self._cond:
       if self._prompt:
         raise MultiplePromptsError
-      return self._create_prompt(message, text_input)
+      return self._create_prompt(message, text_input, cli_color)
 
   def wait_for_prompt(self, timeout_s=None):
-    """Waits for and returns the user's response to the last prompt."""
+    """Wait for and return the user's response to the current prompt.
+
+    Args:
+      timeout_s: Seconds to wait before raising a PromptUnansweredError.
+
+    Returns:
+      A string response, or the empty string if text_input was False.
+
+    Raises:
+      PromptUnansweredError: Timed out waiting for the user to respond.
+    """
     with self._cond:
       if self._prompt:
         if timeout_s is None:
@@ -209,17 +251,17 @@ class UserInput(plugs.FrontendAwareBasePlug):
       return self._response
 
   def respond(self, prompt_id, response):
-    """Respond to the prompt that has the given ID.
+    """Respond to the prompt with the given ID.
 
-    If there is no active prompt or the prompt id being responded to doesn't
-    match the active prompt, do nothing.
+    If there is no active prompt or the given ID doesn't match the active
+    prompt, do nothing.
 
     Args:
       prompt_id: Either a UUID instance, or a string representing a UUID.
       response: A string response to the given prompt.
 
     Returns:
-      True if the prompt was used, otherwise False.
+      True if the prompt with the given ID was active, otherwise False.
     """
     if isinstance(prompt_id, six.string_types):
       prompt_id = uuid.UUID(prompt_id)
@@ -248,7 +290,6 @@ def prompt_for_test_start(
   @plugs.plug(prompts=UserInput)
   def trigger_phase(test, prompts):
     """Test start trigger that prompts the user for a DUT ID."""
-
     dut_id = prompts.prompt(message=message, text_input=True,
                             timeout_s=timeout_s)
     test.test_record.dut_id = validator(dut_id)
