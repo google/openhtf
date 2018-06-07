@@ -15,9 +15,14 @@
 
 """Console output utilities for OpenHTF.
 
-This module provides a few conviences to help formatting output for the CLI, as
-well as for forking output to both a logger (for use with test record loggers)
-and to the CLI directly (through sys.stdout).
+This module provides convenience methods to format output for the CLI, along
+with the ability to fork output to both a logger (e.g. a test record logger)
+and to the CLI directly (e.g. sys.stdout).
+
+Under the default configuration, messages printed with these utilities will be
+saved to the test record logs of all running tests. To change this behavior,
+the `logger` parameter should be overridden, e.g. by passing in the test record
+logger for the current test.
 """
 
 import logging
@@ -50,12 +55,11 @@ ARG_PARSER.add_argument(
         Suppress all CLI output from OpenHTF's printing functions and logging.
         This flag will override any verbosity levels set with -v.'''))
 
-
 ANSI_ESC_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 
 
 class ActionFailedError(Exception):
-  """Raised (and caught) when an action is marked as failed."""
+  """Indicates an action failed. Used internally by action_result_context()."""
 
 
 def _printed_len(some_string):
@@ -84,6 +88,7 @@ def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
     width: Total width for the resulting banner.
     file: A file object to which the banner text will be written. Intended for
         use with CLI output file objects like sys.stdout.
+    logger: A logger to use, or None to disable logging.
 
   Example:
 
@@ -92,14 +97,16 @@ def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
     ======================== Foo Bar Baz =======================
 
   """
-  logger.debug(ANSI_ESC_RE.sub('', msg))
-  if not CLI_QUIET:
-    lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
-    rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
-    file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
-        sep=_linesep_for_file(file), color=color, lpad=lpad, msg=msg, rpad=rpad,
-        reset=colorama.Style.RESET_ALL))
-    file.flush()
+  if logger:
+    logger.debug(ANSI_ESC_RE.sub('', msg))
+  if CLI_QUIET:
+    return
+  lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
+  rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
+  file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
+      sep=_linesep_for_file(file), color=color, lpad=lpad, msg=msg, rpad=rpad,
+      reset=colorama.Style.RESET_ALL))
+  file.flush()
 
 
 def bracket_print(msg, color='', width=8, file=sys.stdout):
@@ -141,15 +148,16 @@ def cli_print(msg, color='', end=None, file=sys.stdout, logger=_LOG):
     end: A custom line-ending string to print instead of newline.
     file: A file object to which the baracketed text will be written. Intended
         for use with CLI output file objects like sys.stdout.
-    logger: logger: Logger to which to send analogous output for each message.
-        Intended for use with test record loggers.
+    logger: A logger to use, or None to disable logging.
   """
+  if logger:
+    logger.debug('-> {}'.format(msg))
+  if CLI_QUIET:
+    return
   if end is None:
     end = _linesep_for_file(file)
-  if not CLI_QUIET:
-    file.write('{color}{msg}{reset}{end}'.format(
-        color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
-  logger.debug('-> {}'.format(msg))
+  file.write('{color}{msg}{reset}{end}'.format(
+      color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
 
 
 def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
@@ -173,6 +181,7 @@ def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
 
 class ActionResult(object):
   """Used with an action_result_context to signal the result of an action."""
+
   def __init__(self):
     self.success = None
 
@@ -204,8 +213,8 @@ def action_result_context(action_text,
 
   When entering the context, the action will be printed, and when the context
   is exited, the result will be printed. The object yielded by the context is
-  used to mark the action as a success of failure, whereas a raise from inside
-  the context will also result in the action being marked fail. If the result is
+  used to mark the action as a success or failure, and a raise from inside the
+  context will also result in the action being marked fail. If the result is
   left unset, then indicative text ("????") will be printed as the result.
 
   Args:
@@ -216,7 +225,7 @@ def action_result_context(action_text,
     fail_text: Status message displayed when the action fails.
     unknown_text: Status message displayed when the result is left unset.
     file: Specific file object to write to write CLI output to.
-    logger: Logger to which to send analogous output for each status message.
+    logger: A logger to use, or None to disable logging.
 
   Example usage:
     with action_result_context('Doing an action that will succeed...') as act:
@@ -250,29 +259,35 @@ def action_result_context(action_text,
     Doing an action that will raise...                  [ FAIL ]
     ...
   """
-  logger.debug('Action - %s', action_text)
+  if logger:
+    logger.debug('Action - %s', action_text)
   if not CLI_QUIET:
     file.write(''.join((action_text, '\r')))
-  spacing = (width - status_width - _printed_len(action_text)) * ' '
-  file.flush()
+    file.flush()
+    spacing = (width - status_width - _printed_len(action_text)) * ' '
+
   result = ActionResult()
   try:
     yield result
   except Exception as err:
+    if logger:
+      logger.debug('Result - %s [ %s ]', action_text, fail_text)
     if not CLI_QUIET:
       file.write(''.join((action_text, spacing)))
-      bracket_print(fail_text, width=status_width, color=colorama.Fore.RED)
-    logger.debug('Result - %s [ %s ]', action_text, fail_text)
+      bracket_print(fail_text, width=status_width, color=colorama.Fore.RED,
+                    file=file)
     if not isinstance(err, ActionFailedError):
       raise
+    return
+
+  result_text = succeed_text if result.success else unknown_text
+  result_color = colorama.Fore.GREEN if result.success else colorama.Fore.YELLOW
+  if logger:
+    logger.debug('Result - %s [ %s ]', action_text, result_text)
   if not CLI_QUIET:
     file.write(''.join((action_text, spacing)))
-  if result.success:
-    bracket_print(succeed_text, width=status_width, color=colorama.Fore.GREEN)
-    logger.debug('Result - %s [ %s ]', action_text, succeed_text)
-  elif result.success is None:
-    bracket_print(unknown_text, width=status_width, color=colorama.Fore.YELLOW)
-    logger.debug('Result - %s [ %s ]', action_text, unknown_text)
+    bracket_print(result_text, width=status_width, color=result_color,
+                  file=file)
 
 
 # If invoked as a runnable module, this module will invoke its action result
@@ -293,7 +308,6 @@ if __name__ == '__main__':
 
   with action_result_context('Doing an action that will raise...') as act:
     time.sleep(2)
-    import textwrap
     raise RuntimeError(textwrap.dedent('''\
         Uh oh, looks like there was a raise in the mix.
 
