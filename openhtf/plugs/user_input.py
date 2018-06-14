@@ -15,10 +15,8 @@
 
 """User input module for OpenHTF.
 
-Allows tests to prompt for user input using the framework, so prompts can be
-presented via the CLI interface, the included web frontend, and custom
-frontends alike. Any other part of the framework that needs to access shared
-prompt state should use the openhtf.prompts pseudomodule.
+Provides a plug which can be used to prompt the user for input. The prompt can
+be displayed in the console, the OpenHTF web GUI, and custom frontends.
 """
 
 from __future__ import print_function
@@ -29,7 +27,6 @@ import logging
 import os
 import platform
 import select
-import six
 import sys
 import threading
 import time
@@ -37,9 +34,7 @@ import uuid
 
 from openhtf import PhaseOptions
 from openhtf import plugs
-from openhtf.util import argv
 from openhtf.util import console_output
-import six
 from six.moves import input
 
 if platform.system() != 'Windows':
@@ -142,46 +137,29 @@ class ConsolePrompt(threading.Thread):
 
 
 class UserInput(plugs.FrontendAwareBasePlug):
-  """Get user input from inside test phases."""
+  """Get user input from inside test phases.
+
+  Attributes:
+    last_response: None, or a pair of (prompt_id, response) indicating the last
+        user response that was received by the plug.
+  """
 
   def __init__(self):
     super(UserInput, self).__init__()
+    self.last_response = None
     self._prompt = None
     self._console_prompt = None
     self._response = None
     self._cond = threading.Condition()
 
   def _asdict(self):
-    """Return a dict representation of the current prompt."""
+    """Return a dictionary representation of the current prompt."""
     with self._cond:
       if self._prompt is None:
         return
-      return {'id': self._prompt.id.hex,
+      return {'id': self._prompt.id,
               'message': self._prompt.message,
               'text-input': self._prompt.text_input}
-
-  def _create_prompt(self, message, text_input, cli_color):
-    """Set the prompt.
-
-    Called internally by start_prompt().
-
-    Args:
-      message: A string to be presented to the user.
-      text_input: A boolean indicating whether the user must respond with text.
-      cli_color: An ANSI color code, or the empty string.
-    """
-    prompt_id = uuid.uuid4()
-    _LOG.debug('Displaying prompt (%s): "%s"%s', prompt_id, message,
-               ', Expects text' if text_input else '')
-
-    self._response = None
-    self._prompt = Prompt(id=prompt_id, message=message, text_input=text_input)
-    self._console_prompt = ConsolePrompt(
-        message, functools.partial(self.respond, prompt_id), cli_color)
-
-    self._console_prompt.start()
-    self.notify_update()
-    return prompt_id
 
   def remove_prompt(self):
     """Remove the prompt."""
@@ -191,7 +169,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     self.notify_update()
 
   def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
-    """Set the prompt and wait for the user to respond.
+    """Display a prompt and wait for a response.
 
     Args:
       message: A string to be presented to the user.
@@ -210,10 +188,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     return self.wait_for_prompt(timeout_s)
 
   def start_prompt(self, message, text_input=False, cli_color=''):
-    """Set the prompt.
-
-    This can be used in conjunction with remove_prompt() to prompt the user in
-    a non-blocking manner.
+    """Display a prompt.
 
     Args:
       message: A string to be presented to the user.
@@ -222,14 +197,29 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
     Raises:
       MultiplePromptsError: There was already an existing prompt.
+
+    Returns:
+      A string uniquely identifying the prompt.
     """
     with self._cond:
       if self._prompt:
         raise MultiplePromptsError
-      return self._create_prompt(message, text_input, cli_color)
+      prompt_id = uuid.uuid4().hex
+      _LOG.debug('Displaying prompt (%s): "%s"%s', prompt_id, message,
+                 ', Expects text input.' if text_input else '')
+
+      self._response = None
+      self._prompt = Prompt(
+          id=prompt_id, message=message, text_input=text_input)
+      self._console_prompt = ConsolePrompt(
+          message, functools.partial(self.respond, prompt_id), cli_color)
+
+      self._console_prompt.start()
+      self.notify_update()
+      return prompt_id
 
   def wait_for_prompt(self, timeout_s=None):
-    """Wait for and return the user's response to the current prompt.
+    """Wait for the user to respond to the current prompt.
 
     Args:
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
@@ -257,19 +247,18 @@ class UserInput(plugs.FrontendAwareBasePlug):
     prompt, do nothing.
 
     Args:
-      prompt_id: Either a UUID instance, or a string representing a UUID.
+      prompt_id: A string uniquely identifying the prompt.
       response: A string response to the given prompt.
 
     Returns:
       True if the prompt with the given ID was active, otherwise False.
     """
-    if isinstance(prompt_id, six.string_types):
-      prompt_id = uuid.UUID(prompt_id)
-    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id.hex, response)
+    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
     with self._cond:
       if not (self._prompt and self._prompt.id == prompt_id):
         return False
       self._response = response
+      self.last_response = (prompt_id, response)
       self.remove_prompt()
       self._cond.notifyAll()
     return True
@@ -280,19 +269,19 @@ def prompt_for_test_start(
     validator=lambda sn: sn, cli_color=''):
   """Return an OpenHTF phase for use as a prompt-based start trigger.
 
-    Args:
-      message: The message to display to the user.
-      timeout_s: Seconds to wait before raising a PromptUnansweredError.
-      validator: Function used to validate or modify the serial number.
-      cli_color: An ANSI color code, or the empty string.
+  Args:
+    message: The message to display to the user.
+    timeout_s: Seconds to wait before raising a PromptUnansweredError.
+    validator: Function used to validate or modify the serial number.
+    cli_color: An ANSI color code, or the empty string.
   """
 
   @PhaseOptions(timeout_s=timeout_s)
   @plugs.plug(prompts=UserInput)
   def trigger_phase(test, prompts):
     """Test start trigger that prompts the user for a DUT ID."""
-    dut_id = prompts.prompt(message=message, text_input=True,
-                            timeout_s=timeout_s, cli_color=cli_color)
+    dut_id = prompts.prompt(
+        message, text_input=True, timeout_s=timeout_s, cli_color=cli_color)
     test.test_record.dut_id = validator(dut_id)
 
   return trigger_phase
