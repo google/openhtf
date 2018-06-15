@@ -29,6 +29,10 @@ from six.moves import queue
 
 _LOG = logging.getLogger(__name__)
 
+# The multicast logs can occur frequently, e.g. every couple seconds. Prevent
+# most logs from ending up in the test record by default.
+_LOG.setLevel(logging.WARNING)
+
 DEFAULT_ADDRESS = '239.1.1.1'
 DEFAULT_PORT = 10000
 DEFAULT_TTL = 1
