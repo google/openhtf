@@ -131,7 +131,10 @@ from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
+from openhtf.util import logs
 import six
+
+logs.CLI_LOGGING_VERBOSITY = 2
 
 
 class InvalidTestError(Exception):
@@ -177,6 +180,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
+    logs.configure_cli_logging()
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
