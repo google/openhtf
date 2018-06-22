@@ -194,10 +194,9 @@ class BasePlug(object):
     pass
 
 
-  @classmethod
-  def uses_base_tear_down(cls):
+  def uses_base_tear_down(self):
     """Checks whether the tearDown method is the BasePlug implementation."""
-    this_tear_down = getattr(cls, 'tearDown')
+    this_tear_down = getattr(self, 'tearDown')
     base_tear_down = getattr(BasePlug, 'tearDown')
     return this_tear_down.__func__ is base_tear_down.__func__
 
