@@ -46,6 +46,14 @@ class AdderPlug(plugs.FrontendAwareBasePlug):
     self.state = 'TORN DOWN'
 
 
+class AdderSubclassPlug(AdderPlug):
+  pass
+
+
+class DummyPlug(plugs.BasePlug):
+  pass
+
+
 class TearDownRaisesPlug1(plugs.BasePlug):
   TORN_DOWN = False
   def tearDown(self):
@@ -178,3 +186,10 @@ class PlugsTest(test.TestCase):
       @plugs.plug(adder_plug=AdderPlug)
       def dummy_phase(test, adder_plug):
         pass
+
+  def test_uses_base_tear_down(self):
+    self.assertTrue(plugs.BasePlug().uses_base_tear_down())
+    self.assertTrue(DummyPlug().uses_base_tear_down())
+    self.assertFalse(AdderPlug().uses_base_tear_down())
+    self.assertFalse(AdderSubclassPlug().uses_base_tear_down())
+    self.assertFalse(TearDownRaisesPlug1().uses_base_tear_down())
