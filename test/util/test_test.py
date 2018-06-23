@@ -163,7 +163,7 @@ class TestTest(test.TestCase):
     def bad_test(self):
       yield None
 
-    # The InvalidTestError gets raised upon initial invokation of the test
+    # The InvalidTestError gets raised upon initial invocation of the test
     # method, so we need to do the wrapping inside the assertRaises context
     # rather than using the decorator on this test method itself and only
     # wrapping the yield statement in the assertRaises context.

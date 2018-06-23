@@ -69,9 +69,9 @@ warning message.
 If the configuration key is declared but no default_value is provided and no
 value has been loaded, then no value will be passed, and a TypeError will be
 raised unless the value is passed via keyword.  Essentially, if `keyword_arg in
-conf` evaluates to True, then that keyword arg will be provded from the
-configuration unless overriden in the kwargs passed to the function.  Otherwise
-keyword_arg must be passed via kwargs at function invokation time.
+conf` evaluates to True, then that keyword arg will be provided from the
+configuration unless overridden in the kwargs passed to the function.  Otherwise
+keyword_arg must be passed via kwargs at function invocation time.
 
 The conf module supports 'in' checks, where `key in conf` will evaluate to True
 if conf[key] would successfully provide a value.  That is, if either a value
@@ -152,7 +152,7 @@ decoration time, but do not have to be:
     conf.foo = 'bar'
 
 This is also valid.  The entire configuration is restored to the state it had
-upon excution of the decorated callable, regardless of which keys are updated
+upon execution of the decorated callable, regardless of which keys are updated
 in the decorator or in the decorated callable.
 """
 
@@ -507,7 +507,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 
     Args:
       _func: The function to wrap.  The returned wrapper will invoke the
-          function and restore the config to the state it was in at invokation.
+          function and restore the config to the state it was in at invocation.
       **config_values: Config keys can be set inline at decoration time, see
           examples.  Note that config keys can't begin with underscore, so
           there can be no name collision with _func.
@@ -543,7 +543,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 
     Additional positional arguments may be used that do not appear in the
     configuration, but those arguments *MUST* be specified as keyword arguments
-    upon invokation of the method.  This is to avoid ambiguity in which
+    upon invocation of the method.  This is to avoid ambiguity in which
     positional arguments are getting which values.
 
     Args:
