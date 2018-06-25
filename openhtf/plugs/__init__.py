@@ -194,6 +194,14 @@ class BasePlug(object):
     pass
 
 
+  @classmethod
+  def uses_base_tear_down(cls):
+    """Checks whether the tearDown method is the BasePlug implementation."""
+    this_tear_down = getattr(cls, 'tearDown')
+    base_tear_down = getattr(BasePlug, 'tearDown')
+    return this_tear_down.__code__ is base_tear_down.__code__
+
+
 class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
   """A plug that notifies of any state updates.
 
@@ -450,8 +458,11 @@ class PlugManager(object):
     """
     _LOG.debug('Tearing down all plugs.')
     for plug_type, plug_instance in six.iteritems(self._plugs_by_type):
-      thread = _PlugTearDownThread(plug_instance,
-                                   name='<PlugTearDownThread: %s>' % plug_type)
+      if plug_instance.uses_base_tear_down():
+        name = '<PlugTearDownThread: BasePlug No-Op for %s>' % plug_type
+      else:
+        name = '<PlugTearDownThread: %s>' % plug_type
+      thread = _PlugTearDownThread(plug_instance, name=name)
       thread.start()
       timeout_s = (conf.plug_teardown_timeout_s
                    if conf.plug_teardown_timeout_s
