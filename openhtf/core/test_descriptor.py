@@ -301,7 +301,7 @@ class Test(object):
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
-            _LOG.error(
+            _LOG.exception(
                 'Output callback %s raised; continuing anyway', output_cb)
         # Make sure the final outcome of the test is printed last and in a
         # noticeable color so it doesn't get scrolled off the screen or missed.
