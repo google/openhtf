@@ -458,9 +458,9 @@ class PlugManager(object):
     _LOG.debug('Tearing down all plugs.')
     for plug_type, plug_instance in six.iteritems(self._plugs_by_type):
       if plug_instance.uses_base_tear_down():
-        name = '<PlugTearDownThread: %s>' % plug_type
-      else:
         name = '<PlugTearDownThread: BasePlug No-Op for %s>' % plug_type
+      else:
+        name = '<PlugTearDownThread: %s>' % plug_type
       thread = _PlugTearDownThread(plug_instance, name=name)
       thread.start()
       timeout_s = (conf.plug_teardown_timeout_s
