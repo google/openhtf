@@ -290,7 +290,7 @@ class CliFormatter(logging.Formatter):
 
 
 @functions.call_once
-def initialize_logging():
+def configure_logging():
   """One-time initialization of loggers. See module docstring for more info."""
 
   # Define the top-level logger.
