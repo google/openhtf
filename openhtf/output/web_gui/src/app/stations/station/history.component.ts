@@ -38,6 +38,7 @@ export class HistoryComponent implements OnChanges {
   expanded = false;
   hasError = false;
   history: HistoryItem[] = [];
+  historyFromDiskEnabled = false;
   isLoading = false;
 
   private lastClickedItem: HistoryItem|null = null;
@@ -85,8 +86,8 @@ export class HistoryComponent implements OnChanges {
         // attachments until we know the file name, so try to retrieve it now.
         if (historyItem.testState.fileName === null) {
           this.historyService.retrieveFileName(this.station, historyItem)
-              .catch(error => {
-                if (error.status !== 404) {
+              .catch(() => {
+                if (this.historyFromDiskEnabled) {
                   this.flashMessage.warn(
                       'Could not retrieve history from disk, so attachments ' +
                       'are not available. You may try again later.');
@@ -115,16 +116,19 @@ export class HistoryComponent implements OnChanges {
   }
 
   private loadHistory() {
-    this.isLoading = true;
     this.hasError = false;
+    this.isLoading = true;
+    this.historyFromDiskEnabled = false;
 
     this.historyService.refreshList(this.station)
         .then(() => {
           this.isLoading = false;
+          this.historyFromDiskEnabled = true;
         })
-        .catch(() => {
+        .catch(error => {
           this.isLoading = false;
           this.hasError = true;
+          this.historyFromDiskEnabled = error.status !== 404;
         });
   }
 

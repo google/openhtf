@@ -62,8 +62,13 @@
     <li *ngIf="isLoading" class="status-text">
       Loading history from the server...
     </li>
-    <li *ngIf="hasError" class="status-text u-text-color-error">
-      Could not retrieve test history from the server.
+    <li *ngIf="hasError && !historyFromDiskEnabled" class="status-text">
+      History from disk is disabled.
+    </li>
+    <li *ngIf="hasError && historyFromDiskEnabled" class="status-text">
+      <span class="u-text-color-error">
+        Could not retrieve test history from the server.
+      </span>
     </li>
   </ul>
 
