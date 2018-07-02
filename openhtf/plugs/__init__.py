@@ -193,13 +193,6 @@ class BasePlug(object):
     """This method is called automatically at the end of each Test execution."""
     pass
 
-  @classmethod
-  def uses_base_tear_down(cls):
-    """Checks whether the tearDown method is the BasePlug implementation."""
-    this_tear_down = getattr(cls, 'tearDown')
-    base_tear_down = getattr(BasePlug, 'tearDown')
-    return this_tear_down.__code__ is base_tear_down.__code__
-
 
   @classmethod
   def uses_base_tear_down(cls):
