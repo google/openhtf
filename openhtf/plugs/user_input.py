@@ -277,13 +277,14 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
 def prompt_for_test_start(
     message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24,
-    validator=lambda sn: sn):
+    validator=lambda sn: sn, cli_color=''):
   """Return an OpenHTF phase for use as a prompt-based start trigger.
 
     Args:
       message: The message to display to the user.
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
       validator: Function used to validate or modify the serial number.
+      cli_color: An ANSI color code, or the empty string.
   """
 
   @PhaseOptions(timeout_s=timeout_s)
@@ -291,7 +292,7 @@ def prompt_for_test_start(
   def trigger_phase(test, prompts):
     """Test start trigger that prompts the user for a DUT ID."""
     dut_id = prompts.prompt(message=message, text_input=True,
-                            timeout_s=timeout_s)
+                            timeout_s=timeout_s, cli_color=cli_color)
     test.test_record.dut_id = validator(dut_id)
 
   return trigger_phase
