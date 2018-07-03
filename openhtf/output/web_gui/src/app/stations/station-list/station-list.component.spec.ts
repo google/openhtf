@@ -58,7 +58,7 @@ class MockDashboardService {
 
   registerMockStation(station) {
     this.stations.push(station);
-    this.messages.next();
+    this.messages.next({});
   }
 }
 
