@@ -163,8 +163,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
-    self.plug_manager = plugs.PlugManager(
-        logger_name='test.PlugManager')
+    self.plug_manager = plugs.PlugManager(record_logger_name='test.PlugManager')
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
