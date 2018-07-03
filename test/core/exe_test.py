@@ -686,7 +686,8 @@ class PhaseExecutorTest(unittest.TestCase):
   def setUp(self):
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(
+            record_logger_name='mock.logger.for.openhtf'),
         execution_uid='01234567890',
         logger=mock.MagicMock())
     self.test_state.plug_manager.initialize_plugs([
