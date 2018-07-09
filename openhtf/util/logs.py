@@ -24,7 +24,7 @@ passed to test phases:
 
 In order to facilitate adding logs to the test record output from places
 outside the test phase (without forcing the author to pass the logger object
-around), a user can directly use a logger instance assocated with the Test's
+around), a user can directly use a logger instance associated with the Test's
 output TestRecord.  This is accessible via the get_record_logger_for function
 in this module, which take's a Test's UID and returns a Python Logger:
 
@@ -46,7 +46,7 @@ in this module, which take's a Test's UID and returns a Python Logger:
     helper = MyHelperClass()
     my_test = openhtf.Test(MyPhase.with_args(helper=helper))
     helper.test_uid = my_test.uid
-    my_test.Excute()
+    my_test.Execute()
 
 Framework logs are by default output only to stderr at a warning level.  They
 can be additionally logged to a file (with a different level) via the

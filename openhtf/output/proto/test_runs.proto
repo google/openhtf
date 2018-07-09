@@ -78,7 +78,7 @@ enum Status {
 }
 
 
-// FailureCode's describe an error/failure ocurred in a tester that we would
+// FailureCode's describe an error/failure occurred in a tester that we would
 // like to deal with in the xtf server to get a possible action for the person
 // doing the test to proceed. 'code' may be the exception name or a parameter
 // name. 'details' involve some possible more information which describes the

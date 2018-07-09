@@ -119,7 +119,7 @@ class TestState(util.SubscribableStateMixin):
     running_phase_state: PhaseState object for the currently running phase,
         if any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
-        invokations.  It's passed to the user via test_api.
+        invocations.  It's passed to the user via test_api.
     test_api: An openhtf.TestApi instance for passing to test phases,
         providing test authors access to necessary state information, while
         protecting internal-only structures from being accidentally modified.

@@ -458,7 +458,7 @@ class DimensionedMeasuredValue(mutablerecords.Record(
 
     Returns:
       A list of tuples; the last element of each tuple will be the measured
-      value, the other elements will be the assocated coordinates.  The tuples
+      value, the other elements will be the associated coordinates.  The tuples
       are output in the order in which they were set.
     """
     if not self.is_value_set:

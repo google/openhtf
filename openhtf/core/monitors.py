@@ -19,7 +19,7 @@ Monitors are implemented similar to phase functions - they are decorated
 with plugs.plug() to pass plugs in.  The return value of a monitor
 function, however, will be used to append a value to a measurement.
 
-Monitors by default poll at a rate of 1 second between invokations of
+Monitors by default poll at a rate of 1 second between invocations of
 the monitor function.  The poll interval (given in milliseconds) determines the
 approximate frequency at which values will be sampled.  A sample is considered
 to have been taken at the time when the monitor function *returns*, not when
