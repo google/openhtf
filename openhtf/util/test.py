@@ -179,7 +179,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
-    logs.configure_cli_logging()
+    logs.configure_logging()
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
