@@ -36,29 +36,29 @@ class PlugsTest(unittest.TestCase):
     thread.start()
     return_value = self.plug.prompt('Test blocking prompt.')
 
-    self.assertIs(self.plug._asdict(), None)
+    self.assertIsNone(self.plug._asdict())
     self.assertEqual(return_value, 'Mock response.')
 
   def test_respond_to_non_blocking_prompt(self):
     prompt_id = self.plug.start_prompt('Test non-blocking prompt.')
 
-    self.assertIsNot(self.plug._asdict(), None)
+    self.assertIsNotNone(self.plug._asdict())
 
     response_used = self.plug.respond(prompt_id, 'Mock response.')
 
     self.assertTrue(response_used)
-    self.assertIs(self.plug._asdict(), None)
+    self.assertIsNone(self.plug._asdict())
     self.assertEqual(self.plug.last_response, (prompt_id, 'Mock response.'))
 
   def test_cancel_non_blocking_prompt(self):
     self.plug.start_prompt('Test non-blocking prompt.')
 
-    self.assertIsNot(self.plug._asdict(), None)
+    self.assertIsNotNone(self.plug._asdict())
 
     self.plug.remove_prompt()
 
-    self.assertIs(self.plug._asdict(), None)
-    self.assertIs(self.plug.last_response, None)
+    self.assertIsNone(self.plug._asdict())
+    self.assertIsNone(self.plug.last_response)
 
   def test_respond_to_wrong_prompt(self):
     first_prompt_id = self.plug.start_prompt('Test first prompt.')
@@ -67,7 +67,7 @@ class PlugsTest(unittest.TestCase):
     response_used = self.plug.respond(first_prompt_id, 'Mock response.')
 
     self.assertFalse(response_used)
-    self.assertIsNot(self.plug._asdict(), None)
+    self.assertIsNotNone(self.plug._asdict())
 
   def test_multiple_prompts_error(self):
     self.plug.start_prompt('Test first prompt.')
