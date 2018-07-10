@@ -347,7 +347,7 @@ class TestCase(unittest.TestCase):
     test_method = getattr(self, methodName)
     if inspect.isgeneratorfunction(test_method):
       raise ValueError(
-          "%s yields without @openhtf.util.test.yields_phases" % methodName)
+          '%s yields without @openhtf.util.test.yields_phases' % methodName)
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
@@ -390,6 +390,9 @@ class TestCase(unittest.TestCase):
 
   def assertTestFail(self, test_rec):
     self.assertEqual(test_record.Outcome.FAIL, test_rec.outcome)
+
+  def assertTestAborted(self, test_rec):
+    self.assertEqual(test_record.Outcome.ABORTED, test_rec.outcome)
 
   def assertTestError(self, test_rec, exc_type=None):
     self.assertEqual(test_record.Outcome.ERROR, test_rec.outcome)

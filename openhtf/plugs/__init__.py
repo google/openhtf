@@ -193,7 +193,6 @@ class BasePlug(object):
     """This method is called automatically at the end of each Test execution."""
     pass
 
-
   @classmethod
   def uses_base_tear_down(cls):
     """Checks whether the tearDown method is the BasePlug implementation."""

@@ -355,7 +355,7 @@ class PhasesHandler(BaseTestHandler):
 
     phase_descriptors = [
         dict(id=id(phase), **data.convert_to_base_types(phase))
-        for phase in test.descriptor.phases]
+        for phase in test.descriptor.phase_group]
 
     # Wrap value in a dict because writing a list directly is prohibited.
     self.write({'data': phase_descriptors})
