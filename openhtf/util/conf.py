@@ -261,8 +261,13 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     if flags is None:
       flags = self._flags
     for keyval in flags.config_value:
-      k,v = keyval.split('=', 1)
+      k, v = keyval.split('=', 1)
       v = self._modules['yaml'].load(v) if isinstance(v, str) else v
+
+      # Force any command line keys and values that are bytes to unicode.
+      k = k.decode() if isinstance(k, bytes) else k
+      v = v.decode() if isinstance(v, bytes) else v
+
       self._flag_values.setdefault(k, v)
 
   @staticmethod
@@ -428,6 +433,11 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
               'Ignoring new value (%s), keeping previous value for %s: %s',
               value, key, self._loaded_values[key])
           continue
+
+      # Force any keys and values that are bytes to unicode.
+      key = key.decode() if isinstance(key, bytes) else key
+      value = value.decode() if isinstance(value, bytes) else value
+
       self._loaded_values[key] = value
     if undeclared_keys:
       self._logger.warning('Ignoring undeclared configuration keys: %s',
