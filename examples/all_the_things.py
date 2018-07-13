@@ -143,9 +143,11 @@ def teardown(test):
 
 if __name__ == '__main__':
   test = htf.Test(
-      hello_world,
-      set_measurements, dimensions, attachments, skip_phase,
-      measures_with_args.with_args(min=2, max=4), analysis,
+      htf.PhaseGroup.with_teardown(teardown)(
+          hello_world,
+          set_measurements, dimensions, attachments, skip_phase,
+          measures_with_args.with_args(min=2, max=4), analysis,
+      ),
       # Some metadata fields, these in particular are used by mfg-inspector,
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
@@ -168,5 +170,4 @@ if __name__ == '__main__':
   #    test.add_output_callbacks(mfg_inspector.UploadToMfgInspector.from_json(
   #        json.load(json_file)))
 
-  test.configure(teardown_function=teardown)
   test.execute(test_start=user_input.prompt_for_test_start())

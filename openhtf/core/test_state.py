@@ -119,7 +119,7 @@ class TestState(util.SubscribableStateMixin):
     running_phase_state: PhaseState object for the currently running phase,
         if any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
-        invokations.  It's passed to the user via test_api.
+        invocations.  It's passed to the user via test_api.
     test_api: An openhtf.TestApi instance for passing to test phases,
         providing test authors access to necessary state information, while
         protecting internal-only structures from being accidentally modified.
@@ -137,14 +137,18 @@ class TestState(util.SubscribableStateMixin):
         start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
-    self.logger = logs.initialize_record_logger(
+    logs.initialize_record_handler(
         execution_uid, self.test_record, self.notify_update)
+    self.logger = logs.get_record_logger_for(execution_uid)
     self.plug_manager = plugs.PlugManager(
         test_desc.plug_types, self.logger.name)
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
     self.test_options = test_options
+
+  def __del__(self):
+    logs.remove_record_handler(self.execution_uid)
 
   @property
   def test_api(self):

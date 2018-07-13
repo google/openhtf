@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import sys
 
 _old_argv = list(sys.argv)
@@ -61,7 +62,7 @@ class TestConf(unittest.TestCase):
     conf.reset()
 
   def test_yaml_config(self):
-    with open(self.YAML_FILENAME, 'rb') as yamlfile:
+    with io.open(self.YAML_FILENAME, encoding='utf-8') as yamlfile:
       conf._flags.config_file = yamlfile
       conf.reset()
     self.assertEqual('yaml_test_value', conf.yaml_test_key)
@@ -144,12 +145,12 @@ class TestConf(unittest.TestCase):
       conf.declare('Invalid')
 
   def test_bad_config_file(self):
-    with open(self.NOT_A_DICT, 'rb') as yamlfile:
+    with io.open(self.NOT_A_DICT, encoding='utf-8') as yamlfile:
       conf._flags.config_file = yamlfile
       with self.assertRaises(conf.ConfigurationInvalidError):
         conf.reset()
 
-    with open(self.BAD_FORMAT, 'rb') as yamlfile:
+    with io.open(self.BAD_FORMAT, encoding='utf-8') as yamlfile:
       conf._flags.config_file = yamlfile
       with self.assertRaises(conf.ConfigurationInvalidError):
         conf.reset()

@@ -16,7 +16,7 @@
 """Multicast facilities for sending and receiving messages.
 
 This module includes both a MulticastListener that listens on a multicast
-socket and invokes a callback function for each message recieved, and a send()
+socket and invokes a callback function for each message received, and a send()
 function that is used to send one-shot messages to a multicast socket.
 """
 

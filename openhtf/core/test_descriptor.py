@@ -36,6 +36,7 @@ import mutablerecords
 from openhtf import util
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
+from openhtf.core import phase_group
 from openhtf.core import test_executor
 from openhtf.core import test_record
 
@@ -54,6 +55,12 @@ conf.declare('capture_source', description=textwrap.dedent(
 
     Set to 'true' if you want to capture your test's source.'''),
              default_value=False)
+# TODO(arsharma): Deprecate this configuration after removing the old teardown
+# specification.
+conf.declare('teardown_timeout_s', default_value=30, description=
+             'Default timeout (in seconds) for test teardown functions; '
+             'this option is deprecated and only applies to the deprecated '
+             'Test level teardown function.')
 
 
 class UnrecognizedTestUidError(Exception):
@@ -118,6 +125,7 @@ class Test(object):
   """
 
   TEST_INSTANCES = weakref.WeakValueDictionary()
+  HANDLED_SIGINT_ONCE = False
 
   def __init__(self, *phases, **metadata):
     # Some sanity checks on special metadata keys we automatically fill in.
@@ -135,16 +143,13 @@ class Test(object):
 
     if conf.capture_source:
       # First, we copy the phases with the real CodeInfo for them.
-      phases = [
-          mutablerecords.CopyRecord(
-              phase, code_info=test_record.CodeInfo.for_function(phase.func))
-          for phase in self._test_desc.phases]
+      group = self._test_desc.phase_group.load_code_info()
 
       # Then we replace the TestDescriptor with one that stores the test
       # module's CodeInfo as well as our newly copied phases.
       code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
       self._test_desc = self._test_desc._replace(
-          code_info=code_info, phases=phases)
+          code_info=code_info, phase_group=group)
 
     # Make sure configure() gets called at least once before Execute().  The
     # user might call configure() again to override options, but we don't want
@@ -218,7 +223,7 @@ class Test(object):
     if known_args.config_help:
       sys.stdout.write(conf.help_text)
       sys.exit(0)
-    logs.configure_cli_logging()
+    logs.configure_logging()
     for key, value in six.iteritems(kwargs):
       setattr(self._test_options, key, value)
 
@@ -227,21 +232,37 @@ class Test(object):
     if cls.TEST_INSTANCES:
       _LOG.error('Received SIGINT, stopping all tests.')
       for test in cls.TEST_INSTANCES.values():
-        test.stop_from_sig_int()
-    # The default SIGINT handler does this. If we don't, then nobody above
-    # us is notified of the event. This will raise this exception in the main
-    # thread.
-    raise KeyboardInterrupt()
+        test.abort_from_sig_int()
+    if not cls.HANDLED_SIGINT_ONCE:
+      cls.HANDLED_SIGINT_ONCE = True
+      raise KeyboardInterrupt
+    # Otherwise, does not raise KeyboardInterrupt to ensure that the tests are
+    # cleaned up.
 
-  def stop_from_sig_int(self):
-    """Stop test execution as abruptly as we can, only in response to SIGINT."""
+  def abort_from_sig_int(self):
+    """Abort test execution abruptly, only in response to SIGINT."""
     with self._lock:
-      _LOG.error('Stopping %s due to SIGINT', self)
+      _LOG.error('Aborting %s due to SIGINT', self)
       if self._executor:
         # TestState str()'s nicely to a descriptive string, so let's log that
         # just for good measure.
         _LOG.error('Test state: %s', self._executor.test_state)
-        self._executor.stop()
+        self._executor.abort()
+
+  # TODO(arsharma): teardown_function test option is deprecated; remove this.
+  def _get_running_test_descriptor(self):
+    """If there is a teardown_function, wrap current descriptor with it."""
+    if not self._test_options.teardown_function:
+      return self._test_desc
+
+    teardown_phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(
+        self._test_options.teardown_function)
+    if not teardown_phase.options.timeout_s:
+      teardown_phase.options.timeout_s = conf.teardown_timeout_s
+    return TestDescriptor(
+        phase_group.PhaseGroup(main=[self._test_desc.phase_group],
+                               teardown=[teardown_phase]),
+        self._test_desc.code_info, self._test_desc.metadata)
 
   def execute(self, test_start=None):
     """Starts the framework and executes the given test.
@@ -282,8 +303,9 @@ class Test(object):
       if conf.capture_source:
         trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
 
+      test_desc = self._get_running_test_descriptor()
       self._executor = test_executor.TestExecutor(
-          self._test_desc, self.make_uid(), trigger, self._test_options)
+          test_desc, self.make_uid(), trigger, self._test_options)
 
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
@@ -291,6 +313,11 @@ class Test(object):
 
     try:
       self._executor.wait()
+    except KeyboardInterrupt:
+      # The SIGINT handler only raises the KeyboardInterrupt once, so only retry
+      # that once.
+      self._executor.wait()
+      raise
     finally:
       try:
         final_state = self._executor.finalize()
@@ -327,6 +354,7 @@ class Test(object):
     return final_state.test_record.outcome == test_record.Outcome.PASS
 
 
+# TODO(arsharma): Deprecate the teardown_function in favor of PhaseGroups.
 class TestOptions(mutablerecords.Record('TestOptions', [], {
     'name': 'openhtf_test',
     'output_callbacks': list,
@@ -351,31 +379,30 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
 
 
 class TestDescriptor(collections.namedtuple(
-    'TestDescriptor', ['phases', 'code_info', 'metadata', 'uid'])):
+    'TestDescriptor', ['phase_group', 'code_info', 'metadata', 'uid'])):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
   by the framework along the way.
 
   Attributes:
-    phases: The phases to execute for this Test.
+    phase_group: The top level phase group to execute for this Test.
     metadata: Any metadata that should be associated with test records.
     code_info: Information about the module that created the Test.
     uid: UID for this test.
   """
 
   def __new__(cls, phases, code_info, metadata):
-    phases = [
-        phase_descriptor.PhaseDescriptor.wrap_or_copy(phase)
-        for phase in phases
-    ]
+    group = phase_group.PhaseGroup.convert_if_not(phases)
     return super(TestDescriptor, cls).__new__(
-        cls, phases, code_info, metadata, uid=uuid.uuid4().hex[:16])
+        cls, group, code_info, metadata, uid=uuid.uuid4().hex[:16])
 
   @property
   def plug_types(self):
     """Returns set of plug types required by this test."""
-    return {plug.cls for phase in self.phases for plug in phase.plugs}
+    return {plug.cls
+            for phase in self.phase_group
+            for plug in phase.plugs}
 
 
 class TestApi(collections.namedtuple('TestApi', [

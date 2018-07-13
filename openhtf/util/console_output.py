@@ -323,7 +323,7 @@ class CliQuietFilter(logging.Filter):
   """Filter that suppresses logging output if the --quiet CLI option is set.
 
   Note that the --quiet CLI option is stored in the CLI_QUIET member of this
-  module, and can thus be overidden in test scripts. This filter should only
+  module, and can thus be overridden in test scripts. This filter should only
   be used with loggers that print to the CLI.
   """
   def filter(self, record):

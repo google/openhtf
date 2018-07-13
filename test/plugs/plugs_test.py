@@ -17,7 +17,6 @@ import time
 
 import mock
 import openhtf
-
 from openhtf import plugs
 from openhtf.util import test
 
@@ -72,7 +71,7 @@ class PlugsTest(test.TestCase):
 
   def setUp(self):
     self.plug_manager = plugs.PlugManager(
-        {AdderPlug}, logger_name='mock.logger.for.openhtf')
+        {AdderPlug}, record_logger_name='mock.logger.for.openhtf')
     AdderPlug.INSTANCE_COUNT = 0
 
   def tearDown(self):
