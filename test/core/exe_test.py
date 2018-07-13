@@ -448,7 +448,8 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
   def setUp(self):
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(
+            record_logger_name='mock.logger.for.openhtf'),
         execution_uid='01234567890',
         logger=mock.MagicMock())
     self.phase_exec = mock.MagicMock(
@@ -528,7 +529,8 @@ class TestExecutorExecutePhasesTest(unittest.TestCase):
   def setUp(self):
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(
+            record_logger_name='mock.logger.for.openhtf'),
         execution_uid='01234567890',
         logger=mock.MagicMock())
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
@@ -612,7 +614,8 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
   def setUp(self):
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(
+            record_logger_name='mock.logger.for.openhtf'),
         execution_uid='01234567890',
         logger=mock.MagicMock())
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
@@ -686,7 +689,8 @@ class PhaseExecutorTest(unittest.TestCase):
   def setUp(self):
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(
+            record_logger_name='mock.logger.for.openhtf'),
         execution_uid='01234567890',
         logger=mock.MagicMock())
     self.test_state.plug_manager.initialize_plugs([
