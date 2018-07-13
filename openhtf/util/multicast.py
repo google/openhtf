@@ -113,6 +113,7 @@ class MulticastListener(threading.Thread):
     while self._live:
       try:
         data, address = self._sock.recvfrom(MAX_MESSAGE_BYTES)
+        data = data.decode("utf-8")
         log_line = 'Received multicast message from %s: %s' % (address, data)
         response = self._callback(data)
         if response is not None:
@@ -121,6 +122,7 @@ class MulticastListener(threading.Thread):
           # so that multiple processes on the same host can listen for
           # requests and reply (if they all try to use the multicast socket
           # to reply, they conflict and this sendto fails).
+          response = response.encode("utf-8")
           socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(
               response, address)
         _LOG.debug(log_line)
@@ -166,6 +168,7 @@ def send(query,
     while True:
       try:
         data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
+        data = data.decode("utf-8")
       except socket.timeout:
         recv_queue.put(None)
         break
