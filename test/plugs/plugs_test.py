@@ -94,12 +94,19 @@ class PlugsTest(test.TestCase):
         AdderPlug.LAST_INSTANCE,
         self.plug_manager.provide_plugs(
             (('adder_plug', AdderPlug),))['adder_plug'])
-    self.assertEqual(self.plug_manager._asdict()['plug_descriptors'], {
-            'plugs_test.AdderPlug': {'mro': ['plugs_test.AdderPlug']},
-        })
-    self.assertEqual(self.plug_manager._asdict()['plug_states'], {
-            'plugs_test.AdderPlug': {'number': 0},
-        })
+    adder_plug_name = AdderPlug.__module__ + '.AdderPlug'
+    self.assertEqual(
+        {
+            adder_plug_name: {'mro': [adder_plug_name]}
+        },
+        self.plug_manager._asdict()['plug_descriptors']
+    )
+    self.assertEqual(
+        {
+            adder_plug_name: {'number': 0}
+        },
+        self.plug_manager._asdict()['plug_states']
+    )
     self.assertEqual('CREATED', AdderPlug.LAST_INSTANCE.state)
 
   @test.yields_phases
@@ -147,12 +154,13 @@ class PlugsTest(test.TestCase):
 
   def test_plug_updates(self):
     self.plug_manager.initialize_plugs({AdderPlug})
+    adder_plug_name = AdderPlug.__module__ + '.AdderPlug'
     update = self.plug_manager.wait_for_plug_update(
-        'plugs_test.AdderPlug', {}, .001)
+        adder_plug_name, {}, .001)
     self.assertEqual({'number': 0}, update)
     # No update since last time, this should time out (return None).
     self.assertIsNone(self.plug_manager.wait_for_plug_update(
-        'plugs_test.AdderPlug', update, .001))
+        adder_plug_name, update, .001))
 
     def _delay_then_update():
       time.sleep(.5)
@@ -160,7 +168,7 @@ class PlugsTest(test.TestCase):
     threading.Thread(target=_delay_then_update).start()
     start_time = time.time()
     self.assertEqual({'number': 1}, self.plug_manager.wait_for_plug_update(
-        'plugs_test.AdderPlug', update, 5))
+        adder_plug_name, update, 5))
     self.assertGreater(time.time() - start_time, .2)
 
   def test_invalid_plug(self):

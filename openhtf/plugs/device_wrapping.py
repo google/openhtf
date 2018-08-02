@@ -70,11 +70,15 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
         when attribute access is attempted.
   """
 
-  verbose = True # overwrite on subclass to disable loggging_wrapper.
+  verbose = True  # overwrite on subclass to disable logging_wrapper.
 
   def __init__(self, device):
     super(DeviceWrappingPlug, self).__init__()
     self._device = device
+    if hasattr(self._device, 'tearDown') and self.uses_base_tear_down():
+      self.logger.warning('Wrapped device %s implements a tearDown method, '
+                          'but using the no-op BasePlug tearDown method.',
+                          type(self._device))
 
   def __getattr__(self, attr):
     if self._device is None:
@@ -89,9 +93,12 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
     # Attribute callable; return a wrapper that logs calls with args and kwargs.
     functools.wraps(attribute, assigned=('__name__', '__doc__'))
     def logging_wrapper(*args, **kwargs):
+      """Wraps a callable with a logging statement."""
       args_strings = tuple(short_repr(arg) for arg in args)
       kwargs_strings = tuple(
-          ('%s=%s' % (key, short_repr(val)) for key, val in six.iteritems(kwargs)))
+          ('%s=%s' % (key, short_repr(val))
+           for key, val in six.iteritems(kwargs))
+      )
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
         log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))
@@ -99,3 +106,4 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
       return attribute(*args, **kwargs)
 
     return logging_wrapper
+
