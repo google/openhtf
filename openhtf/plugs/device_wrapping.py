@@ -70,7 +70,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
         when attribute access is attempted.
   """
 
-  verbose = True  # overwrite on subclass to disable loggging_wrapper.
+  verbose = True  # overwrite on subclass to disable logging_wrapper.
 
   def __init__(self, device):
     super(DeviceWrappingPlug, self).__init__()
