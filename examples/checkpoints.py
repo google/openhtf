@@ -24,14 +24,6 @@ from openhtf.util import checkpoints
 from examples import measurements as measurements_example
 
 
-@htf.measures(htf.Measurement('validated_measurement').in_range(0, 10).doc(
-    'This measurement is validated.').with_units(htf.units.SECOND))
-def failing_measurement(test):
-  # The 'outcome' of this measurement in the test_record result will be a FAIL
-  # because its value fails the validator specified (0 <= 5 <= 10).
-  test.measurements.validated_measurement = 100
-
-
 @htf.measures(htf.Measurement('fixed_time').in_range(0, 10).doc(
     'This is going to fail validation.').with_units(htf.units.SECOND))
 def failing_phase(test):
