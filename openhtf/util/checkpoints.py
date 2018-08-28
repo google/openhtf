@@ -15,13 +15,17 @@
 
 """A simple utility to check whether all previous phases have passed.
 
-In general test execution stops on a raise Exception but will continue if a
+In general test execution stops on a raised Exception but will continue if a
 phase has a failed measurement.  This is desirable behavior in many cases
 because you want to acquire additional information before the test stops.
 
 However, in some cases it's less desirable because downstream long-running
 phases will be executed only to FAIL at test completion due to the failing
 measurements.  This can have negative implications for tact time.
+
+Checkpoints allow test authors to have their cake and eat it too.  A checkpoint
+checks the result of all previous phases and will stop test execution if a
+previous phase has failed.
 """
 
 from openhtf.core import phase_descriptor
