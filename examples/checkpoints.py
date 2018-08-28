@@ -18,6 +18,7 @@ import time
 
 import openhtf as htf
 from openhtf.output.callbacks import console_summary
+from openhtf.output.callbacks import json_factory
 from openhtf.util import checkpoints
 
 from examples import measurements as measurements_example
@@ -64,6 +65,11 @@ if __name__ == '__main__':
   test.add_output_callbacks(
       console_summary.ConsoleSummary()
   )
+
+  # The complete summary is viable in json, including the measurements
+  # included in measurements_example.lots_of_measurements.
+  test.add_output_callbacks(
+      json_factory.OutputToJSON('./checkpoints.json', indent=2))
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.
