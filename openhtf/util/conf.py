@@ -383,7 +383,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     try:
       parsed_yaml = self._modules['yaml'].safe_load(yamlfile.read())
     except self._modules['yaml'].YAMLError:
-      logging.exception('Problem parsing YAML')
+      self._logger.exception('Problem parsing YAML')
       raise self.ConfigurationInvalidError(
           'Failed to load from %s as YAML' % yamlfile)
 
