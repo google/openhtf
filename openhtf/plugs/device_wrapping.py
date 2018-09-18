@@ -106,3 +106,4 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
       return attribute(*args, **kwargs)
 
     return logging_wrapper
+

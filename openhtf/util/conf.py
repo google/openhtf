@@ -382,9 +382,10 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 
     try:
       parsed_yaml = self._modules['yaml'].safe_load(yamlfile.read())
-    except self._modules['yaml'].YAMLError as exception:
+    except self._modules['yaml'].YAMLError:
+      logging.exception('Problem parsing YAML')
       raise self.ConfigurationInvalidError(
-          'Failed to load from %s as YAML' % yamlfile, exception)
+          'Failed to load from %s as YAML' % yamlfile)
 
     if not isinstance(parsed_yaml, dict):
       # Parsed YAML, but it's not a dict.

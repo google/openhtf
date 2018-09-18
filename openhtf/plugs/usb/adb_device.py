@@ -178,13 +178,15 @@ class AdbDevice(object):
 
   def command(self, command, raw=False, timeout_ms=None):
     """Run command on the device, returning the output."""
-    return self.shell_service.command(command, raw=raw, timeout_ms=timeout_ms)
+    return self.shell_service.command(
+        str(command), raw=raw, timeout_ms=timeout_ms)
+
   Shell = command  #pylint: disable=invalid-name
 
   def async_command(self, command, raw=False, timeout_ms=None):
     """See shell_service.ShellService.async_command()."""
-    return self.shell_service.async_command(command, raw=raw,
-                                            timeout_ms=timeout_ms)
+    return self.shell_service.async_command(
+        str(command), raw=raw, timeout_ms=timeout_ms)
 
   def _check_remote_command(self, destination, timeout_ms, success_msgs=None):
     """Open a stream to destination, check for remote errors.
