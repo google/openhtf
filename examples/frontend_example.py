@@ -19,7 +19,7 @@ import openhtf as htf
 from openhtf.util import conf
 
 from openhtf.output.servers import station_server
-from openhtf.output.web_gui import web_launcher
+from openhtf.output.web_gui_server import web_launcher
 from openhtf.plugs import user_input
 
 
