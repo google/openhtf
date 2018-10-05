@@ -161,10 +161,6 @@ class BasePlug(object):
   enable_remote = False
   # Allow explicitly disabling remote access to specific attributes.
   disable_remote_attrs = set()
-  # Override this to True in subclasses to support using with_plugs with this
-  # plug without needing to use placeholder.  This will only affect the classes
-  # that explicitly define this; subclasses do not share the declaration.
-  auto_placeholder = False
   # Default logger to be used only in __init__ of subclasses.
   # This is overwritten both on the class and the instance so don't store
   # a copy of it anywhere.
