@@ -216,8 +216,8 @@ class PhaseDescriptor(mutablerecords.Record(
       openhtf.plugs.InvalidPlugError if for one of the plug names one of the
       following is true:
         - error_on_unknown is True and the plug name is not registered.
-        - The new plug subclass is not a subclass of the original.
-        - The original plug class is not a placeholder or automatic placeholder.
+        - The new plug subclass is not a subclass of the original plug or the
+          PlugPlaceholder's base_class.
 
     Returns:
       PhaseDescriptor with updated plugs.
@@ -235,11 +235,7 @@ class PhaseDescriptor(mutablerecords.Record(
       elif isinstance(original_plug.cls, openhtf.plugs.PlugPlaceholder):
         accept_substitute = issubclass(sub_class, original_plug.cls.base_class)
       else:
-        # Check __dict__ to see if the attribute is explicitly defined in the
-        # class, rather than being defined in a parent class.
-        accept_substitute = ('auto_placeholder' in original_plug.cls.__dict__
-                             and original_plug.cls.auto_placeholder
-                             and issubclass(sub_class, original_plug.cls))
+        accept_substitute = issubclass(sub_class, original_plug.cls)
 
       if not accept_substitute:
         raise openhtf.plugs.InvalidPlugError(
