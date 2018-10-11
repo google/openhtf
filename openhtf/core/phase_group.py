@@ -130,7 +130,10 @@ class PhaseGroup(mutablerecords.Record(
   def wrap(self, main_phases, name=None):
     """Returns PhaseGroup with additional main phases."""
     new_main = list(self.main)
-    new_main.extend(main_phases)
+    if isinstance(main_phases, collections.Iterable):
+      new_main.extend(main_phases)
+    else:
+      new_main.append(main_phases)
     return PhaseGroup(
         setup=self.setup,
         main=new_main,

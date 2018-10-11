@@ -136,6 +136,18 @@ class PhaseGroupTest(unittest.TestCase):
         teardown=_fake_phases('t1'))
     self.assertEqual(expected, group.wrap(extra))
 
+  def testWrap_SinglePhase(self):
+    group = htf.PhaseGroup(
+        setup=_fake_phases('s1'),
+        main=_fake_phases('m1'),
+        teardown=_fake_phases('t1'))
+    single_extra = _fake_phases('m2', 'm3')[0]
+    expected = htf.PhaseGroup(
+        setup=_fake_phases('s1'),
+        main=_fake_phases('m1', 'm2'),
+        teardown=_fake_phases('t1'))
+    self.assertEqual(expected, group.wrap(single_extra))
+
   def testWithArgs_Setup(self):
     group = htf.PhaseGroup(setup=[blank_phase, arg_phase])
     arg_group = group.with_args(arg1=1)
