@@ -38,8 +38,7 @@ def checkpoint(checkpoint_name=None):
   def _checkpoint(test_run):
     failed_phases = []
     for phase_record in test_run.test_record.phases:
-      if (phase_record.result.is_fail_and_continue or
-          phase_record.outcome == test_record.PhaseOutcome.FAIL):
+      if phase_record.outcome == test_record.PhaseOutcome.FAIL:
         failed_phases.append(phase_record.name)
 
     if failed_phases:
