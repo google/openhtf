@@ -48,7 +48,7 @@ if __name__ == '__main__':
       measurements_example.again_phase,
       failing_phase,
       measurements_example.lots_of_measurements,
-      checkpoints.Checkpoint(),
+      checkpoints.checkpoint(),
       long_running_phase,
   )
 

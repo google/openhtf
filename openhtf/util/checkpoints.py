@@ -31,11 +31,11 @@ previous phase has failed.
 from openhtf.core import phase_descriptor
 from openhtf.core import test_record
 
-def Checkpoint(checkpoint_name=None):
+def checkpoint(checkpoint_name=None):
   name = checkpoint_name if checkpoint_name else 'Checkpoint'
 
   @phase_descriptor.PhaseOptions(name=name)
-  def _Checkpoint(test_run):
+  def _checkpoint(test_run):
     failed_phases = []
     for phase_record in test_run.test_record.phases:
       if (phase_record.result.is_fail_and_continue or
@@ -47,4 +47,4 @@ def Checkpoint(checkpoint_name=None):
                             failed_phases)
       return phase_descriptor.PhaseResult.STOP
 
-  return _Checkpoint
+  return _checkpoint
