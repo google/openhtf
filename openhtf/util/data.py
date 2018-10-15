@@ -173,7 +173,13 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
     return as_float
 
   # Convert all other types to strings.
-  return str(obj)
+  try:
+    return str(obj)
+  except:
+    logging.warning('Problem casting object of type %s to str.', type(obj))
+    raise
+
+
 
 
 def total_size(obj):
