@@ -18,9 +18,6 @@ import logging
 import sys
 import threading
 
-import contextlib2 as contextlib
-
-import openhtf
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
 from openhtf.core import test_state
@@ -136,6 +133,9 @@ class TestExecutor(threads.KillableThread):
       # Everything is set, set status and begin test execution.
       self.test_state.set_status_running()
       self._execute_phase_group(self._test_descriptor.phase_group)
+    except:
+      _LOG.exception('Exception in TestExecutor.')
+      raise
     finally:
       self._execute_test_teardown()
 
