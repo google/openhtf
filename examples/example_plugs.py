@@ -14,8 +14,6 @@
 
 """Example plugs for OpenHTF."""
 
-import time
-
 import openhtf.plugs as plugs
 from openhtf.util import conf
 
