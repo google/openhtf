@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import mock
 
 from builtins import int
 from openhtf.util import data

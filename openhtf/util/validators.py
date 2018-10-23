@@ -57,7 +57,6 @@ by the default copy.deepcopy().
 import abc
 import numbers
 import re
-import sys
 from future.utils import with_metaclass
 from openhtf import util
 import six

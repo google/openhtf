@@ -18,8 +18,6 @@ import logging
 import sys
 import threading
 
-import contextlib2 as contextlib
-
 import openhtf
 from openhtf.core import phase_executor
 from openhtf.core import phase_group

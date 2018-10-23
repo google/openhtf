@@ -15,23 +15,8 @@
 
 """The main OpenHTF entry point."""
 
-import argparse
-import collections
-import copy
-import functools
-import inspect
-import itertools
-import json
-import logging
 import pkg_resources
 import signal
-import socket
-import sys
-import textwrap
-import threading
-from types import LambdaType
-import uuid
-import weakref
 
 from openhtf import plugs
 from openhtf.core import phase_executor
@@ -54,7 +39,6 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
-import six
 
 # TODO:  TestPhase is used for legacy reasons and should be deprecated.
 TestPhase = PhaseOptions  # pylint: disable=invalid-name
