@@ -6,7 +6,6 @@ aggregate info from multiple station servers with a single frontend.
 """
 
 import contextlib
-import hashlib
 import itertools
 import json
 import logging
@@ -14,13 +13,11 @@ import os
 import re
 import six
 import socket
-import sys
 import threading
 import time
 import types
 
 import sockjs.tornado
-import tornado.web
 
 import openhtf
 from openhtf.output.callbacks import mfg_inspector

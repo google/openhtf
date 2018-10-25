@@ -16,7 +16,6 @@
 
 import http.client
 import xmlrpc.server
-import os
 import socketserver
 import sys
 import threading

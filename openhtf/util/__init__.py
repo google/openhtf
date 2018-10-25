@@ -15,7 +15,6 @@
 
 """One-off utilities."""
 
-import collections
 import logging
 import re
 import threading

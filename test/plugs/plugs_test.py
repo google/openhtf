@@ -15,7 +15,6 @@
 import threading
 import time
 
-import mock
 import openhtf
 from openhtf import plugs
 from openhtf.util import test

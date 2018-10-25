@@ -95,13 +95,7 @@ self._my_config having a value of 'my_config_value'.
 """
 
 import collections
-import functools
-import inspect
-import json
 import logging
-import threading
-import time
-import types
 
 import mutablerecords
 

@@ -20,13 +20,11 @@ alternative serialization schemes, see json_factory.py and mfg_inspector.py for
 examples.
 """
 
-import base64
 import contextlib
 try:
    import cPickle as pickle
 except:
    import pickle
-import os
 import shutil
 import tempfile
 
