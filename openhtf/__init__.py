@@ -40,7 +40,7 @@ from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
 
-# TODO:  TestPhase is used for legacy reasons and should be deprecated.
+# TODO: TestPhase is used for legacy reasons and should be deprecated.
 TestPhase = PhaseOptions  # pylint: disable=invalid-name
 
 
