@@ -67,7 +67,6 @@ class TestOutput(test.TestCase):
     test_run_proto = mfg_inspector._test_run_from_test_record(record)
 
     # Assert test status
-    print(test_run_proto.test_status)
     self.assertEqual(test_runs_pb2.FAIL, test_run_proto.test_status)
 
     # Verify all expected phases included.
@@ -88,7 +87,7 @@ class TestOutput(test.TestCase):
     for parameter in test_run_proto.info_parameters:
       if parameter.name == attachment_name:
         self.assertEqual(
-          'This is a text file attachment.\n',
+          b'This is a text file attachment.\n',
           parameter.value_binary,
         )
 
