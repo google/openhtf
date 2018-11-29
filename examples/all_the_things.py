@@ -113,7 +113,6 @@ def attachments(test):
       os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
   test_attachment = test.get_attachment('test_attachment')
-  print(test_attachment.data)
   assert test_attachment.data == b'This is test attachment data.'
 
 
