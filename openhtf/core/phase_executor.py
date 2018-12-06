@@ -160,10 +160,13 @@ class PhaseExecutorThread(threads.KillableThread):
     # will get set to the InvalidPhaseResultError in _thread_exception instead.
     self._phase_execution_outcome = PhaseExecutionOutcome(phase_return)
 
+  def _log_exception(self, *args):
+    """Log exception, while allowing unit testing to override."""
+    self._test_state.logger.critical(*args)
+
   def _thread_exception(self, *args):
     self._phase_execution_outcome = PhaseExecutionOutcome(ExceptionInfo(*args))
-    self._test_state.logger.critical(
-        'Phase %s raised an exception', self._phase_desc.name)
+    self._log_exception('Phase %s raised an exception', self._phase_desc.name)
     return True  # Never propagate exceptions upward.
 
   def join_or_die(self):

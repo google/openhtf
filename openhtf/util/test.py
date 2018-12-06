@@ -195,8 +195,12 @@ class PhaseOrTestIterator(collections.Iterator):
 
     # Actually execute the phase, saving the result in our return value.
     executor = phase_executor.PhaseExecutor(test_state_)
-    # Use _execute_phase_once because we want to expose all possible outcomes.
-    executor._execute_phase_once(phase_desc, is_last_repeat=False)
+    # Log an exception stack when a Phase errors out.
+    with mock.patch.object(
+        phase_executor.PhaseExecutorThread, '_log_exception',
+        side_effect=logging.exception):
+      # Use _execute_phase_once because we want to expose all possible outcomes.
+      executor._execute_phase_once(phase_desc, is_last_repeat=False)
     return test_state_.test_record.phases[-1]
 
   def _handle_test(self, test):
