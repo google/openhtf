@@ -146,15 +146,15 @@ class InRange(RangeValidatorBase):
     return True
 
   def __str__(self):
-    assert self.minimum is not None or self.maximum is not None
-    if self.minimum is not None and self.maximum is not None:
-      if self.minimum == self.maximum:
-        return 'x == %s' % self.minimum
-      return '%s <= x <= %s' % (self.minimum, self.maximum)
-    if self.minimum is not None:
-      return '%s <= x' % self.minimum
-    if self.maximum is not None:
-      return 'x <= %s' % self.maximum
+    assert self._minimum is not None or self._maximum is not None
+    if self._minimum is not None and self._maximum is not None:
+      if self._minimum == self._maximum:
+        return 'x == %s' % self._minimum
+      return '%s <= x <= %s' % (self._minimum, self._maximum)
+    if self._minimum is not None:
+      return '%s <= x' % self._minimum
+    if self._maximum is not None:
+      return 'x <= %s' % self._maximum
 
   def __eq__(self, other):
     return (isinstance(other, type(self)) and
@@ -195,7 +195,7 @@ class Equals(object):
     return value == self.expected
 
   def __str__(self):
-    return "'x' is equal to '%s'" % self.expected
+    return "'x' is equal to '%s'" % self._expected
 
   def __eq__(self, other):
     return isinstance(other, type(self)) and self.expected == other.expected

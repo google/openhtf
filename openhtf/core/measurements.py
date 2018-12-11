@@ -70,6 +70,7 @@ import mutablerecords
 
 from openhtf import util
 from openhtf.core import phase_descriptor
+from openhtf.util import data
 from openhtf.util import validators
 from openhtf.util import units
 import six
@@ -112,8 +113,11 @@ class Measurement(  # pylint: disable=no-init
     mutablerecords.Record(
         'Measurement', ['name'],
         {'units': None, 'dimensions': None, 'docstring': None,
-         '_notification_cb': None, 'validators': list, 'outcome': Outcome.UNSET,
-         'measured_value': None})):
+         '_notification_cb': None,
+         'validators': list,
+         'outcome': Outcome.UNSET,
+         'measured_value': None,
+         '_cached': None})):
   """Record encapsulating descriptive data for a measurement.
 
   This record includes an _asdict() method so it can be easily output.  Output
@@ -129,6 +133,8 @@ class Measurement(  # pylint: disable=no-init
     outcome: One of the Outcome() enumeration values, starting at UNSET.
     measured_value: An instance of MeasuredValue or DimensionedMeasuredValue
       containing the value(s) of this Measurement that have been set, if any.
+    _cached: A cached dict representation of this measurement created initially
+      during as_base_types and updated in place to save allocation time.
   """
 
   def __init__(self, name, **kwargs):
@@ -213,6 +219,7 @@ class Measurement(  # pylint: disable=no-init
     """Declare dimensions for this Measurement, returns self for chaining."""
     self.dimensions = tuple(
         self._maybe_make_dimension(dim) for dim in dimensions)
+    self._cached = None
     return self
 
   def with_validator(self, validator):
@@ -220,6 +227,7 @@ class Measurement(  # pylint: disable=no-init
     if not callable(validator):
       raise ValueError('Validator must be callable', validator)
     self.validators.append(validator)
+    self._cached = None
     return self
 
   def with_args(self, **kwargs):
@@ -233,6 +241,7 @@ class Measurement(  # pylint: disable=no-init
         self, name=util.format_string(self.name, kwargs),
         docstring=util.format_string(self.docstring, kwargs),
         validators=validators,
+        _cached=None,
     )
 
   def __getattr__(self, attr):  # pylint: disable=invalid-name
@@ -262,29 +271,36 @@ class Measurement(  # pylint: disable=no-init
                  self.name, e)
       self.outcome = Outcome.FAIL
       raise
+    finally:
+      if self._cached:
+        self._cached['outcome'] = self.outcome.name
 
-  def _asdict(self):
+  def as_base_types(self):
     """Convert this measurement to a dict of basic types."""
-    retval = {
-        'name': self.name,
-        'outcome': self.outcome,
-    }
+    if not self._cached:
+      # Create the single cache file the first time this is called.
+      self._cached = {
+          'name': self.name,
+          'outcome': self.outcome.name,
+      }
+      if self.validators:
+        self._cached['validators'] = data.convert_to_base_types(
+            tuple(str(v) for v in self.validators))
+      if self.dimensions:
+        self._cached['dimensions'] = data.convert_to_base_types(self.dimensions)
+      if self.units:
+        self._cached['units'] = data.convert_to_base_types(self.units)
+      if self.docstring:
+        self._cached['docstring'] = self.docstring
     if self.measured_value.is_value_set:
-      retval['measured_value'] = self.measured_value.value
-
-    if len(self.validators):
-      retval['validators'] = [str(v) for v in self.validators]
-    for attr in ('units', 'dimensions', 'docstring'):
-      if getattr(self, attr) is not None:
-        retval[attr] = getattr(self, attr)
-    return retval
+      self._cached['measured_value'] = self.measured_value.basetype_value()
+    return self._cached
 
   def to_dataframe(self, columns=None):
     """Convert a multi-dim to a pandas dataframe."""
     if not isinstance(self.measured_value, DimensionedMeasuredValue):
       raise TypeError(
         'Only a dimensioned measurement can be converted to a DataFrame')
-
 
     if columns is None:
       columns = [d.name for d in self.dimensions]
@@ -297,7 +313,8 @@ class Measurement(  # pylint: disable=no-init
 
 class MeasuredValue(
     mutablerecords.Record('MeasuredValue', ['name'],
-                          {'stored_value': None, 'is_value_set': False})):
+                          {'stored_value': None, 'is_value_set': False,
+                           '_cached_value': None})):
   """Class encapsulating actual values measured.
 
   Note that this is really just a value wrapper with some sanity checks.  See
@@ -309,6 +326,9 @@ class MeasuredValue(
   dimensioned values, see the DimensionedMeasuredValue.  The interfaces are very
   similar, but differ slightly; the important part is the get_value() interface
   on both of them.
+
+  The _cached_value is the base type represention of the stored_value when that
+  is set.
   """
 
   def __str__(self):
@@ -328,6 +348,9 @@ class MeasuredValue(
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return self.stored_value
 
+  def basetype_value(self):
+    return self._cached_value
+
   def set(self, value):
     """Set the value for this measurement, with some sanity checks."""
     if self.is_value_set:
@@ -341,6 +364,7 @@ class MeasuredValue(
     if value is None:
       _LOG.warning('Measurement %s is set to None', self.name)
     self.stored_value = value
+    self._cached_value = data.convert_to_base_types(value)
     self.is_value_set = True
 
 
@@ -351,9 +375,17 @@ class Dimension(object):
   as a drop-in replacement for UnitDescriptor for backwards compatibility.
   """
 
+  __slots__ = ['_description', '_unit', '_cached_dict']
+
   def __init__(self, description='', unit=units.NO_DIMENSION):
-    self.description = description
-    self.unit = unit
+    self._description = description
+    self._unit = unit
+    self._cached_dict = data.convert_to_base_types({
+        'code': self.code,
+        'description': self.description,
+        'name': self.name,
+        'suffix': self.suffix,
+    })
 
   def __eq__(self, other):
     return (self.description == other.description and self.unit == other.unit)
@@ -379,36 +411,47 @@ class Dimension(object):
       return cls(description=string)
 
   @property
+  def description(self):
+    return self._description
+
+  @property
+  def unit(self):
+    return self._unit
+
+  @property
   def code(self):
     """Provides backwards compatibility to `units.UnitDescriptor` api."""
-    return self.unit.code
+    return self._unit.code
 
   @property
   def suffix(self):
     """Provides backwards compatibility to `units.UnitDescriptor` api."""
-    return self.unit.suffix
+    return self._unit.suffix
 
   @property
   def name(self):
     """Provides backwards compatibility to `units.UnitDescriptor` api."""
-    return self.description or self.unit.name
+    return self._description or self._unit.name
 
   def _asdict(self):
-    return {
-        'code': self.code,
-        'description': self.description,
-        'name': self.name,
-        'suffix': self.suffix,
-    }
+    return self._cached_dict
 
 
 class DimensionedMeasuredValue(mutablerecords.Record(
     'DimensionedMeasuredValue', ['name', 'num_dimensions'],
-    {'notify_value_set': None, 'value_dict': collections.OrderedDict})):
+    {'notify_value_set': None,
+     'value_dict': collections.OrderedDict,
+     '_cached_basetype_values': list})):
   """Class encapsulating actual values measured.
 
   See the MeasuredValue class docstring for more info.  This class provides a
   dict-like interface for indexing into dimensioned measurements.
+
+  The _cached_basetype_values is a cached list of the dimensioned entries in
+  order of being set.  Each list entry is a tuple that is composed of the key,
+  then the value.  This is set to None if a previous measurement is overridden;
+  in such a case, the list is fully reconstructed on the next call to
+  basetype_value.
   """
   def __str__(self):
     return str(self.value) if self.is_value_set else 'UNSET'
@@ -441,7 +484,13 @@ class DimensionedMeasuredValue(mutablerecords.Record(
       _LOG.warning(
           'Overriding previous measurement %s[%s] value of %s with %s',
           self.name, coordinates, self.value_dict[coordinates], value)
+      self._cached_basetype_values = None
+    elif self._cached_basetype_values is not None:
+      self._cached_basetype_values.append(data.convert_to_base_types(
+          coordinates + (value,)))
+
     self.value_dict[coordinates] = value
+
     if self.notify_value_set:
       self.notify_value_set()
 
@@ -465,6 +514,13 @@ class DimensionedMeasuredValue(mutablerecords.Record(
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return [dimensions + (value,) for dimensions, value in
             six.iteritems(self.value_dict)]
+
+  def basetype_value(self):
+    if self._cached_basetype_values is None:
+      self._cached_basetype_values = list(
+          data.convert_to_base_types(coordinates + (value,))
+          for coordinates, value in six.iteritems(self.value_dict))
+    return self._cached_basetype_values
 
   def to_dataframe(self, columns=None):
     """Converts to a `pandas.DataFrame`"""

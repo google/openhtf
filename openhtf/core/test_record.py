@@ -26,6 +26,8 @@ from enum import Enum
 
 import mutablerecords
 
+from openhtf import util
+from openhtf.util import data
 from openhtf.util import logs
 
 _LOG = logging.getLogger(__name__)
@@ -58,12 +60,31 @@ class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
 class TestRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
-        {'start_time_millis': int, 'end_time_millis': None,
-         'outcome': None, 'outcome_details': list,
+        {'start_time_millis': int,
+         'end_time_millis': None,
+         'outcome': None,
+         'outcome_details': list,
          'code_info': None,
          'metadata': dict,
-         'phases': list, 'log_records': list})):
+         'phases': list,
+         'log_records': list,
+         '_cached_record': dict,
+         '_cached_phases': list,
+         '_cached_log_records': list,
+         '_cached_config_from_metadata': dict,
+        })):
   """The record of a single run of a test."""
+
+  def __init__(self, *args, **kwargs):
+    super(TestRecord, self).__init__(*args, **kwargs)
+    # Cache data that does not change during execution.
+    # Cache the metadata config so it does not recursively copied over and over
+    # again.
+    self._cached_config_from_metadata = self.metadata.get('config')
+    self._cached_record = {
+        'station_id': data.convert_to_base_types(self.station_id),
+        'code_info': data.convert_to_base_types(self.code_info),
+    }
 
   def add_outcome_details(self, code, description=''):
     """Adds a code with optional description to this record's outcome_details.
@@ -73,6 +94,32 @@ class TestRecord(  # pylint: disable=no-init
       description: A string providing more details about the outcome code.
     """
     self.outcome_details.append(OutcomeDetails(code, description))
+
+  def add_phase_record(self, phase_record):
+    self.phases.append(phase_record)
+    self._cached_phases.append(phase_record.as_base_types())
+
+  def add_log_record(self, log_record):
+    self.log_records.append(log_record)
+    self._cached_log_records.append(log_record._asdict())
+
+  def as_base_types(self):
+    """Convert to a dict representation composed exclusively of base types."""
+    metadata = data.convert_to_base_types(self.metadata,
+                                          ignore_keys=('config',))
+    metadata['config'] = self._cached_config_from_metadata
+    ret = {
+        'dut_id': data.convert_to_base_types(self.dut_id),
+        'start_time_millis': self.start_time_millis,
+        'end_time_millis': self.end_time_millis,
+        'outcome': data.convert_to_base_types(self.outcome),
+        'outcome_details': data.convert_to_base_types(self.outcome_details),
+        'metadata': metadata,
+        'phases': self._cached_phases,
+        'log_records': self._cached_log_records,
+    }
+    ret.update(self._cached_record)
+    return ret
 
 
 # PhaseResult enumerations are converted to these outcomes by the PhaseState.
@@ -113,6 +160,28 @@ class PhaseRecord(  # pylint: disable=no-init
   @classmethod
   def from_descriptor(cls, phase_desc):
     return cls(id(phase_desc), phase_desc.name, phase_desc.code_info)
+
+  def as_base_types(self):
+    """Convert to a dict representation composed exclusively of base types."""
+    base_types_dict = {
+        k: data.convert_to_base_types(getattr(self, k))
+        for k in self.optional_attributes
+    }
+    base_types_dict.update(
+        descriptor_id=self.descriptor_id,
+        name=self.name,
+        codeinfo=data.convert_to_base_types(self.codeinfo),
+    )
+    return base_types_dict
+
+  def record_start_time(self):
+    """Record the phase start time and return it."""
+    self.start_time_millis = util.time_millis()
+    return self.start_time_millis
+
+  def finalize_phase(self, options):
+    self.end_time_millis = util.time_millis()
+    self.options = options
 
 
 def _get_source_safely(obj):

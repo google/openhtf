@@ -98,13 +98,13 @@ class PlugsTest(test.TestCase):
         {
             adder_plug_name: {'mro': [adder_plug_name]}
         },
-        self.plug_manager._asdict()['plug_descriptors']
+        self.plug_manager.as_base_types()['plug_descriptors']
     )
     self.assertEqual(
         {
             adder_plug_name: {'number': 0}
         },
-        self.plug_manager._asdict()['plug_states']
+        self.plug_manager.as_base_types()['plug_states']
     )
     self.assertEqual('CREATED', AdderPlug.LAST_INSTANCE.state)
 

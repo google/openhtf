@@ -103,6 +103,7 @@ from openhtf import util
 import openhtf.core.phase_descriptor
 from openhtf.util import classproperty
 from openhtf.util import conf
+from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import threads
 import six
@@ -180,6 +181,10 @@ class BasePlug(object):
     decorate it with functions.call_at_most_every() to limit the frequency at
     which updates happen (pass a number of seconds to it to limit samples to
     once per that number of seconds).
+
+    You can also implement an `as_base_types` function that can return a dict
+    where the values must be base types at all levels.  This can help prevent
+    recursive copying, which is time intensive.
     """
     return {}
 
@@ -312,14 +317,14 @@ class PlugManager(object):
     self._plug_descriptors = {}
     self.logger = logging.getLogger(record_logger_name).getChild('plug')
 
-  def _asdict(self):
+  def as_base_types(self):
     return {
         'plug_descriptors': {
             name: dict(descriptor._asdict())  # Convert OrderedDict to dict.
             for name, descriptor in six.iteritems(self._plug_descriptors)
         },
         'plug_states': {
-            name: plug._asdict()
+            name: data.convert_to_base_types(plug)
             for name, plug in six.iteritems(self._plugs_by_name)
         },
     }
