@@ -84,6 +84,8 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
     if self._device is None:
       raise openhtf.plugs.InvalidPlugError(
           'DeviceWrappingPlug instances must set the _device attribute.')
+    if attr == 'as_base_types':
+      return super(DeviceWrappingPlug, self).__getattr__(attr)
 
     attribute = getattr(self._device, attr)
 

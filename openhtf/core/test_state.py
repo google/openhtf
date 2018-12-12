@@ -27,6 +27,7 @@ invocation of an openhtf.Test instance.
 import collections
 import contextlib
 import copy
+import functools
 import logging
 import mimetypes
 import os
@@ -44,8 +45,10 @@ from openhtf.core import measurements
 from openhtf.core import phase_executor
 from openhtf.core import test_record
 from openhtf.util import conf
+from openhtf.util import data
 from openhtf.util import logs
 from past.builtins import long
+import six
 
 conf.declare('allow_unset_measurements', default_value=False,
              description='If True, unset measurements do not cause Tests to '
@@ -255,17 +258,25 @@ class TestState(util.SubscribableStateMixin):
         self.notify_update()  # New phase started.
         yield phase_state
     finally:
-      self.test_record.phases.append(phase_state.phase_record)
+      self.test_record.add_phase_record(phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
 
+  def as_base_types(self):
+    """Convert to a dict representation composed exclusively of base types."""
+    running_phase_state = None
+    if self.running_phase_state:
+      running_phase_state = self.running_phase_state.as_base_types()
+    return {
+        'status': data.convert_to_base_types(self._status),
+        'test_record': self.test_record.as_base_types(),
+        'plugs': self.plug_manager.as_base_types(),
+        'running_phase_state': running_phase_state,
+    }
+
   def _asdict(self):
     """Return a dict representation of the test's state."""
-    return {
-        'status': self._status, 'test_record': self.test_record,
-        'plugs': self.plug_manager._asdict(),
-        'running_phase_state': self.running_phase_state,
-    }
+    return self.as_base_types()
 
   @property
   def is_finalized(self):
@@ -438,7 +449,10 @@ class TestState(util.SubscribableStateMixin):
 class PhaseState(
     mutablerecords.Record('PhaseState',
                           ['name', 'phase_record', 'measurements', 'options'],
-                          {'hit_repeat_limit': False})):
+                          {'hit_repeat_limit': False,
+                           'notify_cb': None,
+                           '_cached': dict,
+                           '_update_measurements': set})):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
@@ -449,7 +463,26 @@ class PhaseState(
         facing Collection for setting measurements.
     options: the PhaseOptions from the phase descriptor.
     result: Convenience getter/setter for phase_record.result.
+    _cached: A cached representation of the running test state that; updated in
+        place to save allocation time.
   """
+
+  def __init__(self, *args, **kwargs):
+    super(PhaseState, self).__init__(*args, **kwargs)
+    for m in six.itervalues(self.measurements):
+      # Using functools.partial to capture the value of the loop variable.
+      m.set_notification_callback(functools.partial(self._notify, m.name))
+    self._cached = {
+        'name': self.name,
+        'codeinfo': data.convert_to_base_types(self.phase_record.codeinfo),
+        'descriptor_id': data.convert_to_base_types(
+            self.phase_record.descriptor_id),
+        # Options are not set until the phase is finished.
+        'options': None,
+        'measurements': {
+            k: m.as_base_types() for k, m in six.iteritems(self.measurements)},
+        'attachments': {},
+    }
 
   @classmethod
   def from_descriptor(cls, phase_desc, notify_cb):
@@ -457,21 +490,25 @@ class PhaseState(
         phase_desc.name,
         test_record.PhaseRecord.from_descriptor(phase_desc),
         collections.OrderedDict(
-            (measurement.name,
-             copy.deepcopy(measurement).set_notification_callback(notify_cb))
+            (measurement.name, copy.deepcopy(measurement))
             for measurement in phase_desc.measurements),
-        phase_desc.options)
+        phase_desc.options,
+        notify_cb=notify_cb)
 
-  def _asdict(self):
-    return {
-        'name': self.name,
-        'codeinfo': self.phase_record.codeinfo,
-        'descriptor_id': self.phase_record.descriptor_id,
-        'start_time_millis': long(self.phase_record.start_time_millis),
-        'options': self.phase_record.options,
-        'attachments': self.attachments,
-        'measurements': self.measurements,
-    }
+  def _notify(self, measurement_name):
+    self._update_measurements.add(measurement_name)
+    if self.notify_cb:
+      self.notify_cb()
+
+  def as_base_types(self):
+    """Convert to a dict representation composed exclusively of base types."""
+    cur_update_measurements = self._update_measurements
+    self._update_measurements = set()
+    # Update the dictionaries previously returned for the measurements that
+    # have been updated.
+    for m in cur_update_measurements:
+      self.measurements[m].as_base_types()
+    return self._cached
 
   @property
   def result(self):
@@ -485,16 +522,16 @@ class PhaseState(
   def attachments(self):
     return self.phase_record.attachments
 
-  def attach(self, name, data, mimetype=INFER_MIMETYPE):
-    """Store the given data as an attachment with the given name.
+  def attach(self, name, binary_data, mimetype=INFER_MIMETYPE):
+    """Store the given binary_data as an attachment with the given name.
 
     Args:
-      name: Attachment name under which to store this data.
-      data: Data to attach.
+      name: Attachment name under which to store this binary_data.
+      binary_data: Data to attach.
       mimetype: One of the following:
-          INFER_MIMETYPE: The type will be guessed from the attachment name.
-          None: The type will be left unspecified.
-          A string: The type will be set to the specified value.
+          INFER_MIMETYPE - The type will be guessed from the attachment name.
+          None - The type will be left unspecified.
+          A string - The type will be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
@@ -509,7 +546,9 @@ class PhaseState(
       _LOG.warning('Unrecognized MIME type: "%s" for attachment "%s"',
                    mimetype, name)
 
-    self.phase_record.attachments[name] = test_record.Attachment(data, mimetype)
+    attach_record = test_record.Attachment(binary_data, mimetype)
+    self.phase_record.attachments[name] = attach_record
+    self._cached['attachments'][name] = attach_record._asdict()
 
   def attach_from_file(self, filename, name=None, mimetype=INFER_MIMETYPE):
     """Store the contents of the given filename as an attachment.
@@ -596,12 +635,12 @@ class PhaseState(
     Yields:
       None
     """
-    self.phase_record.start_time_millis = util.time_millis()
+    self._cached['start_time_millis'] = long(
+        self.phase_record.record_start_time())
 
     try:
       yield
     finally:
       self._finalize_measurements()
       self._set_phase_outcome()
-      self.phase_record.end_time_millis = util.time_millis()
-      self.phase_record.options = self.options
+      self.phase_record.finalize_phase(self.options)

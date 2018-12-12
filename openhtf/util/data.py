@@ -114,7 +114,11 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   for sending internal objects via the network and outputting test records.
   Specifically, the conversions that are performed:
 
-    - If an object has an _asdict() method, use that to convert it to a dict.
+    - If an object has an as_base_types() method, immediately return the result
+      without any recursion; this can be used with caching in the object to
+      prevent unnecessary conversions.
+    - If an object has an _asdict() method, use that to convert it to a dict and
+      recursively converting its contents.
     - mutablerecords Record instances are converted to dicts that map
       attribute name to value.  Optional attributes with a value of None are
       skipped.
@@ -140,6 +144,8 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   if type(obj) in PASSTHROUGH_TYPES:
     return obj
 
+  if hasattr(obj, 'as_base_types'):
+    return obj.as_base_types()
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
   elif isinstance(obj, records.RecordClass):
@@ -178,8 +184,6 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   except:
     logging.warning('Problem casting object of type %s to str.', type(obj))
     raise
-
-
 
 
 def total_size(obj):

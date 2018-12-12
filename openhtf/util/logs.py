@@ -256,7 +256,7 @@ class RecordHandler(logging.Handler):
           record.levelno, record.name, os.path.basename(record.pathname),
           record.lineno, int(record.created * 1000), message,
       )
-      self._test_record.log_records.append(log_record)
+      self._test_record.add_log_record(log_record)
       self._notify_update()
     except Exception:  # pylint: disable=broad-except
       self.handleError(record)
