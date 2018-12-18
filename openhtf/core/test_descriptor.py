@@ -351,8 +351,10 @@ class Test(object):
         del self.TEST_INSTANCES[self.uid]
         self._executor = None
 
-    return final_state.test_record.outcome == test_record.Outcome.PASS
-
+    if final_state.test_record.outcome == test_record.Outcome.PASS:
+      return 0
+    else:
+      return final_state.test_record.outcome.value
 
 # TODO(arsharma): Deprecate the teardown_function in favor of PhaseGroups.
 class TestOptions(mutablerecords.Record('TestOptions', [], {
