@@ -21,6 +21,7 @@ of PhaseDescriptor class.
 """
 import inspect
 import logging
+import pdb
 import sys
 
 import enum
@@ -66,7 +67,7 @@ PhaseResult = enum.Enum('PhaseResult', [   # pylint: disable=invalid-name
 
 class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
     'name': None, 'timeout_s': None, 'run_if': None, 'requires_state': None,
-    'repeat_limit': None})):
+    'repeat_limit': None, 'run_under_pdb': False})):
   """Options used to override default test phase behaviors.
 
   Attributes:
@@ -81,6 +82,9 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
         PhaseDescriptors can only be invoked with a TestState instance.
     repeat_limit:  Maximum number of repeats.  None indicates a phase will
         be repeated infinitely as long as PhaseResult.REPEAT is returned.
+    run_under_pdb: If True, run the phase under the Python Debugger (pdb).  When
+        setting this option, increase the phase timeout as well because the
+        timeout will still apply when under the debugger.
 
   Example Usages:
     @PhaseOptions(timeout_s=1)
@@ -294,9 +298,19 @@ class PhaseDescriptor(mutablerecords.Record(
         record_logger = logs.get_record_logger_for(test_state.execution_uid)
         test_state.logger = record_logger.getChild('phase').getChild(self.name)
       try:
-        return self.func(
-            test_state if self.options.requires_state else test_state.test_api,
-            **kwargs)
+        args = []
+        if self.options.requires_state:
+          args.append(test_state)
+        else:
+          args.append(test_state.test_api)
+
+        if self.options.run_under_pdb:
+          return pdb.runcall(self.func, *args, **kwargs)
+        else:
+          return self.func(*args, **kwargs)
       finally:
         test_state.logger = old_logger
-    return self.func(**kwargs)
+    if self.options.run_under_pdb:
+      return pdb.runcall(self.func, **kwargs)
+    else:
+      return self.func(**kwargs)
