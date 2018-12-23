@@ -36,7 +36,7 @@ def long_running_phase(test):
   # A long running phase could be something like a hardware burn-in.  This
   # phase should not run if previous phases have failed, so we make sure
   # checkpoint phase is run right before this phase.
-  for i in xrange(10):
+  for i in range(10):
     test.logger.info('Still running....')
     time.sleep(10)
   test.logger.info('Done with long_running_phase')
