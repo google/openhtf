@@ -141,9 +141,6 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, six.string_types), 'Pass a real iterable!'
 
-  if type(obj) in PASSTHROUGH_TYPES:
-    return obj
-
   if hasattr(obj, 'as_base_types'):
     return obj.as_base_types()
   if hasattr(obj, '_asdict'):
@@ -155,6 +152,9 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
                attr in type(obj).required_attributes)}
   elif isinstance(obj, Enum):
     obj = obj.name
+
+  if type(obj) in PASSTHROUGH_TYPES:
+    return obj
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):

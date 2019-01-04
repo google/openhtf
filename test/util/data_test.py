@@ -32,6 +32,10 @@ class TestData(unittest.TestCase):
       def as_base_types(self):
         return {'safe_value': True}
 
+    class AsDict(object):
+      def _asdict(self):
+        return None
+
     class NotRecursivelyCopied(object):
 
       def __init__(self):
@@ -56,6 +60,10 @@ class TestData(unittest.TestCase):
         'float_subclass': FloatSubclass(10.0),
         'special': SpecialBaseTypes('must_not_be_present'),
         'not_copied': not_copied,
+
+        # Some plugs such as UserInputPlug will return None as a response to
+        # AsDict().
+        'none_dict': AsDict(),
     }
     converted = data.convert_to_base_types(example_data)
 
@@ -73,4 +81,5 @@ class TestData(unittest.TestCase):
     self.assertIsInstance(converted['float_subclass'], float)
     self.assertIsInstance(converted['special'], dict)
     self.assertEqual(converted['special'], {'safe_value': True})
+    self.assertEqual(converted['none_dict'], None)
     self.assertIs(converted['not_copied'], not_copied.value)
