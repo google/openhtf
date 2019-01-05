@@ -27,7 +27,7 @@ from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
-from openhtf.output.callbacks import mfg_inspector
+from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
 
@@ -64,7 +64,7 @@ class TestOutput(test.TestCase):
     user_mock.prompt.return_value = 'SomeWidget'
     record = yield self._test
 
-    test_run_proto = mfg_inspector._test_run_from_test_record(record)
+    test_run_proto = test_runs_converter.test_run_from_test_record(record)
 
     # Assert test status
     self.assertEqual(test_runs_pb2.FAIL, test_run_proto.test_status)
@@ -87,17 +87,9 @@ class TestOutput(test.TestCase):
     for parameter in test_run_proto.info_parameters:
       if parameter.name == attachment_name:
         self.assertEqual(
-          b'This is a text file attachment.\n',
-          parameter.value_binary,
+            b'This is a text file attachment.\n',
+            parameter.value_binary,
         )
-
-
-  @test.patch_plugs(user_mock='openhtf.plugs.user_input.UserInput')
-  def test_testrun(self, user_mock):
-    user_mock.prompt.return_value = 'SomeWidget'
-    record = yield self._test
-    testrun_output = io.BytesIO()
-    mfg_inspector.OutputToTestRunProto(testrun_output)(record)
 
 
 class TestConsoleSummary(test.TestCase):
