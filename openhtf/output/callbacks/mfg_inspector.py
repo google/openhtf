@@ -55,7 +55,7 @@ def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
   envelope.payload_type = guzzle_pb2.COMPRESSED_MFG_EVENT
   envelope_data = envelope.SerializeToString()
 
-  for _ in xrange(5):
+  for _ in range(5):
     try:
       result = _send_mfg_inspector_request(
           envelope_data, credentials, destination_url)
