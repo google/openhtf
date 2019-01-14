@@ -27,6 +27,8 @@ from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
+from openhtf.output.proto import mfg_event_converter
+from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
@@ -81,6 +83,9 @@ class TestOutput(test.TestCase):
     for parameter in test_run_proto.test_parameters:
       if parameter.name == measurement_name:
         self.assertEqual(3.0, parameter.numeric_value)
+        break
+    else:
+      raise AssertionError('No measurement named %s' % measurement_name)
 
     # Spot check an attachment (example_attachment.txt)
     attachment_name = 'example_attachment.txt'
@@ -90,6 +95,73 @@ class TestOutput(test.TestCase):
             b'This is a text file attachment.\n',
             parameter.value_binary,
         )
+        break
+    else:
+      raise AssertionError('No attachment named %s' % attachment_name)
+
+
+class TestMfgEventOutput(test.TestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    # Create input record.
+    result = util.NonLocalResult()
+    def _save_result(test_record):
+      result.result = test_record
+    cls._test = htf.Test(
+        all_the_things.hello_world,
+        all_the_things.dimensions,
+        all_the_things.attachments,
+        # We intentionally call dimensions and attachments phases twice so we
+        # can check functionality for non-unique measurement and attachment
+        # names.
+        all_the_things.hello_world,
+        all_the_things.attachments,
+    )
+    cls._test.add_output_callbacks(_save_result)
+    cls._test.make_uid = lambda: 'UNITTEST:MOCK:UID'
+
+  @test.patch_plugs(user_mock='openhtf.plugs.user_input.UserInput')
+  def test_mfg_event_from_test_record(self, user_mock):
+    user_mock.prompt.return_value = 'SomeWidget'
+    record = yield self._test
+
+    mfg_event = mfg_event_converter.mfg_event_from_test_record(record)
+
+    # Assert test status
+    self.assertEqual(test_runs_pb2.FAIL, mfg_event.test_status)
+
+    # Verify all expected phases included.
+    expected_phase_names = [
+        'trigger_phase', 'hello_world', 'dimensions', 'attachments',
+        'hello_world', 'attachments'
+    ]
+    actual_phase_names = [phase.name for phase in mfg_event.phases]
+    self.assertEqual(expected_phase_names, actual_phase_names)
+
+    # Spot check duplicate measurements (widget_size)
+    for measurement_name in ['widget_size_0', 'widget_size_1']:
+      for measurement in mfg_event.measurement:
+        print 'measurement: ', measurement
+        if measurement.name == measurement_name:
+          self.assertEqual(3.0, measurement.numeric_value)
+          break
+      else:
+        raise AssertionError('No measurement named %s' % measurement_name)
+
+    # Spot check an attachment (example_attachment.txt)
+    for attachment_name in  ['example_attachment_0.txt',
+        'example_attachment_1.txt']:
+      for attachment in mfg_event.attachment:
+        print 'attachment: ', attachment
+        if attachment.name == attachment_name:
+          self.assertEqual(
+              b'This is a text file attachment.\n',
+              attachment.value_binary,
+          )
+          break
+      else:
+        raise AssertionError('No attachment named %s' % attachment_name)
 
 
 class TestConsoleSummary(test.TestCase):

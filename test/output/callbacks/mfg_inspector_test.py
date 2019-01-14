@@ -27,6 +27,8 @@ import openhtf as htf
 from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import mfg_inspector
+from openhtf.output.proto import mfg_event_converter
+from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
