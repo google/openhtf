@@ -168,11 +168,10 @@ class PyTestCommand(test):
     import pytest
     cov = []
     if self.pytest_cov is not None:
-      outputs = [
-          '--cov-report %s' % output
-          for output in self.pytest_cov.split(',')
-      ]
-      cov = ['--cov openhtf'] + outputs
+      outputs = []
+      for output in self.pytest_cov.split(','):
+        outputs.extend(['--cov-report', output])
+      cov = ['--cov', 'openhtf'] + outputs
 
     sys.argv = [sys.argv[0]]
     print('invoking pytest.main with %s' % (self.pytest_args + cov))
