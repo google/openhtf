@@ -34,6 +34,7 @@ class OutputToJUNIT(callbacks.OutputToFile):
 
   def serialize_test_record(self, test_record):
     dict_test_record = self.convert_to_dict(test_record)
+    test_case = None
 
     for phase in dict_test_record["phases"]:
       output = []
@@ -45,23 +46,25 @@ class OutputToJUNIT(callbacks.OutputToFile):
                        "outcome: " + phase_data["outcome"], "\n"])
 
       if phase["outcome"] == "PASS":
-        self.test_cases.append(
-            TestCase(phase["name"],
-                     dict_test_record["dut_id"] + "." +
-                     dict_test_record["metadata"]["test_name"],
-                     (phase["end_time_millis"] -
-                      phase["start_time_millis"]) / 1000,
-                     "\n".join(output),
-                     ''))
+        test_case = TestCase(phase["name"],
+                             dict_test_record["dut_id"] + "." +
+                             dict_test_record["metadata"]["test_name"],
+                             (phase["end_time_millis"] -
+                              phase["start_time_millis"]) / 1000,
+                             "\n".join(output),
+                             '')
       else:
-        self.test_cases.append(
-            TestCase(phase["name"],
-                     dict_test_record["dut_id"] + "." +
-                     dict_test_record["metadata"]["test_name"],
-                     (phase["end_time_millis"] -
-                      phase["start_time_millis"]) / 1000,
-                     "\n".join(output),
-                     ''))
+        test_case = TestCase(phase["name"],
+                             dict_test_record["dut_id"] + "." +
+                             dict_test_record["metadata"]["test_name"],
+                             (phase["end_time_millis"] -
+                              phase["start_time_millis"]) / 1000,
+                             '',
+                             "\n".join(output))
+
+        test_case.add_failure_info("failure message")
+
+      self.test_cases.append(test_case)
 
     return TestSuite.to_xml_string([TestSuite("test", self.test_cases)])
 
