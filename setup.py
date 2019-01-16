@@ -128,6 +128,7 @@ INSTALL_REQUIRES = [
     'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
     'future>=0.16.0',
+    'junit-xml>=1.8.0',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
     'protobuf>=3.0.0,<4.0',
