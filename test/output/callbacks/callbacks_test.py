@@ -142,7 +142,6 @@ class TestMfgEventOutput(test.TestCase):
     # Spot check duplicate measurements (widget_size)
     for measurement_name in ['widget_size_0', 'widget_size_1']:
       for measurement in mfg_event.measurement:
-        print 'measurement: ', measurement
         if measurement.name == measurement_name:
           self.assertEqual(3.0, measurement.numeric_value)
           break
@@ -153,7 +152,6 @@ class TestMfgEventOutput(test.TestCase):
     for attachment_name in  ['example_attachment_0.txt',
         'example_attachment_1.txt']:
       for attachment in mfg_event.attachment:
-        print 'attachment: ', attachment
         if attachment.name == attachment_name:
           self.assertEqual(
               b'This is a text file attachment.\n',
