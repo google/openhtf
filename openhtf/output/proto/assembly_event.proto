@@ -7,7 +7,6 @@ import "google/protobuf/struct.proto";
 
 // An event in which two parts are joined, separated, created, or updated.
 message AssemblyEvent {
-// LINT.IfChange
   // Possible operations which can be performed on a component during an event.
   // Multiple Assembly Events within a single Manufacturing Event with the same
   // timestamp will be applied in the following order:
@@ -19,7 +18,6 @@ message AssemblyEvent {
     UPDATE = 3; // Updates any field, only ‘target’ filled.
     DETACH_ALL_CHILDREN = 4; // Detaches _all_ children from target component
   }
-// LINT.ThenChange(//depot/google3/java/com/google/googlex/warhol/brain/actions/GenealogyTreeGenerator.java)
 
   // An individual Component, potentially a member of an assembly.
   message Component {

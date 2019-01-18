@@ -2,6 +2,7 @@ syntax = "proto2";
 
 package openhtf;
 
+import "openhtf/output/proto/assembly_event.proto";
 import "openhtf/output/proto/test_runs.proto";
 
 // A record of a manufacturing event, including any parameters that were checked

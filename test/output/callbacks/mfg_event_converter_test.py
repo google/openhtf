@@ -16,6 +16,7 @@ from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
+from openhtf.output.proto import assembly_event_pb2
 from openhtf.output.proto import mfg_event_converter
 from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import test_runs_converter
@@ -47,7 +48,7 @@ class MfgEventConverterTest(unittest.TestCase):
     )
     record.outcome = test_record.Outcome.PASS
     record.metadata = {
-        'assembly_events': [mfg_event_pb2.AssemblyEvent()] * 2,
+        'assembly_events': [assembly_event_pb2.AssemblyEvent()] * 2,
         'config': {'mock-config-key': 'mock-config-value'},
         'operator_name': 'mock-operator-name',
     }
