@@ -97,7 +97,6 @@ class TestMeasurements(htf_test.TestCase):
   def test_chaining_in_measurement_declarations(self, user_mock):
     user_mock.prompt.return_value = 'mock_widget'
     record = yield all_the_things.hello_world
-    self.assertNotMeasured(record, 'unset_meas')
     self.assertMeasured(record, 'widget_type', 'mock_widget')
     self.assertMeasured(record, 'widget_color', 'Black')
     self.assertMeasurementPass(record, 'widget_size')
@@ -106,7 +105,6 @@ class TestMeasurements(htf_test.TestCase):
   @htf_test.yields_phases
   def test_measurements_with_dimensions(self):
     record = yield all_the_things.dimensions
-    self.assertNotMeasured(record, 'unset_dims')
     self.assertMeasured(record, 'dimensions',
                         [(0, 1), (1, 2), (2, 4), (3, 8), (4, 16)])
     self.assertMeasured(record, 'lots_of_dims',
@@ -132,7 +130,7 @@ class TestMeasurements(htf_test.TestCase):
   def test_measurement_order(self):
     record = yield all_the_things.dimensions
     self.assertEqual(list(record.measurements.keys()),
-                     ['unset_dims', 'dimensions', 'lots_of_dims'])
+                     ['dimensions', 'lots_of_dims'])
     record = yield all_the_things.measures_with_args.with_args(min=2, max=4)
     self.assertEqual(list(record.measurements.keys()),
                      ['replaced_min_only', 'replaced_max_only',

@@ -69,7 +69,7 @@ class TestOutput(test.TestCase):
     test_run_proto = test_runs_converter.test_run_from_test_record(record)
 
     # Assert test status
-    self.assertEqual(test_runs_pb2.FAIL, test_run_proto.test_status)
+    self.assertEqual(test_runs_pb2.PASS, test_run_proto.test_status)
 
     # Verify all expected phases included.
     expected_phase_names = [
