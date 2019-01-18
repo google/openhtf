@@ -25,8 +25,7 @@ install:
 - unzip protoc-3.6.1-linux-x86_64.zip
 - sudo cp bin/protoc /usr/bin/protoc && sudo chmod 777 /usr/bin/protoc
 - protoc --version
-- which protoc
-- echo $PATH
+- export PATH=$PATH:$(pwd)/include
 script: tox
 after_success:
 - coveralls
