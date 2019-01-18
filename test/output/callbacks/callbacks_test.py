@@ -128,6 +128,9 @@ class TestMfgEventOutput(test.TestCase):
 
     mfg_event = mfg_event_converter.mfg_event_from_test_record(record)
 
+    callback = console_summary.ConsoleSummary()
+    callback(record)
+
     # Assert test status
     self.assertEqual(test_runs_pb2.PASS, mfg_event.test_status)
 
