@@ -75,7 +75,7 @@ def mfg_event_from_test_record(record):
     test_name: The name field from the test's TestOptions.
     config: The OpenHTF config, as a dictionary.
     assembly_events: List of AssemblyEvent protos.
-        (warhol/proto/assembly_event.proto).
+        (see proto/assembly_event.proto).
     operator_name: Name of the test operator.
 
   Args:
