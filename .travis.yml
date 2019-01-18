@@ -26,7 +26,6 @@ install:
 - sudo cp bin/protoc /usr/bin/protoc && sudo chmod 777 /usr/bin/protoc
 - sudo cp -r include/. /usr/include && sudo chmod -R +r /usr/include/google
 - protoc --version
-- ls -Rl /usr/include
 script: tox
 after_success:
 - coveralls
