@@ -27,6 +27,10 @@ from openhtf.util import data as htf_data
 from openhtf.util import units
 from openhtf.util import validators
 
+
+from past.builtins import unicode
+
+
 TEST_RECORD_ATTACHMENT_NAME = 'OpenHTF_record.json'
 
 #  To be lazy loaded by _LazyLoadUnitsByCode when needed.
@@ -53,7 +57,7 @@ def _lazy_load_units_by_code():
     # already populated
     return
 
-  for unit in units.UNITS_BY_NAME.itervalues():
+  for unit in units.UNITS_BY_NAME.values():
     UNITS_BY_CODE[unit.code] = unit
 
 
@@ -170,9 +174,13 @@ def _convert_object_to_json(obj):
   # measurement or in the logs, we have to be careful and convert everything
   # to unicode, merge, then encode to UTF-8 to put it into the proto.
   json_encoder = json.JSONEncoder(sort_keys=True, indent=2, ensure_ascii=False)
-  pieces = [
-      unicode(piece, errors='replace') if isinstance(piece, str) else piece
-      for piece in json_encoder.iterencode(obj)]
+  pieces = []
+  for piece in json_encoder.iterencode(obj):
+    if isinstance(piece, bytes):
+      pieces.append(unicode(piece, errors='replace'))
+    else:
+      pieces.append(piece)
+
   return (u''.join(pieces)).encode('utf8', errors='replace')
 
 
@@ -228,25 +236,25 @@ def PhaseUniquizer(all_phases):
   """
   measurement_name_maker = UniqueNameMaker(
       itertools.chain.from_iterable(
-          phase.measurements.iterkeys() for phase in all_phases
+          phase.measurements.keys() for phase in all_phases
           if phase.measurements))
   attachment_names = list(itertools.chain.from_iterable(
-      phase.attachments.iterkeys() for phase in all_phases))
+      phase.attachments.keys() for phase in all_phases))
   attachment_names.extend(itertools.chain.from_iterable([
-      'multidim_' + name for name, meas in phase.measurements.iteritems()
+      'multidim_' + name for name, meas in phase.measurements.items()
       if meas.dimensions is not None
   ] for phase in all_phases if phase.measurements))
   attachment_name_maker = UniqueNameMaker(attachment_names)
   for phase in all_phases:
     # Make measurements unique.
-    for name, _ in sorted(phase.measurements.iteritems()):
+    for name, _ in sorted(phase.measurements.items()):
       old_name = name
       name = measurement_name_maker.make_unique(name)
 
       phase.measurements[old_name].name = name
       phase.measurements[name] = phase.measurements.pop(old_name)
     # Make attachments unique.
-    for name, _ in sorted(phase.attachments.iteritems()):
+    for name, _ in sorted(phase.attachments.items()):
       old_name = name
       name = attachment_name_maker.make_unique(name)
       phase.attachments[old_name].name = name
@@ -298,16 +306,16 @@ def convert_multidim_measurements(all_phases):
   # Combine actual attachments with attachments we make from multi-dim
   # measurements.
   attachment_names = list(itertools.chain.from_iterable(
-      phase.attachments.iterkeys() for phase in all_phases))
+      phase.attachments.keys() for phase in all_phases))
   attachment_names.extend(itertools.chain.from_iterable([
-      'multidim_' + name for name, meas in phase.measurements.iteritems()
+      'multidim_' + name for name, meas in phase.measurements.items()
       if meas.dimensions is not None
   ] for phase in all_phases if phase.measurements))
   attachment_name_maker = UniqueNameMaker(attachment_names)
 
   for phase in all_phases:
     # Process multi-dim measurements into unique attachments.
-    for name, measurement in sorted(phase.measurements.iteritems()):
+    for name, measurement in sorted(phase.measurements.items()):
       if measurement.dimensions:
         old_name = name
         name = attachment_name_maker.make_unique('multidim_%s' % name)
@@ -325,7 +333,7 @@ class PhaseCopier(object):
 
   def copy_measurements(self, mfg_event):
     for phase in self._phases:
-      for name, measurement in sorted(phase.measurements.iteritems()):
+      for name, measurement in sorted(phase.measurements.items()):
         # Multi-dim measurements should already have been removed.
         assert measurement.dimensions is None
         self._copy_unidimensional_measurement(phase, name, measurement, mfg_event)
@@ -363,7 +371,7 @@ class PhaseCopier(object):
 
     if isinstance(value, numbers.Number):
       mfg_measurement.numeric_value = float(value)
-    elif isinstance(value, str):
+    elif isinstance(value, bytes):
       # text_value expects unicode or ascii-compatible strings, so we must
       # 'decode' it, even if it's actually just garbage bytestring data.
       mfg_measurement.text_value = unicode(value, errors='replace')
@@ -388,7 +396,7 @@ class PhaseCopier(object):
 
   def copy_attachments(self, mfg_event):
     for phase in self._phases:
-      for name, (data, mimetype) in sorted(phase.attachments.iteritems()):
+      for name, (data, mimetype) in sorted(phase.attachments.items()):
         self._copy_attachment(name, data, mimetype, mfg_event)
 
   def _copy_attachment(self, name, data, mimetype, mfg_event):

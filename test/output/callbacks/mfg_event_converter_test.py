@@ -193,7 +193,12 @@ class MfgEventConverterTest(unittest.TestCase):
         doc('mock measurement docstring').
         with_units(units.Unit('radian')).
         in_range(1, 10))
-    measurement_text = self._create_and_set_measurement('text', '\xfd')
+
+    # We 'incorrectly' create a measurement with a unicode character as
+    # a python2 string.  We don't want mfg_event_converter to guess at it's
+    # encoding but we also don't want to fail after a test on conversion so it
+    # replaces errors with a unicode question mark character.
+    measurement_text = self._create_and_set_measurement('text', b'\xfd')
     measurement_unicode = self._create_and_set_measurement('unicode', u'\ufffa')
 
     phase = test_record.PhaseRecord(
@@ -229,7 +234,8 @@ class MfgEventConverterTest(unittest.TestCase):
 
     # Measurement value.
     self.assertEqual(mock_measurement.numeric_value, 5.0)
-    # FFFD is unicode's '?'
+    # FFFD is unicode's '?'.  This occurs when we can't easily convert a python2
+    # string to unicode.
     self.assertEqual(text_measurement.text_value, u'\ufffd')
     self.assertEqual(unicode_measurement.text_value, u'\ufffa')
 
@@ -253,7 +259,7 @@ class MfgEventConverterTest(unittest.TestCase):
     copier.copy_attachments(mfg_event)
 
     self.assertEqual(mfg_event.attachment[0].name, 'mock-attachment-name')
-    self.assertEqual(mfg_event.attachment[0].value_binary, 'mock-data')
+    self.assertEqual(mfg_event.attachment[0].value_binary, b'mock-data')
     self.assertEqual(mfg_event.attachment[0].type, test_runs_pb2.TEXT_UTF8)
 
 
