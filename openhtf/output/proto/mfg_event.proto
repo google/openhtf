@@ -3,15 +3,6 @@ syntax = "proto2";
 package openhtf;
 
 import "openhtf/output/proto/test_runs.proto";
-// **** TODO(kdsudac): also need to upstream the real AssemblyEvent
-//import "googlex/warhol/proto/assembly_event.proto";
-message AssemblyEvent {
-  optional string foo = 1;
-}
-// end TODO DO NOT SUBMIT
-
-// For better documentation:
-// https://sites.google.com/a/google.com/factoryfactory/data-formats/test-runs
 
 // A record of a manufacturing event, including any parameters that were checked
 // and if the result was a pass, failure, or an error.
@@ -76,7 +67,7 @@ message MfgEvent {
   // Next tag = 23;
 }
 
-// A parameter which is tested during a test run. These are parameteric values
+// A parameter which is tested during a test run. These are parametric values
 // which are used to pass or fail the test.
 message Measurement {
   required string name = 1;
@@ -84,8 +75,8 @@ message Measurement {
   optional string description = 6;
   optional bool important = 18;
   // An optional tag, this parameter can be used to tag similar parameters
-  // simplifying selecting them via dremel and giving a frontend some sort of
-  // semantic when displaying them
+  // simplifying selecting them during analysis and giving a frontend some sort
+  // of semantic when displaying them
   repeated string parameter_tag = 16;
 
   // If this parameter is numeric then fill in these fields
