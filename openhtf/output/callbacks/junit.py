@@ -39,11 +39,17 @@ class OutputToJUNIT(callbacks.OutputToFile):
     for phase in dict_test_record["phases"]:
       output = []
       for _, phase_data in phase["measurements"].items():
+        log_output = []
+
+        for log_data in dict_test_record["log_records"]:
+          if phase["name"] in log_data["logger_name"]:
+            log_output.append(log_data["message"])
 
         output.extend(["name: " + phase_data["name"],
                        "validators: " + str(phase_data["validators"]),
                        "measured_value: " + str(phase_data["measured_value"]),
-                       "outcome: " + phase_data["outcome"], "\n"])
+                       "outcome: " + phase_data["outcome"],
+                       "log: " + "\n".join(log_output), "\n"])
 
       if phase["outcome"] == "PASS":
         test_case = TestCase(phase["name"],
