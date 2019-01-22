@@ -37,7 +37,6 @@ message AssemblyEvent {
     // Serial reported by something electronic on the component.
     string electronic_serial = 4;
     // For objects that repeat in their parent or are named anyway,
-    // such as ‘radar_front_right’, ‘metis’, or ‘gpu_0’.
     string instance_name = 5;
     // ‘valid’, ‘transform’, ‘electronic_part_number’, etc
     google.protobuf.Struct extra_data = 6;
