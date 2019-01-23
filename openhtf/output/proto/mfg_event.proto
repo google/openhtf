@@ -1,0 +1,126 @@
+syntax = "proto2";
+
+package openhtf;
+
+import "openhtf/output/proto/assembly_event.proto";
+import "openhtf/output/proto/test_runs.proto";
+
+// A record of a manufacturing event, including any parameters that were checked
+// and if the result was a pass, failure, or an error.
+// NOTE: If you're interested in a 'unique-key' using dut_serial,
+// start_time_millis has been the unofficial strategy
+message MfgEvent {
+  // The serial number or lot info of the device under test.
+  // For non-serialized items, we can track them via lot_number and an
+  // optional lot_index within the lot (such as "This tray of items is lot
+  // #FOT123 and this is the part in slot 6 of the tray.
+  message ByLot {
+    required string lot_number = 1;
+    optional string lot_index = 2;
+  }
+  oneof dut {
+    string dut_serial = 1;
+    ByLot lot = 2;
+  }
+
+  required int64 start_time_ms = 3;
+  optional int64 end_time_ms = 4;
+
+  // The name of the tester where this run was started.
+  required string tester_name = 5;
+  // The name of the test that ran.
+  required string test_name = 6;
+  // Optional information about the test.
+  optional string test_version = 20;
+  optional string test_description = 21;
+  // Optional 'run name', indexed and maps to run: search atom.
+  optional string test_run_name = 22;
+
+  required Status test_status = 8 [default = CREATED];
+
+  repeated AssemblyEvent assembly_events = 10;
+  repeated openhtf.Timing timings = 11;
+  repeated openhtf.Phase phases = 12;
+
+  // The version of the framework that created this.
+  optional string framework_build = 13;
+
+  repeated Measurement measurement = 14;
+  repeated EventAttachment attachment = 15;
+
+  // A list of log lines logged by a test
+  repeated openhtf.TestRunLogMessage test_logs = 16;
+
+  // FailureCode's gather information about tester failure/errors.
+  repeated openhtf.FailureCode failure_codes = 17;
+
+  // A field which (optionally) contains the name of the person conducting
+  // the test or otherwise responsible for the data.
+  optional string operator_name = 18;
+
+  // User-visible and searchable tags for this event. Think of them like Twitter
+  // hashtags, because that seems to be an intuitive search mechanism.
+  // Note: Do not store # in this field.
+  // Examples: [glass, v1] or [chromebit, burnin]
+  repeated string part_tags = 19;
+
+
+  // Next tag = 23;
+}
+
+// A parameter which is tested during a test run. These are parametric values
+// which are used to pass or fail the test.
+message Measurement {
+  required string name = 1;
+  optional Status status = 2;
+  optional string description = 6;
+  optional bool important = 18;
+  // An optional tag, this parameter can be used to tag similar parameters
+  // simplifying selecting them during analysis and giving a frontend some sort
+  // of semantic when displaying them
+  repeated string parameter_tag = 16;
+
+  // If this parameter is numeric then fill in these fields
+  optional double numeric_value = 11;
+  optional double numeric_minimum = 12;
+  optional double numeric_maximum = 13;
+
+  // If this parameter is text then fill in these fields
+  optional string text_value = 14;
+  // This field may be a regular expression describing the expected value
+  optional string expected_text = 15;
+
+  optional bool is_optional = 17;
+  optional int64 set_time_millis = 19;
+  optional Units.UnitCode unit_code = 20;
+  // If using a unit not in the Units.UnitCode enum:
+  optional string custom_unit_code = 22;
+  optional string custom_unit_suffix = 23;
+
+  // Created for visualization by UIs that don't support certain fancy
+  // parameters. UIs that do support them should hide these parameters.
+  optional string associated_attachment = 21;
+  // Next tag = 24
+
+  extensions 5000 to 5199;
+}
+
+// A parameter which is extra information from a test run.  These values are not
+// used to pass or fail a test but may be useful when inspecting data.
+message EventAttachment {
+  required string name = 1;
+
+  optional bytes value_binary = 2;
+
+  optional string description = 3;
+  optional int64 set_time_millis = 4;
+
+  repeated string parameter_tag = 5;
+
+  oneof datatype {
+    openhtf.InformationTag type = 6;
+    string mime_type = 7;
+  }
+
+  // next tag = 9
+}
