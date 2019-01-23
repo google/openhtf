@@ -1,8 +1,8 @@
 @import 'vars';
 
 // Styling for lists injected into the prompt.
-:host /deep/ ol,
-:host /deep/ ul {
+:host ::ng-deep ol,
+:host ::ng-deep ul {
   padding-left: 25px;
   margin: 0;
 }
