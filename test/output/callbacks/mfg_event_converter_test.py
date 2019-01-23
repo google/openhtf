@@ -305,7 +305,7 @@ class MultiDimConversionTest(unittest.TestCase):
       self.assertEqual(exp, act)
 
   def test_reversibleish(self):
-    """Veriy that in happy case multidim -> attachment is reversible."""
+    """Verify that in happy case multidim -> attachment is reversible."""
     mdim = self.create_multi_dim_measurement()
 
     attachment = mfg_event_converter.multidim_measurement_to_attachment(
@@ -317,7 +317,11 @@ class MultiDimConversionTest(unittest.TestCase):
     self.assert_same_mdim(mdim, reversed_mdim)
 
   def test_reversibleish_leagcy_status_int(self):
-    """Veriy that in happy case multidim -> attachment is reversible."""
+    """Verfiy multidim -> attachment is reversible even on leagacy data.
+
+    Older implementations would cast the outcome to an int instead of a string.
+    We verify we can cast the saved int into correct outcome.
+    """
     mdim = self.create_multi_dim_measurement()
 
     attachment = mfg_event_converter.multidim_measurement_to_attachment(

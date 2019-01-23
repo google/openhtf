@@ -61,7 +61,7 @@ message MfgEvent {
   // User-visible and searchable tags for this event. Think of them like Twitter
   // hashtags, because that seems to be an intuitive search mechanism.
   // Note: Do not store # in this field.
-  // Examples: [glass, v1] [gbr, v3] [chromebit, burnin]
+  // Examples: [glass, v1] or [chromebit, burnin]
   repeated string part_tags = 19;
 
 
