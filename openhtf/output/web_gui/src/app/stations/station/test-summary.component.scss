@@ -23,7 +23,7 @@ htf-progress-bar {
   padding: 0;
 }
 
-:host /deep/ htf-phase .phase-name {
+:host ::ng-deep htf-phase .phase-name {
   font-weight: bold;
 
   &::before {
