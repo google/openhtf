@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Tests for google3.third_party.car.hw.testing.output.email."""
 
+import io
 import json
 import logging
 import os
@@ -8,25 +9,20 @@ import unittest
 
 from openhtf.core import measurements
 from openhtf.core import test_record
-from openhtf.util import logs as test_logs
-from openhtf.util import units
-
-import openhtf as htf
-from openhtf import util
-from examples import all_the_things
-from openhtf.output.callbacks import console_summary
-from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import assembly_event_pb2
 from openhtf.output.proto import mfg_event_converter
 from openhtf.output.proto import mfg_event_pb2
-from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
+from openhtf.util import logs as test_logs
+from openhtf.util import units
 
 
-TEST_MULTIDIM_JSON_FILE = os.path.join(os.path.dirname(__file__),
+TEST_MULTIDIM_JSON_FILE = os.path.join(
+    os.path.dirname(__file__),
     'multidim_testdata.json')
-with open(TEST_MULTIDIM_JSON_FILE, 'r') as f:
+with io.open(TEST_MULTIDIM_JSON_FILE, 'r', encoding='utf-8') as f:
   TEST_MULTIDIM_JSON = f.read()
+
 
 class MfgEventConverterTest(unittest.TestCase):
 
@@ -54,10 +50,14 @@ class MfgEventConverterTest(unittest.TestCase):
     }
     record.phases = [
         test_record.PhaseRecord(
-            name='phase-%d' % idx, descriptor_id=idx,
+            name='phase-%d' % idx,
+            descriptor_id=idx,
             codeinfo=test_record.CodeInfo.uncaptured(),
-            result=None, attachments={},
-            start_time_millis=1, end_time_millis=1)
+            result=None,
+            attachments={},
+            start_time_millis=1,
+            end_time_millis=1
+        )
         for idx in range(1, 5)
     ]
     for phase in record.phases:
@@ -87,7 +87,6 @@ class MfgEventConverterTest(unittest.TestCase):
                       'config',
                       'multidim_meas-3_0', 'multidim_meas-3_1',
                       'multidim_meas-3_2', 'multidim_meas-3_3'])
-
 
   def test_populate_basic_data(self):
     outcome_details = test_record.OutcomeDetails(
@@ -333,7 +332,6 @@ class MultiDimConversionTest(unittest.TestCase):
     attachment = test_record.Attachment(json.dumps(data_dict),
                                         test_runs_pb2.MULTIDIM_JSON)
 
-
     reversed_mdim = mfg_event_converter.attachment_to_multidim_measurement(
         attachment)
 
@@ -345,12 +343,12 @@ class MultiDimConversionTest(unittest.TestCase):
     self.assertEqual(expected.dimensions, other.dimensions)
 
     self.assertEqual(
-      len(expected.measured_value.value_dict),
-      len(other.measured_value.value_dict),
-      )
+        len(expected.measured_value.value_dict),
+        len(other.measured_value.value_dict),
+    )
     for k, v in expected.measured_value.value_dict.items():
       assert k in other.measured_value.value_dict, (
-        'expected key %s is not present in other multidim' % k)
+          'expected key %s is not present in other multidim' % k)
       other_v = other.measured_value.value_dict[k]
       self.assertEqual(v, other_v, 'Different values for key: %s (%s != %s)' % (
-        k, v, other_v))
+          k, v, other_v))
