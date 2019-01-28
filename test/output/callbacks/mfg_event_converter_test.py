@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Tests for google3.third_party.car.hw.testing.output.email."""
 
+import io
 import json
 import logging
 import os
@@ -23,9 +24,10 @@ from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 
 
-TEST_MULTIDIM_JSON_FILE = os.path.join(os.path.dirname(__file__),
+TEST_MULTIDIM_JSON_FILE = os.path.join(
+    os.path.dirname(__file__),
     'multidim_testdata.json')
-with open(TEST_MULTIDIM_JSON_FILE, 'r') as f:
+with io.open(TEST_MULTIDIM_JSON_FILE, 'r', encoding='utf-8') as f:
   TEST_MULTIDIM_JSON = f.read()
 
 class MfgEventConverterTest(unittest.TestCase):
