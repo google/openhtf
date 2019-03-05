@@ -298,6 +298,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
+    executor.close()
 
   def test_cancel_twice_phase(self):
 
@@ -346,6 +347,7 @@ class TestExecutorTest(unittest.TestCase):
     # Teardown function should *NOT* be executed.
     self.assertFalse(ev.is_set())
     self.assertFalse(ev2.is_set())
+    executor.close()
 
   def test_failure_during_plug_init(self):
     ev = threading.Event()
@@ -368,6 +370,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertEqual(record.outcome_details[0].description, FAIL_PLUG_MESSAGE)
     # Teardown function should *NOT* be executed.
     self.assertFalse(ev.is_set())
+    executor.close()
 
   def test_failure_during_start_phase_plug_init(self):
     def never_gonna_run_phase():
@@ -417,6 +420,7 @@ class TestExecutorTest(unittest.TestCase):
     record = executor.test_state.test_record
     self.assertEqual(record.outcome, Outcome.ERROR)
     self.assertEqual(record.outcome_details[0].code, TeardownError.__name__)
+    executor.close()
 
   def test_log_during_teardown(self):
     message = 'hello'
@@ -441,6 +445,7 @@ class TestExecutorTest(unittest.TestCase):
     log_records = [log_record for log_record in record.log_records
                    if log_record.message == message]
     self.assertTrue(log_records)
+    executor.close()
 
 
 class TestExecutorHandlePhaseTest(unittest.TestCase):

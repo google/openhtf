@@ -60,6 +60,17 @@ class TestExecutor(threads.KillableThread):
     self._full_abort = threading.Event()
     self._teardown_phases_lock = threading.Lock()
 
+  def close(self):
+    """Close and remove any global registrations.
+
+    Always call this function when finished with this instance.
+
+    This function is defined instead of a __del__ function because Python calls
+    the __del__ function unreliably.
+    """
+    self.wait()
+    self.test_state.close()
+
   def abort(self):
     """Abort this test."""
     if self._abort.is_set():

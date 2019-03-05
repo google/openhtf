@@ -150,7 +150,15 @@ class TestState(util.SubscribableStateMixin):
     self.execution_uid = execution_uid
     self.test_options = test_options
 
-  def __del__(self):
+  def close(self):
+    """Close and remove any global registrations.
+
+    Always call this function when finished with this instance as it ensures
+    that it can be garbage collected.
+
+    This function is defined instead of a __del__ function because Python calls
+    the __del__ function unreliably.
+    """
     logs.remove_record_handler(self.execution_uid)
 
   @property
