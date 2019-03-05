@@ -148,5 +148,6 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
         return phase_desc(test_state, *args, **kwargs)
       finally:
         monitor_thread.kill()
+        monitor_thread.join()
     return monitored_phase_func
   return wrapper

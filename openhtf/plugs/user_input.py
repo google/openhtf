@@ -161,11 +161,15 @@ class UserInput(plugs.FrontendAwareBasePlug):
               'message': self._prompt.message,
               'text-input': self._prompt.text_input}
 
+  def tearDown(self):
+    self.remove_prompt()
+
   def remove_prompt(self):
     """Remove the prompt."""
     self._prompt = None
-    self._console_prompt.Stop()
-    self._console_prompt = None
+    if self._console_prompt:
+      self._console_prompt.Stop()
+      self._console_prompt = None
     self.notify_update()
 
   def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):

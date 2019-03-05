@@ -68,6 +68,7 @@ class TestExecutor(threads.KillableThread):
     This function is defined instead of a __del__ function because Python calls
     the __del__ function unreliably.
     """
+    self.wait()
     self.test_state.close()
 
   def abort(self):
