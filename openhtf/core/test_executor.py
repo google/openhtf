@@ -60,6 +60,9 @@ class TestExecutor(threads.KillableThread):
     self._full_abort = threading.Event()
     self._teardown_phases_lock = threading.Lock()
 
+  def cleanup(self):
+    self.test_state.cleanup()
+
   def abort(self):
     """Abort this test."""
     if self._abort.is_set():

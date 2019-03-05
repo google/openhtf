@@ -150,7 +150,7 @@ class TestState(util.SubscribableStateMixin):
     self.execution_uid = execution_uid
     self.test_options = test_options
 
-  def __del__(self):
+  def cleanup(self):
     logs.remove_record_handler(self.execution_uid)
 
   @property
