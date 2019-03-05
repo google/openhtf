@@ -61,6 +61,7 @@ class TestExecutor(threads.KillableThread):
     self._teardown_phases_lock = threading.Lock()
 
   def cleanup(self):
+    self.wait()
     self.test_state.cleanup()
 
   def abort(self):
