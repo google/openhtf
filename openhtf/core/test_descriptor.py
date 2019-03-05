@@ -349,6 +349,7 @@ class Test(object):
               rst=colorama.Style.RESET_ALL))
       finally:
         del self.TEST_INSTANCES[self.uid]
+        self._executor.close()
         self._executor = None
 
     return final_state.test_record.outcome == test_record.Outcome.PASS
