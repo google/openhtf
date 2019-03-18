@@ -299,14 +299,14 @@ class PlugManager(object):
   Attributes:
     _plug_types: Initial set of plug types, additional plug types may be
         passed into calls to initialize_plugs().
-    _logger_name: The name of this test's plug logger. The loggers passed to the
-        plugs will be children of this logger.
     _plugs_by_type: Dict mapping plug type to plug instance.
     _plugs_by_name: Dict mapping plug name to plug instance.
     _plug_descriptors: Dict mapping plug type to plug descriptor.
+    logger: logging.Logger instance that can save logs to the running test
+        record.
   """
 
-  def __init__(self, plug_types=None, record_logger_name=None):
+  def __init__(self, plug_types=None, record_logger=None):
     self._plug_types = plug_types or set()
     for plug in self._plug_types:
       if isinstance(plug, PlugPlaceholder):
@@ -315,7 +315,9 @@ class PlugManager(object):
     self._plugs_by_type = {}
     self._plugs_by_name = {}
     self._plug_descriptors = {}
-    self.logger = logging.getLogger(record_logger_name).getChild('plug')
+    if not record_logger:
+      record_logger = _LOG
+    self.logger = record_logger.getChild('plug')
 
   def as_base_types(self):
     return {
