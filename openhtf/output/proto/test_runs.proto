@@ -127,6 +127,10 @@ message TestParameter {
   optional double numeric_minimum = 12;
   optional double numeric_maximum = 13;
 
+  // If this parameter is a percent range
+  optional double expected_value = 22;
+  optional double percent_range = 23;
+
   // If this parameter is text then fill in these fields
   optional string text_value = 14;
   // This field may be a regular expression describing the expected value
@@ -139,7 +143,7 @@ message TestParameter {
   // Created for visualization by UIs that don't support certain fancy
   // parameters. UIs that do support them should hide these parameters.
   optional string associated_attachment = 21;
-  // Next tag = 22
+  // Next tag = 24
 
   extensions 5000 to 5199;
 }

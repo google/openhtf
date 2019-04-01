@@ -187,11 +187,17 @@ class MfgEventConverterTest(unittest.TestCase):
     return measurement
 
   def test_copy_measurements_from_phase(self):
-    measurement = (
-        self._create_and_set_measurement('mock-measurement-name', 5).
-        doc('mock measurement docstring').
-        with_units(units.Unit('radian')).
-        in_range(1, 10))
+    measurement_in_range = (
+        self._create_and_set_measurement(
+            'in-range',
+            5).doc('mock measurement in range docstring').with_units(
+                units.Unit('radian')).in_range(1, 10))
+
+    measurement_within_percent = (
+        self._create_and_set_measurement(
+            'within-percent',
+            8).doc('mock measurement within percent docstring').with_units(
+                units.Unit('radian')).within_percent(8, 9))
 
     # We 'incorrectly' create a measurement with a unicode character as
     # a python2 string.  We don't want mfg_event_converter to guess at it's
@@ -205,7 +211,8 @@ class MfgEventConverterTest(unittest.TestCase):
         descriptor_id=1,
         codeinfo=self.create_codeinfo(),
         measurements={
-            'mock-measurement-name': measurement,
+            'in-range': measurement_in_range,
+            'within-percent': measurement_within_percent,
             'text': measurement_text,
             'unicode': measurement_unicode,
         },
@@ -217,32 +224,42 @@ class MfgEventConverterTest(unittest.TestCase):
 
     # Names.
     created_measurements = sorted(mfg_event.measurement, key=lambda m: m.name)
-    mock_measurement = created_measurements[0]
+    mock_measurement_in_range = created_measurements[0]
     text_measurement = created_measurements[1]
     unicode_measurement = created_measurements[2]
-    self.assertEqual(mock_measurement.name, u'mock-measurement-name')
+    mock_measurement_within_percent = created_measurements[3]
+    self.assertEqual(mock_measurement_in_range.name, u'in-range')
+    self.assertEqual(measurement_within_percent.name, u'within-percent')
     self.assertEqual(text_measurement.name, u'text')
     self.assertEqual(unicode_measurement.name, u'unicode')
 
     # Basic measurement fields.
-    self.assertEqual(mock_measurement.status, test_runs_pb2.PASS)
-    self.assertEqual(mock_measurement.description, 'mock measurement docstring')
-    self.assertEqual(mock_measurement.parameter_tag[0], 'mock-phase-name')
-    self.assertEqual(mock_measurement.unit_code,
-                     test_runs_pb2.Units.UnitCode.Value('RADIAN'))
+    for mock_measurement in (mock_measurement_in_range,
+                             mock_measurement_within_percent):
+      self.assertEqual(mock_measurement.status, test_runs_pb2.PASS)
+      self.assertEqual(mock_measurement.parameter_tag[0], 'mock-phase-name')
+      self.assertEqual(mock_measurement.unit_code,
+                       test_runs_pb2.Units.UnitCode.Value('RADIAN'))
+
+    self.assertEqual(mock_measurement_in_range.description,
+                     'mock measurement in range docstring')
+    self.assertEqual(mock_measurement_within_percent.description,
+                     'mock measurement within percent docstring')
 
     # Measurement value.
-    self.assertEqual(mock_measurement.numeric_value, 5.0)
+    self.assertEqual(mock_measurement_in_range.numeric_value, 5.0)
+    self.assertEqual(mock_measurement_within_percent.numeric_value, 8.0)
+
     # FFFD is unicode's '?'.  This occurs when we can't easily convert a python2
     # string to unicode.
     self.assertEqual(text_measurement.text_value, u'\ufffd')
     self.assertEqual(unicode_measurement.text_value, u'\ufffa')
 
     # Measurement validators.
-    self.assertEqual(mock_measurement.numeric_minimum, 1.0)
-    self.assertEqual(mock_measurement.numeric_maximum, 10.0)
-    self.assertEqual(mock_measurement.name, u'mock-measurement-name')
-    self.assertEqual(mock_measurement.name, u'mock-measurement-name')
+    self.assertEqual(mock_measurement_in_range.numeric_minimum, 1.0)
+    self.assertEqual(mock_measurement_in_range.numeric_maximum, 10.0)
+    self.assertEqual(mock_measurement_within_percent.expected_value, 8.0)
+    self.assertEqual(mock_measurement_within_percent.percent_range, 9.0)
 
   def testCopyAttachmentsFromPhase(self):
     attachment = test_record.Attachment('mock-data', 'text/plain')
