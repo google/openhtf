@@ -249,6 +249,11 @@ def _extract_parameters(record, testrun, used_parameter_names):
               testrun_param.numeric_minimum = float(validator.minimum)
             if validator.maximum is not None:
               testrun_param.numeric_maximum = float(validator.maximum)
+          elif isinstance(validator, validators.WithinPercent):
+            if validator.expected is not None:
+              testrun_param.expected_value = float(validator.expected)
+            if validator.percent is not None:
+              testrun_param.percent_range = float(validator.percent)
           elif isinstance(validator, validators.RegexMatcher):
             testrun_param.expected_text = validator.regex
           else:
