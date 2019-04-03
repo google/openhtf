@@ -162,7 +162,7 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def _log_exception(self, *args):
     """Log exception, while allowing unit testing to override."""
-    self._test_state.logger.critical(*args)
+    self._test_state.state_logger.critical(*args)
 
   def _thread_exception(self, *args):
     self._phase_execution_outcome = PhaseExecutionOutcome(ExceptionInfo(*args))

@@ -220,7 +220,7 @@ class TestExecutor(threads.KillableThread):
 
     # Now finalize the test state.
     if self._abort.is_set():
-      self.test_state.logger.debug('Finishing test with outcome ABORTED.')
+      self.test_state.state_logger.debug('Finishing test with outcome ABORTED.')
       self.test_state.abort()
     elif self._last_outcome and self._last_outcome.is_terminal:
       self.test_state.finalize_from_phase_outcome(self._last_outcome)
@@ -231,7 +231,7 @@ class TestExecutor(threads.KillableThread):
     if isinstance(phase, phase_group.PhaseGroup):
       return self._execute_phase_group(phase)
 
-    self.test_state.logger.debug('Handling phase %s', phase.name)
+    self.test_state.state_logger.debug('Handling phase %s', phase.name)
     outcome = self._phase_exec.execute_phase(phase)
     if outcome.is_terminal and not self._last_outcome:
       self._last_outcome = outcome
@@ -251,7 +251,7 @@ class TestExecutor(threads.KillableThread):
       True if there is a terminal error or the test is aborted, False otherwise.
     """
     if group_name and phases:
-      self.test_state.logger.debug(
+      self.test_state.state_logger.debug(
           'Executing %s phases for %s', type_name, group_name)
     for phase in phases:
       if self._abort.is_set() or self._handle_phase(phase):
@@ -270,8 +270,8 @@ class TestExecutor(threads.KillableThread):
       True if there is at least one terminal error, False otherwise.
     """
     if group_name and teardown_phases:
-      self.test_state.logger.debug('Executing teardown phases for %s',
-                                   group_name)
+      self.test_state.state_logger.debug('Executing teardown phases for %s',
+                                         group_name)
     ret = False
     with self._teardown_phases_lock:
       for teardown_phase in teardown_phases:
@@ -299,7 +299,7 @@ class TestExecutor(threads.KillableThread):
       True if the phases are terminal; otherwise returns False.
     """
     if group.name:
-      self.test_state.logger.debug('Entering PhaseGroup %s', group.name)
+      self.test_state.state_logger.debug('Entering PhaseGroup %s', group.name)
     if self._execute_abortable_phases(
         'setup', group.setup, group.name):
       return True

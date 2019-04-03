@@ -84,6 +84,7 @@ class ConsolePrompt(threading.Thread):
     self._stopped = True
     if not self._answered:
       _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
+    self.join()
 
   def run(self):
     """Main logic for this thread to execute."""
@@ -150,7 +151,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     self._prompt = None
     self._console_prompt = None
     self._response = None
-    self._cond = threading.Condition()
+    self._cond = threading.Condition(threading.RLock())
 
   def _asdict(self):
     """Return a dictionary representation of the current prompt."""
@@ -166,11 +167,12 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
   def remove_prompt(self):
     """Remove the prompt."""
-    self._prompt = None
-    if self._console_prompt:
-      self._console_prompt.Stop()
-      self._console_prompt = None
-    self.notify_update()
+    with self._cond:
+      self._prompt = None
+      if self._console_prompt:
+        self._console_prompt.Stop()
+        self._console_prompt = None
+      self.notify_update()
 
   def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
     """Display a prompt and wait for a response.

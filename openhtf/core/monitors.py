@@ -112,7 +112,7 @@ class _MonitorThread(threads.KillableThread):
                    (mean_sample_ms / 1000.0))
         continue
       elif new_sample > last_sample + 2:
-        self.test_state.logger.warning(
+        self.test_state.state_logger.warning(
             'Monitor for "%s" skipping %s sample(s).', self.measurement_name,
             new_sample - last_sample - 1)
       last_sample, cur_sample_ms = _take_sample()
