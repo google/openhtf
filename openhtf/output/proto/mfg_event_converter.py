@@ -385,16 +385,11 @@ class PhaseCopier(object):
 
     # Copy measurement validators.
     for validator in measurement.validators:
-      if isinstance(validator, validators.in_range):
+      if isinstance(validator, validators.RangeValidatorBase):
         if validator.minimum is not None:
           mfg_measurement.numeric_minimum = float(validator.minimum)
         if validator.maximum is not None:
           mfg_measurement.numeric_maximum = float(validator.maximum)
-      elif isinstance(validator, validators.WithinPercent):
-        if validator.expected is not None:
-          mfg_measurement.expected_value = float(validator.expected)
-        if validator.percent is not None:
-          mfg_measurement.percent_range = float(validator.percent)
       elif isinstance(validator, validators.RegexMatcher):
         mfg_measurement.expected_text = validator.regex
       else:
