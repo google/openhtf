@@ -196,8 +196,8 @@ class MfgEventConverterTest(unittest.TestCase):
     measurement_within_percent = (
         self._create_and_set_measurement(
             'within-percent',
-            8).doc('mock measurement within percent docstring').with_units(
-                units.Unit('radian')).within_percent(8, 9))
+            9).doc('mock measurement within percent docstring').with_units(
+                units.Unit('radian')).within_percent(10, 20))
 
     # We 'incorrectly' create a measurement with a unicode character as
     # a python2 string.  We don't want mfg_event_converter to guess at it's
@@ -248,7 +248,7 @@ class MfgEventConverterTest(unittest.TestCase):
 
     # Measurement value.
     self.assertEqual(mock_measurement_in_range.numeric_value, 5.0)
-    self.assertEqual(mock_measurement_within_percent.numeric_value, 8.0)
+    self.assertEqual(mock_measurement_within_percent.numeric_value, 9)
 
     # FFFD is unicode's '?'.  This occurs when we can't easily convert a python2
     # string to unicode.
@@ -258,8 +258,8 @@ class MfgEventConverterTest(unittest.TestCase):
     # Measurement validators.
     self.assertEqual(mock_measurement_in_range.numeric_minimum, 1.0)
     self.assertEqual(mock_measurement_in_range.numeric_maximum, 10.0)
-    self.assertEqual(mock_measurement_within_percent.expected_value, 8.0)
-    self.assertEqual(mock_measurement_within_percent.percent_range, 9.0)
+    self.assertEqual(mock_measurement_within_percent.numeric_minimum, 8.0)
+    self.assertEqual(mock_measurement_within_percent.numeric_maximum, 12.0)
 
   def testCopyAttachmentsFromPhase(self):
     attachment = test_record.Attachment('mock-data', 'text/plain')
