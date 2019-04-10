@@ -86,7 +86,6 @@ class ConsolePrompt(threading.Thread):
     self._stop_event.set()
     if not self._answered:
       _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
-    self.join()
 
   def run(self):
     """Main logic for this thread to execute."""
@@ -112,7 +111,7 @@ class ConsolePrompt(threading.Thread):
     line = ''
     while not self._stop_event.is_set():
       inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
-      if [sys.stdin] in inputs:
+      if sys.stdin in inputs:
         new = os.read(sys.stdin.fileno(), 1024)
         if not new:
           # Hit EOF!
