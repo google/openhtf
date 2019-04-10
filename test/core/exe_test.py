@@ -266,8 +266,8 @@ class TestExecutorTest(unittest.TestCase):
     # The test will end at the same time it starts because the test never
     # actually started, we canceled it inside of test_start, resulting in a
     # short vacuous start. Start and end times should be no more than a
-    # millisecond or two apart in that case.
-    self.assertLess(record.end_time_millis - record.start_time_millis, 2)
+    # few milliseconds apart in that case.
+    self.assertLess(record.end_time_millis - record.start_time_millis, 4)
     self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should not be executed.
     self.assertFalse(ev.wait(3))
