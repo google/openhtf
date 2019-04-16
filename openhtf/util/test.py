@@ -414,6 +414,10 @@ class TestCase(unittest.TestCase):
     self.assertIs(
         openhtf.PhaseResult.CONTINUE, phase_record.result.phase_result)
 
+  def assertPhaseFailAndContinue(self, phase_record):
+    self.assertIs(
+        openhtf.PhaseResult.FAIL_AND_CONTINUE, phase_record.result.phase_result)
+
   def assertPhaseRepeat(self, phase_record):
     self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
 
