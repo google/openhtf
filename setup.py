@@ -180,7 +180,7 @@ class PyTestCommand(test):
 
 setup(
     name='openhtf',
-    version='1.4.1',
+    version='1.4.2',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
     author_email='madsci@google.com',
