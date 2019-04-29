@@ -173,7 +173,7 @@ class PhaseDescriptor(mutablerecords.Record(
     return self.options.name or self.func.__name__
 
   @property
-  def doc(self):
+  def __doc__(self):
     return self.func.__doc__
 
   def with_known_args(self, **kwargs):
