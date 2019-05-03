@@ -362,6 +362,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'teardown_function': None,
     'failure_exceptions': list,
     'default_dut_id': 'UNKNOWN_DUT',
+    'stop_on_first_failure': False
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
@@ -376,6 +377,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
       the run is marked as ERROR.
   default_dut_id: The DUT ID that will be used if the start trigger and all
       subsequent phases fail to set one.
+  stop_on_first_failure: Stop Test on first failed measurement.
   """
 
 
