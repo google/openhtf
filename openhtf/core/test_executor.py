@@ -18,6 +18,7 @@ import logging
 import sys
 import threading
 
+import openhtf
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
 from openhtf.core import test_record
@@ -238,8 +239,8 @@ class TestExecutor(threads.KillableThread):
       # Stop Test on first measurement failure
       current_phase_result = self.test_state.test_record.phases[
           len(self.test_state.test_record.phases) -1]
-      if current_phase_result.outcome == test_record.PhaseOutcome.FAIL:
-        outcome = phase_executor.PhaseExecutionOutcome(phase_descriptor.PhaseResult.STOP)
+      if current_phase_result.outcome == openhtf.test_record.PhaseOutcome.FAIL:
+        outcome = phase_executor.PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
         self.test_state.state_logger.debug('Stopping test due to failed measurement')
 
     if outcome.is_terminal and not self._last_outcome:
