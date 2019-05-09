@@ -33,6 +33,7 @@ from openhtf.core.test_record import Outcome
 from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import timeouts
+from openhtf.util import validators
 
 
 # Default logging to debug level.
@@ -132,6 +133,11 @@ def fail_plug_phase(fail):
 
 def blank_phase():
   pass
+
+@openhtf.PhaseOptions(stop_on_failure=True)
+@openhtf.measures('val', validators=[validators.equals(True)])
+def phase_stop_on_failure(test):
+  test.measurements.val = False
 
 
 class TeardownError(Exception):
@@ -491,6 +497,33 @@ class TestExecutorTest(unittest.TestCase):
     executor.wait()
     record = executor.test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
+    self.assertTrue(record.outcome, Outcome.FAIL)
+    # Verify phase_one was not run
+    ran_phase = [phase.name for phase in record.phases]
+    self.assertFalse('phase_one' in ran_phase)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+    executor.close()
+
+  def test_stop_on_failure_option_phase(self):
+
+    ev = threading.Event()
+    group = phase_group.PhaseGroup(main=[phase_stop_on_failure,
+                                         phase_one],
+                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    test = openhtf.Test(group)
+    test.configure(
+        default_dut_id='dut',
+    )
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, test._test_options)
+
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(
+        record.phases[1].result,
+        phase_executor.PhaseExecutionOutcome(openhtf.PhaseResult.STOP))
     self.assertTrue(record.outcome, Outcome.FAIL)
     # Verify phase_one was not run
     ran_phase = [phase.name for phase in record.phases]
