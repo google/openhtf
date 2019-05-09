@@ -644,6 +644,17 @@ class PhaseState(
                  else test_record.PhaseOutcome.FAIL)
     self.phase_record.outcome = outcome
 
+  def _update_phase_result_from_phase_outcome(self):
+    """Update PhaseResult based on PhaseOutcome.
+
+    This method updates PhaseResult to STOP in case of PhaseOutcome is FAIL.
+    """
+    if self.phase_record.outcome is test_record.PhaseOutcome.FAIL:
+      self.logger.error('Stopping test due to failed measurement.')
+      self.result = openhtf.phase_executor.PhaseExecutionOutcome(
+          openhtf.PhaseResult.STOP)
+
+
   @property
   @contextlib.contextmanager
   def record_timing_context(self):
@@ -663,4 +674,7 @@ class PhaseState(
     finally:
       self._finalize_measurements()
       self._set_phase_outcome()
+      if self.options.stop_on_failure is True:
+        # Stop test on PhaseOutcome == FAIL if PhaseOption stop_on_failure is True
+        self._update_phase_result_from_phase_outcome()
       self.phase_record.finalize_phase(self.options)
