@@ -509,7 +509,8 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
         plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
         state_logger=mock.MagicMock(),
-        test_options=test_descriptor.TestOptions())
+        test_options=test_descriptor.TestOptions(),
+        test_record=mock.MagicMock())
     self.phase_exec = mock.MagicMock(
         spec=phase_executor.PhaseExecutor)
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,

@@ -117,6 +117,7 @@ class TestConf(unittest.TestCase):
         'string_default': 'default',
         'none_default': None,
         'teardown_timeout_s': 30,
+        'stop_on_first_failure': True,
     }, conf._asdict())
 
   def test_undeclared(self):
