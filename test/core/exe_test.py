@@ -473,6 +473,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertTrue(ev.wait(1))
     executor.close()
 
+  @conf.save_and_restore
   def test_conf_stop_on_first_failure_phase(self):
 
     ev = threading.Event()
