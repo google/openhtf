@@ -64,7 +64,7 @@ PhaseResult = enum.Enum('PhaseResult', [   # pylint: disable=invalid-name
 
 class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
     'name': None, 'timeout_s': None, 'run_if': None, 'requires_state': None,
-    'repeat_limit': None, 'run_under_pdb': False, 'stop_on_failure': False})):
+    'repeat_limit': None, 'run_under_pdb': False})):
   """Options used to override default test phase behaviors.
 
   Attributes:
@@ -82,9 +82,6 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
     run_under_pdb: If True, run the phase under the Python Debugger (pdb).  When
         setting this option, increase the phase timeout as well because the
         timeout will still apply when under the debugger.
-    stop_on_failure: If True, the phase will return PhaseResult as STOP instead
-        of CONTINUE (default) in case of any failed measurement.
-
 
   Example Usages:
     @PhaseOptions(timeout_s=1)
