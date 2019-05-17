@@ -243,7 +243,7 @@ class TestExecutor(threads.KillableThread):
         conf.stop_on_first_failure):
       # Stop Test on first measurement failure
       current_phase_result = self.test_state.test_record.phases[
-          len(self.test_state.test_record.phases) -1]
+          len(self.test_state.test_record.phases) - 1]
       if current_phase_result.outcome == test_record.PhaseOutcome.FAIL:
         outcome = phase_executor.PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.STOP)

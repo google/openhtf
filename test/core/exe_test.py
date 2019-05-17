@@ -448,7 +448,6 @@ class TestExecutorTest(unittest.TestCase):
     executor.close()
 
   def test_stop_on_first_failure_phase(self):
-
     ev = threading.Event()
     group = phase_group.PhaseGroup(main=[phase_return_fail_and_continue,
                                          phase_one],
