@@ -35,10 +35,12 @@ from openhtf.util import validators
 from openhtf.output.callbacks import console_summary
 
 
-# This phase will return a failed result for number_sum measurement
 @htf.measures('number_sum', validators=[validators.in_range(0, 5)])
-def add_numbers(test):
-  """Add numbers phase."""
+def add_numbers_fails(test):
+  """Add numbers fails phase
+
+  This phase will return a failed measurement number_sum.
+  """
   test.logger.info('Add numbers 2 and 4')
   number_sum = 2 + 4
   test.measurements.number_sum = number_sum
@@ -55,7 +57,7 @@ def hello_world(test):
 
 
 if __name__ == '__main__':
-  test = htf.Test(add_numbers, hello_world)
+  test = htf.Test(add_numbers_fails, hello_world)
   test.add_output_callbacks(console_summary.ConsoleSummary())
   # Option 1: test.configure
   test.configure(stop_on_first_failure=True)
