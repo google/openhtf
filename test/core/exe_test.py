@@ -447,6 +447,58 @@ class TestExecutorTest(unittest.TestCase):
     self.assertTrue(log_records)
     executor.close()
 
+  def test_stop_on_first_failure_phase(self):
+    ev = threading.Event()
+    group = phase_group.PhaseGroup(main=[phase_return_fail_and_continue,
+                                         phase_one],
+                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    test = openhtf.Test(group)
+    test.configure(
+        default_dut_id='dut',
+    )
+    test.configure(stop_on_first_failure=True)
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, test._test_options)
+
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.phases[0].name, start_phase.name)
+    self.assertTrue(record.outcome, Outcome.FAIL)
+    # Verify phase_one was not run
+    ran_phase = [phase.name for phase in record.phases]
+    self.assertFalse('phase_one' in ran_phase)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+    executor.close()
+
+  @conf.save_and_restore
+  def test_conf_stop_on_first_failure_phase(self):
+
+    ev = threading.Event()
+    group = phase_group.PhaseGroup(main=[phase_return_fail_and_continue,
+                                         phase_one],
+                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    test = openhtf.Test(group)
+    test.configure(
+        default_dut_id='dut',
+    )
+    conf.load(stop_on_first_failure=True)
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, test._test_options)
+
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.phases[0].name, start_phase.name)
+    self.assertTrue(record.outcome, Outcome.FAIL)
+    # Verify phase_one was not run
+    ran_phase = [phase.name for phase in record.phases]
+    self.assertFalse('phase_one' in ran_phase)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+    executor.close()
+
 
 class TestExecutorHandlePhaseTest(unittest.TestCase):
 
@@ -456,7 +508,9 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
         spec=test_state.TestState,
         plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
-        state_logger=mock.MagicMock())
+        state_logger=mock.MagicMock(),
+        test_options=test_descriptor.TestOptions(),
+        test_record=mock.MagicMock())
     self.phase_exec = mock.MagicMock(
         spec=phase_executor.PhaseExecutor)
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,

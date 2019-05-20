@@ -18,8 +18,10 @@ import logging
 import sys
 import threading
 
+from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
+from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
 from openhtf.util import threads
@@ -30,6 +32,10 @@ _LOG = logging.getLogger(__name__)
 conf.declare('cancel_timeout_s', default_value=2,
              description='Timeout (in seconds) when the test has been cancelled'
              'to wait for the running phase to exit.')
+
+conf.declare('stop_on_first_failure', default_value=False,
+             description='Stop current test execution and return Outcome FAIL'
+             'on first phase with failed measurement.')
 
 
 class TestExecutionError(Exception):
@@ -233,6 +239,17 @@ class TestExecutor(threads.KillableThread):
 
     self.test_state.state_logger.debug('Handling phase %s', phase.name)
     outcome = self._phase_exec.execute_phase(phase)
+    if (self.test_state.test_options.stop_on_first_failure or
+        conf.stop_on_first_failure):
+      # Stop Test on first measurement failure
+      current_phase_result = self.test_state.test_record.phases[
+          len(self.test_state.test_record.phases) - 1]
+      if current_phase_result.outcome == test_record.PhaseOutcome.FAIL:
+        outcome = phase_executor.PhaseExecutionOutcome(
+            phase_descriptor.PhaseResult.STOP)
+        self.test_state.state_logger.error(
+            'Stopping test because stop_on_first_failure is True')
+
     if outcome.is_terminal and not self._last_outcome:
       self._last_outcome = outcome
 
