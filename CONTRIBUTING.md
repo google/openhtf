@@ -202,6 +202,26 @@ Neither virtualenv nor OpenHTF's Python dependencies are included in the
 repository. The following steps set up a new virtualenv environment and install
 OpenHTF's dependencies into it using pip.
 
+### Windows
+```
+Install pkg-config lite from:
+https://sourceforge.net/projects/pkgconfiglite/
+
+Add pkg-config to windows path 
+
+Install protobuf with pip/conda
+
+https://anaconda.org/anaconda/protobuf
+conda install -c anaconda protobuf
+
+Create an environment variable PKG_CONFIG_PATH
+Set PKG_CONFIG_PATH to direct to protobuf.pc directory
+
+Locate the protobuf.pc file under your package manager pkgs directory. 
+You should now be able to install openhtf with pip install openhtf
+
+```
+
 
 ### Linux (Debian/Ubuntu)
 These install instructions assume Bash as the shell environment. If you're using
