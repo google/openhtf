@@ -114,6 +114,7 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
 
 import collections
 import functools
+from future.utils import raise_with_traceback
 import inspect
 import logging
 import sys
@@ -379,7 +380,7 @@ class TestCase(unittest.TestCase):
             exc_info = sys.exc_info()
         else:
           if exc_info:
-            raise exc_info[0](exc_info[1]).raise_with_traceback(exc_info[2])
+            raise raise_with_traceback(exc_info[0](exc_info[1]), exc_info[2])
       elif isinstance(phase_or_test_record, test_record.PhaseRecord):
         func(self, phase_or_test_record, *args)
       else:
