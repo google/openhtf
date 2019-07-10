@@ -17,6 +17,7 @@ StoreInModule:
 """
 
 import argparse
+import sys
 
 
 def ModuleParser():
@@ -35,12 +36,16 @@ class StoreInModule(argparse.Action):
   def __call__(self, parser, namespace, values, option_string=None):
     if hasattr(self, '_proxy'):
       values = self._proxy(parser, namespace, values)
+    setattr(self._resolve_module(), self._tgt_attr, values)
+    # self.val = values
+
+  def _resolve_module(self):
     if '.' in self._tgt_mod:
       base, mod = self._tgt_mod.rsplit('.', 1)
-      module = getattr(__import__(base, fromlist=[mod]), mod)
+      __import__(base, fromlist=[mod])
+      return sys.modules[self._tgt_mod]
     else:
-      module = __import__(self._tgt_mod)
-    setattr(module, self._tgt_attr, values)
+      return __import__(self._tgt_mod)
 
 
 class _StoreValueInModule(StoreInModule):
@@ -68,3 +73,21 @@ class StoreFalseInModule(_StoreValueInModule):
 
   def __init__(self, *args, **kwargs):
     super(StoreFalseInModule, self).__init__(False, *args, **kwargs)
+
+
+class StoreRepsInModule(StoreInModule):
+  """Store a count of number of times the flag was repeated in a module."""
+
+  def __init__(self, *args, **kwargs):
+    kwargs.update(nargs=0, const=None)
+    super(StoreRepsInModule, self).__init__(*args, **kwargs)
+
+  def __call__(self, parser, namespace, values, option_string=None):
+    del values  # Unused.
+    old_count = getattr(self._resolve_module(), self._tgt_attr)
+    if old_count is None:
+      super(StoreRepsInModule, self).__call__(
+              parser, namespace, 0, option_string=option_string)
+    else:
+      super(StoreRepsInModule, self).__call__(
+              parser, namespace, old_count + 1, option_string=option_string)

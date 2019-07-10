@@ -128,12 +128,13 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 
 INSTALL_REQUIRES = [
+    'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
     'future>=0.16.0',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
-    'protobuf>=3.0.0,<4.0',
-    'PyYAML>=3.10,<4.0',
+    'protobuf>=3.6.0,<4.0',
+    'PyYAML>=3.13,<4.0',
     'pyOpenSSL>=17.1.0,<18.0',
     'sockjs-tornado>=1.0.3,<2.0',
     'tornado>=4.3,<5.0',
@@ -156,7 +157,7 @@ class PyTestCommand(test):
 
   def initialize_options(self):
     test.initialize_options(self)
-    self.pytest_args = 'test'
+    self.pytest_args = ['test']
     self.pytest_cov = None
 
   def finalize_options(self):
@@ -168,11 +169,12 @@ class PyTestCommand(test):
     self.run_command('build_proto')
 
     import pytest
-    cov = ''
+    cov = []
     if self.pytest_cov is not None:
-      outputs = ' '.join('--cov-report %s' % output
-                         for output in self.pytest_cov.split(','))
-      cov = ' --cov openhtf ' + outputs
+      outputs = []
+      for output in self.pytest_cov.split(','):
+        outputs.extend(['--cov-report', output])
+      cov = ['--cov', 'openhtf'] + outputs
 
     sys.argv = [sys.argv[0]]
     print('invoking pytest.main with %s' % (self.pytest_args + cov))
@@ -181,7 +183,7 @@ class PyTestCommand(test):
 
 setup(
     name='openhtf',
-    version='1.2.2',
+    version='1.4.2',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
     author_email='madsci@google.com',
@@ -189,8 +191,11 @@ setup(
     maintainer_email='jethier@google.com',
     packages=find_packages(exclude='examples'),
     package_data={'openhtf': ['output/proto/*.proto',
-                              'output/web_gui/prebuilt/**/*.*',
-                              'output/web_gui/prebuilt/*.*']},
+                              'output/web_gui/dist/*',
+                              'output/web_gui/dist/css/*',
+                              'output/web_gui/dist/js/*',
+                              'output/web_gui/dist/img/*',
+                              'output/web_gui/*']},
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
@@ -204,6 +209,9 @@ setup(
         ],
         'update_units': [
             'xlrd>=1.0.0,<2.0',
+        ],
+        'serial_collection_plug': [
+            'pyserial>=3.3.0,<4.0',
         ],
     },
     setup_requires=[

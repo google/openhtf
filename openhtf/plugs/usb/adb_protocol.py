@@ -79,7 +79,6 @@ Example usage of a connection and stream:
 import collections
 import itertools
 import logging
-import queue
 import threading
 
 from enum import Enum
@@ -89,6 +88,7 @@ from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import argv
 from openhtf.util import exceptions
 from openhtf.util import timeouts
+from six.moves import queue
 
 
 ADB_MESSAGE_LOG = False
@@ -154,7 +154,7 @@ class AdbStream(object):
     self._transport = transport
 
   def is_closed(self):
-    """Return True iff the stream is closed."""
+    """Return True if the stream is closed."""
     return self._transport.is_closed()
 
   def __str__(self):
@@ -430,11 +430,11 @@ class AdbStreamTransport(object): # pylint: disable=too-many-instance-attributes
     return self.is_open()
 
   def is_open(self):
-    """Return True iff the transport layer is open."""
+    """Return True if the transport layer is open."""
     return self.closed_state == self.ClosedState.OPEN
 
   def is_closed(self):
-    """Return true ifff the transport layer is closed."""
+    """Return true if the transport layer is closed."""
     return self.closed_state == self.ClosedState.CLOSED
 
   def enqueue_message(self, message, timeout):
@@ -609,7 +609,7 @@ class AdbConnection(object):
       The message read if it was for this stream, None otherwise.
 
     Raises:
-      AdbProtocolError: If we receive an unexepcted message type.
+      AdbProtocolError: If we receive an unexpected message type.
     """
     if message.command not in ('OKAY', 'CLSE', 'WRTE'):
       raise usb_exceptions.AdbProtocolError(

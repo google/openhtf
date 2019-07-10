@@ -47,7 +47,7 @@ def requires_open_handle(method):  # pylint: disable=invalid-name
     HandleClosedError: If this handle has been closed.
 
   Returns:
-    A wrapper around method that ensures the handle is open before calling thru
+    A wrapper around method that ensures the handle is open before calling through
   to the wrapped method.
   """
   @functools.wraps(method)
@@ -59,7 +59,7 @@ def requires_open_handle(method):  # pylint: disable=invalid-name
   return wrapper_requiring_open_handle
 
 
-class UsbHandle(with_metaclass(object)):
+class UsbHandle(with_metaclass(abc.ABCMeta, object)):
   """UsbHandle objects provide read/write access to USB Interfaces.
 
   Subclasses must implement this interface to provide actual Read/Write/Close

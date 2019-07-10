@@ -1,0 +1,21 @@
+@import 'vars';
+
+// Styling for lists injected into the prompt.
+:host ::ng-deep ol,
+:host ::ng-deep ul {
+  padding-left: 25px;
+  margin: 0;
+}
+
+.user-input-has-error {
+  border-color: $theme-red;
+
+  &:focus {
+    border-color: darken($theme-red, 20%);
+  }
+}
+
+.user-input-error-text {
+  color: $theme-red;
+  font-size: $font-size-small;
+}

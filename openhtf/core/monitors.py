@@ -19,7 +19,7 @@ Monitors are implemented similar to phase functions - they are decorated
 with plugs.plug() to pass plugs in.  The return value of a monitor
 function, however, will be used to append a value to a measurement.
 
-Monitors by default poll at a rate of 1 second between invokations of
+Monitors by default poll at a rate of 1 second between invocations of
 the monitor function.  The poll interval (given in milliseconds) determines the
 approximate frequency at which values will be sampled.  A sample is considered
 to have been taken at the time when the monitor function *returns*, not when
@@ -112,7 +112,7 @@ class _MonitorThread(threads.KillableThread):
                    (mean_sample_ms / 1000.0))
         continue
       elif new_sample > last_sample + 2:
-        self.test_state.logger.warning(
+        self.test_state.state_logger.warning(
             'Monitor for "%s" skipping %s sample(s).', self.measurement_name,
             new_sample - last_sample - 1)
       last_sample, cur_sample_ms = _take_sample()
@@ -148,5 +148,6 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
         return phase_desc(test_state, *args, **kwargs)
       finally:
         monitor_thread.kill()
+        monitor_thread.join()
     return monitored_phase_func
   return wrapper

@@ -174,9 +174,8 @@ fits in based on what it does.
     |     |
     |     '-> util
     |
-    |           Generic utility functions and miscellaneous tools.
-    |           The contents of this submodule should be general enough to be
-    |           useable outside of OpenHTF, meaning it should not be dependent
+    |           The contents of this submodule should be general enough to be 
+    |           usable outside of OpenHTF, meaning it should not be dependent
     |           on other code in the OpenHTF package.
     |
     |

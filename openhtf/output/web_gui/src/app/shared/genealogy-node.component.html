@@ -1,0 +1,16 @@
+<div class="component-info" [class.is-first]="isFirst" [class.is-root]="isRoot">
+  <span class="serial-number">{{ node.component.serial }}</span>
+  <span *ngIf="node.component.instance_name">{{ node.component.instance_name }}</span>
+  <span *ngIf="node.component.part_number">({{ node.component.part_number }})</span>
+</div>
+
+<ul *ngIf="node.children && node.children.length > 0 && maxDepth !== 0">
+  <li *ngFor="let child of node.children; let isFirst=first">
+    <htf-genealogy-node
+      [isFirst]="isFirst"
+      [isRoot]="false"
+      [node]="child"
+      [maxDepth]="childMaxDepth">
+    </htf-genealogy-node>
+  </li>
+</ul>

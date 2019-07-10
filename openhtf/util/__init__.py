@@ -20,13 +20,10 @@ import re
 import threading
 import time
 import weakref
-from datetime import datetime
-from pkg_resources import get_distribution, DistributionNotFound
 
 import mutablerecords
 
-from openhtf.util import threads
-import collections
+import six
 
 
 def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable=invalid-name
@@ -49,7 +46,7 @@ def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable
       logger.log(level, message, *args)
       yield True
   gen = _gen()
-  return lambda: next(gen)
+  return lambda: six.next(gen)
 
 
 def log_every_n(n, level, message, *args):  # pylint: disable=invalid-name
@@ -60,22 +57,6 @@ def log_every_n(n, level, message, *args):  # pylint: disable=invalid-name
 def time_millis():  # pylint: disable=invalid-name
   """The time in milliseconds."""
   return int(time.time() * 1000)
-
-
-def get_version():
-  """Return the version string of the 'openhtf' package.
-
-  Note: the version number doesn't seem to get properly set when using ipython.
-  """
-  version = 'Unknown'
-
-  try:
-    version = get_distribution('openhtf')
-
-  except DistributionNotFound:
-    version = 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
-
-  return version
 
 
 class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
@@ -146,7 +127,7 @@ def format_string(target, kwargs):
     return target
   if callable(target):
     return target(**kwargs)
-  if not isinstance(target, str):
+  if not isinstance(target, six.string_types):
     return target
   if '{' in target:
     return partial_format(target, **kwargs)

@@ -4,7 +4,8 @@ import os
 import sys
 
 from openhtf.core import test_record
-from openhtf.core import measurements as meas_module
+from openhtf.core import measurements
+import six
 
 
 class ConsoleSummary():
@@ -45,15 +46,15 @@ class ConsoleSummary():
         new_phase = True
         phase_time_sec = (float(phase.end_time_millis)
                           - float(phase.start_time_millis)) / 1000.0
-        for name, measurement in phase.measurements.items():
-          if measurement.outcome == meas_module.Outcome.FAIL:
+        for name, measurement in six.iteritems(phase.measurements):
+          if measurement.outcome != measurements.Outcome.PASS:
             if new_phase:
               output_lines.append('failed phase: %s [ran for %.2f sec]' %
                                   (phase.name, phase_time_sec))
               new_phase = False
 
-            output_lines.append('%sfailed_item: %s' %
-                                (self.indent, name))
+            output_lines.append('%sfailed_item: %s (%s)' %
+                                (self.indent, name, measurement.outcome))
             output_lines.append('%smeasured_value: %s' %
                                 (self.indent*2, measurement.measured_value))
             output_lines.append('%svalidators:' % (self.indent*2))

@@ -15,11 +15,10 @@
 import unittest
 import time
 import mock
-import queue
 
-import openhtf
 from openhtf import plugs
 from openhtf.core import monitors
+from six.moves import queue
 
 
 class EmptyPlug(plugs.BasePlug):
@@ -29,7 +28,7 @@ class EmptyPlug(plugs.BasePlug):
 class TestMonitors(unittest.TestCase):
 
   def setUp(self):
-    self.test_state = mock.MagicMock()
+    self.test_state = mock.MagicMock(execution_uid='01234567890')
 
     def provide_plugs(plugs):
       return {name: cls() for name, cls in plugs}

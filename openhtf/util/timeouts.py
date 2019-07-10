@@ -117,7 +117,7 @@ class PolledTimeout(object):
   # pylint: disable=missing-docstring
 
 
-# There's now no way to tell if a timeout occured generically
+# There's now no way to tell if a timeout occurred generically
 # which sort of sucks (for generic validation fn)
 def loop_until_timeout_or_valid(timeout_s, function, validation_fn, sleep_s=1):  # pylint: disable=invalid-name
   """Loops until the specified function returns valid or a timeout is reached.
@@ -375,7 +375,7 @@ def retry_until_valid_or_limit_reached(method, limit, validation_fn, sleep_s=1,
     catch_exceptions: Tuple of exception types to catch and count as failures.
   Returns:
       Whatever the method last returned, implicit False would indicate the
-        method never suceeded.
+        method never succeeded.
   """
   assert limit > 0, 'Limit must be greater than 0'
 

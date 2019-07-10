@@ -26,6 +26,7 @@ from openhtf import util
 from openhtf.util import units
 from openhtf.plugs import user_input
 from openhtf.output import callbacks
+from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 
 from examples import example_plugs
@@ -40,7 +41,6 @@ def example_monitor(example, frontend_aware):
 
 
 @htf.measures(
-    htf.Measurement('unset_meas'),
     htf.Measurement(
         'widget_type').matches_regex(r'.*Widget$').doc(
             '''This measurement tracks the type of widgets.'''),
@@ -56,7 +56,8 @@ def hello_world(test, example, prompts):
   """A hello world test phase."""
   test.logger.info('Hello World!')
   test.measurements.widget_type = prompts.prompt(
-      'What\'s the widget type?', text_input=True)
+      'What\'s the widget type? (Hint: try `MyWidget` to PASS)',
+      text_input=True)
   if test.measurements.widget_type == 'raise':
     raise Exception()
   test.measurements.widget_color = 'Black'
@@ -84,7 +85,6 @@ def set_measurements(test):
 
 
 @htf.measures(
-    htf.Measurement('unset_dims').with_dimensions(units.HERTZ),
     htf.Measurement('dimensions').with_dimensions(units.HERTZ),
     htf.Measurement('lots_of_dims').with_dimensions(
         units.HERTZ, units.SECOND,
@@ -113,7 +113,7 @@ def attachments(test):
       os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
   test_attachment = test.get_attachment('test_attachment')
-  assert test_attachment.data == 'This is test attachment data.'
+  assert test_attachment.data == b'This is test attachment data.'
 
 
 @htf.TestPhase(run_if=lambda: False)
@@ -125,14 +125,16 @@ def analysis(test):
   level_all = test.get_measurement('level_all')
   assert level_all.value == 9
   test_attachment = test.get_attachment('test_attachment')
-  assert test_attachment.data == 'This is test attachment data.'
+  assert test_attachment.data == b'This is test attachment data.'
   lots_of_dims = test.get_measurement('lots_of_dims')
-  assert lots_of_dims.value == [
+  assert lots_of_dims.value.value == [
       (1, 21, 101, 123),
       (2, 22, 102, 126),
       (3, 23, 103, 129),
       (4, 24, 104, 132)
   ]
+  test.logger.info('Pandas datafram of lots_of_dims \n:%s',
+                   lots_of_dims.value.to_dataframe())
 
 
 def teardown(test):
@@ -141,8 +143,11 @@ def teardown(test):
 
 if __name__ == '__main__':
   test = htf.Test(
-      hello_world, set_measurements, dimensions, attachments, skip_phase,
-      measures_with_args.with_args(min=2, max=4), analysis,
+      htf.PhaseGroup.with_teardown(teardown)(
+          hello_world,
+          set_measurements, dimensions, attachments, skip_phase,
+          measures_with_args.with_args(min=1, max=4), analysis,
+      ),
       # Some metadata fields, these in particular are used by mfg-inspector,
       # but you can include any metadata fields.
       test_name='MyTest', test_description='OpenHTF Example Test',
@@ -151,19 +156,18 @@ if __name__ == '__main__':
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
   test.add_output_callbacks(json_factory.OutputToJSON(
       './{dut_id}.{metadata[test_name]}.{start_time_millis}.json', indent=4))
+  test.add_output_callbacks(console_summary.ConsoleSummary())
 
-  # Example of how to output to testrun protobuf format.
-  #test.add_output_callbacks(
-  #  mfg_inspector.OutputToTestRunProto('./{dut_id}.{start_time_millis}.pb'))
+  # Example of how to output to testrun protobuf format and save to disk then
+  # upload.  Replace json_file with your JSON-formatted private key downloaded
+  # from Google Developers Console when you created the Service Account you
+  # intend to use, or name it 'my_private_key.json'.
+  # inspector = (mfg_inspector.MfgInspector
+  #    .from_json(json.load(json_file)))
+  #    .set_converter(test_runs_converter.test_run_from_test_record))
+  # test.add_output_callbacks(
+  #     inspector.save_to_disk('./{dut_id}.{start_time_millis}.pb'),
+  #     inspector.upload())
 
-  # Example of how to upload to mfg-inspector.  Replace filename with your
-  # JSON-formatted private key downloaded from Google Developers Console
-  # when you created the Service Account you intend to use, or name it
-  # 'my_private_key.json'.
-  #if os.path.isfile('my_private_key.json'):
-  #  with open('my_private_key.json', 'r') as json_file:
-  #    test.add_output_callbacks(mfg_inspector.UploadToMfgInspector.from_json(
-  #        json.load(json_file)))
 
-  test.configure(teardown_function=teardown)
   test.execute(test_start=user_input.prompt_for_test_start())

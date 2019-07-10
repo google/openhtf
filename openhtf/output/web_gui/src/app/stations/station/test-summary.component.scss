@@ -1,0 +1,32 @@
+@import 'vars';
+
+.htf-status-indicator {
+  line-height: 53px;
+}
+
+.progress-bar-container {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+htf-progress-bar {
+  display: block;
+  flex-grow: 1;
+  height: 22px;
+  margin-left: $widget-inner-padding;
+  width: 100%;
+}
+
+.phase-container {
+  padding: 0;
+}
+
+:host ::ng-deep htf-phase .phase-name {
+  font-weight: bold;
+
+  &::before {
+    content: 'Current phase: ';
+  }
+}

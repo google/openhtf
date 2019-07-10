@@ -21,31 +21,34 @@ state.
 
 These classes also implement various logic and audit mechanisms for state
 transitions during the course of the lifetime of a single Execute()
-invokation of an openhtf.Test instance.
+invocation of an openhtf.Test instance.
 """
 
 import collections
 import contextlib
 import copy
+import functools
 import logging
 import mimetypes
 import os
 import socket
+import sys
+import traceback
 
 from enum import Enum
-
 import mutablerecords
 
 import openhtf
-
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
 from openhtf.core import phase_executor
 from openhtf.core import test_record
 from openhtf.util import conf
+from openhtf.util import data
 from openhtf.util import logs
 from past.builtins import long
+import six
 
 conf.declare('allow_unset_measurements', default_value=False,
              description='If True, unset measurements do not cause Tests to '
@@ -60,6 +63,9 @@ conf.declare('station_id', 'The name of this test station',
 
 _LOG = logging.getLogger(__name__)
 
+# Sentinel value indicating that the mimetype should be inferred.
+INFER_MIMETYPE = object()
+
 
 class BlankDutIdError(Exception):
   """DUT serial cannot be blank at the end of a test."""
@@ -68,6 +74,7 @@ class BlankDutIdError(Exception):
 class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
+
 class ImmutableMeasurement(collections.namedtuple(
     'ImmutableMeasurement',
     ['name', 'value', 'units', 'dimensions', 'outcome'])):
@@ -75,11 +82,20 @@ class ImmutableMeasurement(collections.namedtuple(
 
   @classmethod
   def FromMeasurement(cls, measurement):
+    """Convert a Measurement into an ImmutableMeasurement."""
     measured_value = measurement.measured_value
-    value = measured_value.value if measured_value.is_value_set else None
+    if isinstance(measured_value, measurements.DimensionedMeasuredValue):
+      value = mutablerecords.CopyRecord(
+          measured_value,
+          value_dict=copy.deepcopy(measured_value.value_dict)
+      )
+    else:
+      value = (copy.deepcopy(measured_value.value)
+               if measured_value.is_value_set else None)
+
     return cls(
         measurement.name,
-        copy.deepcopy(value),
+        value,
         measurement.units,
         measurement.dimensions,
         measurement.outcome)
@@ -96,14 +112,16 @@ class TestState(util.SubscribableStateMixin):
   Init Args:
     test_desc: openhtf.TestDescriptor instance describing the test to run,
         used to initialize some values here, but it is not modified.
+    execution_uid: a unique uuid use to identify a test being run.
+    test_options: test_options passed through from Test.
 
   Attributes:
     test_record: TestRecord instance for the currently running test.
-    logger: Logger that logs to test_record's log_records attribute.
+    state_logger: Logger that logs to test_record's log_records attribute.
     running_phase_state: PhaseState object for the currently running phase,
         if any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
-        invokations.  It's passed to the user via test_api.
+        invocations.  It's passed to the user via test_api.
     test_api: An openhtf.TestApi instance for passing to test phases,
         providing test authors access to necessary state information, while
         protecting internal-only structures from being accidentally modified.
@@ -112,7 +130,7 @@ class TestState(util.SubscribableStateMixin):
   """
   Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])  # pylint: disable=invalid-name
 
-  def __init__(self, test_desc, execution_uid):
+  def __init__(self, test_desc, execution_uid, test_options):
     super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
@@ -121,19 +139,41 @@ class TestState(util.SubscribableStateMixin):
         start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata))
-    self.logger = logs.initialize_record_logger(
+    logs.initialize_record_handler(
         execution_uid, self.test_record, self.notify_update)
-    self.plug_manager = plugs.PlugManager(test_desc.plug_types, self.logger)
+    self.state_logger = logs.get_record_logger_for(execution_uid)
+    self.plug_manager = plugs.PlugManager(
+        test_desc.plug_types, self.state_logger)
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
+    self.test_options = test_options
+
+  def close(self):
+    """Close and remove any global registrations.
+
+    Always call this function when finished with this instance as it ensures
+    that it can be garbage collected.
+
+    This function is defined instead of a __del__ function because Python calls
+    the __del__ function unreliably.
+    """
+    logs.remove_record_handler(self.execution_uid)
+
+  @property
+  def logger(self):
+    if self.running_phase_state:
+      return self.running_phase_state.logger
+    raise RuntimeError(
+        'Calling `logger` attribute while phase not running; use state_logger '
+        'instead.')
 
   @property
   def test_api(self):
     """Create a TestApi for access to this TestState.
 
     The returned TestApi should be passed as the first argument to test
-    phases.  Note that the return value is none if there is no
+    phases.  Note that the return value is None if there is no
     self.running_phase_state set.  As such, this attribute should only
     be accessed within a RunningPhaseContext().
 
@@ -174,8 +214,7 @@ class TestState(util.SubscribableStateMixin):
         attachment = phase_record.attachments[attachment_name]
         return copy.deepcopy(attachment)
 
-
-    self.logger.warning('Could not find attachment: %s', attachment_name)
+    self.state_logger.warning('Could not find attachment: %s', attachment_name)
     return None
 
   def get_measurement(self, measurement_name):
@@ -206,7 +245,8 @@ class TestState(util.SubscribableStateMixin):
         measurement = phase_record.measurements[measurement_name]
         return ImmutableMeasurement.FromMeasurement(measurement)
 
-    self.logger.warning('Could not find measurement: %s', measurement_name)
+    self.state_logger.warning(
+        'Could not find measurement: %s', measurement_name)
     return None
 
   @contextlib.contextmanager
@@ -227,24 +267,33 @@ class TestState(util.SubscribableStateMixin):
       PhaseState to track transient state.
     """
     assert not self.running_phase_state, 'Phase already running!'
+    phase_logger = self.state_logger.getChild('phase.' + phase_desc.name)
     phase_state = self.running_phase_state = PhaseState.from_descriptor(
-        phase_desc, self.notify_update)
+        phase_desc, self.notify_update, logger=phase_logger)
     try:
       with phase_state.record_timing_context:
         self.notify_update()  # New phase started.
         yield phase_state
     finally:
-      self.test_record.phases.append(phase_state.phase_record)
+      self.test_record.add_phase_record(phase_state.phase_record)
       self.running_phase_state = None
       self.notify_update()  # Phase finished.
 
+  def as_base_types(self):
+    """Convert to a dict representation composed exclusively of base types."""
+    running_phase_state = None
+    if self.running_phase_state:
+      running_phase_state = self.running_phase_state.as_base_types()
+    return {
+        'status': data.convert_to_base_types(self._status),
+        'test_record': self.test_record.as_base_types(),
+        'plugs': self.plug_manager.as_base_types(),
+        'running_phase_state': running_phase_state,
+    }
+
   def _asdict(self):
     """Return a dict representation of the test's state."""
-    return {
-        'status': self._status, 'test_record': self.test_record,
-        'plugs': self.plug_manager._asdict(),
-        'running_phase_state': self.running_phase_state,
-    }
+    return self.as_base_types()
 
   @property
   def is_finalized(self):
@@ -294,8 +343,6 @@ class TestState(util.SubscribableStateMixin):
 
     # Handle a few cases where the test is ending prematurely.
     if phase_execution_outcome.raised_exception:
-      self.logger.error('Finishing test execution early due to phase '
-                        'exception, outcome ERROR.')
       result = phase_execution_outcome.phase_result
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
@@ -305,16 +352,34 @@ class TestState(util.SubscribableStateMixin):
         code = str(type(phase_execution_outcome.phase_result).__name__)
         description = str(phase_execution_outcome.phase_result)
       self.test_record.add_outcome_details(code, description)
-      self._finalize(test_record.Outcome.ERROR)
+      if self._outcome_is_failure_exception(phase_execution_outcome):
+        self.state_logger.error(
+            'Outcome will be FAIL since exception was of type %s',
+            phase_execution_outcome.phase_result.exc_val)
+        self._finalize(test_record.Outcome.FAIL)
+      else:
+        self.state_logger.critical(
+            'Finishing test execution early due to an exception raised during '
+            'phase execution; outcome ERROR.')
+        # Enable CLI printing of the full traceback with the -v flag.
+        self.state_logger.critical(
+            'Traceback:%s%s%s%s',
+            os.linesep,
+            ''.join(traceback.format_tb(
+                phase_execution_outcome.phase_result.exc_tb)),
+            os.linesep,
+            description,
+        )
+        self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
-      self.logger.error('Finishing test execution early due to phase '
-                        'timeout, outcome TIMEOUT.')
+      self.state_logger.error('Finishing test execution early due to '
+                              'phase timeout, outcome TIMEOUT.')
       self.test_record.add_outcome_details('TIMEOUT',
                                            'A phase hit its timeout.')
       self._finalize(test_record.Outcome.TIMEOUT)
     elif phase_execution_outcome.phase_result == openhtf.PhaseResult.STOP:
-      self.logger.error('Finishing test execution early due to '
-                        'PhaseResult.STOP, outcome FAIL.')
+      self.state_logger.error('Finishing test execution early due to '
+                              'PhaseResult.STOP, outcome FAIL.')
       self.test_record.add_outcome_details('STOP',
                                            'A phase stopped the test run.')
       self._finalize(test_record.Outcome.FAIL)
@@ -340,7 +405,7 @@ class TestState(util.SubscribableStateMixin):
         phase.outcome == test_record.PhaseOutcome.SKIP for phase in phases):
       # Error when all phases are skipped; otherwise, it could lead to
       # unintentional passes.
-      self.logger.error('All phases were skipped, outcome ERROR.')
+      self.state_logger.error('All phases were skipped, outcome ERROR.')
       self.test_record.add_outcome_details(
           'ALL_SKIPPED', 'All phases were unexpectedly skipped.')
       self._finalize(test_record.Outcome.ERROR)
@@ -348,15 +413,16 @@ class TestState(util.SubscribableStateMixin):
       # Otherwise, the test run was successful.
       self._finalize(test_record.Outcome.PASS)
 
-    self.logger.info('Finishing test execution normally with outcome %s.',
-                     self.test_record.outcome.name)
+    self.state_logger.debug(
+        'Finishing test execution normally with outcome %s.',
+        self.test_record.outcome.name)
 
   def abort(self):
     if self._is_aborted():
       return
 
-    self.logger.info('Finishing test execution early due to '
-                     'test abortion, outcome ABORTED.')
+    self.state_logger.debug('Finishing test execution early due to '
+                            'test abortion, outcome ABORTED.')
     self.test_record.add_outcome_details('ABORTED', 'Test aborted by operator.')
     self._finalize(test_record.Outcome.ABORTED)
 
@@ -364,10 +430,6 @@ class TestState(util.SubscribableStateMixin):
     aborting = test_outcome == test_record.Outcome.ABORTED
     assert not self.is_finalized or aborting, (
         'Test already completed with status %s!' % self._status.name)
-    # Sanity check to make sure we have a DUT ID by the end of the test.
-    if not self.test_record.dut_id:
-      raise BlankDutIdError(
-          'Blank or missing DUT ID, HTF requires a non-blank ID.')
 
     self.test_record.outcome = test_outcome
 
@@ -376,7 +438,6 @@ class TestState(util.SubscribableStateMixin):
     if self.test_record.start_time_millis == 0:
       self.test_record.start_time_millis = util.time_millis()
     # The test is done at this point, no further updates to test_record.
-    self.logger.handlers = []
     self.test_record.end_time_millis = util.time_millis()
     self._status = self.Status.COMPLETED
     self.notify_update()
@@ -384,21 +445,33 @@ class TestState(util.SubscribableStateMixin):
   def _is_aborted(self):
     if (self.is_finalized and
         self.test_record.outcome == test_record.Outcome.ABORTED):
-      self.logger.debug('Test already aborted.')
+      self.state_logger.debug('Test already aborted.')
       return True
+    return False
+
+  def _outcome_is_failure_exception(self, outcome):
+    for failure_exception in self.test_options.failure_exceptions:
+      if isinstance(outcome.phase_result.exc_val, failure_exception):
+        return True
     return False
 
   def __str__(self):
     return '<%s: %s@%s Running Phase: %s>' % (
-        type(self).__name__, self.test_record.dut_id,
-        self.test_record.station_id, self.last_run_phase_name,
+        type(self).__name__,
+        self.test_record.dut_id,
+        self.test_record.station_id,
+        self.last_run_phase_name,
     )
 
 
-class PhaseState(mutablerecords.Record(
-    'PhaseState',
-    ['name', 'phase_record', 'measurements', 'options'],
-    {'hit_repeat_limit': False})):
+class PhaseState(
+    mutablerecords.Record('PhaseState',
+                          ['name', 'phase_record', 'measurements', 'options'],
+                          {'hit_repeat_limit': False,
+                           'notify_cb': None,
+                           'logger': None,
+                           '_cached': dict,
+                           '_update_measurements': set})):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
@@ -409,29 +482,53 @@ class PhaseState(mutablerecords.Record(
         facing Collection for setting measurements.
     options: the PhaseOptions from the phase descriptor.
     result: Convenience getter/setter for phase_record.result.
+    _cached: A cached representation of the running test state that; updated in
+        place to save allocation time.
   """
 
+  def __init__(self, *args, **kwargs):
+    super(PhaseState, self).__init__(*args, **kwargs)
+    for m in six.itervalues(self.measurements):
+      # Using functools.partial to capture the value of the loop variable.
+      m.set_notification_callback(functools.partial(self._notify, m.name))
+    self._cached = {
+        'name': self.name,
+        'codeinfo': data.convert_to_base_types(self.phase_record.codeinfo),
+        'descriptor_id': data.convert_to_base_types(
+            self.phase_record.descriptor_id),
+        # Options are not set until the phase is finished.
+        'options': None,
+        'measurements': {
+            k: m.as_base_types() for k, m in six.iteritems(self.measurements)},
+        'attachments': {},
+    }
+
   @classmethod
-  def from_descriptor(cls, phase_desc, notify_cb):
+  def from_descriptor(cls, phase_desc, notify_cb, logger=None):
     return cls(
         phase_desc.name,
         test_record.PhaseRecord.from_descriptor(phase_desc),
         collections.OrderedDict(
-            (measurement.name,
-             copy.deepcopy(measurement).set_notification_callback(notify_cb))
+            (measurement.name, copy.deepcopy(measurement))
             for measurement in phase_desc.measurements),
-        phase_desc.options)
+        phase_desc.options,
+        notify_cb=notify_cb,
+        logger=logger)
 
-  def _asdict(self):
-    return {
-        'name': self.name,
-        'codeinfo': self.phase_record.codeinfo,
-        'descriptor_id': self.phase_record.descriptor_id,
-        'start_time_millis': long(self.phase_record.start_time_millis),
-        'options': self.phase_record.options,
-        'attachments': self.attachments,
-        'measurements': self.measurements,
-    }
+  def _notify(self, measurement_name):
+    self._update_measurements.add(measurement_name)
+    if self.notify_cb:
+      self.notify_cb()
+
+  def as_base_types(self):
+    """Convert to a dict representation composed exclusively of base types."""
+    cur_update_measurements = self._update_measurements
+    self._update_measurements = set()
+    # Update the dictionaries previously returned for the measurements that
+    # have been updated.
+    for m in cur_update_measurements:
+      self.measurements[m].as_base_types()
+    return self._cached
 
   @property
   def result(self):
@@ -445,13 +542,16 @@ class PhaseState(mutablerecords.Record(
   def attachments(self):
     return self.phase_record.attachments
 
-  def attach(self, name, data, mimetype=None):
-    """Store the given data as an attachment with the given name.
+  def attach(self, name, binary_data, mimetype=INFER_MIMETYPE):
+    """Store the given binary_data as an attachment with the given name.
 
     Args:
-      name: Attachment name under which to store this data.
-      data: Data to attach.
-      mimetype: If provided, will be saved in the attachment.
+      name: Attachment name under which to store this binary_data.
+      binary_data: Data to attach.
+      mimetype: One of the following:
+          INFER_MIMETYPE - The type will be guessed from the attachment name.
+          None - The type will be left unspecified.
+          A string - The type will be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
@@ -459,31 +559,41 @@ class PhaseState(mutablerecords.Record(
     """
     if name in self.phase_record.attachments:
       raise DuplicateAttachmentError('Duplicate attachment for %s' % name)
-    if mimetype and not mimetypes.guess_extension(mimetype):
+
+    if mimetype is INFER_MIMETYPE:
+      mimetype = mimetypes.guess_type(name)[0]
+    elif mimetype is not None and not mimetypes.guess_extension(mimetype):
       _LOG.warning('Unrecognized MIME type: "%s" for attachment "%s"',
                    mimetype, name)
-    self.phase_record.attachments[name] = test_record.Attachment(data, mimetype)
 
-  def attach_from_file(self, filename, name=None, mimetype=None):
+    attach_record = test_record.Attachment(binary_data, mimetype)
+    self.phase_record.attachments[name] = attach_record
+    self._cached['attachments'][name] = attach_record._asdict()
+
+  def attach_from_file(self, filename, name=None, mimetype=INFER_MIMETYPE):
     """Store the contents of the given filename as an attachment.
 
     Args:
       filename: The file to read data from to attach.
       name: If provided, override the attachment name, otherwise it will
         default to the filename.
-      mimetype: If provided, override the attachment mime type, otherwise the
-        mime type will be guessed based on the file extension.
+      mimetype: One of the following:
+          INFER_MIMETYPE: The type will be guessed first, from the file name,
+              and second (i.e. as a fallback), from the attachment name.
+          None: The type will be left unspecified.
+          A string: The type will be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
         the given name.
       IOError: Raised if the given filename couldn't be opened.
     """
+    if mimetype is INFER_MIMETYPE:
+      mimetype = mimetypes.guess_type(filename)[0] or mimetype
     with open(filename, 'rb') as f:  # pylint: disable=invalid-name
       self.attach(
           name if name is not None else os.path.basename(filename), f.read(),
-          mimetype=mimetype if mimetype is not None else mimetypes.guess_type(
-              filename)[0])
+          mimetype=mimetype)
 
   def _finalize_measurements(self):
     """Perform end-of-phase finalization steps for measurements.
@@ -496,7 +606,17 @@ class PhaseState(mutablerecords.Record(
       measurement.set_notification_callback(None)
       # Validate multi-dimensional measurements now that we have all values.
       if measurement.outcome is measurements.Outcome.PARTIALLY_SET:
-        measurement.validate()
+        try:
+          measurement.validate()
+        except Exception:  # pylint: disable=broad-except
+          # Record the exception as the new result.
+          if self.phase_record.result.is_terminal:
+            _LOG.exception(
+                'Measurement validation raised an exception, but phase result '
+                'is already terminal; logging additional exception here.')
+          else:
+            self.phase_record.result = phase_executor.PhaseExecutionOutcome(
+                phase_executor.ExceptionInfo(*sys.exc_info()))
 
     # Set final values on the PhaseRecord.
     self.phase_record.measurements = self.measurements
@@ -535,12 +655,12 @@ class PhaseState(mutablerecords.Record(
     Yields:
       None
     """
-    self.phase_record.start_time_millis = util.time_millis()
+    self._cached['start_time_millis'] = long(
+        self.phase_record.record_start_time())
 
     try:
       yield
     finally:
       self._finalize_measurements()
       self._set_phase_outcome()
-      self.phase_record.end_time_millis = util.time_millis()
-      self.phase_record.options = self.options
+      self.phase_record.finalize_phase(self.options)

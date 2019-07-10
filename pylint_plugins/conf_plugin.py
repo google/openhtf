@@ -16,7 +16,6 @@
 import astroid
 
 from astroid import MANAGER
-from pylint import lint
 
 
 def __init__(self):

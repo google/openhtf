@@ -1,10 +1,10 @@
 language: python
 matrix:
   include:
-    - python: 2.7
-      env: TOXENV=py27
-    - python: 3.6
-      env: TOXENV=py36
+  - python: 2.7
+    env: TOXENV=py27
+  - python: 3.6
+    env: TOXENV=py36
 addons:
   apt:
     packages:
@@ -17,13 +17,14 @@ cache:
   pip: true
   apt: true
   directories:
-  - $HOME/.cache/pip
+  - "$HOME/.cache/pip"
 install:
 - pip install tox coveralls
 - pip install -e .
-- wget https://github.com/google/protobuf/releases/download/v3.5.0/protoc-3.5.0-linux-x86_64.zip
-- unzip protoc-3.5.0-linux-x86_64.zip
+- wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
+- unzip protoc-3.6.1-linux-x86_64.zip
 - sudo cp bin/protoc /usr/bin/protoc && sudo chmod 777 /usr/bin/protoc
+- sudo cp -r include/. /usr/include && sudo chmod -R +r /usr/include/google
 - protoc --version
 script: tox
 after_success:
@@ -34,4 +35,5 @@ deploy:
   on:
     tags: true
   password:
-    secure: zFZNHtiht6OhCrbWMGGb+yBMmTJLKtAE5RiDl60m58Jx4t/UhMtHoC0+jtZ1hq2aeprfvw60zAIhB3HbLvb+E4Dcf9U8hEGDxJhMSMwGkXvFtrdAqce+I1YcNTXwCUApoJfE8Px1IZMRY9e1+u7r+cIWVggc3X97bWGGo+68A/ZkFxyGv75n8HRfCyHxK2hG/CGJWWmiK+fpDD68I3GbTyL1V5cRAkXNr4O1cSBDzeo0qOKzLZKAYR8M4SEQCz0Qlyatksa/p76ijF0tt5Q+kdVRANwlIltn57l43xwgL6ViOLs0rP19hlDITj5g6FZsNlRPPNxD5mUMuDEZefdcfm7sfvYHlU7hi38bxxWHXIbhUg6147V1+1oVu+dcxpv6/LgbYKSF2rxmkB6pZLlvOKK/U8Ni+3cN5KO1IumBdtQPDvSVUnsEB6GiVazm5xdR5fHvrIJaIHeAb0CBVlU1mnpHU0qUhAp3NcVHQtDM+ykcKvxjtNptRLp3o2AfTEPQmOHdG5KX21L69vagUWrwHf9mjxyQn6XfuzChj5W+fOcTlvHENK1Z8+KZg3a9sIhTFCPBxB4eX4TlUqS9HIndZFuiiDMszysJMZZ6wDDsUvlpdgHpSJlAmCoDd7cwjDWrTD//O3jRyYTbZTSFHpDRI/McnWJ7v8zYP0rlOQRqTb0=
+    secure: OMX1FVQP3qTzBSVjKJhMVEbyhvzB6YXVg9gezTwQJtwJV4NgqwMtHxb+iJuQx6tia9lX2H1BJovpSzIL4kx6UDhX6C8vHHg8pv/34678bQuA/QqjyaqXKZ2/uEFCp6EShhaxityXSnu8XvSG+JOHsQkLCKfqXseQ16xnAuCBiVy8MvSVS7BdzmmXtpAYd51BczNgDand0xnZgM6IwlOTRIUPlAJY7fFCU7QXtXcDeNcdlXKO9gyOnwLeSyjy/pjhtj7yqqncrah2pbXCPv5xyUlerdZ8Gf4jZkaGGCXvt5IgLocsdRFy/AmzB9w8Qin4FgHZRSJfr85bGKKHCEEmg7oeVZEBl8lp8Bl05uv3ngW1s9fsSTjCSd2t4MRanY9JwIn60S61oC/5cgFZ66ImPPZEpL0/H4jVtWc3GbBjq2kAPOnqLqxMFsIj/YZLa5ijBCAASIdviDpna3snrmh4qED3EEOylL2RlLWuSODiF4urZEEyDcYdZRz7//EMcJFl5g68OTySrvyKZHMUDmlJihJiKtiFrRmWKHigm5znPgzeAvQpsX3YIyG/5336WjoogfvjKJ995wrF/DuUfwp5h9NJzpzSozFIitW5goydXu82ybnJ6G6/PvJ3wc9LKT2x2FY3SZeUqVTxdXrRzW4PbgZggYmhq4Z4KaEIKU+2Beo=
+    skip_existing: true

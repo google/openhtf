@@ -112,7 +112,6 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
-from past.builtins import basestring
 import collections
 import functools
 import inspect
@@ -128,10 +127,14 @@ from openhtf import plugs
 from openhtf import util
 from openhtf.core import measurements
 from openhtf.core import phase_executor
-from openhtf.core import station_api
+from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
-from openhtf.util import conf
+from openhtf.plugs import device_wrapping
+from openhtf.util import logs
+import six
+
+logs.CLI_LOGGING_VERBOSITY = 2
 
 
 class InvalidTestError(Exception):
@@ -160,8 +163,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
-    self.plug_manager = plugs.PlugManager(
-        logger=logging.getLogger('test.PlugManager'))
+    self.plug_manager = plugs.PlugManager()
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
@@ -172,32 +174,39 @@ class PhaseOrTestIterator(collections.Iterator):
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(plug_cls for plug_cls in plug_types if
                                        plug_cls not in self.mock_plugs)
-    for plug_type, plug_value in self.mock_plugs.items():
+    for plug_type, plug_value in six.iteritems(self.mock_plugs):
       self.plug_manager.update_plug(plug_type, plug_value)
 
-  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
+    logs.configure_logging()
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
+    test_options = test_descriptor.TestOptions()
     with mock.patch(
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test_state_ = test_state.TestState(openhtf.TestDescriptor(
-          (phase_desc,), phase_desc.code_info, {}), 'Unittest:StubTest:UID')
+      test_state_ = test_state.TestState(
+          openhtf.TestDescriptor((phase_desc,), phase_desc.code_info, {}),
+          'Unittest:StubTest:UID',
+          test_options
+      )
       test_state_.mark_test_started()
 
     # Actually execute the phase, saving the result in our return value.
     executor = phase_executor.PhaseExecutor(test_state_)
-    # Use _execute_phase_once because we want to expose all possible outcomes.
-    executor._execute_phase_once(phase_desc, is_last_repeat=False)
+    # Log an exception stack when a Phase errors out.
+    with mock.patch.object(
+        phase_executor.PhaseExecutorThread, '_log_exception',
+        side_effect=logging.exception):
+      # Use _execute_phase_once because we want to expose all possible outcomes.
+      executor._execute_phase_once(phase_desc, is_last_repeat=False)
     return test_state_.test_record.phases[-1]
 
-  @conf.save_and_restore(station_api_port=None, enable_station_discovery=False)
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
     # Make sure we inject our mock plug instances.
-    for plug_type, plug_value in self.mock_plugs.items():
+    for plug_type, plug_value in six.iteritems(self.mock_plugs):
       self.plug_manager.update_plug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
@@ -224,7 +233,7 @@ class PhaseOrTestIterator(collections.Iterator):
       self.last_result = self._handle_phase(
           openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
     return phase_or_test, self.last_result
-  
+
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
@@ -299,8 +308,8 @@ def patch_plugs(**mock_plugs):
     # Make MagicMock instances for the plugs.
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
-    for plug_arg_name, plug_fullname in mock_plugs.items():
-      if isinstance(plug_fullname, basestring):
+    for plug_arg_name, plug_fullname in six.iteritems(mock_plugs):
+      if isinstance(plug_fullname, six.string_types):
         try:
           plug_module, plug_typename = plug_fullname.rsplit('.', 1)
           plug_type = getattr(sys.modules[plug_module], plug_typename)
@@ -313,7 +322,13 @@ def patch_plugs(**mock_plugs):
       else:
         raise ValueError('Invalid plug type specification %s="%s"' % (
             plug_arg_name, plug_fullname))
-      plug_mock = mock.create_autospec(plug_type, spec_set=True, instance=True)
+      if issubclass(plug_type, device_wrapping.DeviceWrappingPlug):
+        # We can't strictly spec because calls to attributes are proxied to the
+        # underlying device.
+        plug_mock = mock.MagicMock()
+      else:
+        plug_mock = mock.create_autospec(plug_type, spec_set=True,
+                                         instance=True)
       plug_typemap[plug_type] = plug_mock
       plug_kwargs[plug_arg_name] = plug_mock
 
@@ -335,12 +350,7 @@ class TestCase(unittest.TestCase):
     test_method = getattr(self, methodName)
     if inspect.isgeneratorfunction(test_method):
       raise ValueError(
-          "%s yields without @openhtf.util.test.yields_phases" % methodName)
-    
-    # Mock the station api server.
-    station_api_server_patcher = mock.patch.object(station_api, 'ApiServer')
-    self.mock_api_server = station_api_server_patcher.start()
-    self.addCleanup(self.mock_api_server.stop)
+          '%s yields without @openhtf.util.test.yields_phases' % methodName)
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
@@ -383,6 +393,9 @@ class TestCase(unittest.TestCase):
 
   def assertTestFail(self, test_rec):
     self.assertEqual(test_record.Outcome.FAIL, test_rec.outcome)
+
+  def assertTestAborted(self, test_rec):
+    self.assertEqual(test_record.Outcome.ABORTED, test_rec.outcome)
 
   def assertTestError(self, test_rec, exc_type=None):
     self.assertEqual(test_record.Outcome.ERROR, test_rec.outcome)

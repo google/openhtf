@@ -30,7 +30,6 @@ function, but rather a USB function - listing devices with a specific interface
 class, subclass, and protocol.
 """
 
-import io
 import logging
 import os.path
 
@@ -47,6 +46,7 @@ from openhtf.plugs.usb import shell_service
 from openhtf.plugs.usb import usb_exceptions
 
 from openhtf.util import timeouts
+import six
 
 # USB interface class, subclass, and protocol for matching against.
 CLASS = 0xFF
@@ -142,7 +142,7 @@ class AdbDevice(object):
       timeout_ms: Expected timeout for any part of the push.
     """
     mtime = 0
-    if isinstance(source_file, str):
+    if isinstance(source_file, six.string_types):
       mtime = os.path.getmtime(source_file)
       source_file = open(source_file)
 
@@ -161,15 +161,14 @@ class AdbDevice(object):
     Returns:
       The file data if dest_file is not set, None otherwise.
     """
-    if isinstance(dest_file, str):
+    should_return_data = dest_file is None
+    if isinstance(dest_file, six.string_types):
       dest_file = open(dest_file, 'w')
-    elif not dest_file:
-      dest_file = io.StringIO()
+    elif dest_file is None:
+      dest_file = six.StringIO()
     self.filesync_service.recv(device_filename, dest_file,
                                timeouts.PolledTimeout.from_millis(timeout_ms))
-    # An empty call to cStringIO.StringIO returns an instance of
-    # cStringIO.OutputType.
-    if isinstance(dest_file, io.OutputType):
+    if should_return_data:
       return dest_file.getvalue()
 
   def list(self, device_path, timeout_ms=None):
@@ -179,13 +178,15 @@ class AdbDevice(object):
 
   def command(self, command, raw=False, timeout_ms=None):
     """Run command on the device, returning the output."""
-    return self.shell_service.command(command, raw=raw, timeout_ms=timeout_ms)
+    return self.shell_service.command(
+        str(command), raw=raw, timeout_ms=timeout_ms)
+
   Shell = command  #pylint: disable=invalid-name
 
   def async_command(self, command, raw=False, timeout_ms=None):
     """See shell_service.ShellService.async_command()."""
-    return self.shell_service.async_command(command, raw=raw,
-                                            timeout_ms=timeout_ms)
+    return self.shell_service.async_command(
+        str(command), raw=raw, timeout_ms=timeout_ms)
 
   def _check_remote_command(self, destination, timeout_ms, success_msgs=None):
     """Open a stream to destination, check for remote errors.

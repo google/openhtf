@@ -1,0 +1,75 @@
+<div class="htf-layout-widget">
+
+  <div class="htf-layout-widget-header">
+    <div>History</div>
+    <div class="u-flex-grow"></div>
+    <button
+      *ngIf="history.length > collapsedNumTests"
+      type="button"
+      class="htf-rounded-button-grey"
+      (click)="toggleExpanded()">
+      {{ expanded? 'Collapse' : 'Expand' }}
+    </button>
+  </div>
+
+  <ul class="htf-layout-widget-list history-list">
+    <ng-container *ngFor="let historyItem of history; let i = index">
+      <li
+        class="history-item-container"
+        htfTooltip="{{ historyItem.startTimeMillis | date:'M/d/yy h:mma' }}"
+        *ngIf="expanded || i < collapsedNumTests"
+        [@animateIn]="historyItem.drawAttention ? 'in' : ''"
+        (@animateIn.done)="historyItem.drawAttention = false"
+        [ngSwitch]="historyItem.status"
+        [class.is-selected]="isSelected(historyItem)"
+        (click)="onClick(historyItem)">
+
+        <!-- Wrap list item contents in an extra div to enable a “slide down” animation effect. -->
+        <div class="history-item htf-layout-header">
+          <div class="history-item-name-container">
+            <div class="history-item-name">
+              {{ historyItem.dutId || historyItem.fileName }}
+            </div>
+            <div class="u-font-size-small">
+              Started {{ historyItem.startTimeMillis | timeAgo }}
+            </div>
+          </div>
+          <div *ngSwitchCase="HistoryItemStatus.unloaded" class="history-item-status">
+            Click to load.
+          </div>
+          <div *ngSwitchCase="HistoryItemStatus.loading" class="history-item-status">
+            Loading...
+          </div>
+          <div *ngSwitchCase="HistoryItemStatus.error" class="history-item-status error-text">
+            An error occurred.
+          </div>
+          <div
+            *ngSwitchCase="HistoryItemStatus.loaded"
+            class="htf-status-indicator"
+            [ngClass]="historyItem.testState.status | statusToClass">
+            {{ historyItem.testState.status | statusToText }}
+          </div>
+        </div>
+      </li>
+    </ng-container>
+    <li *ngIf="!expanded && history.length > collapsedNumTests" class="status-text">
+      Not showing {{ history.length - collapsedNumTests }} additional test
+      {{ history.length - collapsedNumTests === 1? 'run' : 'runs'}}.
+    </li>
+    <li *ngIf="history.length === 0 && !isLoading && !hasError" class="status-text">
+      There are no known completed test runs.
+    </li>
+    <li *ngIf="isLoading" class="status-text">
+      Loading history from the server...
+    </li>
+    <li *ngIf="hasError && !historyFromDiskEnabled" class="status-text">
+      History from disk is disabled.
+    </li>
+    <li *ngIf="hasError && historyFromDiskEnabled" class="status-text">
+      <span class="u-text-color-error">
+        Could not retrieve test history from the server.
+      </span>
+    </li>
+  </ul>
+
+</div>

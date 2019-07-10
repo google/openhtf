@@ -20,18 +20,17 @@ alternative serialization schemes, see json_factory.py and mfg_inspector.py for
 examples.
 """
 
-import base64
 import contextlib
 try:
    import cPickle as pickle
 except:
    import pickle
-import os
 import shutil
 import tempfile
 
 from openhtf import util
 from openhtf.util import data
+import six
 
 
 # TODO(wallacbe): Switch to util
@@ -86,7 +85,7 @@ class OutputToFile(object):
     record_dict = data.convert_to_base_types(
         test_record, ignore_keys=('code_info', 'phases', 'log_records'))
     pattern = self.filename_pattern
-    if isinstance(pattern, str) or callable(pattern):
+    if isinstance(pattern, six.string_types) or callable(pattern):
       output_file = self.open_file(util.format_string(pattern, record_dict))
       try:
         yield output_file

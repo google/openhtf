@@ -16,20 +16,22 @@
 """Multicast facilities for sending and receiving messages.
 
 This module includes both a MulticastListener that listens on a multicast
-socket and invokes a callback function for each message recieved, and a send()
+socket and invokes a callback function for each message received, and a send()
 function that is used to send one-shot messages to a multicast socket.
 """
 
-
 import logging
-import queue
 import socket
 import struct
 import sys
 import threading
-
+from six.moves import queue
 
 _LOG = logging.getLogger(__name__)
+
+# The multicast logs can occur frequently, e.g. every couple seconds. Prevent
+# most logs from ending up in the test record by default.
+_LOG.setLevel(logging.WARNING)
 
 DEFAULT_ADDRESS = '239.1.1.1'
 DEFAULT_PORT = 10000
@@ -111,6 +113,7 @@ class MulticastListener(threading.Thread):
     while self._live:
       try:
         data, address = self._sock.recvfrom(MAX_MESSAGE_BYTES)
+        data = data.decode('utf-8')
         log_line = 'Received multicast message from %s: %s' % (address, data)
         response = self._callback(data)
         if response is not None:
@@ -119,6 +122,7 @@ class MulticastListener(threading.Thread):
           # so that multiple processes on the same host can listen for
           # requests and reply (if they all try to use the multicast socket
           # to reply, they conflict and this sendto fails).
+          response = response.encode('utf-8')
           socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(
               response, address)
         _LOG.debug(log_line)
@@ -164,6 +168,7 @@ def send(query,
     while True:
       try:
         data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
+        data = data.decode('utf-8')
       except socket.timeout:
         recv_queue.put(None)
         break

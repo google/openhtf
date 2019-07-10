@@ -30,11 +30,13 @@ import sys
 
 from mutablerecords import records
 from past.builtins import long
+from past.builtins import unicode
 
 from enum import Enum
+import six
 
 # Used by convert_to_base_types().
-PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), str}
+PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
 
 
 def pprint_diff(first, second, first_name='first', second_name='second'):
@@ -112,13 +114,17 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   for sending internal objects via the network and outputting test records.
   Specifically, the conversions that are performed:
 
-    - If an object has an _asdict() method, use that to convert it to a dict.
+    - If an object has an as_base_types() method, immediately return the result
+      without any recursion; this can be used with caching in the object to
+      prevent unnecessary conversions.
+    - If an object has an _asdict() method, use that to convert it to a dict and
+      recursively converting its contents.
     - mutablerecords Record instances are converted to dicts that map
       attribute name to value.  Optional attributes with a value of None are
       skipped.
     - Enum instances are converted to strings via their .name attribute.
     - Real and integral numbers are converted to built-in types.
-    - Byte and unicode strings are left alone (instances of basestring).
+    - Byte and unicode strings are left alone (instances of six.string_types).
     - Other non-None values are converted to strings via str().
 
   The return value contains only the Python built-in types: dict, list, tuple,
@@ -133,11 +139,10 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   such as NaN which are not valid JSON.
   """
   # Because it's *really* annoying to pass a single string accidentally.
-  assert not isinstance(ignore_keys, str), 'Pass a real iterable!'
+  assert not isinstance(ignore_keys, six.string_types), 'Pass a real iterable!'
 
-  if type(obj) in PASSTHROUGH_TYPES:
-    return obj
-
+  if hasattr(obj, 'as_base_types'):
+    return obj.as_base_types()
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
   elif isinstance(obj, records.RecordClass):
@@ -148,11 +153,14 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   elif isinstance(obj, Enum):
     obj = obj.name
 
+  if type(obj) in PASSTHROUGH_TYPES:
+    return obj
+
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
     return {convert_to_base_types(k, ignore_keys, tuple_type):
                convert_to_base_types(v, ignore_keys, tuple_type)
-            for k, v in obj.items() if k not in ignore_keys}
+            for k, v in six.iteritems(obj) if k not in ignore_keys}
   elif isinstance(obj, list):
     return [convert_to_base_types(val, ignore_keys, tuple_type, json_safe)
             for val in obj]
@@ -171,7 +179,11 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
     return as_float
 
   # Convert all other types to strings.
-  return str(obj)
+  try:
+    return str(obj)
+  except:
+    logging.warning('Problem casting object of type %s to str.', type(obj))
+    raise
 
 
 def total_size(obj):
@@ -194,9 +206,9 @@ def total_size(obj):
 
     if isinstance(current_obj, dict):
       size += sum(map(sizeof, itertools.chain.from_iterable(
-          current_obj.items())))
+          six.iteritems(current_obj))))
     elif (isinstance(current_obj, collections.Iterable) and
-          not isinstance(current_obj, str)):
+          not isinstance(current_obj, six.string_types)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
       size += sum(sizeof(getattr(current_obj, attr))

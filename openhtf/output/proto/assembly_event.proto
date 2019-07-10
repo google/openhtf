@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package openhtf;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// An event in which two parts are joined, separated, created, or updated.
+message AssemblyEvent {
+  // Possible operations which can be performed on a component during an event.
+  // Multiple Assembly Events within a single Manufacturing Event with the same
+  // timestamp will be applied in the following order:
+  // DETACH_ALL_CHILDREN, DETACH, CREATE, ATTACH, UPDATE
+  enum Operation {
+    ATTACH = 0; // The child was joined to the target.
+    DETACH = 1; // The child was separated from the target.
+    CREATE = 2; // Creating a GSN for a GPN, only ‘target’ filled.
+    UPDATE = 3; // Updates any field, only ‘target’ filled.
+    DETACH_ALL_CHILDREN = 4; // Detaches _all_ children from target component
+  }
+
+  // An individual Component, potentially a member of an assembly.
+  message Component {
+    string part_number = 1;  // GPN
+    // Unique idenfier of a component, either serial or lot/index.
+    oneof id {
+      string serial = 2;  // GSN. Most components will have this.
+      ByLot lot = 3;  // For tracking resistors, lenses, etc.
+    }
+
+    // Complex key for a Component when indicated as part of a Lot as opposed
+    // to having a unique serial number.
+    message ByLot {
+      string lot_number = 1; // Lot or batch number of a component.
+      string lot_index = 2; // Optional position within a batch or lot.
+    }
+    // Serial reported by something electronic on the component.
+    string electronic_serial = 4;
+    // For objects that repeat in their parent or are named anyway,
+    string instance_name = 5;
+    // ‘valid’, ‘transform’, ‘electronic_part_number’, etc
+    google.protobuf.Struct extra_data = 6;
+    // A list of strings indicating deviations to add or remove from the
+    // specified target component.
+    // Deviation codes will persist in a component's Genealogy tree until
+    // removed.  Prefixing a ! to a deviation code will indicate that it
+    // should be removed.
+    repeated string deviation_code = 7;
+  }
+
+  // Primary component targeted by this AssemblyEvent.
+  Component target = 1;
+  // Optional associated child subcomponent of this AssemblyEvent.
+  Component child = 3;
+
+  // Operation which was performed (default: CREATE if no child, otherwise
+  // ATTACH)
+  Operation op = 4;
+  // Time at which this event occurred.
+  google.protobuf.Timestamp time = 5;
+}
+
+// Intended to be used within Big Query or other "flattened at rest" data
+// stores, this contains information about a Component at a particular point in
+// time.
+message StaticComponentInfo {
+  int64 extraction_timestamp_ms = 1;
+  int64 modification_timestamp_ms = 2;
+  string serial = 3;
+  string part_number = 4;
+  string instance_name = 5;
+  repeated string deviations = 6;
+  int64 update_count = 7;
+  AssemblyEvent.Component component = 8;
+  string description = 9;  // extracted from extra_data['assembly description']
+}

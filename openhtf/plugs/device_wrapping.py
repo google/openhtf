@@ -20,13 +20,10 @@ just need to put that interface in plug form to get it into your test phase.
 Device-wrapping plugs are your friends in such times.
 """
 
-from contextlib import contextmanager
 import functools
-import textwrap
-import threading
-import serial
 
 import openhtf
+import six
 
 
 def short_repr(obj, max_len=40):
@@ -40,7 +37,7 @@ def short_repr(obj, max_len=40):
   obj_repr = repr(obj)
   if len(obj_repr) <= max_len:
     return obj_repr
-  return '<{} of length {}>'.format(type(arg).__name__, len(obj_repr))
+  return '<{} of length {}>'.format(type(obj).__name__, len(obj_repr))
 
 
 class DeviceWrappingPlug(openhtf.plugs.BasePlug):
@@ -72,26 +69,38 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
     openhtf.plugs.InvalidPlugError: The _device attribute has the value None
         when attribute access is attempted.
   """
+
+  verbose = True  # overwrite on subclass to disable logging_wrapper.
+
   def __init__(self, device):
     super(DeviceWrappingPlug, self).__init__()
     self._device = device
+    if hasattr(self._device, 'tearDown') and self.uses_base_tear_down():
+      self.logger.warning('Wrapped device %s implements a tearDown method, '
+                          'but using the no-op BasePlug tearDown method.',
+                          type(self._device))
 
   def __getattr__(self, attr):
     if self._device is None:
       raise openhtf.plugs.InvalidPlugError(
-        'DeviceWrappingPlug instances must set the _device attribute.')
+          'DeviceWrappingPlug instances must set the _device attribute.')
+    if attr == 'as_base_types':
+      return super(DeviceWrappingPlug, self).__getattr__(attr)
 
     attribute = getattr(self._device, attr)
 
-    if not callable(attribute):
+    if not self.verbose or not callable(attribute):
       return attribute
 
     # Attribute callable; return a wrapper that logs calls with args and kwargs.
     functools.wraps(attribute, assigned=('__name__', '__doc__'))
     def logging_wrapper(*args, **kwargs):
+      """Wraps a callable with a logging statement."""
       args_strings = tuple(short_repr(arg) for arg in args)
       kwargs_strings = tuple(
-          ('%s=%s' % (key, short_repr(val)) for key, val in kwargs.items()))
+          ('%s=%s' % (key, short_repr(val))
+           for key, val in six.iteritems(kwargs))
+      )
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
         log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))
@@ -99,3 +108,4 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
       return attribute(*args, **kwargs)
 
     return logging_wrapper
+
