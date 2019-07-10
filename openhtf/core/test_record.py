@@ -30,6 +30,8 @@ from openhtf import util
 from openhtf.util import data
 from openhtf.util import logs
 
+import six
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -48,7 +50,7 @@ class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
 
   @property
   def sha1(self):
-    return hashlib.sha1(self.data).hexdigest()
+    return hashlib.sha1(six.ensure_binary(self.data)).hexdigest()
 
   def _asdict(self):
     # Don't include the attachment data when converting to dict.
