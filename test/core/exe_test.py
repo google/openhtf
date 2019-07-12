@@ -467,7 +467,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertTrue(record.outcome, Outcome.FAIL)
     # Verify phase_one was not run
     ran_phase = [phase.name for phase in record.phases]
-    self.assertFalse('phase_one' in ran_phase)
+    self.assertNotIn('phase_one', ran_phase)
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
     executor.close()
@@ -494,7 +494,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertTrue(record.outcome, Outcome.FAIL)
     # Verify phase_one was not run
     ran_phase = [phase.name for phase in record.phases]
-    self.assertFalse('phase_one' in ran_phase)
+    self.assertNotIn('phase_one', ran_phase)
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
     executor.close()
