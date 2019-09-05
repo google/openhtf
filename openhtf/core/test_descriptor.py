@@ -21,8 +21,10 @@ test is a series of Phases that are executed by the OpenHTF framework.
 """
 import argparse
 import collections
+import contextlib
 import logging
 import os
+import signal
 import sys
 import textwrap
 import threading
@@ -105,6 +107,17 @@ def create_arg_parser(add_help=False):
       help='Instead of executing the test, simply print all available config '
       'keys and their description strings.')
   return parser
+
+
+@contextlib.contextmanager
+def sigint_context():
+  """Context within which handle_sig_int is the signal handler for SIGINT."""
+  # Register signal handler to stop all tests on SIGINT.
+  replaced_sigint_handler = signal.signal(signal.SIGINT, Test.handle_sig_int)
+  try:
+    yield
+  finally:
+    signal.signal(signal.SIGINT, replaced_sigint_handler)
 
 
 class Test(object):
@@ -277,80 +290,81 @@ class Test(object):
     Raises:
       InvalidTestStateError: if this test is already being executed.
     """
-    # Lock this section so we don't .stop() the executor between instantiating
-    # it and .Start()'ing it, doing so does weird things to the executor state.
-    with self._lock:
-      # Sanity check to make sure someone isn't doing something weird like
-      # trying to Execute() the same test twice in two separate threads.  We
-      # hold the lock between here and Start()'ing the executor to guarantee
-      # that only one thread is successfully executing the test.
-      if self._executor:
-        raise InvalidTestStateError('Test already running', self._executor)
+    with sigint_context():
+      # Lock this section so we don't .stop() the executor between instantiating
+      # it and .Start()'ing it, doing so does weird things to the executor state.
+      with self._lock:
+        # Sanity check to make sure someone isn't doing something weird like
+        # trying to Execute() the same test twice in two separate threads.  We
+        # hold the lock between here and Start()'ing the executor to guarantee
+        # that only one thread is successfully executing the test.
+        if self._executor:
+          raise InvalidTestStateError('Test already running', self._executor)
 
-      # Snapshot some things we care about and store them.
-      self._test_desc.metadata['test_name'] = self._test_options.name
-      self._test_desc.metadata['config'] = conf._asdict()
-      self.last_run_time_millis = util.time_millis()
+        # Snapshot some things we care about and store them.
+        self._test_desc.metadata['test_name'] = self._test_options.name
+        self._test_desc.metadata['config'] = conf._asdict()
+        self.last_run_time_millis = util.time_millis()
 
-      if isinstance(test_start, LambdaType):
-        @phase_descriptor.PhaseOptions()
-        def trigger_phase(test):
-          test.test_record.dut_id = test_start()
-        trigger = trigger_phase
-      else:
-        trigger = test_start
-
-      if conf.capture_source:
-        trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
-
-      test_desc = self._get_running_test_descriptor()
-      self._executor = test_executor.TestExecutor(
-          test_desc, self.make_uid(), trigger, self._test_options)
-
-      _LOG.info('Executing test: %s', self.descriptor.code_info.name)
-      self.TEST_INSTANCES[self.uid] = self
-      self._executor.start()
-
-    try:
-      self._executor.wait()
-    except KeyboardInterrupt:
-      # The SIGINT handler only raises the KeyboardInterrupt once, so only retry
-      # that once.
-      self._executor.wait()
-      raise
-    finally:
-      try:
-        final_state = self._executor.finalize()
-
-        _LOG.debug('Test completed for %s, outputting now.',
-                   final_state.test_record.metadata['test_name'])
-        for output_cb in self._test_options.output_callbacks:
-          try:
-            output_cb(final_state.test_record)
-          except Exception:  # pylint: disable=broad-except
-            _LOG.exception(
-                'Output callback %s raised; continuing anyway', output_cb)
-        # Make sure the final outcome of the test is printed last and in a
-        # noticeable color so it doesn't get scrolled off the screen or missed.
-        if final_state.test_record.outcome == test_record.Outcome.ERROR:
-          for detail in final_state.test_record.outcome_details:
-            console_output.error_print(detail.description)
+        if isinstance(test_start, LambdaType):
+          @phase_descriptor.PhaseOptions()
+          def trigger_phase(test):
+            test.test_record.dut_id = test_start()
+          trigger = trigger_phase
         else:
-          colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
-          colors[test_record.Outcome.PASS] = ''.join((colorama.Style.BRIGHT,
-                                                      colorama.Fore.GREEN))
-          colors[test_record.Outcome.FAIL] = ''.join((colorama.Style.BRIGHT,
-                                                      colorama.Fore.RED))
-          msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
-          console_output.banner_print(msg_template.format(
-              name=final_state.test_record.metadata['test_name'],
-              color=colors[final_state.test_record.outcome],
-              outcome=final_state.test_record.outcome.name,
-              rst=colorama.Style.RESET_ALL))
+          trigger = test_start
+
+        if conf.capture_source:
+          trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
+
+        test_desc = self._get_running_test_descriptor()
+        self._executor = test_executor.TestExecutor(
+            test_desc, self.make_uid(), trigger, self._test_options)
+
+        _LOG.info('Executing test: %s', self.descriptor.code_info.name)
+        self.TEST_INSTANCES[self.uid] = self
+        self._executor.start()
+
+      try:
+        self._executor.wait()
+      except KeyboardInterrupt:
+        # The SIGINT handler only raises the KeyboardInterrupt once, so only retry
+        # that once.
+        self._executor.wait()
+        raise
       finally:
-        del self.TEST_INSTANCES[self.uid]
-        self._executor.close()
-        self._executor = None
+        try:
+          final_state = self._executor.finalize()
+
+          _LOG.debug('Test completed for %s, outputting now.',
+                     final_state.test_record.metadata['test_name'])
+          for output_cb in self._test_options.output_callbacks:
+            try:
+              output_cb(final_state.test_record)
+            except Exception:  # pylint: disable=broad-except
+              _LOG.exception(
+                  'Output callback %s raised; continuing anyway', output_cb)
+          # Make sure the final outcome of the test is printed last and in a
+          # noticeable color so it doesn't get scrolled off the screen or missed.
+          if final_state.test_record.outcome == test_record.Outcome.ERROR:
+            for detail in final_state.test_record.outcome_details:
+              console_output.error_print(detail.description)
+          else:
+            colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
+            colors[test_record.Outcome.PASS] = ''.join((colorama.Style.BRIGHT,
+                                                        colorama.Fore.GREEN))
+            colors[test_record.Outcome.FAIL] = ''.join((colorama.Style.BRIGHT,
+                                                        colorama.Fore.RED))
+            msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
+            console_output.banner_print(msg_template.format(
+                name=final_state.test_record.metadata['test_name'],
+                color=colors[final_state.test_record.outcome],
+                outcome=final_state.test_record.outcome.name,
+                rst=colorama.Style.RESET_ALL))
+        finally:
+          del self.TEST_INSTANCES[self.uid]
+          self._executor.close()
+          self._executor = None
 
     return final_state.test_record.outcome == test_record.Outcome.PASS
 

@@ -16,7 +16,6 @@
 """The main OpenHTF entry point."""
 
 import pkg_resources
-import signal
 
 from openhtf import plugs
 from openhtf.core import phase_executor
@@ -55,6 +54,3 @@ def get_version():
     return 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
 
 __version__ = get_version()
-
-# Register signal handler to stop all tests on SIGINT.
-signal.signal(signal.SIGINT, Test.handle_sig_int)
