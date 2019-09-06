@@ -57,4 +57,4 @@ def get_version():
 __version__ = get_version()
 
 # Register signal handler to stop all tests on SIGINT.
-signal.signal(signal.SIGINT, Test.handle_sig_int)
+Test.DEFAULT_SIGINT_HANDLER = signal.signal(signal.SIGINT, Test.handle_sig_int)

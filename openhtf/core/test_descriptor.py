@@ -126,6 +126,7 @@ class Test(object):
 
   TEST_INSTANCES = weakref.WeakValueDictionary()
   HANDLED_SIGINT_ONCE = False
+  DEFAULT_SIGINT_HANDLER = None
 
   def __init__(self, *phases, **metadata):
     # Some sanity checks on special metadata keys we automatically fill in.
@@ -228,11 +229,14 @@ class Test(object):
       setattr(self._test_options, key, value)
 
   @classmethod
-  def handle_sig_int(cls, *_):
-    if cls.TEST_INSTANCES:
-      _LOG.error('Received SIGINT, stopping all tests.')
-      for test in cls.TEST_INSTANCES.values():
-        test.abort_from_sig_int()
+  def handle_sig_int(cls, signalnum, handler):
+    if not cls.TEST_INSTANCES:
+      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)
+      return
+
+    _LOG.error('Received SIGINT, stopping all tests.')
+    for test in cls.TEST_INSTANCES.values():
+      test.abort_from_sig_int()
     if not cls.HANDLED_SIGINT_ONCE:
       cls.HANDLED_SIGINT_ONCE = True
       raise KeyboardInterrupt
