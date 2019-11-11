@@ -19,6 +19,7 @@ actually care for.
 """
 
 import io
+import json
 import sys
 import unittest
 
@@ -28,7 +29,6 @@ from examples import all_the_things
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import mfg_event_converter
-from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
@@ -60,6 +60,8 @@ class TestOutput(test.TestCase):
       json_output = io.StringIO()
     json_factory.OutputToJSON(
         json_output, sort_keys=True, indent=2)(record)
+    json_output.seek(0)
+    json.loads(json_output.read())
 
   @test.patch_plugs(user_mock='openhtf.plugs.user_input.UserInput')
   def test_test_run_from_test_record(self, user_mock):
@@ -153,7 +155,7 @@ class TestMfgEventOutput(test.TestCase):
 
     # Spot check an attachment (example_attachment.txt)
     for attachment_name in  ['example_attachment_0.txt',
-        'example_attachment_1.txt']:
+                             'example_attachment_1.txt']:
       for attachment in mfg_event.attachment:
         if attachment.name == attachment_name:
           self.assertEqual(

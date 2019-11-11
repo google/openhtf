@@ -84,12 +84,14 @@ _identity = lambda x: x
 
 class ValidatorBase(with_metaclass(abc.ABCMeta, object)):
   @abc.abstractmethod
+
   def __call__(self, value):
     """Should validate value, returning a boolean result."""
 
 
 class RangeValidatorBase(with_metaclass(abc.ABCMeta, ValidatorBase)):
   @abc.abstractproperty
+
   def minimum(self):
     """Should return the minimum, inclusive value of the range."""
 
@@ -99,6 +101,27 @@ class RangeValidatorBase(with_metaclass(abc.ABCMeta, ValidatorBase)):
 
 
 # Built-in validators below this line
+class AllInRangeValidator(ValidatorBase):
+
+  def __init__(self, min_value, max_value):
+    self.min_value = min_value
+    self.max_value = max_value
+
+  def __call__(self, values):
+    return all([self.min_value <= value <= self.max_value for value in values])
+
+
+class AllEqualsValidator(ValidatorBase):
+
+  def __init__(self, spec):
+    self.spec = spec
+
+  def __call__(self, values):
+    return all([value == self.spec for value in values])
+
+register(AllInRangeValidator, name='all_in_range')
+register(AllEqualsValidator, name='all_equals')
+
 
 class InRange(RangeValidatorBase):
   """Validator to verify a numeric value is within a range."""

@@ -256,7 +256,6 @@ def phase_uniquizer(all_phases):
     for name, _ in sorted(phase.attachments.items()):
       old_name = name
       name = attachment_name_maker.make_unique(name)
-      phase.attachments[old_name].name = name
       phase.attachments[name] = phase.attachments.pop(old_name)
   return all_phases
 
@@ -397,15 +396,14 @@ class PhaseCopier(object):
 
   def copy_attachments(self, mfg_event):
     for phase in self._phases:
-      for name, (data, mimetype) in sorted(phase.attachments.items()):
-        self._copy_attachment(name, data, mimetype, mfg_event)
+      for name, attachment in sorted(phase.attachments.items()):
+        self._copy_attachment(name, attachment.data, attachment.mimetype,
+                              mfg_event)
 
   def _copy_attachment(self, name, data, mimetype, mfg_event):
     """Copies an attachment to mfg_event."""
     attachment = mfg_event.attachment.add()
     attachment.name = name
-    if isinstance(data, unicode):
-      data = data.encode('utf8')
     attachment.value_binary = data
     if mimetype in test_runs_converter.MIMETYPE_MAP:
       attachment.type = test_runs_converter.MIMETYPE_MAP[mimetype]

@@ -459,6 +459,9 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
         retval[key] = value
     return retval
 
+  def __dict__(self):
+    return self._asdict()
+
   @property
   def help_text(self):
     """Return a string with all config keys and their descriptions."""
