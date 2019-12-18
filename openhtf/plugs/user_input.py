@@ -56,7 +56,7 @@ class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
-Prompt = collections.namedtuple('Prompt', 'id message text_input')
+Prompt = collections.namedtuple('Prompt', 'id message text_input show_image image_url')
 
 
 class ConsolePrompt(threading.Thread):
@@ -150,7 +150,9 @@ class UserInput(plugs.FrontendAwareBasePlug):
         return
       return {'id': self._prompt.id,
               'message': self._prompt.message,
-              'text-input': self._prompt.text_input}
+              'text-input': self._prompt.text_input,
+              'show-image': self._prompt.show_image,
+              'image-url': self._prompt.image_url}
 
   def tearDown(self):
     self.remove_prompt()
@@ -164,7 +166,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
         self._console_prompt = None
       self.notify_update()
 
-  def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
+  def prompt(self, message, text_input=False, timeout_s=None, cli_color='', image_url = None):
     """Display a prompt and wait for a response.
 
     Args:
@@ -180,10 +182,10 @@ class UserInput(plugs.FrontendAwareBasePlug):
       MultiplePromptsError: There was already an existing prompt.
       PromptUnansweredError: Timed out waiting for the user to respond.
     """
-    self.start_prompt(message, text_input, cli_color)
+    self.start_prompt(message, text_input, cli_color, image_url)
     return self.wait_for_prompt(timeout_s)
 
-  def start_prompt(self, message, text_input=False, cli_color=''):
+  def start_prompt(self, message, text_input=False, cli_color='', image_url = None):
     """Display a prompt.
 
     Args:
@@ -205,8 +207,11 @@ class UserInput(plugs.FrontendAwareBasePlug):
                  ', Expects text input.' if text_input else '')
 
       self._response = None
+      show_image = False
+      if image_url is not None:
+          show_image = True
       self._prompt = Prompt(
-          id=prompt_id, message=message, text_input=text_input)
+          id=prompt_id, message=message, text_input=text_input, show_image=show_image, image_url=image_url)
       if sys.stdin.isatty():
         self._console_prompt = ConsolePrompt(
             message, functools.partial(self.respond, prompt_id), cli_color)
