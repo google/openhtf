@@ -81,6 +81,13 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
                           'but using the no-op BasePlug tearDown method.',
                           type(self._device))
 
+  def __setattr__(self, name, value):
+    if name == '_device' or not hasattr(
+        super(DeviceWrappingPlug, self), '__getattr__'):
+      super(DeviceWrappingPlug, self).__setattr__(name, value)
+    else:
+      setattr(self._device, name, value)
+
   def __getattr__(self, attr):
     if self._device is None:
       raise openhtf.plugs.InvalidPlugError(
