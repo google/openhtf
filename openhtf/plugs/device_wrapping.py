@@ -21,6 +21,7 @@ Device-wrapping plugs are your friends in such times.
 """
 
 import functools
+import types
 
 import openhtf
 import six
@@ -89,7 +90,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
 
     attribute = getattr(self._device, attr)
 
-    if not self.verbose or not callable(attribute):
+    if not self.verbose or not isinstance(attribute, types.MethodType):
       return attribute
 
     # Attribute callable; return a wrapper that logs calls with args and kwargs.
