@@ -82,8 +82,8 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
                           type(self._device))
 
   def __setattr__(self, name, value):
-    if name == '_device' or not hasattr(
-        super(DeviceWrappingPlug, self), '__getattr__'):
+    if (name == '_device' or '_device' not in self.__dict__ or
+        name in self.__dict__):
       super(DeviceWrappingPlug, self).__setattr__(name, value)
     else:
       setattr(self._device, name, value)
