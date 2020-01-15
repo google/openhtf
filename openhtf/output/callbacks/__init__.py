@@ -20,11 +20,8 @@ alternative serialization schemes, see json_factory.py and mfg_inspector.py for
 examples.
 """
 
+import collections
 import contextlib
-try:
-   import cPickle as pickle
-except:
-   import pickle
 import shutil
 import tempfile
 
@@ -63,30 +60,47 @@ class OutputToFile(object):
 
   Args:
     test_record: The TestRecord to write out to a file.
+
+  Attributes:
+    filename_pattern: A string that defines filename pattern with placeholders
+        to be replaced by test run metadata values
+    filename: A string that defines the final file name with all the
+        placeholders replaced
   """
 
   def __init__(self, filename_pattern):
     self.filename_pattern = filename_pattern
+    self._pattern_formattable = (
+        isinstance(filename_pattern, six.string_types) or
+        callable(filename_pattern))
 
   @staticmethod
   def serialize_test_record(test_record):
     """Override method to alter how test records are serialized to file data."""
-    return pickle.dumps(test_record, -1)
+    return six.moves.pickle.dumps(test_record, -1)
 
   @staticmethod
   def open_file(filename):
     """Override method to alter file open behavior or file types."""
     return Atomic(filename)
 
-  @contextlib.contextmanager
-  def open_output_file(self, test_record):
-    """Open file based on pattern."""
+  def create_file_name(self, test_record):
+    """Use filename_pattern and test_record to create filename."""
     # Ignore keys for the log filename to not convert larger data structures.
     record_dict = data.convert_to_base_types(
         test_record, ignore_keys=('code_info', 'phases', 'log_records'))
-    pattern = self.filename_pattern
-    if isinstance(pattern, six.string_types) or callable(pattern):
-      output_file = self.open_file(util.format_string(pattern, record_dict))
+    if self._pattern_formattable:
+      return util.format_string(self.filename_pattern, record_dict)
+    else:
+      raise ValueError(
+          'filename_pattern must be string or callable to create file name')
+
+  @contextlib.contextmanager
+  def open_output_file(self, test_record):
+    """Open file based on pattern."""
+    if self._pattern_formattable:
+      filename = self.create_file_name(test_record)
+      output_file = self.open_file(filename)
       try:
         yield output_file
       finally:
@@ -99,4 +113,12 @@ class OutputToFile(object):
 
   def __call__(self, test_record):
     with self.open_output_file(test_record) as outfile:
-      outfile.write(self.serialize_test_record(test_record))
+      serialized_record = self.serialize_test_record(test_record)
+      if isinstance(serialized_record, six.string_types):
+        outfile.write(serialized_record)
+      elif isinstance(serialized_record, collections.Iterable):
+        for chunk in serialized_record:
+          outfile.write(chunk)
+      else:
+        raise TypeError('Expected string or iterable but got {}.'.format(
+            type(serialized_record)))

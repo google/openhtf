@@ -143,7 +143,7 @@ def _attach_json(record, testrun):
       sort_keys=True, indent=2).serialize_test_record(record)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
-  testrun_param.value_binary = record_json.encode('utf-8')
+  testrun_param.value_binary = b''.join(r.encode('utf-8') for r in record_json)
   # pylint: disable=no-member
   testrun_param.type = test_runs_pb2.TEXT_UTF8
   # pylint: enable=no-member
@@ -152,12 +152,10 @@ def _attach_json(record, testrun):
 def _extract_attachments(phase, testrun, used_parameter_names):
   """Extract attachments, just copy them over."""
   for name, attachment in sorted(six.iteritems(phase.attachments)):
-    attachment_data, mimetype = attachment
+    attachment_data, mimetype = attachment.data, attachment.mimetype
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
-    if isinstance(attachment_data, unicode):
-      attachment_data = attachment_data.encode('utf-8')
     testrun_param.value_binary = attachment_data
     if mimetype in MIMETYPE_MAP:
       testrun_param.type = MIMETYPE_MAP[mimetype]

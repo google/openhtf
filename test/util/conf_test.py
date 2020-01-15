@@ -13,7 +13,13 @@
 # limitations under the License.
 
 import io
+import os.path
 import sys
+import unittest
+
+from openhtf.util import conf
+import six
+
 
 _old_argv = list(sys.argv)
 sys.argv.extend([
@@ -25,11 +31,6 @@ sys.argv.extend([
     '--config-value=true_value=true',
     '--config-value', 'num_value=100',
 ])
-
-import os.path
-import unittest
-
-from openhtf.util import conf
 
 conf.declare('flag_key')
 conf.declare('other_flag')
@@ -102,23 +103,18 @@ class TestConf(unittest.TestCase):
     self.assertEqual(True, conf.true_value)
 
   def test_as_dict(self):
-    conf.load(station_id='station_id')
-    self.assertEqual({
+    conf_dict = conf._asdict()
+    expected_dict = {
         'flag_key': 'flag_value',
+        'other_flag': 'other_value',
         'true_value': True,
         'num_value': 100,
-        'cancel_timeout_s': 2,
-        'example_plug_increment_size': 1,
-        'allow_unset_measurements': False,
-        'capture_source': False,
-        'station_id': 'station_id',
-        'other_flag': 'other_value',
-        'plug_teardown_timeout_s': 0,
-        'string_default': 'default',
         'none_default': None,
-        'teardown_timeout_s': 30,
-        'stop_on_first_failure': False,
-    }, conf._asdict())
+        'string_default': 'default',
+    }
+    # assert first dict is a subset of second dict
+    self.assertLessEqual(six.viewitems(expected_dict),
+                              six.viewitems(conf_dict))
 
   def test_undeclared(self):
     with self.assertRaises(conf.UndeclaredKeyError):

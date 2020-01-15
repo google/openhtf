@@ -15,22 +15,30 @@
 
 """OpenHTF module responsible for managing records of tests."""
 
-
 import collections
 import hashlib
 import inspect
 import logging
 import os
+import tempfile
 
 from enum import Enum
 
 import mutablerecords
 
 from openhtf import util
+from openhtf.util import conf
 from openhtf.util import data
 from openhtf.util import logs
 
 import six
+
+
+conf.declare(
+    'attachments_directory',
+    default_value=None,
+    description='Directory where temprorary files can be safely stored.')
+
 
 _LOG = logging.getLogger(__name__)
 
@@ -45,12 +53,37 @@ Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])  # py
 # LogRecord is in openhtf.util.logs.LogRecord.
 
 
-class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
-  """Encapsulate attachment data and guessed MIME type."""
+class Attachment(object):
+  """Encapsulate attachment data and guessed MIME type.
+
+  Attachment avoids loading data into memory by saving it to temporary file and
+  exposes data property method to dynamically read and serve the data upon
+  request.
+
+  Attributes:
+    mimetype: str, MIME type of the data.
+    sha1: str, SHA-1 hash of the data.
+    _file: pointer temporary File containing the data.
+  """
+
+  __slots__ = ['mimetype', 'sha1', '_file']
+
+  def __init__(self, data, mimetype):
+    data = six.ensure_binary(data)
+    self.mimetype = mimetype
+    self.sha1 = hashlib.sha1(data).hexdigest()
+    self._file = self._create_temp_file(data)
+
+  def _create_temp_file(self, data):
+    tf = tempfile.NamedTemporaryFile('wb+', dir=conf.attachments_directory)
+    tf.write(data)
+    tf.flush()
+    return tf
 
   @property
-  def sha1(self):
-    return hashlib.sha1(six.ensure_binary(self.data)).hexdigest()
+  def data(self):
+    self._file.seek(0)
+    return self._file.read()
 
   def _asdict(self):
     # Don't include the attachment data when converting to dict.
@@ -58,6 +91,13 @@ class Attachment(collections.namedtuple('Attachment', 'data mimetype')):
         'mimetype': self.mimetype,
         'sha1': self.sha1,
     }
+
+  def __copy__(self):
+    return Attachment(self.data, self.mimetype)
+
+  def __deepcopy__(self, memo):
+    return Attachment(self.data, self.mimetype)
+
 
 class TestRecord(  # pylint: disable=no-init
     mutablerecords.Record(
