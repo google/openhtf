@@ -40,11 +40,11 @@ def _send_mfg_inspector_request(envelope_data, credentials, destination_url):
   try:
     result = json.loads(content)
   except Exception:
-    logging.debug('Upload failed with response %s: %s', resp, content)
+    logging.warning('Upload failed with response %s: %s', resp, content)
     raise UploadFailedError(resp, content)
 
   if resp.status != 200:
-    logging.debug('Upload failed: %s', result)
+    logging.warning('Upload failed: %s', result)
     raise UploadFailedError(result['error'], result)
 
   return result
