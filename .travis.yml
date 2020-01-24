@@ -1,10 +1,10 @@
 language: python
 matrix:
   include:
-    - python: 2.7
-      env: TOXENV=py27
-    - python: 3.6
-      env: TOXENV=py36
+  - python: 2.7
+    env: TOXENV=py27
+  - python: 3.6
+    env: TOXENV=py36
 addons:
   apt:
     packages:
@@ -17,7 +17,7 @@ cache:
   pip: true
   apt: true
   directories:
-  - $HOME/.cache/pip
+  - "$HOME/.cache/pip"
 install:
 - pip install tox coveralls
 - pip install -e .
@@ -31,8 +31,9 @@ after_success:
 - coveralls
 deploy:
   provider: pypi
-  user: jettisonjoe
+  user: "__token__"
   on:
     tags: true
   password:
-    secure: zFZNHtiht6OhCrbWMGGb+yBMmTJLKtAE5RiDl60m58Jx4t/UhMtHoC0+jtZ1hq2aeprfvw60zAIhB3HbLvb+E4Dcf9U8hEGDxJhMSMwGkXvFtrdAqce+I1YcNTXwCUApoJfE8Px1IZMRY9e1+u7r+cIWVggc3X97bWGGo+68A/ZkFxyGv75n8HRfCyHxK2hG/CGJWWmiK+fpDD68I3GbTyL1V5cRAkXNr4O1cSBDzeo0qOKzLZKAYR8M4SEQCz0Qlyatksa/p76ijF0tt5Q+kdVRANwlIltn57l43xwgL6ViOLs0rP19hlDITj5g6FZsNlRPPNxD5mUMuDEZefdcfm7sfvYHlU7hi38bxxWHXIbhUg6147V1+1oVu+dcxpv6/LgbYKSF2rxmkB6pZLlvOKK/U8Ni+3cN5KO1IumBdtQPDvSVUnsEB6GiVazm5xdR5fHvrIJaIHeAb0CBVlU1mnpHU0qUhAp3NcVHQtDM+ykcKvxjtNptRLp3o2AfTEPQmOHdG5KX21L69vagUWrwHf9mjxyQn6XfuzChj5W+fOcTlvHENK1Z8+KZg3a9sIhTFCPBxB4eX4TlUqS9HIndZFuiiDMszysJMZZ6wDDsUvlpdgHpSJlAmCoDd7cwjDWrTD//O3jRyYTbZTSFHpDRI/McnWJ7v8zYP0rlOQRqTb0=
+    secure: gWriMCwCITTFTXKl4k7/eVYpx07N/z2zUGxZ3lme/pl6mRfJvj8QbpvnJAQGNn5VEZfWuuKveCoAySfrLcojV8RJuaRLcAnIuJInZt/Cf8QXmHLm7LK9xAnKofi++RRqk0B81CwbKjq3/JhMmygvSjSR5vRDogo3KB2GHRnE3HQUSy3IlBeZDDDpr7LcNcNVSr/z9TXC1/UA05erhUvRWuMiDI9AKqvPZ80K+GlzWEPSxkeFotC/i7PyrZfJWEzVPrgt1iFOK9lNmh5lKyQ4do0nuVHAZFcxsMb+6uBek7WNgmUOUAhOTHa/AM//b8qIhVzSPFc8tQlqdyN6lH8l0SbbzX7BkKNqS1hL5XzLJ+/VZgBbSUDWSDq08Dmu4snRvxPZc6RzfmQKQ0H0esOKzBwS8dIAQDEVwj13WuCnV7G0yHD2yRXmyWbLcbhDW7rNwC7VsyenPA9SwJ9vrCRoCuB3+zKERAya47dgflFHtxITHVdDR/tJ7h83YiEuVp/GkdOOet2gHMO5HyqoipaXryg7fu7JAhZ727l9t8PGWWKwKE0GBL7/IgrAIhR3GuYK33fInB2SpSoAmoxipfU31TpO1Xb+WT+yQwXft+wFYK6DH65yhaedHqKnxu7ph2ZE36XB4qY84sbvE/GgWF6KJjXoA1RTxmohI97i2dmTQJI=
+  skip_existing: true

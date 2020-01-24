@@ -42,6 +42,11 @@ Below is an illustration of the tree of OpenHTF loggers:
 All of our logging handlers are attached to the top-level `openhtf` logger. The
 other loggers in the tree have their logs propagate up to the top level.
 
+The Test record and subsytem logs do not register with the centralized logging
+hierarchy because those loggers cannot be cleaned up; instead, they use a Logger
+subclass defined below that overrides the getChild function that directly
+instanciates children rather than using the hierarchy.
+
 ------------------------------ Test record output ------------------------------
 
 The test record loggers are loggers specific to a running test, with names
@@ -135,9 +140,30 @@ LogRecord = collections.namedtuple(
     'LogRecord', 'level logger_name source lineno timestamp_millis message')
 
 
+class HtfTestLogger(logging.Logger):
+  """Custom Logger subclass that does not use the logging hierarchy.
+
+  This subclass avoids the logging hierarchy in order to not accumulate loggers
+  over the course of the test execution. The Python logging hierarchy is meant
+  for module-level loggers; it does not support removing a logger from the
+  hierarchy.
+
+  Since this does not use the logging hierarchy, subloggers must be constructed
+  using the parent's getChild method.
+  """
+
+  def getChild(self, suffix):
+    child = HtfTestLogger('.'.join((self.name, suffix)))
+    child.parent = self
+    return child
+
+
 def get_record_logger_for(test_uid):
   """Return the child logger associated with the specified test UID."""
-  return logging.getLogger(RECORD_LOGGER_PREFIX).getChild(test_uid)
+  htf_logger = logging.getLogger(RECORD_LOGGER_PREFIX)
+  record_logger = HtfTestLogger('.'.join(((RECORD_LOGGER_PREFIX, test_uid))))
+  record_logger.parent = htf_logger
+  return record_logger
 
 
 def initialize_record_handler(test_uid, test_record, notify_update):

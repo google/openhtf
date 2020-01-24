@@ -29,7 +29,6 @@ import platform
 import select
 import sys
 import threading
-import time
 import uuid
 
 from openhtf import PhaseOptions
@@ -38,7 +37,7 @@ from openhtf.util import console_output
 from six.moves import input
 
 if platform.system() != 'Windows':
-  import termios
+  import termios  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 
@@ -61,7 +60,10 @@ Prompt = collections.namedtuple('Prompt', 'id message text_input')
 
 
 class ConsolePrompt(threading.Thread):
-  """Thread that displays a prompt to the console and waits for a response."""
+  """Thread that displays a prompt to the console and waits for a response.
+
+  This should not be used for processes that run in the background.
+  """
 
   def __init__(self, message, callback, color=''):
     """Initializes a ConsolePrompt.
@@ -76,64 +78,53 @@ class ConsolePrompt(threading.Thread):
     self._message = message
     self._callback = callback
     self._color = color
-    self._stopped = False
+    self._stop_event = threading.Event()
     self._answered = False
 
   def Stop(self):
     """Mark this ConsolePrompt as stopped."""
-    self._stopped = True
+    self._stop_event.set()
     if not self._answered:
       _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
 
   def run(self):
     """Main logic for this thread to execute."""
-    try:
-      if platform.system() == 'Windows':
-        # Windows doesn't support file-like objects for select(), so fall back
-        # to raw_input().
-        response = input(''.join((self._message,
-                                  os.linesep,
-                                  PROMPT)))
-        self._answered = True
-        self._callback(response)
-      else:
-        # First, display the prompt to the console.
-        console_output.cli_print(self._message, color=self._color,
-                                 end=os.linesep, logger=None)
-        console_output.cli_print(PROMPT, color=self._color, end='', logger=None)
-        sys.stdout.flush()
+    if platform.system() == 'Windows':
+      # Windows doesn't support file-like objects for select(), so fall back
+      # to raw_input().
+      response = input(''.join((self._message,
+                                os.linesep,
+                                PROMPT)))
+      self._answered = True
+      self._callback(response)
+      return
 
-        # Before reading, clear any lingering buffered terminal input.
-        if sys.stdin.isatty():
-          termios.tcflush(sys.stdin, termios.TCIFLUSH)
+    # First, display the prompt to the console.
+    console_output.cli_print(self._message, color=self._color,
+                             end=os.linesep, logger=None)
+    console_output.cli_print(PROMPT, color=self._color, end='', logger=None)
+    sys.stdout.flush()
 
-        line = ''
-        while not self._stopped:
-          inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
-          for stream in inputs:
-            if stream is sys.stdin:
-              new = os.read(sys.stdin.fileno(), 1024)
-              if not new:
-                # Hit EOF!
-                if not sys.stdin.isatty():
-                  # We're running in the background somewhere, so the only way
-                  # to respond to this prompt is the UI. Let's just wait for
-                  # that to happen now. We'll give them a week :)
-                  print("Waiting for a non-console response.")
-                  time.sleep(60*60*24*7)
-                else:
-                  # They hit ^D (to insert EOF). Tell them to hit ^C if they
-                  # want to actually quit.
-                  print("Hit ^C (Ctrl+c) to exit.")
-                  break
-              line += new.decode('utf-8')
-              if '\n' in line:
-                response = line[:line.find('\n')]
-                self._answered = True
-                self._callback(response)
-              return
-    finally:
-      self._stopped = True
+    # Before reading, clear any lingering buffered terminal input.
+    termios.tcflush(sys.stdin, termios.TCIFLUSH)
+
+    line = ''
+    while not self._stop_event.is_set():
+      inputs, _, _ = select.select([sys.stdin], [], [], 0.001)
+      if sys.stdin in inputs:
+        new = os.read(sys.stdin.fileno(), 1024)
+        if not new:
+          # Hit EOF!
+          # They hit ^D (to insert EOF). Tell them to hit ^C if they
+          # want to actually quit.
+          print('Hit ^C (Ctrl+c) to exit.')
+          break
+        line += new.decode('utf-8')
+        if '\n' in line:
+          response = line[:line.find('\n')]
+          self._answered = True
+          self._callback(response)
+          return
 
 
 class UserInput(plugs.FrontendAwareBasePlug):
@@ -150,7 +141,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     self._prompt = None
     self._console_prompt = None
     self._response = None
-    self._cond = threading.Condition()
+    self._cond = threading.Condition(threading.RLock())
 
   def _asdict(self):
     """Return a dictionary representation of the current prompt."""
@@ -161,12 +152,17 @@ class UserInput(plugs.FrontendAwareBasePlug):
               'message': self._prompt.message,
               'text-input': self._prompt.text_input}
 
+  def tearDown(self):
+    self.remove_prompt()
+
   def remove_prompt(self):
     """Remove the prompt."""
-    self._prompt = None
-    self._console_prompt.Stop()
-    self._console_prompt = None
-    self.notify_update()
+    with self._cond:
+      self._prompt = None
+      if self._console_prompt:
+        self._console_prompt.Stop()
+        self._console_prompt = None
+      self.notify_update()
 
   def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
     """Display a prompt and wait for a response.
@@ -211,10 +207,11 @@ class UserInput(plugs.FrontendAwareBasePlug):
       self._response = None
       self._prompt = Prompt(
           id=prompt_id, message=message, text_input=text_input)
-      self._console_prompt = ConsolePrompt(
-          message, functools.partial(self.respond, prompt_id), cli_color)
+      if sys.stdin.isatty():
+        self._console_prompt = ConsolePrompt(
+            message, functools.partial(self.respond, prompt_id), cli_color)
+        self._console_prompt.start()
 
-      self._console_prompt.start()
       self.notify_update()
       return prompt_id
 
@@ -267,7 +264,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
 def prompt_for_test_start(
     message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24,
     validator=lambda sn: sn, cli_color=''):
-  """Return an OpenHTF phase for use as a prompt-based start trigger.
+  """Returns an OpenHTF phase for use as a prompt-based start trigger.
 
   Args:
     message: The message to display to the user.

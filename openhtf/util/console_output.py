@@ -109,8 +109,8 @@ def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
   file.flush()
 
 
-def bracket_print(msg, color='', width=8, file=sys.stdout):
-  """Prints the message in brackets in the specified color and end the line.
+def bracket_print(msg, color='', width=8, file=sys.stdout, end_line=True):
+  """Prints message in brackets in the specified color, and maybe end the line.
 
   Args:
     msg: The message to put inside the brackets (a brief status message).
@@ -120,6 +120,8 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
     width: Total desired width of the bracketed message.
     file: A file object to which the bracketed text will be written. Intended
         for use with CLI output file objects like sys.stdout.
+    end_line: If True, end the line and flush the file object after outputting
+        the bracketed text.
     """
   if CLI_QUIET:
     return
@@ -129,8 +131,9 @@ def bracket_print(msg, color='', width=8, file=sys.stdout):
       lpad=lpad, bright=colorama.Style.BRIGHT, color=color, msg=msg,
       reset=colorama.Style.RESET_ALL, rpad=rpad))
   file.write(colorama.Style.RESET_ALL)
-  file.write(_linesep_for_file(file))
-  file.flush()
+  if end_line:
+    file.write(_linesep_for_file(file))
+    file.flush()
 
 
 def cli_print(msg, color='', end=None, file=sys.stdout, logger=_LOG):

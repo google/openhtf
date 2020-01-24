@@ -266,8 +266,8 @@ class TestExecutorTest(unittest.TestCase):
     # The test will end at the same time it starts because the test never
     # actually started, we canceled it inside of test_start, resulting in a
     # short vacuous start. Start and end times should be no more than a
-    # millisecond or two apart in that case.
-    self.assertLess(record.end_time_millis - record.start_time_millis, 2)
+    # few milliseconds apart in that case.
+    self.assertLess(record.end_time_millis - record.start_time_millis, 4)
     self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should not be executed.
     self.assertFalse(ev.wait(3))
@@ -298,6 +298,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertLessEqual(record.end_time_millis, util.time_millis())
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
+    executor.close()
 
   def test_cancel_twice_phase(self):
 
@@ -346,6 +347,7 @@ class TestExecutorTest(unittest.TestCase):
     # Teardown function should *NOT* be executed.
     self.assertFalse(ev.is_set())
     self.assertFalse(ev2.is_set())
+    executor.close()
 
   def test_failure_during_plug_init(self):
     ev = threading.Event()
@@ -368,6 +370,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertEqual(record.outcome_details[0].description, FAIL_PLUG_MESSAGE)
     # Teardown function should *NOT* be executed.
     self.assertFalse(ev.is_set())
+    executor.close()
 
   def test_failure_during_start_phase_plug_init(self):
     def never_gonna_run_phase():
@@ -417,6 +420,7 @@ class TestExecutorTest(unittest.TestCase):
     record = executor.test_state.test_record
     self.assertEqual(record.outcome, Outcome.ERROR)
     self.assertEqual(record.outcome_details[0].code, TeardownError.__name__)
+    executor.close()
 
   def test_log_during_teardown(self):
     message = 'hello'
@@ -441,17 +445,72 @@ class TestExecutorTest(unittest.TestCase):
     log_records = [log_record for log_record in record.log_records
                    if log_record.message == message]
     self.assertTrue(log_records)
+    executor.close()
+
+  def test_stop_on_first_failure_phase(self):
+    ev = threading.Event()
+    group = phase_group.PhaseGroup(main=[phase_return_fail_and_continue,
+                                         phase_one],
+                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    test = openhtf.Test(group)
+    test.configure(
+        default_dut_id='dut',
+    )
+    test.configure(stop_on_first_failure=True)
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, test._test_options)
+
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.phases[0].name, start_phase.name)
+    self.assertTrue(record.outcome, Outcome.FAIL)
+    # Verify phase_one was not run
+    ran_phase = [phase.name for phase in record.phases]
+    self.assertNotIn('phase_one', ran_phase)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+    executor.close()
+
+  @conf.save_and_restore
+  def test_conf_stop_on_first_failure_phase(self):
+
+    ev = threading.Event()
+    group = phase_group.PhaseGroup(main=[phase_return_fail_and_continue,
+                                         phase_one],
+                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    test = openhtf.Test(group)
+    test.configure(
+        default_dut_id='dut',
+    )
+    conf.load(stop_on_first_failure=True)
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, test._test_options)
+
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.phases[0].name, start_phase.name)
+    self.assertTrue(record.outcome, Outcome.FAIL)
+    # Verify phase_one was not run
+    ran_phase = [phase.name for phase in record.phases]
+    self.assertNotIn('phase_one', ran_phase)
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+    executor.close()
 
 
 class TestExecutorHandlePhaseTest(unittest.TestCase):
 
   def setUp(self):
+    super(TestExecutorHandlePhaseTest, self).setUp()
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(
-            record_logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
-        logger=mock.MagicMock())
+        state_logger=mock.MagicMock(),
+        test_options=test_descriptor.TestOptions(),
+        test_record=mock.MagicMock())
     self.phase_exec = mock.MagicMock(
         spec=phase_executor.PhaseExecutor)
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
@@ -527,12 +586,12 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
 class TestExecutorExecutePhasesTest(unittest.TestCase):
 
   def setUp(self):
+    super(TestExecutorExecutePhasesTest, self).setUp()
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(
-            record_logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
-        logger=mock.MagicMock())
+        state_logger=mock.MagicMock())
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
                                                 test_descriptor.TestOptions())
     self.test_exec.test_state = self.test_state
@@ -612,12 +671,12 @@ class TestExecutorExecutePhasesTest(unittest.TestCase):
 class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
 
   def setUp(self):
+    super(TestExecutorExecutePhaseGroupTest, self).setUp()
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(
-            record_logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
-        logger=mock.MagicMock())
+        state_logger=mock.MagicMock())
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
                                                 test_descriptor.TestOptions())
     self.test_exec.test_state = self.test_state
@@ -687,12 +746,12 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
 class PhaseExecutorTest(unittest.TestCase):
 
   def setUp(self):
+    super(PhaseExecutorTest, self).setUp()
     self.test_state = mock.MagicMock(
         spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(
-            record_logger_name='mock.logger.for.openhtf'),
+        plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
-        logger=mock.MagicMock())
+        state_logger=mock.MagicMock())
     self.test_state.plug_manager.initialize_plugs([
         UnittestPlug, MoreRepeatsUnittestPlug])
     self.phase_executor = phase_executor.PhaseExecutor(self.test_state)

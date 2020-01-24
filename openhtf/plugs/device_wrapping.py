@@ -21,6 +21,7 @@ Device-wrapping plugs are your friends in such times.
 """
 
 import functools
+import types
 
 import openhtf
 import six
@@ -80,6 +81,13 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
                           'but using the no-op BasePlug tearDown method.',
                           type(self._device))
 
+  def __setattr__(self, name, value):
+    if (name == '_device' or '_device' not in self.__dict__ or
+        name in self.__dict__):
+      super(DeviceWrappingPlug, self).__setattr__(name, value)
+    else:
+      setattr(self._device, name, value)
+
   def __getattr__(self, attr):
     if self._device is None:
       raise openhtf.plugs.InvalidPlugError(
@@ -89,7 +97,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
 
     attribute = getattr(self._device, attr)
 
-    if not self.verbose or not callable(attribute):
+    if not self.verbose or not isinstance(attribute, types.MethodType):
       return attribute
 
     # Attribute callable; return a wrapper that logs calls with args and kwargs.

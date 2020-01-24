@@ -22,7 +22,11 @@ from openhtf.plugs import user_input
 class PlugsTest(unittest.TestCase):
 
   def setUp(self):
+    super(PlugsTest, self).setUp()
     self.plug = user_input.UserInput()
+
+  def tearDown(self):
+    self.plug.tearDown()
 
   def test_respond_to_blocking_prompt(self):
     def _respond_to_prompt():

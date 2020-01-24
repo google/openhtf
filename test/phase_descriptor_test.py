@@ -68,9 +68,9 @@ def sub_placeholder_using_plug(subplaced):
 class TestPhaseDescriptor(unittest.TestCase):
 
   def setUp(self):
+      super(TestPhaseDescriptor, self).setUp()
       self._phase_data = mock.Mock(
-          plug_manager=plugs.PlugManager(
-              record_logger_name='mock.logger.for.openhtf'),
+          plug_manager=plugs.PlugManager(),
           execution_uid='01234567890')
 
   def test_basics(self):

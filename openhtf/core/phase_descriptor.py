@@ -20,7 +20,6 @@ of PhaseDescriptor class.
 
 """
 import inspect
-import logging
 import pdb
 import sys
 
@@ -32,8 +31,6 @@ from openhtf import util
 from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
-from openhtf.util import logs
-from openhtf.util import threads
 
 import six
 
@@ -286,30 +283,16 @@ class PhaseDescriptor(mutablerecords.Record(
     # positional, or more positional args than we have keyword args.
     if arg_info.varargs or (keywords and len(arg_info.args) >= 1) or (
         len(arg_info.args) > len(kwargs)):
-      # Underlying function has room for test_api as an arg. If it doesn't
-      # expect it but we miscounted args, we'll get another error farther down.
-      old_logger = test_state.logger
+      args = []
+      if self.options.requires_state:
+        args.append(test_state)
+      else:
+        args.append(test_state.test_api)
 
-      # The logging module has a module _lock instance that is a threading.RLock
-      # instance; it can cause deadlocks in Python 2.7 when a KillableThread is
-      # killed while its release method is running.
-      with threads.safe_lock_release_context(logging._lock):  # pylint: disable=protected-access
-        # Update test_state's logger so that it is a phase-specific one.
-        record_logger = logs.get_record_logger_for(test_state.execution_uid)
-        test_state.logger = record_logger.getChild('phase').getChild(self.name)
-      try:
-        args = []
-        if self.options.requires_state:
-          args.append(test_state)
-        else:
-          args.append(test_state.test_api)
-
-        if self.options.run_under_pdb:
-          return pdb.runcall(self.func, *args, **kwargs)
-        else:
-          return self.func(*args, **kwargs)
-      finally:
-        test_state.logger = old_logger
+      if self.options.run_under_pdb:
+        return pdb.runcall(self.func, *args, **kwargs)
+      else:
+        return self.func(*args, **kwargs)
     if self.options.run_under_pdb:
       return pdb.runcall(self.func, **kwargs)
     else:

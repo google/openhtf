@@ -163,7 +163,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
-    self.plug_manager = plugs.PlugManager(record_logger_name='test.PlugManager')
+    self.plug_manager = plugs.PlugManager()
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
@@ -368,12 +368,12 @@ class TestCase(unittest.TestCase):
       Function decorator.
     """
     @functools.wraps(func)
-    def assertion_wrapper(self, phase_or_test_record, *args):
+    def assertion_wrapper(self, phase_or_test_record, *args, **kwargs):
       if isinstance(phase_or_test_record, test_record.TestRecord):
         exc_info = None
         for phase_record in phase_or_test_record.phases:
           try:
-            func(self, phase_record, *args)
+            func(self, phase_record, *args, **kwargs)
             break
           except Exception:  # pylint: disable=broad-except
             exc_info = sys.exc_info()
@@ -381,7 +381,7 @@ class TestCase(unittest.TestCase):
           if exc_info:
             raise exc_info[0](exc_info[1]).raise_with_traceback(exc_info[2])
       elif isinstance(phase_or_test_record, test_record.PhaseRecord):
-        func(self, phase_or_test_record, *args)
+        func(self, phase_or_test_record, *args, **kwargs)
       else:
         raise InvalidTestError('Expected either a PhaseRecord or TestRecord')
     return assertion_wrapper
@@ -413,6 +413,10 @@ class TestCase(unittest.TestCase):
   def assertPhaseContinue(self, phase_record):
     self.assertIs(
         openhtf.PhaseResult.CONTINUE, phase_record.result.phase_result)
+
+  def assertPhaseFailAndContinue(self, phase_record):
+    self.assertIs(
+        openhtf.PhaseResult.FAIL_AND_CONTINUE, phase_record.result.phase_result)
 
   def assertPhaseRepeat(self, phase_record):
     self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)

@@ -126,6 +126,7 @@ class Test(object):
 
   TEST_INSTANCES = weakref.WeakValueDictionary()
   HANDLED_SIGINT_ONCE = False
+  DEFAULT_SIGINT_HANDLER = None
 
   def __init__(self, *phases, **metadata):
     # Some sanity checks on special metadata keys we automatically fill in.
@@ -228,11 +229,14 @@ class Test(object):
       setattr(self._test_options, key, value)
 
   @classmethod
-  def handle_sig_int(cls, *_):
-    if cls.TEST_INSTANCES:
-      _LOG.error('Received SIGINT, stopping all tests.')
-      for test in cls.TEST_INSTANCES.values():
-        test.abort_from_sig_int()
+  def handle_sig_int(cls, signalnum, handler):
+    if not cls.TEST_INSTANCES:
+      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)
+      return
+
+    _LOG.error('Received SIGINT, stopping all tests.')
+    for test in cls.TEST_INSTANCES.values():
+      test.abort_from_sig_int()
     if not cls.HANDLED_SIGINT_ONCE:
       cls.HANDLED_SIGINT_ONCE = True
       raise KeyboardInterrupt
@@ -349,6 +353,7 @@ class Test(object):
               rst=colorama.Style.RESET_ALL))
       finally:
         del self.TEST_INSTANCES[self.uid]
+        self._executor.close()
         self._executor = None
 
     return final_state.test_record.outcome == test_record.Outcome.PASS
@@ -361,6 +366,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'teardown_function': None,
     'failure_exceptions': list,
     'default_dut_id': 'UNKNOWN_DUT',
+    'stop_on_first_failure': False
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
@@ -375,6 +381,7 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
       the run is marked as ERROR.
   default_dut_id: The DUT ID that will be used if the start trigger and all
       subsequent phases fail to set one.
+  stop_on_first_failure: Stop Test on first failed measurement.
   """
 
 

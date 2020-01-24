@@ -1,4 +1,4 @@
-"""Convert a TestRecord into a mfg_event proto for upload to mfg inspector
+"""Convert a TestRecord into a mfg_event proto for upload to mfg inspector.
 
 Also includes utilities to handle multi-dim conversion into an attachment
 and the reverse.
@@ -8,7 +8,6 @@ with non-unique names.  Approach taken is to append a _X to the names.
 """
 
 import collections
-import enum
 import itertools
 import json
 import logging
@@ -18,8 +17,6 @@ import sys
 
 from openhtf.core import measurements
 from openhtf.core import test_record as htf_test_record
-from openhtf.output import callbacks
-from openhtf.output.callbacks import mfg_inspector
 from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
@@ -40,16 +37,17 @@ UNITS_BY_CODE = {}
 # the reverse.  Note: there is data lost in converting an UNSET/PARTIALLY_SET to
 # an ERROR so we can't completely reverse the transformation.
 MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME = {
-  measurements.Outcome.PASS: 'PASS',
-  measurements.Outcome.FAIL: 'FAIL',
-  measurements.Outcome.UNSET: 'ERROR',
-  measurements.Outcome.PARTIALLY_SET: 'ERROR',
+    measurements.Outcome.PASS: 'PASS',
+    measurements.Outcome.FAIL: 'FAIL',
+    measurements.Outcome.UNSET: 'ERROR',
+    measurements.Outcome.PARTIALLY_SET: 'ERROR',
 }
 TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME = {
-  'PASS': measurements.Outcome.PASS,
-  'FAIL': measurements.Outcome.FAIL,
-  'ERROR': measurements.Outcome.UNSET
+    'PASS': measurements.Outcome.PASS,
+    'FAIL': measurements.Outcome.FAIL,
+    'ERROR': measurements.Outcome.UNSET
 }
+
 
 def _lazy_load_units_by_code():
   """Populate dict of units by code iff UNITS_BY_CODE is empty."""
@@ -97,11 +95,12 @@ def mfg_event_from_test_record(record):
     for assembly_event in record.metadata['assembly_events']:
       mfg_event.assembly_events.add().CopyFrom(assembly_event)
   convert_multidim_measurements(record.phases)
-  phase_copier = PhaseCopier(PhaseUniquizer(record.phases))
+  phase_copier = PhaseCopier(phase_uniquizer(record.phases))
   phase_copier.copy_measurements(mfg_event)
   phase_copier.copy_attachments(mfg_event)
 
   return mfg_event
+
 
 def _populate_basic_data(mfg_event, record):
   """Copies data from the OpenHTF TestRecord to the MfgEvent proto."""
@@ -222,7 +221,7 @@ class UniqueNameMaker(object):
     return '%s_%d%s' % (main, self._seen[name] - 1, ext)
 
 
-def PhaseUniquizer(all_phases):
+def phase_uniquizer(all_phases):
   """Makes the names of phase measurement and attachments unique.
 
   This function will make the names of measurements and attachments unique.
@@ -257,7 +256,6 @@ def PhaseUniquizer(all_phases):
     for name, _ in sorted(phase.attachments.items()):
       old_name = name
       name = attachment_name_maker.make_unique(name)
-      phase.attachments[old_name].name = name
       phase.attachments[name] = phase.attachments.pop(old_name)
   return all_phases
 
@@ -336,9 +334,11 @@ class PhaseCopier(object):
       for name, measurement in sorted(phase.measurements.items()):
         # Multi-dim measurements should already have been removed.
         assert measurement.dimensions is None
-        self._copy_unidimensional_measurement(phase, name, measurement, mfg_event)
+        self._copy_unidimensional_measurement(
+            phase, name, measurement, mfg_event)
 
-  def _copy_unidimensional_measurement(self, phase, name, measurement, mfg_event):
+  def _copy_unidimensional_measurement(
+      self, phase, name, measurement, mfg_event):
     """Copy uni-dimensional measurements to the MfgEvent."""
     mfg_measurement = mfg_event.measurement.add()
 
@@ -384,7 +384,7 @@ class PhaseCopier(object):
 
     # Copy measurement validators.
     for validator in measurement.validators:
-      if isinstance(validator, validators.in_range):
+      if isinstance(validator, validators.RangeValidatorBase):
         if validator.minimum is not None:
           mfg_measurement.numeric_minimum = float(validator.minimum)
         if validator.maximum is not None:
@@ -396,15 +396,14 @@ class PhaseCopier(object):
 
   def copy_attachments(self, mfg_event):
     for phase in self._phases:
-      for name, (data, mimetype) in sorted(phase.attachments.items()):
-        self._copy_attachment(name, data, mimetype, mfg_event)
+      for name, attachment in sorted(phase.attachments.items()):
+        self._copy_attachment(name, attachment.data, attachment.mimetype,
+                              mfg_event)
 
   def _copy_attachment(self, name, data, mimetype, mfg_event):
     """Copies an attachment to mfg_event."""
     attachment = mfg_event.attachment.add()
     attachment.name = name
-    if isinstance(data, unicode):
-      data = data.encode('utf8')
     attachment.value_binary = data
     if mimetype in test_runs_converter.MIMETYPE_MAP:
       attachment.type = test_runs_converter.MIMETYPE_MAP[mimetype]
@@ -450,13 +449,13 @@ def attachment_to_multidim_measurement(attachment, name=None):
     # Fpr backward compatibility with saved data we'll convert integers to str
     try:
       attachment_outcome_str = test_runs_pb2.Status.Name(
-        int(attachment_outcome_str))
+          int(attachment_outcome_str))
     except ValueError:
       attachment_outcome_str = None
 
   # Convert test status outcome str to measurement outcome
   outcome = TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME.get(
-    attachment_outcome_str)
+      attachment_outcome_str)
 
   # convert dimensions into htf.Dimensions
   _lazy_load_units_by_code()

@@ -117,8 +117,7 @@ class TestState(util.SubscribableStateMixin):
 
   Attributes:
     test_record: TestRecord instance for the currently running test.
-    logger: Logger that logs to test_record's log_records attribute. May be
-        overridden with more specific (phase) loggers during execution.
+    state_logger: Logger that logs to test_record's log_records attribute.
     running_phase_state: PhaseState object for the currently running phase,
         if any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
@@ -142,16 +141,32 @@ class TestState(util.SubscribableStateMixin):
         metadata=copy.deepcopy(test_desc.metadata))
     logs.initialize_record_handler(
         execution_uid, self.test_record, self.notify_update)
-    self.logger = logs.get_record_logger_for(execution_uid)
+    self.state_logger = logs.get_record_logger_for(execution_uid)
     self.plug_manager = plugs.PlugManager(
-        test_desc.plug_types, self.logger.name)
+        test_desc.plug_types, self.state_logger)
     self.running_phase_state = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
     self.test_options = test_options
 
-  def __del__(self):
+  def close(self):
+    """Close and remove any global registrations.
+
+    Always call this function when finished with this instance as it ensures
+    that it can be garbage collected.
+
+    This function is defined instead of a __del__ function because Python calls
+    the __del__ function unreliably.
+    """
     logs.remove_record_handler(self.execution_uid)
+
+  @property
+  def logger(self):
+    if self.running_phase_state:
+      return self.running_phase_state.logger
+    raise RuntimeError(
+        'Calling `logger` attribute while phase not running; use state_logger '
+        'instead.')
 
   @property
   def test_api(self):
@@ -199,7 +214,7 @@ class TestState(util.SubscribableStateMixin):
         attachment = phase_record.attachments[attachment_name]
         return copy.deepcopy(attachment)
 
-    self.logger.warning('Could not find attachment: %s', attachment_name)
+    self.state_logger.warning('Could not find attachment: %s', attachment_name)
     return None
 
   def get_measurement(self, measurement_name):
@@ -230,7 +245,8 @@ class TestState(util.SubscribableStateMixin):
         measurement = phase_record.measurements[measurement_name]
         return ImmutableMeasurement.FromMeasurement(measurement)
 
-    self.logger.warning('Could not find measurement: %s', measurement_name)
+    self.state_logger.warning(
+        'Could not find measurement: %s', measurement_name)
     return None
 
   @contextlib.contextmanager
@@ -251,8 +267,9 @@ class TestState(util.SubscribableStateMixin):
       PhaseState to track transient state.
     """
     assert not self.running_phase_state, 'Phase already running!'
+    phase_logger = self.state_logger.getChild('phase.' + phase_desc.name)
     phase_state = self.running_phase_state = PhaseState.from_descriptor(
-        phase_desc, self.notify_update)
+        phase_desc, self.notify_update, logger=phase_logger)
     try:
       with phase_state.record_timing_context:
         self.notify_update()  # New phase started.
@@ -336,15 +353,16 @@ class TestState(util.SubscribableStateMixin):
         description = str(phase_execution_outcome.phase_result)
       self.test_record.add_outcome_details(code, description)
       if self._outcome_is_failure_exception(phase_execution_outcome):
-        self.logger.error('Outcome will be FAIL since exception was of type %s'
-                          % phase_execution_outcome.phase_result.exc_val)
+        self.state_logger.error(
+            'Outcome will be FAIL since exception was of type %s',
+            phase_execution_outcome.phase_result.exc_val)
         self._finalize(test_record.Outcome.FAIL)
       else:
-        self.logger.critical(
+        self.state_logger.critical(
             'Finishing test execution early due to an exception raised during '
             'phase execution; outcome ERROR.')
         # Enable CLI printing of the full traceback with the -v flag.
-        self.logger.critical(
+        self.state_logger.critical(
             'Traceback:%s%s%s%s',
             os.linesep,
             ''.join(traceback.format_tb(
@@ -354,14 +372,14 @@ class TestState(util.SubscribableStateMixin):
         )
         self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
-      self.logger.error('Finishing test execution early due to phase '
-                        'timeout, outcome TIMEOUT.')
+      self.state_logger.error('Finishing test execution early due to '
+                              'phase timeout, outcome TIMEOUT.')
       self.test_record.add_outcome_details('TIMEOUT',
                                            'A phase hit its timeout.')
       self._finalize(test_record.Outcome.TIMEOUT)
     elif phase_execution_outcome.phase_result == openhtf.PhaseResult.STOP:
-      self.logger.error('Finishing test execution early due to '
-                        'PhaseResult.STOP, outcome FAIL.')
+      self.state_logger.error('Finishing test execution early due to '
+                              'PhaseResult.STOP, outcome FAIL.')
       self.test_record.add_outcome_details('STOP',
                                            'A phase stopped the test run.')
       self._finalize(test_record.Outcome.FAIL)
@@ -387,7 +405,7 @@ class TestState(util.SubscribableStateMixin):
         phase.outcome == test_record.PhaseOutcome.SKIP for phase in phases):
       # Error when all phases are skipped; otherwise, it could lead to
       # unintentional passes.
-      self.logger.error('All phases were skipped, outcome ERROR.')
+      self.state_logger.error('All phases were skipped, outcome ERROR.')
       self.test_record.add_outcome_details(
           'ALL_SKIPPED', 'All phases were unexpectedly skipped.')
       self._finalize(test_record.Outcome.ERROR)
@@ -395,15 +413,16 @@ class TestState(util.SubscribableStateMixin):
       # Otherwise, the test run was successful.
       self._finalize(test_record.Outcome.PASS)
 
-    self.logger.debug('Finishing test execution normally with outcome %s.',
-                      self.test_record.outcome.name)
+    self.state_logger.debug(
+        'Finishing test execution normally with outcome %s.',
+        self.test_record.outcome.name)
 
   def abort(self):
     if self._is_aborted():
       return
 
-    self.logger.debug('Finishing test execution early due to '
-                      'test abortion, outcome ABORTED.')
+    self.state_logger.debug('Finishing test execution early due to '
+                            'test abortion, outcome ABORTED.')
     self.test_record.add_outcome_details('ABORTED', 'Test aborted by operator.')
     self._finalize(test_record.Outcome.ABORTED)
 
@@ -419,7 +438,6 @@ class TestState(util.SubscribableStateMixin):
     if self.test_record.start_time_millis == 0:
       self.test_record.start_time_millis = util.time_millis()
     # The test is done at this point, no further updates to test_record.
-    self.logger.handlers = []
     self.test_record.end_time_millis = util.time_millis()
     self._status = self.Status.COMPLETED
     self.notify_update()
@@ -427,7 +445,7 @@ class TestState(util.SubscribableStateMixin):
   def _is_aborted(self):
     if (self.is_finalized and
         self.test_record.outcome == test_record.Outcome.ABORTED):
-      self.logger.debug('Test already aborted.')
+      self.state_logger.debug('Test already aborted.')
       return True
     return False
 
@@ -451,6 +469,7 @@ class PhaseState(
                           ['name', 'phase_record', 'measurements', 'options'],
                           {'hit_repeat_limit': False,
                            'notify_cb': None,
+                           'logger': None,
                            '_cached': dict,
                            '_update_measurements': set})):
   """Data type encapsulating interesting information about a running phase.
@@ -485,7 +504,7 @@ class PhaseState(
     }
 
   @classmethod
-  def from_descriptor(cls, phase_desc, notify_cb):
+  def from_descriptor(cls, phase_desc, notify_cb, logger=None):
     return cls(
         phase_desc.name,
         test_record.PhaseRecord.from_descriptor(phase_desc),
@@ -493,7 +512,8 @@ class PhaseState(
             (measurement.name, copy.deepcopy(measurement))
             for measurement in phase_desc.measurements),
         phase_desc.options,
-        notify_cb=notify_cb)
+        notify_cb=notify_cb,
+        logger=logger)
 
   def _notify(self, measurement_name):
     self._update_measurements.add(measurement_name)

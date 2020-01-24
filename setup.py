@@ -180,7 +180,7 @@ class PyTestCommand(test):
 
 setup(
     name='openhtf',
-    version='1.3.0',
+    version='1.4.4',
     description='OpenHTF, the open hardware testing framework.',
     author='John Hawley',
     author_email='madsci@google.com',
@@ -216,7 +216,9 @@ setup(
     ],
     tests_require=[
         'mock>=2.0.0',
-        'pandas>=0.22.0',
+        # Remove max version here after we drop Python 2 support.
+        'pandas>=0.22.0,<0.25.0',
+        'numpy<1.17.0',
         'pytest>=2.9.2',
         'pytest-cov>=2.2.1',
     ],

@@ -32,9 +32,6 @@ from openhtf.util import timeouts
 
 STATION_SERVER_TYPE = 'station'
 
-MIMETYPE_REVERSE_MAP = {
-    v: k for k, v in six.iteritems(mfg_inspector.MIMETYPE_MAP)
-}
 MULTICAST_QUERY = 'OPENHTF_DISCOVERY'
 TEST_STATUS_COMPLETED = 'COMPLETED'
 

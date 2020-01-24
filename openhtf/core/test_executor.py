@@ -18,8 +18,10 @@ import logging
 import sys
 import threading
 
+from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
+from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
 from openhtf.util import threads
@@ -30,6 +32,10 @@ _LOG = logging.getLogger(__name__)
 conf.declare('cancel_timeout_s', default_value=2,
              description='Timeout (in seconds) when the test has been cancelled'
              'to wait for the running phase to exit.')
+
+conf.declare('stop_on_first_failure', default_value=False,
+             description='Stop current test execution and return Outcome FAIL'
+             'on first phase with failed measurement.')
 
 
 class TestExecutionError(Exception):
@@ -59,6 +65,17 @@ class TestExecutor(threads.KillableThread):
     self._abort = threading.Event()
     self._full_abort = threading.Event()
     self._teardown_phases_lock = threading.Lock()
+
+  def close(self):
+    """Close and remove any global registrations.
+
+    Always call this function when finished with this instance.
+
+    This function is defined instead of a __del__ function because Python calls
+    the __del__ function unreliably.
+    """
+    self.wait()
+    self.test_state.close()
 
   def abort(self):
     """Abort this test."""
@@ -99,11 +116,12 @@ class TestExecutor(threads.KillableThread):
     """Waits until death."""
     # Must use a timeout here in case this is called from the main thread.
     # Otherwise, the SIGINT abort logic in test_descriptor will not get called.
+    timeout = 31557600  # Seconds in a year.
     if sys.version_info >= (3, 2):
-      self.join(threading.TIMEOUT_MAX)
-    else:
-      # Seconds in a year.
-      self.join(31557600)
+      # TIMEOUT_MAX can be too large and cause overflows on 32-bit OSes, so take
+      # whichever timeout is shorter.
+      timeout = min(threading.TIMEOUT_MAX, timeout)
+    self.join(timeout)
 
   def _thread_proc(self):
     """Handles one whole test from start to finish."""
@@ -209,7 +227,7 @@ class TestExecutor(threads.KillableThread):
 
     # Now finalize the test state.
     if self._abort.is_set():
-      self.test_state.logger.debug('Finishing test with outcome ABORTED.')
+      self.test_state.state_logger.debug('Finishing test with outcome ABORTED.')
       self.test_state.abort()
     elif self._last_outcome and self._last_outcome.is_terminal:
       self.test_state.finalize_from_phase_outcome(self._last_outcome)
@@ -220,8 +238,19 @@ class TestExecutor(threads.KillableThread):
     if isinstance(phase, phase_group.PhaseGroup):
       return self._execute_phase_group(phase)
 
-    self.test_state.logger.debug('Handling phase %s', phase.name)
+    self.test_state.state_logger.debug('Handling phase %s', phase.name)
     outcome = self._phase_exec.execute_phase(phase)
+    if (self.test_state.test_options.stop_on_first_failure or
+        conf.stop_on_first_failure):
+      # Stop Test on first measurement failure
+      current_phase_result = self.test_state.test_record.phases[
+          len(self.test_state.test_record.phases) - 1]
+      if current_phase_result.outcome == test_record.PhaseOutcome.FAIL:
+        outcome = phase_executor.PhaseExecutionOutcome(
+            phase_descriptor.PhaseResult.STOP)
+        self.test_state.state_logger.error(
+            'Stopping test because stop_on_first_failure is True')
+
     if outcome.is_terminal and not self._last_outcome:
       self._last_outcome = outcome
 
@@ -240,7 +269,7 @@ class TestExecutor(threads.KillableThread):
       True if there is a terminal error or the test is aborted, False otherwise.
     """
     if group_name and phases:
-      self.test_state.logger.debug(
+      self.test_state.state_logger.debug(
           'Executing %s phases for %s', type_name, group_name)
     for phase in phases:
       if self._abort.is_set() or self._handle_phase(phase):
@@ -259,8 +288,8 @@ class TestExecutor(threads.KillableThread):
       True if there is at least one terminal error, False otherwise.
     """
     if group_name and teardown_phases:
-      self.test_state.logger.debug('Executing teardown phases for %s',
-                                   group_name)
+      self.test_state.state_logger.debug('Executing teardown phases for %s',
+                                         group_name)
     ret = False
     with self._teardown_phases_lock:
       for teardown_phase in teardown_phases:
@@ -288,7 +317,7 @@ class TestExecutor(threads.KillableThread):
       True if the phases are terminal; otherwise returns False.
     """
     if group.name:
-      self.test_state.logger.debug('Entering PhaseGroup %s', group.name)
+      self.test_state.state_logger.debug('Entering PhaseGroup %s', group.name)
     if self._execute_abortable_phases(
         'setup', group.setup, group.name):
       return True
