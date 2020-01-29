@@ -43,11 +43,15 @@ def _send_mfg_inspector_request(envelope_data, credentials, destination_url):
     logging.warning('Upload failed with response %s: %s', resp, content)
     raise UploadFailedError(resp, content)
 
-  if resp.status != 200:
-    logging.warning('Upload failed: %s', result)
-    raise UploadFailedError(result['error'], result)
+  if resp.status == 200:
+    return result
 
-  return result
+  message = '%s: %s' % (result.get('error',
+                                   'UNKNOWN_ERROR'), result.get('message'))
+  if resp.status == 400:
+    raise InvalidTestRunError(message)
+  else:
+    raise UploadFailedError(message)
 
 
 def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
