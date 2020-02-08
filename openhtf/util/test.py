@@ -200,7 +200,8 @@ class PhaseOrTestIterator(collections.Iterator):
         phase_executor.PhaseExecutorThread, '_log_exception',
         side_effect=logging.exception):
       # Use _execute_phase_once because we want to expose all possible outcomes.
-      executor._execute_phase_once(phase_desc, is_last_repeat=False)
+      executor._execute_phase_once(
+          phase_desc, is_last_repeat=False, run_with_profiling=False)
     return test_state_.test_record.phases[-1]
 
   def _handle_test(self, test):

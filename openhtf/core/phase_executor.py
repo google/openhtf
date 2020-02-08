@@ -142,9 +142,10 @@ class PhaseExecutorThread(threads.KillableThread):
   """
   daemon = True
 
-  def __init__(self, phase_desc, test_state):
+  def __init__(self, phase_desc, test_state, run_with_profiling):
     super(PhaseExecutorThread, self).__init__(
-        name='<PhaseExecutorThread: (phase_desc.name)>')
+        name='<PhaseExecutorThread: (phase_desc.name)>',
+        run_with_profiling=run_with_profiling)
     self._phase_desc = phase_desc
     self._test_state = test_state
     self._phase_execution_outcome = None
@@ -208,39 +209,44 @@ class PhaseExecutor(object):
     self._current_phase_thread = None
     self._stopping = threading.Event()
 
-  def execute_phase(self, phase):
+  def execute_phase(self, phase, run_with_profiling=False):
     """Executes a phase or skips it, yielding PhaseExecutionOutcome instances.
 
     Args:
       phase: Phase to execute.
+      run_with_profiling: Whether to run with cProfile stat collection for the
+        phase code run inside a thread.
 
     Returns:
-      The final PhaseExecutionOutcome that wraps the phase return value
-      (or exception) of the final phase run. All intermediary results, if any,
-      are REPEAT and handled internally. Returning REPEAT here means the phase
-      hit its limit for repetitions.
+      A two-tuple; the first item is the final PhaseExecutionOutcome that wraps
+      the phase return value (or exception) of the final phase run. All
+      intermediary results, if any, are REPEAT and handled internally. Returning
+      REPEAT here means the phase hit its limit for repetitions.
+      The second tuple item is the profiler Stats object if profiling was
+      requested and successfully ran for this phase execution.
     """
     repeat_count = 1
     repeat_limit = phase.options.repeat_limit or sys.maxsize
     while not self._stopping.is_set():
       is_last_repeat = repeat_count >= repeat_limit
-      phase_execution_outcome = self._execute_phase_once(phase, is_last_repeat)
+      phase_execution_outcome, profile_stats = self._execute_phase_once(
+          phase, is_last_repeat, run_with_profiling)
 
       if phase_execution_outcome.is_repeat and not is_last_repeat:
         repeat_count += 1
         continue
 
-      return phase_execution_outcome
+      return phase_execution_outcome, profile_stats
     # We've been cancelled, so just 'timeout' the phase.
-    return PhaseExecutionOutcome(None)
+    return PhaseExecutionOutcome(None), None
 
-  def _execute_phase_once(self, phase_desc, is_last_repeat):
+  def _execute_phase_once(self, phase_desc, is_last_repeat, run_with_profiling):
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
       _LOG.debug('Phase %s skipped due to run_if returning falsey.',
                  phase_desc.name)
-      return PhaseExecutionOutcome(openhtf.PhaseResult.SKIP)
+      return PhaseExecutionOutcome(openhtf.PhaseResult.SKIP), None
 
     override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
@@ -256,8 +262,9 @@ class PhaseExecutor(object):
           # Killed result.
           result = PhaseExecutionOutcome(threads.ThreadTerminationError())
           phase_state.result = result
-          return result
-        phase_thread = PhaseExecutorThread(phase_desc, self.test_state)
+          return result, None
+        phase_thread = PhaseExecutorThread(phase_desc, self.test_state,
+                                           run_with_profiling)
         phase_thread.start()
         self._current_phase_thread = phase_thread
 
@@ -273,7 +280,8 @@ class PhaseExecutor(object):
     result = override_result or phase_state.result
     _LOG.debug('Phase %s finished with result %s', phase_desc.name,
                result.phase_result)
-    return result
+    return (result,
+            phase_thread.get_profile_stats() if run_with_profiling else None)
 
   def reset_stop(self):
     self._stopping.clear()

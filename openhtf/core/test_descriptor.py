@@ -268,13 +268,16 @@ class Test(object):
                                teardown=[teardown_phase]),
         self._test_desc.code_info, self._test_desc.metadata)
 
-  def execute(self, test_start=None):
+  def execute(self, test_start=None, profile_filename=None):
     """Starts the framework and executes the given test.
 
     Args:
       test_start: Either a trigger phase for starting the test, or a function
-                  that returns a DUT ID. If neither is provided, defaults to not
-                  setting the DUT ID.
+          that returns a DUT ID. If neither is provided, defaults to not
+          setting the DUT ID.
+      profile_filename: Name of file to put profiling stats into. This also
+          enables profiling data collection.
+
     Returns:
       Boolean indicating whether the test failed (False) or passed (True).
 
@@ -309,7 +312,11 @@ class Test(object):
 
       test_desc = self._get_running_test_descriptor()
       self._executor = test_executor.TestExecutor(
-          test_desc, self.make_uid(), trigger, self._test_options)
+          test_desc,
+          self.make_uid(),
+          trigger,
+          self._test_options,
+          run_with_profiling=profile_filename is not None)
 
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
@@ -328,6 +335,8 @@ class Test(object):
 
         _LOG.debug('Test completed for %s, outputting now.',
                    final_state.test_record.metadata['test_name'])
+        test_executor.CombineProfileStats(self._executor.phase_profile_stats,
+                                          profile_filename)
         for output_cb in self._test_options.output_callbacks:
           try:
             output_cb(final_state.test_record)
