@@ -178,3 +178,73 @@ class TestWithinPercent(unittest.TestCase):
     validator_b = copy.deepcopy(validator_a)
     self.assertEqual(validator_a.expected, validator_b.expected)
     self.assertEqual(validator_a.percent, validator_b.percent)
+
+
+class TestWithinTolerance(unittest.TestCase):
+
+  def test_raises_for_negative_tolerance(self):
+    with six.assertRaisesRegex(self, ValueError, 'tolerance argument is'):
+      validators.WithinTolerance(expected=5.0, tolerance=-0.1)
+
+  def test_within_tolerance_small(self):
+    validator = validators.WithinTolerance(expected=5.0, tolerance=0.1)
+    for valid_value in [5.0, 5.01, 5.09, 5.0999, 4.9, 4.91]:
+      self.assertTrue(
+          validator(valid_value),
+          msg='{} should validate, but did not'.format(valid_value))
+    for invalid_value in [0, 0.01, -10.0, 10.0, 5.2, 5.11, 4.89]:
+      self.assertFalse(
+          validator(invalid_value),
+          msg='{} should not validate, but did'.format(invalid_value))
+
+  def test_within_tolerance_large(self):
+    validator = validators.WithinTolerance(expected=0.0, tolerance=100.0)
+    for valid_value in [0.0, -90.5, 100.0, -100.0, -1.3, -99.9]:
+      self.assertTrue(
+          validator(valid_value),
+          msg='{} should validate, but did not'.format(valid_value))
+    for invalid_value in [100.001, 1000.0, -200.0, -100.1, 1e6]:
+      self.assertFalse(
+          validator(invalid_value),
+          msg='{} should not validate, but did'.format(invalid_value))
+
+  def test_within_tolerance_negative(self):
+    validator = validators.WithinTolerance(expected=5.0, tolerance=0.1)
+    for valid_value in [5.0, 5.01, 5.09, 5.0999, 4.9, 4.91]:
+      self.assertTrue(
+          validator(valid_value),
+          msg='{} should validate, but did not'.format(valid_value))
+    for invalid_value in [0, 0.01, -10.0, 10.0, 5.2, 5.11, 4.89]:
+      self.assertFalse(
+          validator(invalid_value),
+          msg='{} should not validate, but did'.format(invalid_value))
+
+  def test_equals_equivalent_within_tolerance_validator(self):
+    validator_a = validators.WithinTolerance(expected=5.0, tolerance=0.1)
+    validator_b = validators.WithinTolerance(expected=5.0, tolerance=0.1)
+    self.assertEqual(validator_a, validator_b,
+                     msg='Validators should compare equal, but did not.')
+
+  def test_not_equals_when_not_equivalent(self):
+    validator_a = validators.WithinTolerance(expected=5.0, tolerance=0.1)
+    validator_b = validators.WithinTolerance(expected=5.0, tolerance=0.2)
+    validator_c = validators.WithinTolerance(expected=4.0, tolerance=0.1)
+    for validator in [validator_b, validator_c]:
+      self.assertNotEqual(validator_a, validator)
+
+  def test_string_representation_does_not_raise(self):
+    validator_a = validators.WithinTolerance(expected=5.0, tolerance=0.1)
+    str(validator_a)
+    # Check that we constructed a usable validator.
+    self.assertTrue(validator_a(5.0))
+
+  def test_is_deep_copyable(self):
+    validator_a = validators.WithinTolerance(expected=5.0, tolerance=0.1)
+    # Call implemented functions, try catch the cases where they might change
+    # state in a non-deepcopyable manner.
+    validator_a(1)
+    str(validator_a)
+    validator_a == 'a'
+    validator_b = copy.deepcopy(validator_a)
+    self.assertEqual(validator_a.expected, validator_b.expected)
+    self.assertEqual(validator_a.tolerance, validator_b.tolerance)
