@@ -18,18 +18,23 @@ Run with (your virtualenv must be activated first):
 python all_the_things.py
 """
 
-import time
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os.path
+import time
 
 import openhtf as htf
 from openhtf import util
-from openhtf.util import units
-from openhtf.plugs import user_input
+from examples import example_plugs
 from openhtf.output import callbacks
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
-
-from examples import example_plugs
+from openhtf.plugs import user_input
+from openhtf.util import units
+from six.moves import range
+from six.moves import zip
 
 
 @htf.plug(example=example_plugs.ExamplePlug)
@@ -92,7 +97,7 @@ def set_measurements(test):
 def dimensions(test):
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim
-  for x, y, z in zip(range(1, 5), range(21, 25), range (101, 105)):
+  for x, y, z in zip(list(range(1, 5)), list(range(21, 25)), list(range(101, 105))):
     test.measurements.lots_of_dims[x, y, z] = x + y + z
 
 
