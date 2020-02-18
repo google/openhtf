@@ -85,6 +85,8 @@ class ConsolePrompt(threading.Thread):
     """Mark this ConsolePrompt as stopped."""
     self._stop_event.set()
     if not self._answered:
+      console_output.cli_print(os.linesep, color=self._color,
+                               end='', logger=None)
       _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
 
   def run(self):
