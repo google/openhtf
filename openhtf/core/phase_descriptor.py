@@ -178,10 +178,15 @@ class PhaseDescriptor(mutablerecords.Record(
 
   def with_known_args(self, **kwargs):
     """Send only known keyword-arguments to the phase when called."""
-    argspec = inspect.getargspec(self.func)
+    if six.PY3:
+      argspec = inspect.getfullargspec(self.func)
+      argspec_keywords = argspec.varkw
+    else:
+      argspec = inspect.getargspec(self.func)
+      argspec_keywords = argspec.keywords
     stored = {}
     for key, arg in six.iteritems(kwargs):
-      if key in argspec.args or argspec.keywords:
+      if key in argspec.args or argspec_keywords:
         stored[key] = arg
     if stored:
       return self.with_args(**stored)
