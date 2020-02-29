@@ -135,6 +135,7 @@ INSTALL_REQUIRES = [
     'pyOpenSSL>=17.1.0,<18.0',
     'sockjs-tornado>=1.0.3,<2.0',
     'tornado>=4.3,<5.0',
+    'six>=1.12.0',
 ]
 # Not all versions of setuptools support semicolon syntax for specifying
 # platform-specific dependencies, so we do it the old school way.
@@ -188,11 +189,11 @@ setup(
     maintainer_email='jethier@google.com',
     packages=find_packages(exclude='examples'),
     package_data={'openhtf': ['output/proto/*.proto',
-                              'output/web_gui/dist/*',
+                              'output/web_gui/dist/*.*',
                               'output/web_gui/dist/css/*',
                               'output/web_gui/dist/js/*',
                               'output/web_gui/dist/img/*',
-                              'output/web_gui/*']},
+                              'output/web_gui/*.*']},
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
@@ -209,6 +210,9 @@ setup(
         ],
         'serial_collection_plug': [
             'pyserial>=3.3.0,<4.0',
+        ],
+        'examples': [
+            'pandas>=0.22.0,<0.25.0',
         ],
     },
     setup_requires=[
