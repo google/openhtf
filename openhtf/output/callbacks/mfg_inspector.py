@@ -262,4 +262,3 @@ class UploadToMfgInspector(MfgInspector):
   def __call__(self, test_record_obj):  # pylint: disable=invalid-name
     upload_callback = self.upload()
     upload_callback(test_record_obj)
-

@@ -188,7 +188,8 @@ class TestExecutorTest(unittest.TestCase):
     )
 
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -201,7 +202,8 @@ class TestExecutorTest(unittest.TestCase):
         failure_exceptions=[self.TestDummyExceptionError]
     )
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -220,7 +222,8 @@ class TestExecutorTest(unittest.TestCase):
 
   def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
-    phase_thread = phase_executor.PhaseExecutorThread(phase_one, ' ')
+    phase_thread = phase_executor.PhaseExecutorThread(
+        phase_one, ' ', run_with_profiling=False)
     name = str(phase_thread)
     found = True
     for item in check_list:
@@ -256,7 +259,8 @@ class TestExecutorTest(unittest.TestCase):
         test.descriptor,
         'uid',
         cancel_phase,
-        test._test_options
+        test._test_options,
+        run_with_profiling=False
     )
 
     executor.start()
@@ -287,7 +291,8 @@ class TestExecutorTest(unittest.TestCase):
         default_dut_id='dut',
     )
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -335,7 +340,8 @@ class TestExecutorTest(unittest.TestCase):
         default_dut_id='dut',
     )
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -361,7 +367,8 @@ class TestExecutorTest(unittest.TestCase):
         default_dut_id='dut',
     )
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', None, test._test_options)
+        test.descriptor, 'uid', None, test._test_options,
+        run_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -393,7 +400,8 @@ class TestExecutorTest(unittest.TestCase):
         test.descriptor,
         'uid',
         fail_plug_phase,
-        test._test_options)
+        test._test_options,
+        run_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -414,7 +422,8 @@ class TestExecutorTest(unittest.TestCase):
     )
 
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -437,7 +446,8 @@ class TestExecutorTest(unittest.TestCase):
         default_dut_id='dut',
     )
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
@@ -458,7 +468,8 @@ class TestExecutorTest(unittest.TestCase):
     )
     test.configure(stop_on_first_failure=True)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -485,7 +496,8 @@ class TestExecutorTest(unittest.TestCase):
     )
     conf.load(stop_on_first_failure=True)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options)
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -514,7 +526,8 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
     self.phase_exec = mock.MagicMock(
         spec=phase_executor.PhaseExecutor)
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
-                                                test_descriptor.TestOptions())
+                                                test_descriptor.TestOptions(),
+                                                run_with_profiling=False)
     self.test_exec.test_state = self.test_state
     self.test_exec._phase_exec = self.phase_exec
 
@@ -537,11 +550,11 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
     phase = phase_descriptor.PhaseDescriptor(blank_phase)
     self.phase_exec.execute_phase.return_value = (
         phase_executor.PhaseExecutionOutcome(
-            phase_descriptor.PhaseResult.CONTINUE))
+            phase_descriptor.PhaseResult.CONTINUE), None)
     self.assertFalse(self.test_exec._handle_phase(phase))
 
     self.mock_execute_phase_group.assert_not_called()
-    self.phase_exec.execute_phase.assert_called_once_with(phase)
+    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
     self.assertIsNone(self.test_exec._last_outcome)
 
   def testPhase_NotTerminal_PreviousLastOutcome(self):
@@ -551,22 +564,22 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
 
     self.phase_exec.execute_phase.return_value = (
         phase_executor.PhaseExecutionOutcome(
-            phase_descriptor.PhaseResult.CONTINUE))
+            phase_descriptor.PhaseResult.CONTINUE), None)
     self.assertFalse(self.test_exec._handle_phase(phase))
 
     self.mock_execute_phase_group.assert_not_called()
-    self.phase_exec.execute_phase.assert_called_once_with(phase)
+    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_SetLastOutcome(self):
     phase = phase_descriptor.PhaseDescriptor(blank_phase)
     outcome = phase_executor.PhaseExecutionOutcome(
         phase_descriptor.PhaseResult.STOP)
-    self.phase_exec.execute_phase.return_value = outcome
+    self.phase_exec.execute_phase.return_value = outcome, None
     self.assertTrue(self.test_exec._handle_phase(phase))
 
     self.mock_execute_phase_group.assert_not_called()
-    self.phase_exec.execute_phase.assert_called_once_with(phase)
+    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
     self.assertIs(outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_PreviousLastOutcome(self):
@@ -575,11 +588,11 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
     self.test_exec._last_outcome = set_outcome
     outcome = phase_executor.PhaseExecutionOutcome(
         phase_descriptor.PhaseResult.STOP)
-    self.phase_exec.execute_phase.return_value = outcome
+    self.phase_exec.execute_phase.return_value = outcome, None
     self.assertTrue(self.test_exec._handle_phase(phase))
 
     self.mock_execute_phase_group.assert_not_called()
-    self.phase_exec.execute_phase.assert_called_once_with(phase)
+    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
 
@@ -593,7 +606,8 @@ class TestExecutorExecutePhasesTest(unittest.TestCase):
         execution_uid='01234567890',
         state_logger=mock.MagicMock())
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
-                                                test_descriptor.TestOptions())
+                                                test_descriptor.TestOptions(),
+                                                run_with_profiling=False)
     self.test_exec.test_state = self.test_state
     patcher = mock.patch.object(self.test_exec, '_handle_phase')
     self.mock_handle_phase = patcher.start()
@@ -678,7 +692,8 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         execution_uid='01234567890',
         state_logger=mock.MagicMock())
     self.test_exec = test_executor.TestExecutor(None, 'uid', None,
-                                                test_descriptor.TestOptions())
+                                                test_descriptor.TestOptions(),
+                                                run_with_profiling=False)
     self.test_exec.test_state = self.test_state
     patcher = mock.patch.object(self.test_exec, '_execute_abortable_phases')
     self.mock_execute_abortable = patcher.start()
@@ -757,27 +772,27 @@ class PhaseExecutorTest(unittest.TestCase):
     self.phase_executor = phase_executor.PhaseExecutor(self.test_state)
 
   def test_execute_continue_phase(self):
-    result = self.phase_executor.execute_phase(phase_two)
+    result, _ = self.phase_executor.execute_phase(phase_two)
     self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
 
   def test_execute_repeat_okay_phase(self):
-    result = self.phase_executor.execute_phase(
+    result, _ = self.phase_executor.execute_phase(
         phase_repeat.with_plugs(test_plug=UnittestPlug))
     self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
 
   def test_execute_repeat_limited_phase(self):
-    result = self.phase_executor.execute_phase(
+    result, _ = self.phase_executor.execute_phase(
         phase_repeat.with_plugs(test_plug=MoreRepeatsUnittestPlug))
     self.assertEqual(openhtf.PhaseResult.STOP, result.phase_result)
 
   def test_execute_run_if_false(self):
-    result = self.phase_executor.execute_phase(phase_skip_from_run_if)
+    result, _ = self.phase_executor.execute_phase(phase_skip_from_run_if)
     self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
 
   def test_execute_phase_return_skip(self):
-    result = self.phase_executor.execute_phase(phase_return_skip)
+    result, _ = self.phase_executor.execute_phase(phase_return_skip)
     self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
 
   def test_execute_phase_return_fail_and_continue(self):
-    result = self.phase_executor.execute_phase(phase_return_fail_and_continue)
+    result, _ = self.phase_executor.execute_phase(phase_return_fail_and_continue)
     self.assertEqual(openhtf.PhaseResult.FAIL_AND_CONTINUE, result.phase_result)

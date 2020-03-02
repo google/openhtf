@@ -15,7 +15,9 @@
 """TestExecutor executes tests."""
 
 import logging
+import pstats
 import sys
+import tempfile
 import threading
 
 from openhtf.core import phase_descriptor
@@ -46,13 +48,31 @@ class TestStopError(Exception):
   """Test is being stopped."""
 
 
+def CombineProfileStats(profile_stats_iter, output_filename):
+  """Given an iterable of pstats.Stats, combine them into a single Stats."""
+  profile_stats_filenames = []
+  for profile_stats in profile_stats_iter:
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+      profile_stats_filename = f.name
+    profile_stats.dump_stats(profile_stats_filename)
+    profile_stats_filenames.append(profile_stats_filename)
+  if profile_stats_filenames:
+    pstats.Stats(*profile_stats_filenames).dump_stats(output_filename)
+
+
 # pylint: disable=too-many-instance-attributes
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
   daemon = True
 
-  def __init__(self, test_descriptor, execution_uid, test_start, test_options):
-    super(TestExecutor, self).__init__(name='TestExecutorThread')
+  def __init__(self,
+               test_descriptor,
+               execution_uid,
+               test_start,
+               test_options,
+               run_with_profiling):
+    super(TestExecutor, self).__init__(
+        name='TestExecutorThread', run_with_profiling=run_with_profiling)
     self.test_state = None
 
     self._test_descriptor = test_descriptor
@@ -65,6 +85,12 @@ class TestExecutor(threads.KillableThread):
     self._abort = threading.Event()
     self._full_abort = threading.Event()
     self._teardown_phases_lock = threading.Lock()
+    self._phase_profile_stats = []  # Populated if profiling is enabled.
+
+  @property
+  def phase_profile_stats(self):
+    """Returns iterable of profiling Stats objects, per phase."""
+    return self._phase_profile_stats
 
   def close(self):
     """Close and remove any global registrations.
@@ -194,7 +220,12 @@ class TestExecutor(threads.KillableThread):
         phase_plug.cls for phase_plug in self._test_start.plugs]):
       return True
 
-    outcome = self._phase_exec.execute_phase(self._test_start)
+    outcome, profile_stats = self._phase_exec.execute_phase(
+        self._test_start, self._run_with_profiling)
+
+    if profile_stats is not None:
+      self._phase_profile_stats.append(profile_stats)
+
     if outcome.is_terminal:
       self._last_outcome = outcome
       return True
@@ -239,7 +270,12 @@ class TestExecutor(threads.KillableThread):
       return self._execute_phase_group(phase)
 
     self.test_state.state_logger.debug('Handling phase %s', phase.name)
-    outcome = self._phase_exec.execute_phase(phase)
+    outcome, profile_stats = self._phase_exec.execute_phase(
+        phase, self._run_with_profiling)
+
+    if profile_stats is not None:
+      self._phase_profile_stats.append(profile_stats)
+
     if (self.test_state.test_options.stop_on_first_failure or
         conf.stop_on_first_failure):
       # Stop Test on first measurement failure

@@ -16,9 +16,11 @@
 """Thread library defining a few helpers."""
 
 import contextlib
+import cProfile
 import ctypes
 import functools
 import logging
+import pstats
 import sys
 import threading
 
@@ -34,6 +36,10 @@ _LOG = logging.getLogger(__name__)
 
 class ThreadTerminationError(SystemExit):
   """Sibling of SystemExit, but specific to thread termination."""
+
+
+class InvalidUsageError(Exception):
+  """Raised when an API is used in an invalid or unsupported manner."""
 
 
 def safe_lock_release_context(rlock):
@@ -141,15 +147,28 @@ class KillableThread(threading.Thread):
   """
 
   def __init__(self, *args, **kwargs):
+    """Initializer for KillableThread.
+
+    Args:
+      run_with_profiling: Whether to run this thread with profiling data
+        collection. Must be passed by keyword.
+    """
+    self._run_with_profiling = kwargs.pop('run_with_profiling', None)
     super(KillableThread, self).__init__(*args, **kwargs)
     self._running_lock = threading.Lock()
     self._killed = threading.Event()
+    if self._run_with_profiling:
+      self._profiler = cProfile.Profile()
+    else:
+      self._profiler = None
 
   def run(self):
     try:
       with self._running_lock:
         if self._killed.is_set():
           raise ThreadTerminationError()
+        if self._profiler is not None:
+          self._profiler.enable()
         self._thread_proc()
     except Exception:  # pylint: disable=broad-except
       if not self._thread_exception(*sys.exc_info()):
@@ -158,6 +177,15 @@ class KillableThread(threading.Thread):
     finally:
       self._thread_finished()
       _LOG.debug('Thread finished: %s', self.name)
+      if self._profiler is not None:
+        self._profiler.disable()
+
+  def get_profile_stats(self):
+    """Returns profile_stats from profiler. Raises if profiling not enabled."""
+    if self._profiler is not None:
+      return pstats.Stats(self._profiler)
+    raise InvalidUsageError(
+        'Profiling not enabled via __init__, or thread has not run yet.')
 
   def _is_thread_proc_running(self):
     # Acquire the lock without blocking, though this object is fully implemented
