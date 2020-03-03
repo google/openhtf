@@ -5,9 +5,8 @@ method.  They can then be accessed directly as attributes on the validators
 module, and will typically be a type, instances of which are callable:
 
   from openhtf.util import validators
-  from openhtf.util import measurements
 
-  class MyLessThanValidator(ValidatorBase):
+  class MyLessThanValidator(validators.ValidatorBase):
     def __init__(self, limit):
       self.limit = limit
 
@@ -35,7 +34,7 @@ simply attach them to the Measurement with the .with_validator() method:
     return value < 4
 
   @measurements.measures(
-      measurements.Measurement('my_measurement).with_validator(LessThan4))
+      measurements.Measurement('my_measurement').with_validator(LessThan4))
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will also 'FAIL'
 
