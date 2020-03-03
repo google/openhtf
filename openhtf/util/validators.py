@@ -5,9 +5,8 @@ method.  They can then be accessed directly as attributes on the validators
 module, and will typically be a type, instances of which are callable:
 
   from openhtf.util import validators
-  from openhtf.util.validators import ValidatorBase
 
-  class MyLessThanValidator(ValidatorBase):
+  class MyLessThanValidator(validators.ValidatorBase):
     def __init__(self, limit):
       self.limit = limit
 
