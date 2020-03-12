@@ -20,15 +20,13 @@ actually care about.
 """
 
 import collections
-
-from openhtf.core import measurements
+import unittest
 
 import mock
-
-from examples import all_the_things
 import openhtf as htf
+from openhtf.core import measurements
+from examples import all_the_things
 from openhtf.util import test as htf_test
-
 
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
@@ -224,3 +222,67 @@ class TestMeasuredValue(htf_test.TestCase):
     named_complex = NamedComplex(10)
     measured_value.set(named_complex)
     self.assertEqual({'a': 10}, measured_value._cached_value)
+
+
+class TestMeasurementDimensions(htf_test.TestCase):
+
+  def test_coordinates_len_string(self):
+    length = measurements._coordinates_len('string')
+    self.assertEqual(length, 1)
+
+  def test_coordinates_len_integer(self):
+    length = measurements._coordinates_len(42)
+    self.assertEqual(length, 1)
+
+  def test_coordinates_len_tuple(self):
+    coordinates = ('string', 42,)
+    length = measurements._coordinates_len(coordinates)
+    self.assertEqual(length, 2)
+
+  def test_single_dimension_string(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    measurement.measured_value['dim val'] = 42
+    val = measurement.measured_value['dim val']
+    self.assertEqual(val, 42)
+
+  def test_single_dimension_integer(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    val = measurement.measured_value[42] = 'measurement'
+    self.assertEqual(val, 'measurement')
+
+  def test_single_dimension_float(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    val = measurement.measured_value[42.42] = 'measurement'
+    self.assertEqual(val, 'measurement')
+
+  def test_single_dimension_mutable_obj_error(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    with self.assertRaises(measurements.InvalidDimensionsError):
+      measurement.measured_value[['dim val']] = 42
+
+  def test_multi_dimension_correct(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension1', 'dimension2')
+    dimension_vals = ('dim val 1', 1234,)
+    try:
+      measurement.measured_value[dimension_vals] = 42
+    except measurements.InvalidDimensionsError:
+      self.fail('measurement.DimensionedMeasuredValue.__setitem__ '
+                'raised error unexpectedly.')
+
+  def test_multi_dimension_not_enough_error(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension1', 'dimension2')
+    with self.assertRaises(measurements.InvalidDimensionsError):
+      measurement.measured_value['dim val'] = 42
+
+  def test_multi_dimension_too_many_error(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension1', 'dimension2')
+    dimension_vals = ('dim val 1', 2, 3, 4)
+    with self.assertRaises(measurements.InvalidDimensionsError):
+      measurement.measured_value[dimension_vals] = 42

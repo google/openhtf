@@ -109,6 +109,22 @@ class DuplicateNameError(Exception):
 Outcome = Enum('Outcome', ['PASS', 'FAIL', 'UNSET', 'PARTIALLY_SET'])
 
 
+def _coordinates_len(coordinates):
+  """Returns count of measurement coordinates.
+
+  Treat single string as a single dimension.
+
+  Args:
+    coordinates: any type, measurement coordinates
+      for multidimensional measurements.
+  """
+  if isinstance(coordinates, six.string_types):
+    return 1
+  if hasattr(coordinates, '__len__'):
+    return len(coordinates)
+  return 1
+
+
 class Measurement(  # pylint: disable=no-init
     mutablerecords.Record(
         'Measurement', ['name'],
@@ -469,7 +485,7 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     return iter(six.iteritems(self.value_dict))
 
   def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
-    coordinates_len = len(coordinates) if hasattr(coordinates, '__len__') else 1
+    coordinates_len = _coordinates_len(coordinates)
     if coordinates_len != self.num_dimensions:
       raise InvalidDimensionsError(
           'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
@@ -480,14 +496,18 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     if self.num_dimensions == 1:
       coordinates = (coordinates,)
 
-    if coordinates in self.value_dict:
-      _LOG.warning(
-          'Overriding previous measurement %s[%s] value of %s with %s',
-          self.name, coordinates, self.value_dict[coordinates], value)
-      self._cached_basetype_values = None
-    elif self._cached_basetype_values is not None:
-      self._cached_basetype_values.append(data.convert_to_base_types(
-          coordinates + (value,)))
+    try:
+      if coordinates in self.value_dict:
+        _LOG.warning(
+            'Overriding previous measurement %s[%s] value of %s with %s',
+            self.name, coordinates, self.value_dict[coordinates], value)
+        self._cached_basetype_values = None
+      elif self._cached_basetype_values is not None:
+        self._cached_basetype_values.append(data.convert_to_base_types(
+            coordinates + (value,)))
+    except TypeError as e:
+      raise InvalidDimensionsError(
+          'Mutable objects cannot be used as measurement dimensions: ' + str(e))
 
     self.value_dict[coordinates] = value
 
