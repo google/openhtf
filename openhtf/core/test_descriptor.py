@@ -26,6 +26,7 @@ import os
 import sys
 import textwrap
 import threading
+import traceback
 from types import LambdaType
 import uuid
 import weakref
@@ -341,8 +342,11 @@ class Test(object):
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
-            _LOG.exception(
-                'Output callback %s raised; continuing anyway', output_cb)
+            stacktrace = traceback.format_exc()
+            _LOG.error(
+                'Output callback %s raised:\n%s\nContinuing anyway...',
+                output_cb, stacktrace)
+
         # Make sure the final outcome of the test is printed last and in a
         # noticeable color so it doesn't get scrolled off the screen or missed.
         if final_state.test_record.outcome == test_record.Outcome.ERROR:
