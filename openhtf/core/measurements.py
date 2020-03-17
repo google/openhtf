@@ -62,6 +62,7 @@ Examples:
 
 
 import collections
+import functools
 import logging
 
 from enum import Enum
@@ -131,6 +132,7 @@ class Measurement(  # pylint: disable=no-init
         {'units': None, 'dimensions': None, 'docstring': None,
          '_notification_cb': None,
          'validators': list,
+         'transform_fn': None,
          'outcome': Outcome.UNSET,
          'measured_value': None,
          '_cached': None})):
@@ -146,6 +148,7 @@ class Measurement(  # pylint: disable=no-init
     units: UOM code of the units for the measurement being taken.
     dimensions: Tuple of UOM codes for units of dimensions.
     validators: List of callable validator objects to perform pass/fail checks.
+    transform_fn: A function to apply to measurements as they are ingested.
     outcome: One of the Outcome() enumeration values, starting at UNSET.
     measured_value: An instance of MeasuredValue or DimensionedMeasuredValue
       containing the value(s) of this Measurement that have been set, if any.
@@ -164,14 +167,19 @@ class Measurement(  # pylint: disable=no-init
 
     if self.dimensions:
       self.measured_value = DimensionedMeasuredValue(
-          self.name, len(self.dimensions))
+          name=self.name,
+          num_dimensions=len(self.dimensions),
+          transform_fn=self.transform_fn)
     else:
-      self.measured_value = MeasuredValue(self.name)
+      self.measured_value = MeasuredValue(
+          name=self.name,
+          transform_fn=self.transform_fn)
 
   def __setattr__(self, attr, value):
     super(Measurement, self).__setattr__(attr, value)
-    # When dimensions changes, we may need to update our measured_value type.
-    if attr == 'dimensions':
+    # When dimensions or transform_fn change, we may need to update our
+    # measured_value type.
+    if attr in ['dimensions', 'transform_fn']:
       self._initialize_value()
 
   def __setstate__(self, state):
@@ -180,9 +188,13 @@ class Measurement(  # pylint: disable=no-init
     This override is necessary to ensure that the the _initialize_value check
     is skipped during unpickling.
     """
+    # TODO(arsharma) Add unit tests for unpickling operations.
     dimensions = state.pop('dimensions')
+    transform_fn = state.pop('transform_fn', None)
+
     super(Measurement, self).__setstate__(state)
     object.__setattr__(self, 'dimensions', dimensions)
+    object.__setattr__(self, 'transform_fn', transform_fn)
 
   def set_notification_callback(self, notification_cb):
     """Set the notifier we'll call when measurements are set."""
@@ -244,6 +256,22 @@ class Measurement(  # pylint: disable=no-init
       raise ValueError('Validator must be callable', validator)
     self.validators.append(validator)
     self._cached = None
+    return self
+
+  def with_precision(self, precision):
+    """Set a precision value to round results to."""
+    if not isinstance(precision, int):
+      raise TypeError('Precision must be specified as an int, not %s' % type(
+          precision))
+    return self.with_transform(functools.partial(round, ndigits=precision))
+
+  def with_transform(self, transform_fn):
+    """Set the transform function."""
+    if not callable(transform_fn):
+      raise TypeError('Transform function must be callable.')
+    if self.transform_fn:
+      raise ValueError('Transform function may only be set once.')
+    self.transform_fn = transform_fn
     return self
 
   def with_args(self, **kwargs):
@@ -329,8 +357,8 @@ class Measurement(  # pylint: disable=no-init
 
 class MeasuredValue(
     mutablerecords.Record('MeasuredValue', ['name'],
-                          {'stored_value': None, 'is_value_set': False,
-                           '_cached_value': None})):
+                          {'transform_fn': None, 'stored_value': None,
+                           'is_value_set': False, '_cached_value': None})):
   """Class encapsulating actual values measured.
 
   Note that this is really just a value wrapper with some sanity checks.  See
@@ -342,6 +370,8 @@ class MeasuredValue(
   dimensioned values, see the DimensionedMeasuredValue.  The interfaces are very
   similar, but differ slightly; the important part is the get_value() interface
   on both of them.
+
+  The transform_fn is a function applied on measurements as they are ingested.
 
   The _cached_value is the base type represention of the stored_value when that
   is set.
@@ -369,6 +399,11 @@ class MeasuredValue(
 
   def set(self, value):
     """Set the value for this measurement, with some sanity checks."""
+
+    # Apply transform function if it is set.
+    if self.transform_fn:
+      value = self.transform_fn(value)
+
     if self.is_value_set:
       # While we want to *allow* re-setting previously set measurements, we'd
       # rather promote the use of multidimensional measurements instead of
@@ -455,13 +490,16 @@ class Dimension(object):
 
 class DimensionedMeasuredValue(mutablerecords.Record(
     'DimensionedMeasuredValue', ['name', 'num_dimensions'],
-    {'notify_value_set': None,
+    {'transform_fn': None,
+     'notify_value_set': None,
      'value_dict': collections.OrderedDict,
      '_cached_basetype_values': list})):
   """Class encapsulating actual values measured.
 
   See the MeasuredValue class docstring for more info.  This class provides a
   dict-like interface for indexing into dimensioned measurements.
+
+  The transform_fn is a function applied on measurements as they are ingested.
 
   The _cached_basetype_values is a cached list of the dimensioned entries in
   order of being set.  Each list entry is a tuple that is composed of the key,
@@ -508,6 +546,10 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     except TypeError as e:
       raise InvalidDimensionsError(
           'Mutable objects cannot be used as measurement dimensions: ' + str(e))
+
+    # Apply transform function if it is set.
+    if self.transform_fn:
+      value = self.transform_fn(value)
 
     self.value_dict[coordinates] = value
 

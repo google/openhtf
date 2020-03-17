@@ -72,6 +72,43 @@ class TestMeasurements(htf_test.TestCase):
     """Creating a measurement with invalid units should raise."""
     self.assertRaises(TypeError, htf.Measurement('bad_units').with_units, 1701)
 
+  def test_bad_transform_fn(self):
+    """Bad functions or setting multiple functions should raise."""
+    m = htf.Measurement('transform')
+    with self.assertRaises(TypeError):
+      m.with_transform(None)
+    with self.assertRaises(TypeError):
+      m.with_transform('int')
+    with self.assertRaises(ValueError):
+      m.with_transform(abs).with_transform(int)
+
+  def test_transform_fn(self):
+    """Check that the transform_fn is working."""
+    m = htf.Measurement('abs_transform').with_transform(abs)
+    m.measured_value.set(-1.234)
+    self.assertAlmostEqual(m.measured_value.value, 1.234)
+
+  def test_bad_precision(self):
+    """Creating a measurement with invalid precision should raise."""
+    m = htf.Measurement('bad_precision')
+    with self.assertRaises(TypeError):
+      m.with_precision(1.1)
+    with self.assertRaises(TypeError):
+      m.with_precision('1')
+
+  def test_precision(self):
+    """Check that with_precision does what it says on the tin."""
+    m = htf.Measurement('meas_with_precision').with_precision(3)
+    m.measured_value.set(1.2345)
+    self.assertAlmostEqual(m.measured_value.value, 1.234)
+    m.measured_value.set(1.2346)
+    self.assertAlmostEqual(m.measured_value.value, 1.235)
+
+    m = htf.Measurement('meas_with_precision_and_dims').with_precision(
+        3).with_dimensions('x')
+    m.measured_value[42] = 1.2346
+    self.assertAlmostEqual(m.measured_value[42], 1.235)
+
   def test_cache_same_object(self):
     m = htf.Measurement('measurement')
     basetypes0 = m.as_base_types()
