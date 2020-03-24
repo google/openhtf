@@ -28,6 +28,7 @@ import pprint
 import struct
 import sys
 
+import attr
 from mutablerecords import records
 from past.builtins import long
 from past.builtins import unicode
@@ -146,10 +147,14 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   if hasattr(obj, '_asdict'):
     obj = obj._asdict()
   elif isinstance(obj, records.RecordClass):
-    obj = {attr: getattr(obj, attr)
-           for attr in type(obj).all_attribute_names
-           if (getattr(obj, attr, None) is not None or
-               attr in type(obj).required_attributes)}
+    new_obj = {}
+    for a in type(obj).all_attribute_names:
+      val = getattr(obj, a, None)
+      if val is not None or a in type(obj).required_attributes:
+        new_obj[a] = val
+    obj = new_obj
+  elif attr.has(type(obj)):
+    obj = attr.asdict(obj)
   elif isinstance(obj, Enum):
     obj = obj.name
 
@@ -211,8 +216,8 @@ def total_size(obj):
           not isinstance(current_obj, six.string_types)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
-      size += sum(sizeof(getattr(current_obj, attr))
-                  for attr in current_obj.__slots__)
+      size += sum(sizeof(getattr(current_obj, a))
+                  for a in current_obj.__slots__)
     return size
 
   return sizeof(obj)

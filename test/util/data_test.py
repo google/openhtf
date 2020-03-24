@@ -15,6 +15,7 @@
 import collections
 import unittest
 
+import attr
 from builtins import int
 from openhtf.util import data
 from past.builtins import long
@@ -33,6 +34,7 @@ class TestData(unittest.TestCase):
         return {'safe_value': True}
 
     class AsDict(object):
+
       def _asdict(self):
         return None
 
@@ -43,6 +45,14 @@ class TestData(unittest.TestCase):
 
       def as_base_types(self):
         return self.value
+
+    @attr.s(slots=True, frozen=True)
+    class FrozenAttr(object):
+      value = attr.ib(type=int)
+
+    @attr.s
+    class AnotherAttr(object):
+      frozen = attr.ib(type=FrozenAttr)
 
     not_copied = NotRecursivelyCopied()
 
@@ -64,9 +74,12 @@ class TestData(unittest.TestCase):
         # Some plugs such as UserInputPlug will return None as a response to
         # AsDict().
         'none_dict': AsDict(),
+
+        'frozen1': FrozenAttr(value=42),
+        'another_attr': AnotherAttr(frozen=FrozenAttr(value=19)),
+
     }
     converted = data.convert_to_base_types(example_data)
-
 
     self.assertIsInstance(converted['list'], list)
     self.assertIsInstance(converted['tuple'], tuple)
@@ -81,5 +94,12 @@ class TestData(unittest.TestCase):
     self.assertIsInstance(converted['float_subclass'], float)
     self.assertIsInstance(converted['special'], dict)
     self.assertEqual(converted['special'], {'safe_value': True})
-    self.assertEqual(converted['none_dict'], None)
     self.assertIs(converted['not_copied'], not_copied.value)
+
+    self.assertEqual(converted['none_dict'], None)
+
+    self.assertEqual(converted['frozen1'], {'value': 42})
+    self.assertEqual(converted['another_attr'], {'frozen': {'value': 19}})
+
+if __name__ == '__main__':
+  unittest.main()
