@@ -28,7 +28,6 @@ import collections
 import contextlib
 import copy
 import functools
-import logging
 import mimetypes
 import os
 import socket
@@ -60,8 +59,6 @@ conf.declare('allow_unset_measurements', default_value=False,
 # are provided then we'll fall back to the machine's hostname.
 conf.declare('station_id', 'The name of this test station',
              default_value=socket.gethostname())
-
-_LOG = logging.getLogger(__name__)
 
 # Sentinel value indicating that the mimetype should be inferred.
 INFER_MIMETYPE = object()
@@ -145,6 +142,7 @@ class TestState(util.SubscribableStateMixin):
     self.plug_manager = plugs.PlugManager(
         test_desc.plug_types, self.state_logger)
     self.running_phase_state = None
+    self._running_test_api = None
     self.user_defined_state = {}
     self.execution_uid = execution_uid
     self.test_options = test_options
@@ -180,17 +178,22 @@ class TestState(util.SubscribableStateMixin):
     Returns:
       openhtf.TestApi
     """
-    running_phase_state = self.running_phase_state
-    return (running_phase_state and
-            openhtf.TestApi(
-                self.logger, self.user_defined_state, self.test_record,
-                measurements.Collection(running_phase_state.measurements),
-                running_phase_state.attachments,
-                running_phase_state.attach,
-                running_phase_state.attach_from_file,
-                self.get_measurement,
-                self.get_attachment,
-                self.notify_update,))
+    if not self.running_phase_state:
+      raise ValueError(
+          'test_api only available when phase is running.')
+    if not self._running_test_api:
+      ps = self.running_phase_state
+      self._running_test_api = openhtf.TestApi(
+          self.logger, self.user_defined_state, self.test_record,
+          measurements.Collection(ps.measurements),
+          ps.attachments,
+          ps.attach,
+          ps.attach_from_file,
+          self.get_measurement,
+          self.get_attachment,
+          self.notify_update,
+      )
+    return self._running_test_api
 
   def get_attachment(self, attachment_name):
     """Get a copy of an attachment from current or previous phases.
@@ -269,14 +272,15 @@ class TestState(util.SubscribableStateMixin):
     assert not self.running_phase_state, 'Phase already running!'
     phase_logger = self.state_logger.getChild('phase.' + phase_desc.name)
     phase_state = self.running_phase_state = PhaseState.from_descriptor(
-        phase_desc, self.notify_update, logger=phase_logger)
+        phase_desc, self, phase_logger)
+    self.notify_update()  # New phase started.
     try:
-      with phase_state.record_timing_context:
-        self.notify_update()  # New phase started.
-        yield phase_state
+      yield phase_state
     finally:
+      phase_state.finalize()
       self.test_record.add_phase_record(phase_state.phase_record)
       self.running_phase_state = None
+      self._running_test_api = None
       self.notify_update()  # Phase finished.
 
   def as_base_types(self):
@@ -464,26 +468,38 @@ class TestState(util.SubscribableStateMixin):
     )
 
 
-class PhaseState(
-    mutablerecords.Record('PhaseState',
-                          ['name', 'phase_record', 'measurements', 'options'],
-                          {'hit_repeat_limit': False,
-                           'notify_cb': None,
-                           'logger': None,
-                           '_cached': dict,
-                           '_update_measurements': set})):
+class PhaseState(mutablerecords.Record(
+    'PhaseState',
+    [
+        'name',
+        'phase_record',
+        'measurements',
+        'options',
+        'logger',
+        'test_state',
+    ],
+    {
+        'hit_repeat_limit': False,
+        '_cached': dict,
+        '_update_measurements': set,
+    })):
   """Data type encapsulating interesting information about a running phase.
 
   Attributes:
     phase_record: A test_record.PhaseRecord for the running phase.
-    attachments: Convenience accessor for phase_record.attachments.
     measurements: A dict mapping measurement name to it's declaration; this
         dict can be passed to measurements.Collection to initialize a user-
         facing Collection for setting measurements.
     options: the PhaseOptions from the phase descriptor.
-    result: Convenience getter/setter for phase_record.result.
+    logger: logging.Logger for this phase execution run.
+    test_state: TestState, parent test state.
+    hit_repeat_limit: bool, True when the phase repeat limit was hit.
     _cached: A cached representation of the running test state that; updated in
         place to save allocation time.
+
+  Properties:
+    attachments: Convenience accessor for phase_record.attachments.
+    result: Convenience getter/setter for phase_record.result.
   """
 
   def __init__(self, *args, **kwargs):
@@ -501,24 +517,25 @@ class PhaseState(
         'measurements': {
             k: m.as_base_types() for k, m in six.iteritems(self.measurements)},
         'attachments': {},
+        'start_time_millis': long(self.phase_record.record_start_time()),
     }
 
   @classmethod
-  def from_descriptor(cls, phase_desc, notify_cb, logger=None):
+  def from_descriptor(cls, phase_desc, test_state, logger):
     return cls(
-        phase_desc.name,
-        test_record.PhaseRecord.from_descriptor(phase_desc),
-        collections.OrderedDict(
+        name=phase_desc.name,
+        phase_record=test_record.PhaseRecord.from_descriptor(phase_desc),
+        measurements=collections.OrderedDict(
             (measurement.name, copy.deepcopy(measurement))
             for measurement in phase_desc.measurements),
-        phase_desc.options,
-        notify_cb=notify_cb,
-        logger=logger)
+        options=phase_desc.options,
+        logger=logger,
+        test_state=test_state,
+    )
 
   def _notify(self, measurement_name):
     self._update_measurements.add(measurement_name)
-    if self.notify_cb:
-      self.notify_cb()
+    self.test_state.notify_update()
 
   def as_base_types(self):
     """Convert to a dict representation composed exclusively of base types."""
@@ -563,8 +580,8 @@ class PhaseState(
     if mimetype is INFER_MIMETYPE:
       mimetype = mimetypes.guess_type(name)[0]
     elif mimetype is not None and not mimetypes.guess_extension(mimetype):
-      _LOG.warning('Unrecognized MIME type: "%s" for attachment "%s"',
-                   mimetype, name)
+      self.logger.warning('Unrecognized MIME type: "%s" for attachment "%s"',
+                          mimetype, name)
 
     attach_record = test_record.Attachment(binary_data, mimetype)
     self.phase_record.attachments[name] = attach_record
@@ -578,10 +595,10 @@ class PhaseState(
       name: If provided, override the attachment name, otherwise it will
         default to the filename.
       mimetype: One of the following:
-          INFER_MIMETYPE: The type will be guessed first, from the file name,
+          * INFER_MIMETYPE: The type will be guessed first, from the file name,
               and second (i.e. as a fallback), from the attachment name.
-          None: The type will be left unspecified.
-          A string: The type will be set to the specified value.
+          * None: The type will be left unspecified.
+          * A string: The type will be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
@@ -611,7 +628,7 @@ class PhaseState(
         except Exception:  # pylint: disable=broad-except
           # Record the exception as the new result.
           if self.phase_record.result.is_terminal:
-            _LOG.exception(
+            self.logger.exception(
                 'Measurement validation raised an exception, but phase result '
                 'is already terminal; logging additional exception here.')
           else:
@@ -638,29 +655,13 @@ class PhaseState(
       outcome = test_record.PhaseOutcome.SKIP
     elif self.result.is_fail_and_continue:
       outcome = test_record.PhaseOutcome.FAIL
+    elif not self._measurements_pass():
+      outcome = test_record.PhaseOutcome.FAIL
     else:
-      outcome = (test_record.PhaseOutcome.PASS
-                 if self._measurements_pass()
-                 else test_record.PhaseOutcome.FAIL)
+      outcome = test_record.PhaseOutcome.PASS
     self.phase_record.outcome = outcome
 
-  @property
-  @contextlib.contextmanager
-  def record_timing_context(self):
-    """Context manager for the execution of a single phase.
-
-    This method performs some pre-phase setup on self (for measurements), and
-    records the start and end time based on when the context is entered/exited.
-
-    Yields:
-      None
-    """
-    self._cached['start_time_millis'] = long(
-        self.phase_record.record_start_time())
-
-    try:
-      yield
-    finally:
-      self._finalize_measurements()
-      self._set_phase_outcome()
-      self.phase_record.finalize_phase(self.options)
+  def finalize(self):
+    self._finalize_measurements()
+    self._set_phase_outcome()
+    self.phase_record.finalize_phase(self.options)
