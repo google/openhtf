@@ -19,6 +19,7 @@ import pstats
 import sys
 import tempfile
 import threading
+import traceback
 
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
@@ -177,8 +178,9 @@ class TestExecutor(threads.KillableThread):
       # Everything is set, set status and begin test execution.
       self.test_state.set_status_running()
       self._execute_phase_group(self._test_descriptor.phase_group)
-    except:
-      _LOG.exception('Exception in TestExecutor.')
+    except:  # pylint: disable=bare-except
+      stacktrace = traceback.format_exc()
+      _LOG.error('Error in TestExecutor: \n%s', stacktrace)
       raise
     finally:
       self._execute_test_teardown()
