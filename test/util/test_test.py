@@ -22,12 +22,13 @@ from openhtf.util import test
 from openhtf.util import validators
 
 
-class DummyException(Exception):
+class DummyError(Exception):
   """Raised for testing phases that raise."""
 
 
 class MyPlug(plugs.BasePlug):
   """Stub plug for ensuring plugs get mocked correctly."""
+
   def __init__(self):
     raise NotImplementedError('MyPlug not mocked correctly')
 
@@ -50,15 +51,30 @@ def test_phase(phase_data, my_plug):
   phase_data.test_record.add_outcome_details(0xBED)
 
 
-def raising_phase(phase_data):
-  raise DummyException('This Phase raises!')
+def raising_phase():
+  raise DummyError('This Phase raises!')
 
 
 def phase_retval(retval):
   """Helper function to generate a phase that returns the given retval."""
-  def phase(phase_data):
+  def phase():
     return retval
   return phase
+
+
+class PatchPlugsTest(unittest.TestCase):
+
+  def test_patch_plugs_fails_for_bad_subtype(self):
+
+    class NormalUnitTest(unittest.TestCase):
+
+      @test.yields_phases
+      def test_bad(self):
+        _ = yield test_phase
+
+    with self.assertRaises(AssertionError):
+      case = NormalUnitTest(methodName='test_bad')
+      case.test_bad()
 
 
 class TestTest(test.TestCase):
@@ -122,24 +138,24 @@ class TestTest(test.TestCase):
   @test.yields_phases
   def test_errors(self):
     phase_record = yield raising_phase
-    self.assertPhaseError(phase_record, DummyException)
+    self.assertPhaseError(phase_record, DummyError)
 
     test_record = yield openhtf.Test(raising_phase)
-    self.assertTestError(test_record, DummyException)
+    self.assertTestError(test_record, DummyError)
 
   def test_bad_assert(self):
-    with self.assertRaises(test.InvalidTestError):
+    with self.assertRaises(test.InvalidTestError):  # pylint: disable=g-error-prone-assert-raises
       self.assertMeasured(None)
 
   def test_doesnt_yield(self):
-    def doesnt_yield(inner_self):
+    def doesnt_yield(cls_self):  # pylint: disable=unused-argument
       pass
     with self.assertRaises(test.InvalidTestError):
       test.yields_phases(doesnt_yield)(self)
 
   def test_bad_mock_plug_args(self):
     # Stub test* method that one might wrap with test.patch_plugs().
-    def stub_test_method(self, plug_one, plug_two):
+    def stub_test_method(cls_self, plug_one, plug_two):  # pylint: disable=unused-argument
       pass
 
     # Test that we catch weird extra test method args.
@@ -160,7 +176,7 @@ class TestTest(test.TestCase):
                        plug_two='also.bad')(stub_test_method)
 
   def test_bad_yield(self):
-    def bad_test(self):
+    def bad_test(cls_self):  # pylint: disable=unused-argument
       yield None
 
     # The InvalidTestError gets raised upon initial invocation of the test

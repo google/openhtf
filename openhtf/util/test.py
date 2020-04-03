@@ -143,10 +143,11 @@ class InvalidTestError(Exception):
 
 class PhaseOrTestIterator(collections.Iterator):
 
-  def __init__(self, iterator, mock_plugs):
+  def __init__(self, test_case, iterator, mock_plugs):
     """Create an iterator for iterating over Tests or phases to run.
 
     Args:
+      test_case: TestCase subclass where the test case function is defined.
       iterator: Child iterator to use for obtaining Tests or test phases, must
           be a generator.
       mock_plugs: Dict mapping plug types to mock objects to use instead of
@@ -164,6 +165,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
     self.plug_manager = plugs.PlugManager()
+    self.test_case = test_case
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
@@ -193,6 +195,10 @@ class PhaseOrTestIterator(collections.Iterator):
       )
       test_state_.mark_test_started()
 
+    # Save the test_state to the test_case attribute to give it access to the
+    # underlying state.
+    self.test_case.test_state = test_state_
+
     # Actually execute the phase, saving the result in our return value.
     executor = phase_executor.PhaseExecutor(test_state_)
     # Log an exception stack when a Phase errors out.
@@ -200,9 +206,14 @@ class PhaseOrTestIterator(collections.Iterator):
         phase_executor.PhaseExecutorThread, '_log_exception',
         side_effect=logging.exception):
       # Use _execute_phase_once because we want to expose all possible outcomes.
-      executor._execute_phase_once(
+      phase_result, _ = executor._execute_phase_once(
           phase_desc, is_last_repeat=False, run_with_profiling=False)
-    return test_state_.test_record.phases[-1]
+
+    if phase_result.raised_exception:
+      failure_message = phase_result.phase_result.get_traceback_string()
+    else:
+      failure_message = None
+    return test_state_.test_record.phases[-1], failure_message
 
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
@@ -220,33 +231,42 @@ class PhaseOrTestIterator(collections.Iterator):
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test.execute(test_start=lambda: 'TestDutId')
 
-    return record_saver.result
+    test_record_ = record_saver.result
+    if test_record_.outcome_details:
+      msgs = []
+      for detail in test_record_.outcome_details:
+        msgs.append(
+            'code: {}\ndescription: {}'.format(detail.code, detail.description))
+      failure_message = '\n'.join(msgs)
+    else:
+      failure_message = None
+    return test_record_, failure_message
 
   def __next__(self):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
-      self.last_result = self._handle_test(phase_or_test)
+      self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, collections.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
     else:
-      self.last_result = self._handle_phase(
+      self.last_result, failure_message = self._handle_phase(
           openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
-    return phase_or_test, self.last_result
+    return phase_or_test, self.last_result, failure_message
 
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
-      self.last_result = self._handle_test(phase_or_test)
+      self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, collections.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
     else:
-      self.last_result = self._handle_phase(
+      self.last_result, failure_message = self._handle_phase(
           openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
-    return phase_or_test, self.last_result
+    return phase_or_test, self.last_result, failure_message
 
 
 def yields_phases(func):
@@ -337,9 +357,14 @@ def patch_plugs(**mock_plugs):
     # name to match so we don't mess with unittest's TestLoader mechanism.
     @functools.wraps(test_func)
     def wrapped_test(self):
-      for phase_or_test, result in PhaseOrTestIterator(
-          test_func(self, **plug_kwargs), plug_typemap):
+      self.assertIsInstance(self, TestCase,
+                            msg='Must derive from openhtf.util.test.TestCase '
+                            'to use yields_phases/patch_plugs.')
+      for phase_or_test, result, failure_message in PhaseOrTestIterator(
+          self, test_func(self, **plug_kwargs), plug_typemap):
         logging.info('Ran %s, result: %s', phase_or_test, result)
+        if failure_message:
+          logging.error('Reported error:\n%s', failure_message)
     return wrapped_test
   return test_wrapper
 
@@ -352,6 +377,15 @@ class TestCase(unittest.TestCase):
     if inspect.isgeneratorfunction(test_method):
       raise ValueError(
           '%s yields without @openhtf.util.test.yields_phases' % methodName)
+
+  def setUp(self):
+    super(TestCase, self).setUp()
+    # When a phase is yielded to a yields_phases/patch_plugs function, this
+    # attribute will be set to the openhtf.core.test_state.TestState used in the
+    # phase execution.
+    self.test_state = None
+    # TODO(arsharma): Add ability to modify the test state phase execution will
+    # use.
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
@@ -435,6 +469,9 @@ class TestCase(unittest.TestCase):
       self.assertIsInstance(phase_record.result.phase_result.exc_val, exc_type,
                             'Raised exception %r is not a subclass of %r' %
                             (phase_record.result.phase_result, exc_type))
+
+  def assertPhaseTimeout(self, phase_record):
+    self.assertTrue(phase_record.result.is_timeout)
 
   def assertPhaseOutcomePass(self, phase_record):
     self.assertIs(test_record.PhaseOutcome.PASS, phase_record.outcome)

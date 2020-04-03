@@ -63,8 +63,11 @@ class ExceptionInfo(collections.namedtuple(
     return {
         'exc_type': str(self.exc_type),
         'exc_val': self.exc_val,
-        'exc_tb': ''.join(traceback.format_exception(*self)),
+        'exc_tb': self.get_traceback_string(),
     }
+
+  def get_traceback_string(self):
+    return ''.join(traceback.format_exception(*self))
 
   def __str__(self):
     return self.exc_type.__name__
