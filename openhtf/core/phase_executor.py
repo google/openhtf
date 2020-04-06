@@ -135,6 +135,10 @@ class PhaseExecutionOutcome(collections.namedtuple(
     return isinstance(self.phase_result, (
         ExceptionInfo, threads.ThreadTerminationError))
 
+  @property
+  def is_aborted(self):
+    return isinstance(self.phase_result, threads.ThreadTerminationError)
+
 
 class PhaseExecutorThread(threads.KillableThread):
   """Handles the execution and result of a single test phase.
@@ -279,7 +283,7 @@ class PhaseExecutor(object):
       self._current_phase_thread = None
 
     # Refresh the result in case a validation for a partially set measurement
-    # raised an exception.
+    # or phase diagnoser raised an exception.
     result = override_result or phase_state.result
     _LOG.debug('Phase %s finished with result %s', phase_desc.name,
                result.phase_result)

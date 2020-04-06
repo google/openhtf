@@ -125,12 +125,14 @@ import mock
 import openhtf
 from openhtf import plugs
 from openhtf import util
+from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
 from openhtf.core import phase_executor
 from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
+from openhtf.util import data
 from openhtf.util import logs
 import six
 
@@ -181,6 +183,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
+    diagnoses_lib.check_for_duplicate_results([phase_desc], [])
     logs.configure_logging()
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
@@ -528,3 +531,7 @@ class TestCase(unittest.TestCase):
     self.assertMeasured(phase_record, measurement)
     self.assertIs(measurements.Outcome.FAIL,
                   phase_record.measurements[measurement].outcome)
+
+  def get_diagnoses_store(self):
+    self.assertIsNotNone(self.test_state)
+    return self.test_state.diagnoses_manager.store

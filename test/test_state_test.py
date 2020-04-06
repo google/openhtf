@@ -60,6 +60,8 @@ PHASE_RECORD_BASE_TYPE.update({
     'end_time_millis': None,
     'outcome': None,
     'result': None,
+    'diagnosis_results': [],
+    'failure_diagnosis_results': [],
 })
 
 TEST_STATE_BASE_TYPE_INITIAL = {
@@ -76,6 +78,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
             'config': {}
         },
         'phases': [],
+        'diagnoses': [],
         'log_records': [],
     },
     'plugs': {

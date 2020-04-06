@@ -40,6 +40,7 @@ import mutablerecords
 import openhtf
 from openhtf import plugs
 from openhtf import util
+from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
 from openhtf.core import phase_executor
 from openhtf.core import test_record
@@ -141,6 +142,8 @@ class TestState(util.SubscribableStateMixin):
     self.state_logger = logs.get_record_logger_for(execution_uid)
     self.plug_manager = plugs.PlugManager(
         test_desc.plug_types, self.state_logger)
+    self.diagnoses_manager = diagnoses_lib.DiagnosesManager(
+        self.state_logger.getChild('diagnoses'))
     self.running_phase_state = None
     self._running_test_api = None
     self.user_defined_state = {}
@@ -369,8 +372,7 @@ class TestState(util.SubscribableStateMixin):
         self.state_logger.critical(
             'Traceback:%s%s%s%s',
             os.linesep,
-            ''.join(traceback.format_tb(
-                phase_execution_outcome.phase_result.exc_tb)),
+            phase_execution_outcome.phase_result.get_traceback_string(),
             os.linesep,
             description,
         )
@@ -413,6 +415,8 @@ class TestState(util.SubscribableStateMixin):
       self.test_record.add_outcome_details(
           'ALL_SKIPPED', 'All phases were unexpectedly skipped.')
       self._finalize(test_record.Outcome.ERROR)
+    elif any(d.is_failure for d in self.test_record.diagnoses):
+      self._finalize(test_record.Outcome.FAIL)
     else:
       # Otherwise, the test run was successful.
       self._finalize(test_record.Outcome.PASS)
@@ -477,6 +481,7 @@ class PhaseState(mutablerecords.Record(
         'options',
         'logger',
         'test_state',
+        'diagnosers',
     ],
     {
         'hit_repeat_limit': False,
@@ -493,6 +498,8 @@ class PhaseState(mutablerecords.Record(
     options: the PhaseOptions from the phase descriptor.
     logger: logging.Logger for this phase execution run.
     test_state: TestState, parent test state.
+    diagnosers: list of PhaseDiagnoser instances to run after the phase
+        finishes.
     hit_repeat_limit: bool, True when the phase repeat limit was hit.
     _cached: A cached representation of the running test state that; updated in
         place to save allocation time.
@@ -531,6 +538,7 @@ class PhaseState(mutablerecords.Record(
         options=phase_desc.options,
         logger=logger,
         test_state=test_state,
+        diagnosers=phase_desc.diagnosers,
     )
 
   def _notify(self, measurement_name):
@@ -612,6 +620,12 @@ class PhaseState(mutablerecords.Record(
           name if name is not None else os.path.basename(filename), f.read(),
           mimetype=mimetype)
 
+  def add_diagnosis(self, diagnosis):
+    if diagnosis.is_failure:
+      self.phase_record.failure_diagnosis_results.append(diagnosis.result)
+    else:
+      self.phase_record.diagnosis_results.append(diagnosis.result)
+
   def _finalize_measurements(self):
     """Perform end-of-phase finalization steps for measurements.
 
@@ -643,12 +657,10 @@ class PhaseState(mutablerecords.Record(
     if conf.allow_unset_measurements:
       allowed_outcomes.add(measurements.Outcome.UNSET)
 
-    if any(meas.outcome not in allowed_outcomes
-           for meas in self.phase_record.measurements.values()):
-      return False
-    return True
+    return all(meas.outcome in allowed_outcomes
+               for meas in self.phase_record.measurements.values())
 
-  def _set_phase_outcome(self):
+  def _set_prediagnosis_phase_outcome(self):
     if self.result is None or self.result.is_terminal or self.hit_repeat_limit:
       outcome = test_record.PhaseOutcome.ERROR
     elif self.result.is_repeat or self.result.is_skip:
@@ -661,7 +673,44 @@ class PhaseState(mutablerecords.Record(
       outcome = test_record.PhaseOutcome.PASS
     self.phase_record.outcome = outcome
 
+  def _set_postdiagnosis_phase_outcome(self):
+    if self.phase_record.outcome == test_record.PhaseOutcome.ERROR:
+      return
+    # Check for errors during diagnoser execution.
+    if self.result is None or self.result.is_terminal:
+      self.phase_record.outcome = test_record.PhaseOutcome.ERROR
+      return
+    if self.phase_record.outcome != test_record.PhaseOutcome.PASS:
+      return
+    if self.phase_record.failure_diagnosis_results:
+      self.phase_record.outcome = test_record.PhaseOutcome.FAIL
+
+  def _execute_phase_diagnoser(self, diagnoser):
+    try:
+      self.test_state.diagnoses_manager.execute_phase_diagnoser(
+          diagnoser, self, self.test_state.test_record)
+    except Exception:  # pylint: disable=broad-except
+      if self.phase_record.result.is_terminal:
+        self.logger.exception(
+            'Phase Diagnoser %s raised an exception, but phase result is '
+            'already terminal; logging additonal exception here.',
+            diagnoser.name)
+      else:
+        self.phase_record.result = phase_executor.PhaseExecutionOutcome(
+            phase_executor.ExceptionInfo(*sys.exc_info()))
+
+  def _execute_phase_diagnosers(self):
+    if self.result.is_aborted:
+      self.logger.warning('Skipping diagnosers when phase was aborted.')
+      return
+    if self.result.is_skip:
+      return
+    for diagnoser in self.diagnosers:
+      self._execute_phase_diagnoser(diagnoser)
+
   def finalize(self):
     self._finalize_measurements()
-    self._set_phase_outcome()
+    self._set_prediagnosis_phase_outcome()
+    self._execute_phase_diagnosers()
+    self._set_postdiagnosis_phase_outcome()
     self.phase_record.finalize_phase(self.options)
