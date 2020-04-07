@@ -662,14 +662,19 @@ class PhaseState(mutablerecords.Record(
 
   def _set_prediagnosis_phase_outcome(self):
     if self.result is None or self.result.is_terminal or self.hit_repeat_limit:
+      self.logger.debug('Phase outcome is ERROR.')
       outcome = test_record.PhaseOutcome.ERROR
     elif self.result.is_repeat or self.result.is_skip:
+      self.logger.debug('Phase outcome is SKIP.')
       outcome = test_record.PhaseOutcome.SKIP
     elif self.result.is_fail_and_continue:
+      self.logger.debug('Phase outcome is FAIL due to phase result.')
       outcome = test_record.PhaseOutcome.FAIL
     elif not self._measurements_pass():
+      self.logger.debug('Phase outcome is FAIL due to measurement outcome.')
       outcome = test_record.PhaseOutcome.FAIL
     else:
+      self.logger.debug('Phase outcome is PASS.')
       outcome = test_record.PhaseOutcome.PASS
     self.phase_record.outcome = outcome
 
@@ -678,11 +683,13 @@ class PhaseState(mutablerecords.Record(
       return
     # Check for errors during diagnoser execution.
     if self.result is None or self.result.is_terminal:
+      self.logger.debug('Phase outcome is ERROR due to diagnoses.')
       self.phase_record.outcome = test_record.PhaseOutcome.ERROR
       return
     if self.phase_record.outcome != test_record.PhaseOutcome.PASS:
       return
     if self.phase_record.failure_diagnosis_results:
+      self.logger.debug('Phase outcome is FAIL due to diagnoses.')
       self.phase_record.outcome = test_record.PhaseOutcome.FAIL
 
   def _execute_phase_diagnoser(self, diagnoser):
