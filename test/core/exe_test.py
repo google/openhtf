@@ -150,17 +150,21 @@ def _abort_executor_in_thread(executor_abort):
   # random point in time. To make this deterministic, we keep the phase
   # alive as long as the executor is running, which really just means that
   # the wait() call gets the error raised in it.
+  ready_to_stop_ev = threading.Event()
   inner_ev = threading.Event()
   def abort_executor():
+    ready_to_stop_ev.wait(1)
     executor_abort()
     inner_ev.set()
   threading.Thread(target=abort_executor).start()
+  ready_to_stop_ev.set()
+  inner_ev.wait(2)
   end_time = time.time() + 2
   while time.time() < end_time:
-    # Event waits in Python3 are implemented in C, so the Phase termination
-    # error does not propagate until the wait is finished.  Therefore, waiting
-    # for short periods with a timeout implemented in Python.
-    inner_ev.wait(0.1)
+    # Sleeps in Python3 are implemented in C, so the Phase termination error
+    # does not propagate until the wait is finished.  Therefore, waiting for
+    # short periods with a timeout implemented in Python.
+    time.sleep(0.1)
 
 
 class TestExecutorTest(unittest.TestCase):
