@@ -32,7 +32,6 @@ import mimetypes
 import os
 import socket
 import sys
-import traceback
 
 from enum import Enum
 import mutablerecords
@@ -116,6 +115,10 @@ class TestState(util.SubscribableStateMixin):
   Attributes:
     test_record: TestRecord instance for the currently running test.
     state_logger: Logger that logs to test_record's log_records attribute.
+    plug_manager: PlugManager instance for managing supplying plugs for the
+        currently running test.
+    diagnoses_manager: DiagnosesManager instance for tracking diagnoses for the
+        currently running test.
     running_phase_state: PhaseState object for the currently running phase,
         if any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
@@ -529,12 +532,23 @@ class PhaseState(mutablerecords.Record(
 
   @classmethod
   def from_descriptor(cls, phase_desc, test_state, logger):
+    # Measurements are copied because their state is modified during the phase
+    # execution.
+    measurements_copy = [copy.deepcopy(measurement)
+                         for measurement in phase_desc.measurements]
+    diag_store = test_state.diagnoses_manager.store
+    for m in measurements_copy:
+      # Check the conditional validators to see if their results have been
+      # issued. If so, add them to the validators that will be applied to the
+      # copied measurement.
+      for cv in m.conditional_validators:
+        if diag_store.has_diagnosis_result(cv.result):
+          m.with_validator(cv.validator)
     return cls(
         name=phase_desc.name,
         phase_record=test_record.PhaseRecord.from_descriptor(phase_desc),
         measurements=collections.OrderedDict(
-            (measurement.name, copy.deepcopy(measurement))
-            for measurement in phase_desc.measurements),
+            (m.name, m) for m in measurements_copy),
         options=phase_desc.options,
         logger=logger,
         test_state=test_state,
@@ -710,7 +724,7 @@ class PhaseState(mutablerecords.Record(
     if self.result.is_aborted:
       self.logger.warning('Skipping diagnosers when phase was aborted.')
       return
-    if self.result.is_skip:
+    if self.result.is_repeat or self.result.is_skip:
       return
     for diagnoser in self.diagnosers:
       self._execute_phase_diagnoser(diagnoser)

@@ -132,7 +132,6 @@ from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
-from openhtf.util import data
 from openhtf.util import logs
 import six
 
@@ -145,8 +144,11 @@ class InvalidTestError(Exception):
 
 class PhaseOrTestIterator(collections.Iterator):
 
-  def __init__(self, test_case, iterator, mock_plugs):
+  def __init__(self, test_case, iterator, mock_plugs,
+               phase_user_defined_state, phase_diagnoses):
     """Create an iterator for iterating over Tests or phases to run.
+
+    This should only be instantiated internally.
 
     Args:
       test_case: TestCase subclass where the test case function is defined.
@@ -154,6 +156,10 @@ class PhaseOrTestIterator(collections.Iterator):
           be a generator.
       mock_plugs: Dict mapping plug types to mock objects to use instead of
           actually instantiating that type.
+      phase_user_defined_state: If not None, a dictionary that will be added to
+          the test_state.user_defined_state when handling phases.
+      phase_diagnoses: If not None, must be a list of Diagnosis instances; these
+          are added to the DiagnosesManager when handling phases.
 
     Raises:
       InvalidTestError: when iterator is not a generator.
@@ -171,6 +177,12 @@ class PhaseOrTestIterator(collections.Iterator):
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
+    if not phase_user_defined_state:
+      phase_user_defined_state = {}
+    self.phase_user_defined_state = phase_user_defined_state
+    if not phase_diagnoses:
+      phase_diagnoses = []
+    self.phase_diagnoses = phase_diagnoses
 
   def _initialize_plugs(self, plug_types):
     # Make sure we initialize any plugs, this will ignore any that have already
@@ -198,9 +210,14 @@ class PhaseOrTestIterator(collections.Iterator):
       )
       test_state_.mark_test_started()
 
-    # Save the test_state to the test_case attribute to give it access to the
-    # underlying state.
-    self.test_case.test_state = test_state_
+    test_state_.user_defined_state.update(self.phase_user_defined_state)
+    for diag in self.phase_diagnoses:
+      test_state_.diagnoses_manager._add_diagnosis(diag)  # pylint: disable=protected-access
+      test_state_.test_record.add_diagnosis(diag)
+
+    # Save the test_state to the last_test_case attribute to give it access to
+    # the underlying state.
+    self.test_case.last_test_state = test_state_
 
     # Actually execute the phase, saving the result in our return value.
     executor = phase_executor.PhaseExecutor(test_state_)
@@ -277,7 +294,16 @@ def yields_phases(func):
   return patch_plugs()(func)
 
 
-def patch_plugs(**mock_plugs):
+def yields_phases_with(phase_user_defined_state=None,
+                       phase_diagnoses=None):
+  """Apply patch_plugs with no plugs, but add test state modifications."""
+  return patch_plugs(phase_user_defined_state=phase_user_defined_state,
+                     phase_diagnoses=phase_diagnoses)
+
+
+def patch_plugs(phase_user_defined_state=None,
+                phase_diagnoses=None,
+                **mock_plugs):
   """Decorator for mocking plugs for a test phase.
 
   Usage:
@@ -305,6 +331,10 @@ def patch_plugs(**mock_plugs):
       pass
 
   Args:
+    phase_user_defined_state: If specified, a dictionary that will be added to
+        the test_state.user_defined_state when handling phases.
+    phase_diagnoses: If specified, must be a list of Diagnosis instances; these
+        are added to the DiagnosesManager when handling phases.
     **mock_plugs: kwargs mapping argument name to be passed to the test case to
         a string describing the plug type to mock.  The corresponding mock will
         be passed to the decorated test case as a keyword argument.
@@ -312,6 +342,10 @@ def patch_plugs(**mock_plugs):
   Returns:
     Function decorator that mocks plugs.
   """
+  if phase_diagnoses:
+    for diag in phase_diagnoses:
+      assert isinstance(diag, diagnoses_lib.Diagnosis)
+
   def test_wrapper(test_func):
     plug_argspec = inspect.getargspec(test_func)
     num_defaults = len(plug_argspec.defaults or ())
@@ -364,7 +398,8 @@ def patch_plugs(**mock_plugs):
                             msg='Must derive from openhtf.util.test.TestCase '
                             'to use yields_phases/patch_plugs.')
       for phase_or_test, result, failure_message in PhaseOrTestIterator(
-          self, test_func(self, **plug_kwargs), plug_typemap):
+          self, test_func(self, **plug_kwargs), plug_typemap,
+          phase_user_defined_state, phase_diagnoses):
         logging.info('Ran %s, result: %s', phase_or_test, result)
         if failure_message:
           logging.error('Reported error:\n%s', failure_message)
@@ -386,9 +421,7 @@ class TestCase(unittest.TestCase):
     # When a phase is yielded to a yields_phases/patch_plugs function, this
     # attribute will be set to the openhtf.core.test_state.TestState used in the
     # phase execution.
-    self.test_state = None
-    # TODO(arsharma): Add ability to modify the test state phase execution will
-    # use.
+    self.last_test_state = None
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
@@ -533,5 +566,5 @@ class TestCase(unittest.TestCase):
                   phase_record.measurements[measurement].outcome)
 
   def get_diagnoses_store(self):
-    self.assertIsNotNone(self.test_state)
-    return self.test_state.diagnoses_manager.store
+    self.assertIsNotNone(self.last_test_state)
+    return self.last_test_state.diagnoses_manager.store

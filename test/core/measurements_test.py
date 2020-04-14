@@ -63,6 +63,7 @@ def bad_validator_with_error(test):
 class TestMeasurements(htf_test.TestCase):
 
   def setUp(self):
+    super(TestMeasurements, self).setUp()
     # Ensure most measurements features work without pandas.
     pandas_patch = mock.patch.object(measurements, 'pandas', None)
     pandas_patch.start()

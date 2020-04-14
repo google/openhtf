@@ -51,11 +51,6 @@ def pass_measurement_phase(test):
   test.measurements.good = 'good'
 
 
-@htf.TestPhase()
-def skip_phase():
-  return htf.PhaseResult.SKIP
-
-
 class BadResult(htf.DiagResultEnum):
   ONE = 'bad_one'
   TWO = 'bad_two'
@@ -790,7 +785,7 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertEqual([
         htf.Diagnosis(OkayResult.FINE, 'Fine1'),
         htf.Diagnosis(OkayResult.FINE, 'Fine2'),
-    ], self.test_state.test_record.diagnoses)
+    ], self.last_test_state.test_record.diagnoses)
 
   @htf_test.yields_phases
   def test_phase_multiple_diagnoses_with_failure(self):
@@ -946,11 +941,30 @@ class DiagnosesTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_phase_diagnoser__phase_skip__no_diagnosers_run(self):
     fake_diag = get_mock_diag()
-    phase = htf.diagnose(fake_diag)(skip_phase)
 
-    phase_rec = yield phase
+    @htf.diagnose(fake_diag)
+    def skip_phase():
+      return htf.PhaseResult.SKIP
+
+    phase_rec = yield skip_phase
 
     self.assertPhaseSkip(phase_rec)
+    self.assertPhaseOutcomeSkip(phase_rec)
+    self.assertEqual([], phase_rec.diagnosis_results)
+    self.assertEqual([], phase_rec.failure_diagnosis_results)
+    fake_diag._run_func.assert_not_called()
+
+  @htf_test.yields_phases
+  def test_phase_diagnoser__phase_repeat__no_diagnosers_run(self):
+    fake_diag = get_mock_diag()
+
+    @htf.diagnose(fake_diag)
+    def repeat_phase():
+      return htf.PhaseResult.REPEAT
+
+    phase_rec = yield repeat_phase
+
+    self.assertPhaseRepeat(phase_rec)
     self.assertPhaseOutcomeSkip(phase_rec)
     self.assertEqual([], phase_rec.diagnosis_results)
     self.assertEqual([], phase_rec.failure_diagnosis_results)
@@ -1204,3 +1218,67 @@ class DiagnosesTest(htf_test.TestCase):
 
     self.assertPhaseContinue(phase_rec)
     self.assertPhaseOutcomeFail(phase_rec)
+
+
+class ConditionalValidatorsTest(htf_test.TestCase):
+
+  def setUp(self):
+    super(ConditionalValidatorsTest, self).setUp()
+    self.validator_values = []
+    self.validator_return_value = False
+
+  def _make_validator(self):
+
+    def _validator(value):
+      self.validator_values.append(value)
+      return self.validator_return_value
+
+    return _validator
+
+  @htf_test.yields_phases
+  def test_conditional_measurement__not_run_no_results(self):
+
+    @htf.measures(
+        htf.Measurement('validator_not_run').validate_on(
+            {OkayResult.OKAY: self._make_validator()}))
+    def phase(test):
+      test.measurements.validator_not_run = True
+
+    phase_rec = yield phase
+
+    self.assertPhaseContinue(phase_rec)
+    self.assertPhaseOutcomePass(phase_rec)
+    self.assertEqual([], self.validator_values)
+
+  @htf_test.yields_phases_with(
+      phase_diagnoses=[htf.Diagnosis(OkayResult.FINE, 'Fine.')])
+  def test_conditional_measurement__not_run_different_results(self):
+
+    @htf.measures(
+        htf.Measurement('validator_not_run').validate_on(
+            {OkayResult.OKAY: self._make_validator()}))
+    def phase(test):
+      test.measurements.validator_not_run = True
+
+    phase_rec = yield phase
+
+    self.assertPhaseContinue(phase_rec)
+    self.assertPhaseOutcomePass(phase_rec)
+    self.assertEqual([], self.validator_values)
+
+  @htf_test.yields_phases_with(
+      phase_diagnoses=[htf.Diagnosis(OkayResult.OKAY, 'Okay.')])
+  def test_conditional_measurement__run(self):
+    self.validator_return_value = True
+
+    @htf.measures(
+        htf.Measurement('validator_run').validate_on(
+            {OkayResult.OKAY: self._make_validator()}))
+    def phase(test):
+      test.measurements.validator_run = True
+
+    phase_rec = yield phase
+
+    self.assertPhaseContinue(phase_rec)
+    self.assertPhaseOutcomePass(phase_rec)
+    self.assertEqual([True], self.validator_values)

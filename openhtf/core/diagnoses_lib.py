@@ -162,7 +162,7 @@ class DiagnosesStore(object):
     self._diagnoses_by_results[diagnosis.result] = diagnosis
     self._diagnoses.append(diagnosis)
 
-  def has_diagnosis(self, diagnosis_result):
+  def has_diagnosis_result(self, diagnosis_result):
     """Returns if the diagnosis_result has been added."""
     return diagnosis_result in self._diagnoses_by_results
 
@@ -184,7 +184,7 @@ class DiagnosesManager(object):
 
   def _add_diagnosis(self, diagnosis):
     """Adds a diagnosis to the internal store."""
-    if self.store.has_diagnosis(diagnosis.result):
+    if self.store.has_diagnosis_result(diagnosis.result):
       self._logger.warning('Duplicate diagnosis result: %s', diagnosis)
     self.store._add_diagnosis(diagnosis)  # pylint: disable=protected-access
 
