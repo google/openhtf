@@ -63,8 +63,9 @@ def fail_phase_diagnoser(phase_record):
 
 
 @htf.TestDiagnoser(BadResult)
-def fail_test_diagnoser(test_record_):
+def fail_test_diagnoser(test_record_, store):
   del test_record_  # Unused.
+  del store  # Unused.
   return htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True)
 
 
@@ -75,8 +76,9 @@ def exception_phase_diag(phase_record):
 
 
 @htf.TestDiagnoser(BadResult)
-def exception_test_diagnoser(test_record_):
+def exception_test_diagnoser(test_record_, store):
   del test_record_  # Unused.
+  del store  # Unused.
   raise DiagTestError('broken differently')
 
 
@@ -94,8 +96,9 @@ def basic_wrapper_phase_diagnoser(phase_record):
 
 
 @htf.TestDiagnoser(OkayResult)
-def basic_wrapper_test_diagnoser(test_record_):
+def basic_wrapper_test_diagnoser(test_record_, store):
   del test_record_  # Unused
+  del store  # Unused.
   return htf.Diagnosis(OkayResult.TEST_OK, 'Okay')
 
 
@@ -133,20 +136,23 @@ def dupe_b_phase_diag(phase_record):
 
 
 @htf.TestDiagnoser(DupeResultA)
-def dupe_a_test_diag(test_record_):
+def dupe_a_test_diag(test_record_, store):
   del test_record_  # Unused.
+  del store  # Unused.
   return DupeResultA.DUPE
 
 
 @htf.TestDiagnoser(DupeResultA)
-def dupe_a2_test_diag(test_record_):
+def dupe_a2_test_diag(test_record_, store):
   del test_record_  # Unused.
+  del store  # Unused.
   return DupeResultA.DUPE
 
 
 @htf.TestDiagnoser(DupeResultB)
-def dupe_b_test_diag(test_record_):
+def dupe_b_test_diag(test_record_, store):
   del test_record_  # Unused.
+  del store  # Unused.
   return DupeResultB.DUPE
 
 
@@ -314,8 +320,9 @@ class DiagnoserTest(unittest.TestCase):
   def test_test_diagnoser_name_from_function(self):
 
     @htf.TestDiagnoser(OkayResult.OKAY)
-    def from_function(test_record_):
+    def from_function(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return None
 
     self.assertEqual('from_function', from_function.name)
@@ -323,8 +330,9 @@ class DiagnoserTest(unittest.TestCase):
   def test_test_diagnoser_name_set(self):
 
     @htf.TestDiagnoser(OkayResult.OKAY, name='from_arg')
-    def from_function(test_record_):
+    def from_function(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return None
 
     self.assertEqual('from_arg', from_function.name)
@@ -332,8 +340,9 @@ class DiagnoserTest(unittest.TestCase):
   def test_test_diagnoser_use_again(self):
 
     @htf.TestDiagnoser(DupeResultA)
-    def reuse(test_record_):
+    def reuse(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return None
 
     with self.assertRaises(diagnoses_lib.DiagnoserError):
@@ -438,8 +447,9 @@ class DiagnosesTest(htf_test.TestCase):
   def test_test_no_diagnoses(self):
 
     @htf.TestDiagnoser(BadResult)
-    def no_result(test_record_):
+    def no_result(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return None
 
     test = htf.Test(basic_phase)
@@ -617,8 +627,9 @@ class DiagnosesTest(htf_test.TestCase):
   def test_test_diagnoser__wrong_result_type(self):
 
     @htf.TestDiagnoser(OkayResult)
-    def bad_result(test_record_):
+    def bad_result(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return htf.Diagnosis(BadResult.ONE, 'one')
 
     test = htf.Test(basic_phase)
@@ -635,8 +646,9 @@ class DiagnosesTest(htf_test.TestCase):
   def test_test_diagnoser__single_result(self):
 
     @htf.TestDiagnoser(BadResult)
-    def not_diag(test_record_):
+    def not_diag(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return BadResult.ONE
 
     test = htf.Test(basic_phase)
@@ -653,8 +665,9 @@ class DiagnosesTest(htf_test.TestCase):
   def test_test_diagnoser__single_not_diagnosis(self):
 
     @htf.TestDiagnoser(BadResult)
-    def not_diag(test_record_):
+    def not_diag(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return 43
 
     test = htf.Test(basic_phase)
@@ -671,8 +684,9 @@ class DiagnosesTest(htf_test.TestCase):
   def test_test_diagnoser__wrong_result_type_list(self):
 
     @htf.TestDiagnoser(OkayResult)
-    def bad_result(test_record_):
+    def bad_result(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return [htf.Diagnosis(BadResult.ONE, 'one')]
 
     test = htf.Test(basic_phase)
@@ -689,8 +703,9 @@ class DiagnosesTest(htf_test.TestCase):
   def test_test_diagnoser__single_not_diagnosis_list(self):
 
     @htf.TestDiagnoser(BadResult)
-    def not_diag(test_record_):
+    def not_diag(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return [BadResult.ONE]
 
     test = htf.Test(basic_phase)
@@ -1085,8 +1100,9 @@ class DiagnosesTest(htf_test.TestCase):
   def test_test_diagnoser__internal_not_allowed(self):
 
     @htf.TestDiagnoser(OkayResult)
-    def internal_diag(test_record_):
+    def internal_diag(test_record_, store):
       del test_record_  # Unused.
+      del store  # Unused.
       return htf.Diagnosis(OkayResult.OKAY, 'not really okay', is_internal=True)
 
     test = htf.Test(basic_phase)

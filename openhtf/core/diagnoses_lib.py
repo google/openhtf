@@ -105,15 +105,11 @@ still run.
       test.measurements.data[input] = reader.get(input)
 
   @openhtf.TestDiagnoser(BlockStatusResult)
-  def block_test_diag(test_record):
-    failed_block0 = False
-    failed_block1 = False
-    for diagnosis in test_record.diagnoses:
-      if diagnosis.result == BlockStatusResult.BLOCK0_OUT_OF_SPEC:
-        failed_block0 = True
-      if diagnosis.result == BlockStatusResult.BLOCK1_OUT_OF_SPEC:
-        failed_block1 = True
-    if failed_block0 and failed_block1:
+  def block_test_diag(test_record, diagnoses_store):
+    if (diagnoses_store.has_diagnosis_result(
+            BlockStatusResult.BLOCK0_OUT_OF_SPEC) and
+        diagnoses_store.has_diganosis_result(
+            BlockStatusResult.BLOCK1_OUT_OF_SPEC)):
       return openhtf.Diagnosis(
           BlockStatusResult.UNIT_OUT_OF_SPEC,
           'Entire unit is out of spec.', priority=DiagPriority.HIGHEST,
@@ -244,7 +240,7 @@ class DiagnosesManager(object):
     Raises:
       InvalidDiagnosisError: when the diagnoser returns an Internal diagnosis.
     """
-    diagnosis_or_diagnoses = diagnoser.run(test_record)
+    diagnosis_or_diagnoses = diagnoser.run(test_record, self.store)
     for diag in self._convert_result(diagnosis_or_diagnoses, diagnoser):
       if diag.is_internal:
         raise InvalidDiagnosisError(
@@ -395,11 +391,13 @@ class BaseTestDiagnoser(six.with_metaclass(abc.ABCMeta, _BaseDiagnoser)):
   __slots__ = ()
 
   @abc.abstractmethod
-  def run(self, test_rec):
+  def run(self, test_rec, diagnoses_store):
     """Must be implemented to return list of Diagnoses instances.
 
     Args:
       test_rec: test_record.TestRecord for the entire test run.
+      diagnoses_store: DiagnosesStore for the diagnoses found during this test
+        run.
 
     Returns:
       None, one Diagnosis instance, or an iterable of Diagnosis instances, the
@@ -412,7 +410,7 @@ class TestDiagnoser(BaseTestDiagnoser):
   """Diagnoser definition for a Test using a function."""
 
   # The function to run.  Set with run_func in the initializer.
-  # type: Optional[Callable[[test_record.TestRecord],
+  # type: Optional[Callable[[test_record.TestRecord, DiagnosesStore],
   #               Union[None, 'Diagnosis', List['Diagnosis']]]]
   _run_func = attr.ib(default=None)
 
@@ -426,9 +424,9 @@ class TestDiagnoser(BaseTestDiagnoser):
       name = func.__name__
     return TestDiagnoser(result_type=self.result_type, name=name, run_func=func)
 
-  def run(self, test_record):
+  def run(self, test_record, diagnoses_store):
     """Runs the test diagnoser and returns the diagnoses."""
-    return self._run_func(test_record)
+    return self._run_func(test_record, diagnoses_store)
 
   def _check_definition(self):
     if not self._run_func:
