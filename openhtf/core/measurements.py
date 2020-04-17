@@ -126,10 +126,10 @@ class _ConditionalValidator(object):
   validator = attr.ib()  # type: Callable[[Any], bool]
 
   def as_base_types(self):
-    return {
-        data.convert_to_base_types(self.result),
-        str(self.validator),
-    }
+    return dict(
+        result=data.convert_to_base_types(self.result),
+        validator=str(self.validator),
+    )
 
   def with_args(self, **kwargs):
     if hasattr(self.validator, 'with_args'):
