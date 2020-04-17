@@ -842,6 +842,28 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertPhaseHasBasicOkayDiagnosis(phase_rec)
 
   @htf_test.yields_phases
+  def test_phase_diagnoser_exception__generator_exceptions_after_add(self):
+
+    @htf.PhaseDiagnoser(BadResult)
+    def generate_diag_then_error(phase_record):
+      del phase_record  # Unused.
+      yield htf.Diagnosis(BadResult.ONE, 'Bad!', is_failure=True)
+      raise DiagPhaseError('it fatal')
+
+    phase = htf.diagnose(generate_diag_then_error)(basic_phase)
+
+    phase_rec = yield phase
+
+    self.assertPhaseError(phase_rec, exc_type=DiagPhaseError)
+    self.assertPhaseOutcomeError(phase_rec)
+    self.assertEqual([], phase_rec.diagnosis_results)
+    self.assertEqual([BadResult.ONE], phase_rec.failure_diagnosis_results)
+    store = self.get_diagnoses_store()
+    self.assertEqual(
+        htf.Diagnosis(BadResult.ONE, 'Bad!', is_failure=True),
+        store.get_diagnosis(BadResult.ONE))
+
+  @htf_test.yields_phases
   def test_phase_diagnoser_exception__later_diags_still_run_with_fail(self):
     phase = htf.diagnose(exception_phase_diag, fail_phase_diagnoser)(
         basic_phase)
