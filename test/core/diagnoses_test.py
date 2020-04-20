@@ -437,6 +437,7 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
     self.assertPhaseContinue(phase_rec)
     self.assertPhaseOutcomePass(phase_rec)
+    self.assertEqual([no_result], phase_rec.diagnosers)
     self.assertEqual([], phase_rec.diagnosis_results)
     self.assertEqual([], phase_rec.failure_diagnosis_results)
     store = self.get_diagnoses_store()

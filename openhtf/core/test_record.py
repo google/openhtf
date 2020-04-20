@@ -110,10 +110,12 @@ class TestRecord(  # pylint: disable=no-init
             'code_info': None,
             'metadata': dict,
             'phases': list,
+            'diagnosers': list,
             'diagnoses': list,
             'log_records': list,
             '_cached_record': dict,
             '_cached_phases': list,
+            '_cached_diagnosers': list,
             '_cached_diagnoses': list,
             '_cached_log_records': list,
             '_cached_config_from_metadata': dict,
@@ -130,6 +132,7 @@ class TestRecord(  # pylint: disable=no-init
         'station_id': data.convert_to_base_types(self.station_id),
         'code_info': data.convert_to_base_types(self.code_info),
     }
+    self._cached_diagnosers = data.convert_to_base_types(self.diagnosers)
 
   def add_outcome_details(self, code, description=''):
     """Adds a code with optional description to this record's outcome_details.
@@ -165,6 +168,7 @@ class TestRecord(  # pylint: disable=no-init
         'outcome_details': data.convert_to_base_types(self.outcome_details),
         'metadata': metadata,
         'phases': self._cached_phases,
+        'diagnosers': self._cached_diagnosers,
         'diagnoses': self._cached_diagnoses,
         'log_records': self._cached_log_records,
     }
@@ -188,6 +192,7 @@ class PhaseRecord(  # pylint: disable=no-init
         {
             'measurements': None,
             'options': None,
+            'diagnosers': list,
             'start_time_millis': int,
             'end_time_millis': None,
             'attachments': dict,
@@ -217,7 +222,8 @@ class PhaseRecord(  # pylint: disable=no-init
 
   @classmethod
   def from_descriptor(cls, phase_desc):
-    return cls(id(phase_desc), phase_desc.name, phase_desc.code_info)
+    return cls(id(phase_desc), phase_desc.name, phase_desc.code_info,
+               diagnosers=list(phase_desc.diagnosers))
 
   def as_base_types(self):
     """Convert to a dict representation composed exclusively of base types."""

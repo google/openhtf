@@ -60,6 +60,7 @@ PHASE_RECORD_BASE_TYPE.update({
     'end_time_millis': None,
     'outcome': None,
     'result': None,
+    'diagnosers': [],
     'diagnosis_results': [],
     'failure_diagnosis_results': [],
 })
@@ -78,6 +79,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
             'config': {}
         },
         'phases': [],
+        'diagnosers': [],
         'diagnoses': [],
         'log_records': [],
     },
@@ -92,6 +94,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
 class TestTestApi(unittest.TestCase):
 
   def setUp(self):
+    super(TestTestApi, self).setUp()
     patcher = mock.patch.object(test_record.PhaseRecord, 'record_start_time',
                                 return_value=11235)
     self.mock_record_start_time = patcher.start()

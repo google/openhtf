@@ -139,7 +139,8 @@ class TestState(util.SubscribableStateMixin):
         dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
         start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
-        metadata=copy.deepcopy(test_desc.metadata))
+        metadata=copy.deepcopy(test_desc.metadata),
+        diagnosers=test_options.diagnosers)
     logs.initialize_record_handler(
         execution_uid, self.test_record, self.notify_update)
     self.state_logger = logs.get_record_logger_for(execution_uid)
