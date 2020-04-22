@@ -329,8 +329,12 @@ class _BaseDiagnoser(object):
   def as_base_types(self):
     return {
         'name': self.name,
-        'possible_results': [r.value for r in self.result_type],
+        'possible_results': self.possible_results,
     }
+
+  @property
+  def possible_results(self):
+    return [r.value for r in self.result_type]
 
   def _check_definition(self):
     """Internal function to verify that the diagnoser is completely defined."""
