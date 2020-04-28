@@ -388,6 +388,8 @@ class Dimension(object):
     })
 
   def __eq__(self, other):
+    if not issubclass(type(other), self.__class__):
+      return False
     return (self.description == other.description and self.unit == other.unit)
 
   def __ne__(self, other):
