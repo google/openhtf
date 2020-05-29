@@ -184,19 +184,21 @@ class DiagnosesManager(object):
       self._logger.warning('Duplicate diagnosis result: %s', diagnosis)
     self.store._add_diagnosis(diagnosis)  # pylint: disable=protected-access
 
-  def _verify_diagnosis(self, diag, diagnoser):
+  def _verify_and_fix_diagnosis(self, diag, diagnoser):
     if not isinstance(diag.result, diagnoser.result_type):
       raise InvalidDiagnosisError(
           'Diagnoser {} returned different result then its result_type.'.format(
               diagnoser.name))
+    if diagnoser.always_fail:
+      return attr.evolve(diag, is_failure=True)
+    return diag
 
   def _convert_result(self, diagnosis_or_diagnoses, diagnoser):
     """Convert parameter into a list if a single Diagnosis."""
     if not diagnosis_or_diagnoses:
       return
     elif isinstance(diagnosis_or_diagnoses, Diagnosis):
-      self._verify_diagnosis(diagnosis_or_diagnoses, diagnoser)
-      yield diagnosis_or_diagnoses
+      yield self._verify_and_fix_diagnosis(diagnosis_or_diagnoses, diagnoser)
     elif (isinstance(diagnosis_or_diagnoses, six.string_types) or
           not isinstance(diagnosis_or_diagnoses, collections.Iterable)):
       raise InvalidDiagnosisError(
@@ -209,8 +211,7 @@ class DiagnosesManager(object):
               'Diagnoser {} iterable includes non-Diagnosis of type {}.'.format(
                   diagnoser.name,
                   type(diag).__name__))
-        self._verify_diagnosis(diag, diagnoser)
-        yield diag
+        yield self._verify_and_fix_diagnosis(diag, diagnoser)
 
   def execute_phase_diagnoser(self, diagnoser, phase_state, test_record):
     """Execute a phase diagnoser.
@@ -326,6 +327,9 @@ class _BaseDiagnoser(object):
   # The descriptive name for this diagnoser instance.
   name = attr.ib(default=None, type=str)  # pylint: disable=g-ambiguous-str-annotation
 
+  # If set, diagnoses from this diagnoser will always be marked as failures.
+  always_fail = attr.ib(default=False, type=bool)
+
   def as_base_types(self):
     return {
         'name': self.name,
@@ -373,11 +377,10 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
     if self._run_func:
       raise DiagnoserError(
           'Fully defined diagnoser cannot decorate another function.')
-    name = self.name
-    if not name:
-      name = func.__name__
-    return PhaseDiagnoser(
-        result_type=self.result_type, name=name, run_func=func)
+    changes = dict(run_func=func)
+    if not self.name:
+      changes['name'] = func.__name__
+    return attr.evolve(self, **changes)
 
   def run(self, phase_record):
     """Runs the phase diagnoser and returns the diagnoses."""
@@ -423,10 +426,10 @@ class TestDiagnoser(BaseTestDiagnoser):
     if self._run_func:
       raise DiagnoserError(
           'Fully defined diagnoser cannot decorate another function.')
-    name = self.name
-    if not name:
-      name = func.__name__
-    return TestDiagnoser(result_type=self.result_type, name=name, run_func=func)
+    changes = dict(run_func=func)
+    if not self.name:
+      changes['name'] = func.__name__
+    return attr.evolve(self, **changes)
 
   def run(self, test_record, diagnoses_store):
     """Runs the test diagnoser and returns the diagnoses."""

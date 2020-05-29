@@ -69,6 +69,19 @@ def fail_test_diagnoser(test_record_, store):
   return htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True)
 
 
+@htf.PhaseDiagnoser(BadResult, always_fail=True)
+def always_fail_phase_diagnoser(phase_record):
+  del phase_record  # Unused.
+  return htf.Diagnosis(BadResult.ONE, 'Oh no!')
+
+
+@htf.TestDiagnoser(BadResult, always_fail=True)
+def always_fail_test_diagnoser(test_record_, store):
+  del test_record_  # Unused.
+  del store  # Unused.
+  return htf.Diagnosis(BadResult.TWO, 'Uh oh!')
+
+
 @htf.PhaseDiagnoser(BadResult)
 def exception_phase_diag(phase_record):
   del phase_record  # Unused.
@@ -106,7 +119,8 @@ def get_mock_diag(**kwargs):
   if 'side_effect' not in kwargs and 'return_value' not in kwargs:
     kwargs['return_value'] = None
   mock_diag = mock.MagicMock(**kwargs)
-  return diagnoses_lib.PhaseDiagnoser(OkayResult, 'mock_diag', mock_diag)
+  return diagnoses_lib.PhaseDiagnoser(
+      OkayResult, name='mock_diag', run_func=mock_diag)
 
 
 class DupeResultA(htf.DiagResultEnum):
@@ -519,6 +533,16 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertPhaseHasFailDiagnosis(phase_rec)
 
   @htf_test.yields_phases
+  def test_always_failed_phase_diagnoser(self):
+    phase = htf.diagnose(always_fail_phase_diagnoser)(basic_phase)
+
+    phase_rec = yield phase
+
+    self.assertPhaseContinue(phase_rec)
+    self.assertPhaseOutcomeFail(phase_rec)
+    self.assertPhaseHasFailDiagnosis(phase_rec)
+
+  @htf_test.yields_phases
   def test_failed_phase_diagnoser_on_test(self):
     phase = htf.diagnose(fail_phase_diagnoser)(basic_phase)
 
@@ -542,6 +566,17 @@ class DiagnosesTest(htf_test.TestCase):
   def test_failed_test_diagnoser(self):
     test = htf.Test(basic_phase)
     test.add_test_diagnosers(fail_test_diagnoser)
+
+    test_rec = yield test
+
+    self.assertTestFail(test_rec)
+    self.assertEqual([htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True)],
+                     test_rec.diagnoses)
+
+  @htf_test.yields_phases
+  def test_always_failed_test_diagnoser(self):
+    test = htf.Test(basic_phase)
+    test.add_test_diagnosers(always_fail_test_diagnoser)
 
     test_rec = yield test
 
