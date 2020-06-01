@@ -331,10 +331,13 @@ class _BaseDiagnoser(object):
   always_fail = attr.ib(default=False, type=bool)
 
   def as_base_types(self):
-    return {
+    ret = {
         'name': self.name,
         'possible_results': self.possible_results,
     }
+    if self.always_fail:
+      ret.update(always_fail=True)
+    return ret
 
   @property
   def possible_results(self):
