@@ -22,7 +22,6 @@ export declare interface UserInputPlugState {
   id: string;
   message: string;
   'text-input': string;
-  'show-image': string;
   'image-url': string;
 }
 
@@ -68,13 +67,12 @@ export class UserInputPlugComponent extends BasePlug {
   }
 
   hasImage() {
-    return this.getPlugState()['show-image'];
+    return this.getPlugState()['image-url'];
   }
 
   get Image_URL() {
     return this.getPlugState()['image-url'];
   }
-
 
   sendResponse(input: HTMLInputElement) {
     const promptId = this.getPlugState().id;

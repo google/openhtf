@@ -56,7 +56,7 @@ class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
-Prompt = collections.namedtuple('Prompt', 'id message text_input show_image image_url')
+Prompt = collections.namedtuple('Prompt', 'id message text_input image_url')
 
 
 class ConsolePrompt(threading.Thread):
@@ -151,7 +151,6 @@ class UserInput(plugs.FrontendAwareBasePlug):
       return {'id': self._prompt.id,
               'message': self._prompt.message,
               'text-input': self._prompt.text_input,
-              'show-image': self._prompt.show_image,
               'image-url': self._prompt.image_url}
 
   def tearDown(self):
@@ -207,11 +206,8 @@ class UserInput(plugs.FrontendAwareBasePlug):
                  ', Expects text input.' if text_input else '')
 
       self._response = None
-      show_image = False
-      if image_url is not None:
-          show_image = True
       self._prompt = Prompt(
-          id=prompt_id, message=message, text_input=text_input, show_image=show_image, image_url=image_url)
+          id=prompt_id, message=message, text_input=text_input, image_url=image_url)
       if sys.stdin.isatty():
         self._console_prompt = ConsolePrompt(
             message, functools.partial(self.respond, prompt_id), cli_color)
