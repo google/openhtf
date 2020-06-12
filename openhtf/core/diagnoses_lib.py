@@ -151,7 +151,7 @@ class DiagnosesStore(object):
 
   _diagnoses_by_results = attr.ib(
       default=attr.Factory(dict))  # type: Dict['DiagResultEnum', 'Diagnosis']
-  _diagnoses = attr.ib(default=attr.Factory(list))  # type: Dict['Diagnosis']
+  _diagnoses = attr.ib(default=attr.Factory(list))  # type: List['Diagnosis']
 
   def _add_diagnosis(self, diagnosis):
     """Add a diagnosis to the store."""
@@ -176,7 +176,8 @@ class DiagnosesManager(object):
   """
 
   _logger = attr.ib(type=logging.Logger)
-  store = attr.ib(default=attr.Factory(DiagnosesStore), init=False)
+  store = attr.ib(
+      type=DiagnosesStore, default=attr.Factory(DiagnosesStore), init=False)
 
   def _add_diagnosis(self, diagnosis):
     """Adds a diagnosis to the internal store."""
@@ -325,10 +326,10 @@ class _BaseDiagnoser(object):
   result_type = attr.ib()  # type: Type['DiagResultEnum']
 
   # The descriptive name for this diagnoser instance.
-  name = attr.ib(default=None, type=str)  # pylint: disable=g-ambiguous-str-annotation
+  name = attr.ib(type=str, default=None)  # pylint: disable=g-ambiguous-str-annotation
 
   # If set, diagnoses from this diagnoser will always be marked as failures.
-  always_fail = attr.ib(default=False, type=bool)
+  always_fail = attr.ib(type=bool, default=False)
 
   def as_base_types(self):
     ret = {
@@ -490,21 +491,21 @@ class Diagnosis(object):
 
   # Human readable description that gives more information about the failure and
   # possible what to do with it.
-  description = attr.ib(type=str)  # pylint: disable=g-ambiguous-str-annotation
+  description = attr.ib(type=str, default='')  # pylint: disable=g-ambiguous-str-annotation
 
   # The component that is associated with this diagnosis.
-  component = attr.ib(default=None, type=DiagnosisComponent)
+  component = attr.ib(type=DiagnosisComponent, default=None)
 
   # The level of importance for the diagnosis.
-  priority = attr.ib(default=DiagPriority.NORMAL, type=DiagPriority)
+  priority = attr.ib(type=DiagPriority, default=DiagPriority.NORMAL)
 
   # If this diagnosis is a failure result.
-  is_failure = attr.ib(default=False, type=bool)
+  is_failure = attr.ib(type=bool, default=False)
 
   # Internal diagnosis are only serialized by result name as part of the phase
   # it was diagnosed for.  They must not be used with failures or with Test
   # Diagnosers.
-  is_internal = attr.ib(default=False, type=bool)
+  is_internal = attr.ib(type=bool, default=False)
 
   def __attrs_post_init__(self):
     if self.is_internal and self.is_failure:
