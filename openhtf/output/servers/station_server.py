@@ -21,6 +21,8 @@ import sockjs.tornado
 
 import openhtf
 from openhtf.output.callbacks import mfg_inspector
+from openhtf.output.proto import mfg_event_converter
+from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.servers import pub_sub
 from openhtf.output.servers import web_gui_server
 from openhtf.util import conf
@@ -463,8 +465,25 @@ class HistoryItemHandler(BaseHistoryHandler):
   def get(self, file_name):
     # TODO(Kenadia): Implement the history item handler. The implementation
     # depends on the format used to store test records on disk.
-    self.write('Not implemented.')
-    self.set_status(500)
+    # (Out of box disk format is fixed, only subclasses/alternative
+    # implementations would need to concern themselves with that)
+
+    fn = os.path.join(self.history_path, file_name)
+    if not os.path.isfile(fn):
+      self.write("Not found")
+      self.set_status(404)
+      return
+
+    with open(fn, mode="rb") as f:
+      me = mfg_event_pb2.MfgEvent()
+      me.ParseFromString(f.read())
+      from openhtf.core.test_record import TestRecord
+      tr: TestRecord = mfg_event_converter.test_record_from_mfg_event(me)
+      test_record_dict = data.convert_to_base_types(tr)
+      test_state_dict = _test_state_from_record(test_record_dict,
+                                                StationPubSub._last_execution_uid)
+      self.set_status(200)
+      self.write(test_state_dict)
 
 
 class HistoryAttachmentsHandler(BaseHistoryHandler):
@@ -479,8 +498,23 @@ class HistoryAttachmentsHandler(BaseHistoryHandler):
   def get(self, file_name, attachment_name):
     # TODO(Kenadia): Implement the history item handler. The implementation
     # depends on the format used to store test records on disk.
-    self.write('Not implemented.')
-    self.set_status(500)
+    fn = os.path.join(self.history_path, file_name)
+    if not os.path.isfile(fn):
+      self.write("Not found")
+      self.set_status(404)
+      return
+
+    with open(fn, mode="rb") as f:
+      me = mfg_event_pb2.MfgEvent()
+      me.ParseFromString(f.read())
+      # TODO - could use sha1 here to check?
+      desired_real = [a for a in me.attachment if a.name == attachment_name]
+      if len(desired_real) > 0:
+        self.write(desired_real[0].value_binary)
+        self.set_status(200)
+      else:
+        self.write("some, but no match?!")
+        self.set_status(404)
 
 
 class StationMulticast(multicast.MulticastListener):
