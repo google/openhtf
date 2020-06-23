@@ -63,8 +63,11 @@ class ExceptionInfo(collections.namedtuple(
     return {
         'exc_type': str(self.exc_type),
         'exc_val': self.exc_val,
-        'exc_tb': ''.join(traceback.format_exception(*self)),
+        'exc_tb': self.get_traceback_string(),
     }
+
+  def get_traceback_string(self):
+    return ''.join(traceback.format_exception(*self))
 
   def __str__(self):
     return self.exc_type.__name__
@@ -131,6 +134,10 @@ class PhaseExecutionOutcome(collections.namedtuple(
     """True if the phase in question raised an exception."""
     return isinstance(self.phase_result, (
         ExceptionInfo, threads.ThreadTerminationError))
+
+  @property
+  def is_aborted(self):
+    return isinstance(self.phase_result, threads.ThreadTerminationError)
 
 
 class PhaseExecutorThread(threads.KillableThread):
@@ -276,7 +283,7 @@ class PhaseExecutor(object):
       self._current_phase_thread = None
 
     # Refresh the result in case a validation for a partially set measurement
-    # raised an exception.
+    # or phase diagnoser raised an exception.
     result = override_result or phase_state.result
     _LOG.debug('Phase %s finished with result %s', phase_desc.name,
                result.phase_result)

@@ -21,6 +21,14 @@ import signal
 from openhtf import plugs
 from openhtf.core import phase_executor
 from openhtf.core import test_record
+from openhtf.core.diagnoses_lib import diagnose
+from openhtf.core.diagnoses_lib import Diagnosis
+from openhtf.core.diagnoses_lib import DiagnosisComponent
+from openhtf.core.diagnoses_lib import DiagPriority
+from openhtf.core.diagnoses_lib import DiagResultEnum
+from openhtf.core.diagnoses_lib import PhaseDiagnoser
+from openhtf.core.diagnoses_lib import TestDiagnoser
+
 from openhtf.core.measurements import Dimension
 from openhtf.core.measurements import Measurement
 from openhtf.core.measurements import measures

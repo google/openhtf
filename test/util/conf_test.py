@@ -14,15 +14,13 @@
 
 import io
 import os.path
-import sys
 import unittest
 
 from openhtf.util import conf
 import six
 
 
-_old_argv = list(sys.argv)
-sys.argv.extend([
+args = [
     '--config-value=flag_key=flag_value',
     '--config-value', 'other_flag=other_value',
     # You can specify arbitrary keys, but they'll get ignored if they aren't
@@ -30,7 +28,7 @@ sys.argv.extend([
     '--config_value=undeclared_flag=who_cares',
     '--config-value=true_value=true',
     '--config-value', 'num_value=100',
-])
+]
 
 conf.declare('flag_key')
 conf.declare('other_flag')
@@ -44,10 +42,6 @@ conf.declare('string_default', default_value='default')
 conf.declare('no_default')
 
 
-def tear_down_module():
-    sys.argv = _old_argv
-
-
 class TestConf(unittest.TestCase):
 
   YAML_FILENAME = os.path.join(os.path.dirname(__file__), 'test_config.yaml')
@@ -55,7 +49,7 @@ class TestConf(unittest.TestCase):
   NOT_A_DICT = os.path.join(os.path.dirname(__file__), 'bad_config.yaml')
 
   def setUp(self):
-    flags, _ = conf.ARG_PARSER.parse_known_args()
+    flags, _ = conf.ARG_PARSER.parse_known_args(args)
     conf.load_flag_values(flags)
 
   def tearDown(self):

@@ -69,11 +69,13 @@ class TearDownRaisesPlug2(plugs.BasePlug):
 class PlugsTest(test.TestCase):
 
   def setUp(self):
+    super(PlugsTest, self).setUp()
     self.plug_manager = plugs.PlugManager({AdderPlug})
     AdderPlug.INSTANCE_COUNT = 0
 
   def tearDown(self):
     self.plug_manager.tear_down_plugs()
+    super(PlugsTest, self).tearDown()
 
   def test_base_plug(self):
     plug = plugs.BasePlug()

@@ -20,15 +20,13 @@ actually care about.
 """
 
 import collections
-
-from openhtf.core import measurements
+import unittest
 
 import mock
-
-from examples import all_the_things
 import openhtf as htf
+from openhtf.core import measurements
+from examples import all_the_things
 from openhtf.util import test as htf_test
-
 
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
@@ -65,6 +63,7 @@ def bad_validator_with_error(test):
 class TestMeasurements(htf_test.TestCase):
 
   def setUp(self):
+    super(TestMeasurements, self).setUp()
     # Ensure most measurements features work without pandas.
     pandas_patch = mock.patch.object(measurements, 'pandas', None)
     pandas_patch.start()
@@ -73,6 +72,43 @@ class TestMeasurements(htf_test.TestCase):
   def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
     self.assertRaises(TypeError, htf.Measurement('bad_units').with_units, 1701)
+
+  def test_bad_transform_fn(self):
+    """Bad functions or setting multiple functions should raise."""
+    m = htf.Measurement('transform')
+    with self.assertRaises(TypeError):
+      m.with_transform(None)
+    with self.assertRaises(TypeError):
+      m.with_transform('int')
+    with self.assertRaises(ValueError):
+      m.with_transform(abs).with_transform(int)
+
+  def test_transform_fn(self):
+    """Check that the transform_fn is working."""
+    m = htf.Measurement('abs_transform').with_transform(abs)
+    m.measured_value.set(-1.234)
+    self.assertAlmostEqual(m.measured_value.value, 1.234)
+
+  def test_bad_precision(self):
+    """Creating a measurement with invalid precision should raise."""
+    m = htf.Measurement('bad_precision')
+    with self.assertRaises(TypeError):
+      m.with_precision(1.1)
+    with self.assertRaises(TypeError):
+      m.with_precision('1')
+
+  def test_precision(self):
+    """Check that with_precision does what it says on the tin."""
+    m = htf.Measurement('meas_with_precision').with_precision(3)
+    m.measured_value.set(1.2345)
+    self.assertAlmostEqual(m.measured_value.value, 1.234)
+    m.measured_value.set(1.2346)
+    self.assertAlmostEqual(m.measured_value.value, 1.235)
+
+    m = htf.Measurement('meas_with_precision_and_dims').with_precision(
+        3).with_dimensions('x')
+    m.measured_value[42] = 1.2346
+    self.assertAlmostEqual(m.measured_value[42], 1.235)
 
   def test_cache_same_object(self):
     m = htf.Measurement('measurement')
@@ -224,3 +260,67 @@ class TestMeasuredValue(htf_test.TestCase):
     named_complex = NamedComplex(10)
     measured_value.set(named_complex)
     self.assertEqual({'a': 10}, measured_value._cached_value)
+
+
+class TestMeasurementDimensions(htf_test.TestCase):
+
+  def test_coordinates_len_string(self):
+    length = measurements._coordinates_len('string')
+    self.assertEqual(length, 1)
+
+  def test_coordinates_len_integer(self):
+    length = measurements._coordinates_len(42)
+    self.assertEqual(length, 1)
+
+  def test_coordinates_len_tuple(self):
+    coordinates = ('string', 42,)
+    length = measurements._coordinates_len(coordinates)
+    self.assertEqual(length, 2)
+
+  def test_single_dimension_string(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    measurement.measured_value['dim val'] = 42
+    val = measurement.measured_value['dim val']
+    self.assertEqual(val, 42)
+
+  def test_single_dimension_integer(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    val = measurement.measured_value[42] = 'measurement'
+    self.assertEqual(val, 'measurement')
+
+  def test_single_dimension_float(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    val = measurement.measured_value[42.42] = 'measurement'
+    self.assertEqual(val, 'measurement')
+
+  def test_single_dimension_mutable_obj_error(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension')
+    with self.assertRaises(measurements.InvalidDimensionsError):
+      measurement.measured_value[['dim val']] = 42
+
+  def test_multi_dimension_correct(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension1', 'dimension2')
+    dimension_vals = ('dim val 1', 1234,)
+    try:
+      measurement.measured_value[dimension_vals] = 42
+    except measurements.InvalidDimensionsError:
+      self.fail('measurement.DimensionedMeasuredValue.__setitem__ '
+                'raised error unexpectedly.')
+
+  def test_multi_dimension_not_enough_error(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension1', 'dimension2')
+    with self.assertRaises(measurements.InvalidDimensionsError):
+      measurement.measured_value['dim val'] = 42
+
+  def test_multi_dimension_too_many_error(self):
+    measurement = htf.Measurement('measure')
+    measurement.with_dimensions('dimension1', 'dimension2')
+    dimension_vals = ('dim val 1', 2, 3, 4)
+    with self.assertRaises(measurements.InvalidDimensionsError):
+      measurement.measured_value[dimension_vals] = 42

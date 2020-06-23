@@ -102,18 +102,23 @@ class Attachment(object):
 class TestRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'TestRecord', ['dut_id', 'station_id'],
-        {'start_time_millis': int,
-         'end_time_millis': None,
-         'outcome': None,
-         'outcome_details': list,
-         'code_info': None,
-         'metadata': dict,
-         'phases': list,
-         'log_records': list,
-         '_cached_record': dict,
-         '_cached_phases': list,
-         '_cached_log_records': list,
-         '_cached_config_from_metadata': dict,
+        {
+            'start_time_millis': int,
+            'end_time_millis': None,
+            'outcome': None,
+            'outcome_details': list,
+            'code_info': None,
+            'metadata': dict,
+            'phases': list,
+            'diagnosers': list,
+            'diagnoses': list,
+            'log_records': list,
+            '_cached_record': dict,
+            '_cached_phases': list,
+            '_cached_diagnosers': list,
+            '_cached_diagnoses': list,
+            '_cached_log_records': list,
+            '_cached_config_from_metadata': dict,
         })):
   """The record of a single run of a test."""
 
@@ -127,6 +132,7 @@ class TestRecord(  # pylint: disable=no-init
         'station_id': data.convert_to_base_types(self.station_id),
         'code_info': data.convert_to_base_types(self.code_info),
     }
+    self._cached_diagnosers = data.convert_to_base_types(self.diagnosers)
 
   def add_outcome_details(self, code, description=''):
     """Adds a code with optional description to this record's outcome_details.
@@ -140,6 +146,10 @@ class TestRecord(  # pylint: disable=no-init
   def add_phase_record(self, phase_record):
     self.phases.append(phase_record)
     self._cached_phases.append(phase_record.as_base_types())
+
+  def add_diagnosis(self, diagnosis):
+    self.diagnoses.append(diagnosis)
+    self._cached_diagnoses.append(data.convert_to_base_types(diagnosis))
 
   def add_log_record(self, log_record):
     self.log_records.append(log_record)
@@ -158,6 +168,8 @@ class TestRecord(  # pylint: disable=no-init
         'outcome_details': data.convert_to_base_types(self.outcome_details),
         'metadata': metadata,
         'phases': self._cached_phases,
+        'diagnosers': self._cached_diagnosers,
+        'diagnoses': self._cached_diagnoses,
         'log_records': self._cached_log_records,
     }
     ret.update(self._cached_record)
@@ -177,9 +189,18 @@ PhaseOutcome = Enum(  # pylint: disable=invalid-name
 class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
         'PhaseRecord', ['descriptor_id', 'name', 'codeinfo'],
-        {'measurements': None, 'options': None,
-         'start_time_millis': int, 'end_time_millis': None,
-         'attachments': dict, 'result': None, 'outcome': None})):
+        {
+            'measurements': None,
+            'options': None,
+            'diagnosers': list,
+            'start_time_millis': int,
+            'end_time_millis': None,
+            'attachments': dict,
+            'diagnosis_results': list,
+            'failure_diagnosis_results': list,
+            'result': None,
+            'outcome': None,
+        })):
   """The record of a single run of a phase.
 
   Measurement metadata (declarations) and values are stored in separate
@@ -201,7 +222,8 @@ class PhaseRecord(  # pylint: disable=no-init
 
   @classmethod
   def from_descriptor(cls, phase_desc):
-    return cls(id(phase_desc), phase_desc.name, phase_desc.code_info)
+    return cls(id(phase_desc), phase_desc.name, phase_desc.code_info,
+               diagnosers=list(phase_desc.diagnosers))
 
   def as_base_types(self):
     """Convert to a dict representation composed exclusively of base types."""

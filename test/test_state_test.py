@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import logging
 import tempfile
 import unittest
 
@@ -21,6 +22,7 @@ import mock
 import openhtf
 from openhtf.core import phase_group
 from openhtf.core import test_descriptor
+from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
 
@@ -49,6 +51,7 @@ PHASE_STATE_BASE_TYPE_INITIAL = {
         },
     },
     'attachments': {},
+    'start_time_millis': 11235,
 }
 
 PHASE_RECORD_BASE_TYPE = copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL)
@@ -57,6 +60,9 @@ PHASE_RECORD_BASE_TYPE.update({
     'end_time_millis': None,
     'outcome': None,
     'result': None,
+    'diagnosers': [],
+    'diagnosis_results': [],
+    'failure_diagnosis_results': [],
 })
 
 TEST_STATE_BASE_TYPE_INITIAL = {
@@ -73,6 +79,8 @@ TEST_STATE_BASE_TYPE_INITIAL = {
             'config': {}
         },
         'phases': [],
+        'diagnosers': [],
+        'diagnoses': [],
         'log_records': [],
     },
     'plugs': {
@@ -86,13 +94,18 @@ TEST_STATE_BASE_TYPE_INITIAL = {
 class TestTestApi(unittest.TestCase):
 
   def setUp(self):
+    super(TestTestApi, self).setUp()
+    patcher = mock.patch.object(test_record.PhaseRecord, 'record_start_time',
+                                return_value=11235)
+    self.mock_record_start_time = patcher.start()
+    self.addCleanup(patcher.stop)
     self.test_descriptor = test_descriptor.TestDescriptor(
         phase_group.PhaseGroup(main=[test_phase]), None, {'config': {}})
     self.test_state = test_state.TestState(self.test_descriptor, 'testing-123',
                                            test_descriptor.TestOptions())
     self.test_record = self.test_state.test_record
     self.running_phase_state = test_state.PhaseState.from_descriptor(
-        test_phase, lambda *args: None)
+        test_phase, self.test_state, logging.getLogger())
     self.test_state.running_phase_state = self.running_phase_state
     self.test_api = self.test_state.test_api
 

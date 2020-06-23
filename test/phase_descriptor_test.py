@@ -18,6 +18,7 @@ import mock
 
 import openhtf
 from openhtf import plugs
+from openhtf.core import phase_descriptor
 
 
 def plain_func():
@@ -91,6 +92,21 @@ class TestPhaseDescriptor(unittest.TestCase):
       for attr in type(phase).all_attribute_names:
         if attr == 'func': continue
         self.assertIsNot(getattr(phase, attr), getattr(second_phase, attr))
+
+  @mock.patch.object(phase_descriptor.PhaseDescriptor, "with_args")
+  def test_with_known_args(self, mock_with_args):
+      phase = openhtf.PhaseDescriptor.wrap_or_copy(extra_arg_func)
+      kwargs = {"input": True}
+      phase.with_known_args(**kwargs)
+      mock_with_args.assert_called_once_with(**kwargs)
+
+  @mock.patch.object(phase_descriptor.PhaseDescriptor, "with_args")
+  def test_with_known_args_no_args(self, mock_with_args):
+      phase = openhtf.PhaseDescriptor.wrap_or_copy(normal_test_phase)
+      kwargs = {"input": True}
+      result = phase.with_known_args(**kwargs)
+      self.assertEqual(result, phase)
+      self.assertEqual(mock_with_args.call_count, 0)
 
   def test_with_args(self):
       phase = openhtf.PhaseDescriptor.wrap_or_copy(extra_arg_func)

@@ -262,7 +262,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       flags = self._flags
     for keyval in flags.config_value:
       k, v = keyval.split('=', 1)
-      v = self._modules['yaml'].load(v) if isinstance(v, str) else v
+      v = self._modules['yaml'].safe_load(v) if isinstance(v, str) else v
 
       # Force any command line keys and values that are bytes to unicode.
       k = k.decode() if isinstance(k, bytes) else k

@@ -118,8 +118,14 @@ TestPhase = PhaseOptions
 
 class PhaseDescriptor(mutablerecords.Record(
     'PhaseDescriptor', ['func'],
-    {'options': PhaseOptions, 'plugs': list, 'measurements': list,
-     'extra_kwargs': dict, 'code_info': test_record.CodeInfo.uncaptured()})):
+    {
+        'options': PhaseOptions,
+        'plugs': list,
+        'measurements': list,
+        'diagnosers': list,
+        'extra_kwargs': dict,
+        'code_info': test_record.CodeInfo.uncaptured(),
+    })):
   """Phase function and related information.
 
   Attributes:
@@ -127,6 +133,7 @@ class PhaseDescriptor(mutablerecords.Record(
     options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
     measurements: List of Measurement objects.
+    diagnosers: List of PhaseDiagnoser objects.
     extra_kwargs: Keyword arguments that will be passed to the function.
     code_info: Info about the source code of func.
   """
@@ -178,10 +185,15 @@ class PhaseDescriptor(mutablerecords.Record(
 
   def with_known_args(self, **kwargs):
     """Send only known keyword-arguments to the phase when called."""
-    argspec = inspect.getargspec(self.func)
+    if six.PY3:
+      argspec = inspect.getfullargspec(self.func)
+      argspec_keywords = argspec.varkw
+    else:
+      argspec = inspect.getargspec(self.func)
+      argspec_keywords = argspec.keywords
     stored = {}
     for key, arg in six.iteritems(kwargs):
-      if key in argspec.args or argspec.keywords:
+      if key in argspec.args or argspec_keywords:
         stored[key] = arg
     if stored:
       return self.with_args(**stored)

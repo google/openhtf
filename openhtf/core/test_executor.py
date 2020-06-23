@@ -19,6 +19,7 @@ import pstats
 import sys
 import tempfile
 import threading
+import traceback
 
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
@@ -177,8 +178,10 @@ class TestExecutor(threads.KillableThread):
       # Everything is set, set status and begin test execution.
       self.test_state.set_status_running()
       self._execute_phase_group(self._test_descriptor.phase_group)
-    except:
-      _LOG.exception('Exception in TestExecutor.')
+      self._execute_test_diagnosers()
+    except:  # pylint: disable=bare-except
+      stacktrace = traceback.format_exc()
+      _LOG.error('Error in TestExecutor: \n%s', stacktrace)
       raise
     finally:
       self._execute_test_teardown()
@@ -362,3 +365,22 @@ class TestExecutor(threads.KillableThread):
     teardown_ret = self._execute_teardown_phases(
         group.teardown, group.name)
     return main_ret or teardown_ret
+
+  def _execute_test_diagnoser(self, diagnoser):
+    try:
+      self.test_state.diagnoses_manager.execute_test_diagnoser(
+          diagnoser, self.test_state.test_record)
+    except Exception:  # pylint: disable=broad-except
+      if self._last_outcome and self._last_outcome.is_terminal:
+        self.test_state.state_logger.exception(
+            'Test Diagnoser %s raised an exception, but the test outcome is '
+            'already terminal; logging additional exception here.',
+            diagnoser.name)
+      else:
+        # Record the equivalent failure outcome and exit early.
+        self._last_outcome = phase_executor.PhaseExecutionOutcome(
+            phase_executor.ExceptionInfo(*sys.exc_info()))
+
+  def _execute_test_diagnosers(self):
+    for diagnoser in self._test_options.diagnosers:
+      self._execute_test_diagnoser(diagnoser)

@@ -26,6 +26,7 @@ import os
 import sys
 import textwrap
 import threading
+import traceback
 from types import LambdaType
 import uuid
 import weakref
@@ -34,6 +35,7 @@ import colorama
 import mutablerecords
 
 from openhtf import util
+from openhtf.core import diagnoses_lib
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
@@ -216,6 +218,10 @@ class Test(object):
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
+  def add_test_diagnosers(self, *diagnosers):
+    diagnoses_lib.check_diagnosers(diagnosers, diagnoses_lib.BaseTestDiagnoser)
+    self._test_options.diagnosers.extend(diagnosers)
+
   def configure(self, **kwargs):
     """Update test-wide configuration options. See TestOptions for docs."""
     # These internally ensure they are safe to call multiple times with no weird
@@ -284,6 +290,8 @@ class Test(object):
     Raises:
       InvalidTestStateError: if this test is already being executed.
     """
+    diagnoses_lib.check_for_duplicate_results(self._test_desc.phase_group,
+                                              self._test_options.diagnosers)
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
@@ -341,8 +349,11 @@ class Test(object):
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
-            _LOG.exception(
-                'Output callback %s raised; continuing anyway', output_cb)
+            stacktrace = traceback.format_exc()
+            _LOG.error(
+                'Output callback %s raised:\n%s\nContinuing anyway...',
+                output_cb, stacktrace)
+
         # Make sure the final outcome of the test is printed last and in a
         # noticeable color so it doesn't get scrolled off the screen or missed.
         if final_state.test_record.outcome == test_record.Outcome.ERROR:
@@ -375,7 +386,8 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
     'teardown_function': None,
     'failure_exceptions': list,
     'default_dut_id': 'UNKNOWN_DUT',
-    'stop_on_first_failure': False
+    'stop_on_first_failure': False,
+    'diagnosers': list,
 })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
@@ -391,6 +403,8 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
   default_dut_id: The DUT ID that will be used if the start trigger and all
       subsequent phases fail to set one.
   stop_on_first_failure: Stop Test on first failed measurement.
+  diagnosers: list of BaseTestDiagnoser subclasses to run after all the
+      phases.
   """
 
 

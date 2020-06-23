@@ -54,6 +54,7 @@ by the default copy.deepcopy().
 """
 
 import abc
+import math
 import numbers
 import re
 from future.utils import with_metaclass
@@ -157,13 +158,11 @@ class InRange(RangeValidatorBase):
   def __call__(self, value):
     if value is None:
       return False
-    import math
-    # Check for nan
     if math.isnan(value):
       return False
-    if self.minimum is not None and value < self.minimum:
+    if self._minimum is not None and value < self.minimum:
       return False
-    if self.maximum is not None and value > self.maximum:
+    if self._maximum is not None and value > self.maximum:
       return False
     return True
 

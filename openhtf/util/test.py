@@ -125,6 +125,7 @@ import mock
 import openhtf
 from openhtf import plugs
 from openhtf import util
+from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
 from openhtf.core import phase_executor
 from openhtf.core import test_descriptor
@@ -143,14 +144,22 @@ class InvalidTestError(Exception):
 
 class PhaseOrTestIterator(collections.Iterator):
 
-  def __init__(self, iterator, mock_plugs):
+  def __init__(self, test_case, iterator, mock_plugs,
+               phase_user_defined_state, phase_diagnoses):
     """Create an iterator for iterating over Tests or phases to run.
 
+    This should only be instantiated internally.
+
     Args:
+      test_case: TestCase subclass where the test case function is defined.
       iterator: Child iterator to use for obtaining Tests or test phases, must
           be a generator.
       mock_plugs: Dict mapping plug types to mock objects to use instead of
           actually instantiating that type.
+      phase_user_defined_state: If not None, a dictionary that will be added to
+          the test_state.user_defined_state when handling phases.
+      phase_diagnoses: If not None, must be a list of Diagnosis instances; these
+          are added to the DiagnosesManager when handling phases.
 
     Raises:
       InvalidTestError: when iterator is not a generator.
@@ -164,9 +173,16 @@ class PhaseOrTestIterator(collections.Iterator):
     # Don't do this sort of thing outside OpenHTF unless you really know what
     # you're doing (http://imgur.com/iwBCmQe).
     self.plug_manager = plugs.PlugManager()
+    self.test_case = test_case
     self.iterator = iterator
     self.mock_plugs = mock_plugs
     self.last_result = None
+    if not phase_user_defined_state:
+      phase_user_defined_state = {}
+    self.phase_user_defined_state = phase_user_defined_state
+    if not phase_diagnoses:
+      phase_diagnoses = []
+    self.phase_diagnoses = phase_diagnoses
 
   def _initialize_plugs(self, plug_types):
     # Make sure we initialize any plugs, this will ignore any that have already
@@ -179,6 +195,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
+    diagnoses_lib.check_for_duplicate_results([phase_desc], [])
     logs.configure_logging()
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
@@ -193,6 +210,15 @@ class PhaseOrTestIterator(collections.Iterator):
       )
       test_state_.mark_test_started()
 
+    test_state_.user_defined_state.update(self.phase_user_defined_state)
+    for diag in self.phase_diagnoses:
+      test_state_.diagnoses_manager._add_diagnosis(diag)  # pylint: disable=protected-access
+      test_state_.test_record.add_diagnosis(diag)
+
+    # Save the test_state to the last_test_case attribute to give it access to
+    # the underlying state.
+    self.test_case.last_test_state = test_state_
+
     # Actually execute the phase, saving the result in our return value.
     executor = phase_executor.PhaseExecutor(test_state_)
     # Log an exception stack when a Phase errors out.
@@ -200,9 +226,14 @@ class PhaseOrTestIterator(collections.Iterator):
         phase_executor.PhaseExecutorThread, '_log_exception',
         side_effect=logging.exception):
       # Use _execute_phase_once because we want to expose all possible outcomes.
-      executor._execute_phase_once(
+      phase_result, _ = executor._execute_phase_once(
           phase_desc, is_last_repeat=False, run_with_profiling=False)
-    return test_state_.test_record.phases[-1]
+
+    if phase_result.raised_exception:
+      failure_message = phase_result.phase_result.get_traceback_string()
+    else:
+      failure_message = None
+    return test_state_.test_record.phases[-1], failure_message
 
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
@@ -220,33 +251,42 @@ class PhaseOrTestIterator(collections.Iterator):
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test.execute(test_start=lambda: 'TestDutId')
 
-    return record_saver.result
+    test_record_ = record_saver.result
+    if test_record_.outcome_details:
+      msgs = []
+      for detail in test_record_.outcome_details:
+        msgs.append(
+            'code: {}\ndescription: {}'.format(detail.code, detail.description))
+      failure_message = '\n'.join(msgs)
+    else:
+      failure_message = None
+    return test_record_, failure_message
 
   def __next__(self):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
-      self.last_result = self._handle_test(phase_or_test)
+      self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, collections.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
     else:
-      self.last_result = self._handle_phase(
+      self.last_result, failure_message = self._handle_phase(
           openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
-    return phase_or_test, self.last_result
+    return phase_or_test, self.last_result, failure_message
 
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
-      self.last_result = self._handle_test(phase_or_test)
+      self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, collections.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
     else:
-      self.last_result = self._handle_phase(
+      self.last_result, failure_message = self._handle_phase(
           openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
-    return phase_or_test, self.last_result
+    return phase_or_test, self.last_result, failure_message
 
 
 def yields_phases(func):
@@ -254,7 +294,16 @@ def yields_phases(func):
   return patch_plugs()(func)
 
 
-def patch_plugs(**mock_plugs):
+def yields_phases_with(phase_user_defined_state=None,
+                       phase_diagnoses=None):
+  """Apply patch_plugs with no plugs, but add test state modifications."""
+  return patch_plugs(phase_user_defined_state=phase_user_defined_state,
+                     phase_diagnoses=phase_diagnoses)
+
+
+def patch_plugs(phase_user_defined_state=None,
+                phase_diagnoses=None,
+                **mock_plugs):
   """Decorator for mocking plugs for a test phase.
 
   Usage:
@@ -282,6 +331,10 @@ def patch_plugs(**mock_plugs):
       pass
 
   Args:
+    phase_user_defined_state: If specified, a dictionary that will be added to
+        the test_state.user_defined_state when handling phases.
+    phase_diagnoses: If specified, must be a list of Diagnosis instances; these
+        are added to the DiagnosesManager when handling phases.
     **mock_plugs: kwargs mapping argument name to be passed to the test case to
         a string describing the plug type to mock.  The corresponding mock will
         be passed to the decorated test case as a keyword argument.
@@ -289,6 +342,10 @@ def patch_plugs(**mock_plugs):
   Returns:
     Function decorator that mocks plugs.
   """
+  if phase_diagnoses:
+    for diag in phase_diagnoses:
+      assert isinstance(diag, diagnoses_lib.Diagnosis)
+
   def test_wrapper(test_func):
     plug_argspec = inspect.getargspec(test_func)
     num_defaults = len(plug_argspec.defaults or ())
@@ -337,9 +394,15 @@ def patch_plugs(**mock_plugs):
     # name to match so we don't mess with unittest's TestLoader mechanism.
     @functools.wraps(test_func)
     def wrapped_test(self):
-      for phase_or_test, result in PhaseOrTestIterator(
-          test_func(self, **plug_kwargs), plug_typemap):
+      self.assertIsInstance(self, TestCase,
+                            msg='Must derive from openhtf.util.test.TestCase '
+                            'to use yields_phases/patch_plugs.')
+      for phase_or_test, result, failure_message in PhaseOrTestIterator(
+          self, test_func(self, **plug_kwargs), plug_typemap,
+          phase_user_defined_state, phase_diagnoses):
         logging.info('Ran %s, result: %s', phase_or_test, result)
+        if failure_message:
+          logging.error('Reported error:\n%s', failure_message)
     return wrapped_test
   return test_wrapper
 
@@ -352,6 +415,13 @@ class TestCase(unittest.TestCase):
     if inspect.isgeneratorfunction(test_method):
       raise ValueError(
           '%s yields without @openhtf.util.test.yields_phases' % methodName)
+
+  def setUp(self):
+    super(TestCase, self).setUp()
+    # When a phase is yielded to a yields_phases/patch_plugs function, this
+    # attribute will be set to the openhtf.core.test_state.TestState used in the
+    # phase execution.
+    self.last_test_state = None
 
   def _AssertPhaseOrTestRecord(func):  # pylint: disable=no-self-argument,invalid-name
     """Decorator for automatically invoking self.assertTestPhases when needed.
@@ -436,6 +506,9 @@ class TestCase(unittest.TestCase):
                             'Raised exception %r is not a subclass of %r' %
                             (phase_record.result.phase_result, exc_type))
 
+  def assertPhaseTimeout(self, phase_record):
+    self.assertTrue(phase_record.result.is_timeout)
+
   def assertPhaseOutcomePass(self, phase_record):
     self.assertIs(test_record.PhaseOutcome.PASS, phase_record.outcome)
 
@@ -491,3 +564,7 @@ class TestCase(unittest.TestCase):
     self.assertMeasured(phase_record, measurement)
     self.assertIs(measurements.Outcome.FAIL,
                   phase_record.measurements[measurement].outcome)
+
+  def get_diagnoses_store(self):
+    self.assertIsNotNone(self.last_test_state)
+    return self.last_test_state.diagnoses_manager.store

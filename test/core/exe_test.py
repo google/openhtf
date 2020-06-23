@@ -150,12 +150,21 @@ def _abort_executor_in_thread(executor_abort):
   # random point in time. To make this deterministic, we keep the phase
   # alive as long as the executor is running, which really just means that
   # the wait() call gets the error raised in it.
+  ready_to_stop_ev = threading.Event()
   inner_ev = threading.Event()
   def abort_executor():
+    ready_to_stop_ev.wait(1)
     executor_abort()
     inner_ev.set()
   threading.Thread(target=abort_executor).start()
-  inner_ev.wait(1)
+  ready_to_stop_ev.set()
+  inner_ev.wait(2)
+  end_time = time.time() + 2
+  while time.time() < end_time:
+    # Sleeps in Python3 are implemented in C, so the Phase termination error
+    # does not propagate until the wait is finished.  Therefore, waiting for
+    # short periods with a timeout implemented in Python.
+    time.sleep(0.1)
 
 
 class TestExecutorTest(unittest.TestCase):
@@ -164,6 +173,7 @@ class TestExecutorTest(unittest.TestCase):
     """Exception to be thrown by failure_phase."""
 
   def setUp(self):
+    super(TestExecutorTest, self).setUp()
     self.test_plug_type = UnittestPlug
 
   def test_failures(self):
@@ -301,6 +311,44 @@ class TestExecutorTest(unittest.TestCase):
     self.assertLessEqual(record.start_time_millis, util.time_millis())
     self.assertLessEqual(record.start_time_millis, record.end_time_millis)
     self.assertLessEqual(record.end_time_millis, util.time_millis())
+    # Teardown function should be executed.
+    self.assertTrue(ev.wait(1))
+    executor.close()
+
+  def test_cancel_phase_with_diagnoser(self):
+    class DiagResult(openhtf.DiagResultEnum):
+      RESULT = 'result'
+
+    @openhtf.PhaseDiagnoser(DiagResult)
+    def diag(phase_record):
+      del phase_record  # Unused.
+      return openhtf.Diagnosis(DiagResult.RESULT, 'result')
+
+    @openhtf.diagnose(diag)
+    @openhtf.PhaseOptions()
+    def cancel_phase():
+      # See above cancel_phase for explanations.
+      _abort_executor_in_thread(executor.abort)
+
+    ev = threading.Event()
+    group = phase_group.PhaseGroup(main=[cancel_phase],
+                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    test = openhtf.Test(group)
+    test.configure(
+        default_dut_id='dut',
+    )
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', start_phase, test._test_options,
+        run_with_profiling=False)
+
+    executor.start()
+    executor.wait()
+    record = executor.test_state.test_record
+    self.assertEqual(record.phases[0].name, start_phase.name)
+    self.assertLessEqual(record.start_time_millis, util.time_millis())
+    self.assertLessEqual(record.start_time_millis, record.end_time_millis)
+    self.assertLessEqual(record.end_time_millis, util.time_millis())
+    self.assertEqual([], record.diagnoses)
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
     executor.close()
@@ -794,5 +842,6 @@ class PhaseExecutorTest(unittest.TestCase):
     self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
 
   def test_execute_phase_return_fail_and_continue(self):
-    result, _ = self.phase_executor.execute_phase(phase_return_fail_and_continue)
+    result, _ = self.phase_executor.execute_phase(
+        phase_return_fail_and_continue)
     self.assertEqual(openhtf.PhaseResult.FAIL_AND_CONTINUE, result.phase_result)
