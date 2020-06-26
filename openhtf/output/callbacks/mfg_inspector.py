@@ -58,7 +58,7 @@ def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
   """Upload MfgEvent to steam_engine."""
   envelope = guzzle_pb2.TestRunEnvelope()
   envelope.payload = zlib.compress(inspector_proto.SerializeToString())
-  envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
+  envelope.payload_type = guzzle_pb2.COMPRESSED_MFG_EVENT
   envelope_data = envelope.SerializeToString()
 
   for _ in range(5):
@@ -125,7 +125,6 @@ class MfgInspector(object):
   SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
   DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
                      'uploads/quantum_upload/?json')
-  PARAMS =  ['dut_id', 'end_time_millis', 'start_time_millis', 'station_id']
 
   # These attributes control format of callback and what actions are undertaken
   # when called.  These should either be set by a subclass or via configure.
@@ -159,7 +158,6 @@ class MfgInspector(object):
     self.upload_result = None
 
     self._cached_proto = None
-    self._cached_params = dict.fromkeys(self.PARAMS)
 
   @classmethod
   def from_json(cls, json_data):
@@ -179,19 +177,12 @@ class MfgInspector(object):
                keydata=json_data['private_key'],
                token_uri=json_data['token_uri'])
 
-  def _check_cached_params(self, test_record_obj):
-    """Check if all cached params equal the values in test record."""
-    for param in self.PARAMS:
-      if self._cached_params[param] != getattr(test_record_obj, param):
-        return False
-    return True
-
   def _convert(self, test_record_obj):
     """Convert and cache a test record to a mfg-inspector proto."""
-    if self._cached_proto is None or not self._check_cached_params(test_record_obj):
+
+    if self._cached_proto is None:
       self._cached_proto = self._converter(test_record_obj)
-      for param in self.PARAMS:
-        self._cached_params[param] = getattr(test_record_obj, param)
+
     return self._cached_proto
 
   def save_to_disk(self, filename_pattern=None):

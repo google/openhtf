@@ -27,7 +27,7 @@ class OutputToJSON(callbacks.OutputToFile):
     '/data/test_records/%(dut_id)s.%(start_time_millis)s'
   To use this output mechanism:
     test = openhtf.Test(PhaseOne, PhaseTwo)
-    test.add_output_callback(openhtf.output.callbacks.OutputToJSON(
+    test.add_output_callback(openhtf.output.callbacks.OutputToJson(
         '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
 
   Args:

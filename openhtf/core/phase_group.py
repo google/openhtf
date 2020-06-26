@@ -35,13 +35,13 @@ PhaseGroup instances can be nested inside of each other.  A PhaseGroup is
 terminal if any of its Phases or further nested PhaseGroups are also terminal.
 """
 
+import collections
 import functools
 
 import mutablerecords
 
 from openhtf.core import phase_descriptor
 from openhtf.core import test_record
-from six.moves import collections_abc
 
 
 class PhaseGroup(mutablerecords.Record(
@@ -130,7 +130,7 @@ class PhaseGroup(mutablerecords.Record(
   def wrap(self, main_phases, name=None):
     """Returns PhaseGroup with additional main phases."""
     new_main = list(self.main)
-    if isinstance(main_phases, collections_abc.Iterable):
+    if isinstance(main_phases, collections.Iterable):
       new_main.extend(main_phases)
     else:
       new_main.append(main_phases)
@@ -212,7 +212,7 @@ def flatten_phases_and_groups(phases_or_groups):
   for phase in phases_or_groups:
     if isinstance(phase, PhaseGroup):
       ret.append(phase.flatten())
-    elif isinstance(phase, collections_abc.Iterable):
+    elif isinstance(phase, collections.Iterable):
       ret.extend(flatten_phases_and_groups(phase))
     else:
       ret.append(phase_descriptor.PhaseDescriptor.wrap_or_copy(phase))
@@ -236,7 +236,7 @@ def optionally_with_args(phase, **kwargs):
   """
   if isinstance(phase, PhaseGroup):
     return phase.with_args(**kwargs)
-  if isinstance(phase, collections_abc.Iterable):
+  if isinstance(phase, collections.Iterable):
     return [optionally_with_args(p, **kwargs) for p in phase]
 
   if not isinstance(phase, phase_descriptor.PhaseDescriptor):
@@ -267,7 +267,7 @@ def optionally_with_plugs(phase, **subplugs):
   """
   if isinstance(phase, PhaseGroup):
     return phase.with_plugs(**subplugs)
-  if isinstance(phase, collections_abc.Iterable):
+  if isinstance(phase, collections.Iterable):
     return [optionally_with_plugs(p, **subplugs) for p in phase]
 
   if not isinstance(phase, phase_descriptor.PhaseDescriptor):

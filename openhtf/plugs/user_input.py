@@ -56,7 +56,7 @@ class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
-Prompt = collections.namedtuple('Prompt', 'id message text_input image_url')
+Prompt = collections.namedtuple('Prompt', 'id message text_input')
 
 
 class ConsolePrompt(threading.Thread):
@@ -85,8 +85,6 @@ class ConsolePrompt(threading.Thread):
     """Mark this ConsolePrompt as stopped."""
     self._stop_event.set()
     if not self._answered:
-      console_output.cli_print(os.linesep, color=self._color,
-                               end='', logger=None)
       _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
 
   def run(self):
@@ -152,8 +150,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
         return
       return {'id': self._prompt.id,
               'message': self._prompt.message,
-              'text-input': self._prompt.text_input,
-              'image-url': self._prompt.image_url}
+              'text-input': self._prompt.text_input}
 
   def tearDown(self):
     self.remove_prompt()
@@ -167,7 +164,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
         self._console_prompt = None
       self.notify_update()
 
-  def prompt(self, message, text_input=False, timeout_s=None, cli_color='', image_url = None):
+  def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
     """Display a prompt and wait for a response.
 
     Args:
@@ -183,10 +180,10 @@ class UserInput(plugs.FrontendAwareBasePlug):
       MultiplePromptsError: There was already an existing prompt.
       PromptUnansweredError: Timed out waiting for the user to respond.
     """
-    self.start_prompt(message, text_input, cli_color, image_url)
+    self.start_prompt(message, text_input, cli_color)
     return self.wait_for_prompt(timeout_s)
 
-  def start_prompt(self, message, text_input=False, cli_color='', image_url = None):
+  def start_prompt(self, message, text_input=False, cli_color=''):
     """Display a prompt.
 
     Args:
@@ -209,7 +206,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
       self._response = None
       self._prompt = Prompt(
-          id=prompt_id, message=message, text_input=text_input, image_url=image_url)
+          id=prompt_id, message=message, text_input=text_input)
       if sys.stdin.isatty():
         self._console_prompt = ConsolePrompt(
             message, functools.partial(self.respond, prompt_id), cli_color)

@@ -20,6 +20,7 @@ alternative serialization schemes, see json_factory.py and mfg_inspector.py for
 examples.
 """
 
+import collections
 import contextlib
 import shutil
 import tempfile
@@ -27,7 +28,6 @@ import tempfile
 from openhtf import util
 from openhtf.util import data
 import six
-from six.moves import collections_abc
 
 
 # TODO(wallacbe): Switch to util
@@ -116,7 +116,7 @@ class OutputToFile(object):
       serialized_record = self.serialize_test_record(test_record)
       if isinstance(serialized_record, six.string_types):
         outfile.write(serialized_record)
-      elif isinstance(serialized_record, collections_abc.Iterable):
+      elif isinstance(serialized_record, collections.Iterable):
         for chunk in serialized_record:
           outfile.write(chunk)
       else:
