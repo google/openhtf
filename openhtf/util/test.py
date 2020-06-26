@@ -112,6 +112,7 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
+import collections
 import functools
 import inspect
 import logging
@@ -133,8 +134,6 @@ from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
 from openhtf.util import logs
 import six
-from six.moves import collections_abc
-
 
 logs.CLI_LOGGING_VERBOSITY = 2
 
@@ -143,7 +142,7 @@ class InvalidTestError(Exception):
   """Raised when there's something invalid about a test."""
 
 
-class PhaseOrTestIterator(collections_abc.Iterator):
+class PhaseOrTestIterator(collections.Iterator):
 
   def __init__(self, test_case, iterator, mock_plugs,
                phase_user_defined_state, phase_diagnoses):
@@ -267,7 +266,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections_abc.Callable):
+    elif not isinstance(phase_or_test, collections.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -280,7 +279,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, openhtf.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections_abc.Callable):
+    elif not isinstance(phase_or_test, collections.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -451,7 +450,7 @@ class TestCase(unittest.TestCase):
             exc_info = sys.exc_info()
         else:
           if exc_info:
-            raise exc_info[0](exc_info[1]).raise_with_traceback(exc_info[2])
+            six.reraise(*exc_info)
       elif isinstance(phase_or_test_record, test_record.PhaseRecord):
         func(self, phase_or_test_record, *args, **kwargs)
       else:

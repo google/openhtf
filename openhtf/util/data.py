@@ -18,6 +18,7 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
+import collections
 import difflib
 import itertools
 import logging
@@ -34,8 +35,6 @@ from past.builtins import unicode
 
 from enum import Enum
 import six
-from six.moves import collections_abc
-
 
 # Used by convert_to_base_types().
 PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
@@ -213,7 +212,7 @@ def total_size(obj):
     if isinstance(current_obj, dict):
       size += sum(map(sizeof, itertools.chain.from_iterable(
           six.iteritems(current_obj))))
-    elif (isinstance(current_obj, collections_abc.Iterable) and
+    elif (isinstance(current_obj, collections.Iterable) and
           not isinstance(current_obj, six.string_types)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):

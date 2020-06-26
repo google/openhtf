@@ -1221,31 +1221,31 @@ class DiagnosesTest(htf_test.TestCase):
     converted = data.convert_to_base_types(test_rec)
     self.assertEqual([
         {
-            'result': 'OKAY',
+            'result': 'okay',
             'description': 'Everything is okay.',
             'component': None,
             'priority': 'NORMAL',
         },
         {
-            'result': 'ONE',
+            'result': 'bad_one',
             'description': 'Oh no!',
             'component': None,
             'priority': 'NORMAL',
             'is_failure': True,
         },
         {
-            'result': 'TEST_OK',
+            'result': 'test_ok',
             'description': 'Okay',
             'component': None,
             'priority': 'NORMAL',
         },
     ], converted['diagnoses'])
 
-    self.assertEqual(['OKAY'], converted['phases'][1]['diagnosis_results'])
+    self.assertEqual(['okay'], converted['phases'][1]['diagnosis_results'])
     self.assertEqual([], converted['phases'][1]['failure_diagnosis_results'])
 
     self.assertEqual([], converted['phases'][2]['diagnosis_results'])
-    self.assertEqual(['ONE'],
+    self.assertEqual(['bad_one'],
                      converted['phases'][2]['failure_diagnosis_results'])
 
   @htf_test.yields_phases
