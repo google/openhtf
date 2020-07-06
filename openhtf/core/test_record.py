@@ -82,8 +82,15 @@ class Attachment(object):
 
   @property
   def data(self):
-    self._file.seek(0)
-    return self._file.read()
+    try:
+      self._file.seek(0)
+      return self._file.read()
+    except IOError:
+      _LOG.exception('Error loading data from temp file.')
+      return b''
+
+  def close(self):
+    self._file.close()
 
   def _asdict(self):
     # Don't include the attachment data when converting to dict.
