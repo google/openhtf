@@ -48,6 +48,15 @@ class Atomic(object):
     shutil.move(self.temp.name, self.filename)
 
 
+class CloseAttachments(object):
+  """Close the attachment files associated with a test record."""
+
+  def __call__(self, test_record):
+    for phase_rec in test_record.phases:
+      for attachment in phase_rec.attachments:
+        attachment.close()
+
+
 class OutputToFile(object):
   """Output the given TestRecord to a file.
 
@@ -57,9 +66,6 @@ class OutputToFile(object):
   the pickle module.  Subclasses may change this by overriding the
   serialize_test_record() method.  Additionally, subclasses may implement
   more complex file naming mechanisms by overriding the open_file() method.
-
-  Args:
-    test_record: The TestRecord to write out to a file.
 
   Attributes:
     filename_pattern: A string that defines filename pattern with placeholders
