@@ -22,7 +22,7 @@ import logging
 import os
 import tempfile
 
-from enum import Enum
+import enum  # pylint: disable=g-bad-import-order
 
 import mutablerecords
 
@@ -43,13 +43,9 @@ conf.declare(
 _LOG = logging.getLogger(__name__)
 
 
-class InvalidMeasurementDimensions(Exception):
-  """Raised when a measurement is taken with the wrong number of dimensions."""
-
-
 OutcomeDetails = collections.namedtuple(
     'OutcomeDetails', 'code description')
-Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])  # pylint: disable=invalid-name
+Outcome = enum.Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])  # pylint: disable=invalid-name
 # LogRecord is in openhtf.util.logs.LogRecord.
 
 
@@ -63,20 +59,21 @@ class Attachment(object):
   Attributes:
     mimetype: str, MIME type of the data.
     sha1: str, SHA-1 hash of the data.
-    _file: pointer temporary File containing the data.
+    _file: Temporary File containing the data.
+    data: property that reads the data from the temporary file.
   """
 
   __slots__ = ['mimetype', 'sha1', '_file']
 
-  def __init__(self, data, mimetype):
-    data = six.ensure_binary(data)
+  def __init__(self, contents, mimetype):
+    contents = six.ensure_binary(contents)
     self.mimetype = mimetype
-    self.sha1 = hashlib.sha1(data).hexdigest()
-    self._file = self._create_temp_file(data)
+    self.sha1 = hashlib.sha1(contents).hexdigest()
+    self._file = self._create_temp_file(contents)
 
-  def _create_temp_file(self, data):
+  def _create_temp_file(self, contents):
     tf = tempfile.NamedTemporaryFile('wb+', dir=conf.attachments_directory)
-    tf.write(data)
+    tf.write(contents)
     tf.flush()
     return tf
 
@@ -184,8 +181,9 @@ class TestRecord(  # pylint: disable=no-init
 
 
 # PhaseResult enumerations are converted to these outcomes by the PhaseState.
-PhaseOutcome = Enum(  # pylint: disable=invalid-name
-    'PhaseOutcome', [
+PhaseOutcome = enum.Enum(  # pylint: disable=invalid-name
+    'PhaseOutcome',
+    [
         'PASS',  # CONTINUE with allowed measurement outcomes.
         'FAIL',  # CONTINUE with failed measurements or FAIL_AND_CONTINUE.
         'SKIP',  # SKIP or REPEAT when under the phase's repeat limit.

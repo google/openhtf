@@ -67,8 +67,8 @@ class MfgEventConverterTest(unittest.TestCase):
           'meas-3': measurements.Measurement('meas-3').with_dimensions('V'),
       }
       phase.attachments = {
-          'attach-1': test_record.Attachment(data='data-1', mimetype=''),
-          'attach-2': test_record.Attachment(data='data-2', mimetype=''),
+          'attach-1': test_record.Attachment('data-1', ''),
+          'attach-2': test_record.Attachment('data-2', ''),
       }
 
     mfg_event = mfg_event_converter.mfg_event_from_test_record(record)
