@@ -53,7 +53,7 @@ class CloseAttachments(object):
 
   def __call__(self, test_record):
     for phase_rec in test_record.phases:
-      for attachment in phase_rec.attachments:
+      for attachment in six.itervalues(phase_rec.attachments):
         attachment.close()
 
 
