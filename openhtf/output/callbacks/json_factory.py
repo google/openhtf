@@ -29,18 +29,21 @@ class OutputToJSON(callbacks.OutputToFile):
     test = openhtf.Test(PhaseOne, PhaseTwo)
     test.add_output_callback(openhtf.output.callbacks.OutputToJson(
         '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
-
-  Args:
-    filename_pattern: A format string specifying the filename to write to,
-      will be formatted with the Test Record as a dictionary.  May also be a
-      file-like object to write to directly.
-    inline_attachments: Whether attachments should be included inline in the
-      output. Set to False if you expect to have large binary attachments. If
-      True (the default), then attachments are base64 encoded to allow for
-      binary data that's not supported by JSON directly.
   """
 
   def __init__(self, filename_pattern=None, inline_attachments=True, **kwargs):
+    """Constructor.
+
+    Args:
+      filename_pattern: A format string specifying the filename to write to,
+        will be formatted with the Test Record as a dictionary.  May also be a
+        file-like object to write to directly.
+      inline_attachments: Whether attachments should be included inline in the
+        output. Set to False if you expect to have large binary attachments. If
+        True (the default), then attachments are base64 encoded to allow for
+        binary data that's not supported by JSON directly.
+      **kwargs: Additional arguments to be passed to the JSON encoder.
+    """
     super(OutputToJSON, self).__init__(filename_pattern)
     self.inline_attachments = inline_attachments
 
@@ -49,14 +52,14 @@ class OutputToJSON(callbacks.OutputToFile):
     self.allow_nan = kwargs['allow_nan']
     self.json_encoder = TestRecordEncoder(**kwargs)
 
-  def serialize_test_record(self, test_record):
-    return self.json_encoder.iterencode(self.convert_to_dict(test_record))
+  def serialize_test_record(self, test_rec):
+    return self.json_encoder.iterencode(self.convert_to_dict(test_rec))
 
-  def convert_to_dict(self, test_record):
-    as_dict = data.convert_to_base_types(test_record,
-                                         json_safe=(not self.allow_nan))
+  def convert_to_dict(self, test_rec):
+    as_dict = data.convert_to_base_types(
+        test_rec, json_safe=(not self.allow_nan))
     if self.inline_attachments:
-      for phase, original_phase in zip(as_dict['phases'], test_record.phases):
+      for phase, original_phase in zip(as_dict['phases'], test_rec.phases):
         for name, attachment in six.iteritems(original_phase.attachments):
           phase['attachments'][name] = attachment
     return as_dict

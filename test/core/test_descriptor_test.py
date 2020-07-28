@@ -1,15 +1,15 @@
 # Lint as: python2, python3
 """Unit tests for test_descriptor module."""
 
-import unittest
-import mock
 import re
+import unittest
 
+import mock
 from openhtf.core import test_descriptor
-from openhtf.util import console_output
 
 
 class RegexMatcher(object):
+
   def __init__(self, pattern):
     self.pattern = pattern
 
@@ -21,11 +21,14 @@ class TestTest(unittest.TestCase):
 
   @mock.patch.object(test_descriptor, '_LOG')
   def test_output_cb_error_stacktrace_log(self, mock_log):
+
     def phase():
       return
+
     def callback(test_record):
       del test_record
       raise Exception('test123')
+
     test = test_descriptor.Test(phase)
     test.add_output_callbacks(callback)
     test.execute()

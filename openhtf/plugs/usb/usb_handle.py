@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Base interface for communicating with USB devices.
 
 This module provides the base classes required to support interfacing with USB
@@ -21,11 +19,11 @@ UsbHandle interface, which contains Open, Close, Read, and Write functionality.
 A UsbHandle object represents a single USB Interface, *not* an entire device.
 """
 
-from future.utils import with_metaclass
 import abc
 import functools
 import logging
 
+from future.utils import with_metaclass
 from openhtf.plugs.usb import usb_exceptions
 
 DEFAULT_TIMEOUT_MS = 5000
@@ -33,7 +31,7 @@ FLUSH_READ_SIZE = 1024 * 64
 _LOG = logging.getLogger(__name__)
 
 
-def requires_open_handle(method):  # pylint: disable=invalid-name
+def requires_open_handle(method):
   """Decorator to ensure a handle is open for certain methods.
 
   Subclasses should decorate their Read() and Write() with this rather than
@@ -47,15 +45,18 @@ def requires_open_handle(method):  # pylint: disable=invalid-name
     HandleClosedError: If this handle has been closed.
 
   Returns:
-    A wrapper around method that ensures the handle is open before calling through
+    A wrapper around method that ensures the handle is open before calling
+    through
   to the wrapped method.
   """
+
   @functools.wraps(method)
   def wrapper_requiring_open_handle(self, *args, **kwargs):
     """The wrapper to be returned."""
     if self.is_closed():
       raise usb_exceptions.HandleClosedError()
     return method(self, *args, **kwargs)
+
   return wrapper_requiring_open_handle
 
 
@@ -117,19 +118,20 @@ class UsbHandle(with_metaclass(abc.ABCMeta, object)):
     self.name = name or ''
     self._default_timeout_ms = default_timeout_ms or DEFAULT_TIMEOUT_MS
 
-  def __del__(self):  # pylint: disable=invalid-name
+  def __del__(self):
     if not self.is_closed():
       _LOG.error('!!!!!USB!!!!! %s not closed!', type(self).__name__)
 
   def __str__(self):
     return '<%s: (%s %s)>' % (type(self).__name__, self.name,
                               self.serial_number)
+
   __repr__ = __str__
 
   def _timeout_or_default(self, timeout_ms):
     """Specify a timeout or take the default."""
-    return int(timeout_ms if timeout_ms is not None
-               else self._default_timeout_ms)
+    return int(
+        timeout_ms if timeout_ms is not None else self._default_timeout_ms)
 
   def flush_buffers(self):
     """Default implementation, calls Read() until it blocks."""

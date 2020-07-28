@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-"""Some handy interfaces to the ADB :shell service.
+r"""Some handy interfaces to the ADB :shell service.
 
 The :shell service is pretty straightforward, you send 'shell:command' and
 the device runs /bin/sh -c 'command'.  The ADB daemon on the device sets up a
@@ -94,7 +92,7 @@ class AsyncCommandHandle(object):
   be False, otherwise it will be True.
   """
 
-  def __init__(self, stream, stdin, stdout, timeout, is_raw):  #pylint: disable=too-many-arguments
+  def __init__(self, stream, stdin, stdout, timeout, is_raw):  # pylint: disable=too-many-arguments
     """Create a handle to use for interfacing with an async_command.
 
     Args:
@@ -106,23 +104,23 @@ class AsyncCommandHandle(object):
       timeout: timeouts.PolledTimeout to use for the command.
       is_raw: If True, we'll do reads from stdin, otherwise we do readlines
         instead to play nicer with potential interactive uses (read doesn't
-        return until EOF, but interactively you want to send each line and
-        then see the response).  stdout is treated the same in either case,
-        read is used - AdbStreams don't support readline.
+        return until EOF, but interactively you want to send each line and then
+        see the response).  stdout is treated the same in either case, read is
+        used - AdbStreams don't support readline.
     """
     self.stream = stream
     self.stdin = stdin
     self.stdout = stdout or six.StringIO()
     self.force_closed_or_timeout = False
 
-    self.reader_thread = threading.Thread(target=self._reader_thread_proc,
-                                          args=(timeout,))
+    self.reader_thread = threading.Thread(
+        target=self._reader_thread_proc, args=(timeout,))
     self.reader_thread.daemon = True
     self.reader_thread.start()
 
     if stdin:
-      self.writer_thread = threading.Thread(target=self._writer_thread_proc,
-                                            args=(is_raw,))
+      self.writer_thread = threading.Thread(
+          target=self._writer_thread_proc, args=(is_raw,))
       self.writer_thread.daemon = True
       self.writer_thread.start()
 
@@ -148,10 +146,10 @@ class AsyncCommandHandle(object):
       if self.stdout is not None:
         self.stdout.write(data)
 
-  def __enter__(self):  # pylint: disable=invalid-name
+  def __enter__(self):
     return self
 
-  def __exit__(self, exc_type, exc_value, exc_tb):  # pylint: disable=invalid-name
+  def __exit__(self, exc_type, exc_value, exc_tb):
     if exc_type:
       return False
     self.wait()
@@ -180,8 +178,8 @@ class AsyncCommandHandle(object):
     return value explicitly for None, as the output may be ''.
     """
     closed = timeouts.loop_until_timeout_or_true(
-        timeouts.PolledTimeout.from_millis(timeout_ms),
-        self.stream.is_closed, .1)
+        timeouts.PolledTimeout.from_millis(timeout_ms), self.stream.is_closed,
+        .1)
     if closed:
       if hasattr(self.stdout, 'getvalue'):
         return self.stdout.getvalue()
@@ -231,7 +229,11 @@ class ShellService(object):
     return self.adb_connection.streaming_command('shell', command, timeout_ms)
 
   # pylint: disable=too-many-arguments
-  def async_command(self, command, stdin=None, stdout=None, raw=False,
+  def async_command(self,
+                    command,
+                    stdin=None,
+                    stdout=None,
+                    raw=False,
                     timeout_ms=None):
     """Run the given command on the device asynchronously.
 
@@ -241,8 +243,8 @@ class ShellService(object):
     could use sys.stdin and sys.stdout to emulate the 'adb shell' commandline.
 
     Args:
-      command: The command to run, will be run with /bin/sh -c 'command' on
-        the device.
+      command: The command to run, will be run with /bin/sh -c 'command' on the
+        device.
       stdin: File-like object to read from to pipe to the command's stdin.  Can
         be None, in which case nothing will be written to the command's stdin.
       stdout: File-like object to write the command's output to.  Can be None,
@@ -265,12 +267,13 @@ class ShellService(object):
     stream = self.adb_connection.open_stream('shell:%s' % command, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
-          '%s does not support service: shell', self)
+          '%s does not support service: shell' % self)
     if raw and stdin is not None:
       # Short delay to make sure the ioctl to set raw mode happens before we do
       # any writes to the stream, if we don't do this bad things happen...
       time.sleep(.1)
     return AsyncCommandHandle(stream, stdin, stdout, timeout, raw)
+
   # pylint: enable=too-many-arguments
 
   @classmethod

@@ -11,19 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Utilities for automic_write a new file."""
 
+import contextlib
 import os
 import tempfile
-from contextlib import contextmanager
 
-@contextmanager
+
+@contextlib.contextmanager
 def atomic_write(filename, filesync=False):
-  """ atomically write a file (using a temporary file).
+  """Atomically write a file (using a temporary file).
 
-  filename: the file to be written
-  filesync: flush the file to disk
+  Args:
+    filename: the file to be written
+    filesync: flush the file to disk
+
+  Yields:
+    File object to write to.
   """
 
   tmpf = tempfile.NamedTemporaryFile(delete=False)

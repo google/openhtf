@@ -38,10 +38,13 @@ class TestOutput(test.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(TestOutput, cls).setUpClass()
     # Create input record.
     result = util.NonLocalResult()
+
     def _save_result(test_record):
       result.result = test_record
+
     cls._test = htf.Test(
         all_the_things.hello_world,
         all_the_things.dimensions,
@@ -58,8 +61,7 @@ class TestOutput(test.TestCase):
       json_output = io.BytesIO()
     else:
       json_output = io.StringIO()
-    json_factory.OutputToJSON(
-        json_output, sort_keys=True, indent=2)(record)
+    json_factory.OutputToJSON(json_output, sort_keys=True, indent=2)(record)
     json_output.seek(0)
     json.loads(json_output.read())
 
@@ -106,10 +108,13 @@ class TestMfgEventOutput(test.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(TestMfgEventOutput, cls).setUpClass()
     # Create input record.
     result = util.NonLocalResult()
+
     def _save_result(test_record):
       result.result = test_record
+
     cls._test = htf.Test(
         all_the_things.hello_world,
         all_the_things.dimensions,
@@ -154,8 +159,9 @@ class TestMfgEventOutput(test.TestCase):
         raise AssertionError('No measurement named %s' % measurement_name)
 
     # Spot check an attachment (example_attachment.txt)
-    for attachment_name in  ['example_attachment_0.txt',
-                             'example_attachment_1.txt']:
+    for attachment_name in [
+        'example_attachment_0.txt', 'example_attachment_1.txt'
+    ]:
       for attachment in mfg_event.attachment:
         if attachment.name == attachment_name:
           self.assertEqual(

@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """This module contains a class to encapsulate ADB messages.
 
 See the following in the Android source for more details:
@@ -52,6 +50,7 @@ import six
 
 _LOG = logging.getLogger(__name__)
 
+
 def make_wire_commands(*ids):
   """Assemble the commands."""
   cmd_to_wire = {
@@ -61,20 +60,20 @@ def make_wire_commands(*ids):
   return cmd_to_wire, wire_to_cmd
 
 
-class RawAdbMessage(collections.namedtuple('RawAdbMessage',
-                                           ['cmd', 'arg0', 'arg1',
-                                            'data_length', 'data_checksum',
-                                            'magic'])):
+class RawAdbMessage(
+    collections.namedtuple(
+        'RawAdbMessage',
+        ['cmd', 'arg0', 'arg1', 'data_length', 'data_checksum', 'magic'])):
   """Helper class for handling the struct -> AdbMessage mapping."""
 
   def to_adb_message(self, data):
     """Turn the data into an ADB message."""
-    message = AdbMessage(AdbMessage.WIRE_TO_CMD.get(self.cmd),
-                         self.arg0, self.arg1, data)
+    message = AdbMessage(
+        AdbMessage.WIRE_TO_CMD.get(self.cmd), self.arg0, self.arg1, data)
     if (len(data) != self.data_length or
         message.data_crc32 != self.data_checksum):
       raise usb_exceptions.AdbDataIntegrityError(
-          '%s (%s) received invalid data: %s', message, self, repr(data))
+          '%s (%s) received invalid data: %s' % (message, self, repr(data)))
     return message
 
 
@@ -152,12 +151,12 @@ class AdbTransportAdapter(object):
         raise usb_exceptions.AdbProtocolError('Adb connection lost')
 
       try:
-        raw_message = RawAdbMessage(*struct.unpack(
-            AdbMessage.HEADER_STRUCT_FORMAT, raw_header))
+        raw_message = RawAdbMessage(
+            *struct.unpack(AdbMessage.HEADER_STRUCT_FORMAT, raw_header))
       except struct.error as exception:
         raise usb_exceptions.AdbProtocolError(
-            'Unable to unpack ADB command (%s): %s (%s)',
-            AdbMessage.HEADER_STRUCT_FORMAT, raw_header, exception)
+            'Unable to unpack ADB command (%s): %s (%s)' %
+            (AdbMessage.HEADER_STRUCT_FORMAT, raw_header, exception))
 
       if raw_message.data_length > 0:
         if timeout.has_expired():
@@ -181,8 +180,8 @@ class AdbTransportAdapter(object):
     exceptions that may be raised.
 
     Args:
-      expected_commands: Iterable of expected command responses, like
-          ('CNXN', 'AUTH').
+      expected_commands: Iterable of expected command responses, like ('CNXN',
+        'AUTH').
       timeout: timeouts.PolledTimeout object to use for timeout.
 
     Returns:
@@ -197,7 +196,7 @@ class AdbTransportAdapter(object):
         lambda m: m.command in expected_commands, 0)
     if msg.command not in expected_commands:
       raise usb_exceptions.AdbTimeoutError(
-          'Timed out establishing connection, waiting for: %s',
+          'Timed out establishing connection, waiting for: %s' %
           expected_commands)
     return msg
 
@@ -247,13 +246,7 @@ class AdbMessage(object):
   this message.  To send a message over the header, send its header, followed
   by its data if it has any.
 
-  Attributes:
-    header
-    command
-    arg0
-    arg1
-    data
-    magic
+  Attributes: header command arg0 arg1 data magic
   """
 
   PRINTABLE_DATA = set(string.printable) - set(string.whitespace)
@@ -264,7 +257,7 @@ class AdbMessage(object):
 
   def __init__(self, command, arg0=0, arg1=0, data=''):
     if command not in self.CMD_TO_WIRE:
-      raise usb_exceptions.AdbProtocolError('Unrecognized ADB command: %s',
+      raise usb_exceptions.AdbProtocolError('Unrecognized ADB command: %s' %
                                             command)
     self._command = self.CMD_TO_WIRE[command]
     self.arg0 = arg0
@@ -275,9 +268,8 @@ class AdbMessage(object):
   @property
   def header(self):
     """The message header."""
-    return struct.pack(
-        self.HEADER_STRUCT_FORMAT, self._command, self.arg0, self.arg1,
-        len(self.data), self.data_crc32, self.magic)
+    return struct.pack(self.HEADER_STRUCT_FORMAT, self._command, self.arg0,
+                       self.arg1, len(self.data), self.data_crc32, self.magic)
 
   @property
   def command(self):
@@ -286,18 +278,15 @@ class AdbMessage(object):
 
   def __str__(self):
     return '<%s: %s(%s, %s): %s (%s bytes)>' % (
-        type(self).__name__,
-        self.command,
-        self.arg0,
-        self.arg1,
-        ''.join(char if char in self.PRINTABLE_DATA
-                else '.' for char in self.data[:64]),
-        len(self.data))
+        type(self).__name__, self.command, self.arg0, self.arg1, ''.join(
+            char if char in self.PRINTABLE_DATA else '.'
+            for char in self.data[:64]), len(self.data))
+
   __repr__ = __str__
 
   @property
   def data_crc32(self):
-    """Return the sum of all the data bytes.
+    """Returns the sum of all the data bytes.
 
     The "crc32" used by ADB is actually just a sum of all the bytes, but we
     name this data_crc32 to be consistent with ADB.

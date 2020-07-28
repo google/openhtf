@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Module for utility functions that manipulate or compare data.
 
 We use a few special data formats internally, these utility functions make it a
@@ -20,6 +19,7 @@ little easier to work with them.
 
 import collections
 import difflib
+import enum
 import itertools
 import logging
 import math
@@ -33,7 +33,6 @@ from mutablerecords import records
 from past.builtins import long
 from past.builtins import unicode
 
-from enum import Enum
 import six
 
 # Used by convert_to_base_types().
@@ -45,7 +44,9 @@ def pprint_diff(first, second, first_name='first', second_name='second'):
   return difflib.unified_diff(
       pprint.pformat(first).splitlines(),
       pprint.pformat(second).splitlines(),
-      fromfile=first_name, tofile=second_name, lineterm='')
+      fromfile=first_name,
+      tofile=second_name,
+      lineterm='')
 
 
 def equals_log_diff(expected, actual, level=logging.ERROR):
@@ -56,8 +57,11 @@ def equals_log_diff(expected, actual, level=logging.ERROR):
   # Output the diff first.
   logging.log(level, '***** Data mismatch: *****')
   for line in difflib.unified_diff(
-      expected.splitlines(), actual.splitlines(),
-      fromfile='expected', tofile='actual', lineterm=''):
+      expected.splitlines(),
+      actual.splitlines(),
+      fromfile='expected',
+      tofile='actual',
+      lineterm=''):
     logging.log(level, line)
   logging.log(level, '^^^^^  Data diff  ^^^^^')
 
@@ -65,9 +69,16 @@ def equals_log_diff(expected, actual, level=logging.ERROR):
 def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
   """Compare two test_record tuples, ignoring any volatile fields.
 
-  'Volatile' fields include any fields that are expected to differ between
-  successive runs of the same test, mainly timestamps.  All other fields
-  are recursively compared.
+  Args:
+    first: test_record.TestRecord to compare.
+    second: test_record.TestRecord to compare.
+    volatile_fields: list of str, any fields that are expected to differ between
+      successive runs of the same test, mainly timestamps.  All other fields are
+      recursively compared.
+    indent: int, indent level.
+
+  Raises:
+    AssertionError: when the records are different.
   """
   if isinstance(first, dict) and isinstance(second, dict):
     if set(first) != set(second):
@@ -106,7 +117,9 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
     assert first == second
 
 
-def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
+def convert_to_base_types(obj,
+                          ignore_keys=tuple(),
+                          tuple_type=tuple,
                           json_safe=True):
   """Recursively convert objects into base types.
 
@@ -134,10 +147,18 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
   encoding that does not differentiate between the two), pass 'tuple_type=list'
   as an argument.
 
-  If `json_safe` is True, then the float 'inf', '-inf', and 'nan' values will be
-  converted to strings. This ensures that the returned dictionary can be passed
-  to json.dumps to create valid JSON. Otherwise, json.dumps may return values
-  such as NaN which are not valid JSON.
+  Args:
+    obj: object to recursively convert to base types.
+    ignore_keys: Iterable of str, keys that should be ignored when recursing on
+      dict types.
+    tuple_type: Type used for tuple objects.
+    json_safe: If True, then the float 'inf', '-inf', and 'nan' values will be
+      converted to strings. This ensures that the returned dictionary can be
+      passed to json.dumps to create valid JSON. Otherwise, json.dumps may
+      return values such as NaN which are not valid JSON.
+
+  Returns:
+    Version of the object composed of base types.
   """
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, six.string_types), 'Pass a real iterable!'
@@ -155,20 +176,25 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
     obj = new_obj
   elif attr.has(type(obj)):
     obj = attr.asdict(obj)
-  elif isinstance(obj, Enum):
+  elif isinstance(obj, enum.Enum):
     obj = obj.name
 
-  if type(obj) in PASSTHROUGH_TYPES:
+  if type(obj) in PASSTHROUGH_TYPES:  # pylint: disable=unidiomatic-typecheck
     return obj
 
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
-    return {convert_to_base_types(k, ignore_keys, tuple_type):
-               convert_to_base_types(v, ignore_keys, tuple_type)
-            for k, v in six.iteritems(obj) if k not in ignore_keys}
+    return {  # pylint: disable=g-complex-comprehension
+        convert_to_base_types(k, ignore_keys, tuple_type):
+        convert_to_base_types(v, ignore_keys, tuple_type)
+        for k, v in six.iteritems(obj)
+        if k not in ignore_keys
+    }
   elif isinstance(obj, list):
-    return [convert_to_base_types(val, ignore_keys, tuple_type, json_safe)
-            for val in obj]
+    return [
+        convert_to_base_types(val, ignore_keys, tuple_type, json_safe)
+        for val in obj
+    ]
   elif isinstance(obj, tuple):
     return tuple_type(
         convert_to_base_types(value, ignore_keys, tuple_type, json_safe)
@@ -194,6 +220,7 @@ def convert_to_base_types(obj, ignore_keys=tuple(), tuple_type=tuple,
 def total_size(obj):
   """Returns the approximate total memory footprint an object."""
   seen = set()
+
   def sizeof(current_obj):
     try:
       return _sizeof(current_obj)
@@ -210,14 +237,15 @@ def total_size(obj):
     size = sys.getsizeof(current_obj)
 
     if isinstance(current_obj, dict):
-      size += sum(map(sizeof, itertools.chain.from_iterable(
-          six.iteritems(current_obj))))
+      size += sum(
+          map(sizeof,
+              itertools.chain.from_iterable(six.iteritems(current_obj))))
     elif (isinstance(current_obj, collections.Iterable) and
           not isinstance(current_obj, six.string_types)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
-      size += sum(sizeof(getattr(current_obj, a))
-                  for a in current_obj.__slots__)
+      size += sum(
+          sizeof(getattr(current_obj, a)) for a in current_obj.__slots__)
     return size
 
   return sizeof(obj)

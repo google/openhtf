@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This module contains support for various built-in output mechanisms.
 
 Here, a base OutputToFile class is implemented to provide simple output to
@@ -28,6 +27,7 @@ import tempfile
 from openhtf import util
 from openhtf.util import data
 import six
+from six.moves import cPickle as pickle
 
 
 # TODO(wallacbe): Switch to util
@@ -69,9 +69,9 @@ class OutputToFile(object):
 
   Attributes:
     filename_pattern: A string that defines filename pattern with placeholders
-        to be replaced by test run metadata values
+      to be replaced by test run metadata values
     filename: A string that defines the final file name with all the
-        placeholders replaced
+      placeholders replaced
   """
 
   def __init__(self, filename_pattern):
@@ -83,7 +83,7 @@ class OutputToFile(object):
   @staticmethod
   def serialize_test_record(test_record):
     """Override method to alter how test records are serialized to file data."""
-    return six.moves.pickle.dumps(test_record, -1)
+    return pickle.dumps(test_record, -1)
 
   @staticmethod
   def open_file(filename):

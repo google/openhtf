@@ -34,7 +34,6 @@ from openhtf.util import conf
 from openhtf.util import logs
 from openhtf.util import timeouts
 
-
 # Default logging to debug level.
 logs.CLI_LOGGING_VERBOSITY = 2
 
@@ -152,10 +151,12 @@ def _abort_executor_in_thread(executor_abort):
   # the wait() call gets the error raised in it.
   ready_to_stop_ev = threading.Event()
   inner_ev = threading.Event()
+
   def abort_executor():
     ready_to_stop_ev.wait(1)
     executor_abort()
     inner_ev.set()
+
   threading.Thread(target=abort_executor).start()
   ready_to_stop_ev.set()
   inner_ev.wait(2)
@@ -193,12 +194,13 @@ class TestExecutorTest(unittest.TestCase):
     )
 
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
 
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
 
     executor.start()
@@ -208,11 +210,12 @@ class TestExecutorTest(unittest.TestCase):
 
     # Same as above, but now specify that the TestDummyExceptionError should
     # instead be a FAIL outcome.
-    test.configure(
-        failure_exceptions=[self.TestDummyExceptionError]
-    )
+    test.configure(failure_exceptions=[self.TestDummyExceptionError])
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
     executor.start()
     executor.wait()
@@ -260,9 +263,7 @@ class TestExecutorTest(unittest.TestCase):
     )
 
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
 
     # Cancel during test start phase.
     executor = test_executor.TestExecutor(
@@ -270,8 +271,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         cancel_phase,
         test._test_options,
-        run_with_profiling=False
-    )
+        run_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -294,14 +294,15 @@ class TestExecutorTest(unittest.TestCase):
       _abort_executor_in_thread(executor.abort)
 
     ev = threading.Event()
-    group = phase_group.PhaseGroup(main=[cancel_phase],
-                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    group = phase_group.PhaseGroup(
+        main=[cancel_phase], teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
 
     executor.start()
@@ -316,6 +317,7 @@ class TestExecutorTest(unittest.TestCase):
     executor.close()
 
   def test_cancel_phase_with_diagnoser(self):
+
     class DiagResult(openhtf.DiagResultEnum):
       RESULT = 'result'
 
@@ -331,14 +333,15 @@ class TestExecutorTest(unittest.TestCase):
       _abort_executor_in_thread(executor.abort)
 
     ev = threading.Event()
-    group = phase_group.PhaseGroup(main=[cancel_phase],
-                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    group = phase_group.PhaseGroup(
+        main=[cancel_phase], teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
 
     executor.start()
@@ -381,14 +384,15 @@ class TestExecutorTest(unittest.TestCase):
     teardown_running = threading.Event()
     ev = threading.Event()
     ev2 = threading.Event()
-    group = phase_group.PhaseGroup(main=[cancel_twice_phase],
-                                   teardown=[teardown_phase, teardown2_phase])
+    group = phase_group.PhaseGroup(
+        main=[cancel_twice_phase], teardown=[teardown_phase, teardown2_phase])
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
 
     executor.start()
@@ -411,11 +415,12 @@ class TestExecutorTest(unittest.TestCase):
     )
 
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', None, test._test_options,
+        test.descriptor,
+        'uid',
+        None,
+        test._test_options,
         run_with_profiling=False)
     executor.start()
     executor.wait()
@@ -428,6 +433,7 @@ class TestExecutorTest(unittest.TestCase):
     executor.close()
 
   def test_failure_during_start_phase_plug_init(self):
+
     def never_gonna_run_phase():
       ev2.set()
 
@@ -440,9 +446,7 @@ class TestExecutorTest(unittest.TestCase):
     )
 
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
 
     executor = test_executor.TestExecutor(
         test.descriptor,
@@ -461,16 +465,16 @@ class TestExecutorTest(unittest.TestCase):
     self.assertFalse(ev2.is_set())
 
   def test_error_during_teardown(self):
-    group = phase_group.PhaseGroup(
-        main=[blank_phase], teardown=[teardown_fail])
+    group = phase_group.PhaseGroup(main=[blank_phase], teardown=[teardown_fail])
 
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
 
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
     executor.start()
     executor.wait()
@@ -485,38 +489,41 @@ class TestExecutorTest(unittest.TestCase):
     def teardown_log(test):
       test.logger.info(message)
 
-    group = phase_group.PhaseGroup(
-        main=[blank_phase], teardown=[teardown_log])
+    group = phase_group.PhaseGroup(main=[blank_phase], teardown=[teardown_log])
 
     test = openhtf.Test(group)
 
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.test_state.test_record
     self.assertEqual(record.outcome, Outcome.PASS)
-    log_records = [log_record for log_record in record.log_records
-                   if log_record.message == message]
+    log_records = [
+        log_record for log_record in record.log_records
+        if log_record.message == message
+    ]
     self.assertTrue(log_records)
     executor.close()
 
   def test_stop_on_first_failure_phase(self):
     ev = threading.Event()
-    group = phase_group.PhaseGroup(main=[phase_return_fail_and_continue,
-                                         phase_one],
-                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    group = phase_group.PhaseGroup(
+        main=[phase_return_fail_and_continue, phase_one],
+        teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
     test.configure(stop_on_first_failure=True)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
 
     executor.start()
@@ -535,16 +542,17 @@ class TestExecutorTest(unittest.TestCase):
   def test_conf_stop_on_first_failure_phase(self):
 
     ev = threading.Event()
-    group = phase_group.PhaseGroup(main=[phase_return_fail_and_continue,
-                                         phase_one],
-                                   teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
+    group = phase_group.PhaseGroup(
+        main=[phase_return_fail_and_continue, phase_one],
+        teardown=[lambda: ev.set()])  # pylint: disable=unnecessary-lambda
     test = openhtf.Test(group)
-    test.configure(
-        default_dut_id='dut',
-    )
+    test.configure(default_dut_id='dut',)
     conf.load(stop_on_first_failure=True)
     executor = test_executor.TestExecutor(
-        test.descriptor, 'uid', start_phase, test._test_options,
+        test.descriptor,
+        'uid',
+        start_phase,
+        test._test_options,
         run_with_profiling=False)
 
     executor.start()
@@ -571,11 +579,13 @@ class TestExecutorHandlePhaseTest(unittest.TestCase):
         state_logger=mock.MagicMock(),
         test_options=test_descriptor.TestOptions(),
         test_record=mock.MagicMock())
-    self.phase_exec = mock.MagicMock(
-        spec=phase_executor.PhaseExecutor)
-    self.test_exec = test_executor.TestExecutor(None, 'uid', None,
-                                                test_descriptor.TestOptions(),
-                                                run_with_profiling=False)
+    self.phase_exec = mock.MagicMock(spec=phase_executor.PhaseExecutor)
+    self.test_exec = test_executor.TestExecutor(
+        None,
+        'uid',
+        None,
+        test_descriptor.TestOptions(),
+        run_with_profiling=False)
     self.test_exec.test_state = self.test_state
     self.test_exec._phase_exec = self.phase_exec
 
@@ -653,42 +663,49 @@ class TestExecutorExecutePhasesTest(unittest.TestCase):
         plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
         state_logger=mock.MagicMock())
-    self.test_exec = test_executor.TestExecutor(None, 'uid', None,
-                                                test_descriptor.TestOptions(),
-                                                run_with_profiling=False)
+    self.test_exec = test_executor.TestExecutor(
+        None,
+        'uid',
+        None,
+        test_descriptor.TestOptions(),
+        run_with_profiling=False)
     self.test_exec.test_state = self.test_state
     patcher = mock.patch.object(self.test_exec, '_handle_phase')
     self.mock_handle_phase = patcher.start()
 
   def testExecuteAbortable_NoPhases(self):
-    self.assertFalse(self.test_exec._execute_abortable_phases(
-        'main', (), 'group'))
+    self.assertFalse(
+        self.test_exec._execute_abortable_phases('main', (), 'group'))
     self.mock_handle_phase.assert_not_called()
 
   def testExecuteAbortable_Normal(self):
     self.mock_handle_phase.side_effect = [False]
-    self.assertFalse(self.test_exec._execute_abortable_phases(
-        'main', ('normal',), 'group'))
+    self.assertFalse(
+        self.test_exec._execute_abortable_phases('main', ('normal',), 'group'))
     self.mock_handle_phase.assert_called_once_with('normal')
 
   def testExecuteAbortable_AbortedPrior(self):
     self.test_exec.abort()
-    self.assertTrue(self.test_exec._execute_abortable_phases(
-        'main', ('not-run',), 'group'))
+    self.assertTrue(
+        self.test_exec._execute_abortable_phases('main', ('not-run',), 'group'))
     self.mock_handle_phase.assert_not_called()
 
   def testExecuteAbortable_AbortedDuring(self):
     self.mock_handle_phase.side_effect = lambda x: self.test_exec.abort()
-    self.assertTrue(self.test_exec._execute_abortable_phases(
-        'main', ('abort', 'not-run'), 'group'))
+    self.assertTrue(
+        self.test_exec._execute_abortable_phases('main', ('abort', 'not-run'),
+                                                 'group'))
     self.mock_handle_phase.assert_called_once_with('abort')
 
   def testExecuteAbortable_Terminal(self):
     self.mock_handle_phase.side_effect = [False, True]
-    self.assertTrue(self.test_exec._execute_abortable_phases(
-        'main', ('normal', 'abort', 'not_run'), 'group'))
-    self.assertEqual([mock.call('normal'), mock.call('abort')],
-                     self.mock_handle_phase.call_args_list)
+    self.assertTrue(
+        self.test_exec._execute_abortable_phases('main',
+                                                 ('normal', 'abort', 'not_run'),
+                                                 'group'))
+    self.assertEqual(
+        [mock.call('normal'), mock.call('abort')],
+        self.mock_handle_phase.call_args_list)
 
   def testExecuteTeardown_Empty(self):
     self.assertFalse(self.test_exec._execute_teardown_phases((), 'group'))
@@ -696,36 +713,42 @@ class TestExecutorExecutePhasesTest(unittest.TestCase):
 
   def testExecuteTeardown_Normal(self):
     self.mock_handle_phase.side_effect = [False]
-    self.assertFalse(self.test_exec._execute_teardown_phases(
-        ('normal',), 'group'))
+    self.assertFalse(
+        self.test_exec._execute_teardown_phases(('normal',), 'group'))
     self.mock_handle_phase.assert_called_once_with('normal')
 
   def testExecuteTeardown_AbortPrior(self):
     self.test_exec.abort()
     self.mock_handle_phase.side_effect = [False]
-    self.assertFalse(self.test_exec._execute_teardown_phases(
-        ('normal',), 'group'))
+    self.assertFalse(
+        self.test_exec._execute_teardown_phases(('normal',), 'group'))
     self.mock_handle_phase.assert_called_once_with('normal')
 
   def testExecuteTeardown_AbortedDuring(self):
+
     def handle_phase(fake_phase):
       if fake_phase == 'abort':
         self.test_exec.abort()
       return False
+
     self.mock_handle_phase.side_effect = handle_phase
-    self.assertFalse(self.test_exec._execute_teardown_phases(
-        ('abort', 'still-run'), 'group'))
+    self.assertFalse(
+        self.test_exec._execute_teardown_phases(('abort', 'still-run'),
+                                                'group'))
     self.mock_handle_phase.assert_has_calls(
         [mock.call('abort'), mock.call('still-run')])
 
   def testExecuteTeardown_Terminal(self):
+
     def handle_phase(fake_phase):
       if fake_phase == 'error':
         return True
       return False
+
     self.mock_handle_phase.side_effect = handle_phase
-    self.assertTrue(self.test_exec._execute_teardown_phases(
-        ('error', 'still-run'), 'group'))
+    self.assertTrue(
+        self.test_exec._execute_teardown_phases(('error', 'still-run'),
+                                                'group'))
     self.mock_handle_phase.assert_has_calls(
         [mock.call('error'), mock.call('still-run')])
 
@@ -739,9 +762,12 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
         state_logger=mock.MagicMock())
-    self.test_exec = test_executor.TestExecutor(None, 'uid', None,
-                                                test_descriptor.TestOptions(),
-                                                run_with_profiling=False)
+    self.test_exec = test_executor.TestExecutor(
+        None,
+        'uid',
+        None,
+        test_descriptor.TestOptions(),
+        run_with_profiling=False)
     self.test_exec.test_state = self.test_state
     patcher = mock.patch.object(self.test_exec, '_execute_abortable_phases')
     self.mock_execute_abortable = patcher.start()
@@ -751,15 +777,18 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
 
     def setup():
       pass
+
     self._setup = setup
 
     def main():
       pass
+
     self._main = main
 
     @openhtf.PhaseOptions(timeout_s=30)
     def teardown():
       pass
+
     self._teardown = teardown
 
     self.group = phase_group.PhaseGroup(
@@ -768,8 +797,8 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
   def testStopDuringSetup(self):
     self.mock_execute_abortable.return_value = True
     self.assertTrue(self.test_exec._execute_phase_group(self.group))
-    self.mock_execute_abortable.assert_called_once_with(
-        'setup', (self._setup,), 'group')
+    self.mock_execute_abortable.assert_called_once_with('setup', (self._setup,),
+                                                        'group')
     self.mock_execute_teardown.assert_not_called()
 
   def testStopDuringMain(self):
@@ -780,8 +809,8 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         mock.call('setup', (self._setup,), 'group'),
         mock.call('main', (self._main,), 'group'),
     ])
-    self.mock_execute_teardown.assert_called_once_with(
-        (self._teardown,), 'group')
+    self.mock_execute_teardown.assert_called_once_with((self._teardown,),
+                                                       'group')
 
   def testStopDuringTeardown(self):
     self.mock_execute_abortable.return_value = False
@@ -791,8 +820,8 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         mock.call('setup', (self._setup,), 'group'),
         mock.call('main', (self._main,), 'group'),
     ])
-    self.mock_execute_teardown.assert_called_once_with(
-        (self._teardown,), 'group')
+    self.mock_execute_teardown.assert_called_once_with((self._teardown,),
+                                                       'group')
 
   def testNoStop(self):
     self.mock_execute_abortable.return_value = False
@@ -802,8 +831,8 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         mock.call('setup', (self._setup,), 'group'),
         mock.call('main', (self._main,), 'group'),
     ])
-    self.mock_execute_teardown.assert_called_once_with(
-        (self._teardown,), 'group')
+    self.mock_execute_teardown.assert_called_once_with((self._teardown,),
+                                                       'group')
 
 
 class PhaseExecutorTest(unittest.TestCase):
@@ -815,8 +844,8 @@ class PhaseExecutorTest(unittest.TestCase):
         plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
         state_logger=mock.MagicMock())
-    self.test_state.plug_manager.initialize_plugs([
-        UnittestPlug, MoreRepeatsUnittestPlug])
+    self.test_state.plug_manager.initialize_plugs(
+        [UnittestPlug, MoreRepeatsUnittestPlug])
     self.phase_executor = phase_executor.PhaseExecutor(self.test_state)
 
   def test_execute_continue_phase(self):

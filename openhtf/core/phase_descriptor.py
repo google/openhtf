@@ -11,19 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Phases in OpenHTF.
 
 Phases in OpenHTF are distinct steps in a test.  Each phase is an instance
 of PhaseDescriptor class.
 
 """
+import enum
 import inspect
 import pdb
-import sys
 
-import enum
 import mutablerecords
 
 import openhtf
@@ -39,58 +36,60 @@ class PhaseWrapError(Exception):
   """Error with phase wrapping."""
 
 
-# Result of a phase.
-#
-# These values can be returned by a test phase to control what the framework
-# does after the phase.
-PhaseResult = enum.Enum('PhaseResult', [   # pylint: disable=invalid-name
-    # Causes the framework to process the phase measurement outcomes and execute
-    # the next phase.
-    'CONTINUE',
-    # Causes the framework to mark the phase with a fail outcome and execute the
-    # next phase.
-    'FAIL_AND_CONTINUE',
-    # Causes the framework to execute the same phase again, ignoring the
-    # measurement outcomes for this instance. If returned more than the phase's
-    # repeat_limit option, this will be treated as a STOP.
-    'REPEAT',
-    # Causes the framework to ignore the measurement outcomes and execute the
-    # next phase.  The phase is still logged, unlike with run_if.
-    'SKIP',
-    # Causes the framework to stop executing, indicating a failure.
-    'STOP'
-])
+class PhaseResult(enum.Enum):
+  """Result of a phase.
+
+  These values can be returned by a test phase to control what the framework
+  does after the phase.
+  """
+
+  # Causes the framework to process the phase measurement outcomes and execute
+  # the next phase.
+  CONTINUE = 'CONTINUE'
+  # Causes the framework to mark the phase with a fail outcome and execute the
+  # next phase.
+  FAIL_AND_CONTINUE = 'FAIL_AND_CONTINUE'
+  # Causes the framework to execute the same phase again, ignoring the
+  # measurement outcomes for this instance. If returned more than the phase's
+  # repeat_limit option, this will be treated as a STOP.
+  REPEAT = 'REPEAT'
+  # Causes the framework to ignore the measurement outcomes and execute the
+  # next phase.  The phase is still logged, unlike with run_if.
+  SKIP = 'SKIP'
+  # Causes the framework to stop executing, indicating a failure.
+  STOP = 'STOP'
 
 
-class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
-    'name': None, 'timeout_s': None, 'run_if': None, 'requires_state': None,
-    'repeat_limit': None, 'run_under_pdb': False})):
+class PhaseOptions(
+    mutablerecords.Record(
+        'PhaseOptions', [], {
+            'name': None,
+            'timeout_s': None,
+            'run_if': None,
+            'requires_state': None,
+            'repeat_limit': None,
+            'run_under_pdb': False,
+        })):
   """Options used to override default test phase behaviors.
 
   Attributes:
     name: Override for the name of the phase. Can be formatted in several
-        different ways as defined in util.format_string.
+      different ways as defined in util.format_string.
     timeout_s: Timeout to use for the phase, in seconds.
     run_if: Callback that decides whether to run the phase or not; if not run,
-        the phase will also not be logged.
+      the phase will also not be logged.
     requires_state: If True, pass the whole TestState into the first argument,
-        otherwise only the TestApi will be passed in.  This is useful if a
-        phase needs to wrap another phase for some reason, as
-        PhaseDescriptors can only be invoked with a TestState instance.
-    repeat_limit:  Maximum number of repeats.  None indicates a phase will
-        be repeated infinitely as long as PhaseResult.REPEAT is returned.
+      otherwise only the TestApi will be passed in.  This is useful if a phase
+      needs to wrap another phase for some reason, as PhaseDescriptors can only
+      be invoked with a TestState instance.
+    repeat_limit:  Maximum number of repeats.  None indicates a phase will be
+      repeated infinitely as long as PhaseResult.REPEAT is returned.
     run_under_pdb: If True, run the phase under the Python Debugger (pdb).  When
-        setting this option, increase the phase timeout as well because the
-        timeout will still apply when under the debugger.
-
-  Example Usages:
-    @PhaseOptions(timeout_s=1)
-    def PhaseFunc(test):
-      pass
-
-    @PhaseOptions(name='Phase({port})')
-    def PhaseFunc(test, port, other_info):
-      pass
+      setting this option, increase the phase timeout as well because the
+      timeout will still apply when under the debugger.
+  Example Usages: @PhaseOptions(timeout_s=1)
+    def PhaseFunc(test): pass  @PhaseOptions(name='Phase({port})')
+    def PhaseFunc(test, port, other_info): pass
   """
 
   def format_strings(self, **kwargs):
@@ -101,8 +100,8 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
   def update(self, **kwargs):
     for key, value in six.iteritems(kwargs):
       if key not in self.__slots__:
-        raise AttributeError('Type %s does not have attribute %s' % (
-            type(self).__name__, key))
+        raise AttributeError('Type %s does not have attribute %s' %
+                             (type(self).__name__, key))
       setattr(self, key, value)
 
   def __call__(self, phase_func):
@@ -113,19 +112,20 @@ class PhaseOptions(mutablerecords.Record('PhaseOptions', [], {
         setattr(phase.options, attr, value)
     return phase
 
+
 TestPhase = PhaseOptions
 
 
-class PhaseDescriptor(mutablerecords.Record(
-    'PhaseDescriptor', ['func'],
-    {
-        'options': PhaseOptions,
-        'plugs': list,
-        'measurements': list,
-        'diagnosers': list,
-        'extra_kwargs': dict,
-        'code_info': test_record.CodeInfo.uncaptured(),
-    })):
+class PhaseDescriptor(
+    mutablerecords.Record(
+        'PhaseDescriptor', ['func'], {
+            'options': PhaseOptions,
+            'plugs': list,
+            'measurements': list,
+            'diagnosers': list,
+            'extra_kwargs': dict,
+            'code_info': test_record.CodeInfo.uncaptured(),
+        })):
   """Phase function and related information.
 
   Attributes:
@@ -156,8 +156,8 @@ class PhaseDescriptor(mutablerecords.Record(
       A new PhaseDescriptor object.
     """
     if isinstance(func, openhtf.PhaseGroup):
-      raise PhaseWrapError('Cannot wrap PhaseGroup <%s> as a phase.' % (
-          func.name or 'Unnamed'))
+      raise PhaseWrapError('Cannot wrap PhaseGroup <%s> as a phase.' %
+                           (func.name or 'Unnamed'))
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
       # or kwargs.  See with_args() below for more details.
@@ -189,7 +189,7 @@ class PhaseDescriptor(mutablerecords.Record(
       argspec = inspect.getfullargspec(self.func)
       argspec_keywords = argspec.varkw
     else:
-      argspec = inspect.getargspec(self.func)
+      argspec = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
       argspec_keywords = argspec.keywords
     stored = {}
     for key, arg in six.iteritems(kwargs):
@@ -223,7 +223,7 @@ class PhaseDescriptor(mutablerecords.Record(
     Args:
       subplugs: dict of plug name to plug class, plug classes to replace.
       error_on_unknown: bool, if True, then error when an unknown plug name is
-          provided.
+        provided.
 
     Raises:
       openhtf.plugs.InvalidPlugError if for one of the plug names one of the
@@ -251,8 +251,8 @@ class PhaseDescriptor(mutablerecords.Record(
         # Check __dict__ to see if the attribute is explicitly defined in the
         # class, rather than being defined in a parent class.
         accept_substitute = ('auto_placeholder' in original_plug.cls.__dict__
-                             and original_plug.cls.auto_placeholder
-                             and issubclass(sub_class, original_plug.cls))
+                             and original_plug.cls.auto_placeholder and
+                             issubclass(sub_class, original_plug.cls))
 
       if not accept_substitute:
         raise openhtf.plugs.InvalidPlugError(
@@ -282,19 +282,20 @@ class PhaseDescriptor(mutablerecords.Record(
       The return value from calling the underlying function.
     """
     kwargs = dict(self.extra_kwargs)
-    kwargs.update(test_state.plug_manager.provide_plugs(
-        (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
+    kwargs.update(
+        test_state.plug_manager.provide_plugs(
+            (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
 
-    if sys.version_info[0] < 3:
-      arg_info = inspect.getargspec(self.func)
-      keywords = arg_info.keywords
-    else:
+    if six.PY3:
       arg_info = inspect.getfullargspec(self.func)
       keywords = arg_info.varkw
+    else:
+      arg_info = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
+      keywords = arg_info.keywords
     # Pass in test_api if the phase takes *args, or **kwargs with at least 1
     # positional, or more positional args than we have keyword args.
-    if arg_info.varargs or (keywords and len(arg_info.args) >= 1) or (
-        len(arg_info.args) > len(kwargs)):
+    if arg_info.varargs or (keywords and len(arg_info.args) >= 1) or (len(
+        arg_info.args) > len(kwargs)):
       args = []
       if self.options.requires_state:
         args.append(test_state)

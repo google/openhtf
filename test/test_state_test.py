@@ -95,8 +95,8 @@ class TestTestApi(unittest.TestCase):
 
   def setUp(self):
     super(TestTestApi, self).setUp()
-    patcher = mock.patch.object(test_record.PhaseRecord, 'record_start_time',
-                                return_value=11235)
+    patcher = mock.patch.object(
+        test_record.PhaseRecord, 'record_start_time', return_value=11235)
     self.mock_record_start_time = patcher.start()
     self.addCleanup(patcher.stop)
     self.test_descriptor = test_descriptor.TestDescriptor(

@@ -19,15 +19,16 @@ import unittest
 from openhtf.util import conf
 import six
 
-
 args = [
     '--config-value=flag_key=flag_value',
-    '--config-value', 'other_flag=other_value',
+    '--config-value',
+    'other_flag=other_value',
     # You can specify arbitrary keys, but they'll get ignored if they aren't
     # actually declared anywhere (included here to make sure of that).
     '--config_value=undeclared_flag=who_cares',
     '--config-value=true_value=true',
-    '--config-value', 'num_value=100',
+    '--config-value',
+    'num_value=100',
 ]
 
 conf.declare('flag_key')
@@ -49,12 +50,14 @@ class TestConf(unittest.TestCase):
   NOT_A_DICT = os.path.join(os.path.dirname(__file__), 'bad_config.yaml')
 
   def setUp(self):
+    super(TestConf, self).setUp()
     flags, _ = conf.ARG_PARSER.parse_known_args(args)
     conf.load_flag_values(flags)
 
   def tearDown(self):
     conf._flags.config_file = None
     conf.reset()
+    super(TestConf, self).tearDown()
 
   def test_yaml_config(self):
     with io.open(self.YAML_FILENAME, encoding='utf-8') as yamlfile:
@@ -80,7 +83,7 @@ class TestConf(unittest.TestCase):
     self.assertEqual('default', conf.string_default)
     self.assertIsNone(conf.none_default)
     with self.assertRaises(conf.UnsetKeyError):
-      conf.no_default
+      conf.no_default  # pylint: disable=pointless-statement
 
   def test_flag_values(self):
     self.assertEqual('flag_value', conf.flag_key)
@@ -107,16 +110,15 @@ class TestConf(unittest.TestCase):
         'string_default': 'default',
     }
     # assert first dict is a subset of second dict
-    self.assertLessEqual(six.viewitems(expected_dict),
-                              six.viewitems(conf_dict))
+    self.assertLessEqual(six.viewitems(expected_dict), six.viewitems(conf_dict))
 
   def test_undeclared(self):
     with self.assertRaises(conf.UndeclaredKeyError):
-      conf.undeclared
+      conf.undeclared  # pylint: disable=pointless-statement
 
   def test_weird_attribute(self):
     with self.assertRaises(AttributeError):
-      conf._dont_do_this
+      conf._dont_do_this  # pylint: disable=pointless-statement
     with self.assertRaises(AttributeError):
       conf._dont_do_this_either = None
 
@@ -147,6 +149,7 @@ class TestConf(unittest.TestCase):
         conf.reset()
 
   def test_save_and_restore(self):
+
     @conf.save_and_restore
     def modifies_conf():
       conf.load(string_default='modified')
@@ -157,6 +160,7 @@ class TestConf(unittest.TestCase):
     self.assertEqual('default', conf.string_default)
 
   def test_save_and_restore_kwargs(self):
+
     @conf.save_and_restore(string_default='modified')
     def modifies_conf():
       self.assertEqual('modified', conf.string_default)
@@ -166,15 +170,17 @@ class TestConf(unittest.TestCase):
     self.assertEqual('default', conf.string_default)
 
   def test_inject_positional_args(self):
+
     @conf.inject_positional_args
     def test_function(string_default, no_default, not_declared):
       self.assertEqual('default', string_default)
       self.assertEqual('passed_value', no_default)
       self.assertEqual('not_declared', not_declared)
 
-    test_function(no_default='passed_value', not_declared='not_declared')
+    test_function(no_default='passed_value', not_declared='not_declared')  # pylint: disable=no-value-for-parameter
 
   def test_inject_positional_args_overrides(self):
+
     @conf.inject_positional_args
     def test_function(string_default, none_default='new_default'):
       # Make sure when we pass a kwarg, it overrides the config value.
@@ -185,10 +191,12 @@ class TestConf(unittest.TestCase):
     test_function(string_default='overridden')
 
   def test_inject_positional_args_class(self):
-    class test_class(object):
+
+    class TestClass(object):
+
       @conf.inject_positional_args
       def __init__(self, string_default):
         self.string_default = string_default
 
-    instance = test_class()
+    instance = TestClass()  # pylint: disable=no-value-for-parameter
     self.assertEqual('default', instance.string_default)

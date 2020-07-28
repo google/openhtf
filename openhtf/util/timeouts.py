@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """A simple utility to do timeout checking."""
 
 import contextlib
@@ -22,6 +20,7 @@ import threading
 import time
 
 _LOG = logging.getLogger(__name__)
+
 
 class PolledTimeout(object):
   """An object which tracks if a timeout has expired."""
@@ -67,7 +66,7 @@ class PolledTimeout(object):
 
     Args:
       timeout_s: PolledTimeout object, or number of seconds to use for creating
-    a new one.
+        a new one.
 
     Returns:
       A PolledTimeout object that will expire in timeout_s seconds, which may
@@ -119,7 +118,7 @@ class PolledTimeout(object):
 
 # There's now no way to tell if a timeout occurred generically
 # which sort of sucks (for generic validation fn)
-def loop_until_timeout_or_valid(timeout_s, function, validation_fn, sleep_s=1):  # pylint: disable=invalid-name
+def loop_until_timeout_or_valid(timeout_s, function, validation_fn, sleep_s=1):
   """Loops until the specified function returns valid or a timeout is reached.
 
   Note: The function may return anything which, when passed to validation_fn,
@@ -130,11 +129,11 @@ def loop_until_timeout_or_valid(timeout_s, function, validation_fn, sleep_s=1): 
 
   Args:
     timeout_s: The number of seconds to wait until a timeout condition is
-        reached. As a convenience, this accepts None to mean never timeout.  Can
-        also be passed a PolledTimeout object instead of an integer.
+      reached. As a convenience, this accepts None to mean never timeout.  Can
+      also be passed a PolledTimeout object instead of an integer.
     function: The function to call each iteration.
     validation_fn: The validation function called on the function result to
-        determine whether to keep looping.
+      determine whether to keep looping.
     sleep_s: The number of seconds to wait after calling the function.
 
   Returns:
@@ -151,7 +150,7 @@ def loop_until_timeout_or_valid(timeout_s, function, validation_fn, sleep_s=1): 
     time.sleep(sleep_s)
 
 
-def loop_until_timeout_or_true(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
+def loop_until_timeout_or_true(timeout_s, function, sleep_s=1):
   """Loops until the specified function returns True or a timeout is reached.
 
   Note: The function may return anything which evaluates to implicit True.  This
@@ -161,8 +160,8 @@ def loop_until_timeout_or_true(timeout_s, function, sleep_s=1):  # pylint: disab
 
   Args:
     timeout_s: The number of seconds to wait until a timeout condition is
-        reached. As a convenience, this accepts None to mean never timeout.  Can
-        also be passed a PolledTimeout object instead of an integer.
+      reached. As a convenience, this accepts None to mean never timeout.  Can
+      also be passed a PolledTimeout object instead of an integer.
     function: The function to call each iteration.
     sleep_s: The number of seconds to wait after calling the function.
 
@@ -172,21 +171,21 @@ def loop_until_timeout_or_true(timeout_s, function, sleep_s=1):  # pylint: disab
   return loop_until_timeout_or_valid(timeout_s, function, lambda x: x, sleep_s)
 
 
-def loop_until_timeout_or_not_none(timeout_s, function, sleep_s=1):  # pylint: disable=invalid-name
+def loop_until_timeout_or_not_none(timeout_s, function, sleep_s=1):
   """Loops until the specified function returns non-None or until a timeout.
 
   Args:
     timeout_s: The number of seconds to wait until a timeout condition is
-        reached. As a convenience, this accepts None to mean never timeout.  Can
-        also be passed a PolledTimeout object instead of an integer.
+      reached. As a convenience, this accepts None to mean never timeout.  Can
+      also be passed a PolledTimeout object instead of an integer.
     function: The function to call each iteration.
     sleep_s: The number of seconds to wait after calling the function.
 
   Returns:
     Whatever the function returned last.
   """
-  return loop_until_timeout_or_valid(
-      timeout_s, function, lambda x: x is not None, sleep_s)
+  return loop_until_timeout_or_valid(timeout_s, function,
+                                     lambda x: x is not None, sleep_s)
 
 
 def loop_until_true_else_raise(timeout_s,
@@ -198,23 +197,25 @@ def loop_until_true_else_raise(timeout_s,
 
   Args:
     timeout_s: The number of seconds to wait until a timeout condition is
-        reached. As a convenience, this accepts None to mean never timeout. Can
-        also be passed a PolledTimeout object instead of an integer.
+      reached. As a convenience, this accepts None to mean never timeout. Can
+      also be passed a PolledTimeout object instead of an integer.
     function: The function to call each iteration.
     invert: If True, wait for the callable to return falsey instead of truthy.
     message: Optional custom error message to use on a timeout.
     sleep_s: Seconds to sleep between call attempts.
 
+  Raises:
+    RuntimeError: if the timeout is reached before the function returns truthy.
+
   Returns:
     The final return value of the function.
-
-  Raises:
-    RuntimeError if the timeout is reached before the function returns truthy.
   """
+
   def validate(x):
     return bool(x) != invert
 
-  result = loop_until_timeout_or_valid(timeout_s, function, validate, sleep_s=1)
+  result = loop_until_timeout_or_valid(
+      timeout_s, function, validate, sleep_s=sleep_s)
   if validate(result):
     return result
 
@@ -224,12 +225,11 @@ def loop_until_true_else_raise(timeout_s,
   name = '(unknown)'
   if hasattr(function, '__name__'):
     name = function.__name__
-  elif (isinstance(function, functools.partial)
-        and hasattr(function.func, '__name__')):
+  elif (isinstance(function, functools.partial) and
+        hasattr(function.func, '__name__')):
     name = function.func.__name__
-  raise RuntimeError(
-      'Function %s failed to return %s within %d seconds.'
-      % (name, 'falsey' if invert else 'truthy', timeout_s)) 
+  raise RuntimeError('Function %s failed to return %s within %d seconds.' %
+                     (name, 'falsey' if invert else 'truthy', timeout_s))
 
 
 class Interval(object):
@@ -241,7 +241,7 @@ class Interval(object):
     Args:
       method: A callable to execute, it should take no arguments.
       stop_if_false: If True, the interval will exit if the method returns
-      False.
+        False.
     """
     self.method = method
     self.stopped = threading.Event()
@@ -259,6 +259,7 @@ class Interval(object):
 
     Args:
       interval_s: The amount of time between executions of the method.
+
     Returns:
       False if the interval was already running.
     """
@@ -288,7 +289,8 @@ class Interval(object):
 
     Args:
       timeout_s: The time in seconds to wait on the thread to finish.  By
-          default it's forever.
+        default it's forever.
+
     Returns:
       False if a timeout was provided and we timed out.
     """
@@ -304,6 +306,7 @@ class Interval(object):
 
     Args:
       timeout_s: The time in seconds to wait, defaults to forever.
+
     Returns:
       True if the interval is still running and we reached the timeout.
     """
@@ -313,13 +316,14 @@ class Interval(object):
     return self.running
 
 
-def execute_forever(method, interval_s):  # pylint: disable=invalid-name
+def execute_forever(method, interval_s):
   """Executes a method forever at the specified interval.
 
   Args:
     method: The callable to execute.
     interval_s: The number of seconds to start the execution after each method
-        finishes.
+      finishes.
+
   Returns:
     An Interval object.
   """
@@ -328,13 +332,14 @@ def execute_forever(method, interval_s):  # pylint: disable=invalid-name
   return interval
 
 
-def execute_until_false(method, interval_s):  # pylint: disable=invalid-name
+def execute_until_false(method, interval_s):
   """Executes a method forever until the method returns a false value.
 
   Args:
     method: The callable to execute.
     interval_s: The number of seconds to start the execution after each method
-        finishes.
+      finishes.
+
   Returns:
     An Interval object.
   """
@@ -343,22 +348,29 @@ def execute_until_false(method, interval_s):  # pylint: disable=invalid-name
   return interval
 
 
-# pylint: disable=invalid-name
-def retry_until_true_or_limit_reached(method, limit, sleep_s=1,
+def retry_until_true_or_limit_reached(method,
+                                      limit,
+                                      sleep_s=1,
                                       catch_exceptions=()):
   """Executes a method until the retry limit is hit or True is returned."""
-  return retry_until_valid_or_limit_reached(
-      method, limit, lambda x: x, sleep_s, catch_exceptions)
+  return retry_until_valid_or_limit_reached(method, limit, lambda x: x, sleep_s,
+                                            catch_exceptions)
 
 
-def retry_until_not_none_or_limit_reached(method, limit, sleep_s=1,
+def retry_until_not_none_or_limit_reached(method,
+                                          limit,
+                                          sleep_s=1,
                                           catch_exceptions=()):
   """Executes a method until the retry limit is hit or not None is returned."""
-  return retry_until_valid_or_limit_reached(
-      method, limit, lambda x: x is not None, sleep_s, catch_exceptions)
+  return retry_until_valid_or_limit_reached(method, limit,
+                                            lambda x: x is not None, sleep_s,
+                                            catch_exceptions)
 
 
-def retry_until_valid_or_limit_reached(method, limit, validation_fn, sleep_s=1,
+def retry_until_valid_or_limit_reached(method,
+                                       limit,
+                                       validation_fn,
+                                       sleep_s=1,
                                        catch_exceptions=()):
   """Executes a method until the retry limit or validation_fn returns True.
 
@@ -370,9 +382,10 @@ def retry_until_valid_or_limit_reached(method, limit, validation_fn, sleep_s=1,
     method: The method to execute should take no arguments.
     limit: The number of times to try this method.  Must be >0.
     validation_fn: The validation function called on the function result to
-        determine whether to keep looping.
+      determine whether to keep looping.
     sleep_s: The time to sleep in between invocations.
     catch_exceptions: Tuple of exception types to catch and count as failures.
+
   Returns:
       Whatever the method last returned, implicit False would indicate the
         method never succeeded.
@@ -394,8 +407,6 @@ def retry_until_valid_or_limit_reached(method, limit, validation_fn, sleep_s=1,
     result = _execute_method(helper)
   return result
 
-# pylint: disable=invalid-name
-
 
 @contextlib.contextmanager
 def take_at_least_n_seconds(time_s):
@@ -410,6 +421,7 @@ def take_at_least_n_seconds(time_s):
   Args:
     time_s: The number of seconds this block should take.  If it doesn't take at
       least this time, then this method blocks during __exit__.
+
   Yields:
     To do some actions then on completion waits the remaining time.
   """
@@ -429,6 +441,7 @@ def take_at_most_n_seconds(time_s, func, *args, **kwargs):
     func: Function to call.
     *args: Arguments to call the function with.
     **kwargs: Keyword arguments to call the function with.
+
   Returns:
     True if the function finished in less than time_s seconds.
   """
@@ -463,6 +476,7 @@ def execute_after_delay(time_s, func, *args, **kwargs):
       func(*args, **kwargs)
     except Exception:  # pylint: disable=broad-except
       _LOG.exception('Error executing %s after %s expires.', func, timeout)
+
   if timeout.remaining is not None:
     thread = threading.Thread(target=target)
     thread.start()

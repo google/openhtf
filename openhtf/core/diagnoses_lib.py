@@ -372,9 +372,9 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
   """Diagnoser definition for a Phase using a function."""
 
   # The function to run.  Set with run_func in the initializer.
-  # type: Optional[Callable[[test_record.PhaseRecord],
-  #                         Union[None, 'Diagnosis', List['Diagnosis']]]]
-  _run_func = attr.ib(default=None)
+  _run_func = attr.ib(
+      default=None
+  )  # type: Optional[Callable[[test_record.PhaseRecord], Union[None, 'Diagnosis', List['Diagnosis']]]]
 
   def __call__(self, func):
     """Returns PhaseDiagnoser for the provided function."""
@@ -421,9 +421,9 @@ class TestDiagnoser(BaseTestDiagnoser):
   """Diagnoser definition for a Test using a function."""
 
   # The function to run.  Set with run_func in the initializer.
-  # type: Optional[Callable[[test_record.TestRecord, DiagnosesStore],
-  #               Union[None, 'Diagnosis', List['Diagnosis']]]]
-  _run_func = attr.ib(default=None)
+  _run_func = attr.ib(
+      default=None
+  )  # type: Optional[Callable[[test_record.TestRecord, DiagnosesStore], Union[None, 'Diagnosis', List['Diagnosis']]]]
 
   def __call__(self, func):
     """Returns TestDiagnoser for the provided function."""

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Example OpenHTF Phase Groups.
 
 PhaseGroups are used to control phase shortcutting due to terminal errors to
@@ -56,11 +55,12 @@ def run_basic_group():
 
   In this example, there are no terminal phases; all phases are run.
   """
-  test = htf.Test(htf.PhaseGroup(
-      setup=[setup_phase],
-      main=[main_phase],
-      teardown=[teardown_phase],
-  ))
+  test = htf.Test(
+      htf.PhaseGroup(
+          setup=[setup_phase],
+          main=[main_phase],
+          teardown=[teardown_phase],
+      ))
   test.execute()
 
 
@@ -71,11 +71,12 @@ def run_setup_error_group():
   skipped.  The PhaseGroup is not entered, so the teardown phases are also
   skipped.
   """
-  test = htf.Test(htf.PhaseGroup(
-      setup=[error_setup_phase],
-      main=[main_phase],
-      teardown=[teardown_phase],
-  ))
+  test = htf.Test(
+      htf.PhaseGroup(
+          setup=[error_setup_phase],
+          main=[main_phase],
+          teardown=[teardown_phase],
+      ))
   test.execute()
 
 
@@ -86,11 +87,12 @@ def run_main_error_group():
   because the setup phases ran without error, so the teardown phases are run.
   The other main phase is skipped.
   """
-  test = htf.Test(htf.PhaseGroup(
-      setup=[setup_phase],
-      main=[error_main_phase, main_phase],
-      teardown=[teardown_phase],
-  ))
+  test = htf.Test(
+      htf.PhaseGroup(
+          setup=[setup_phase],
+          main=[error_main_phase, main_phase],
+          teardown=[teardown_phase],
+      ))
   test.execute()
 
 
@@ -111,9 +113,7 @@ def run_nested_groups():
               htf.PhaseGroup.with_teardown(inner_teardown_phase)(
                   inner_main_phase),
           ],
-          teardown=[teardown_phase]
-      )
-  )
+          teardown=[teardown_phase]))
   test.execute()
 
 
@@ -132,8 +132,7 @@ def run_nested_error_groups():
               main_phase,
           ],
           teardown=[teardown_phase],
-      )
-  )
+      ))
   test.execute()
 
 
@@ -152,15 +151,18 @@ def run_nested_error_skip_unentered_groups():
               main_phase,
           ],
           teardown=[teardown_phase],
-      )
-  )
+      ))
   test.execute()
 
 
-if __name__ == '__main__':
+def main():
   run_basic_group()
   run_setup_error_group()
   run_main_error_group()
   run_nested_groups()
   run_nested_error_groups()
   run_nested_error_skip_unentered_groups()
+
+
+if __name__ == '__main__':
+  main()

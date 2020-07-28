@@ -20,6 +20,7 @@ import platform
 import subprocess
 import sys
 
+# pylint: disable=g-importing-member,g-bad-import-order
 from distutils.command.build import build
 from distutils.command.clean import clean
 from distutils.cmd import Command
@@ -54,7 +55,8 @@ class BuildProtoCommand(Command):
     self.skip_proto = False
     try:
       prefix = subprocess.check_output(
-          'pkg-config --variable prefix protobuf'.split()).strip().decode('utf-8')
+          'pkg-config --variable prefix protobuf'.split()).strip().decode(
+              'utf-8')
     except (subprocess.CalledProcessError, OSError):
       if platform.system() == 'Linux':
         # Default to /usr?
@@ -69,11 +71,11 @@ class BuildProtoCommand(Command):
 
     maybe_protoc = os.path.join(prefix, 'bin', 'protoc')
     if os.path.isfile(maybe_protoc) and os.access(maybe_protoc, os.X_OK):
-        self.protoc = maybe_protoc
+      self.protoc = maybe_protoc
     else:
-        print('Warning: protoc not found at %s' % maybe_protoc)
-        print('setup will attempt to run protoc with no prefix.')
-        self.protoc = 'protoc'
+      print('Warning: protoc not found at %s' % maybe_protoc)
+      print('setup will attempt to run protoc with no prefix.')
+      self.protoc = 'protoc'
 
     self.protodir = os.path.join(prefix, 'include')
     self.indir = os.getcwd()
@@ -95,9 +97,12 @@ class BuildProtoCommand(Command):
       print('Attempting to build proto files:\n%s' % '\n'.join(protos))
       cmd = [
           self.protoc,
-          '--proto_path', self.indir,
-          '--proto_path', self.protodir,
-          '--python_out', self.outdir,
+          '--proto_path',
+          self.indir,
+          '--proto_path',
+          self.protodir,
+          '--python_out',
+          self.outdir,
       ] + protos
       try:
         subprocess.check_call(cmd)
@@ -123,7 +128,6 @@ class BuildProtoCommand(Command):
 # Make building protos part of building overall.
 build.sub_commands.insert(0, ('build_proto', None))
 
-
 INSTALL_REQUIRES = [
     'attrs>=19.3.0',
     'colorama>=0.3.9,<1.0',
@@ -139,12 +143,11 @@ INSTALL_REQUIRES = [
 ]
 # Not all versions of setuptools support semicolon syntax for specifying
 # platform-specific dependencies, so we do it the old school way.
-if sys.version_info < (3,4):
+if sys.version_info < (3, 4):
   INSTALL_REQUIRES.append('enum34>=1.1.2,<2.0')
 
 
-
-class PyTestCommand(test):
+class PyTestCommand(test):  # pylint: disable=missing-class-docstring
   # Derived from
   # https://github.com/chainreactionmfg/cara/blob/master/setup.py
   user_options = [
@@ -166,7 +169,7 @@ class PyTestCommand(test):
   def run_tests(self):
     self.run_command('build_proto')
 
-    import pytest
+    import pytest  # pylint: disable=g-import-not-at-top
     cov = []
     if self.pytest_cov is not None:
       outputs = []
@@ -188,12 +191,13 @@ setup(
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
     packages=find_packages(exclude='examples'),
-    package_data={'openhtf': ['output/proto/*.proto',
-                              'output/web_gui/dist/*',
-                              'output/web_gui/dist/css/*',
-                              'output/web_gui/dist/js/*',
-                              'output/web_gui/dist/img/*',
-                              'output/web_gui/*']},
+    package_data={
+        'openhtf': [
+            'output/proto/*.proto', 'output/web_gui/dist/*',
+            'output/web_gui/dist/css/*', 'output/web_gui/dist/js/*',
+            'output/web_gui/dist/img/*', 'output/web_gui/*'
+        ]
+    },
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
@@ -205,12 +209,8 @@ setup(
             'libusb1>=1.3.0,<2.0',
             'M2Crypto>=0.22.3,<1.0',
         ],
-        'update_units': [
-            'xlrd>=1.0.0,<2.0',
-        ],
-        'serial_collection_plug': [
-            'pyserial>=3.3.0,<4.0',
-        ],
+        'update_units': ['xlrd>=1.0.0,<2.0',],
+        'serial_collection_plug': ['pyserial>=3.3.0,<4.0',],
     },
     setup_requires=[
         'wheel>=0.29.0,<1.0',

@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """One-off utilities."""
 
 import logging
@@ -26,7 +24,7 @@ import mutablerecords
 import six
 
 
-def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable=invalid-name
+def _log_every_n_to_logger(n, logger, level, message, *args):
   """Logs the given message every n calls to a logger.
 
   Args:
@@ -35,26 +33,29 @@ def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable
     level: The logging level (e.g. logging.INFO).
     message: A message to log
     *args: Any format args for the message.
+
   Returns:
     A method that logs and returns True every n calls.
   """
   logger = logger or logging.getLogger()
+
   def _gen():  # pylint: disable=missing-docstring
     while True:
       for _ in range(n):
         yield False
       logger.log(level, message, *args)
       yield True
+
   gen = _gen()
   return lambda: six.next(gen)
 
 
-def log_every_n(n, level, message, *args):  # pylint: disable=invalid-name
+def log_every_n(n, level, message, *args):
   """Logs a message every n calls. See _log_every_n_to_logger."""
   return _log_every_n_to_logger(n, None, level, message, *args)
 
 
-def time_millis():  # pylint: disable=invalid-name
+def time_millis():
   """The time in milliseconds."""
   return int(time.time() * 1000)
 
@@ -79,13 +80,14 @@ class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
 
 
 # TODO(jethier): Add a pylint plugin to avoid the no-self-argument for this.
-class classproperty(object):
+class classproperty(object):  # pylint: disable=invalid-name
   """Exactly what it sounds like.
 
   Note that classproperties don't have setters, so setting them will replace
   the classproperty with the new value. In most use cases (forcing subclasses
   to override the classproperty, for example) this is desired.
   """
+
   def __init__(self, func):
     self._func = func
 
@@ -98,6 +100,13 @@ def partial_format(target, **kwargs):
 
   This function allows substitutions to be gradually made in several steps
   rather than all at once.  Similar to string.Template.safe_substitute.
+
+  Args:
+    target: format string.
+    **kwargs: format replacements.
+
+  Returns:
+    Formatted string.
   """
   output = target[:]
 
@@ -109,19 +118,22 @@ def partial_format(target, **kwargs):
 
   return output
 
+
 def format_string(target, kwargs):
   """Formats a string in any of three ways (or not at all).
 
   Args:
     target: The target string to format. This can be a function that takes a
-        dict as its only argument, a string with {}- or %-based formatting, or
-        a basic string with none of those. In the latter case, the string is
-        returned as-is, but in all other cases the string is formatted (or the
-        callback called) with the given kwargs.
-        If this is None (or otherwise falsey), it is returned immediately.
-    kwargs: The arguments to use for formatting.
-        Passed to safe_format, %, or target if it's
-        callable.
+      dict as its only argument, a string with {}- or %-based formatting, or a
+      basic string with none of those. In the latter case, the string is
+      returned as-is, but in all other cases the string is formatted (or the
+      callback called) with the given kwargs. If this is None (or otherwise
+      falsey), it is returned immediately.
+    kwargs: The arguments to use for formatting. Passed to safe_format, %, or
+      target if it's callable.
+
+  Returns:
+    Formatted string.
   """
   if not target:
     return target

@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """The plugs module provides boilerplate for accessing hardware.
 
 Most tests require interaction with external hardware.  This module provides
@@ -108,27 +106,36 @@ from openhtf.util import logs
 from openhtf.util import threads
 import six
 
-
 _LOG = logging.getLogger(__name__)
 
-
-conf.declare('plug_teardown_timeout_s', default_value=0, description=
-             'Timeout (in seconds) for each plug tearDown function if > 0; '
-             'otherwise, will wait an unlimited time.')
-
-
-PlugDescriptor = collections.namedtuple('PlugDescriptor', ['mro'])  # pylint: disable=invalid-name
-
-# Placeholder for a specific plug to be provided before test execution.
-#
-# Use the with_plugs() method to provide the plug before test execution. The
-# with_plugs() method checks to make sure the substitute plug is a subclass of
-# the PlugPlaceholder's base_class.
-PlugPlaceholder = collections.namedtuple('PlugPlaceholder', ['base_class'])  # pylint: disable=invalid-name
+conf.declare(
+    'plug_teardown_timeout_s',
+    default_value=0,
+    description='Timeout (in seconds) for each plug tearDown function if > 0; '
+    'otherwise, will wait an unlimited time.')
 
 
-class PhasePlug(mutablerecords.Record(
-    'PhasePlug', ['name', 'cls'], {'update_kwargs': True})):
+class PlugDescriptor(collections.namedtuple('PlugDescriptor', [
+    'mro',
+])):
+  pass
+
+
+class PlugPlaceholder(
+    collections.namedtuple('PlugPlaceholder', [
+        'base_class',
+    ])):
+  """Placeholder for a specific plug to be provided before test execution.
+
+  Use the with_plugs() method to provide the plug before test execution. The
+  with_plugs() method checks to make sure the substitute plug is a subclass of
+  the PlugPlaceholder's base_class.
+  """
+
+
+class PhasePlug(
+    mutablerecords.Record('PhasePlug', ['name', 'cls'],
+                          {'update_kwargs': True})):
   """Information about the use of a plug in a phase."""
 
 
@@ -149,8 +156,8 @@ class BasePlug(object):
 
   Attributes:
     logger: This attribute will be set by the PlugManager (and as such it
-        doesn't appear here), and is the same logger as passed into test
-        phases via TestApi.
+      doesn't appear here), and is the same logger as passed into test phases
+      via TestApi.
   """
   # Override this to True in subclasses to support remote Plug access.
   enable_remote = False
@@ -166,12 +173,12 @@ class BasePlug(object):
   logger = _LOG
 
   @classproperty
-  def placeholder(cls):
+  def placeholder(cls):  # pylint: disable=no-self-argument
     """Returns a PlugPlaceholder for the calling class."""
     return PlugPlaceholder(cls)
 
   def _asdict(self):
-    """Return a dictionary representation of this plug's state.
+    """Returns a dictionary representation of this plug's state.
 
     This is called repeatedly during phase execution on any plugs that are in
     use by that phase.  The result is reported via the Station API by the
@@ -185,6 +192,7 @@ class BasePlug(object):
     You can also implement an `as_base_types` function that can return a dict
     where the values must be base types at all levels.  This can help prevent
     recursive copying, which is time intensive.
+
     """
     return {}
 
@@ -235,8 +243,8 @@ def plug(update_kwargs=True, **plugs_map):
     InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
   """
   for a_plug in plugs_map.values():
-    if not (isinstance(a_plug, PlugPlaceholder)
-            or issubclass(a_plug, BasePlug)):
+    if not (isinstance(a_plug, PlugPlaceholder) or
+            issubclass(a_plug, BasePlug)):
       raise InvalidPlugError(
           'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
           'for one' % a_plug)
@@ -256,16 +264,17 @@ def plug(update_kwargs=True, **plugs_map):
           same function.
     """
     phase = openhtf.core.phase_descriptor.PhaseDescriptor.wrap_or_copy(func)
-    duplicates = (frozenset(p.name for p in phase.plugs) &
-                  frozenset(plugs_map))
+    duplicates = (frozenset(p.name for p in phase.plugs) & frozenset(plugs_map))
     if duplicates:
-      raise DuplicatePlugError(
-          'Plugs %s required multiple times on phase %s' % (duplicates, func))
+      raise DuplicatePlugError('Plugs %s required multiple times on phase %s' %
+                               (duplicates, func))
 
     phase.plugs.extend([
         PhasePlug(name, a_plug, update_kwargs=update_kwargs)
-        for name, a_plug in six.iteritems(plugs_map)])
+        for name, a_plug in six.iteritems(plugs_map)
+    ])
     return phase
+
   return result
 
 
@@ -282,8 +291,8 @@ class _PlugTearDownThread(threads.KillableThread):
     except Exception:  # pylint: disable=broad-except
       # Including the stack trace from ThreadTerminationErrors received when
       # killed.
-      _LOG.warning('Exception calling tearDown on %s:',
-                   self._plug, exc_info=True)
+      _LOG.warning(
+          'Exception calling tearDown on %s:', self._plug, exc_info=True)
 
 
 class PlugManager(object):
@@ -297,21 +306,21 @@ class PlugManager(object):
   main framework thread anyway.
 
   Attributes:
-    _plug_types: Initial set of plug types, additional plug types may be
-        passed into calls to initialize_plugs().
+    _plug_types: Initial set of plug types, additional plug types may be passed
+      into calls to initialize_plugs().
     _plugs_by_type: Dict mapping plug type to plug instance.
     _plugs_by_name: Dict mapping plug name to plug instance.
     _plug_descriptors: Dict mapping plug type to plug descriptor.
     logger: logging.Logger instance that can save logs to the running test
-        record.
+      record.
   """
 
   def __init__(self, plug_types=None, record_logger=None):
     self._plug_types = plug_types or set()
-    for plug in self._plug_types:
-      if isinstance(plug, PlugPlaceholder):
+    for plug_type in self._plug_types:
+      if isinstance(plug_type, PlugPlaceholder):
         raise InvalidPlugError('Plug %s is a placeholder, replace it using '
-                               'with_plugs().' % plug)
+                               'with_plugs().' % plug_type)
     self._plugs_by_type = {}
     self._plugs_by_name = {}
     self._plug_descriptors = {}
@@ -343,12 +352,14 @@ class PlugManager(object):
     Or:
         ['openhtf.plugs.user_input.UserInput',
          'my_module.advanced_user_input.AdvancedUserInput']
+
+    Args:
+      plug_type: The plug class to get the MRO for.
     """
     ignored_classes = (BasePlug, FrontendAwareBasePlug)
     return [
-        self.get_plug_name(base_class) for base_class in plug_type.mro()
-        if (issubclass(base_class, BasePlug) and
-            base_class not in ignored_classes)
+        self.get_plug_name(base_class) for base_class in plug_type.mro() if
+        (issubclass(base_class, BasePlug) and base_class not in ignored_classes)
     ]
 
   def get_plug_name(self, plug_type):
@@ -356,6 +367,9 @@ class PlugManager(object):
 
     For example:
         'openhtf.plugs.user_input.UserInput'
+
+    Args:
+      plug_type: The plug class to get the name of.
     """
     return '%s.%s' % (plug_type.__module__, plug_type.__name__)
 
@@ -366,9 +380,8 @@ class PlugManager(object):
     use in provide_plugs().
 
     Args:
-      plug_types: Plug types may be specified here rather than passed
-                  into the constructor (this is used primarily for unit testing
-                  phases).
+      plug_types: Plug types may be specified here rather than passed into the
+        constructor (this is used primarily for unit testing phases).
     """
     types = plug_types if plug_types is not None else self._plug_types
     for plug_type in types:
@@ -383,8 +396,8 @@ class PlugManager(object):
               'Plug type "%s" is not an instance of BasePlug' % plug_type)
         if plug_type.logger != _LOG:
           # They put a logger attribute on the class itself, overriding ours.
-          raise InvalidPlugError(
-              'Do not override "logger" in your plugs.', plug_type)
+          raise InvalidPlugError('Do not override "logger" in your plugs.',
+                                 plug_type)
 
         # Override the logger so that __init__'s logging goes into the record.
         plug_type.logger = plug_logger
@@ -432,6 +445,10 @@ class PlugManager(object):
 
     Note this should only be used inside unittests, as this mechanism is not
     compatible with RemotePlug support.
+
+    Args:
+      plug_type: The plug class to update.
+      plug_value: The plug class instance to store.
     """
     self._plug_types.add(plug_type)
     if plug_type in self._plugs_by_type:
@@ -463,9 +480,9 @@ class PlugManager(object):
         name = '<PlugTearDownThread: %s>' % plug_type
       thread = _PlugTearDownThread(plug_instance, name=name)
       thread.start()
-      timeout_s = (conf.plug_teardown_timeout_s
-                   if conf.plug_teardown_timeout_s
-                   else None)
+      timeout_s = (
+          conf.plug_teardown_timeout_s
+          if conf.plug_teardown_timeout_s else None)
       thread.join(timeout_s)
       if thread.is_alive():
         thread.kill()
@@ -489,23 +506,25 @@ class PlugManager(object):
       InvalidPlugError: The plug can't be waited on either because it's not in
           use or it's not a frontend-aware plug.
     """
-    plug = self._plugs_by_name.get(plug_name)
+    plug_instance = self._plugs_by_name.get(plug_name)
 
-    if plug is None:
+    if plug_instance is None:
       raise InvalidPlugError('Cannot wait on unknown plug "%s".' % plug_name)
 
-    if not isinstance(plug, FrontendAwareBasePlug):
+    if not isinstance(plug_instance, FrontendAwareBasePlug):
       raise InvalidPlugError('Cannot wait on a plug %s that is not an subclass '
                              'of FrontendAwareBasePlug.' % plug_name)
 
-    state, update_event = plug.asdict_with_event()
+    state, update_event = plug_instance.asdict_with_event()
     if state != remote_state:
       return state
 
     if update_event.wait(timeout_s):
-      return plug._asdict()
+      return plug_instance._asdict()
 
   def get_frontend_aware_plug_names(self):
     """Returns the names of frontend-aware plugs."""
-    return [name for name, plug in six.iteritems(self._plugs_by_name)
-            if isinstance(plug, FrontendAwareBasePlug)]
+    return [
+        name for name, plug in six.iteritems(self._plugs_by_name)
+        if isinstance(plug, FrontendAwareBasePlug)
+    ]

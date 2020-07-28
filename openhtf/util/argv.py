@@ -1,12 +1,21 @@
-"""Utilities for handling command line arguments.
+"""Utilities for handling command line arguments."""
 
-StoreInModule:
-  Enables emulating a gflags-esque API (flag affects global value), but one
-  doesn't necessarily need to use flags to set values.
+import argparse
+import sys
+
+
+def module_parser():
+  return argparse.ArgumentParser(add_help=False)
+
+
+class StoreInModule(argparse.Action):
+  """ArgParse action emulating a gflags-esque API (flag affects global value).
+
+  This doesn't necessarily need to use flags to set values.
 
   Example usage:
     DEFAULT_VALUE = 0
-    ARG_PARSER = argv.ModuleParser()
+    ARG_PARSER = argv.module_parser()
     ARG_PARSER.add_argument(
         '--override-value', action=argv.StoreInModule,
         default=DEFAULT_VALUE, target='%s.DEFAULT_VALUE' % __name__)
@@ -14,17 +23,7 @@ StoreInModule:
   Then in an entry point (main() function), use that parser as a parent:
     parser = argparse.ArgumentParser(parents=[other_module.ARG_PARSER])
     parser.parse_args()
-"""
-
-import argparse
-import sys
-
-
-def ModuleParser():
-  return argparse.ArgumentParser(add_help=False)
-
-
-class StoreInModule(argparse.Action):
+  """
 
   def __init__(self, *args, **kwargs):
     self._tgt_mod, self._tgt_attr = kwargs.pop('target').rsplit('.', 1)
@@ -87,7 +86,7 @@ class StoreRepsInModule(StoreInModule):
     old_count = getattr(self._resolve_module(), self._tgt_attr)
     if old_count is None:
       super(StoreRepsInModule, self).__call__(
-              parser, namespace, 0, option_string=option_string)
+          parser, namespace, 0, option_string=option_string)
     else:
       super(StoreRepsInModule, self).__call__(
-              parser, namespace, old_count + 1, option_string=option_string)
+          parser, namespace, old_count + 1, option_string=option_string)

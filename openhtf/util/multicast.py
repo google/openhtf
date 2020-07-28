@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Multicast facilities for sending and receiving messages.
 
 This module includes both a MulticastListener that listens on a multicast
@@ -45,15 +43,6 @@ class MulticastListener(threading.Thread):
 
   The listener will force-bind to the multicast port via the SO_REUSEADDR
   option, so it's possible for multiple listeners to bind to the same port.
-
-  Args:
-    callback: A callable to invoke upon receipt of a multicast message. Will be
-              called with one argument -- the text of the message received.
-              callback can optionally return a string response, which will be
-              transmitted back to the sender.
-    address: Multicast IP address component of the socket to listen on.
-    port: Multicast UDP port component of the socket to listen on.
-    ttl: TTL for multicast messages. 1 to keep traffic in-network.
   """
   LISTEN_TIMEOUT_S = 60  # Seconds to listen before retrying.
   daemon = True
@@ -63,6 +52,17 @@ class MulticastListener(threading.Thread):
                address=DEFAULT_ADDRESS,
                port=DEFAULT_PORT,
                ttl=DEFAULT_TTL):
+    """Constructor.
+
+    Args:
+      callback: A callable to invoke upon receipt of a multicast message. Will
+        be called with one argument -- the text of the message received.
+        callback can optionally return a string response, which will be
+        transmitted back to the sender.
+      address: Multicast IP address component of the socket to listen on.
+      port: Multicast UDP port component of the socket to listen on.
+      ttl: TTL for multicast messages. 1 to keep traffic in-network.
+    """
     super(MulticastListener, self).__init__()
     self.address = address
     self.port = port
@@ -70,9 +70,7 @@ class MulticastListener(threading.Thread):
     self._callback = callback
     self._live = False
     self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    self._sock.setsockopt(socket.IPPROTO_IP,
-                          socket.IP_MULTICAST_TTL,
-                          self.ttl)
+    self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.ttl)
 
   def stop(self, timeout_s=None):
     """Stop listening for messages."""
@@ -98,15 +96,13 @@ class MulticastListener(threading.Thread):
           socket.IP_ADD_MEMBERSHIP,
           # IP_ADD_MEMBERSHIP takes the 8-byte group address followed by the IP
           # assigned to the interface on which to listen.
-          struct.pack('!4sL', socket.inet_aton(self.address), interface_ip))
+          struct.pack('!4sL', socket.inet_aton(self.address), interface_ip))  # pylint: disable=g-socket-inet-aton
 
     if sys.platform == 'darwin':
-      self._sock.setsockopt(socket.SOL_SOCKET,
-                            socket.SO_REUSEPORT,
+      self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT,
                             1)  # Allow multiple listeners to bind.
     else:
-      self._sock.setsockopt(socket.SOL_SOCKET,
-                            socket.SO_REUSEADDR,
+      self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,
                             1)  # Allow multiple listeners to bind.
     self._sock.bind((self.address, self.port))
 
@@ -123,8 +119,8 @@ class MulticastListener(threading.Thread):
           # requests and reply (if they all try to use the multicast socket
           # to reply, they conflict and this sendto fails).
           response = response.encode('utf-8')
-          socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(
-              response, address)
+          socket.socket(socket.AF_INET,
+                        socket.SOCK_DGRAM).sendto(response, address)
         _LOG.debug(log_line)
       except socket.timeout:
         pass
@@ -145,25 +141,26 @@ def send(query,
     address: Multicast IP address component of the socket to send to.
     port: Multicast UDP port component of the socket to send to.
     ttl: TTL for multicast messages. 1 to keep traffic in-network.
+    local_only: if True, no packets will leave this host.
     timeout_s: Seconds to wait for responses.
 
-  Returns: A set of all responses that arrived before the timeout expired.
-           Responses are tuples of (sender_address, message).
+  Yields:
+    A set of all responses that arrived before the timeout expired.
+    Responses are tuples of (sender_address, message).
   """
   # Set up the socket as a UDP Multicast socket with the given timeout.
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
   if local_only:
     # Set outgoing interface to localhost to ensure no packets leave this host.
-    sock.setsockopt(
-        socket.IPPROTO_IP,
-        socket.IP_MULTICAST_IF,
-        struct.pack('!L', LOCALHOST_ADDRESS))
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
+                    struct.pack('!L', LOCALHOST_ADDRESS))
   sock.settimeout(timeout_s)
   sock.sendto(query.encode('utf-8'), (address, port))
 
   # Set up our thread-safe Queue for handling responses.
   recv_queue = queue.Queue()
+
   def _handle_responses():
     while True:
       try:
@@ -173,8 +170,8 @@ def send(query,
         recv_queue.put(None)
         break
       else:
-        _LOG.debug('Multicast response to query "%s": %s:%s',
-                   query, address[0], data)
+        _LOG.debug('Multicast response to query "%s": %s:%s', query, address[0],
+                   data)
         recv_queue.put((address[0], str(data)))
 
   # Yield responses as they come in, giving up once timeout expires.

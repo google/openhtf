@@ -16,7 +16,6 @@ import collections
 import unittest
 
 import attr
-from builtins import int
 from openhtf.util import data
 from past.builtins import long
 
@@ -24,6 +23,7 @@ from past.builtins import long
 class TestData(unittest.TestCase):
 
   def test_convert_to_base_types(self):
+
     class FloatSubclass(float):
       pass
 
@@ -61,9 +61,9 @@ class TestData(unittest.TestCase):
         'tuple': (10,),
         'str': '10',
         'unicode': '10',
-        'int': 2 ** 40,
+        'int': 2**40,
         'float': 10.0,
-        'long': 2 ** 80,
+        'long': 2**80,
         'bool': True,
         'none': None,
         'complex': 10j,
@@ -74,10 +74,8 @@ class TestData(unittest.TestCase):
         # Some plugs such as UserInputPlug will return None as a response to
         # AsDict().
         'none_dict': AsDict(),
-
         'frozen1': FrozenAttr(value=42),
         'another_attr': AnotherAttr(frozen=FrozenAttr(value=19)),
-
     }
     converted = data.convert_to_base_types(example_data)
 
@@ -96,10 +94,7 @@ class TestData(unittest.TestCase):
     self.assertEqual(converted['special'], {'safe_value': True})
     self.assertIs(converted['not_copied'], not_copied.value)
 
-    self.assertEqual(converted['none_dict'], None)
+    self.assertIsNone(converted['none_dict'])
 
     self.assertEqual(converted['frozen1'], {'value': 42})
     self.assertEqual(converted['another_attr'], {'frozen': {'value': 19}})
-
-if __name__ == '__main__':
-  unittest.main()
