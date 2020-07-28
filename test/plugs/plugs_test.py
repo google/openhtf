@@ -14,8 +14,8 @@
 
 import threading
 import time
+import unittest
 
-import openhtf
 from openhtf import plugs
 from openhtf.util import test
 
@@ -40,7 +40,7 @@ class AdderPlug(plugs.FrontendAwareBasePlug):
     self.notify_update()
     return self.number
 
-  def tearDown(self):
+  def tearDown(self):  # pylint: disable=g-missing-super-call
     self.state = 'TORN DOWN'
 
 
@@ -54,14 +54,16 @@ class DummyPlug(plugs.BasePlug):
 
 class TearDownRaisesPlug1(plugs.BasePlug):
   TORN_DOWN = False
-  def tearDown(self):
+
+  def tearDown(self):  # pylint: disable=g-missing-super-call
     type(self).TORN_DOWN = True
     raise Exception()
 
 
 class TearDownRaisesPlug2(plugs.BasePlug):
   TORN_DOWN = False
-  def tearDown(self):
+
+  def tearDown(self):  # pylint: disable=g-missing-super-call
     type(self).TORN_DOWN = True
     raise Exception()
 
@@ -95,41 +97,42 @@ class PlugsTest(test.TestCase):
         self.plug_manager.provide_plugs(
             (('adder_plug', AdderPlug),))['adder_plug'])
     adder_plug_name = AdderPlug.__module__ + '.AdderPlug'
-    self.assertEqual(
-        {
-            adder_plug_name: {'mro': [adder_plug_name]}
-        },
-        self.plug_manager.as_base_types()['plug_descriptors']
-    )
-    self.assertEqual(
-        {
-            adder_plug_name: {'number': 0}
-        },
-        self.plug_manager.as_base_types()['plug_states']
-    )
+    self.assertEqual({adder_plug_name: {
+        'mro': [adder_plug_name]
+    }},
+                     self.plug_manager.as_base_types()['plug_descriptors'])
+    self.assertEqual({adder_plug_name: {
+        'number': 0
+    }},
+                     self.plug_manager.as_base_types()['plug_states'])
     self.assertEqual('CREATED', AdderPlug.LAST_INSTANCE.state)
 
   @test.yields_phases
   def test_multiple_plugs(self):
+
     @plugs.plug(adder_plug=AdderPlug)
     @plugs.plug(other_plug=AdderPlug)
-    def dummy_phase(test_api, adder_plug, other_plug):
+    def dummy_phase(adder_plug, other_plug):
       self.assertEqual(1, AdderPlug.INSTANCE_COUNT)
       self.assertIs(AdderPlug.LAST_INSTANCE, adder_plug)
       self.assertIs(AdderPlug.LAST_INSTANCE, other_plug)
+
     yield dummy_phase
 
-    @plugs.plug(adder_plug=AdderPlug,
-                other_plug=plugs.BasePlug)
-    def dummy_phase(test_api, adder_plug, other_plug):
+    @plugs.plug(adder_plug=AdderPlug, other_plug=plugs.BasePlug)
+    def dummy_phase(adder_plug, other_plug):
+      del other_plug  # Unused.
       self.assertEqual(1, AdderPlug.INSTANCE_COUNT)
       self.assertIs(AdderPlug.LAST_INSTANCE, adder_plug)
+
     yield dummy_phase
 
   @test.yields_phases
   def test_plug_logging(self):
     """Test that both __init__ and other functions get the good logger."""
+
     class LoggingPlug(plugs.BasePlug):
+
       def __init__(self):
         self.logger_seen_init = self.logger
 
@@ -137,7 +140,7 @@ class PlugsTest(test.TestCase):
         self.logger_seen_action = self.logger
 
     @plugs.plug(logger=LoggingPlug)
-    def dummy_phase(test_api, logger):
+    def dummy_phase(logger):
       logger.action()
       self.assertIs(logger.logger_seen_init, logger.logger_seen_action)
       self.assertIs(logger.logger_seen_init, self.logger)
@@ -146,8 +149,8 @@ class PlugsTest(test.TestCase):
 
   def test_tear_down_raises(self):
     """Test that all plugs get torn down even if some raise."""
-    self.plug_manager.initialize_plugs({
-      TearDownRaisesPlug1, TearDownRaisesPlug2})
+    self.plug_manager.initialize_plugs(
+        {TearDownRaisesPlug1, TearDownRaisesPlug2})
     self.plug_manager.tear_down_plugs()
     self.assertTrue(TearDownRaisesPlug1.TORN_DOWN)
     self.assertTrue(TearDownRaisesPlug2.TORN_DOWN)
@@ -155,20 +158,21 @@ class PlugsTest(test.TestCase):
   def test_plug_updates(self):
     self.plug_manager.initialize_plugs({AdderPlug})
     adder_plug_name = AdderPlug.__module__ + '.AdderPlug'
-    update = self.plug_manager.wait_for_plug_update(
-        adder_plug_name, {}, .001)
+    update = self.plug_manager.wait_for_plug_update(adder_plug_name, {}, .001)
     self.assertEqual({'number': 0}, update)
     # No update since last time, this should time out (return None).
-    self.assertIsNone(self.plug_manager.wait_for_plug_update(
-        adder_plug_name, update, .001))
+    self.assertIsNone(
+        self.plug_manager.wait_for_plug_update(adder_plug_name, update, .001))
 
     def _delay_then_update():
       time.sleep(.5)
       self.assertEqual(1, AdderPlug.LAST_INSTANCE.increment())
+
     threading.Thread(target=_delay_then_update).start()
     start_time = time.time()
-    self.assertEqual({'number': 1}, self.plug_manager.wait_for_plug_update(
-        adder_plug_name, update, 5))
+    self.assertEqual({'number': 1},
+                     self.plug_manager.wait_for_plug_update(
+                         adder_plug_name, update, 5))
     self.assertGreater(time.time() - start_time, .2)
 
   def test_invalid_plug(self):
@@ -177,22 +181,26 @@ class PlugsTest(test.TestCase):
     with self.assertRaises(plugs.InvalidPlugError):
       plugs.plug(adder_plug=object)
     with self.assertRaises(plugs.InvalidPlugError):
-      self.plug_manager.initialize_plugs({
-          type('BadPlug', (plugs.BasePlug,), {'logger': None})})
+      self.plug_manager.initialize_plugs(
+          {type('BadPlug', (plugs.BasePlug,), {'logger': None})})
     with self.assertRaises(plugs.InvalidPlugError):
+
       class BadPlugInit(plugs.BasePlug):
+
         def __init__(self):
           self.logger = None
+
       self.plug_manager.initialize_plugs({BadPlugInit})
     with self.assertRaises(plugs.InvalidPlugError):
       self.plug_manager.wait_for_plug_update('invalid', {}, 0)
 
   def test_duplicate_plug(self):
     with self.assertRaises(plugs.DuplicatePlugError):
+
       @plugs.plug(adder_plug=AdderPlug)
       @plugs.plug(adder_plug=AdderPlug)
-      def dummy_phase(test, adder_plug):
-        pass
+      def dummy_phase(adder_plug):
+        del adder_plug  # Unused.
 
   def test_uses_base_tear_down(self):
     self.assertTrue(plugs.BasePlug().uses_base_tear_down())

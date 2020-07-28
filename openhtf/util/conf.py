@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Interface to OpenHTF configuration files.
 
 As a matter of convention, OpenHTF configuration files should contain values
@@ -155,6 +154,7 @@ This is also valid.  The entire configuration is restored to the state it had
 upon execution of the decorated callable, regardless of which keys are updated
 in the decorator or in the decorated callable.
 """
+# pytype: skip-file
 
 import argparse
 import functools
@@ -162,24 +162,25 @@ import inspect
 import logging
 import sys
 import threading
-import yaml
 
 import mutablerecords
+from openhtf.util import argv
+from openhtf.util import threads
 import six
-
-
-from . import argv
-from . import threads
+import yaml
 
 # If provided, --config-file will cause the given file to be load()ed when the
 # conf module is initially imported.
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
-    '--config-file', type=argparse.FileType('r'),
+    '--config-file',
+    type=argparse.FileType('r'),
     help='File from which to load configuration values.')
 
 ARG_PARSER.add_argument(
-    '--config-value', action='append', default=[],
+    '--config-value',
+    action='append',
+    default=[],
     help='Allows specifying a configuration key=value on the command line. '
     'The format should be --config-value=key=value. This value will override '
     'any loaded value, and will be a string.')
@@ -208,21 +209,25 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
   class UnsetKeyError(Exception):
     """Raised when a key value is requested but we have no value for it."""
 
-  # pylint: disable=invalid-name,bad-super-call
-  class Declaration(mutablerecords.Record(
-      'Declaration', ['name'], {
-          'description': None, 'default_value': None, 'has_default': False})):
+  # pylint: disable=bad-super-call
+  class Declaration(
+      mutablerecords.Record('Declaration', ['name'], {
+          'description': None,
+          'default_value': None,
+          'has_default': False
+      })):
     """Record type encapsulating information about a config declaration."""
+
     def __init__(self, *args, **kwargs):
       super(type(self), self).__init__(*args, **kwargs)
       # Track this separately to allow for None as a default value, override
       # any value that was passed in explicitly - don't do that.
       self.has_default = 'default_value' in kwargs
-  # pylint: enable=invalid-name,bad-super-call
 
-  __slots__ = ('_logger', '_lock', '_modules', '_declarations',
-               '_flag_values', '_flags', '_loaded_values', 'ARG_PARSER',
-               '__name__')
+  # pylint: enable=bad-super-call
+
+  __slots__ = ('_logger', '_lock', '_modules', '_declarations', '_flag_values',
+               '_flags', '_loaded_values', 'ARG_PARSER', '__name__')
 
   def __init__(self, logger, lock, parser, **kwargs):
     """Initializes the configuration state.
@@ -234,13 +239,14 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     Args:
       logger: Logger to use for logging messages within this class.
       lock: Threading.lock to use for locking access to config values.
+      parser: the arg parser.
       **kwargs: Modules we need to access within this class.
     """
     self._logger = logger
     self._lock = lock
     self._modules = kwargs
     self._declarations = {}
-    self.ARG_PARSER = parser
+    self.ARG_PARSER = parser  # pylint: disable=invalid-name
 
     # Parse just the flags we care about, since this happens at import time.
     self._flags, _ = parser.parse_known_args()
@@ -288,7 +294,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     super(type(self), self).__setattr__(attr, value)
 
   # Don't use synchronized on this one, because __getitem__ handles it.
-  def __getattr__(self, attr):  # pylint: disable=invalid-name
+  def __getattr__(self, attr):
     """Get a config value via attribute access."""
     if self._is_valid_key(attr):
       return self[attr]
@@ -297,7 +303,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
                          (type(self).__name__, attr))
 
   @threads.synchronized
-  def __getitem__(self, item):  # pylint: disable=invalid-name
+  def __getitem__(self, item):
     """Get a config value via item access.
 
     Order of precedence is:
@@ -307,6 +313,13 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 
     Args:
       item: Config key name to get.
+
+    Raises:
+      UndeclaredKeyError: If the item was not declared.
+      UnsetKeyError: When hte config value was not set and has no default.
+
+    Returns:
+      The config value.
     """
     if item not in self._declarations:
       raise self.UndeclaredKeyError('Configuration key not declared', item)
@@ -314,24 +327,23 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     if item in self._flag_values:
       if item in self._loaded_values:
         self._logger.warning(
-            'Overriding loaded value for %s (%s) with flag value: %s',
-            item, self._loaded_values[item], self._flag_values[item])
+            'Overriding loaded value for %s (%s) with flag value: %s', item,
+            self._loaded_values[item], self._flag_values[item])
       return self._flag_values[item]
     if item in self._loaded_values:
       return self._loaded_values[item]
     if self._declarations[item].has_default:
       return self._declarations[item].default_value
 
-    raise self.UnsetKeyError(
-        'Configuration value not set and has no default', item)
+    raise self.UnsetKeyError('Configuration value not set and has no default',
+                             item)
 
   @threads.synchronized
-  def __contains__(self, name):  # pylint: disable=invalid-name
+  def __contains__(self, name):
     """True if we have a value for name."""
     return (name in self._declarations and
             (self._declarations[name].has_default or
-             name in self._loaded_values or
-             name in self._flag_values))
+             name in self._loaded_values or name in self._flag_values))
 
   @threads.synchronized
   def declare(self, name, description=None, **kwargs):
@@ -340,15 +352,19 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     Args:
       name: Configuration key to declare, must not have been already declared.
       description: If provided, use this as the description for this key.
-      **kwargs: Other kwargs to pass to the Declaration, only default_value
-          is currently supported.
+      **kwargs: Other kwargs to pass to the Declaration, only default_value is
+        currently supported.
+
+    Raises:
+      InvalidKeyError: When name is not constructed correctly.
+      KeyAlreadyDeclaredError: When name has already been defined.
     """
     if not self._is_valid_key(name):
       raise self.InvalidKeyError(
           'Invalid key name, must begin with a lowercase letter', name)
     if name in self._declarations:
-      raise self.KeyAlreadyDeclaredError(
-          'Configuration key already declared', name)
+      raise self.KeyAlreadyDeclaredError('Configuration key already declared',
+                                         name)
     self._declarations[name] = self.Declaration(
         name, description=description, **kwargs)
 
@@ -365,14 +381,18 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     if self._flags.config_file is not None:
       self.load_from_file(self._flags.config_file, _allow_undeclared=True)
 
-  def load_from_file(self, yamlfile, _override=True, _allow_undeclared=False):
+  def load_from_file(self, yamlfile, _override=True, _allow_undeclared=False):  # pylint: disable=invalid-name
     """Loads the configuration from a file.
 
     Parsed contents must be a single dict mapping config key to value.
 
     Args:
-      yamlfile: The opened file object to load configuration from.
-      See load_from_dict() for other args' descriptions.
+      yamlfile: The opened file object to load configuration from. See
+        load_from_dict() for other args' descriptions.
+      _override: If True, new values will override previous values.
+      _allow_undeclared: If True, silently load undeclared keys, otherwise warn
+        and ignore the value.  Typically used for loading config files before
+        declarations have been evaluated.
 
     Raises:
       ConfigurationInvalidError: If configuration file can't be read, or can't
@@ -384,8 +404,8 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       parsed_yaml = self._modules['yaml'].safe_load(yamlfile.read())
     except self._modules['yaml'].YAMLError:
       self._logger.exception('Problem parsing YAML')
-      raise self.ConfigurationInvalidError(
-          'Failed to load from %s as YAML' % yamlfile)
+      raise self.ConfigurationInvalidError('Failed to load from %s as YAML' %
+                                           yamlfile)
 
     if not isinstance(parsed_yaml, dict):
       # Parsed YAML, but it's not a dict.
@@ -396,13 +416,13 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     self.load_from_dict(
         parsed_yaml, _override=_override, _allow_undeclared=_allow_undeclared)
 
-  def load(self, _override=True, _allow_undeclared=False, **kwargs):
+  def load(self, _override=True, _allow_undeclared=False, **kwargs):  # pylint: disable=invalid-name
     """load configuration values from kwargs, see load_from_dict()."""
     self.load_from_dict(
         kwargs, _override=_override, _allow_undeclared=_allow_undeclared)
 
   @threads.synchronized
-  def load_from_dict(self, dictionary, _override=True, _allow_undeclared=False):
+  def load_from_dict(self, dictionary, _override=True, _allow_undeclared=False):  # pylint: disable=invalid-name
     """Loads the config with values from a dictionary instead of a file.
 
     This is meant for testing and bin purposes and shouldn't be used in most
@@ -411,9 +431,9 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     Args:
       dictionary: The dictionary containing config keys/values to update.
       _override: If True, new values will override previous values.
-      _allow_undeclared: If True, silently load undeclared keys, otherwise
-          warn and ignore the value.  Typically used for loading config
-          files before declarations have been evaluated.
+      _allow_undeclared: If True, silently load undeclared keys, otherwise warn
+        and ignore the value.  Typically used for loading config files before
+        declarations have been evaluated.
     """
     undeclared_keys = []
     for key, value in self._modules['six'].iteritems(dictionary):
@@ -449,8 +469,11 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     """Create a dictionary snapshot of the current config values."""
     # Start with any default values we have, and override with loaded values,
     # and then override with flag values.
-    retval = {key: self._declarations[key].default_value for
-              key in self._declarations if self._declarations[key].has_default}
+    retval = {
+        key: self._declarations[key].default_value
+        for key in self._declarations
+        if self._declarations[key].has_default
+    }
     retval.update(self._loaded_values)
     # Only update keys that are declared so we don't allow injecting
     # un-declared keys via commandline flags.
@@ -466,7 +489,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
   def help_text(self):
     """Return a string with all config keys and their descriptions."""
     result = []
-    for name in sorted(self._declarations.keys()):
+    for name in sorted(self._declarations):
       result.append(name)
       result.append('-' * len(name))
       decl = self._declarations[name]
@@ -476,14 +499,14 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
         result.append('(no description found)')
       if decl.has_default:
         result.append('')
-        quotes = '"' if type(decl.default_value) is str else ''
+        quotes = '"' if isinstance(decl.default_value, str) else ''
         result.append('  default_value={quotes}{val}{quotes}'.format(
             quotes=quotes, val=decl.default_value))
       result.append('')
       result.append('')
     return '\n'.join(result)
 
-  def save_and_restore(self, _func=None, **config_values):
+  def save_and_restore(self, _func=None, **config_values):  # pylint: disable=invalid-name
     """Decorator for saving conf state and restoring it after a function.
 
     This decorator is primarily for use in tests, where conf keys may be updated
@@ -521,10 +544,10 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
 
     Args:
       _func: The function to wrap.  The returned wrapper will invoke the
-          function and restore the config to the state it was in at invocation.
+        function and restore the config to the state it was in at invocation.
       **config_values: Config keys can be set inline at decoration time, see
-          examples.  Note that config keys can't begin with underscore, so
-          there can be no name collision with _func.
+        examples.  Note that config keys can't begin with underscore, so there
+        can be no name collision with _func.
 
     Returns:
       Wrapper to replace _func, as per Python decorator semantics.
@@ -541,7 +564,8 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
         self.load_from_dict(config_values)
         return _func(*args, **kwargs)
       finally:
-        self._loaded_values = saved_config # pylint: disable=attribute-defined-outside-init
+        self._loaded_values = saved_config  # pylint: disable=attribute-defined-outside-init
+
     return _saving_wrapper
 
   def inject_positional_args(self, method):
@@ -567,7 +591,7 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       A wrapper that, when invoked, will call the wrapped method, passing in
     configuration values for positional arguments.
     """
-    inspect = self._modules['inspect']
+    inspect = self._modules['inspect']  # pylint: disable=redefined-outer-name
     argspec = inspect.getargspec(method)
 
     # Index in argspec.args of the first keyword argument.  This index is a
@@ -588,16 +612,18 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
       # Check for keyword args with names that are in the config so we can warn.
       for kwarg in kwarg_names:
         if kwarg in self:
-          self._logger.warning('Keyword arg %s not set from configuration, but '
-                               'is a configuration key', kwarg)
+          self._logger.warning(
+              'Keyword arg %s not set from configuration, but '
+              'is a configuration key', kwarg)
 
       # Set positional args from configuration values.
       final_kwargs = {name: self[name] for name in arg_names if name in self}
 
       for overridden in set(kwargs) & set(final_kwargs):
-        self._logger.warning('Overriding configuration value for kwarg %s (%s) '
-                             'with provided kwarg value: %s', overridden,
-                             self[overridden], kwargs[overridden])
+        self._logger.warning(
+            'Overriding configuration value for kwarg %s (%s) '
+            'with provided kwarg value: %s', overridden, self[overridden],
+            kwargs[overridden])
 
       final_kwargs.update(kwargs)
       if inspect.ismethod(method):
@@ -610,16 +636,24 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     # We have to check for a 'self' parameter explicitly because Python doesn't
     # pass it as a keyword arg, it passes it as the first positional arg.
     if argspec.args[0] == 'self':
+
       @functools.wraps(method)
-      def self_wrapper(self, **kwargs):  # pylint: disable=invalid-name
+      def self_wrapper(self, **kwargs):
         """Wrapper that pulls values from openhtf.util.conf."""
         kwargs['self'] = self
         return method_wrapper(**kwargs)
+
       return self_wrapper
     return method_wrapper
+
 
 # Swap out the module for a singleton instance of Configuration so we can
 # provide __getattr__ and __getitem__ functionality at the module level.
 sys.modules[__name__] = Configuration(
-    logging.getLogger(__name__), threading.RLock(), ARG_PARSER,
-    functools=functools, inspect=inspect, yaml=yaml, six=six)
+    logging.getLogger(__name__),
+    threading.RLock(),
+    ARG_PARSER,
+    functools=functools,
+    inspect=inspect,
+    yaml=yaml,
+    six=six)

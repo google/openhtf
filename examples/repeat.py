@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
@@ -55,9 +54,9 @@ class FailAlwaysPlug(plugs.BasePlug):
     self.count = 0
 
   def run(self):
-    """Increments counter and returns False indicating failure"""
+    """Increments counter and returns False indicating failure."""
     self.count += 1
-    print("FailAlwaysPlug: Run number %s" % (self.count))
+    print('FailAlwaysPlug: Run number %s' % (self.count))
 
     return False
 
@@ -66,15 +65,14 @@ class FailAlwaysPlug(plugs.BasePlug):
 # returning PhaseResult.REPEAT to trigger a repeat.  The phase will be run a
 # total of three times: two fails followed by a success
 @plugs.plug(test_plug=FailTwicePlug)
-def phase_repeat(test, test_plug):
+def phase_repeat(test_plug):
   try:
     test_plug.run()
-
-  except:
-    print("Error in phase_repeat, will retry")
+  except:  # pylint: disable=bare-except
+    print('Error in phase_repeat, will retry')
     return openhtf.PhaseResult.REPEAT
 
-  print("Completed phase_repeat")
+  print('Completed phase_repeat')
 
 
 # This phase demonstrates repeating a phase based upon a result returned from a
@@ -83,13 +81,18 @@ def phase_repeat(test, test_plug):
 # limit the number of retries.
 @openhtf.PhaseOptions(repeat_limit=5)
 @plugs.plug(test_plug=FailAlwaysPlug)
-def phase_repeat_with_limit(test, test_plug):
+def phase_repeat_with_limit(test_plug):
   result = test_plug.run()
 
   if not result:
-    print("Invalid result in phase_repeat_with_limit, will retry")
+    print('Invalid result in phase_repeat_with_limit, will retry')
     return openhtf.PhaseResult.REPEAT
 
-if __name__ == '__main__':
+
+def main():
   test = openhtf.Test(phase_repeat, phase_repeat_with_limit)
   test.execute(test_start=lambda: 'RepeatDutID')
+
+
+if __name__ == '__main__':
+  main()

@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """User input module for OpenHTF.
 
 Provides a plug which can be used to prompt the user for input. The prompt can
@@ -31,7 +29,7 @@ import sys
 import threading
 import uuid
 
-from openhtf import PhaseOptions
+import openhtf
 from openhtf import plugs
 from openhtf.util import console_output
 from six.moves import input
@@ -56,7 +54,13 @@ class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
-Prompt = collections.namedtuple('Prompt', 'id message text_input')
+class Prompt(
+    collections.namedtuple('Prompt', [
+        'id',
+        'message',
+        'text_input',
+    ])):
+  pass
 
 
 class ConsolePrompt(threading.Thread):
@@ -81,7 +85,7 @@ class ConsolePrompt(threading.Thread):
     self._stop_event = threading.Event()
     self._answered = False
 
-  def Stop(self):
+  def stop(self):
     """Mark this ConsolePrompt as stopped."""
     self._stop_event.set()
     if not self._answered:
@@ -92,16 +96,14 @@ class ConsolePrompt(threading.Thread):
     if platform.system() == 'Windows':
       # Windows doesn't support file-like objects for select(), so fall back
       # to raw_input().
-      response = input(''.join((self._message,
-                                os.linesep,
-                                PROMPT)))
+      response = input(''.join((self._message, os.linesep, PROMPT)))
       self._answered = True
       self._callback(response)
       return
 
     # First, display the prompt to the console.
-    console_output.cli_print(self._message, color=self._color,
-                             end=os.linesep, logger=None)
+    console_output.cli_print(
+        self._message, color=self._color, end=os.linesep, logger=None)
     console_output.cli_print(PROMPT, color=self._color, end='', logger=None)
     sys.stdout.flush()
 
@@ -132,7 +134,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
   Attributes:
     last_response: None, or a pair of (prompt_id, response) indicating the last
-        user response that was received by the plug.
+      user response that was received by the plug.
   """
 
   def __init__(self):
@@ -148,9 +150,11 @@ class UserInput(plugs.FrontendAwareBasePlug):
     with self._cond:
       if self._prompt is None:
         return
-      return {'id': self._prompt.id,
-              'message': self._prompt.message,
-              'text-input': self._prompt.text_input}
+      return {
+          'id': self._prompt.id,
+          'message': self._prompt.message,
+          'text-input': self._prompt.text_input
+      }
 
   def tearDown(self):
     self.remove_prompt()
@@ -160,7 +164,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
     with self._cond:
       self._prompt = None
       if self._console_prompt:
-        self._console_prompt.Stop()
+        self._console_prompt.stop()
         self._console_prompt = None
       self.notify_update()
 
@@ -261,9 +265,10 @@ class UserInput(plugs.FrontendAwareBasePlug):
     return True
 
 
-def prompt_for_test_start(
-    message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24,
-    validator=lambda sn: sn, cli_color=''):
+def prompt_for_test_start(message='Enter a DUT ID in order to start the test.',
+                          timeout_s=60 * 60 * 24,
+                          validator=lambda sn: sn,
+                          cli_color=''):
   """Returns an OpenHTF phase for use as a prompt-based start trigger.
 
   Args:
@@ -273,7 +278,7 @@ def prompt_for_test_start(
     cli_color: An ANSI color code, or the empty string.
   """
 
-  @PhaseOptions(timeout_s=timeout_s)
+  @openhtf.PhaseOptions(timeout_s=timeout_s)
   @plugs.plug(prompts=UserInput)
   def trigger_phase(test, prompts):
     """Test start trigger that prompts the user for a DUT ID."""

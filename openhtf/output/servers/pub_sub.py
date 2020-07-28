@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Generic pub/sub implementation using SockJS connections."""
 
 import logging
 
+from openhtf import util as htf_util
 import sockjs.tornado
-
-from openhtf.util import classproperty
 
 _LOG = logging.getLogger(__name__)
 
@@ -25,14 +24,14 @@ _LOG = logging.getLogger(__name__)
 class PubSub(sockjs.tornado.SockJSConnection):
   """Generic pub/sub based on SockJS connections."""
 
-  @classproperty
+  @htf_util.classproperty
   def _lock(cls):  # pylint: disable=no-self-argument
     """Ensure subclasses don't share subscriber locks by forcing override."""
     raise AttributeError(
         'The PubSub class should not be instantiated directly. '
         'Instead, subclass it and override the _lock attribute.')
 
-  @classproperty
+  @htf_util.classproperty
   def subscribers(cls):  # pylint: disable=no-self-argument
     """Ensure subclasses don't share subscribers by forcing override."""
     raise AttributeError(
@@ -46,23 +45,23 @@ class PubSub(sockjs.tornado.SockJSConnection):
     Args:
       message: The message to publish.
       client_filter: A filter function to call passing in each client. Only
-                     clients for whom the function returns True will have the
-                     message sent to them.
+        clients for whom the function returns True will have the message sent to
+        them.
     """
-    with cls._lock:
-      for client in cls.subscribers:
+    with cls._lock:  # pylint: disable=not-context-manager
+      for client in cls.subscribers:  # pylint: disable=not-an-iterable
         if (not client_filter) or client_filter(client):
           client.send(message)
 
   def on_open(self, info):
     _LOG.debug('New subscriber from %s.', info.ip)
-    with self._lock:
+    with self._lock:  # pylint: disable=not-context-manager
       self.subscribers.add(self)
     self.on_subscribe(info)
 
   def on_close(self):
     _LOG.debug('A client unsubscribed.')
-    with self._lock:
+    with self._lock:  # pylint: disable=not-context-manager
       self.subscribers.remove(self)
     self.on_unsubscribe()
 

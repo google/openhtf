@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Common exceptions for USB, ADB and Fastboot."""
 
 import logging
 
 try:
-  import libusb1
+  # pylint: disable=g-import-not-at-top
+  import libusb1  # pytype: disable=import-error
+  # pylint: enable=g-import-not-at-top
 except ImportError:
   logging.error('Failed to import libusb, did you pip install '
                 'openhtf[usb_plugs]?')
@@ -35,22 +35,6 @@ class CommonUsbError(Exception):
   This interpolates the message with the given arguments to make it
   human-readable, but keeps the arguments in case other code try-excepts it.
   """
-
-  def __init__(self, message=None, *args):
-    if message is not None:
-      if '%' in message:
-        try:
-          message %= args
-        except TypeError:
-          # This is a fairly obscure failure, so we intercept it and emit a
-          # more useful error message.
-          _LOG.error('USB Exceptions expect a format-string, do not include '
-                     'percent symbols to disable this functionality: %s',
-                     message)
-          raise
-      super(CommonUsbError, self).__init__(message, *args)
-    else:
-      super(CommonUsbError, self).__init__(*args)
 
 
 # USB exceptions, these are not specific to any particular protocol.
@@ -114,7 +98,7 @@ class DeviceAuthError(CommonUsbError):
   """Device authentication failed."""
 
 
-class AdbOperationException(Exception):
+class AdbOperationExceptionError(Exception):
   """Failed to communicate over adb with device after multiple retries."""
 
 
@@ -151,13 +135,13 @@ class FastbootTransferError(CommonUsbError):
   """Transfer error."""
 
 
-class FastbootRemoteFailure(CommonUsbError):
+class FastbootRemoteFailureError(CommonUsbError):
   """Remote error."""
 
 
-class FastbootStateMismatch(CommonUsbError):
+class FastbootStateMismatchError(CommonUsbError):
   """Fastboot and uboot's state machines are arguing. You Lose."""
 
 
-class FastbootInvalidResponse(CommonUsbError):
+class FastbootInvalidResponseError(CommonUsbError):
   """Fastboot responded with a header we didn't expect."""

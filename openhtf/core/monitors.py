@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Monitors provide a mechanism for periodically collecting data and
-automatically persisting values in a measurement.
+"""Monitors provide a mechanism for periodically collecting a measurement.
 
 Monitors are implemented similar to phase functions - they are decorated
 with plugs.plug() to pass plugs in.  The return value of a monitor
@@ -54,16 +52,18 @@ from openhtf import plugs
 from openhtf.core import measurements
 from openhtf.util import threads
 from openhtf.util import units as uom
+import six
 
 
 class _MonitorThread(threads.KillableThread):
+  """Background thread that runs a monitor."""
 
   daemon = True
 
   def __init__(self, measurement_name, monitor_desc, extra_kwargs, test_state,
                interval_ms):
-    super(_MonitorThread, self).__init__(
-        name='%s_MonitorThread' % measurement_name)
+    super(_MonitorThread,
+          self).__init__(name='%s_MonitorThread' % measurement_name)
     self.measurement_name = measurement_name
     self.monitor_desc = monitor_desc
     self.test_state = test_state
@@ -71,14 +71,22 @@ class _MonitorThread(threads.KillableThread):
     self.extra_kwargs = extra_kwargs
 
   def get_value(self):
-    arg_info = inspect.getargspec(self.monitor_desc.func)
-    if arg_info.keywords:
+    if six.PY3:
+      argspec = inspect.getfullargspec(self.monitor_desc.func)
+      argspec_args = argspec.args
+      argspec_keywords = argspec.varkw
+    else:
+      argspec = inspect.getargspec(self.monitor_desc.func)  # pylint: disable=deprecated-method
+      argspec_args = argspec.args
+      argspec_keywords = argspec.keywords
+    if argspec_keywords:
       # Monitor phase takes **kwargs, so just pass everything in.
       kwargs = self.extra_kwargs
     else:
       # Only pass in args that the monitor phase takes.
-      kwargs = {arg: val for arg, val in self.extra_kwargs
-                if arg in arg_info.args}
+      kwargs = {
+          arg: val for arg, val in self.extra_kwargs if arg in argspec_args
+      }
     return self.monitor_desc.with_args(**kwargs)(self.test_state)
 
   def _thread_proc(self):
@@ -121,7 +129,9 @@ class _MonitorThread(threads.KillableThread):
 
 
 def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
+  """Returns a decorator that wraps a phase with a monitor."""
   monitor_desc = openhtf.PhaseDescriptor.wrap_or_copy(monitor_func)
+
   def wrapper(phase_func):
     phase_desc = openhtf.PhaseDescriptor.wrap_or_copy(phase_func)
 
@@ -129,8 +139,8 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
     # plug.plug() decorators on the phase function.  Since we aren't
     # updating kwargs here, we don't have to worry about collisions with
     # kwarg names.
-    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug.cls for
-                     idx, plug in enumerate(monitor_desc.plugs, start=1)}
+    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug.cls
+                     for idx, plug in enumerate(monitor_desc.plugs, start=1)}
 
     @openhtf.PhaseOptions(requires_state=True)
     @plugs.plug(update_kwargs=False, **monitor_plugs)
@@ -140,14 +150,16 @@ def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
     @functools.wraps(phase_desc.func)
     def monitored_phase_func(test_state, *args, **kwargs):
       # Start monitor thread, it will run monitor_desc periodically.
-      monitor_thread = _MonitorThread(
-          measurement_name, monitor_desc, phase_desc.extra_kwargs, test_state,
-          poll_interval_ms)
+      monitor_thread = _MonitorThread(measurement_name, monitor_desc,
+                                      phase_desc.extra_kwargs, test_state,
+                                      poll_interval_ms)
       monitor_thread.start()
       try:
         return phase_desc(test_state, *args, **kwargs)
       finally:
         monitor_thread.kill()
         monitor_thread.join()
+
     return monitored_phase_func
+
   return wrapper

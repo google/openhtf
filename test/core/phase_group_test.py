@@ -52,9 +52,11 @@ def plug_phase(my_plug):
 def _abort_test_in_thread(test):
   # See note in test/core/exe_test.py for _abort_executor_in_thread.
   inner_ev = threading.Event()
+
   def stop_executor():
     test.abort_from_sig_int()
     inner_ev.set()
+
   threading.Thread(target=stop_executor).start()
   inner_ev.wait(1)
 
@@ -179,22 +181,22 @@ class PhaseGroupTest(unittest.TestCase):
     group = htf.PhaseGroup(setup=[blank_phase, plug_phase])
     plug_group = group.with_plugs(my_plug=ChildPlug)
     self.assertEqual(blank_phase, plug_group.setup[0])
-    self.assertEqual(plug_phase.with_plugs(my_plug=ChildPlug),
-                     plug_group.setup[1])
+    self.assertEqual(
+        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.setup[1])
 
   def testWithPlugs_Main(self):
     group = htf.PhaseGroup(main=[blank_phase, plug_phase])
     plug_group = group.with_plugs(my_plug=ChildPlug)
     self.assertEqual(blank_phase, plug_group.main[0])
-    self.assertEqual(plug_phase.with_plugs(my_plug=ChildPlug),
-                     plug_group.main[1])
+    self.assertEqual(
+        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.main[1])
 
   def testWithPlugs_Teardown(self):
     group = htf.PhaseGroup(teardown=[blank_phase, plug_phase])
     plug_group = group.with_plugs(my_plug=ChildPlug)
     self.assertEqual(blank_phase, plug_group.teardown[0])
-    self.assertEqual(plug_phase.with_plugs(my_plug=ChildPlug),
-                     plug_group.teardown[1])
+    self.assertEqual(
+        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.teardown[1])
 
   def testWithPlugs_Recursive(self):
     inner_group = htf.PhaseGroup(main=[blank_phase, plug_phase])
@@ -202,10 +204,10 @@ class PhaseGroupTest(unittest.TestCase):
     plug_group = outer_group.with_plugs(my_plug=ChildPlug)
 
     self.assertEqual(blank_phase, plug_group.main[0].main[0])
-    self.assertEqual(plug_phase.with_plugs(my_plug=ChildPlug),
-                     plug_group.main[0].main[1])
-    self.assertEqual(plug_phase.with_plugs(my_plug=ChildPlug),
-                     plug_group.main[1])
+    self.assertEqual(
+        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.main[0].main[1])
+    self.assertEqual(
+        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.main[1])
 
   def testIterate(self):
     inner_group = htf.PhaseGroup(
@@ -225,7 +227,7 @@ class PhaseGroupTest(unittest.TestCase):
             'e', 'f',  # Inner teardown.
             '7',  # Rest of outer main.
             '8', '9',  # Outer teardown.
-        ), list(outer_group))
+        ), list(outer_group))  # pyformat: disable
 
   def testFlatten(self):
     inner = htf.PhaseGroup(
@@ -257,8 +259,7 @@ class PhaseGroupTest(unittest.TestCase):
     code_group = group.load_code_info()
     self.assertEqual(blank.__name__, code_group.setup[0].code_info.name)
     self.assertEqual(blank.__name__, code_group.main[0].code_info.name)
-    self.assertEqual(
-        blank.__name__, code_group.teardown[0].code_info.name)
+    self.assertEqual(blank.__name__, code_group.teardown[0].code_info.name)
 
 
 class PhaseGroupIntegrationTest(htf_test.TestCase):
@@ -289,19 +290,19 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
         name='inner')
     recursive = htf.PhaseGroup(
         setup=_fake_phases('setup'),
-        main=(_fake_phases('main-pre') + [inner] +
-              _fake_phases('main-post')),
+        main=(_fake_phases('main-pre') + [inner] + _fake_phases('main-post')),
         teardown=_fake_phases('teardown'),
         name='recursive')
     test_rec = yield htf.Test(recursive)
     self.assertTestPass(test_rec)
-    self._assert_phase_names(
-        ['setup', 'main-pre', 'inner-setup', 'inner-main', 'inner-teardown',
-         'main-post', 'teardown'],
-        test_rec)
+    self._assert_phase_names([
+        'setup', 'main-pre', 'inner-setup', 'inner-main', 'inner-teardown',
+        'main-post', 'teardown'
+    ], test_rec)
 
   @htf_test.yields_phases
   def testAbort_Setup(self):
+
     @htf.PhaseOptions()
     def abort_phase():
       _abort_test_in_thread(test)
@@ -319,6 +320,7 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def testAbort_Main(self):
+
     @htf.PhaseOptions()
     def abort_phase():
       _abort_test_in_thread(test)
@@ -336,6 +338,7 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def testAbort_Teardown(self):
+
     @htf.PhaseOptions()
     def abort_phase():
       _abort_test_in_thread(test)
@@ -348,8 +351,8 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
     test = htf.Test(abort_teardown)
     test_rec = yield test
     self.assertTestAborted(test_rec)
-    self._assert_phase_names(
-        ['setup0', 'main0', 'td0', 'abort_phase', 'td1'], test_rec)
+    self._assert_phase_names(['setup0', 'main0', 'td0', 'abort_phase', 'td1'],
+                             test_rec)
 
   @htf_test.yields_phases
   def testFailure_Before(self):
@@ -382,8 +385,8 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
         name='fail_main')
     test_rec = yield htf.Test(fail_main)
     self.assertTestFail(test_rec)
-    self._assert_phase_names(
-        ['setup', 'main0', 'stop_phase', 'teardown0'], test_rec)
+    self._assert_phase_names(['setup', 'main0', 'stop_phase', 'teardown0'],
+                             test_rec)
 
   @htf_test.yields_phases
   def testFailure_Teardown(self):
@@ -394,15 +397,14 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
         name='fail_teardown')
     test_rec = yield htf.Test(fail_teardown)
     self.assertTestFail(test_rec)
-    self._assert_phase_names(
-        ['setup', 'main', 'td0', 'stop_phase', 'td1'], test_rec)
+    self._assert_phase_names(['setup', 'main', 'td0', 'stop_phase', 'td1'],
+                             test_rec)
 
   @htf_test.yields_phases
   def testRecursive_FailureSetup(self):
     inner_fail = htf.PhaseGroup(
-        setup=(
-            _fake_phases('inner-setup0') + [stop_phase] +
-            _fake_phases('not-run')),
+        setup=(_fake_phases('inner-setup0') + [stop_phase] +
+               _fake_phases('not-run')),
         main=_fake_phases('not-run-inner'),
         teardown=_fake_phases('not-run-inner-teardown'),
         name='inner_fail')
@@ -421,8 +423,7 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
   def testRecursive_FailureMain(self):
     inner_fail = htf.PhaseGroup(
         setup=_fake_phases('inner-setup0'),
-        main=(_fake_phases('inner0') + [stop_phase] +
-              _fake_phases('not-run')),
+        main=(_fake_phases('inner0') + [stop_phase] + _fake_phases('not-run')),
         teardown=_fake_phases('inner-teardown'),
         name='inner_fail')
     outer = htf.PhaseGroup(
@@ -432,10 +433,10 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
         name='outer')
     test_rec = yield htf.Test(outer)
     self.assertTestFail(test_rec)
-    self._assert_phase_names(
-        ['setup0', 'outer0', 'inner-setup0', 'inner0', 'stop_phase',
-         'inner-teardown', 'teardown0'],
-        test_rec)
+    self._assert_phase_names([
+        'setup0', 'outer0', 'inner-setup0', 'inner0', 'stop_phase',
+        'inner-teardown', 'teardown0'
+    ], test_rec)
 
   @htf_test.yields_phases
   def testOldTeardown(self):
@@ -444,7 +445,7 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
 
     test = htf.Test(phases)
     test.configure(teardown_function=teardown_phase)
-    run = test._get_running_test_descriptor()
+    test._get_running_test_descriptor()
     test_rec = yield test
     self.assertTestPass(test_rec)
     self._assert_phase_names(['p0', 'p1', 'p2', 'teardown'], test_rec)

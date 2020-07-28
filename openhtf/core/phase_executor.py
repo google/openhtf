@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """PhaseExecutor module for handling the phases of a test.
 
 Each phase is an instance of openhtf.PhaseDescriptor and therefore has
@@ -46,17 +44,23 @@ from openhtf.util import timeouts
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
-    '--phase_default_timeout_s', default=DEFAULT_PHASE_TIMEOUT_S,
-    action=argv.StoreInModule, target='%s.DEFAULT_PHASE_TIMEOUT_S' % __name__,
+    '--phase_default_timeout_s',
+    default=DEFAULT_PHASE_TIMEOUT_S,
+    action=argv.StoreInModule,
+    target='%s.DEFAULT_PHASE_TIMEOUT_S' % __name__,
     help='Test phase timeout in seconds')
 
 _LOG = logging.getLogger(__name__)
 
 
-class ExceptionInfo(collections.namedtuple(
-    'ExceptionInfo', ['exc_type', 'exc_val', 'exc_tb'])):
+class ExceptionInfo(
+    collections.namedtuple('ExceptionInfo', [
+        'exc_type',
+        'exc_val',
+        'exc_tb',
+    ])):
   """Wrap the description of a raised exception and its traceback."""
 
   def _asdict(self):
@@ -77,8 +81,10 @@ class InvalidPhaseResultError(Exception):
   """Raised when PhaseExecutionOutcome is created with invalid phase result."""
 
 
-class PhaseExecutionOutcome(collections.namedtuple(
-    'PhaseExecutionOutcome', 'phase_result')):
+class PhaseExecutionOutcome(
+    collections.namedtuple('PhaseExecutionOutcome', [
+        'phase_result',
+    ])):
   """Provide some utility and sanity around phase return values.
 
   This should not be confused with openhtf.PhaseResult.  PhaseResult is an
@@ -132,8 +138,8 @@ class PhaseExecutionOutcome(collections.namedtuple(
   @property
   def raised_exception(self):
     """True if the phase in question raised an exception."""
-    return isinstance(self.phase_result, (
-        ExceptionInfo, threads.ThreadTerminationError))
+    return isinstance(self.phase_result,
+                      (ExceptionInfo, threads.ThreadTerminationError))
 
   @property
   def is_aborted(self):

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Phase Groups in OpenHTF.
 
 Phase Groups are collections of Phases that are used to control phase
@@ -44,8 +43,8 @@ from openhtf.core import phase_descriptor
 from openhtf.core import test_record
 
 
-class PhaseGroup(mutablerecords.Record(
-    'PhaseGroup', [], {
+class PhaseGroup(
+    mutablerecords.Record('PhaseGroup', [], {
         'setup': tuple,
         'main': tuple,
         'teardown': tuple,
@@ -72,7 +71,9 @@ class PhaseGroup(mutablerecords.Record(
     elif isinstance(teardown, PhaseGroup):
       teardown = (teardown,)
     super(PhaseGroup, self).__init__(
-        setup=tuple(setup), main=tuple(main), teardown=tuple(teardown),
+        setup=tuple(setup),
+        main=tuple(main),
+        teardown=tuple(teardown),
         name=name)
 
   @classmethod
@@ -90,11 +91,11 @@ class PhaseGroup(mutablerecords.Record(
 
     Args:
       setup_phases: list of phase_descriptor.PhaseDescriptors/PhaseGroups/
-          callables/iterables, phases to run during the setup for the PhaseGroup
-          returned from the created function.
+        callables/iterables, phases to run during the setup for the PhaseGroup
+        returned from the created function.
       teardown_phases: list of phase_descriptor.PhaseDescriptors/PhaseGroups/
-          callables/iterables, phases to run during the teardown for the
-          PhaseGroup returned from the created function.
+        callables/iterables, phases to run during the teardown for the
+        PhaseGroup returned from the created function.
 
     Returns:
       Function that takes *phases and returns a PhaseGroup with the predefined
@@ -104,9 +105,11 @@ class PhaseGroup(mutablerecords.Record(
     teardown = flatten_phases_and_groups(teardown_phases)
 
     def _context_wrapper(*phases):
-      return cls(setup=setup,
-                 main=flatten_phases_and_groups(phases),
-                 teardown=teardown)
+      return cls(
+          setup=setup,
+          main=flatten_phases_and_groups(phases),
+          teardown=teardown)
+
     return _context_wrapper
 
   @classmethod
@@ -135,10 +138,7 @@ class PhaseGroup(mutablerecords.Record(
     else:
       new_main.append(main_phases)
     return PhaseGroup(
-        setup=self.setup,
-        main=new_main,
-        teardown=self.teardown,
-        name=name)
+        setup=self.setup, main=new_main, teardown=self.teardown, name=name)
 
   def transform(self, transform_fn):
     return PhaseGroup(
@@ -226,8 +226,8 @@ def optionally_with_args(phase, **kwargs):
 
   Args:
     phase: phase_descriptor.PhaseDescriptor or PhaseGroup or callable, or
-        iterable of those, the phase or phase group (or iterable) to apply
-        with_args to.
+      iterable of those, the phase or phase group (or iterable) to apply
+      with_args to.
     **kwargs: arguments to apply to the phase.
 
   Returns:
@@ -252,10 +252,10 @@ def optionally_with_plugs(phase, **subplugs):
 
   Args:
     phase: phase_descriptor.PhaseDescriptor or PhaseGroup or callable, or
-        iterable of those, the phase or phase group (or iterable) to apply the
-        plug changes to.
+      iterable of those, the phase or phase group (or iterable) to apply the
+      plug changes to.
     **subplugs: mapping from plug name to derived plug class, the subplugs to
-        apply.
+      apply.
 
   Raises:
     openhtf.plugs.InvalidPlugError: if a specified subplug class is not a valid

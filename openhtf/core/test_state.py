@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Module for handling transient state of a running test.
 
 Classes implemented in this module encapsulate state information about a
@@ -27,13 +25,13 @@ invocation of an openhtf.Test instance.
 import collections
 import contextlib
 import copy
+import enum
 import functools
 import mimetypes
 import os
 import socket
 import sys
 
-from enum import Enum
 import mutablerecords
 
 import openhtf
@@ -49,16 +47,20 @@ from openhtf.util import logs
 from past.builtins import long
 import six
 
-conf.declare('allow_unset_measurements', default_value=False,
-             description='If True, unset measurements do not cause Tests to '
-             'FAIL.')
+conf.declare(
+    'allow_unset_measurements',
+    default_value=False,
+    description='If True, unset measurements do not cause Tests to '
+    'FAIL.')
 # All tests require a station_id.  This can be via the --config-file
 # automatically loaded by OpenHTF, provided explicitly to the config with
 # conf.load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
 # with conf.load_from_dict({..., 'station_id': 'My_Station'}).  If none of those
 # are provided then we'll fall back to the machine's hostname.
-conf.declare('station_id', 'The name of this test station',
-             default_value=socket.gethostname())
+conf.declare(
+    'station_id',
+    'The name of this test station',
+    default_value=socket.gethostname())
 
 # Sentinel value indicating that the mimetype should be inferred.
 INFER_MIMETYPE = object()
@@ -72,9 +74,14 @@ class DuplicateAttachmentError(Exception):
   """Raised when two attachments are attached with the same name."""
 
 
-class ImmutableMeasurement(collections.namedtuple(
-    'ImmutableMeasurement',
-    ['name', 'value', 'units', 'dimensions', 'outcome'])):
+class ImmutableMeasurement(
+    collections.namedtuple('ImmutableMeasurement', [
+        'name',
+        'value',
+        'units',
+        'dimensions',
+        'outcome',
+    ])):
   """Immutable copy of a measurement."""
 
   @classmethod
@@ -83,19 +90,14 @@ class ImmutableMeasurement(collections.namedtuple(
     measured_value = measurement.measured_value
     if isinstance(measured_value, measurements.DimensionedMeasuredValue):
       value = mutablerecords.CopyRecord(
-          measured_value,
-          value_dict=copy.deepcopy(measured_value.value_dict)
-      )
+          measured_value, value_dict=copy.deepcopy(measured_value.value_dict))
     else:
-      value = (copy.deepcopy(measured_value.value)
-               if measured_value.is_value_set else None)
+      value = (
+          copy.deepcopy(measured_value.value)
+          if measured_value.is_value_set else None)
 
-    return cls(
-        measurement.name,
-        value,
-        measurement.units,
-        measurement.dimensions,
-        measurement.outcome)
+    return cls(measurement.name, value, measurement.units,
+               measurement.dimensions, measurement.outcome)
 
 
 class TestState(util.SubscribableStateMixin):
@@ -116,36 +118,42 @@ class TestState(util.SubscribableStateMixin):
     test_record: TestRecord instance for the currently running test.
     state_logger: Logger that logs to test_record's log_records attribute.
     plug_manager: PlugManager instance for managing supplying plugs for the
-        currently running test.
+      currently running test.
     diagnoses_manager: DiagnosesManager instance for tracking diagnoses for the
-        currently running test.
-    running_phase_state: PhaseState object for the currently running phase,
-        if any, otherwise None.
+      currently running test.
+    running_phase_state: PhaseState object for the currently running phase, if
+      any, otherwise None.
     user_defined_state: Dictionary for users to persist state across phase
-        invocations.  It's passed to the user via test_api.
-    test_api: An openhtf.TestApi instance for passing to test phases,
-        providing test authors access to necessary state information, while
-        protecting internal-only structures from being accidentally modified.
-        Note that if there is no running phase, test_api is also None.
+      invocations.  It's passed to the user via test_api.
+    test_api: An openhtf.TestApi instance for passing to test phases, providing
+      test authors access to necessary state information, while protecting
+      internal-only structures from being accidentally modified. Note that if
+      there is no running phase, test_api is also None.
     execution_uid: A UUID that is specific to this execution.
   """
-  Status = Enum('Status', ['WAITING_FOR_TEST_START', 'RUNNING', 'COMPLETED'])  # pylint: disable=invalid-name
+
+  class Status(enum.Enum):
+    WAITING_FOR_TEST_START = 'WAITING_FOR_TEST_START'
+    RUNNING = 'RUNNING'
+    COMPLETED = 'COMPLETED'
 
   def __init__(self, test_desc, execution_uid, test_options):
     super(TestState, self).__init__()
     self._status = self.Status.WAITING_FOR_TEST_START
 
     self.test_record = test_record.TestRecord(
-        dut_id=None, station_id=conf.station_id, code_info=test_desc.code_info,
+        dut_id=None,
+        station_id=conf.station_id,
+        code_info=test_desc.code_info,
         start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata),
         diagnosers=test_options.diagnosers)
-    logs.initialize_record_handler(
-        execution_uid, self.test_record, self.notify_update)
+    logs.initialize_record_handler(execution_uid, self.test_record,
+                                   self.notify_update)
     self.state_logger = logs.get_record_logger_for(execution_uid)
-    self.plug_manager = plugs.PlugManager(
-        test_desc.plug_types, self.state_logger)
+    self.plug_manager = plugs.PlugManager(test_desc.plug_types,
+                                          self.state_logger)
     self.diagnoses_manager = diagnoses_lib.DiagnosesManager(
         self.state_logger.getChild('diagnoses'))
     self.running_phase_state = None
@@ -186,12 +194,13 @@ class TestState(util.SubscribableStateMixin):
       openhtf.TestApi
     """
     if not self.running_phase_state:
-      raise ValueError(
-          'test_api only available when phase is running.')
+      raise ValueError('test_api only available when phase is running.')
     if not self._running_test_api:
       ps = self.running_phase_state
       self._running_test_api = openhtf.TestApi(
-          self.logger, self.user_defined_state, self.test_record,
+          self.logger,
+          self.user_defined_state,
+          self.test_record,
           measurements.Collection(ps.measurements),
           ps.attachments,
           ps.attach,
@@ -235,6 +244,7 @@ class TestState(util.SubscribableStateMixin):
 
     Args:
       measurement_name: str of the measurement name
+
     Returns:
       an ImmutableMeasurement or None if the measurement cannot be found.
     """
@@ -255,8 +265,8 @@ class TestState(util.SubscribableStateMixin):
         measurement = phase_record.measurements[measurement_name]
         return ImmutableMeasurement.FromMeasurement(measurement)
 
-    self.state_logger.warning(
-        'Could not find measurement: %s', measurement_name)
+    self.state_logger.warning('Could not find measurement: %s',
+                              measurement_name)
     return None
 
   @contextlib.contextmanager
@@ -330,7 +340,7 @@ class TestState(util.SubscribableStateMixin):
   def mark_test_started(self):
     """Set the TestRecord's start_time_millis field."""
     # Blow up instead of blowing away a previously set start_time_millis.
-    assert self.test_record.start_time_millis is 0
+    assert self.test_record.start_time_millis == 0
     self.test_record.start_time_millis = util.time_millis()
     self.notify_update()
 
@@ -347,7 +357,7 @@ class TestState(util.SubscribableStateMixin):
 
     Args:
       phase_execution_outcome: An instance of
-          phase_executor.PhaseExecutionOutcome.
+        phase_executor.PhaseExecutionOutcome.
     """
     if self._is_aborted():
       return
@@ -476,9 +486,8 @@ class TestState(util.SubscribableStateMixin):
     )
 
 
-class PhaseState(mutablerecords.Record(
-    'PhaseState',
-    [
+class PhaseState(
+    mutablerecords.Record('PhaseState', [
         'name',
         'phase_record',
         'measurements',
@@ -486,8 +495,7 @@ class PhaseState(mutablerecords.Record(
         'logger',
         'test_state',
         'diagnosers',
-    ],
-    {
+    ], {
         'hit_repeat_limit': False,
         '_cached': dict,
         '_update_measurements': set,
@@ -496,18 +504,17 @@ class PhaseState(mutablerecords.Record(
 
   Attributes:
     phase_record: A test_record.PhaseRecord for the running phase.
-    measurements: A dict mapping measurement name to it's declaration; this
-        dict can be passed to measurements.Collection to initialize a user-
-        facing Collection for setting measurements.
+    measurements: A dict mapping measurement name to it's declaration; this dict
+      can be passed to measurements.Collection to initialize a user- facing
+      Collection for setting measurements.
     options: the PhaseOptions from the phase descriptor.
     logger: logging.Logger for this phase execution run.
     test_state: TestState, parent test state.
     diagnosers: list of PhaseDiagnoser instances to run after the phase
-        finishes.
+      finishes.
     hit_repeat_limit: bool, True when the phase repeat limit was hit.
     _cached: A cached representation of the running test state that; updated in
-        place to save allocation time.
-
+      place to save allocation time.
   Properties:
     attachments: Convenience accessor for phase_record.attachments.
     result: Convenience getter/setter for phase_record.result.
@@ -519,24 +526,30 @@ class PhaseState(mutablerecords.Record(
       # Using functools.partial to capture the value of the loop variable.
       m.set_notification_callback(functools.partial(self._notify, m.name))
     self._cached = {
-        'name': self.name,
-        'codeinfo': data.convert_to_base_types(self.phase_record.codeinfo),
-        'descriptor_id': data.convert_to_base_types(
-            self.phase_record.descriptor_id),
+        'name':
+            self.name,
+        'codeinfo':
+            data.convert_to_base_types(self.phase_record.codeinfo),
+        'descriptor_id':
+            data.convert_to_base_types(self.phase_record.descriptor_id),
         # Options are not set until the phase is finished.
-        'options': None,
+        'options':
+            None,
         'measurements': {
-            k: m.as_base_types() for k, m in six.iteritems(self.measurements)},
+            k: m.as_base_types() for k, m in six.iteritems(self.measurements)
+        },
         'attachments': {},
-        'start_time_millis': long(self.phase_record.record_start_time()),
+        'start_time_millis':
+            long(self.phase_record.record_start_time()),
     }
 
   @classmethod
   def from_descriptor(cls, phase_desc, test_state, logger):
     # Measurements are copied because their state is modified during the phase
     # execution.
-    measurements_copy = [copy.deepcopy(measurement)
-                         for measurement in phase_desc.measurements]
+    measurements_copy = [
+        copy.deepcopy(measurement) for measurement in phase_desc.measurements
+    ]
     diag_store = test_state.diagnoses_manager.store
     for m in measurements_copy:
       # Check the conditional validators to see if their results have been
@@ -588,10 +601,9 @@ class PhaseState(mutablerecords.Record(
     Args:
       name: Attachment name under which to store this binary_data.
       binary_data: Data to attach.
-      mimetype: One of the following:
-          INFER_MIMETYPE - The type will be guessed from the attachment name.
-          None - The type will be left unspecified.
-          A string - The type will be set to the specified value.
+      mimetype: One of the following: INFER_MIMETYPE - The type will be guessed
+        from the attachment name. None - The type will be left unspecified. A
+        string - The type will be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
@@ -615,11 +627,11 @@ class PhaseState(mutablerecords.Record(
 
     Args:
       filename: The file to read data from to attach.
-      name: If provided, override the attachment name, otherwise it will
-        default to the filename.
+      name: If provided, override the attachment name, otherwise it will default
+        to the filename.
       mimetype: One of the following:
           * INFER_MIMETYPE: The type will be guessed first, from the file name,
-              and second (i.e. as a fallback), from the attachment name.
+            and second (i.e. as a fallback), from the attachment name.
           * None: The type will be left unspecified.
           * A string: The type will be set to the specified value.
 
@@ -630,9 +642,10 @@ class PhaseState(mutablerecords.Record(
     """
     if mimetype is INFER_MIMETYPE:
       mimetype = mimetypes.guess_type(filename)[0] or mimetype
-    with open(filename, 'rb') as f:  # pylint: disable=invalid-name
+    with open(filename, 'rb') as f:
       self.attach(
-          name if name is not None else os.path.basename(filename), f.read(),
+          name if name is not None else os.path.basename(filename),
+          f.read(),
           mimetype=mimetype)
 
   def add_diagnosis(self, diagnosis):

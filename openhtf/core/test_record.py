@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """OpenHTF module responsible for managing records of tests."""
 
 import collections
@@ -33,20 +31,28 @@ from openhtf.util import logs
 
 import six
 
-
 conf.declare(
     'attachments_directory',
     default_value=None,
     description='Directory where temprorary files can be safely stored.')
 
-
 _LOG = logging.getLogger(__name__)
 
 
-OutcomeDetails = collections.namedtuple(
-    'OutcomeDetails', 'code description')
-Outcome = enum.Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])  # pylint: disable=invalid-name
-# LogRecord is in openhtf.util.logs.LogRecord.
+class OutcomeDetails(
+    collections.namedtuple('OutcomeDetails', [
+        'code',
+        'description',
+    ])):
+  pass
+
+
+class Outcome(enum.Enum):
+  PASS = 'PASS'
+  FAIL = 'FAIL'
+  ERROR = 'ERROR'
+  TIMEOUT = 'TIMEOUT'
+  ABORTED = 'ABORTED'
 
 
 class Attachment(object):
@@ -105,8 +111,7 @@ class Attachment(object):
 
 class TestRecord(  # pylint: disable=no-init
     mutablerecords.Record(
-        'TestRecord', ['dut_id', 'station_id'],
-        {
+        'TestRecord', ['dut_id', 'station_id'], {
             'start_time_millis': int,
             'end_time_millis': None,
             'outcome': None,
@@ -161,8 +166,8 @@ class TestRecord(  # pylint: disable=no-init
 
   def as_base_types(self):
     """Convert to a dict representation composed exclusively of base types."""
-    metadata = data.convert_to_base_types(self.metadata,
-                                          ignore_keys=('config',))
+    metadata = data.convert_to_base_types(
+        self.metadata, ignore_keys=('config',))
     metadata['config'] = self._cached_config_from_metadata
     ret = {
         'dut_id': data.convert_to_base_types(self.dut_id),
@@ -180,21 +185,23 @@ class TestRecord(  # pylint: disable=no-init
     return ret
 
 
-# PhaseResult enumerations are converted to these outcomes by the PhaseState.
-PhaseOutcome = enum.Enum(  # pylint: disable=invalid-name
-    'PhaseOutcome',
-    [
-        'PASS',  # CONTINUE with allowed measurement outcomes.
-        'FAIL',  # CONTINUE with failed measurements or FAIL_AND_CONTINUE.
-        'SKIP',  # SKIP or REPEAT when under the phase's repeat limit.
-        'ERROR',  # Any terminal result.
-    ])
+# PhaseResult enumerations are
+class PhaseOutcome(enum.Enum):
+  """Phase outcomes, converted to from the PhaseState."""
+
+  # CONTINUE with allowed measurement outcomes.
+  PASS = 'PASS'
+  # CONTINUE with failed measurements or FAIL_AND_CONTINUE.
+  FAIL = 'FAIL'
+  # SKIP or REPEAT when under the phase's repeat limit.
+  SKIP = 'SKIP'
+  # Any terminal result.
+  ERROR = 'ERROR'
 
 
 class PhaseRecord(  # pylint: disable=no-init
     mutablerecords.Record(
-        'PhaseRecord', ['descriptor_id', 'name', 'codeinfo'],
-        {
+        'PhaseRecord', ['descriptor_id', 'name', 'codeinfo'], {
             'measurements': None,
             'options': None,
             'diagnosers': list,
@@ -227,8 +234,11 @@ class PhaseRecord(  # pylint: disable=no-init
 
   @classmethod
   def from_descriptor(cls, phase_desc):
-    return cls(id(phase_desc), phase_desc.name, phase_desc.code_info,
-               diagnosers=list(phase_desc.diagnosers))
+    return cls(
+        id(phase_desc),
+        phase_desc.name,
+        phase_desc.code_info,
+        diagnosers=list(phase_desc.diagnosers))
 
   def as_base_types(self):
     """Convert to a dict representation composed exclusively of base types."""
@@ -257,14 +267,15 @@ def _get_source_safely(obj):
   try:
     return inspect.getsource(obj)
   except Exception:  # pylint: disable=broad-except
-    logs.log_once(
-        _LOG.warning,
-        'Unable to load source code for %s. Only logging this once.', obj)
+    logs.log_once(_LOG.warning,
+                  'Unable to load source code for %s. Only logging this once.',
+                  obj)
     return ''
 
 
-class CodeInfo(mutablerecords.HashableRecord(
-    'CodeInfo', ['name', 'docstring', 'sourcecode'])):
+class CodeInfo(
+    mutablerecords.HashableRecord('CodeInfo',
+                                  ['name', 'docstring', 'sourcecode'])):
   """Information regarding the running tester code."""
 
   @classmethod

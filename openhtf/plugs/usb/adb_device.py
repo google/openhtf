@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """User-facing interface to an ADB device.
 
 This module provides the user-facing interface to controlling ADB devices with
@@ -33,20 +31,19 @@ class, subclass, and protocol.
 import logging
 import os.path
 
-try:
-  from M2Crypto import RSA
-except ImportError:
-  logging.error('Failed to import M2Crypto, did you pip install '
-                'openhtf[usb_plugs]?')
-  raise
-
 from openhtf.plugs.usb import adb_protocol
 from openhtf.plugs.usb import filesync_service
 from openhtf.plugs.usb import shell_service
 from openhtf.plugs.usb import usb_exceptions
-
 from openhtf.util import timeouts
 import six
+
+try:
+  from M2Crypto import RSA  # pylint: disable=g-import-not-at-top
+except ImportError:
+  logging.error('Failed to import M2Crypto, did you pip install '
+                'openhtf[usb_plugs]?')
+  raise
 
 # USB interface class, subclass, and protocol for matching against.
 CLASS = 0xFF
@@ -89,10 +86,10 @@ class AdbDevice(object):
         adb_connection)
 
   def __str__(self):
-    return '<%s: %s(%s) @%s>' % (type(self).__name__,
-                                 self._adb_connection.serial,
-                                 self._adb_connection.systemtype,
-                                 self._adb_connection.transport)
+    return '<%s: %s(%s) @%s>' % (
+        type(self).__name__, self._adb_connection.serial,
+        self._adb_connection.systemtype, self._adb_connection.transport)
+
   __repr__ = __str__
 
   def get_system_type(self):
@@ -128,8 +125,8 @@ class AdbDevice(object):
     basename = os.path.basename(apk_path)
     destination_path = destination_dir + basename
     self.push(apk_path, destination_path, timeout_ms=timeout_ms)
-    return self.Shell('pm install -r "%s"' % destination_path,
-                      timeout_ms=timeout_ms)
+    return self.Shell(
+        'pm install -r "%s"' % destination_path, timeout_ms=timeout_ms)
 
   def push(self, source_file, device_filename, timeout_ms=None):
     """Push source_file to file on device.
@@ -147,7 +144,9 @@ class AdbDevice(object):
       source_file = open(source_file)
 
     self.filesync_service.send(
-        source_file, device_filename, mtime=mtime,
+        source_file,
+        device_filename,
+        mtime=mtime,
         timeout=timeouts.PolledTimeout.from_millis(timeout_ms))
 
   def pull(self, device_filename, dest_file=None, timeout_ms=None):
@@ -181,7 +180,7 @@ class AdbDevice(object):
     return self.shell_service.command(
         str(command), raw=raw, timeout_ms=timeout_ms)
 
-  Shell = command  #pylint: disable=invalid-name
+  Shell = command  # pylint: disable=invalid-name
 
   def async_command(self, command, raw=False, timeout_ms=None):
     """See shell_service.ShellService.async_command()."""
@@ -210,7 +209,7 @@ class AdbDevice(object):
     stream = self._adb_connection.open_stream(destination, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
-          'Service %s not supported', destination)
+          'Service %s not supported' % destination)
     try:
       message = stream.read(timeout_ms=timeout)
       # Some commands report success messages, ignore them.
@@ -221,7 +220,7 @@ class AdbDevice(object):
         # We expect this if the device is rebooting.
         return
       raise
-    raise usb_exceptions.AdbRemoteError('Device message: %s', message)
+    raise usb_exceptions.AdbRemoteError('Device message: %s' % message)
 
   def reboot(self, destination='', timeout_ms=None):
     """Reboot device, specify 'bootloader' for fastboot."""
@@ -233,9 +232,9 @@ class AdbDevice(object):
 
   def root(self, timeout_ms=None):
     """Restart adbd as root on device."""
-    self._check_remote_command('root:', timeout_ms,
-                               ['already running as root',
-                                'restarting adbd as root'])
+    self._check_remote_command(
+        'root:', timeout_ms,
+        ['already running as root', 'restarting adbd as root'])
 
   @classmethod
   def connect(cls, usb_handle, **kwargs):

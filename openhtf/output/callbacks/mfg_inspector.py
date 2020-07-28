@@ -1,5 +1,4 @@
-"""Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com.
-"""
+"""Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com."""
 
 import json
 import logging
@@ -63,8 +62,8 @@ def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
 
   for _ in range(5):
     try:
-      result = _send_mfg_inspector_request(
-          envelope_data, credentials, destination_url)
+      result = _send_mfg_inspector_request(envelope_data, credentials,
+                                           destination_url)
       return result
     except UploadFailedError:
       time.sleep(1)
@@ -76,7 +75,6 @@ def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
 
 
 class _MemStorage(oauth2client.client.Storage):
-  # pylint: disable=invalid-name
   """Helper Storage class that keeps credentials in memory."""
 
   def __init__(self):
@@ -137,8 +135,11 @@ class MfgInspector(object):
   # saving to disk via save_to_disk.
   _default_filename_pattern = None
 
-  def __init__(self, user=None, keydata=None,
-               token_uri=TOKEN_URI, destination_url=DESTINATION_URL):
+  def __init__(self,
+               user=None,
+               keydata=None,
+               token_uri=TOKEN_URI,
+               destination_url=DESTINATION_URL):
     self.user = user
     self.keydata = keydata
     self.token_uri = token_uri
@@ -173,9 +174,10 @@ class MfgInspector(object):
     Returns:
       a MfgInspectorCallback with credentials.
     """
-    return cls(user=json_data['client_email'],
-               keydata=json_data['private_key'],
-               token_uri=json_data['token_uri'])
+    return cls(
+        user=json_data['client_email'],
+        keydata=json_data['private_key'],
+        token_uri=json_data['token_uri'])
 
   def _convert(self, test_record_obj):
     """Convert and cache a test record to a mfg-inspector proto."""
@@ -194,9 +196,8 @@ class MfgInspector(object):
 
     pattern = filename_pattern or self._default_filename_pattern
     if not pattern:
-      raise RuntimeError(
-          'Must specify provide a filename_pattern or set a '
-          '_default_filename_pattern on subclass.')
+      raise RuntimeError('Must specify provide a filename_pattern or set a '
+                         '_default_filename_pattern on subclass.')
 
     def save_to_disk_callback(test_record_obj):
       proto = self._convert(test_record_obj)
@@ -219,8 +220,8 @@ class MfgInspector(object):
 
     def upload_callback(test_record_obj):
       proto = self._convert(test_record_obj)
-      self.upload_result = send_mfg_inspector_data(
-          proto, self.credentials, self.destination_url)
+      self.upload_result = send_mfg_inspector_data(proto, self.credentials,
+                                                   self.destination_url)
 
     return upload_callback
 
@@ -259,6 +260,6 @@ class UploadToMfgInspector(MfgInspector):
   def _converter(test_record_obj):
     return test_runs_converter.test_run_from_test_record(test_record_obj)
 
-  def __call__(self, test_record_obj):  # pylint: disable=invalid-name
+  def __call__(self, test_record_obj):
     upload_callback = self.upload()
     upload_callback(test_record_obj)

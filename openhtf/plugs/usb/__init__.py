@@ -1,4 +1,3 @@
-
 # Copyright 2014 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Plugs that provide access to USB devices via ADB/Fastboot.
 
 For details of what these interfaces look like, see adb_device.py and
@@ -53,8 +50,8 @@ conf.declare('ethersync', 'ethersync configuration')
 @functions.call_once
 def init_dependent_flags():
   parser = argparse.ArgumentParser(
-      'USB Plug flags', parents=[
-          adb_protocol.ARG_PARSER, fastboot_protocol.ARG_PARSER],
+      'USB Plug flags',
+      parents=[adb_protocol.ARG_PARSER, fastboot_protocol.ARG_PARSER],
       add_help=False)
   parser.parse_known_args()
 
@@ -149,8 +146,7 @@ class AdbPlug(plugs.BasePlug):
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL,
-            serial_number=self.serial_number),
-        **kwargs)
+            serial_number=self.serial_number), **kwargs)
 
   def __getattr__(self, attr):
     """Forward other attributes to the device."""
@@ -160,16 +156,17 @@ class AdbPlug(plugs.BasePlug):
 class AndroidTriggers(object):  # pylint: disable=invalid-name
   """Test start and stop triggers for Android devices."""
 
+  serial_number = None
+
   @classmethod
   def _try_open(cls):
     """Try to open a USB handle."""
     handle = None
-    for usb_cls, subcls, protocol in [(adb_device.CLASS,
-                                       adb_device.SUBCLASS,
-                                       adb_device.PROTOCOL),
-                                      (fastboot_device.CLASS,
-                                       fastboot_device.SUBCLASS,
-                                       fastboot_device.PROTOCOL)]:
+    for usb_cls, subcls, protocol in [
+        (adb_device.CLASS, adb_device.SUBCLASS, adb_device.PROTOCOL),
+        (fastboot_device.CLASS, fastboot_device.SUBCLASS,
+         fastboot_device.PROTOCOL)
+    ]:
       try:
         handle = local_usb.LibUsbHandle.open(
             serial_number=cls.serial_number,
@@ -190,8 +187,10 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
   @classmethod
   def test_start_frontend(cls):
     """Start when frontend event comes, but get serial from USB."""
-    prompt_for_test_start('Connect Android device and press ENTER.',
-                          text_input=False)()
+    # TODO(arsharma): Reenable after reworking this; one cannot just directly
+    # call a phase.
+    # prompt_for_test_start(
+    #     message='Connect Android device and press ENTER.', text_input=False)()
     return cls.test_start()
 
   @classmethod

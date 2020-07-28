@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Tests in OpenHTF.
 
 Tests are main entry point for OpenHTF tests.  In its simplest form a
@@ -27,7 +25,7 @@ import sys
 import textwrap
 import threading
 import traceback
-from types import LambdaType
+import types
 import uuid
 import weakref
 
@@ -50,19 +48,23 @@ import six
 
 _LOG = logging.getLogger(__name__)
 
-conf.declare('capture_source', description=textwrap.dedent(
-    '''Whether to capture the source of phases and the test module.  This
+conf.declare(
+    'capture_source',
+    description=textwrap.dedent(
+        """Whether to capture the source of phases and the test module.  This
     defaults to False since this potentially reads many files and makes large
     string copies.
 
-    Set to 'true' if you want to capture your test's source.'''),
-             default_value=False)
+    Set to 'true' if you want to capture your test's source."""),
+    default_value=False)
 # TODO(arsharma): Deprecate this configuration after removing the old teardown
 # specification.
-conf.declare('teardown_timeout_s', default_value=30, description=
-             'Default timeout (in seconds) for test teardown functions; '
-             'this option is deprecated and only applies to the deprecated '
-             'Test level teardown function.')
+conf.declare(
+    'teardown_timeout_s',
+    default_value=30,
+    description='Default timeout (in seconds) for test teardown functions; '
+    'this option is deprecated and only applies to the deprecated '
+    'Test level teardown function.')
 
 
 class UnrecognizedTestUidError(Exception):
@@ -103,7 +105,8 @@ def create_arg_parser(add_help=False):
       ],
       add_help=add_help)
   parser.add_argument(
-      '--config-help', action='store_true',
+      '--config-help',
+      action='store_true',
       help='Instead of executing the test, simply print all available config '
       'keys and their description strings.')
   return parser
@@ -141,8 +144,8 @@ class Test(object):
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
-    self._test_desc = TestDescriptor(
-        phases, test_record.CodeInfo.uncaptured(), metadata)
+    self._test_desc = TestDescriptor(phases, test_record.CodeInfo.uncaptured(),
+                                     metadata)
 
     if conf.capture_source:
       # First, we copy the phases with the real CodeInfo for them.
@@ -236,8 +239,9 @@ class Test(object):
 
   @classmethod
   def handle_sig_int(cls, signalnum, handler):
+    """Handle the SIGINT callback."""
     if not cls.TEST_INSTANCES:
-      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)
+      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)  # pylint: disable=not-callable
       return
 
     _LOG.error('Received SIGINT, stopping all tests.')
@@ -270,8 +274,8 @@ class Test(object):
     if not teardown_phase.options.timeout_s:
       teardown_phase.options.timeout_s = conf.teardown_timeout_s
     return TestDescriptor(
-        phase_group.PhaseGroup(main=[self._test_desc.phase_group],
-                               teardown=[teardown_phase]),
+        phase_group.PhaseGroup(
+            main=[self._test_desc.phase_group], teardown=[teardown_phase]),
         self._test_desc.code_info, self._test_desc.metadata)
 
   def execute(self, test_start=None, profile_filename=None):
@@ -279,10 +283,10 @@ class Test(object):
 
     Args:
       test_start: Either a trigger phase for starting the test, or a function
-          that returns a DUT ID. If neither is provided, defaults to not
-          setting the DUT ID.
+        that returns a DUT ID. If neither is provided, defaults to not setting
+        the DUT ID.
       profile_filename: Name of file to put profiling stats into. This also
-          enables profiling data collection.
+        enables profiling data collection.
 
     Returns:
       Boolean indicating whether the test failed (False) or passed (True).
@@ -307,10 +311,12 @@ class Test(object):
       self._test_desc.metadata['config'] = conf._asdict()
       self.last_run_time_millis = util.time_millis()
 
-      if isinstance(test_start, LambdaType):
+      if isinstance(test_start, types.LambdaType):
+
         @phase_descriptor.PhaseOptions()
         def trigger_phase(test):
           test.test_record.dut_id = test_start()
+
         trigger = trigger_phase
       else:
         trigger = test_start
@@ -350,9 +356,8 @@ class Test(object):
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
             stacktrace = traceback.format_exc()
-            _LOG.error(
-                'Output callback %s raised:\n%s\nContinuing anyway...',
-                output_cb, stacktrace)
+            _LOG.error('Output callback %s raised:\n%s\nContinuing anyway...',
+                       output_cb, stacktrace)
 
         # Make sure the final outcome of the test is printed last and in a
         # noticeable color so it doesn't get scrolled off the screen or missed.
@@ -361,16 +366,17 @@ class Test(object):
             console_output.error_print(detail.description)
         else:
           colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
-          colors[test_record.Outcome.PASS] = ''.join((colorama.Style.BRIGHT,
-                                                      colorama.Fore.GREEN))
-          colors[test_record.Outcome.FAIL] = ''.join((colorama.Style.BRIGHT,
-                                                      colorama.Fore.RED))
+          colors[test_record.Outcome.PASS] = ''.join(
+              (colorama.Style.BRIGHT, colorama.Fore.GREEN))
+          colors[test_record.Outcome.FAIL] = ''.join(
+              (colorama.Style.BRIGHT, colorama.Fore.RED))
           msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
-          console_output.banner_print(msg_template.format(
-              name=final_state.test_record.metadata['test_name'],
-              color=colors[final_state.test_record.outcome],
-              outcome=final_state.test_record.outcome.name,
-              rst=colorama.Style.RESET_ALL))
+          console_output.banner_print(
+              msg_template.format(
+                  name=final_state.test_record.metadata['test_name'],
+                  color=colors[final_state.test_record.outcome],
+                  outcome=final_state.test_record.outcome.name,
+                  rst=colorama.Style.RESET_ALL))
       finally:
         del self.TEST_INSTANCES[self.uid]
         self._executor.close()
@@ -380,15 +386,17 @@ class Test(object):
 
 
 # TODO(arsharma): Deprecate the teardown_function in favor of PhaseGroups.
-class TestOptions(mutablerecords.Record('TestOptions', [], {
-    'name': 'openhtf_test',
-    'output_callbacks': list,
-    'teardown_function': None,
-    'failure_exceptions': list,
-    'default_dut_id': 'UNKNOWN_DUT',
-    'stop_on_first_failure': False,
-    'diagnosers': list,
-})):
+class TestOptions(
+    mutablerecords.Record(
+        'TestOptions', [], {
+            'name': 'openhtf_test',
+            'output_callbacks': list,
+            'teardown_function': None,
+            'failure_exceptions': list,
+            'default_dut_id': 'UNKNOWN_DUT',
+            'stop_on_first_failure': False,
+            'diagnosers': list,
+        })):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
   name: The name of the test to be put into the metadata.
@@ -408,8 +416,13 @@ class TestOptions(mutablerecords.Record('TestOptions', [], {
   """
 
 
-class TestDescriptor(collections.namedtuple(
-    'TestDescriptor', ['phase_group', 'code_info', 'metadata', 'uid'])):
+class TestDescriptor(
+    collections.namedtuple('TestDescriptor', [
+        'phase_group',
+        'code_info',
+        'metadata',
+        'uid',
+    ])):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
@@ -430,75 +443,67 @@ class TestDescriptor(collections.namedtuple(
   @property
   def plug_types(self):
     """Returns set of plug types required by this test."""
-    return {plug.cls
-            for phase in self.phase_group
-            for plug in phase.plugs}
+    return {plug.cls for phase in self.phase_group for plug in phase.plugs}  # pylint: disable=g-complex-comprehension
 
 
-class TestApi(collections.namedtuple('TestApi', [
-    'logger', 'state', 'test_record', 'measurements', 'attachments',
-    'attach', 'attach_from_file', 'get_measurement', 'get_attachment',
-    'notify_update'])):
+class TestApi(
+    collections.namedtuple('TestApi', [
+        'logger',
+        'state',
+        'test_record',
+        'measurements',
+        'attachments',
+        'attach',
+        'attach_from_file',
+        'get_measurement',
+        'get_attachment',
+        'notify_update',
+    ])):
   """Class passed to test phases as the first argument.
 
   Attributes:
-    dut_id: This attribute provides getter and setter access to the DUT ID
-        of the device under test by the currently running openhtf.Test.  A
-        non-empty DUT ID *must* be set by the end of a test, or no output
-        will be produced.  It may be set via return value from a callable
-        test_start argument to openhtf.Test.Execute(), or may be set in a
-        test phase via this attribute.
-
+    dut_id: This attribute provides getter and setter access to the DUT ID of
+      the device under test by the currently running openhtf.Test.  A non-empty
+      DUT ID *must* be set by the end of a test, or no output will be produced.
+      It may be set via return value from a callable test_start argument to
+      openhtf.Test.Execute(), or may be set in a test phase via this attribute.
     logger: A Python Logger instance that can be used to log to the resulting
-        TestRecord.  This object supports all the usual log levels, and
-        outputs to stdout (configurable) and the frontend via the Station
-        API, if it's enabled, in addition to the 'log_records' attribute
-        of the final TestRecord output by the running test.
-
-    measurements: A measurements.Collection object used to get/set
-        measurement values.  See util/measurements.py for more implementation
-        details, but in the simple case, set measurements directly as
-        attributes on this object (see examples/measurements.py for examples).
-
+      TestRecord.  This object supports all the usual log levels, and outputs to
+      stdout (configurable) and the frontend via the Station API, if it's
+      enabled, in addition to the 'log_records' attribute of the final
+      TestRecord output by the running test.
+    measurements: A measurements.Collection object used to get/set measurement
+      values.  See util/measurements.py for more implementation details, but in
+      the simple case, set measurements directly as attributes on this object
+      (see examples/measurements.py for examples).
+    attachments: Dict mapping attachment name to test_record.Attachment instance
+      containing the data that was attached (and the MIME type that was assumed
+      based on extension, if any).  Only attachments that have been attached in
+      the current phase show up here, and this attribute should not be modified
+      directly; use TestApi.attach() or TestApi.attach_from_file() instead; read
+      only.
     state: A dict (initially empty) that is persisted across test phases (but
-        resets for every invocation of Execute() on an openhtf.Test).  This
-        can be used for any test-wide state you need to persist across phases.
-        Use this with caution, however, as it is not persisted in the output
-        TestRecord or displayed on the web frontend in any way.
-
-    test_record: A reference to the output TestRecord for the currently
-        running openhtf.Test.  Direct access to this attribute is *strongly*
-        discouraged, but provided as a catch-all for interfaces not otherwise
-        provided by TestApi.  If you find yourself using this, please file a
+      resets for every invocation of Execute() on an openhtf.Test).  This can be
+      used for any test-wide state you need to persist across phases. Use this
+      with caution, however, as it is not persisted in the output TestRecord or
+      displayed on the web frontend in any way.
+    test_record: A reference to the output TestRecord for the currently running
+      openhtf.Test.  Direct access to this attribute is *strongly* discouraged,
+      but provided as a catch-all for interfaces not otherwise provided by
+      TestApi.  If you find yourself using this, please file a
         feature request for an alternative at:
           https://github.com/google/openhtf/issues/new
-
-  Callable Attributes:
-    attach: Attach binary data to the test, see TestState.attach().
-
+    attach: Attach binary data to the test, see TestState.attach(); callable.
     attach_from_file: Attach binary data from a file, see
-        TestState.attach_from_file().
-
+      TestState.attach_from_file(); callable.
     get_attachment:  Get copy of attachment contents from current or previous
-        phase, see TestState.get_attachement.
-
+      phase, see TestState.get_attachment; callable.
     get_measurement: Get copy of a measurement from a current or previous phase,
-        see TestState.get_measurement().
-
-    notify_update: Notify any frontends of an interesting update. Typically
-        this is automatically called internally when interesting things happen,
-        but it can be called by the user (takes no args), for instance if
-        modifying test_record directly.
-
-
-
-  Read-only Attributes:
-    attachments: Dict mapping attachment name to test_record.Attachment
-        instance containing the data that was attached (and the MIME type
-        that was assumed based on extension, if any).  Only attachments
-        that have been attached in the current phase show up here, and this
-        attribute should not be modified directly; use TestApi.attach() or
-        TestApi.attach_from_file() instead.
+      see TestState.get_measurement(); callable.
+    notify_update: Notify any frontends of an interesting update. Typically this
+      is automatically called internally when interesting things happen, but it
+      can be called by the user (takes no args), for instance if modifying
+      test_record directly; callable.
   """
 
   @property

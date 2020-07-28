@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """A simple utility to check whether all previous phases have passed.
 
 In general test execution stops on a raised Exception but will continue if a
@@ -31,7 +29,16 @@ previous phase has failed.
 from openhtf.core import phase_descriptor
 from openhtf.core import test_record
 
+
 def checkpoint(checkpoint_name=None):
+  """Creates a checkpoint phase that checks if all the previous phases passed.
+
+  Args:
+    checkpoint_name: Optional name for the checkpoint phase.
+
+  Returns:
+    The checkpoint phase.
+  """
   name = checkpoint_name if checkpoint_name else 'Checkpoint'
 
   @phase_descriptor.PhaseOptions(name=name)

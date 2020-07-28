@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Example OpenHTF stop_on_first_failure test executor option.
 
 This is feature is very useful when you do not want the test to continue
@@ -26,21 +25,16 @@ test.configure(stop_on_first_failure=True)
 conf.load(stop_on_first_failure=True)
 """
 
-
 import openhtf as htf
-
+from openhtf.output.callbacks import console_summary
 from openhtf.plugs import user_input
 from openhtf.util import conf  # pylint: disable=unused-import
 from openhtf.util import validators
-from openhtf.output.callbacks import console_summary
 
 
 @htf.measures('number_sum', validators=[validators.in_range(0, 5)])
 def add_numbers_fails(test):
-  """Add numbers fails phase
-
-  This phase will return a failed measurement number_sum.
-  """
+  """Add numbers, but measurement number_sum fails."""
   test.logger.info('Add numbers 2 and 4')
   number_sum = 2 + 4
   test.measurements.number_sum = number_sum
@@ -56,7 +50,7 @@ def hello_world(test):
   test.measurements.hello_world_measurement = 'Hello World!'
 
 
-if __name__ == '__main__':
+def main():
   test = htf.Test(add_numbers_fails, hello_world)
   test.add_output_callbacks(console_summary.ConsoleSummary())
   # Option 1: test.configure
@@ -67,3 +61,7 @@ if __name__ == '__main__':
   # conf.load(stop_on_first_failure=True)
 
   test.execute(test_start=user_input.prompt_for_test_start())
+
+
+if __name__ == '__main__':
+  main()

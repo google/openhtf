@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Measurements for OpenHTF.
 
 Measurements in OpenHTF are used to represent values collected during a Test.
@@ -60,13 +58,12 @@ Examples:
 
 """
 
-
 import collections
+import enum
 import functools
 import logging
 
 import attr
-import enum
 import mutablerecords
 
 from openhtf import util
@@ -133,8 +130,8 @@ class _ConditionalValidator(object):
 
   def with_args(self, **kwargs):
     if hasattr(self.validator, 'with_args'):
-      return _ConditionalValidator(
-          self.result, self.validator.with_args(**kwargs))
+      return _ConditionalValidator(self.result,
+                                   self.validator.with_args(**kwargs))
     return self
 
 
@@ -144,8 +141,8 @@ def _coordinates_len(coordinates):
   Treat single string as a single dimension.
 
   Args:
-    coordinates: any type, measurement coordinates
-      for multidimensional measurements.
+    coordinates: any type, measurement coordinates for multidimensional
+      measurements.
   """
   if isinstance(coordinates, six.string_types):
     return 1
@@ -156,15 +153,18 @@ def _coordinates_len(coordinates):
 
 class Measurement(  # pylint: disable=no-init
     mutablerecords.Record(
-        'Measurement', ['name'],
-        {'units': None, 'dimensions': None, 'docstring': None,
-         '_notification_cb': None,
-         'validators': list,
-         'conditional_validators': list,
-         'transform_fn': None,
-         'outcome': Outcome.UNSET,
-         'measured_value': None,
-         '_cached': None})):
+        'Measurement', ['name'], {
+            'units': None,
+            'dimensions': None,
+            'docstring': None,
+            '_notification_cb': None,
+            'validators': list,
+            'conditional_validators': list,
+            'transform_fn': None,
+            'outcome': Outcome.UNSET,
+            'measured_value': None,
+            '_cached': None,
+        })):
   """Record encapsulating descriptive data for a measurement.
 
   This record includes an _asdict() method so it can be easily output.  Output
@@ -204,8 +204,7 @@ class Measurement(  # pylint: disable=no-init
           transform_fn=self.transform_fn)
     else:
       self.measured_value = MeasuredValue(
-          name=self.name,
-          transform_fn=self.transform_fn)
+          name=self.name, transform_fn=self.transform_fn)
 
   def __setattr__(self, name, value):
     super(Measurement, self).__setattr__(name, value)
@@ -256,8 +255,8 @@ class Measurement(  # pylint: disable=no-init
     if isinstance(unit_desc, str) or unit_desc is None:
       unit_desc = units.Unit(unit_desc)
     if not isinstance(unit_desc, units.UnitDescriptor):
-      raise TypeError('Invalid units for measurement %s: %s' % (self.name,
-                                                                unit_desc))
+      raise TypeError('Invalid units for measurement %s: %s' %
+                      (self.name, unit_desc))
     return unit_desc
 
   def _maybe_make_dimension(self, dimension):
@@ -318,8 +317,8 @@ class Measurement(  # pylint: disable=no-init
   def with_precision(self, precision):
     """Set a precision value to round results to."""
     if not isinstance(precision, int):
-      raise TypeError('Precision must be specified as an int, not %s' % type(
-          precision))
+      raise TypeError('Precision must be specified as an int, not %s' %
+                      type(precision))
     return self.with_transform(functools.partial(round, ndigits=precision))
 
   def with_transform(self, transform_fn):
@@ -338,26 +337,29 @@ class Measurement(  # pylint: disable=no-init
         for v in self.validators
     ]
     new_conditional_validators = [
-        cv.with_args(**kwargs) for cv in self.conditional_validators]
+        cv.with_args(**kwargs) for cv in self.conditional_validators
+    ]
     return mutablerecords.CopyRecord(
-        self, name=util.format_string(self.name, kwargs),
+        self,
+        name=util.format_string(self.name, kwargs),
         docstring=util.format_string(self.docstring, kwargs),
         validators=new_validators,
         conditional_validators=new_conditional_validators,
         _cached=None,
     )
 
-  def __getattr__(self, name):  # pylint: disable=invalid-name
+  def __getattr__(self, name):
     """Support our default set of validators as direct attributes."""
     # Don't provide a back door to validators.py private stuff accidentally.
     if name.startswith('_') or not validators.has_validator(name):
-      raise AttributeError("'%s' object has no attribute '%s'" % (
-          type(self).__name__, name))
+      raise AttributeError("'%s' object has no attribute '%s'" %
+                           (type(self).__name__, name))
 
     # Create a wrapper to invoke the attribute from within validators.
-    def _with_validator(*args, **kwargs):  # pylint: disable=invalid-name
+    def _with_validator(*args, **kwargs):
       return self.with_validator(
           validators.create_validator(name, *args, **kwargs))
+
     return _with_validator
 
   def validate(self):
@@ -418,9 +420,13 @@ class Measurement(  # pylint: disable=no-init
 
 
 class MeasuredValue(
-    mutablerecords.Record('MeasuredValue', ['name'],
-                          {'transform_fn': None, 'stored_value': None,
-                           'is_value_set': False, '_cached_value': None})):
+    mutablerecords.Record(
+        'MeasuredValue', ['name'], {
+            'transform_fn': None,
+            'stored_value': None,
+            'is_value_set': False,
+            '_cached_value': None,
+        })):
   """Class encapsulating actual values measured.
 
   Note that this is really just a value wrapper with some sanity checks.  See
@@ -444,8 +450,8 @@ class MeasuredValue(
 
   def __eq__(self, other):
     return (type(self) == type(other) and self.name == other.name and  # pylint: disable=unidiomatic-typecheck
-            self.is_value_set == other.is_value_set and
-            self.stored_value == other.stored_value)
+            self.is_value_set == other.is_value_set
+            and self.stored_value == other.stored_value)
 
   def __ne__(self, other):
     return not self.__eq__(other)
@@ -550,12 +556,14 @@ class Dimension(object):
     return self._cached_dict
 
 
-class DimensionedMeasuredValue(mutablerecords.Record(
-    'DimensionedMeasuredValue', ['name', 'num_dimensions'],
-    {'transform_fn': None,
-     'notify_value_set': None,
-     'value_dict': collections.OrderedDict,
-     '_cached_basetype_values': list})):
+class DimensionedMeasuredValue(
+    mutablerecords.Record(
+        'DimensionedMeasuredValue', ['name', 'num_dimensions'], {
+            'transform_fn': None,
+            'notify_value_set': None,
+            'value_dict': collections.OrderedDict,
+            '_cached_basetype_values': list,
+        })):
   """Class encapsulating actual values measured.
 
   See the MeasuredValue class docstring for more info.  This class provides a
@@ -581,16 +589,16 @@ class DimensionedMeasuredValue(mutablerecords.Record(
   def is_value_set(self):
     return bool(self.value_dict)
 
-  def __iter__(self):  # pylint: disable=invalid-name
+  def __iter__(self):
     """Iterate over items, allows easy conversion to a dict."""
     return iter(six.iteritems(self.value_dict))
 
-  def __setitem__(self, coordinates, value):  # pylint: disable=invalid-name
+  def __setitem__(self, coordinates, value):
     coordinates_len = _coordinates_len(coordinates)
     if coordinates_len != self.num_dimensions:
       raise InvalidDimensionsError(
-          'Expected %s-dimensional coordinates, got %s' % (self.num_dimensions,
-                                                           coordinates_len))
+          'Expected %s-dimensional coordinates, got %s' %
+          (self.num_dimensions, coordinates_len))
 
     # Wrap single dimensions in a tuple so we can assume value_dict keys are
     # always tuples later.
@@ -604,8 +612,8 @@ class DimensionedMeasuredValue(mutablerecords.Record(
             self.name, coordinates, self.value_dict[coordinates], value)
         self._cached_basetype_values = None
       elif self._cached_basetype_values is not None:
-        self._cached_basetype_values.append(data.convert_to_base_types(
-            coordinates + (value,)))
+        self._cached_basetype_values.append(
+            data.convert_to_base_types(coordinates + (value,)))
     except TypeError as e:
       raise InvalidDimensionsError(
           'Mutable objects cannot be used as measurement dimensions: ' + str(e))
@@ -619,7 +627,7 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     if self.notify_value_set:
       self.notify_value_set()
 
-  def __getitem__(self, coordinates):  # pylint: disable=invalid-name
+  def __getitem__(self, coordinates):
     # Wrap single dimensions in a tuple so we can assume value_dict keys are
     # always tuples later.
     if self.num_dimensions == 1:
@@ -640,8 +648,10 @@ class DimensionedMeasuredValue(mutablerecords.Record(
     """
     if not self.is_value_set:
       raise MeasurementNotSetError('Measurement not yet set', self.name)
-    return [dimensions + (value,) for dimensions, value in
-            six.iteritems(self.value_dict)]
+    return [
+        dimensions + (value,)
+        for dimensions, value in six.iteritems(self.value_dict)
+    ]
 
   def basetype_value(self):
     if self._cached_basetype_values is None:
@@ -708,18 +718,18 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
     if name not in self._measurements:
       raise NotAMeasurementError('Not a measurement', name, self._measurements)
 
-  def __iter__(self):  # pylint: disable=invalid-name
+  def __iter__(self):
     """Extract each MeasurementValue's value."""
     return ((key, meas.measured_value.value)
             for key, meas in six.iteritems(self._measurements))
 
-  def __setattr__(self, name, value):  # pylint: disable=invalid-name
+  def __setattr__(self, name, value):
     self[name] = value
 
-  def __getattr__(self, name):  # pylint: disable=invalid-name
+  def __getattr__(self, name):
     return self[name]
 
-  def __setitem__(self, name, value):  # pylint: disable=invalid-name
+  def __setitem__(self, name, value):
     self._assert_valid_key(name)
     if self._measurements[name].dimensions:
       raise InvalidDimensionsError(
@@ -727,7 +737,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
     self._measurements[name].measured_value.set(value)
     self._measurements[name].notify_value_set()
 
-  def __getitem__(self, name):  # pylint: disable=invalid-name
+  def __getitem__(self, name):
     self._assert_valid_key(name)
 
     if self._measurements[name].dimensions:
@@ -745,12 +755,12 @@ def measures(*measurements, **kwargs):
 
   Args:
     *measurements: Measurement objects to declare, or a string name from which
-        to create a Measurement.
+      to create a Measurement.
     **kwargs: Keyword arguments to pass to Measurement constructor if we're
-        constructing one.  Note that if kwargs are provided, the length
-        of measurements must be 1, and that value must be a string containing
-        the measurement name.  For valid kwargs, see the definition of the
-        Measurement class.
+      constructing one.  Note that if kwargs are provided, the length of
+      measurements must be 1, and that value must be a string containing the
+      measurement name.  For valid kwargs, see the definition of the Measurement
+      class.
 
   Raises:
     InvalidMeasurementTypeError: When the measurement is not defined correctly.
@@ -758,6 +768,7 @@ def measures(*measurements, **kwargs):
   Returns:
     A decorator that declares the measurement(s) for the decorated phase.
   """
+
   def _maybe_make(meas):
     """Turn strings into Measurement objects if necessary."""
     if isinstance(meas, Measurement):
@@ -782,11 +793,13 @@ def measures(*measurements, **kwargs):
   def decorate(wrapped_phase):
     """Phase decorator to be returned."""
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(wrapped_phase)
-    duplicate_names = (set(m.name for m in measurements) &
-                       set(m.name for m in phase.measurements))
+    duplicate_names = (
+        set(m.name for m in measurements)
+        & set(m.name for m in phase.measurements))
     if duplicate_names:
       raise DuplicateNameError('Measurement names duplicated', duplicate_names)
 
     phase.measurements.extend(measurements)
     return phase
+
   return decorate

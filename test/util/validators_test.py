@@ -1,12 +1,11 @@
-"""Unit tests for util/validators.py"""
+"""Unit tests for util/validators.py."""
 
 import copy
 import decimal
-import six
 import unittest
 
-from builtins import int
 from openhtf.util import validators
+import six
 
 
 class TestInRange(unittest.TestCase):
@@ -68,12 +67,14 @@ class TestInRange(unittest.TestCase):
 class TestEqualsValidator(unittest.TestCase):
 
   def test_with_built_in_pods(self):
-    for val in [1, '1', 1.0, False, (1,), [1], {1:1}]:
+    for val in [1, '1', 1.0, False, (1,), [1], {1: 1}]:
       self.assertTrue(validators.Equals(val)(val))
 
   def test_with_custom_class(self):
+
     class MyType(object):
       A = 10
+
     my_type = MyType()
     self.assertTrue(validators.Equals(my_type)(my_type))
 
@@ -111,8 +112,10 @@ class TestEqualsFactory(unittest.TestCase):
     self.assertFalse(string_validator('aardvarka'))
 
   def test_with_object(self):
+
     class MyType(object):
       val = 'A'
+
     my_type_a = MyType()
     object_validator = validators.equals(my_type_a)
     self.assertTrue(object_validator(my_type_a))
@@ -151,8 +154,10 @@ class TestWithinPercent(unittest.TestCase):
   def test_equals_equivalent_within_percent_validator(self):
     validator_a = validators.WithinPercent(expected=100, percent=10)
     validator_b = validators.WithinPercent(expected=100, percent=10)
-    self.assertEqual(validator_a, validator_b,
-                     msg='Validators should compare equal, but did not.')
+    self.assertEqual(
+        validator_a,
+        validator_b,
+        msg='Validators should compare equal, but did not.')
 
   def test_not_equals_when_not_equivalent(self):
     validator_a = validators.WithinPercent(expected=100, percent=10)
@@ -174,7 +179,7 @@ class TestWithinPercent(unittest.TestCase):
     # state in a non-deepcopyable manner.
     validator_a(1)
     str(validator_a)
-    validator_a == 'a'
+    validator_a == 'a'  # pylint: disable=pointless-statement
     validator_b = copy.deepcopy(validator_a)
     self.assertEqual(validator_a.expected, validator_b.expected)
     self.assertEqual(validator_a.percent, validator_b.percent)

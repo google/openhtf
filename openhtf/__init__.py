@@ -11,11 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """The main OpenHTF entry point."""
 
-import pkg_resources
 import signal
 
 from openhtf import plugs
@@ -47,8 +44,9 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
+import pkg_resources
 
-# TODO: TestPhase is used for legacy reasons and should be deprecated.
+# TODO(arsharma): TestPhase is used for legacy reasons and should be deprecated.
 TestPhase = PhaseOptions  # pylint: disable=invalid-name
 
 
@@ -61,6 +59,7 @@ def get_version():
     return pkg_resources.get_distribution('openhtf')
   except pkg_resources.DistributionNotFound:
     return 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
+
 
 __version__ = get_version()
 
