@@ -58,10 +58,13 @@ Examples:
 
 """
 
+from __future__ import google_type_annotations
+
 import collections
 import enum
 import functools
 import logging
+from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
 
 import attr
 import mutablerecords
@@ -75,7 +78,9 @@ from openhtf.util import validators
 import six
 
 try:
-  import pandas  # pylint: disable=g-import-not-at-top
+  # pylint: disable=g-import-not-at-top
+  import pandas  # pytype: disable=import-error
+  # pylint: enable=g-import-not-at-top
 except ImportError:
   pandas = None
 
@@ -120,22 +125,22 @@ class _ConditionalValidator(object):
   result = attr.ib(type=diagnoses_lib.DiagResultEnum)
 
   # The validator to use when the result is present.
-  validator = attr.ib()  # type: Callable[[Any], bool]
+  validator = attr.ib(type=Callable[[Any], bool])
 
-  def as_base_types(self):
+  def as_base_types(self) -> Dict[Text, Any]:
     return dict(
         result=data.convert_to_base_types(self.result),
         validator=str(self.validator),
     )
 
-  def with_args(self, **kwargs):
+  def with_args(self, **kwargs: Any) -> '_ConditionalValidator':
     if hasattr(self.validator, 'with_args'):
       return _ConditionalValidator(self.result,
                                    self.validator.with_args(**kwargs))
     return self
 
 
-def _coordinates_len(coordinates):
+def _coordinates_len(coordinates: Any) -> int:
   """Returns count of measurement coordinates.
 
   Treat single string as a single dimension.
@@ -149,6 +154,10 @@ def _coordinates_len(coordinates):
   if hasattr(coordinates, '__len__'):
     return len(coordinates)
   return 1
+
+
+UnitInputT = Union[Text, units.UnitDescriptor]
+DimensionInputT = Union['Dimension', Text, units.UnitDescriptor]
 
 
 class Measurement(  # pylint: disable=no-init
@@ -188,12 +197,12 @@ class Measurement(  # pylint: disable=no-init
       during as_base_types and updated in place to save allocation time.
   """
 
-  def __init__(self, name, **kwargs):
+  def __init__(self, name: Text, **kwargs: Any):
     super(Measurement, self).__init__(name, **kwargs)
     if 'measured_value' not in kwargs:
       self._initialize_value()
 
-  def _initialize_value(self):
+  def _initialize_value(self) -> None:
     if self.measured_value and self.measured_value.is_value_set:
       raise ValueError('Cannot update a Measurement once a value is set.')
 
@@ -206,14 +215,14 @@ class Measurement(  # pylint: disable=no-init
       self.measured_value = MeasuredValue(
           name=self.name, transform_fn=self.transform_fn)
 
-  def __setattr__(self, name, value):
+  def __setattr__(self, name: Text, value: Any) -> None:
     super(Measurement, self).__setattr__(name, value)
     # When dimensions or transform_fn change, we may need to update our
     # measured_value type.
     if name in ['dimensions', 'transform_fn']:
       self._initialize_value()
 
-  def __setstate__(self, state):
+  def __setstate__(self, state: Dict[Text, Any]) -> None:
     """Set this record's state during unpickling.
 
     This override is necessary to ensure that the the _initialize_value check
@@ -230,14 +239,15 @@ class Measurement(  # pylint: disable=no-init
     object.__setattr__(self, 'dimensions', dimensions)
     object.__setattr__(self, 'transform_fn', transform_fn)
 
-  def set_notification_callback(self, notification_cb):
+  def set_notification_callback(
+      self, notification_cb: Callable[[], None]) -> 'Measurement':
     """Set the notifier we'll call when measurements are set."""
     self._notification_cb = notification_cb
     if not notification_cb and self.dimensions:
       self.measured_value.notify_value_set = None
     return self
 
-  def notify_value_set(self):
+  def notify_value_set(self) -> None:
     if self.dimensions:
       self.outcome = Outcome.PARTIALLY_SET
     else:
@@ -245,12 +255,13 @@ class Measurement(  # pylint: disable=no-init
     if self._notification_cb:
       self._notification_cb()
 
-  def doc(self, docstring):
+  def doc(self, docstring: Text) -> 'Measurement':
     """Set this Measurement's docstring, returns self for chaining."""
     self.docstring = docstring
     return self
 
-  def _maybe_make_unit_desc(self, unit_desc):
+  def _maybe_make_unit_desc(self,
+                            unit_desc: UnitInputT) -> units.UnitDescriptor:
     """Return the UnitDescriptor or convert a string to one."""
     if isinstance(unit_desc, str) or unit_desc is None:
       unit_desc = units.Unit(unit_desc)
@@ -259,7 +270,7 @@ class Measurement(  # pylint: disable=no-init
                       (self.name, unit_desc))
     return unit_desc
 
-  def _maybe_make_dimension(self, dimension):
+  def _maybe_make_dimension(self, dimension: DimensionInputT) -> 'Dimension':
     """Return a `measurements.Dimension` instance."""
     # For backwards compatibility the argument can be either a Dimension, a
     # string or a `units.UnitDescriptor`.
@@ -272,19 +283,19 @@ class Measurement(  # pylint: disable=no-init
 
     raise TypeError('Cannot convert {} to a dimension'.format(dimension))
 
-  def with_units(self, unit_desc):
+  def with_units(self, unit_desc: UnitInputT) -> 'Measurement':
     """Declare the units for this Measurement, returns self for chaining."""
     self.units = self._maybe_make_unit_desc(unit_desc)
     return self
 
-  def with_dimensions(self, *dimensions):
+  def with_dimensions(self, *dimensions: DimensionInputT) -> 'Measurement':
     """Declare dimensions for this Measurement, returns self for chaining."""
     self.dimensions = tuple(
         self._maybe_make_dimension(dim) for dim in dimensions)
     self._cached = None
     return self
 
-  def with_validator(self, validator):
+  def with_validator(self, validator: Callable[[Any], bool]) -> 'Measurement':
     """Add a validator callback to this Measurement, chainable."""
     if not callable(validator):
       raise ValueError('Validator must be callable', validator)
@@ -292,7 +303,10 @@ class Measurement(  # pylint: disable=no-init
     self._cached = None
     return self
 
-  def validate_on(self, result_to_validator_mapping):
+  def validate_on(
+      self, result_to_validator_mapping: Dict[diagnoses_lib.DiagResultEnum,
+                                              Callable[[Any], bool]]
+  ) -> 'Measurement':
     """Adds conditional validators.
 
     Note that results are added by the current phase after measurements are
@@ -314,14 +328,14 @@ class Measurement(  # pylint: disable=no-init
     self._cached = None
     return self
 
-  def with_precision(self, precision):
+  def with_precision(self, precision: int) -> 'Measurement':
     """Set a precision value to round results to."""
     if not isinstance(precision, int):
       raise TypeError('Precision must be specified as an int, not %s' %
                       type(precision))
     return self.with_transform(functools.partial(round, ndigits=precision))
 
-  def with_transform(self, transform_fn):
+  def with_transform(self, transform_fn: Callable[[Any], Any]) -> 'Measurement':
     """Set the transform function."""
     if not callable(transform_fn):
       raise TypeError('Transform function must be callable.')
@@ -330,7 +344,7 @@ class Measurement(  # pylint: disable=no-init
     self.transform_fn = transform_fn
     return self
 
-  def with_args(self, **kwargs):
+  def with_args(self, **kwargs: Any) -> 'Measurement':
     """String substitution for names and docstrings."""
     new_validators = [
         v.with_args(**kwargs) if hasattr(v, 'with_args') else v
@@ -348,7 +362,7 @@ class Measurement(  # pylint: disable=no-init
         _cached=None,
     )
 
-  def __getattr__(self, name):
+  def __getattr__(self, name: Text) -> Callable[..., 'Measurement']:
     """Support our default set of validators as direct attributes."""
     # Don't provide a back door to validators.py private stuff accidentally.
     if name.startswith('_') or not validators.has_validator(name):
@@ -362,7 +376,7 @@ class Measurement(  # pylint: disable=no-init
 
     return _with_validator
 
-  def validate(self):
+  def validate(self) -> 'Measurement':
     """Validate this measurement and update its 'outcome' field."""
     # PASS if all our validators return True, otherwise FAIL.
     try:
@@ -380,7 +394,7 @@ class Measurement(  # pylint: disable=no-init
       if self._cached:
         self._cached['outcome'] = self.outcome.name
 
-  def as_base_types(self):
+  def as_base_types(self) -> Dict[Text, Any]:
     """Convert this measurement to a dict of basic types."""
     if not self._cached:
       # Create the single cache file the first time this is called.
@@ -404,7 +418,7 @@ class Measurement(  # pylint: disable=no-init
       self._cached['measured_value'] = self.measured_value.basetype_value()
     return self._cached
 
-  def to_dataframe(self, columns=None):
+  def to_dataframe(self, columns: Any = None) -> Any:
     """Convert a multi-dim to a pandas dataframe."""
     if not isinstance(self.measured_value, DimensionedMeasuredValue):
       raise TypeError(
@@ -445,27 +459,27 @@ class MeasuredValue(
   is set.
   """
 
-  def __str__(self):
+  def __str__(self) -> Text:
     return str(self.value) if self.is_value_set else 'UNSET'
 
-  def __eq__(self, other):
+  def __eq__(self, other: 'MeasuredValue') -> bool:
     return (type(self) == type(other) and self.name == other.name and  # pylint: disable=unidiomatic-typecheck
             self.is_value_set == other.is_value_set
             and self.stored_value == other.stored_value)
 
-  def __ne__(self, other):
+  def __ne__(self, other: 'MeasuredValue') -> bool:
     return not self.__eq__(other)
 
   @property
-  def value(self):
+  def value(self) -> Any:
     if not self.is_value_set:
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return self.stored_value
 
-  def basetype_value(self):
+  def basetype_value(self) -> Any:
     return self._cached_value
 
-  def set(self, value):
+  def set(self, value: Any) -> None:
     """Set the value for this measurement, with some sanity checks."""
 
     # Apply transform function if it is set.
@@ -496,7 +510,9 @@ class Dimension(object):
 
   __slots__ = ['_description', '_unit', '_cached_dict']
 
-  def __init__(self, description='', unit=units.NO_DIMENSION):
+  def __init__(self,
+               description: Text = '',
+               unit: units.UnitDescriptor = units.NO_DIMENSION):
     self._description = description
     self._unit = unit
     self._cached_dict = data.convert_to_base_types({
@@ -506,21 +522,21 @@ class Dimension(object):
         'suffix': self.suffix,
     })
 
-  def __eq__(self, other):
+  def __eq__(self, other: 'Dimension') -> bool:
     return self.description == other.description and self.unit == other.unit
 
-  def __ne__(self, other):
+  def __ne__(self, other: 'Dimension') -> bool:
     return not self == other
 
-  def __repr__(self):
+  def __repr__(self) -> Text:
     return '<%s: %s>' % (type(self).__name__, self._asdict())
 
   @classmethod
-  def from_unit_descriptor(cls, unit_desc):
+  def from_unit_descriptor(cls, unit_desc: units.UnitDescriptor) -> 'Dimension':
     return cls(unit=unit_desc)
 
   @classmethod
-  def from_string(cls, string):
+  def from_string(cls, string: Text) -> 'Dimension':
     """Convert a string into a Dimension."""
     # Note: There is some ambiguity as to whether the string passed is intended
     # to become a unit looked up by name or suffix, or a Dimension descriptor.
@@ -530,29 +546,29 @@ class Dimension(object):
       return cls(description=string)
 
   @property
-  def description(self):
+  def description(self) -> Text:
     return self._description
 
   @property
-  def unit(self):
+  def unit(self) -> units.UnitDescriptor:
     return self._unit
 
   @property
-  def code(self):
+  def code(self) -> Text:
     """Provides backwards compatibility to `units.UnitDescriptor` api."""
     return self._unit.code
 
   @property
-  def suffix(self):
+  def suffix(self) -> Optional[Text]:
     """Provides backwards compatibility to `units.UnitDescriptor` api."""
     return self._unit.suffix
 
   @property
-  def name(self):
+  def name(self) -> Text:
     """Provides backwards compatibility to `units.UnitDescriptor` api."""
     return self._description or self._unit.name
 
-  def _asdict(self):
+  def _asdict(self) -> Dict[Text, Any]:
     return self._cached_dict
 
 
@@ -578,22 +594,23 @@ class DimensionedMeasuredValue(
   basetype_value.
   """
 
-  def __str__(self):
+  def __str__(self) -> Text:
     return str(self.value) if self.is_value_set else 'UNSET'
 
-  def with_notify(self, notify_value_set):
+  def with_notify(
+      self, notify_value_set: Callable[[], None]) -> 'DimensionedMeasuredValue':
     self.notify_value_set = notify_value_set
     return self
 
   @property
-  def is_value_set(self):
+  def is_value_set(self) -> bool:
     return bool(self.value_dict)
 
-  def __iter__(self):
+  def __iter__(self) -> Iterator[Any]:
     """Iterate over items, allows easy conversion to a dict."""
     return iter(six.iteritems(self.value_dict))
 
-  def __setitem__(self, coordinates, value):
+  def __setitem__(self, coordinates: Any, value: Any) -> None:
     coordinates_len = _coordinates_len(coordinates)
     if coordinates_len != self.num_dimensions:
       raise InvalidDimensionsError(
@@ -627,7 +644,7 @@ class DimensionedMeasuredValue(
     if self.notify_value_set:
       self.notify_value_set()
 
-  def __getitem__(self, coordinates):
+  def __getitem__(self, coordinates: Any) -> Any:
     # Wrap single dimensions in a tuple so we can assume value_dict keys are
     # always tuples later.
     if self.num_dimensions == 1:
@@ -635,7 +652,7 @@ class DimensionedMeasuredValue(
     return self.value_dict[coordinates]
 
   @property
-  def value(self):
+  def value(self) -> List[Any]:
     """The values stored in this record.
 
     Raises:
@@ -653,14 +670,14 @@ class DimensionedMeasuredValue(
         for dimensions, value in six.iteritems(self.value_dict)
     ]
 
-  def basetype_value(self):
+  def basetype_value(self) -> List[Any]:
     if self._cached_basetype_values is None:
       self._cached_basetype_values = list(
           data.convert_to_base_types(coordinates + (value,))
           for coordinates, value in six.iteritems(self.value_dict))
     return self._cached_basetype_values
 
-  def to_dataframe(self, columns=None):
+  def to_dataframe(self, columns: Any = None) -> Any:
     """Converts to a `pandas.DataFrame`."""
     if not self.is_value_set:
       raise ValueError('Value must be set before converting to a DataFrame.')
@@ -713,23 +730,23 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
     # [(5, 10), (6, 11)]
   """
 
-  def _assert_valid_key(self, name):
+  def _assert_valid_key(self, name: Text) -> None:
     """Raises if name is not a valid measurement."""
     if name not in self._measurements:
       raise NotAMeasurementError('Not a measurement', name, self._measurements)
 
-  def __iter__(self):
+  def __iter__(self) -> Iterator[Tuple[Text, Any]]:
     """Extract each MeasurementValue's value."""
     return ((key, meas.measured_value.value)
             for key, meas in six.iteritems(self._measurements))
 
-  def __setattr__(self, name, value):
+  def __setattr__(self, name: Text, value: Any) -> None:
     self[name] = value
 
-  def __getattr__(self, name):
+  def __getattr__(self, name: Text) -> Any:
     return self[name]
 
-  def __setitem__(self, name, value):
+  def __setitem__(self, name: Text, value: Any) -> None:
     self._assert_valid_key(name)
     if self._measurements[name].dimensions:
       raise InvalidDimensionsError(
@@ -737,7 +754,7 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
     self._measurements[name].measured_value.set(value)
     self._measurements[name].notify_value_set()
 
-  def __getitem__(self, name):
+  def __getitem__(self, name: Text) -> Any:
     self._assert_valid_key(name)
 
     if self._measurements[name].dimensions:
@@ -748,7 +765,9 @@ class Collection(mutablerecords.Record('Collection', ['_measurements'])):
     return self._measurements[name].measured_value.value
 
 
-def measures(*measurements, **kwargs):
+def measures(
+    *measurements: Union[Text, Measurement], **kwargs: Any
+) -> Callable[[phase_descriptor.PhaseT], phase_descriptor.PhaseDescriptor]:
   """Decorator-maker used to declare measurements for phases.
 
   See the measurements module docstring for examples of usage.
@@ -769,7 +788,7 @@ def measures(*measurements, **kwargs):
     A decorator that declares the measurement(s) for the decorated phase.
   """
 
-  def _maybe_make(meas):
+  def _maybe_make(meas: Union[Text, Measurement]) -> Measurement:
     """Turn strings into Measurement objects if necessary."""
     if isinstance(meas, Measurement):
       return meas
@@ -790,7 +809,9 @@ def measures(*measurements, **kwargs):
   measurements = [_maybe_make(meas) for meas in measurements]
 
   # 'measurements' is guaranteed to be a list of Measurement objects here.
-  def decorate(wrapped_phase):
+  def decorate(
+      wrapped_phase: phase_descriptor.PhaseT
+  ) -> phase_descriptor.PhaseDescriptor:
     """Phase decorator to be returned."""
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(wrapped_phase)
     duplicate_names = (

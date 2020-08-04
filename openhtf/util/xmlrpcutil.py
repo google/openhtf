@@ -82,9 +82,9 @@ class TimeoutProxyMixin(object):
 
   def __settimeout(self, timeout_s):
     if six.PY3:
-      self._transport.settimeout(timeout_s)
+      self._transport.settimeout(timeout_s)  # pytype: disable=attribute-error
     else:
-      self.__transport.settimeout(timeout_s)
+      self.__transport.settimeout(timeout_s)  # pytype: disable=attribute-error
 
 
 class TimeoutProxyServer(TimeoutProxyMixin, BaseServerProxy):

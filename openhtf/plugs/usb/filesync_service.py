@@ -103,6 +103,7 @@ Message Format:
       u32 command = 'DONE' == 0x444F4E45
       u32 size = 0
 """
+# pytype: skip-file
 
 import collections
 import stat

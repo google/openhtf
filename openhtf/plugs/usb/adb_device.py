@@ -28,6 +28,8 @@ function, but rather a USB function - listing devices with a specific interface
 class, subclass, and protocol.
 """
 
+# pytype: skip-file
+
 import logging
 import os.path
 

@@ -147,7 +147,7 @@ class TestExecutor(threads.KillableThread):
     if sys.version_info >= (3, 2):
       # TIMEOUT_MAX can be too large and cause overflows on 32-bit OSes, so take
       # whichever timeout is shorter.
-      timeout = min(threading.TIMEOUT_MAX, timeout)
+      timeout = min(threading.TIMEOUT_MAX, timeout)  # pytype: disable=module-attr
     self.join(timeout)
 
   def _thread_proc(self):

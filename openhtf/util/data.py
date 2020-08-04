@@ -34,6 +34,7 @@ from past.builtins import long
 from past.builtins import unicode
 
 import six
+from six.moves import zip
 
 # Used by convert_to_base_types().
 PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
@@ -100,7 +101,7 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
     assert_records_equal_nonvolatile(first._asdict(), second._asdict(),
                                      volatile_fields, indent)
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
-    for idx, (fir, sec) in enumerate(itertools.izip(first, second)):
+    for idx, (fir, sec) in enumerate(zip(first, second)):
       try:
         assert_records_equal_nonvolatile(fir, sec, volatile_fields, indent + 2)
       except AssertionError:

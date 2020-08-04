@@ -145,6 +145,8 @@ INSTALL_REQUIRES = [
 # platform-specific dependencies, so we do it the old school way.
 if sys.version_info < (3, 4):
   INSTALL_REQUIRES.append('enum34>=1.1.2,<2.0')
+if sys.version_info < (3, 5):
+  INSTALL_REQUIRES.append('typing')
 
 
 class PyTestCommand(test):  # pylint: disable=missing-class-docstring

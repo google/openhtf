@@ -17,9 +17,13 @@ Phases in OpenHTF are distinct steps in a test.  Each phase is an instance
 of PhaseDescriptor class.
 
 """
+
+from __future__ import google_type_annotations
+
 import enum
 import inspect
 import pdb
+from typing import Any, Callable, Dict, Optional, Text, Union
 
 import mutablerecords
 
@@ -60,6 +64,11 @@ class PhaseResult(enum.Enum):
   STOP = 'STOP'
 
 
+PhaseReturnT = Optional[PhaseResult]
+PhaseCallableT = Callable[..., PhaseReturnT]
+PhaseT = Union['PhaseDescriptor', PhaseCallableT]
+
+
 class PhaseOptions(
     mutablerecords.Record(
         'PhaseOptions', [], {
@@ -92,19 +101,19 @@ class PhaseOptions(
     def PhaseFunc(test, port, other_info): pass
   """
 
-  def format_strings(self, **kwargs):
+  def format_strings(self, **kwargs: Any) -> 'PhaseOptions':
     """String substitution of name."""
     return mutablerecords.CopyRecord(
         self, name=util.format_string(self.name, kwargs))
 
-  def update(self, **kwargs):
+  def update(self, **kwargs: Any) -> None:
     for key, value in six.iteritems(kwargs):
       if key not in self.__slots__:
         raise AttributeError('Type %s does not have attribute %s' %
                              (type(self).__name__, key))
       setattr(self, key, value)
 
-  def __call__(self, phase_func):
+  def __call__(self, phase_func: PhaseT) -> 'PhaseDescriptor':
     phase = PhaseDescriptor.wrap_or_copy(phase_func)
     for attr in self.__slots__:
       value = getattr(self, attr)
@@ -139,7 +148,7 @@ class PhaseDescriptor(
   """
 
   @classmethod
-  def wrap_or_copy(cls, func, **options):
+  def wrap_or_copy(cls, func: PhaseT, **options: Any) -> 'PhaseDescriptor':
     """Return a new PhaseDescriptor from the given function or instance.
 
     We want to return a new copy so that you can reuse a phase with different
@@ -155,9 +164,10 @@ class PhaseDescriptor(
     Returns:
       A new PhaseDescriptor object.
     """
+    # TODO(arsharma): Remove when type annotations are more enforced.
     if isinstance(func, openhtf.PhaseGroup):
       raise PhaseWrapError('Cannot wrap PhaseGroup <%s> as a phase.' %
-                           (func.name or 'Unnamed'))
+                           (func.name or 'Unnamed'))  # pytype: disable=attribute-error
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
       # or kwargs.  See with_args() below for more details.
@@ -167,7 +177,7 @@ class PhaseDescriptor(
     retval.options.update(**options)
     return retval
 
-  def _asdict(self):
+  def _asdict(self) -> Dict[Text, Any]:
     asdict = {
         k: data.convert_to_base_types(getattr(self, k), ignore_keys=('cls',))
         for k in self.optional_attributes
@@ -176,14 +186,14 @@ class PhaseDescriptor(
     return asdict
 
   @property
-  def name(self):
+  def name(self) -> Text:
     return self.options.name or self.func.__name__
 
   @property
-  def doc(self):
+  def doc(self) -> Optional[Text]:
     return self.func.__doc__
 
-  def with_known_args(self, **kwargs):
+  def with_known_args(self, **kwargs: Any) -> 'PhaseDescriptor':
     """Send only known keyword-arguments to the phase when called."""
     if six.PY3:
       argspec = inspect.getfullargspec(self.func)
@@ -199,7 +209,7 @@ class PhaseDescriptor(
       return self.with_args(**stored)
     return self
 
-  def with_args(self, **kwargs):
+  def with_args(self, **kwargs: Any) -> 'PhaseDescriptor':
     """Send these keyword-arguments to the phase when called."""
     # Make a copy so we can have multiple of the same phase with different args
     # in the same test.
@@ -209,15 +219,20 @@ class PhaseDescriptor(
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
-  def with_known_plugs(self, **subplugs):
+  # TODO(arsharma): Refactor circular dependencies to to annotate subplugs as
+  # Type[plugs.BasePlug].
+  def with_known_plugs(self, **subplugs: Any) -> 'PhaseDescriptor':
     """Substitute only known plugs for placeholders for this phase."""
     return self._apply_with_plugs(subplugs, error_on_unknown=False)
 
-  def with_plugs(self, **subplugs):
+  # TODO(arsharma): Refactor circular dependencies to to annotate subplugs as
+  # Type[plugs.BasePlug].
+  def with_plugs(self, **subplugs: Any) -> 'PhaseDescriptor':
     """Substitute plugs for placeholders for this phase, error on unknowns."""
     return self._apply_with_plugs(subplugs, error_on_unknown=True)
 
-  def _apply_with_plugs(self, subplugs, error_on_unknown):
+  def _apply_with_plugs(self, subplugs: Dict[Text, Any],
+                        error_on_unknown: bool) -> 'PhaseDescriptor':
     """Substitute plugs for placeholders for this phase.
 
     Args:
@@ -266,7 +281,9 @@ class PhaseDescriptor(
         options=self.options.format_strings(**subplugs),
         measurements=[m.with_args(**subplugs) for m in self.measurements])
 
-  def __call__(self, test_state):
+  # TODO(arsharma): Refactor circular dependencies so running_test_state can
+  # be marked as test_state.TestState
+  def __call__(self, running_test_state: Any) -> PhaseReturnT:
     """Invoke this Phase, passing in the appropriate args.
 
     By default, an openhtf.TestApi is passed as the first positional arg, but if
@@ -276,14 +293,14 @@ class PhaseDescriptor(
     with_args(), combined with plugs (plugs override extra_kwargs).
 
     Args:
-      test_state: test_state.TestState for the currently executing Test.
+      running_test_state: test_state.TestState for the currently executing Test.
 
     Returns:
       The return value from calling the underlying function.
     """
     kwargs = dict(self.extra_kwargs)
     kwargs.update(
-        test_state.plug_manager.provide_plugs(
+        running_test_state.plug_manager.provide_plugs(
             (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
 
     if six.PY3:
@@ -298,9 +315,9 @@ class PhaseDescriptor(
         arg_info.args) > len(kwargs)):
       args = []
       if self.options.requires_state:
-        args.append(test_state)
+        args.append(running_test_state)
       else:
-        args.append(test_state.test_api)
+        args.append(running_test_state.test_api)
 
       if self.options.run_under_pdb:
         return pdb.runcall(self.func, *args, **kwargs)
