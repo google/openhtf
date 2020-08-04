@@ -367,9 +367,9 @@ class Test(object):
         else:
           colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
           colors[test_record.Outcome.PASS] = ''.join(
-              (colorama.Style.BRIGHT, colorama.Fore.GREEN))
+              (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
           colors[test_record.Outcome.FAIL] = ''.join(
-              (colorama.Style.BRIGHT, colorama.Fore.RED))
+              (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
           msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
           console_output.banner_print(
               msg_template.format(

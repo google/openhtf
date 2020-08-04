@@ -13,6 +13,8 @@
 # limitations under the License.
 """Thread library defining a few helpers."""
 
+from __future__ import google_type_annotations
+
 import contextlib
 import cProfile
 import ctypes
@@ -192,10 +194,10 @@ class KillableThread(threading.Thread):
     raise InvalidUsageError(
         'Profiling not enabled via __init__, or thread has not run yet.')
 
-  def _is_thread_proc_running(self):
+  def _is_thread_proc_running(self) -> bool:
     # Acquire the lock without blocking, though this object is fully implemented
     # in C, so we cannot specify keyword arguments.
-    could_acquire = self._running_lock.acquire(0)
+    could_acquire = self._running_lock.acquire(False)
     if could_acquire:
       self._running_lock.release()
       return False

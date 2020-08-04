@@ -26,6 +26,7 @@ from openhtf.util import validators
 
 
 from past.builtins import unicode
+import six
 
 
 TEST_RECORD_ATTACHMENT_NAME = 'OpenHTF_record.json'
@@ -104,7 +105,7 @@ def mfg_event_from_test_record(record):
 
 def _populate_basic_data(mfg_event, record):
   """Copies data from the OpenHTF TestRecord to the MfgEvent proto."""
-  # TODO:
+  # TODO(openhtf-team):
   #   * Missing in proto: set run name from metadata.
   #   * `part_tags` field on proto is unused
   #   * `timings` field on proto is unused.
@@ -168,7 +169,7 @@ def _attach_record_as_json(mfg_event, record):
   attachment.type = test_runs_pb2.TEXT_UTF8
 
 
-def _convert_object_to_json(obj):
+def _convert_object_to_json(obj):  # pylint: disable=missing-function-docstring
   # Since there will be parts of this that may have unicode, either as
   # measurement or in the logs, we have to be careful and convert everything
   # to unicode, merge, then encode to UTF-8 to put it into the proto.
@@ -176,7 +177,7 @@ def _convert_object_to_json(obj):
   pieces = []
   for piece in json_encoder.iterencode(obj):
     if isinstance(piece, bytes):
-      pieces.append(unicode(piece, errors='replace'))
+      pieces.append(unicode(piece, errors='replace'))  # pytype: disable=wrong-keyword-args
     else:
       pieces.append(piece)
 
@@ -208,7 +209,7 @@ class UniqueNameMaker(object):
     self._counts = collections.Counter(all_names)
     self._seen = collections.Counter()
 
-  def make_unique(self, name):
+  def make_unique(self, name):  # pylint: disable=missing-function-docstring
     count = self._counts[name]
     assert count >= 1, 'Seeing a new name that was not given to the constructor'
     if count == 1:
@@ -272,12 +273,8 @@ def multidim_measurement_to_attachment(name, measurement):
   for d in dimensions:
     if d.suffix is None:
       suffix = u''
-    # Ensure that the suffix is unicode. It's typically str/bytes because
-    # units.py looks them up against str/bytes.
-    elif isinstance(d.suffix, unicode):
-      suffix = d.suffix
     else:
-      suffix = d.suffix.decode('utf8')
+      suffix = six.ensure_text(d.suffix)
     dims.append({
         'uom_suffix': suffix,
         'uom_code': d.code,
@@ -374,7 +371,7 @@ class PhaseCopier(object):
     elif isinstance(value, bytes):
       # text_value expects unicode or ascii-compatible strings, so we must
       # 'decode' it, even if it's actually just garbage bytestring data.
-      mfg_measurement.text_value = unicode(value, errors='replace')
+      mfg_measurement.text_value = unicode(value, errors='replace')  # pytype: disable=wrong-keyword-args
     elif isinstance(value, unicode):
       # Don't waste time and potential errors decoding unicode.
       mfg_measurement.text_value = value

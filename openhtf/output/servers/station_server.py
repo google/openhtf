@@ -157,7 +157,7 @@ class StationWatcher(threading.Thread):
         # Note that because logging triggers a call to notify_update(), by
         # logging a message, we automatically retry publishing the update
         # after an error occurs.
-        if error.message == 'dictionary changed size during iteration':
+        if error.args[0] == 'dictionary changed size during iteration':
           # These errors occur occasionally and it is infeasible to get rid of
           # them entirely unless data.convert_to_base_types() is made
           # thread-safe. Ignore the error and retry quickly.
@@ -403,6 +403,8 @@ class PlugsHandler(BaseTestHandler):
 
 
 class BaseHistoryHandler(web_gui_server.CorsRequestHandler):
+
+  history_path = None
 
   def initialize(self, history_path):
     self.history_path = history_path

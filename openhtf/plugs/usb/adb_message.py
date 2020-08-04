@@ -38,6 +38,8 @@ This class does not keep any of this state, but rather represents a single
 message entity.  See adb_protocol.py for the stateful components.
 """
 
+# pytype: skip-file
+
 import collections
 import logging
 import string

@@ -1,10 +1,14 @@
 """Utilities for handling command line arguments."""
 
+from __future__ import google_type_annotations
+
 import argparse
 import sys
+import typing
+from typing import Any, Optional, Text
 
 
-def module_parser():
+def module_parser() -> argparse.ArgumentParser:
   return argparse.ArgumentParser(add_help=False)
 
 
@@ -25,20 +29,26 @@ class StoreInModule(argparse.Action):
     parser.parse_args()
   """
 
-  def __init__(self, *args, **kwargs):
-    self._tgt_mod, self._tgt_attr = kwargs.pop('target').rsplit('.', 1)
+  def __init__(self, *args: Any, **kwargs: Any):
+    self._tgt_mod, self._tgt_attr = typing.cast(Text,
+                                                kwargs.pop('target')).rsplit(
+                                                    '.', 1)
     proxy_cls = kwargs.pop('proxy', None)
     if proxy_cls is not None:
       self._proxy = proxy_cls(*args, **kwargs)
     super(StoreInModule, self).__init__(*args, **kwargs)
 
-  def __call__(self, parser, namespace, values, option_string=None):
+  def __call__(self,
+               parser: argparse.ArgumentParser,
+               namespace: argparse.Namespace,
+               values: Any,
+               option_string: Optional[Text] = None) -> None:
     if hasattr(self, '_proxy'):
       values = self._proxy(parser, namespace, values)
     setattr(self._resolve_module(), self._tgt_attr, values)
     # self.val = values
 
-  def _resolve_module(self):
+  def _resolve_module(self) -> Any:
     if '.' in self._tgt_mod:
       base, mod = self._tgt_mod.rsplit('.', 1)
       __import__(base, fromlist=[mod])
@@ -50,11 +60,15 @@ class StoreInModule(argparse.Action):
 class _StoreValueInModule(StoreInModule):
   """Stores a value in a module level variable when set."""
 
-  def __init__(self, const, *args, **kwargs):
+  def __init__(self, const: Any, *args: Any, **kwargs: Any):
     kwargs.update(nargs=0, const=const)
     super(_StoreValueInModule, self).__init__(*args, **kwargs)
 
-  def __call__(self, parser, namespace, values, option_string=None):
+  def __call__(self,
+               parser: argparse.ArgumentParser,
+               namespace: argparse.Namespace,
+               values: Any,
+               option_string: Optional[Text] = None) -> None:
     del values  # Unused.
     super(_StoreValueInModule, self).__call__(
         parser, namespace, self.const, option_string=option_string)
@@ -63,25 +77,29 @@ class _StoreValueInModule(StoreInModule):
 class StoreTrueInModule(_StoreValueInModule):
   """Stores True in a module level variable when set."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args: Any, **kwargs: Any):
     super(StoreTrueInModule, self).__init__(True, *args, **kwargs)
 
 
 class StoreFalseInModule(_StoreValueInModule):
   """Stores False in module level variable when set."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args: Any, **kwargs: Any):
     super(StoreFalseInModule, self).__init__(False, *args, **kwargs)
 
 
 class StoreRepsInModule(StoreInModule):
   """Store a count of number of times the flag was repeated in a module."""
 
-  def __init__(self, *args, **kwargs):
-    kwargs.update(nargs=0, const=None)
+  def __init__(self, *args: Any, **kwargs: Any):
+    kwargs.update(nargs=0, const=None)  # pytype: disable=wrong-arg-types
     super(StoreRepsInModule, self).__init__(*args, **kwargs)
 
-  def __call__(self, parser, namespace, values, option_string=None):
+  def __call__(self,
+               parser: argparse.ArgumentParser,
+               namespace: argparse.Namespace,
+               values: Any,
+               option_string: Optional[Text] = None) -> None:
     del values  # Unused.
     old_count = getattr(self._resolve_module(), self._tgt_attr)
     if old_count is None:
