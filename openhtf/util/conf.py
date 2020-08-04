@@ -592,7 +592,11 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     configuration values for positional arguments.
     """
     inspect = self._modules['inspect']  # pylint: disable=redefined-outer-name
-    argspec = inspect.getargspec(method)
+    six = self._modules['six']  # pylint: disable=redefined-outer-name
+    if six.PY3:
+      argspec = inspect.getfullargspec(method)
+    else:
+      argspec = inspect.getargspec(method)  # pylint: disable=deprecated-method
 
     # Index in argspec.args of the first keyword argument.  This index is a
     # negative number if there are any kwargs, or 0 if there are no kwargs.
