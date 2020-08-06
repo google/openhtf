@@ -577,6 +577,19 @@ class TestCase(unittest.TestCase):
     self.assertIs(measurements.Outcome.FAIL,
                   phase_record.measurements[measurement].outcome)
 
+  @_assert_phase_or_test_record
+  def assertAttachment(self, phase_record, attachment_name,
+                       expected_contents=mock.ANY):
+    self.assertIn(
+        attachment_name, phase_record.attachments,
+        'Attachment {} not attached.'.format(attachment_name))
+    if expected_contents is not mock.ANY:
+      data = phase_record.attachments[attachment_name].data
+      self.assertEqual(
+          expected_contents, data,
+          'Attachment {} has wrong value: expected {}, got {}'.format(
+              attachment_name, expected_contents, data))
+
   def get_diagnoses_store(self):
     self.assertIsNotNone(self.last_test_state)
     return self.last_test_state.diagnoses_manager.store
