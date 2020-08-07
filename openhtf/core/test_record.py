@@ -69,31 +69,33 @@ class Attachment(object):
     data: property that reads the data from the temporary file.
   """
 
-  __slots__ = ['mimetype', 'sha1', '_file']
+  __slots__ = ['mimetype', 'sha1', '_filename']
 
   def __init__(self, contents, mimetype):
     contents = six.ensure_binary(contents)
     self.mimetype = mimetype
     self.sha1 = hashlib.sha1(contents).hexdigest()
-    self._file = self._create_temp_file(contents)
+    self._filename = self._create_temp_file(contents)
+
+  def __del__(self):
+    self.close()
 
   def _create_temp_file(self, contents):
-    tf = tempfile.NamedTemporaryFile('wb+', dir=conf.attachments_directory)
-    tf.write(contents)
-    tf.flush()
-    return tf
+    with tempfile.NamedTemporaryFile(
+        'wb+', dir=conf.attachments_directory, delete=False) as tf:
+      tf.write(contents)
+      return tf.name
 
   @property
   def data(self):
-    try:
-      self._file.seek(0)
-      return self._file.read()
-    except IOError:
-      _LOG.exception('Error loading data from temp file.')
-      return b''
+    with open(self._filename, 'rb') as contents:
+      return contents.read()
 
   def close(self):
-    self._file.close()
+    if not self._filename:
+      return
+    os.remove(self._filename)
+    self._filename = None
 
   def _asdict(self):
     # Don't include the attachment data when converting to dict.
