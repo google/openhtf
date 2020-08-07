@@ -6,17 +6,8 @@ import json
 from openhtf.core import test_record
 from openhtf.output import callbacks
 from openhtf.util import data
+from openhtf.util import json_encoder
 import six
-
-
-class TestRecordEncoder(json.JSONEncoder):
-
-  def default(self, obj):
-    if isinstance(obj, test_record.Attachment):
-      dct = obj._asdict()
-      dct['data'] = base64.standard_b64encode(obj.data).decode('utf-8')
-      return dct
-    return super(TestRecordEncoder, self).default(obj)
 
 
 class OutputToJSON(callbacks.OutputToFile):
@@ -47,7 +38,7 @@ class OutputToJSON(callbacks.OutputToFile):
     # Conform strictly to the JSON spec by default.
     kwargs.setdefault('allow_nan', False)
     self.allow_nan = kwargs['allow_nan']
-    self.json_encoder = TestRecordEncoder(**kwargs)
+    self.json_encoder = json_encoder.TestRecordEncoder(**kwargs)
 
   def serialize_test_record(self, test_record):
     return self.json_encoder.iterencode(self.convert_to_dict(test_record))
