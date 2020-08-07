@@ -6,17 +6,8 @@ import json
 from openhtf.core import test_record
 from openhtf.output import callbacks
 from openhtf.util import data
+from openhtf.util.json_encoder import TestRecordEncoder
 import six
-
-
-class TestRecordEncoder(json.JSONEncoder):
-
-  def default(self, obj):
-    if isinstance(obj, test_record.Attachment):
-      dct = obj._asdict()
-      dct['data'] = base64.standard_b64encode(obj.data).decode('utf-8')
-      return dct
-    return super(TestRecordEncoder, self).default(obj)
 
 
 class OutputToJSON(callbacks.OutputToFile):

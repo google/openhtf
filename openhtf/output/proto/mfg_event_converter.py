@@ -23,6 +23,7 @@ from openhtf.output.proto import test_runs_pb2
 from openhtf.util import data as htf_data
 from openhtf.util import units
 from openhtf.util import validators
+from openhtf.util.json_encoder import TestRecordEncoder
 
 
 from past.builtins import unicode
@@ -172,7 +173,7 @@ def _convert_object_to_json(obj):
   # Since there will be parts of this that may have unicode, either as
   # measurement or in the logs, we have to be careful and convert everything
   # to unicode, merge, then encode to UTF-8 to put it into the proto.
-  json_encoder = json.JSONEncoder(sort_keys=True, indent=2, ensure_ascii=False)
+  json_encoder = TestRecordEncoder(sort_keys=True, indent=2, ensure_ascii=False)
   pieces = []
   for piece in json_encoder.iterencode(obj):
     if isinstance(piece, bytes):
