@@ -22,6 +22,7 @@ examples.
 
 import collections
 import contextlib
+import os
 import shutil
 import tempfile
 
@@ -82,6 +83,10 @@ class OutputToFile(object):
   @staticmethod
   def open_file(filename):
     """Override method to alter file open behavior or file types."""
+    basepath = os.path.dirname(filename)
+    if not os.path.exists(basepath):
+      os.makedirs(basepath)
+
     return Atomic(filename)
 
   def create_file_name(self, test_record):
