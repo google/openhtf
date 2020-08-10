@@ -22,6 +22,8 @@ examples.
 
 import collections
 import contextlib
+import os
+import re
 import shutil
 import tempfile
 
@@ -90,6 +92,12 @@ class OutputToFile(object):
     record_dict = data.convert_to_base_types(
         test_record, ignore_keys=('code_info', 'phases', 'log_records'))
     if self._pattern_formattable:
+      # Reference: https://stackoverflow.com/a/46801075
+      dut_id = record_dict['dut_id']
+      dut_id = str(dut_id).strip().replace(' ', '_')
+      dut_id = re.sub(r'(?u)[^-\w.]', '_', dut_id)
+      record_dict['dut_id'] = dut_id
+
       return util.format_string(self.filename_pattern, record_dict)
     else:
       raise ValueError(
