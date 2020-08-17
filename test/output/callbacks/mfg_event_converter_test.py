@@ -200,9 +200,9 @@ class MfgEventConverterTest(unittest.TestCase):
     measured_value.set(value)
 
     measurement = measurements.Measurement(
-        name=name, outcome=measurements.Outcome.PASS)
-    # Cannot be set in initialization.
-    measurement.measured_value = measured_value
+        name=name,
+        outcome=measurements.Outcome.PASS,
+        measured_value=measured_value)
     return measurement
 
   def test_copy_measurements_from_phase(self):

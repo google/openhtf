@@ -17,6 +17,9 @@ Tests are main entry point for OpenHTF tests.  In its simplest form a
 test is a series of Phases that are executed by the OpenHTF framework.
 
 """
+
+from __future__ import google_type_annotations
+
 import argparse
 import collections
 import logging
@@ -26,19 +29,24 @@ import textwrap
 import threading
 import traceback
 import types
+import typing
+from typing import Any, Callable, Dict, List, Optional, Set, Text, Type, Union
 import uuid
 import weakref
 
+import attr
 import colorama
-import mutablerecords
 
+from openhtf import plugs
 from openhtf import util
 from openhtf.core import diagnoses_lib
+from openhtf.core import measurements
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
 from openhtf.core import test_executor
-from openhtf.core import test_record
+from openhtf.core import test_record as htf_test_record
+from openhtf.core import test_state
 
 from openhtf.util import conf
 from openhtf.util import console_output
@@ -79,7 +87,7 @@ class InvalidTestStateError(Exception):
   """Raised when an operation is attempted in an invalid state."""
 
 
-def create_arg_parser(add_help=False):
+def create_arg_parser(add_help: bool = False) -> argparse.ArgumentParser:
   """Creates an argparse.ArgumentParser for parsing command line flags.
 
   If you want to add arguments, create your own with this as a parent:
@@ -133,7 +141,8 @@ class Test(object):
   HANDLED_SIGINT_ONCE = False
   DEFAULT_SIGINT_HANDLER = None
 
-  def __init__(self, *phases, **metadata):
+  def __init__(self, *phases: Union[phase_descriptor.PhaseT,
+                                    phase_group.PhaseGroup], **metadata: Any):
     # Some sanity checks on special metadata keys we automatically fill in.
     if 'config' in metadata:
       raise KeyError(
@@ -144,18 +153,16 @@ class Test(object):
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
-    self._test_desc = TestDescriptor(phases, test_record.CodeInfo.uncaptured(),
+    group = phase_group.PhaseGroup.convert_if_not(phases)
+    self._test_desc = TestDescriptor(group,
+                                     htf_test_record.CodeInfo.uncaptured(),
                                      metadata)
 
     if conf.capture_source:
-      # First, we copy the phases with the real CodeInfo for them.
-      group = self._test_desc.phase_group.load_code_info()
-
-      # Then we replace the TestDescriptor with one that stores the test
-      # module's CodeInfo as well as our newly copied phases.
-      code_info = test_record.CodeInfo.for_module_from_stack(levels_up=2)
-      self._test_desc = self._test_desc._replace(
-          code_info=code_info, phase_group=group)
+      # Copy the phases with the real CodeInfo for them.
+      self._test_desc.phase_group = self._test_desc.phase_group.load_code_info()
+      self._test_desc.code_info = (
+          htf_test_record.CodeInfo.for_module_from_stack(levels_up=2))
 
     # Make sure configure() gets called at least once before Execute().  The
     # user might call configure() again to override options, but we don't want
@@ -168,7 +175,7 @@ class Test(object):
       self.configure()
 
   @classmethod
-  def from_uid(cls, test_uid):
+  def from_uid(cls, test_uid: Text) -> 'Test':
     """Get Test by UID.
 
     Args:
@@ -186,11 +193,12 @@ class Test(object):
     return test
 
   @property
-  def uid(self):
+  def uid(self) -> Optional[Text]:
     if self._executor is not None:
       return self._executor.uid
+    return None
 
-  def make_uid(self):
+  def make_uid(self) -> Text:
     """Returns the next test execution's UID.
 
     This identifier must be unique but trackable across invocations of
@@ -203,29 +211,32 @@ class Test(object):
                             uuid.uuid4().hex[:16], util.time_millis())
 
   @property
-  def descriptor(self):
+  def descriptor(self) -> 'TestDescriptor':
     """Static data about this test, does not change across Execute() calls."""
     return self._test_desc
 
   @property
-  def state(self):
+  def state(self) -> Optional[test_state.TestState]:
     """Transient state info about the currently executing test, or None."""
     with self._lock:
       if self._executor:
         return self._executor.test_state
+      return None
 
-  def get_option(self, option):
+  def get_option(self, option: Text) -> Any:
     return getattr(self._test_options, option)
 
-  def add_output_callbacks(self, *callbacks):
+  def add_output_callbacks(
+      self, *callbacks: Callable[[htf_test_record.TestRecord], None]) -> None:
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def add_test_diagnosers(self, *diagnosers):
+  def add_test_diagnosers(self,
+                          *diagnosers: diagnoses_lib.BaseTestDiagnoser) -> None:
     diagnoses_lib.check_diagnosers(diagnosers, diagnoses_lib.BaseTestDiagnoser)
     self._test_options.diagnosers.extend(diagnosers)
 
-  def configure(self, **kwargs):
+  def configure(self, **kwargs: Any) -> None:
     """Update test-wide configuration options. See TestOptions for docs."""
     # These internally ensure they are safe to call multiple times with no weird
     # side effects.
@@ -238,7 +249,7 @@ class Test(object):
       setattr(self._test_options, key, value)
 
   @classmethod
-  def handle_sig_int(cls, signalnum, handler):
+  def handle_sig_int(cls, signalnum: Optional[int], handler: Any) -> None:
     """Handle the SIGINT callback."""
     if not cls.TEST_INSTANCES:
       cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)  # pylint: disable=not-callable
@@ -253,7 +264,7 @@ class Test(object):
     # Otherwise, does not raise KeyboardInterrupt to ensure that the tests are
     # cleaned up.
 
-  def abort_from_sig_int(self):
+  def abort_from_sig_int(self) -> None:
     """Abort test execution abruptly, only in response to SIGINT."""
     with self._lock:
       _LOG.error('Aborting %s due to SIGINT', self)
@@ -264,7 +275,7 @@ class Test(object):
         self._executor.abort()
 
   # TODO(arsharma): teardown_function test option is deprecated; remove this.
-  def _get_running_test_descriptor(self):
+  def _get_running_test_descriptor(self) -> 'TestDescriptor':
     """If there is a teardown_function, wrap current descriptor with it."""
     if not self._test_options.teardown_function:
       return self._test_desc
@@ -278,7 +289,9 @@ class Test(object):
             main=[self._test_desc.phase_group], teardown=[teardown_phase]),
         self._test_desc.code_info, self._test_desc.metadata)
 
-  def execute(self, test_start=None, profile_filename=None):
+  def execute(self,
+              test_start: Optional[phase_descriptor.PhaseT] = None,
+              profile_filename: Optional[Text] = None) -> bool:
     """Starts the framework and executes the given test.
 
     Args:
@@ -294,8 +307,8 @@ class Test(object):
     Raises:
       InvalidTestStateError: if this test is already being executed.
     """
-    diagnoses_lib.check_for_duplicate_results(self._test_desc.phase_group,
-                                              self._test_options.diagnosers)
+    diagnoses_lib.check_for_duplicate_results(
+        iter(self._test_desc.phase_group), self._test_options.diagnosers)
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
@@ -315,14 +328,14 @@ class Test(object):
 
         @phase_descriptor.PhaseOptions()
         def trigger_phase(test):
-          test.test_record.dut_id = test_start()
+          test.test_record.dut_id = typing.cast(types.LambdaType, test_start)()
 
         trigger = trigger_phase
       else:
         trigger = test_start
 
       if conf.capture_source:
-        trigger.code_info = test_record.CodeInfo.for_function(trigger.func)
+        trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)
 
       test_desc = self._get_running_test_descriptor()
       self._executor = test_executor.TestExecutor(
@@ -349,8 +362,8 @@ class Test(object):
 
         _LOG.debug('Test completed for %s, outputting now.',
                    final_state.test_record.metadata['test_name'])
-        test_executor.CombineProfileStats(self._executor.phase_profile_stats,
-                                          profile_filename)
+        test_executor.combine_profile_stats(self._executor.phase_profile_stats,
+                                            profile_filename)
         for output_cb in self._test_options.output_callbacks:
           try:
             output_cb(final_state.test_record)
@@ -361,14 +374,14 @@ class Test(object):
 
         # Make sure the final outcome of the test is printed last and in a
         # noticeable color so it doesn't get scrolled off the screen or missed.
-        if final_state.test_record.outcome == test_record.Outcome.ERROR:
+        if final_state.test_record.outcome == htf_test_record.Outcome.ERROR:
           for detail in final_state.test_record.outcome_details:
             console_output.error_print(detail.description)
         else:
           colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
-          colors[test_record.Outcome.PASS] = ''.join(
+          colors[htf_test_record.Outcome.PASS] = ''.join(
               (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
-          colors[test_record.Outcome.FAIL] = ''.join(
+          colors[htf_test_record.Outcome.FAIL] = ''.join(
               (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
           msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
           console_output.banner_print(
@@ -382,21 +395,12 @@ class Test(object):
         self._executor.close()
         self._executor = None
 
-    return final_state.test_record.outcome == test_record.Outcome.PASS
+    return final_state.test_record.outcome == htf_test_record.Outcome.PASS
 
 
 # TODO(arsharma): Deprecate the teardown_function in favor of PhaseGroups.
-class TestOptions(
-    mutablerecords.Record(
-        'TestOptions', [], {
-            'name': 'openhtf_test',
-            'output_callbacks': list,
-            'teardown_function': None,
-            'failure_exceptions': list,
-            'default_dut_id': 'UNKNOWN_DUT',
-            'stop_on_first_failure': False,
-            'diagnosers': list,
-        })):
+@attr.s(slots=True)
+class TestOptions(object):
   """Class encapsulating various tunable knobs for Tests and their defaults.
 
   name: The name of the test to be put into the metadata.
@@ -415,14 +419,19 @@ class TestOptions(
       phases.
   """
 
+  name = attr.ib(type=Text, default='openhtf_test')
+  output_callbacks = attr.ib(
+      type=List[Callable[[htf_test_record.TestRecord], None]], factory=list)
+  teardown_function = attr.ib(
+      type=Optional[phase_descriptor.PhaseT], default=None)
+  failure_exceptions = attr.ib(type=List[Type[Exception]], factory=list)
+  default_dut_id = attr.ib(type=Text, default='UNKNOWN_DUT')
+  stop_on_first_failure = attr.ib(type=bool, default=False)
+  diagnosers = attr.ib(type=List[diagnoses_lib.BaseTestDiagnoser], factory=list)
 
-class TestDescriptor(
-    collections.namedtuple('TestDescriptor', [
-        'phase_group',
-        'code_info',
-        'metadata',
-        'uid',
-    ])):
+
+@attr.s(slots=True)
+class TestDescriptor(object):
   """An object that represents the reusable portions of an OpenHTF test.
 
   This object encapsulates the static test information that is set once and used
@@ -435,30 +444,19 @@ class TestDescriptor(
     uid: UID for this test.
   """
 
-  def __new__(cls, phases, code_info, metadata):
-    group = phase_group.PhaseGroup.convert_if_not(phases)
-    return super(TestDescriptor, cls).__new__(
-        cls, group, code_info, metadata, uid=uuid.uuid4().hex[:16])
+  phase_group = attr.ib(type=phase_group.PhaseGroup)
+  code_info = attr.ib(type=htf_test_record.CodeInfo)
+  metadata = attr.ib(type=Dict[Text, Any])
+  uid = attr.ib(type=Text, factory=lambda: uuid.uuid4().hex[:16])
 
   @property
-  def plug_types(self):
+  def plug_types(self) -> Set[Type[plugs.BasePlug]]:
     """Returns set of plug types required by this test."""
     return {plug.cls for phase in self.phase_group for plug in phase.plugs}  # pylint: disable=g-complex-comprehension
 
 
-class TestApi(
-    collections.namedtuple('TestApi', [
-        'logger',
-        'state',
-        'test_record',
-        'measurements',
-        'attachments',
-        'attach',
-        'attach_from_file',
-        'get_measurement',
-        'get_attachment',
-        'notify_update',
-    ])):
+@attr.s(slots=True)
+class TestApi(object):
   """Class passed to test phases as the first argument.
 
   Attributes:
@@ -506,12 +504,28 @@ class TestApi(
       test_record directly; callable.
   """
 
+  logger = attr.ib(type=logging.Logger)
+  # TODO(arsharma): Change to Dict[Any, Any] when pytype handles it correctly.
+  state = attr.ib()
+  test_record = attr.ib(type=htf_test_record.TestRecord)
+  measurements = attr.ib(type=measurements.Collection)
+  attachments = attr.ib(type=Dict[Text, htf_test_record.Attachment])
+
+  # Callables:
+  attach = attr.ib(type=Callable[..., None])
+  attach_from_file = attr.ib(type=Callable[..., None])
+  get_measurement = attr.ib(
+      type=Callable[[Text], Optional[test_state.ImmutableMeasurement]])
+  get_attachment = attr.ib(type=Callable[...,
+                                         Optional[htf_test_record.Attachment]])
+  notify_update = attr.ib(type=Callable[[], None])
+
   @property
-  def dut_id(self):
+  def dut_id(self) -> Text:
     return self.test_record.dut_id
 
   @dut_id.setter
-  def dut_id(self, dut_id):
+  def dut_id(self, dut_id: Text) -> None:
     if self.test_record.dut_id:
       self.logger.warning('Overriding previous DUT ID "%s" with "%s".',
                           self.test_record.dut_id, dut_id)

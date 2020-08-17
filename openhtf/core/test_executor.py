@@ -14,13 +14,18 @@
 
 """TestExecutor executes tests."""
 
+from __future__ import google_type_annotations
+
 import logging
 import pstats
 import sys
 import tempfile
 import threading
 import traceback
+from typing import List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
 
+from openhtf import plugs
+from openhtf.core import diagnoses_lib
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
@@ -29,6 +34,8 @@ from openhtf.core import test_state
 from openhtf.util import conf
 from openhtf.util import threads
 
+if TYPE_CHECKING:
+  from openhtf.core import test_descriptor  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 
@@ -49,7 +56,8 @@ class TestStopError(Exception):
   """Test is being stopped."""
 
 
-def CombineProfileStats(profile_stats_iter, output_filename):
+def combine_profile_stats(profile_stats_iter: List[pstats.Stats],
+                          output_filename: Text) -> None:
   """Given an iterable of pstats.Stats, combine them into a single Stats."""
   profile_stats_filenames = []
   for profile_stats in profile_stats_iter:
@@ -66,34 +74,34 @@ class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
   daemon = True
 
-  def __init__(self,
-               test_descriptor,
-               execution_uid,
-               test_start,
-               test_options,
-               run_with_profiling):
+  def __init__(self, test_descriptor: 'test_descriptor.TestDescriptor',
+               execution_uid: Text,
+               test_start: Optional[phase_descriptor.PhaseDescriptor],
+               test_options: 'test_descriptor.TestOptions',
+               run_with_profiling: bool):
     super(TestExecutor, self).__init__(
         name='TestExecutorThread', run_with_profiling=run_with_profiling)
-    self.test_state = None
+    self.test_state = None  # type: Optional[test_state.TestState]
 
     self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._test_options = test_options
     self._lock = threading.Lock()
-    self._phase_exec = None
+    self._phase_exec = None  # type: Optional[phase_executor.PhaseExecutor]
     self.uid = execution_uid
-    self._last_outcome = None
+    self._last_outcome = None  # type: Optional[phase_executor.PhaseExecutionOutcome]
     self._abort = threading.Event()
     self._full_abort = threading.Event()
     self._teardown_phases_lock = threading.Lock()
-    self._phase_profile_stats = []  # Populated if profiling is enabled.
+    # Populated if profiling is enabled.
+    self._phase_profile_stats = []  # type: List[pstats.Stats]
 
   @property
-  def phase_profile_stats(self):
+  def phase_profile_stats(self) -> List[pstats.Stats]:
     """Returns iterable of profiling Stats objects, per phase."""
     return self._phase_profile_stats
 
-  def close(self):
+  def close(self) -> None:
     """Close and remove any global registrations.
 
     Always call this function when finished with this instance.
@@ -104,7 +112,7 @@ class TestExecutor(threads.KillableThread):
     self.wait()
     self.test_state.close()
 
-  def abort(self):
+  def abort(self) -> None:
     """Abort this test."""
     if self._abort.is_set():
       _LOG.error('Abort already set; forcibly stopping the process.')
@@ -118,14 +126,14 @@ class TestExecutor(threads.KillableThread):
     # No need to kill this thread because the abort state has been set, it will
     # end as soon as all queued teardown phases are run.
 
-  def finalize(self):
+  def finalize(self) -> test_state.TestState:
     """Finalize test execution and output resulting record to callbacks.
 
     Should only be called once at the conclusion of a test run, and will raise
     an exception if end_time_millis is already set.
 
     Returns:
-      Finalized TestState.  It should not be modified after this call.
+      Finalized TestState.  It must not be modified after this call.
 
     Raises:
       TestStopError: test
@@ -139,7 +147,7 @@ class TestExecutor(threads.KillableThread):
 
     return self.test_state
 
-  def wait(self):
+  def wait(self) -> None:
     """Waits until death."""
     # Must use a timeout here in case this is called from the main thread.
     # Otherwise, the SIGINT abort logic in test_descriptor will not get called.
@@ -150,7 +158,7 @@ class TestExecutor(threads.KillableThread):
       timeout = min(threading.TIMEOUT_MAX, timeout)  # pytype: disable=module-attr
     self.join(timeout)
 
-  def _thread_proc(self):
+  def _thread_proc(self) -> None:
     """Handles one whole test from start to finish."""
     try:
       # Top level steps required to run a single iteration of the Test.
@@ -186,7 +194,9 @@ class TestExecutor(threads.KillableThread):
     finally:
       self._execute_test_teardown()
 
-  def _initialize_plugs(self, plug_types=None):
+  def _initialize_plugs(self,
+                        plug_types: Optional[List[Type[plugs.BasePlug]]] = None
+                       ) -> bool:
     """Initialize plugs.
 
     Args:
@@ -204,7 +214,7 @@ class TestExecutor(threads.KillableThread):
           phase_executor.ExceptionInfo(*sys.exc_info()))
       return True
 
-  def _execute_test_start(self):
+  def _execute_test_start(self) -> bool:
     """Run the start trigger phase, and check that the DUT ID is set after.
 
     Initializes any plugs used in the trigger.
@@ -237,7 +247,7 @@ class TestExecutor(threads.KillableThread):
       _LOG.warning('Start trigger did not set a DUT ID.')
     return False
 
-  def _stop_phase_executor(self, force=False):
+  def _stop_phase_executor(self, force: bool = False) -> None:
     with self._lock:
       phase_exec = self._phase_exec
       if not phase_exec:
@@ -254,8 +264,7 @@ class TestExecutor(threads.KillableThread):
       if not force:
         self._teardown_phases_lock.release()
 
-  # TODO(kschiller): Cleanup the naming here and possibly merge with finalize.
-  def _execute_test_teardown(self):
+  def _execute_test_teardown(self) -> None:
     # Plug teardown does not affect the test outcome.
     self.test_state.plug_manager.tear_down_plugs()
 
@@ -268,7 +277,7 @@ class TestExecutor(threads.KillableThread):
     else:
       self.test_state.finalize_normally()
 
-  def _handle_phase(self, phase):
+  def _handle_phase(self, phase: phase_descriptor.PhaseDescriptor) -> bool:
     if isinstance(phase, phase_group.PhaseGroup):
       return self._execute_phase_group(phase)
 
@@ -295,13 +304,15 @@ class TestExecutor(threads.KillableThread):
 
     return outcome.is_terminal
 
-  def _execute_abortable_phases(self, type_name, phases, group_name):
+  def _execute_abortable_phases(self, type_name: Text, phases: Sequence[Union[
+      phase_descriptor.PhaseDescriptor, phase_group.PhaseGroup]],
+                                group_name: Optional[Text]) -> bool:
     """Execute phases, returning immediately if any error or abort is triggered.
 
     Args:
       type_name: str, type of phases running, usually 'Setup' or 'Main'.
       phases: iterable of phase_descriptor.Phase or phase_group.PhaseGroup
-          instances, the phases to execute.
+        instances, the phases to execute.
       group_name: str or None, name of the executing group.
 
     Returns:
@@ -315,12 +326,14 @@ class TestExecutor(threads.KillableThread):
         return True
     return False
 
-  def _execute_teardown_phases(self, teardown_phases, group_name):
+  def _execute_teardown_phases(self, teardown_phases: Sequence[Union[
+      phase_descriptor.PhaseDescriptor, phase_group.PhaseGroup]],
+                               group_name: Text) -> bool:
     """Execute all the teardown phases, regardless of errors.
 
     Args:
       teardown_phases: iterable of phase_descriptor.Phase or
-          phase_group.PhaseGroup instances, the phases to execute.
+        phase_group.PhaseGroup instances, the phases to execute.
       group_name: str or None, name of the executing group.
 
     Returns:
@@ -339,7 +352,7 @@ class TestExecutor(threads.KillableThread):
           ret = True
     return ret
 
-  def _execute_phase_group(self, group):
+  def _execute_phase_group(self, group: phase_group.PhaseGroup) -> bool:
     """Executes the phases in a phase group.
 
     This will run the phases in the phase group, ensuring if the setup
@@ -366,7 +379,8 @@ class TestExecutor(threads.KillableThread):
         group.teardown, group.name)
     return main_ret or teardown_ret
 
-  def _execute_test_diagnoser(self, diagnoser):
+  def _execute_test_diagnoser(
+      self, diagnoser: diagnoses_lib.BaseTestDiagnoser) -> None:
     try:
       self.test_state.diagnoses_manager.execute_test_diagnoser(
           diagnoser, self.test_state.test_record)
@@ -381,6 +395,6 @@ class TestExecutor(threads.KillableThread):
         self._last_outcome = phase_executor.PhaseExecutionOutcome(
             phase_executor.ExceptionInfo(*sys.exc_info()))
 
-  def _execute_test_diagnosers(self):
+  def _execute_test_diagnosers(self) -> None:
     for diagnoser in self._test_options.diagnosers:
       self._execute_test_diagnoser(diagnoser)

@@ -43,13 +43,18 @@ def MyPhase(test):
 # second while MyPhase was executing.
 """
 
+from __future__ import google_type_annotations
+
 import functools
 import inspect
 import time
+from typing import Any, Callable, Dict, Optional, Text
 
 import openhtf
 from openhtf import plugs
 from openhtf.core import measurements
+from openhtf.core import phase_descriptor
+from openhtf.core import test_state as core_test_state
 from openhtf.util import threads
 from openhtf.util import units as uom
 import six
@@ -60,8 +65,10 @@ class _MonitorThread(threads.KillableThread):
 
   daemon = True
 
-  def __init__(self, measurement_name, monitor_desc, extra_kwargs, test_state,
-               interval_ms):
+  def __init__(self, measurement_name: Text,
+               monitor_desc: phase_descriptor.PhaseDescriptor,
+               extra_kwargs: Dict[Any, Any],
+               test_state: core_test_state.TestState, interval_ms: int):
     super(_MonitorThread,
           self).__init__(name='%s_MonitorThread' % measurement_name)
     self.measurement_name = measurement_name
@@ -70,7 +77,7 @@ class _MonitorThread(threads.KillableThread):
     self.interval_ms = interval_ms
     self.extra_kwargs = extra_kwargs
 
-  def get_value(self):
+  def get_value(self) -> Any:
     if six.PY3:
       argspec = inspect.getfullargspec(self.monitor_desc.func)
       argspec_args = argspec.args
@@ -128,11 +135,17 @@ class _MonitorThread(threads.KillableThread):
       mean_sample_ms = ((9 * mean_sample_ms) + cur_sample_ms) / 10.0
 
 
-def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
+def monitors(
+    measurement_name: Text,
+    monitor_func: phase_descriptor.PhaseT,
+    units: Optional[uom.UnitDescriptor] = None,
+    poll_interval_ms: int = 1000
+) -> Callable[[phase_descriptor.PhaseT], phase_descriptor.PhaseDescriptor]:
   """Returns a decorator that wraps a phase with a monitor."""
   monitor_desc = openhtf.PhaseDescriptor.wrap_or_copy(monitor_func)
 
-  def wrapper(phase_func):
+  def wrapper(
+      phase_func: phase_descriptor.PhaseT) -> phase_descriptor.PhaseDescriptor:
     phase_desc = openhtf.PhaseDescriptor.wrap_or_copy(phase_func)
 
     # Re-key this dict so we don't have to worry about collisions with

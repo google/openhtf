@@ -193,7 +193,7 @@ class PhaseOrTestIterator(collections.Iterator):
 
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
-    diagnoses_lib.check_for_duplicate_results([phase_desc], [])
+    diagnoses_lib.check_for_duplicate_results(iter([phase_desc]), [])
     logs.configure_logging()
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 

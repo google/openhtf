@@ -13,6 +13,8 @@
 # limitations under the License.
 """A simple utility to do timeout checking."""
 
+from __future__ import google_type_annotations
+
 import contextlib
 import functools
 import logging
@@ -58,7 +60,7 @@ class PolledTimeout(object):
     return cls(timeout_ms / 1000.0)
 
   @classmethod
-  def from_seconds(cls, timeout_s):
+  def from_seconds(cls, timeout_s) -> 'PolledTimeout':
     """Create a new PolledTimeout if needed.
 
     If timeout_s is already a PolledTimeout, just return it, otherwise create a
@@ -72,7 +74,7 @@ class PolledTimeout(object):
       A PolledTimeout object that will expire in timeout_s seconds, which may
     be timeout_s itself, or a newly allocated PolledTimeout.
     """
-    if hasattr(timeout_s, 'has_expired'):
+    if isinstance(timeout_s, cls):
       return timeout_s
     return cls(timeout_s)
 
