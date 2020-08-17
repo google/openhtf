@@ -140,6 +140,7 @@ INSTALL_REQUIRES = [
     'pyOpenSSL>=17.1.0,<18.0',
     'sockjs-tornado>=1.0.3,<2.0',
     'tornado>=4.3,<5.0',
+    'typing-extensions',
 ]
 # Not all versions of setuptools support semicolon syntax for specifying
 # platform-specific dependencies, so we do it the old school way.

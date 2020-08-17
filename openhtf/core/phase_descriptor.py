@@ -23,7 +23,7 @@ from __future__ import google_type_annotations
 import enum
 import inspect
 import pdb
-from typing import Any, Callable, Dict, Optional, Text, Union
+from typing import Any, Callable, Dict, Optional, Text, TYPE_CHECKING, Type, Union
 
 import mutablerecords
 
@@ -34,6 +34,9 @@ import openhtf.plugs
 from openhtf.util import data
 
 import six
+
+if TYPE_CHECKING:
+  from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
 
 class PhaseWrapError(Exception):
@@ -219,15 +222,13 @@ class PhaseDescriptor(
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
-  # TODO(arsharma): Refactor circular dependencies to to annotate subplugs as
-  # Type[plugs.BasePlug].
-  def with_known_plugs(self, **subplugs: Any) -> 'PhaseDescriptor':
+  def with_known_plugs(
+      self, **subplugs: Type['openhtf.plugs.BasePlug']) -> 'PhaseDescriptor':
     """Substitute only known plugs for placeholders for this phase."""
     return self._apply_with_plugs(subplugs, error_on_unknown=False)
 
-  # TODO(arsharma): Refactor circular dependencies to to annotate subplugs as
-  # Type[plugs.BasePlug].
-  def with_plugs(self, **subplugs: Any) -> 'PhaseDescriptor':
+  def with_plugs(
+      self, **subplugs: Type['openhtf.plugs.BasePlug']) -> 'PhaseDescriptor':
     """Substitute plugs for placeholders for this phase, error on unknowns."""
     return self._apply_with_plugs(subplugs, error_on_unknown=True)
 
@@ -281,9 +282,8 @@ class PhaseDescriptor(
         options=self.options.format_strings(**subplugs),
         measurements=[m.with_args(**subplugs) for m in self.measurements])
 
-  # TODO(arsharma): Refactor circular dependencies so running_test_state can
-  # be marked as test_state.TestState
-  def __call__(self, running_test_state: Any) -> PhaseReturnT:
+  def __call__(self,
+               running_test_state: 'test_state.TestState') -> PhaseReturnT:
     """Invoke this Phase, passing in the appropriate args.
 
     By default, an openhtf.TestApi is passed as the first positional arg, but if

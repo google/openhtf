@@ -127,15 +127,17 @@ from __future__ import google_type_annotations
 import abc
 import collections
 import logging
-from typing import Any, Callable, DefaultDict, Dict, Iterable, List, Optional, Sequence, Set, Text, Type, Union
+from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Text, Type, TYPE_CHECKING, Union
 
 import attr
 import enum  # pylint: disable=g-bad-import-order
 from openhtf.core import phase_descriptor
-from openhtf.core import phase_group
 from openhtf.core import test_record
 from openhtf.util import data
 import six
+
+if TYPE_CHECKING:
+  from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
 
 class DiagnoserError(Exception):
@@ -224,10 +226,8 @@ class DiagnosesManager(object):
                   type(diag).__name__))
         yield self._verify_and_fix_diagnosis(diag, diagnoser)
 
-  # TODO(arsharma): Refactor circular dependencies so phase_state can be marked
-  # properly as test_state.PhaseState.
   def execute_phase_diagnoser(self, diagnoser: 'BasePhaseDiagnoser',
-                              phase_state: Any,
+                              phase_state: 'test_state.PhaseState',
                               test_rec: test_record.TestRecord) -> None:
     """Execute a phase diagnoser.
 
@@ -267,8 +267,7 @@ class DiagnosesManager(object):
 
 
 def check_for_duplicate_results(
-    phase_iterator: Sequence[Union[phase_descriptor.PhaseDescriptor,
-                                   phase_group.PhaseGroup]],
+    phase_iterator: Iterator[phase_descriptor.PhaseDescriptor],
     test_diagnosers: Sequence['BaseTestDiagnoser']) -> None:
   """Check for any results with the same enum value in different ResultTypes.
 

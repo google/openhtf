@@ -13,15 +13,15 @@
 # limitations under the License.
 """PhaseExecutor module for handling the phases of a test.
 
-Each phase is an instance of openhtf.PhaseDescriptor and therefore has
+Each phase is an instance of phase_descriptor.PhaseDescriptor and therefore has
 relevant options. Each option is taken into account when executing a phase,
 such as checking options.run_if as soon as possible and timing out at the
 appropriate time.
 
-A phase must return an openhtf.PhaseResult, one of CONTINUE, REPEAT, or STOP.
-A phase may also return None, or have no return statement, which is the same as
-returning openhtf.PhaseResult.CONTINUE.  These results are then acted upon
-accordingly and a new test run status is returned.
+A phase must return an phase_descriptor.PhaseResult, one of CONTINUE, REPEAT, or
+STOP. A phase may also return None, or have no return statement, which is the
+same as returning openhtf.PhaseResult.CONTINUE.  These results are then acted
+upon accordingly and a new test run status is returned.
 
 Phases are always run in order and not allowed to loop back, though a phase may
 choose to repeat itself by returning REPEAT. Returning STOP will cause a test
@@ -30,17 +30,25 @@ time. A phase should not return TIMEOUT or ABORT, those are handled by the
 framework.
 """
 
-import collections
+from __future__ import google_type_annotations
+
 import logging
+import pstats
 import sys
 import threading
 import time
 import traceback
+import types
+from typing import Any, Dict, Optional, Text, Tuple, Type, TYPE_CHECKING, Union
 
-import openhtf
+import attr
+from openhtf.core import phase_descriptor
 from openhtf.util import argv
 from openhtf.util import threads
 from openhtf.util import timeouts
+
+if TYPE_CHECKING:
+  from openhtf.core import test_state as htf_test_state  # pylint: disable=g-import-not-at-top
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
 
@@ -52,28 +60,30 @@ ARG_PARSER.add_argument(
     target='%s.DEFAULT_PHASE_TIMEOUT_S' % __name__,
     help='Test phase timeout in seconds')
 
+# TODO(arsharma): Use the test state logger.
 _LOG = logging.getLogger(__name__)
 
 
-class ExceptionInfo(
-    collections.namedtuple('ExceptionInfo', [
-        'exc_type',
-        'exc_val',
-        'exc_tb',
-    ])):
+@attr.s(slots=True, frozen=True)
+class ExceptionInfo(object):
   """Wrap the description of a raised exception and its traceback."""
 
-  def _asdict(self):
+  exc_type = attr.ib(type=Type[Exception])
+  exc_val = attr.ib(type=Exception)
+  exc_tb = attr.ib(type=types.TracebackType)
+
+  def as_base_types(self) -> Dict[Text, Text]:
     return {
         'exc_type': str(self.exc_type),
-        'exc_val': self.exc_val,
+        'exc_val': str(self.exc_val),
         'exc_tb': self.get_traceback_string(),
     }
 
-  def get_traceback_string(self):
-    return ''.join(traceback.format_exception(*self))
+  def get_traceback_string(self) -> Text:
+    return ''.join(
+        traceback.format_exception(self.exc_type, self.exc_val, self.exc_tb))
 
-  def __str__(self):
+  def __str__(self) -> Text:
     return self.exc_type.__name__
 
 
@@ -81,10 +91,8 @@ class InvalidPhaseResultError(Exception):
   """Raised when PhaseExecutionOutcome is created with invalid phase result."""
 
 
-class PhaseExecutionOutcome(
-    collections.namedtuple('PhaseExecutionOutcome', [
-        'phase_result',
-    ])):
+@attr.s(slots=True, frozen=True)
+class PhaseExecutionOutcome(object):
   """Provide some utility and sanity around phase return values.
 
   This should not be confused with openhtf.PhaseResult.  PhaseResult is an
@@ -104,31 +112,27 @@ class PhaseExecutionOutcome(
   other value will raise an InvalidPhaseResultError.
   """
 
-  def __new__(cls, phase_result):
-    if (phase_result is not None and
-        not isinstance(phase_result, (openhtf.PhaseResult, ExceptionInfo)) and
-        not isinstance(phase_result, threads.ThreadTerminationError)):
-      raise InvalidPhaseResultError('Invalid phase result', phase_result)
-    self = super(PhaseExecutionOutcome, cls).__new__(cls, phase_result)
-    return self
+  phase_result = attr.ib(type=Union[None, phase_descriptor.PhaseResult,
+                                    ExceptionInfo,
+                                    threads.ThreadTerminationError])
 
   @property
   def is_fail_and_continue(self):
-    return self.phase_result is openhtf.PhaseResult.FAIL_AND_CONTINUE
+    return self.phase_result is phase_descriptor.PhaseResult.FAIL_AND_CONTINUE
 
   @property
   def is_repeat(self):
-    return self.phase_result is openhtf.PhaseResult.REPEAT
+    return self.phase_result is phase_descriptor.PhaseResult.REPEAT
 
   @property
   def is_skip(self):
-    return self.phase_result is openhtf.PhaseResult.SKIP
+    return self.phase_result is phase_descriptor.PhaseResult.SKIP
 
   @property
   def is_terminal(self):
     """True if this result will stop the test."""
     return (self.raised_exception or self.is_timeout or
-            self.phase_result == openhtf.PhaseResult.STOP)
+            self.phase_result == phase_descriptor.PhaseResult.STOP)
 
   @property
   def is_timeout(self):
@@ -155,35 +159,37 @@ class PhaseExecutorThread(threads.KillableThread):
   """
   daemon = True
 
-  def __init__(self, phase_desc, test_state, run_with_profiling):
+  def __init__(self, phase_desc: phase_descriptor.PhaseDescriptor,
+               test_state: 'htf_test_state.TestState',
+               run_with_profiling: bool):
     super(PhaseExecutorThread, self).__init__(
         name='<PhaseExecutorThread: (phase_desc.name)>',
         run_with_profiling=run_with_profiling)
     self._phase_desc = phase_desc
     self._test_state = test_state
-    self._phase_execution_outcome = None
+    self._phase_execution_outcome = None  # type: Optional[PhaseExecutionOutcome]
 
-  def _thread_proc(self):
+  def _thread_proc(self) -> None:
     """Execute the encompassed phase and save the result."""
     # Call the phase, save the return value, or default it to CONTINUE.
     phase_return = self._phase_desc(self._test_state)
     if phase_return is None:
-      phase_return = openhtf.PhaseResult.CONTINUE
+      phase_return = phase_descriptor.PhaseResult.CONTINUE
 
     # If phase_return is invalid, this will raise, and _phase_execution_outcome
     # will get set to the InvalidPhaseResultError in _thread_exception instead.
     self._phase_execution_outcome = PhaseExecutionOutcome(phase_return)
 
-  def _log_exception(self, *args):
+  def _log_exception(self, *args: Any) -> Any:
     """Log exception, while allowing unit testing to override."""
     self._test_state.state_logger.critical(*args)
 
-  def _thread_exception(self, *args):
+  def _thread_exception(self, *args) -> bool:
     self._phase_execution_outcome = PhaseExecutionOutcome(ExceptionInfo(*args))
     self._log_exception('Phase %s raised an exception', self._phase_desc.name)
     return True  # Never propagate exceptions upward.
 
-  def join_or_die(self):
+  def join_or_die(self) -> PhaseExecutionOutcome:
     """Wait for thread to finish, returning a PhaseExecutionOutcome instance."""
     if self._phase_desc.options.timeout_s is not None:
       self.join(self._phase_desc.options.timeout_s)
@@ -191,7 +197,7 @@ class PhaseExecutorThread(threads.KillableThread):
       self.join(DEFAULT_PHASE_TIMEOUT_S)
 
     # We got a return value or an exception and handled it.
-    if isinstance(self._phase_execution_outcome, PhaseExecutionOutcome):
+    if self._phase_execution_outcome:
       return self._phase_execution_outcome
 
     # Check for timeout, indicated by None for
@@ -204,25 +210,29 @@ class PhaseExecutorThread(threads.KillableThread):
     return PhaseExecutionOutcome(threads.ThreadTerminationError())
 
   @property
-  def name(self):
+  def name(self) -> Text:
     return str(self)
 
-  def __str__(self):
-    return '<%s: (%s)>' % (type(self).__name__, self._phase_desc.name)
+  def __str__(self) -> Text:
+    return '<{}: ({})>'.format(type(self).__name__, self._phase_desc.name)
 
 
 class PhaseExecutor(object):
   """Encompasses the execution of the phases of a test."""
 
-  def __init__(self, test_state):
+  def __init__(self, test_state: 'htf_test_state.TestState'):
     self.test_state = test_state
     # This lock exists to prevent stop() calls from being ignored if called when
     # _execute_phase_once is setting up the next phase thread.
     self._current_phase_thread_lock = threading.Lock()
-    self._current_phase_thread = None
+    self._current_phase_thread = None  # type: Optional[PhaseExecutorThread]
     self._stopping = threading.Event()
 
-  def execute_phase(self, phase, run_with_profiling=False):
+  def execute_phase(
+      self,
+      phase: phase_descriptor.PhaseDescriptor,
+      run_with_profiling: bool = False
+  ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes a phase or skips it, yielding PhaseExecutionOutcome instances.
 
     Args:
@@ -253,13 +263,16 @@ class PhaseExecutor(object):
     # We've been cancelled, so just 'timeout' the phase.
     return PhaseExecutionOutcome(None), None
 
-  def _execute_phase_once(self, phase_desc, is_last_repeat, run_with_profiling):
+  def _execute_phase_once(
+      self, phase_desc: phase_descriptor.PhaseDescriptor, is_last_repeat: bool,
+      run_with_profiling: bool
+  ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
     if phase_desc.options.run_if and not phase_desc.options.run_if():
       _LOG.debug('Phase %s skipped due to run_if returning falsey.',
                  phase_desc.name)
-      return PhaseExecutionOutcome(openhtf.PhaseResult.SKIP), None
+      return PhaseExecutionOutcome(phase_descriptor.PhaseResult.SKIP), None
 
     override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
@@ -285,7 +298,8 @@ class PhaseExecutor(object):
       if phase_state.result.is_repeat and is_last_repeat:
         _LOG.error('Phase returned REPEAT, exceeding repeat_limit.')
         phase_state.hit_repeat_limit = True
-        override_result = PhaseExecutionOutcome(openhtf.PhaseResult.STOP)
+        override_result = PhaseExecutionOutcome(
+            phase_descriptor.PhaseResult.STOP)
       self._current_phase_thread = None
 
     # Refresh the result in case a validation for a partially set measurement
@@ -296,10 +310,13 @@ class PhaseExecutor(object):
     return (result,
             phase_thread.get_profile_stats() if run_with_profiling else None)
 
-  def reset_stop(self):
+  def reset_stop(self) -> None:
     self._stopping.clear()
 
-  def stop(self, timeout_s=None):
+  def stop(
+      self,
+      timeout_s: Union[None, int, float,
+                       timeouts.PolledTimeout] = None) -> None:
     """Stops execution of the current phase, if any.
 
     It will raise a ThreadTerminationError, which will cause the test to stop

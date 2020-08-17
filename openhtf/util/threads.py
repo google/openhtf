@@ -160,7 +160,8 @@ class KillableThread(threading.Thread):
       *args: Passed to the base class.
       **kwargs: Passed to the base class.
     """
-    self._run_with_profiling = kwargs.pop('run_with_profiling', None)
+    self._run_with_profiling = kwargs.pop('run_with_profiling',
+                                          False)  # type: bool
     super(KillableThread, self).__init__(*args, **kwargs)
     self._running_lock = threading.Lock()
     self._killed = threading.Event()
@@ -187,7 +188,7 @@ class KillableThread(threading.Thread):
       if self._profiler is not None:
         self._profiler.disable()
 
-  def get_profile_stats(self):
+  def get_profile_stats(self) -> pstats.Stats:
     """Returns profile_stats from profiler. Raises if profiling not enabled."""
     if self._profiler is not None:
       return pstats.Stats(self._profiler)

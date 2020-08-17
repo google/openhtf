@@ -17,7 +17,10 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
+from __future__ import google_type_annotations
+
 import collections
+import copy
 import difflib
 import enum
 import itertools
@@ -27,6 +30,7 @@ import numbers
 import pprint
 import struct
 import sys
+from typing import Any, TypeVar
 
 import attr
 from mutablerecords import records
@@ -176,7 +180,7 @@ def convert_to_base_types(obj,
         new_obj[a] = val
     obj = new_obj
   elif attr.has(type(obj)):
-    obj = attr.asdict(obj)
+    obj = attr.asdict(obj, recurse=False)
   elif isinstance(obj, enum.Enum):
     obj = obj.name
 
@@ -250,3 +254,28 @@ def total_size(obj):
     return size
 
   return sizeof(obj)
+
+
+_AttrCopyT = TypeVar('_AttrCopyT')
+
+
+def attr_copy(obj: _AttrCopyT, **overrides: Any) -> _AttrCopyT:
+  """Recursively copy an attr-defined object."""
+  kwargs = dict(overrides)
+  for field in attr.fields(type(obj)):
+    name = field.name
+    init_name = name if name[0] != '_' else name[1:]
+    # Skip fields being set in the override.
+    if init_name in overrides:
+      continue
+    value = getattr(obj, name)
+    if attr.has(value):
+      new_value = attr_copy(value)
+    # TODO(arsharma): Remove when mutablerecords are removed.
+    elif isinstance(value, records.RecordClass):
+      new_value = records.CopyRecord(value)
+    else:
+      new_value = copy.copy(value)
+    init_name = name if name[0] != '_' else name[1:]
+    kwargs[init_name] = new_value
+  return type(obj)(**kwargs)
