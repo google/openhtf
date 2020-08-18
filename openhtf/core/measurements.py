@@ -179,32 +179,42 @@ class Measurement(object):
     docstring: Optional string describing this measurement.
     units: UOM code of the units for the measurement being taken.
     dimensions: Tuple of UOM codes for units of dimensions.
+    transform_fn: A function to apply to measurements as they are ingested.
     validators: List of callable validator objects to perform pass/fail checks.
     conditional_validators: List of _ConditionalValidator instances that are
       called when certain Diagnosis Results are present at the beginning of the
       associated phase.
-    transform_fn: A function to apply to measurements as they are ingested.
-    outcome: One of the Outcome() enumeration values, starting at UNSET.
     measured_value: An instance of MeasuredValue or DimensionedMeasuredValue
       containing the value(s) of this Measurement that have been set, if any.
+    notification_cb: An optional function to be called when the measurement is
+      set.
+    outcome: One of the Outcome() enumeration values, starting at UNSET.
     _cached: A cached dict representation of this measurement created initially
       during as_base_types and updated in place to save allocation time.
   """
 
+  # Informational fields set during definition.
   name = attr.ib(type=Text)
-  units = attr.ib(type=Optional[util_units.UnitDescriptor], default=None)
-  _dimensions = attr.ib(type=Optional[Tuple['Dimension', ...]], default=None)
   docstring = attr.ib(type=Optional[Text], default=None)
-  _notification_cb = attr.ib(type=Optional[Callable[[], None]], default=None)
+  units = attr.ib(type=Optional[util_units.UnitDescriptor], default=None)
+
+  # Fields set during definition that affect how the measurement gets set or
+  # validated, ordered by when they are used.
+  _dimensions = attr.ib(type=Optional[Tuple['Dimension', ...]], default=None)
+  _transform_fn = attr.ib(type=Optional[Callable[[Any], Any]], default=None)
   validators = attr.ib(type=List[Callable[[Any], bool]], factory=list)
   conditional_validators = attr.ib(
       type=List[_ConditionalValidator], factory=list)
-  _transform_fn = attr.ib(type=Optional[Callable[[Any], Any]], default=None)
-  outcome = attr.ib(type=Outcome, default=Outcome.UNSET)
+
+  # Fields set during runtime.
   # measured_value needs to be initialized in the post init function if and only
   # if it wasn't set during initialization.
   _measured_value = attr.ib(
       type=Union['MeasuredValue', 'DimensionedMeasuredValue'], default=None)
+  _notification_cb = attr.ib(type=Optional[Callable[[], None]], default=None)
+  outcome = attr.ib(type=Outcome, default=Outcome.UNSET)
+
+  # Runtime cache to speed up conversions.
   _cached = attr.ib(type=Optional[Dict[Text, Any]], default=None)
 
   def __attrs_post_init__(self) -> None:
