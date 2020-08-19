@@ -113,8 +113,10 @@ class TestMfgInspector(test.TestCase):
         user='user', keydata='keydata', token_uri='')
     callback.set_converter(mock_converter)
 
-    callback.save_to_disk(filename_pattern=testrun_output)({})
-    callback.upload()({})
+    event = {}
+
+    callback.save_to_disk(filename_pattern=testrun_output)(event)
+    callback.upload()(event)
 
     # Parse what was written to BytesIO back into a proto and compare
     testrun_output.seek(0)
@@ -129,4 +131,42 @@ class TestMfgInspector(test.TestCase):
     # Make sure mock converter only called once i.e. the test record was
     # was converted to a proto only once.  This important because some custom
     # converters mutate the test record, so the converter is not idempotent.
+    self.assertEqual(1, mock_converter.call_count)
+
+  def test_multiple_records_cache_size(self):
+    mock_converter = mock.MagicMock(return_value=MOCK_TEST_RUN_PROTO)
+
+    callback = mfg_inspector.MfgInspector(
+        user='user', keydata='keydata', token_uri='')
+    callback.set_converter(mock_converter)
+
+    events = [ { 'n': n } for n in range(mfg_inspector.MfgInspector.MAX_CACHED_PROTOS) ]
+
+    # Up to the cache limit, verify that the converter is called for each event.
+    for n, event in enumerate(events):
+      callback.save_to_disk(filename_pattern=io.BytesIO())(event)
+      self.assertEqual(n + 1, mock_converter.call_count)
+
+    # Save the events again, but this time the converter should not be called,
+    # because the events should come from the cache.
+    mock_converter.reset_mock()
+
+    for event in events:
+      callback.save_to_disk(filename_pattern=io.BytesIO())(event)
+      self.assertEqual(0, mock_converter.call_count)
+
+    # Convert one more event and this time the converter should be called.
+    mock_converter.reset_mock()
+
+    callback.save_to_disk(filename_pattern=io.BytesIO())({})
+    self.assertEqual(1, mock_converter.call_count)
+
+    # Converting the old events should still use the cache except for the first event.
+    mock_converter.reset_mock()
+
+    for event in events[1:]:
+      callback.save_to_disk(filename_pattern=io.BytesIO())(event)
+      self.assertEqual(0, mock_converter.call_count)
+
+    callback.save_to_disk(filename_pattern=io.BytesIO())(events[0])
     self.assertEqual(1, mock_converter.call_count)

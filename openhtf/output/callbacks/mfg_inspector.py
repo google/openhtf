@@ -10,6 +10,8 @@ import zlib
 import httplib2
 import oauth2client.client
 
+from collections import OrderedDict
+
 from openhtf.output import callbacks
 from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
@@ -125,6 +127,7 @@ class MfgInspector(object):
   SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
   DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
                      'uploads/quantum_upload/?json')
+  MAX_CACHED_PROTOS = 5
 
   # These attributes control format of callback and what actions are undertaken
   # when called.  These should either be set by a subclass or via configure.
@@ -138,11 +141,13 @@ class MfgInspector(object):
   _default_filename_pattern = None
 
   def __init__(self, user=None, keydata=None,
-               token_uri=TOKEN_URI, destination_url=DESTINATION_URL):
+               token_uri=TOKEN_URI, destination_url=DESTINATION_URL,
+               max_cached_protos=MAX_CACHED_PROTOS):
     self.user = user
     self.keydata = keydata
     self.token_uri = token_uri
     self.destination_url = destination_url
+    self.max_cached_protos = max_cached_protos
 
     if user and keydata:
       self.credentials = oauth2client.client.SignedJwtAssertionCredentials(
@@ -157,7 +162,7 @@ class MfgInspector(object):
 
     self.upload_result = None
 
-    self._cached_proto = None
+    self._cached_protos = OrderedDict()
 
   @classmethod
   def from_json(cls, json_data):
@@ -178,12 +183,30 @@ class MfgInspector(object):
                token_uri=json_data['token_uri'])
 
   def _convert(self, test_record_obj):
-    """Convert and cache a test record to a mfg-inspector proto."""
+    """Convert and cache a test record to a mfg-inspector proto.  Because test
+    records may be mutated during conversion, keep a least-recently used cache
+    of converted records to avoid converting the same test record multiple times.
+    By using a size-limited cache, we avoid consuming memory indefinitely, while
+    still allowing callers to convert different test records as needed.
+    """
 
-    if self._cached_proto is None:
-      self._cached_proto = self._converter(test_record_obj)
+    key = id(test_record_obj)
 
-    return self._cached_proto
+    if key not in self._cached_protos:
+      print('converting ' + str(key))
+      val = self._converter(test_record_obj)
+    else:
+      print('fetching ' + str(key))
+      val = self._cached_protos[key]
+      del self._cached_protos[key]
+
+    self._cached_protos[key] = val
+
+    if len(self._cached_protos) > self.max_cached_protos:
+      old, _ = self._cached_protos.popitem(False)
+      print('dropping ' + str(old))
+
+    return self._cached_protos[key]
 
   def save_to_disk(self, filename_pattern=None):
     """Returns a callback to convert test record to proto and save to disk."""
