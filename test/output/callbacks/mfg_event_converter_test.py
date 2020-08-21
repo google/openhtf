@@ -183,6 +183,14 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertTrue(mfg_event.attachment[0].value_binary)  # Assert truthy.
     self.assertEqual(mfg_event.attachment[0].type, test_runs_pb2.TEXT_UTF8)
 
+  def test_convert_object_to_json_with_bytes(self):
+    input_object = {'foo': b'bar'}
+    output_json = mfg_event_converter._convert_object_to_json(input_object)
+    expected_json = (b'{\n'
+                     b'  "foo": "bar"\n'
+                     b'}')
+    self.assertEqual(output_json, expected_json)
+
   def test_attach_config(self):
     record = test_record.TestRecord(
         'mock-dut-id', 'mock-station-id', metadata={'config': {
