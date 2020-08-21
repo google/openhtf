@@ -173,15 +173,17 @@ def _convert_object_to_json(obj):  # pylint: disable=missing-function-docstring
   # Since there will be parts of this that may have unicode, either as
   # measurement or in the logs, we have to be careful and convert everything
   # to unicode, merge, then encode to UTF-8 to put it into the proto.
-  json_encoder = json.JSONEncoder(sort_keys=True, indent=2, ensure_ascii=False)
-  pieces = []
-  for piece in json_encoder.iterencode(obj):
-    if isinstance(piece, bytes):
-      pieces.append(unicode(piece, errors='replace'))  # pytype: disable=wrong-keyword-args
-    else:
-      pieces.append(piece)
 
-  return (u''.join(pieces)).encode('utf8', errors='replace')
+  def bytes_handler(o):
+    # For bytes, JSONEncoder will fallback to this function to convert to str.
+    if six.PY3 and isinstance(o, six.binary_type):
+      return six.ensure_str(o, encoding='utf-8', errors='replace')
+    else:
+      raise TypeError(repr(o) + ' is not JSON serializable')
+
+  json_encoder = json.JSONEncoder(
+      sort_keys=True, indent=2, ensure_ascii=False, default=bytes_handler)
+  return json_encoder.encode(obj).encode('utf-8', errors='replace')
 
 
 def _attach_config(mfg_event, record):
