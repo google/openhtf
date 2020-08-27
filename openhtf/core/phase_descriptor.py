@@ -23,9 +23,9 @@ from __future__ import google_type_annotations
 import enum
 import inspect
 import pdb
-from typing import Any, Callable, Dict, Optional, Text, TYPE_CHECKING, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Text, TYPE_CHECKING, Type, Union
 
-import mutablerecords
+import attr
 
 import openhtf
 from openhtf import util
@@ -36,6 +36,8 @@ from openhtf.util import data
 import six
 
 if TYPE_CHECKING:
+  from openhtf.core import diagnoses_lib  # pylint: disable=g-import-not-at-top
+  from openhtf.core import measurements as core_measurements  # pylint: disable=g-import-not-at-top
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
 
@@ -70,18 +72,11 @@ class PhaseResult(enum.Enum):
 PhaseReturnT = Optional[PhaseResult]
 PhaseCallableT = Callable[..., PhaseReturnT]
 PhaseT = Union['PhaseDescriptor', PhaseCallableT]
+TimeoutT = Union[float, int]
 
 
-class PhaseOptions(
-    mutablerecords.Record(
-        'PhaseOptions', [], {
-            'name': None,
-            'timeout_s': None,
-            'run_if': None,
-            'requires_state': None,
-            'repeat_limit': None,
-            'run_under_pdb': False,
-        })):
+@attr.s(slots=True)
+class PhaseOptions(object):
   """Options used to override default test phase behaviors.
 
   Attributes:
@@ -104,40 +99,43 @@ class PhaseOptions(
     def PhaseFunc(test, port, other_info): pass
   """
 
+  name = attr.ib(type=Optional[Union[Text, Callable[..., Text]]], default=None)
+  timeout_s = attr.ib(type=Optional[TimeoutT], default=None)
+  run_if = attr.ib(type=Optional[Callable[[], bool]], default=None)
+  requires_state = attr.ib(type=bool, default=False)
+  repeat_limit = attr.ib(type=Optional[int], default=None)
+  run_under_pdb = attr.ib(type=bool, default=False)
+
   def format_strings(self, **kwargs: Any) -> 'PhaseOptions':
     """String substitution of name."""
-    return mutablerecords.CopyRecord(
-        self, name=util.format_string(self.name, kwargs))
+    return data.attr_copy(self, name=util.format_string(self.name, kwargs))
 
   def update(self, **kwargs: Any) -> None:
     for key, value in six.iteritems(kwargs):
-      if key not in self.__slots__:
-        raise AttributeError('Type %s does not have attribute %s' %
-                             (type(self).__name__, key))
       setattr(self, key, value)
 
   def __call__(self, phase_func: PhaseT) -> 'PhaseDescriptor':
     phase = PhaseDescriptor.wrap_or_copy(phase_func)
-    for attr in self.__slots__:
-      value = getattr(self, attr)
-      if value is not None:
-        setattr(phase.options, attr, value)
+    if self.name:
+      phase.options.name = self.name
+    if self.timeout_s is not None:
+      phase.options.timeout_s = self.timeout_s
+    if self.run_if:
+      phase.options.run_if = self.run_if
+    if self.requires_state:
+      phase.options.requires_state = self.requires_state
+    if self.repeat_limit is not None:
+      phase.options.repeat_limit = self.repeat_limit
+    if self.run_under_pdb:
+      phase.options.run_under_pdb = self.run_under_pdb
     return phase
 
 
 TestPhase = PhaseOptions
 
 
-class PhaseDescriptor(
-    mutablerecords.Record(
-        'PhaseDescriptor', ['func'], {
-            'options': PhaseOptions,
-            'plugs': list,
-            'measurements': list,
-            'diagnosers': list,
-            'extra_kwargs': dict,
-            'code_info': test_record.CodeInfo.uncaptured(),
-        })):
+@attr.s(slots=True)
+class PhaseDescriptor(object):
   """Phase function and related information.
 
   Attributes:
@@ -148,7 +146,20 @@ class PhaseDescriptor(
     diagnosers: List of PhaseDiagnoser objects.
     extra_kwargs: Keyword arguments that will be passed to the function.
     code_info: Info about the source code of func.
+    name: Phase name.
+    doc: Phase documentation.
   """
+
+  func = attr.ib(type=PhaseCallableT)
+  options = attr.ib(type=PhaseOptions, factory=PhaseOptions)
+  plugs = attr.ib(type=List['openhtf.plugs.PhasePlug'], factory=list)
+  measurements = attr.ib(
+      type=List['core_measurements.Measurement'], factory=list)
+  diagnosers = attr.ib(
+      type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list)
+  extra_kwargs = attr.ib(type=Dict[Text, Any], factory=dict)
+  code_info = attr.ib(
+      type=test_record.CodeInfo, factory=test_record.CodeInfo.uncaptured)
 
   @classmethod
   def wrap_or_copy(cls, func: PhaseT, **options: Any) -> 'PhaseDescriptor':
@@ -174,23 +185,22 @@ class PhaseDescriptor(
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
       # or kwargs.  See with_args() below for more details.
-      retval = mutablerecords.CopyRecord(func)
+      retval = data.attr_copy(func)
     else:
       retval = cls(func)
     retval.options.update(**options)
     return retval
 
   def _asdict(self) -> Dict[Text, Any]:
-    asdict = {
-        k: data.convert_to_base_types(getattr(self, k), ignore_keys=('cls',))
-        for k in self.optional_attributes
-    }
-    asdict.update(name=self.name, doc=self.doc)
-    return asdict
+    ret = attr.asdict(self, filter=attr.filters.exclude('func'))
+    ret.update(name=self.name, doc=self.doc)
+    return ret
 
   @property
   def name(self) -> Text:
-    return self.options.name or self.func.__name__
+    if self.options.name and isinstance(self.options.name, str):
+      return self.options.name
+    return self.func.__name__
 
   @property
   def doc(self) -> Optional[Text]:
@@ -216,7 +226,7 @@ class PhaseDescriptor(
     """Send these keyword-arguments to the phase when called."""
     # Make a copy so we can have multiple of the same phase with different args
     # in the same test.
-    new_info = mutablerecords.CopyRecord(self)
+    new_info = data.attr_copy(self)
     new_info.options = new_info.options.format_strings(**kwargs)
     new_info.extra_kwargs.update(kwargs)
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
@@ -262,7 +272,9 @@ class PhaseDescriptor(
           continue
         accept_substitute = False
       elif isinstance(original_plug.cls, openhtf.plugs.PlugPlaceholder):
-        accept_substitute = issubclass(sub_class, original_plug.cls.base_class)
+        accept_substitute = (
+            issubclass(sub_class, original_plug.cls.base_class) and
+            issubclass(sub_class, openhtf.plugs.BasePlug))
       else:
         # Check __dict__ to see if the attribute is explicitly defined in the
         # class, rather than being defined in a parent class.
@@ -274,9 +286,9 @@ class PhaseDescriptor(
         raise openhtf.plugs.InvalidPlugError(
             'Could not find valid placeholder for substitute plug %s '
             'required for phase %s' % (name, self.name))
-      new_plugs[name] = mutablerecords.CopyRecord(original_plug, cls=sub_class)
+      new_plugs[name] = data.attr_copy(original_plug, cls=sub_class)
 
-    return mutablerecords.CopyRecord(
+    return data.attr_copy(
         self,
         plugs=list(new_plugs.values()),
         options=self.options.format_strings(**subplugs),

@@ -13,13 +13,16 @@
 # limitations under the License.
 """One-off utilities."""
 
+from __future__ import google_type_annotations
+
 import logging
 import re
 import threading
 import time
+from typing import Any
 import weakref
 
-import mutablerecords
+import attr
 
 import six
 
@@ -60,7 +63,8 @@ def time_millis():
   return int(time.time() * 1000)
 
 
-class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
+@attr.s(slots=True)
+class NonLocalResult(object):
   """Holds a single result as a nonlocal variable.
 
   Comparable to using Python 3's nonlocal keyword, it allows an inner function
@@ -77,6 +81,8 @@ class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
     InnerFunction()
     return x.result
   """
+
+  result = attr.ib(type=Any, default=None)
 
 
 # TODO(jethier): Add a pylint plugin to avoid the no-self-argument for this.

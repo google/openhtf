@@ -1,0 +1,6 @@
+Changes for 2.0.
+
+* PhaseDescriptor:
+    * If the options name field is a callable, the name property of
+        PhaseDescriptors will only return the name of the function rather than
+        the callable.  This ensures that the name property is always Text.

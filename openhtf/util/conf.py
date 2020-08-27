@@ -156,14 +156,18 @@ in the decorator or in the decorated callable.
 """
 # pytype: skip-file
 
+from __future__ import google_type_annotations
+
 import argparse
+import enum
 import functools
 import inspect
 import logging
 import sys
 import threading
+from typing import Any, Optional, Text
 
-import mutablerecords
+import attr
 from openhtf.util import argv
 from openhtf.util import threads
 import six
@@ -209,22 +213,20 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
   class UnsetKeyError(Exception):
     """Raised when a key value is requested but we have no value for it."""
 
-  # pylint: disable=bad-super-call
-  class Declaration(
-      mutablerecords.Record('Declaration', ['name'], {
-          'description': None,
-          'default_value': None,
-          'has_default': False
-      })):
+  @attr.s(slots=True)
+  class Declaration(object):
     """Record type encapsulating information about a config declaration."""
 
-    def __init__(self, *args, **kwargs):
-      super(type(self), self).__init__(*args, **kwargs)
-      # Track this separately to allow for None as a default value, override
-      # any value that was passed in explicitly - don't do that.
-      self.has_default = 'default_value' in kwargs
+    class _DefaultSetting(enum.Enum):
+      NOT_SET = 0
 
-  # pylint: enable=bad-super-call
+    name = attr.ib(type=Text)
+    description = attr.ib(type=Optional[Text], default=None)
+    default_value = attr.ib(type=Any, default=_DefaultSetting.NOT_SET)
+
+    @property
+    def has_default(self) -> bool:
+      return self.default_value is not self._DefaultSetting.NOT_SET
 
   __slots__ = ('_logger', '_lock', '_modules', '_declarations', '_flag_values',
                '_flags', '_loaded_values', 'ARG_PARSER', '__name__')
@@ -281,9 +283,9 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     """Return True if key is a valid configuration key."""
     return key and key[0].islower()
 
-  def __setattr__(self, attr, value):
+  def __setattr__(self, field, value):
     """Provide a useful error when attempting to set a value via setattr()."""
-    if self._is_valid_key(attr):
+    if self._is_valid_key(field):
       raise AttributeError("Can't set conf values by attribute, use load()")
     # __slots__ is defined above, so this will raise an AttributeError if the
     # attribute isn't one we expect; this limits the number of ways to abuse the
@@ -291,16 +293,16 @@ class Configuration(object):  # pylint: disable=too-many-instance-attributes
     # normally here because of the sys.modules swap (Configuration is no longer
     # defined, and evaluates to None if used here).
     # pylint: disable=bad-super-call
-    super(type(self), self).__setattr__(attr, value)
+    super(type(self), self).__setattr__(field, value)
 
   # Don't use synchronized on this one, because __getitem__ handles it.
-  def __getattr__(self, attr):
+  def __getattr__(self, field):
     """Get a config value via attribute access."""
-    if self._is_valid_key(attr):
-      return self[attr]
+    if self._is_valid_key(field):
+      return self[field]
     # Config keys all begin with a lowercase letter, so treat this normally.
     raise AttributeError("'%s' object has no attribute '%s'" %
-                         (type(self).__name__, attr))
+                         (type(self).__name__, field))
 
   @threads.synchronized
   def __getitem__(self, item):
