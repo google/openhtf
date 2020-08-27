@@ -14,6 +14,7 @@
 
 import unittest
 
+import attr
 import mock
 
 import openhtf
@@ -66,6 +67,26 @@ def sub_placeholder_using_plug(subplaced):
   del subplaced  # Unused.
 
 
+class NonPlugBase(object):
+  pass
+
+
+class NonPlugImpl(NonPlugBase):
+  pass
+
+
+class PlugVersionOfNonPlug(NonPlugImpl, plugs.BasePlug):
+  pass
+
+
+custom_placeholder = plugs.PlugPlaceholder(NonPlugBase)
+
+
+@plugs.plug(custom=custom_placeholder)
+def custom_placeholder_phase(custom):
+  del custom  # Unused.
+
+
 class TestPhaseDescriptor(unittest.TestCase):
 
   def setUp(self):
@@ -88,10 +109,25 @@ class TestPhaseDescriptor(unittest.TestCase):
   def test_multiple_phases(self):
     phase = openhtf.PhaseDescriptor.wrap_or_copy(plain_func)
     second_phase = openhtf.PhaseDescriptor.wrap_or_copy(phase)
-    for attr in type(phase).all_attribute_names:
-      if attr == 'func':
+    for field in attr.fields(type(phase)):
+      if field.name == 'func':
         continue
-      self.assertIsNot(getattr(phase, attr), getattr(second_phase, attr))
+      self.assertIsNot(
+          getattr(phase, field.name), getattr(second_phase, field.name))
+
+  def test_callable_name_with_args(self):
+
+    def namer(**kwargs):
+      return 'renamed_{one}_{two}'.format(**kwargs)
+
+    @phase_descriptor.PhaseOptions(name=namer)
+    def custom_phase(one=None, two=None):
+      del one  # Unused.
+      del two  # Unused.
+
+    self.assertEqual('custom_phase', custom_phase.name)
+    arged = custom_phase.with_args(one=1, two=2)
+    self.assertEqual('renamed_1_2', arged.name)
 
   @mock.patch.object(phase_descriptor.PhaseDescriptor, 'with_args')
   def test_with_known_args(self, mock_with_args):
@@ -147,3 +183,13 @@ class TestPhaseDescriptor(unittest.TestCase):
   def test_with_plugs_auto_placeholder_non_subclass_error(self):
     with self.assertRaises(plugs.InvalidPlugError):
       placeholder_using_plug.with_plugs(placed=ExtraPlug)
+
+  def test_with_plugs_custom_placeholder_not_base_plug(self):
+    with self.assertRaises(plugs.InvalidPlugError):
+      custom_placeholder_phase.with_plugs(custom=NonPlugImpl)
+
+  def test_with_plugs_custom_placeholder_is_base_plug(self):
+    phase = custom_placeholder_phase.with_plugs(custom=PlugVersionOfNonPlug)
+    self.assertIs(phase.func, custom_placeholder_phase.func)
+    self.assertEqual([plugs.PhasePlug('custom', PlugVersionOfNonPlug)],
+                     phase.plugs)

@@ -92,10 +92,13 @@ This will result in the ExamplePlug being constructed with
 self._my_config having a value of 'my_config_value'.
 """
 
+from __future__ import google_type_annotations
+
 import collections
 import logging
+from typing import List, Text, Type, Union
 
-import mutablerecords
+import attr
 
 from openhtf import util
 import openhtf.core.phase_descriptor
@@ -115,28 +118,30 @@ conf.declare(
     'otherwise, will wait an unlimited time.')
 
 
-class PlugDescriptor(collections.namedtuple('PlugDescriptor', [
-    'mro',
-])):
-  pass
+@attr.s(slots=True, frozen=True)
+class PlugDescriptor(object):
+  mro = attr.ib(type=List[Text])
 
 
-class PlugPlaceholder(
-    collections.namedtuple('PlugPlaceholder', [
-        'base_class',
-    ])):
+@attr.s(slots=True, frozen=True)
+class PlugPlaceholder(object):
   """Placeholder for a specific plug to be provided before test execution.
 
   Use the with_plugs() method to provide the plug before test execution. The
   with_plugs() method checks to make sure the substitute plug is a subclass of
-  the PlugPlaceholder's base_class.
+  the PlugPlaceholder's base_class and BasePlug.
   """
 
+  base_class = attr.ib(type=Type[object])
 
-class PhasePlug(
-    mutablerecords.Record('PhasePlug', ['name', 'cls'],
-                          {'update_kwargs': True})):
+
+@attr.s(slots=True)
+class PhasePlug(object):
   """Information about the use of a plug in a phase."""
+
+  name = attr.ib(type=Text)
+  cls = attr.ib(type=Union[Type['BasePlug'], PlugPlaceholder])
+  update_kwargs = attr.ib(type=bool, default=True)
 
 
 class PlugOverrideError(Exception):
@@ -331,7 +336,7 @@ class PlugManager(object):
   def as_base_types(self):
     return {
         'plug_descriptors': {
-            name: dict(descriptor._asdict())  # Convert OrderedDict to dict.
+            name: attr.asdict(descriptor)
             for name, descriptor in six.iteritems(self._plug_descriptors)
         },
         'plug_states': {
@@ -344,7 +349,7 @@ class PlugManager(object):
     """Returns the plug descriptor, containing info about this plug type."""
     return PlugDescriptor(self.get_plug_mro(plug_type))
 
-  def get_plug_mro(self, plug_type):
+  def get_plug_mro(self, plug_type: Type[BasePlug]) -> List[Text]:
     """Returns a list of names identifying the plug classes in the plug's MRO.
 
     For example:

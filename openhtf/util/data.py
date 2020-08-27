@@ -271,11 +271,7 @@ def attr_copy(obj: _AttrCopyT, **overrides: Any) -> _AttrCopyT:
     value = getattr(obj, name)
     if attr.has(value):
       new_value = attr_copy(value)
-    # TODO(arsharma): Remove when mutablerecords are removed.
-    elif isinstance(value, records.RecordClass):
-      new_value = records.CopyRecord(value)
     else:
       new_value = copy.copy(value)
-    init_name = name if name[0] != '_' else name[1:]
     kwargs[init_name] = new_value
   return type(obj)(**kwargs)

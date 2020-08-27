@@ -42,7 +42,6 @@ import typing
 from typing import Any, Callable, Iterator, List, Optional, Sequence, Text, Tuple, Type, Union
 
 import attr
-import mutablerecords
 
 from openhtf import plugs
 from openhtf.core import phase_descriptor
@@ -235,7 +234,7 @@ def load_code_info(phases_or_groups):
       ret.append(typing.cast(PhaseGroup, phase).load_code_info())
     else:
       ret.append(
-          mutablerecords.CopyRecord(
+          data.attr_copy(
               phase, code_info=test_record.CodeInfo.for_function(phase.func)))
   return ret
 
@@ -275,7 +274,7 @@ def optionally_with_args(phase: phase_descriptor.PhaseT,
   pass
 
 
-def optionally_with_args(phase: Any, **kwargs):
+def optionally_with_args(phase, **kwargs):
   """Apply only the args that the phase knows.
 
   If the phase has a **kwargs-style argument, it counts as knowing all args.
@@ -293,7 +292,10 @@ def optionally_with_args(phase: Any, **kwargs):
   if isinstance(phase, PhaseGroup):
     return typing.cast(PhaseGroup, phase).with_args(**kwargs)  # pytype: disable=bad-return-type
   if isinstance(phase, collections.Iterable):
-    return [optionally_with_args(p, **kwargs) for p in phase]  # pytype: disable=bad-return-type
+    return [
+        optionally_with_args(typing.cast(Sequence[PhaseNodeT], p), **kwargs)
+        for p in phase  # pytype: disable=bad-return-type
+    ]
 
   if not isinstance(phase, phase_descriptor.PhaseDescriptor):
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(phase)
@@ -344,7 +346,10 @@ def optionally_with_plugs(phase, **subplugs):
   if isinstance(phase, PhaseGroup):
     return typing.cast(PhaseGroup, phase).with_plugs(**subplugs)  # pytype: disable=bad-return-type
   if isinstance(phase, collections.Iterable):
-    return [optionally_with_plugs(p, **subplugs) for p in phase]  # pytype: disable=bad-return-type
+    return [
+        optionally_with_plugs(typing.cast(Sequence[PhaseNodeT], p), **subplugs)
+        for p in phase  # pytype: disable=bad-return-type
+    ]
 
   if not isinstance(phase, phase_descriptor.PhaseDescriptor):
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(phase)
