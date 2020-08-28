@@ -34,17 +34,11 @@ import numbers
 from openhtf.core import measurements
 from openhtf.core import test_record
 from openhtf.output.callbacks import json_factory
-from openhtf.util import validators
-
 from openhtf.output.proto import test_runs_pb2
+from openhtf.util import validators
+import six
 
-try:
-  from past.types import unicode  # pylint: disable=redefined-builtin,g-import-not-at-top
-except ImportError:
-  pass
-
-import six  # pylint: disable=g-import-not-at-top,g-bad-import-order
-
+# pylint: disable=g-complex-comprehension
 
 # pylint: disable=no-member
 MIMETYPE_MAP = {
@@ -138,9 +132,9 @@ def _attach_json(record, testrun):
     record: the OpenHTF TestRecord being converted
     testrun: a TestRun proto
   """
-  record_json = json_factory.OutputToJSON(
-      inline_attachments=False,
-      sort_keys=True, indent=2).serialize_test_record(record)
+  encoded = json_factory.convert_test_record_to_json(
+      record, inline_attachments=False)
+  record_json = json_factory.stream_json(encoded, sort_keys=True, indent=2)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
   testrun_param.value_binary = b''.join(r.encode('utf-8') for r in record_json)
