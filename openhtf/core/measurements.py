@@ -785,7 +785,7 @@ class Collection(object):
     return ((key, meas.measured_value.value)
             for key, meas in six.iteritems(self._measurements))
 
-  def __setattr__(self, name: Text, value: Any) -> None:
+  def _custom_setattr(self, name: Text, value: Any) -> None:
     if name == '_measurements':
       object.__setattr__(self, name, value)
       return
@@ -812,6 +812,12 @@ class Collection(object):
 
     # Return the MeasuredValue's value, MeasuredValue will raise if not set.
     return m.measured_value.value
+
+# Work around for attrs bug in 20.1.0; after the next release, this can be
+# removed and `Collection._custom_setattr` can be renamed to `__setattr__`.
+# https://github.com/python-attrs/attrs/issues/680
+Collection.__setattr__ = Collection._custom_setattr
+del Collection._custom_setattr
 
 
 def measures(
