@@ -216,9 +216,6 @@ setup(
             'pandas>=0.22.0,<0.25.0',
         ],
     },
-    setup_requires=[
-        'wheel>=0.29.0,<1.0',
-    ],
     tests_require=[
         'mock>=2.0.0',
         # Remove max version here after we drop Python 2 support.
