@@ -128,6 +128,7 @@ INSTALL_REQUIRES = [
     'attrs>=19.3.0',
     'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
+    'enum34>=1.1.2,<2.0 ; python_version<"3.4"',
     'future>=0.16.0',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
@@ -138,11 +139,6 @@ INSTALL_REQUIRES = [
     'tornado>=4.3,<5.0',
     'six>=1.12.0',
 ]
-# Not all versions of setuptools support semicolon syntax for specifying
-# platform-specific dependencies, so we do it the old school way.
-if sys.version_info < (3,4):
-  INSTALL_REQUIRES.append('enum34>=1.1.2,<2.0')
-
 
 
 class PyTestCommand(test):
@@ -188,13 +184,14 @@ setup(
     author_email='madsci@google.com',
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
-    packages=find_packages(exclude='examples'),
+    packages=find_packages(include=['openhtf.*']),
     package_data={'openhtf': ['output/proto/*.proto',
                               'output/web_gui/dist/*.*',
                               'output/web_gui/dist/css/*',
                               'output/web_gui/dist/js/*',
                               'output/web_gui/dist/img/*',
                               'output/web_gui/*.*']},
+    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*',
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
@@ -213,12 +210,9 @@ setup(
             'pyserial>=3.3.0,<4.0',
         ],
         'examples': [
-            'pandas>=0.22.0,<0.25.0',
+            'pandas>=0.22.0',
         ],
     },
-    setup_requires=[
-        'wheel>=0.29.0,<1.0',
-    ],
     tests_require=[
         'mock>=2.0.0',
         # Remove max version here after we drop Python 2 support.
