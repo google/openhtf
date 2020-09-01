@@ -184,7 +184,7 @@ setup(
     author_email='madsci@google.com',
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
-    packages=find_packages(exclude='examples'),
+    packages=find_packages(include=['openhtf.*']),
     package_data={'openhtf': ['output/proto/*.proto',
                               'output/web_gui/dist/*.*',
                               'output/web_gui/dist/css/*',
