@@ -128,6 +128,7 @@ INSTALL_REQUIRES = [
     'attrs>=19.3.0',
     'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
+    'enum34>=1.1.2,<2.0 ; python_version<"3.4"',
     'future>=0.16.0',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
@@ -138,11 +139,6 @@ INSTALL_REQUIRES = [
     'tornado>=4.3,<5.0',
     'six>=1.12.0',
 ]
-# Not all versions of setuptools support semicolon syntax for specifying
-# platform-specific dependencies, so we do it the old school way.
-if sys.version_info < (3,4):
-  INSTALL_REQUIRES.append('enum34>=1.1.2,<2.0')
-
 
 
 class PyTestCommand(test):
