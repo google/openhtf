@@ -210,7 +210,7 @@ setup(
             'pyserial>=3.3.0,<4.0',
         ],
         'examples': [
-            'pandas>=0.22.0,<0.25.0',
+            'pandas>=0.22.0',
         ],
     },
     tests_require=[
