@@ -21,6 +21,12 @@ examples.
 """
 
 import collections
+
+try:
+  collectionsAbc = collections.abc
+except AttributeError:
+  collectionsAbc = collections
+
 import contextlib
 import shutil
 import tempfile
@@ -116,7 +122,7 @@ class OutputToFile(object):
       serialized_record = self.serialize_test_record(test_record)
       if isinstance(serialized_record, six.string_types):
         outfile.write(serialized_record)
-      elif isinstance(serialized_record, collections.Iterable):
+      elif isinstance(serialized_record, collectionsAbc.Iterable):
         for chunk in serialized_record:
           outfile.write(chunk)
       else:
