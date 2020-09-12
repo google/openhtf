@@ -118,6 +118,7 @@ class OutputToFile(object):
         outfile.write(serialized_record)
       elif isinstance(serialized_record, collections_abc.Iterable):
         for chunk in serialized_record:
+          print(type(chunk))
           outfile.write(chunk)
       else:
         raise TypeError('Expected string or iterable but got {}.'.format(
