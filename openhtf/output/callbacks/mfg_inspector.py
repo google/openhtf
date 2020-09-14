@@ -1,4 +1,5 @@
-"""Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com."""
+"""Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com.
+"""
 
 import json
 import logging
@@ -57,7 +58,7 @@ def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
   """Upload MfgEvent to steam_engine."""
   envelope = guzzle_pb2.TestRunEnvelope()
   envelope.payload = zlib.compress(inspector_proto.SerializeToString())
-  envelope.payload_type = guzzle_pb2.COMPRESSED_MFG_EVENT
+  envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
   envelope_data = envelope.SerializeToString()
 
   for _ in range(5):

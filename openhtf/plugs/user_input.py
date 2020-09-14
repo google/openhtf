@@ -59,6 +59,7 @@ class Prompt(
         'id',
         'message',
         'text_input',
+        'image_url',
     ])):
   pass
 
@@ -89,6 +90,8 @@ class ConsolePrompt(threading.Thread):
     """Mark this ConsolePrompt as stopped."""
     self._stop_event.set()
     if not self._answered:
+      console_output.cli_print(
+          os.linesep, color=self._color, end='', logger=None)
       _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
 
   def run(self):
@@ -168,7 +171,12 @@ class UserInput(plugs.FrontendAwareBasePlug):
         self._console_prompt = None
       self.notify_update()
 
-  def prompt(self, message, text_input=False, timeout_s=None, cli_color=''):
+  def prompt(self,
+             message,
+             text_input=False,
+             timeout_s=None,
+             cli_color='',
+             image_url=None):
     """Display a prompt and wait for a response.
 
     Args:
@@ -176,6 +184,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
       text_input: A boolean indicating whether the user must respond with text.
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
       cli_color: An ANSI color code, or the empty string.
+      image_url: Optional image URL to display or None.
 
     Returns:
       A string response, or the empty string if text_input was False.
@@ -184,16 +193,21 @@ class UserInput(plugs.FrontendAwareBasePlug):
       MultiplePromptsError: There was already an existing prompt.
       PromptUnansweredError: Timed out waiting for the user to respond.
     """
-    self.start_prompt(message, text_input, cli_color)
+    self.start_prompt(message, text_input, cli_color, image_url)
     return self.wait_for_prompt(timeout_s)
 
-  def start_prompt(self, message, text_input=False, cli_color=''):
+  def start_prompt(self,
+                   message,
+                   text_input=False,
+                   cli_color='',
+                   image_url=None):
     """Display a prompt.
 
     Args:
       message: A string to be presented to the user.
       text_input: A boolean indicating whether the user must respond with text.
       cli_color: An ANSI color code, or the empty string.
+      image_url: Optional image URL to display or None.
 
     Raises:
       MultiplePromptsError: There was already an existing prompt.
@@ -210,7 +224,10 @@ class UserInput(plugs.FrontendAwareBasePlug):
 
       self._response = None
       self._prompt = Prompt(
-          id=prompt_id, message=message, text_input=text_input)
+          id=prompt_id,
+          message=message,
+          text_input=text_input,
+          image_url=image_url)
       if sys.stdin.isatty():
         self._console_prompt = ConsolePrompt(
             message, functools.partial(self.respond, prompt_id), cli_color)

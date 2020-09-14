@@ -282,8 +282,16 @@ class StationPubSub(pub_sub.PubSub):
     cls._last_message = message
 
   def on_subscribe(self, info):
-    """Send the more recent test state to new subscribers when they connect."""
-    if self._last_message is not None:
+    """Send the more recent test state to new subscribers when they connect.
+
+    This is skipped if the test has already completed.
+
+    Args:
+      info: Subscription info.
+    """
+    test, _ = _get_executing_test()
+
+    if self._last_message is not None and test is not None:
       self.send(self._last_message)
 
 
