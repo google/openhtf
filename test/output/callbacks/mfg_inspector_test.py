@@ -27,6 +27,7 @@ import openhtf as htf
 from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import mfg_inspector
+from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
@@ -104,7 +105,8 @@ class TestMfgInspector(test.TestCase):
     callback.upload()({})
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url)
+        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN)
 
   def test_save_and_upload(self):
     testrun_output = io.BytesIO()
@@ -125,7 +127,8 @@ class TestMfgInspector(test.TestCase):
     self.assertEqual(MOCK_TEST_RUN_PROTO, testrun)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url)
+        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN)
 
     # Make sure mock converter only called once i.e. the test record was
     # was converted to a proto only once.  This important because some custom
