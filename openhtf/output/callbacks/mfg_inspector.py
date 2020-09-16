@@ -54,11 +54,12 @@ def _send_mfg_inspector_request(envelope_data, credentials, destination_url):
     raise UploadFailedError(message)
 
 
-def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
+def send_mfg_inspector_data(inspector_proto, credentials, destination_url,
+                            payload_type):
   """Upload MfgEvent to steam_engine."""
   envelope = guzzle_pb2.TestRunEnvelope()
   envelope.payload = zlib.compress(inspector_proto.SerializeToString())
-  envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
+  envelope.payload_type = payload_type
   envelope_data = envelope.SerializeToString()
 
   for _ in range(5):
@@ -209,7 +210,7 @@ class MfgInspector(object):
 
     return save_to_disk_callback
 
-  def upload(self):
+  def upload(self, payload_type=guzzle_pb2.COMPRESSED_TEST_RUN):
     """Returns a callback to convert a test record to a proto and upload."""
     if not self._converter:
       raise RuntimeError(
@@ -222,7 +223,8 @@ class MfgInspector(object):
     def upload_callback(test_record_obj):
       proto = self._convert(test_record_obj)
       self.upload_result = send_mfg_inspector_data(proto, self.credentials,
-                                                   self.destination_url)
+                                                   self.destination_url,
+                                                   payload_type)
 
     return upload_callback
 
