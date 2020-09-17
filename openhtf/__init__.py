@@ -46,9 +46,6 @@ from openhtf.util import logs
 from openhtf.util import units
 import pkg_resources
 
-# TODO(arsharma): TestPhase is used for legacy reasons and should be deprecated.
-TestPhase = PhaseOptions  # pylint: disable=invalid-name
-
 
 def get_version():
   """Returns the version string of the 'openhtf' package.
