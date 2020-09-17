@@ -71,7 +71,7 @@ def hello_world(test, example, prompts):
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@htf.TestPhase(timeout_s=10)
+@htf.PhaseOptions(timeout_s=10)
 @htf.measures(
     *(htf.Measurement('level_%s' % i) for i in ['none', 'some', 'all']))
 @htf.monitors('monitor_measurement', example_monitor)
@@ -126,7 +126,7 @@ def attachments(test):
   assert test_attachment.data == b'This is test attachment data.'
 
 
-@htf.TestPhase(run_if=lambda: False)
+@htf.PhaseOptions(run_if=lambda: False)
 def skip_phase():
   """Don't run this phase."""
 

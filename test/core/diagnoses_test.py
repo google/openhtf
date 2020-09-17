@@ -31,12 +31,12 @@ class DiagTestError(Exception):
   pass
 
 
-@htf.TestPhase()
+@htf.PhaseOptions()
 def basic_phase():
   pass
 
 
-@htf.TestPhase()
+@htf.PhaseOptions()
 def exception_phase():
   raise PhaseError('it broke')
 

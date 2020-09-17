@@ -1,5 +1,8 @@
 Changes for 2.0.
 
+* PhaseOptions:
+    * The openhtf.TestPhase alias for PhaseOptions has been deprecated for a
+        long time.  Removing it.
 * PhaseDescriptor:
     * If the options name field is a callable, the name property of
         PhaseDescriptors will only return the name of the function rather than
