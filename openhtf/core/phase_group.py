@@ -43,7 +43,7 @@ from typing import Any, Callable, Iterator, List, Optional, Sequence, Text, Tupl
 
 import attr
 
-from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
 from openhtf.core import test_record
 from openhtf.util import data
@@ -172,7 +172,7 @@ class PhaseGroup(object):
     """Send known keyword-arguments to each contained phase the when called."""
     return self.transform(functools.partial(optionally_with_args, **kwargs))
 
-  def with_plugs(self, **subplugs: Type[plugs.BasePlug]) -> 'PhaseGroup':
+  def with_plugs(self, **subplugs: Type[base_plugs.BasePlug]) -> 'PhaseGroup':
     """Substitute only known plugs for placeholders for each contained phase."""
     return self.transform(functools.partial(optionally_with_plugs, **subplugs))
 
@@ -305,20 +305,20 @@ def optionally_with_args(phase, **kwargs):
 
 @typing.overload
 def optionally_with_plugs(phase: PhaseGroup,
-                          **subplugs: Type[plugs.BasePlug]) -> PhaseGroup:
+                          **subplugs: Type[base_plugs.BasePlug]) -> PhaseGroup:
   pass
 
 
 @typing.overload
 def optionally_with_plugs(phase: Sequence[PhaseNodeT],
-                          **subplugs: Type[plugs.BasePlug]) -> PhaseNodeT:
+                          **subplugs: Type[base_plugs.BasePlug]) -> PhaseNodeT:
   pass
 
 
 @typing.overload
 def optionally_with_plugs(
     phase: phase_descriptor.PhaseT,
-    **subplugs: Type[plugs.BasePlug]) -> phase_descriptor.PhaseDescriptor:
+    **subplugs: Type[base_plugs.BasePlug]) -> phase_descriptor.PhaseDescriptor:
   pass
 
 
@@ -336,7 +336,7 @@ def optionally_with_plugs(phase, **subplugs):
       apply.
 
   Raises:
-    openhtf.plugs.InvalidPlugError: if a specified subplug class is not a valid
+    base_plugs.InvalidPlugError: if a specified subplug class is not a valid
         replacement for the specified plug name.
 
   Returns:

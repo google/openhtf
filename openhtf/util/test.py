@@ -123,6 +123,7 @@ import mock
 import openhtf
 from openhtf import plugs
 from openhtf import util
+from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
 from openhtf.core import phase_executor
@@ -375,7 +376,7 @@ def patch_plugs(phase_user_defined_state=None,
           logging.error("Invalid plug type specification %s='%s'",
                         plug_arg_name, plug_fullname)
           raise
-      elif issubclass(plug_fullname, plugs.BasePlug):
+      elif issubclass(plug_fullname, base_plugs.BasePlug):
         plug_type = plug_fullname
       else:
         raise ValueError('Invalid plug type specification %s="%s"' %

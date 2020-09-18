@@ -29,10 +29,10 @@ import subprocess
 import time
 
 import openhtf as htf
-from openhtf import plugs
+from openhtf.core import base_plugs
 
 
-class PingPlug(plugs.BasePlug):
+class PingPlug(base_plugs.BasePlug):
   """This plug simply does a ping against the host attribute."""
   host = None
 

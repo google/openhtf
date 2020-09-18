@@ -5,6 +5,7 @@ import unittest
 
 import openhtf as htf
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.util import test as htf_test
 
 
@@ -36,7 +37,7 @@ def arg_phase(test, arg1=None, arg2=None):
   del arg2  # Unused.
 
 
-class ParentPlug(plugs.BasePlug):
+class ParentPlug(base_plugs.BasePlug):
   pass
 
 
