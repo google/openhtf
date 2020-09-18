@@ -19,7 +19,8 @@ import logging
 import re
 import threading
 import time
-from typing import Any
+import typing
+from typing import Any, Callable, Dict, Iterator, Optional, Text, Tuple, Type, TypeVar, Union
 import weakref
 
 import attr
@@ -27,7 +28,8 @@ import attr
 import six
 
 
-def _log_every_n_to_logger(n, logger, level, message, *args):
+def _log_every_n_to_logger(n: int, logger: Optional[logging.Logger], level: int,
+                           message: Text, *args: Any) -> Callable[[], bool]:
   """Logs the given message every n calls to a logger.
 
   Args:
@@ -40,9 +42,9 @@ def _log_every_n_to_logger(n, logger, level, message, *args):
   Returns:
     A method that logs and returns True every n calls.
   """
-  logger = logger or logging.getLogger()
+  logger = logger if logger else logging.getLogger()
 
-  def _gen():  # pylint: disable=missing-docstring
+  def _gen() -> Iterator[bool]:  # pylint: disable=missing-docstring
     while True:
       for _ in range(n):
         yield False
@@ -53,12 +55,13 @@ def _log_every_n_to_logger(n, logger, level, message, *args):
   return lambda: six.next(gen)
 
 
-def log_every_n(n, level, message, *args):
+def log_every_n(n: int, level: int, message: Text,
+                *args: Any) -> Callable[[], bool]:
   """Logs a message every n calls. See _log_every_n_to_logger."""
   return _log_every_n_to_logger(n, None, level, message, *args)
 
 
-def time_millis():
+def time_millis() -> int:
   """The time in milliseconds."""
   return int(time.time() * 1000)
 
@@ -94,14 +97,14 @@ class classproperty(object):  # pylint: disable=invalid-name
   to override the classproperty, for example) this is desired.
   """
 
-  def __init__(self, func):
+  def __init__(self, func: Callable[..., Any]):
     self._func = func
 
-  def __get__(self, instance, owner):
+  def __get__(self, instance, owner) -> Any:
     return self._func(owner)
 
 
-def partial_format(target, **kwargs):
+def partial_format(target: Text, **kwargs: Any) -> Text:
   """Formats a string without requiring all values to be present.
 
   This function allows substitutions to be gradually made in several steps
@@ -125,6 +128,29 @@ def partial_format(target, **kwargs):
   return output
 
 
+FormatT = TypeVar('FormatT')
+
+
+@typing.overload
+def format_string(target: Text, kwargs: Dict[Text, Any]) -> Text:
+  pass
+
+
+@typing.overload
+def format_string(target: Callable[..., Text], kwargs: Dict[Text, Any]) -> Text:
+  pass
+
+
+@typing.overload
+def format_string(target: None, kwargs: Dict[Text, Any]) -> None:
+  pass
+
+
+@typing.overload
+def format_string(target: FormatT, kwargs: Dict[Text, Any]) -> FormatT:
+  pass
+
+
 def format_string(target, kwargs):
   """Formats a string in any of three ways (or not at all).
 
@@ -141,8 +167,8 @@ def format_string(target, kwargs):
   Returns:
     Formatted string.
   """
-  if not target:
-    return target
+  if target is None:
+    return None
   if callable(target):
     return target(**kwargs)
   if not isinstance(target, six.string_types):
@@ -169,11 +195,11 @@ class SubscribableStateMixin(object):
     self._lock = threading.Lock()
     self._update_events = weakref.WeakSet()
 
-  def _asdict(self):
+  def _asdict(self) -> Dict[Text, Any]:
     raise NotImplementedError(
         'Subclasses of SubscribableStateMixin must implement _asdict.')
 
-  def asdict_with_event(self):
+  def asdict_with_event(self) -> Tuple[Dict[Text, Any], threading.Event]:
     """Get a dict representation of this object and an update event.
 
     Returns:
@@ -186,7 +212,7 @@ class SubscribableStateMixin(object):
       self._update_events.add(event)
     return self._asdict(), event
 
-  def notify_update(self):
+  def notify_update(self) -> None:
     """Notify any update events that there was an update."""
     with self._lock:
       for event in self._update_events:

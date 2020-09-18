@@ -96,12 +96,12 @@ from __future__ import google_type_annotations
 
 import collections
 import logging
-from typing import List, Text, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text, Type, TypeVar, Union
 
 import attr
 
 from openhtf import util
-import openhtf.core.phase_descriptor
+from openhtf.core import phase_descriptor
 from openhtf.util import classproperty
 from openhtf.util import conf
 from openhtf.util import data
@@ -165,24 +165,24 @@ class BasePlug(object):
       via TestApi.
   """
   # Override this to True in subclasses to support remote Plug access.
-  enable_remote = False
+  enable_remote = False  # type: bool
   # Allow explicitly disabling remote access to specific attributes.
-  disable_remote_attrs = set()
+  disable_remote_attrs = set()  # type: Set[Text]
   # Override this to True in subclasses to support using with_plugs with this
   # plug without needing to use placeholder.  This will only affect the classes
   # that explicitly define this; subclasses do not share the declaration.
-  auto_placeholder = False
+  auto_placeholder = False  # type: bool
   # Default logger to be used only in __init__ of subclasses.
   # This is overwritten both on the class and the instance so don't store
   # a copy of it anywhere.
-  logger = _LOG
+  logger = _LOG  # type: logging.Logger
 
   @classproperty
-  def placeholder(cls):  # pylint: disable=no-self-argument
+  def placeholder(cls) -> PlugPlaceholder:  # pylint: disable=no-self-argument
     """Returns a PlugPlaceholder for the calling class."""
     return PlugPlaceholder(cls)
 
-  def _asdict(self):
+  def _asdict(self) -> Dict[Text, Any]:
     """Returns a dictionary representation of this plug's state.
 
     This is called repeatedly during phase execution on any plugs that are in
@@ -201,12 +201,12 @@ class BasePlug(object):
     """
     return {}
 
-  def tearDown(self):
+  def tearDown(self) -> None:
     """This method is called automatically at the end of each Test execution."""
     pass
 
   @classmethod
-  def uses_base_tear_down(cls):
+  def uses_base_tear_down(cls) -> bool:
     """Checks whether the tearDown method is the BasePlug implementation."""
     this_tear_down = getattr(cls, 'tearDown')
     base_tear_down = getattr(BasePlug, 'tearDown')
@@ -224,10 +224,13 @@ class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
   Since the Station API runs in a separate thread, the _asdict() method of
   frontend-aware plugs should be written with thread safety in mind.
   """
-  enable_remote = True
+  enable_remote = True  # type: bool
 
 
-def plug(update_kwargs=True, **plugs_map):
+def plug(
+    update_kwargs: bool = True,
+    **plugs_map: Union[Type[BasePlug], PlugPlaceholder]
+) -> Callable[['phase_descriptor.PhaseT'], 'phase_descriptor.PhaseDescriptor']:
   """Creates a decorator that passes in plugs when invoked.
 
   This function returns a decorator for a function that will replace positional
@@ -254,7 +257,8 @@ def plug(update_kwargs=True, **plugs_map):
           'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
           'for one' % a_plug)
 
-  def result(func):
+  def result(
+      func: 'phase_descriptor.PhaseT') -> 'phase_descriptor.PhaseDescriptor':
     """Wrap the given function and return the wrapper.
 
     Args:
@@ -268,7 +272,7 @@ def plug(update_kwargs=True, **plugs_map):
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
     """
-    phase = openhtf.core.phase_descriptor.PhaseDescriptor.wrap_or_copy(func)
+    phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(func)
     duplicates = (frozenset(p.name for p in phase.plugs) & frozenset(plugs_map))
     if duplicates:
       raise DuplicatePlugError('Plugs %s required multiple times on phase %s' %
@@ -286,11 +290,11 @@ def plug(update_kwargs=True, **plugs_map):
 class _PlugTearDownThread(threads.KillableThread):
   """Killable thread that runs a plug's tearDown function."""
 
-  def __init__(self, a_plug, *args, **kwargs):
+  def __init__(self, a_plug: BasePlug, *args: Any, **kwargs: Any):
     super(_PlugTearDownThread, self).__init__(*args, **kwargs)
     self._plug = a_plug
 
-  def _thread_proc(self):
+  def _thread_proc(self) -> None:
     try:
       self._plug.tearDown()
     except Exception:  # pylint: disable=broad-except
@@ -298,6 +302,9 @@ class _PlugTearDownThread(threads.KillableThread):
       # killed.
       _LOG.warning(
           'Exception calling tearDown on %s:', self._plug, exc_info=True)
+
+
+PlugT = TypeVar('PlugT', bound=BasePlug)
 
 
 class PlugManager(object):
@@ -320,7 +327,9 @@ class PlugManager(object):
       record.
   """
 
-  def __init__(self, plug_types=None, record_logger=None):
+  def __init__(self,
+               plug_types: Set[Type[BasePlug]] = None,
+               record_logger: Optional[logging.Logger] = None):
     self._plug_types = plug_types or set()
     for plug_type in self._plug_types:
       if isinstance(plug_type, PlugPlaceholder):
@@ -333,7 +342,7 @@ class PlugManager(object):
       record_logger = _LOG
     self.logger = record_logger.getChild('plug')
 
-  def as_base_types(self):
+  def as_base_types(self) -> Dict[Text, Any]:
     return {
         'plug_descriptors': {
             name: attr.asdict(descriptor)
@@ -345,7 +354,7 @@ class PlugManager(object):
         },
     }
 
-  def _make_plug_descriptor(self, plug_type):
+  def _make_plug_descriptor(self, plug_type: Type[BasePlug]) -> PlugDescriptor:
     """Returns the plug descriptor, containing info about this plug type."""
     return PlugDescriptor(self.get_plug_mro(plug_type))
 
@@ -367,7 +376,7 @@ class PlugManager(object):
         (issubclass(base_class, BasePlug) and base_class not in ignored_classes)
     ]
 
-  def get_plug_name(self, plug_type):
+  def get_plug_name(self, plug_type: Type[BasePlug]) -> Text:
     """Returns the plug's name, which is the class name and module.
 
     For example:
@@ -378,7 +387,8 @@ class PlugManager(object):
     """
     return '%s.%s' % (plug_type.__module__, plug_type.__name__)
 
-  def initialize_plugs(self, plug_types=None):
+  def initialize_plugs(
+      self, plug_types: Optional[Set[Type[BasePlug]]] = None) -> None:
     """Instantiate required plugs.
 
     Instantiates plug types and saves the instances in self._plugs_by_type for
@@ -426,7 +436,7 @@ class PlugManager(object):
         raise
       self.update_plug(plug_type, plug_instance)
 
-  def get_plug_by_class_path(self, plug_name):
+  def get_plug_by_class_path(self, plug_name: Text) -> Optional[BasePlug]:
     """Get a plug instance by name (class path).
 
     This provides a way for extensions to OpenHTF to access plug instances for
@@ -440,7 +450,7 @@ class PlugManager(object):
     """
     return self._plugs_by_name.get(plug_name)
 
-  def update_plug(self, plug_type, plug_value):
+  def update_plug(self, plug_type: Type[PlugT], plug_value: PlugT) -> None:
     """Update internal data stores with the given plug value for plug type.
 
     Safely tears down the old instance if one was already created, but that's
@@ -463,11 +473,12 @@ class PlugManager(object):
     self._plugs_by_name[plug_name] = plug_value
     self._plug_descriptors[plug_name] = self._make_plug_descriptor(plug_type)
 
-  def provide_plugs(self, plug_name_map):
+  def provide_plugs(
+      self, plug_name_map: Dict[Text, Type[BasePlug]]) -> Dict[Text, BasePlug]:
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
     return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}
 
-  def tear_down_plugs(self):
+  def tear_down_plugs(self) -> None:
     """Call tearDown() on all instantiated plugs.
 
     Note that initialize_plugs must have been called before calling
@@ -496,7 +507,9 @@ class PlugManager(object):
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
-  def wait_for_plug_update(self, plug_name, remote_state, timeout_s):
+  def wait_for_plug_update(
+      self, plug_name: Text, remote_state: Dict[Text, Any],
+      timeout_s: Union[int, float]) -> Optional[Dict[Text, Any]]:
     """Wait for a change in the state of a frontend-aware plug.
 
     Args:
@@ -527,7 +540,7 @@ class PlugManager(object):
     if update_event.wait(timeout_s):
       return plug_instance._asdict()
 
-  def get_frontend_aware_plug_names(self):
+  def get_frontend_aware_plug_names(self) -> List[Text]:
     """Returns the names of frontend-aware plugs."""
     return [
         name for name, plug in six.iteritems(self._plugs_by_name)
