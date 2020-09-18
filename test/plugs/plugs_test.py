@@ -17,10 +17,11 @@ import time
 import unittest
 
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.util import test
 
 
-class AdderPlug(plugs.FrontendAwareBasePlug):
+class AdderPlug(base_plugs.FrontendAwareBasePlug):
 
   INSTANCE_COUNT = 0
   LAST_INSTANCE = None
@@ -48,11 +49,11 @@ class AdderSubclassPlug(AdderPlug):
   pass
 
 
-class DummyPlug(plugs.BasePlug):
+class DummyPlug(base_plugs.BasePlug):
   pass
 
 
-class TearDownRaisesPlug1(plugs.BasePlug):
+class TearDownRaisesPlug1(base_plugs.BasePlug):
   TORN_DOWN = False
 
   def tearDown(self):  # pylint: disable=g-missing-super-call
@@ -60,7 +61,7 @@ class TearDownRaisesPlug1(plugs.BasePlug):
     raise Exception()
 
 
-class TearDownRaisesPlug2(plugs.BasePlug):
+class TearDownRaisesPlug2(base_plugs.BasePlug):
   TORN_DOWN = False
 
   def tearDown(self):  # pylint: disable=g-missing-super-call
@@ -80,7 +81,7 @@ class PlugsTest(test.TestCase):
     super(PlugsTest, self).tearDown()
 
   def test_base_plug(self):
-    plug = plugs.BasePlug()
+    plug = base_plugs.BasePlug()
     self.assertEqual({}, plug._asdict())
     plug.tearDown()
 
@@ -119,7 +120,7 @@ class PlugsTest(test.TestCase):
 
     yield dummy_phase
 
-    @plugs.plug(adder_plug=AdderPlug, other_plug=plugs.BasePlug)
+    @plugs.plug(adder_plug=AdderPlug, other_plug=base_plugs.BasePlug)
     def dummy_phase(adder_plug, other_plug):
       del other_plug  # Unused.
       self.assertEqual(1, AdderPlug.INSTANCE_COUNT)
@@ -131,7 +132,7 @@ class PlugsTest(test.TestCase):
   def test_plug_logging(self):
     """Test that both __init__ and other functions get the good logger."""
 
-    class LoggingPlug(plugs.BasePlug):
+    class LoggingPlug(base_plugs.BasePlug):
 
       def __init__(self):
         self.logger_seen_init = self.logger
@@ -176,22 +177,22 @@ class PlugsTest(test.TestCase):
     self.assertGreater(time.time() - start_time, .2)
 
   def test_invalid_plug(self):
-    with self.assertRaises(plugs.InvalidPlugError):
+    with self.assertRaises(base_plugs.InvalidPlugError):
       self.plug_manager.initialize_plugs({object})
-    with self.assertRaises(plugs.InvalidPlugError):
+    with self.assertRaises(base_plugs.InvalidPlugError):
       plugs.plug(adder_plug=object)
-    with self.assertRaises(plugs.InvalidPlugError):
+    with self.assertRaises(base_plugs.InvalidPlugError):
       self.plug_manager.initialize_plugs(
-          {type('BadPlug', (plugs.BasePlug,), {'logger': None})})
-    with self.assertRaises(plugs.InvalidPlugError):
+          {type('BadPlug', (base_plugs.BasePlug,), {'logger': None})})
+    with self.assertRaises(base_plugs.InvalidPlugError):
 
-      class BadPlugInit(plugs.BasePlug):
+      class BadPlugInit(base_plugs.BasePlug):
 
         def __init__(self):
           self.logger = None
 
       self.plug_manager.initialize_plugs({BadPlugInit})
-    with self.assertRaises(plugs.InvalidPlugError):
+    with self.assertRaises(base_plugs.InvalidPlugError):
       self.plug_manager.wait_for_plug_update('invalid', {}, 0)
 
   def test_duplicate_plug(self):
@@ -203,7 +204,7 @@ class PlugsTest(test.TestCase):
         del adder_plug  # Unused.
 
   def test_uses_base_tear_down(self):
-    self.assertTrue(plugs.BasePlug().uses_base_tear_down())
+    self.assertTrue(base_plugs.BasePlug().uses_base_tear_down())
     self.assertTrue(DummyPlug().uses_base_tear_down())
     self.assertFalse(AdderPlug().uses_base_tear_down())
     self.assertFalse(AdderSubclassPlug().uses_base_tear_down())

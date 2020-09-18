@@ -21,7 +21,7 @@ Device-wrapping plugs are your friends in such times.
 import functools
 import types
 
-import openhtf
+from openhtf.core import base_plugs
 import six
 
 
@@ -39,7 +39,7 @@ def short_repr(obj, max_len=40):
   return '<{} of length {}>'.format(type(obj).__name__, len(obj_repr))
 
 
-class DeviceWrappingPlug(openhtf.plugs.BasePlug):
+class DeviceWrappingPlug(base_plugs.BasePlug):
   """A base plug for wrapping existing device abstractions.
 
   Attribute access is delegated to the _device attribute, which is normally set
@@ -62,7 +62,7 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
   the plug layer to show which attributes were called and with what arguments.
 
   Raises:
-    openhtf.plugs.InvalidPlugError: The _device attribute has the value None
+    base_plugs.InvalidPlugError: The _device attribute has the value None
         when attribute access is attempted.
   """
 
@@ -90,11 +90,8 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
 
   def __getattr__(self, attr):
     if self._device is None:
-      raise openhtf.plugs.InvalidPlugError(
+      raise base_plugs.InvalidPlugError(
           'DeviceWrappingPlug instances must set the _device attribute.')
-    if attr == 'as_base_types':
-      return super(DeviceWrappingPlug, self).__getattr__(attr)
-
     attribute = getattr(self._device, attr)
 
     if not self.verbose or not isinstance(attribute, types.MethodType):

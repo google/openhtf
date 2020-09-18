@@ -37,8 +37,8 @@ import weakref
 import attr
 import colorama
 
-from openhtf import plugs
 from openhtf import util
+from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
 from openhtf.core import phase_descriptor
@@ -450,7 +450,7 @@ class TestDescriptor(object):
   uid = attr.ib(type=Text, factory=lambda: uuid.uuid4().hex[:16])
 
   @property
-  def plug_types(self) -> Set[Type[plugs.BasePlug]]:
+  def plug_types(self) -> Set[Type[base_plugs.BasePlug]]:
     """Returns set of plug types required by this test."""
     return {plug.cls for phase in self.phase_group for plug in phase.plugs}  # pylint: disable=g-complex-comprehension
 

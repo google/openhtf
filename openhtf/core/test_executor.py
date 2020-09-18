@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """TestExecutor executes tests."""
 
 from __future__ import google_type_annotations
@@ -24,7 +23,7 @@ import threading
 import traceback
 from typing import List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
 
-from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
@@ -39,13 +38,17 @@ if TYPE_CHECKING:
 
 _LOG = logging.getLogger(__name__)
 
-conf.declare('cancel_timeout_s', default_value=2,
-             description='Timeout (in seconds) when the test has been cancelled'
-             'to wait for the running phase to exit.')
+conf.declare(
+    'cancel_timeout_s',
+    default_value=2,
+    description='Timeout (in seconds) when the test has been cancelled'
+    'to wait for the running phase to exit.')
 
-conf.declare('stop_on_first_failure', default_value=False,
-             description='Stop current test execution and return Outcome FAIL'
-             'on first phase with failed measurement.')
+conf.declare(
+    'stop_on_first_failure',
+    default_value=False,
+    description='Stop current test execution and return Outcome FAIL'
+    'on first phase with failed measurement.')
 
 
 class TestExecutionError(Exception):
@@ -162,10 +165,8 @@ class TestExecutor(threads.KillableThread):
     """Handles one whole test from start to finish."""
     try:
       # Top level steps required to run a single iteration of the Test.
-      self.test_state = test_state.TestState(
-          self._test_descriptor,
-          self.uid,
-          self._test_options)
+      self.test_state = test_state.TestState(self._test_descriptor, self.uid,
+                                             self._test_options)
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stacks must be done while holding this lock.
@@ -194,9 +195,9 @@ class TestExecutor(threads.KillableThread):
     finally:
       self._execute_test_teardown()
 
-  def _initialize_plugs(self,
-                        plug_types: Optional[List[Type[plugs.BasePlug]]] = None
-                       ) -> bool:
+  def _initialize_plugs(
+      self,
+      plug_types: Optional[List[Type[base_plugs.BasePlug]]] = None) -> bool:
     """Initialize plugs.
 
     Args:
@@ -229,8 +230,8 @@ class TestExecutor(threads.KillableThread):
     """
     # Have the phase executor run the start trigger phase. Do partial plug
     # initialization for just the plugs needed by the start trigger phase.
-    if self._initialize_plugs(plug_types=[
-        phase_plug.cls for phase_plug in self._test_start.plugs]):
+    if self._initialize_plugs(
+        plug_types=[phase_plug.cls for phase_plug in self._test_start.plugs]):
       return True
 
     outcome, profile_stats = self._phase_exec.execute_phase(
@@ -319,8 +320,8 @@ class TestExecutor(threads.KillableThread):
       True if there is a terminal error or the test is aborted, False otherwise.
     """
     if group_name and phases:
-      self.test_state.state_logger.debug(
-          'Executing %s phases for %s', type_name, group_name)
+      self.test_state.state_logger.debug('Executing %s phases for %s',
+                                         type_name, group_name)
     for phase in phases:
       if self._abort.is_set() or self._handle_phase(phase):
         return True
@@ -370,13 +371,10 @@ class TestExecutor(threads.KillableThread):
     """
     if group.name:
       self.test_state.state_logger.debug('Entering PhaseGroup %s', group.name)
-    if self._execute_abortable_phases(
-        'setup', group.setup, group.name):
+    if self._execute_abortable_phases('setup', group.setup, group.name):
       return True
-    main_ret = self._execute_abortable_phases(
-        'main', group.main, group.name)
-    teardown_ret = self._execute_teardown_phases(
-        group.teardown, group.name)
+    main_ret = self._execute_abortable_phases('main', group.main, group.name)
+    teardown_ret = self._execute_teardown_phases(group.teardown, group.name)
     return main_ret or teardown_ret
 
   def _execute_test_diagnoser(

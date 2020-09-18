@@ -17,11 +17,12 @@ import unittest
 
 import mock
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.core import monitors
 from six.moves import queue
 
 
-class EmptyPlug(plugs.BasePlug):
+class EmptyPlug(base_plugs.BasePlug):
   pass
 
 

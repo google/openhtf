@@ -18,6 +18,7 @@ import signal
 from openhtf import plugs
 from openhtf.core import phase_executor
 from openhtf.core import test_record
+from openhtf.core.base_plugs import BasePlug
 from openhtf.core.diagnoses_lib import diagnose
 from openhtf.core.diagnoses_lib import Diagnosis
 from openhtf.core.diagnoses_lib import DiagnosisComponent

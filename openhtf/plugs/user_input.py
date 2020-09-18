@@ -33,6 +33,7 @@ import uuid
 import attr
 import openhtf
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.util import console_output
 from six.moves import input
 
@@ -135,7 +136,7 @@ class ConsolePrompt(threading.Thread):
           return
 
 
-class UserInput(plugs.FrontendAwareBasePlug):
+class UserInput(base_plugs.FrontendAwareBasePlug):
   """Get user input from inside test phases.
 
   Attributes:

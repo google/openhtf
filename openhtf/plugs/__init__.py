@@ -11,85 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The plugs module provides boilerplate for accessing hardware.
-
-Most tests require interaction with external hardware.  This module provides
-framework support for such interfaces, allowing for automatic setup and
-teardown of the objects.
+"""The plugs module provides managing plugs.
 
 Test phases can be decorated as using Plug objects, which then get passed
 into the test via parameters.  Plugs are all instantiated at the
 beginning of a test, and all plugs' tearDown() methods are called at the
 end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
-
-A plug may be made "frontend-aware", allowing it, in conjunction with the
-Station API, to update any frontends each time the plug's state changes. See
-FrontendAwareBasePlug for more info.
-
-Example implementation of a plug:
-
-  from openhtf import plugs
-
-  class ExamplePlug(plugs.BasePlug):
-    '''A Plug that does nothing.'''
-
-    def __init__(self):
-      print 'Instantiating %s!' % type(self).__name__
-
-    def DoSomething(self):
-      print '%s doing something!' % type(self).__name__
-
-    def tearDown(self):
-      # This method is optional.  If implemented, it will be called at the end
-      # of the test.
-      print 'Tearing down %s!' % type(self).__name__
-
-Example usage of the above plug:
-
-  from openhtf import plugs
-  from my_custom_plugs_package import example
-
-  @plugs.plug(example=example.ExamplePlug)
-  def TestPhase(test, example):
-    print 'Test phase started!'
-    example.DoSomething()
-    print 'Test phase done!'
-
-Putting all this together, when the test is run (with just that phase), you
-would see the output (with other framework logs before and after):
-
-  Instantiating ExamplePlug!
-  Test phase started!
-  ExamplePlug doing something!
-  Test phase done!
-  Tearing down ExamplePlug!
-
-Plugs will often need to use configuration values.  The recommended way
-of doing this is with the conf.inject_positional_args decorator:
-
-  from openhtf import plugs
-  from openhtf.util import conf
-
-  conf.declare('my_config_key', default_value='my_config_value')
-
-  class ExamplePlug(plugs.BasePlug):
-    '''A plug that requires some configuration.'''
-
-    @conf.inject_positional_args
-    def __init__(self, my_config_key)
-      self._my_config = my_config_key
-
-Note that Plug constructors shouldn't take any other arguments; the
-framework won't pass any, so you'll get a TypeError.  Any values that are only
-known at run time must be either passed into other methods or set via explicit
-setter methods.  See openhtf/conf.py for details, but with the above
-example, you would also need a configuration .yaml file with something like:
-
-  my_config_key: my_config_value
-
-This will result in the ExamplePlug being constructed with
-self._my_config having a value of 'my_config_value'.
 """
 
 from __future__ import google_type_annotations
@@ -101,6 +29,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text, Typ
 import attr
 
 from openhtf import util
+from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
 from openhtf.util import classproperty
 from openhtf.util import conf
@@ -110,6 +39,7 @@ from openhtf.util import threads
 import six
 
 _LOG = logging.getLogger(__name__)
+_BASE_PLUGS_LOG = base_plugs._LOG  # pylint: disable=protected-access
 
 conf.declare(
     'plug_teardown_timeout_s',
@@ -117,31 +47,15 @@ conf.declare(
     description='Timeout (in seconds) for each plug tearDown function if > 0; '
     'otherwise, will wait an unlimited time.')
 
+# TODO(arsharma): Remove this aliases when users have moved to using the core
+# library.
+BasePlug = base_plugs.BasePlug
+FrontendAwareBasePlug = base_plugs.FrontendAwareBasePlug
+
 
 @attr.s(slots=True, frozen=True)
 class PlugDescriptor(object):
   mro = attr.ib(type=List[Text])
-
-
-@attr.s(slots=True, frozen=True)
-class PlugPlaceholder(object):
-  """Placeholder for a specific plug to be provided before test execution.
-
-  Use the with_plugs() method to provide the plug before test execution. The
-  with_plugs() method checks to make sure the substitute plug is a subclass of
-  the PlugPlaceholder's base_class and BasePlug.
-  """
-
-  base_class = attr.ib(type=Type[object])
-
-
-@attr.s(slots=True)
-class PhasePlug(object):
-  """Information about the use of a plug in a phase."""
-
-  name = attr.ib(type=Text)
-  cls = attr.ib(type=Union[Type['BasePlug'], PlugPlaceholder])
-  update_kwargs = attr.ib(type=bool, default=True)
 
 
 class PlugOverrideError(Exception):
@@ -152,84 +66,9 @@ class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
 
-class InvalidPlugError(Exception):
-  """Raised when a plug declaration or requested name is invalid."""
-
-
-class BasePlug(object):
-  """All plug types must subclass this type.
-
-  Attributes:
-    logger: This attribute will be set by the PlugManager (and as such it
-      doesn't appear here), and is the same logger as passed into test phases
-      via TestApi.
-  """
-  # Override this to True in subclasses to support remote Plug access.
-  enable_remote = False  # type: bool
-  # Allow explicitly disabling remote access to specific attributes.
-  disable_remote_attrs = set()  # type: Set[Text]
-  # Override this to True in subclasses to support using with_plugs with this
-  # plug without needing to use placeholder.  This will only affect the classes
-  # that explicitly define this; subclasses do not share the declaration.
-  auto_placeholder = False  # type: bool
-  # Default logger to be used only in __init__ of subclasses.
-  # This is overwritten both on the class and the instance so don't store
-  # a copy of it anywhere.
-  logger = _LOG  # type: logging.Logger
-
-  @classproperty
-  def placeholder(cls) -> PlugPlaceholder:  # pylint: disable=no-self-argument
-    """Returns a PlugPlaceholder for the calling class."""
-    return PlugPlaceholder(cls)
-
-  def _asdict(self) -> Dict[Text, Any]:
-    """Returns a dictionary representation of this plug's state.
-
-    This is called repeatedly during phase execution on any plugs that are in
-    use by that phase.  The result is reported via the Station API by the
-    PlugManager (if the Station API is enabled, which is the default).
-
-    Note that this method is called in a tight loop, it is recommended that you
-    decorate it with functions.call_at_most_every() to limit the frequency at
-    which updates happen (pass a number of seconds to it to limit samples to
-    once per that number of seconds).
-
-    You can also implement an `as_base_types` function that can return a dict
-    where the values must be base types at all levels.  This can help prevent
-    recursive copying, which is time intensive.
-
-    """
-    return {}
-
-  def tearDown(self) -> None:
-    """This method is called automatically at the end of each Test execution."""
-    pass
-
-  @classmethod
-  def uses_base_tear_down(cls) -> bool:
-    """Checks whether the tearDown method is the BasePlug implementation."""
-    this_tear_down = getattr(cls, 'tearDown')
-    base_tear_down = getattr(BasePlug, 'tearDown')
-    return this_tear_down.__code__ is base_tear_down.__code__
-
-
-class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
-  """A plug that notifies of any state updates.
-
-  Plugs inheriting from this class may be used in conjunction with the Station
-  API to update any frontends each time the plug's state changes. The plug
-  should call notify_update() when and only when the state returned by _asdict()
-  changes.
-
-  Since the Station API runs in a separate thread, the _asdict() method of
-  frontend-aware plugs should be written with thread safety in mind.
-  """
-  enable_remote = True  # type: bool
-
-
 def plug(
     update_kwargs: bool = True,
-    **plugs_map: Union[Type[BasePlug], PlugPlaceholder]
+    **plugs_map: Union[Type[base_plugs.BasePlug], base_plugs.PlugPlaceholder]
 ) -> Callable[['phase_descriptor.PhaseT'], 'phase_descriptor.PhaseDescriptor']:
   """Creates a decorator that passes in plugs when invoked.
 
@@ -248,13 +87,14 @@ def plug(
     A PhaseDescriptor that will pass plug instances in as kwargs when invoked.
 
   Raises:
-    InvalidPlugError: If a type is provided that is not a subclass of BasePlug.
+    base_plugs.InvalidPlugError: If a type is provided that is not a subclass of
+      BasePlug.
   """
   for a_plug in plugs_map.values():
-    if not (isinstance(a_plug, PlugPlaceholder) or
-            issubclass(a_plug, BasePlug)):
-      raise InvalidPlugError(
-          'Plug %s is not a subclass of plugs.BasePlug nor a placeholder '
+    if not (isinstance(a_plug, base_plugs.PlugPlaceholder) or
+            issubclass(a_plug, base_plugs.BasePlug)):
+      raise base_plugs.InvalidPlugError(
+          'Plug %s is not a subclass of base_plugs.BasePlug nor a placeholder '
           'for one' % a_plug)
 
   def result(
@@ -279,7 +119,7 @@ def plug(
                                (duplicates, func))
 
     phase.plugs.extend([
-        PhasePlug(name, a_plug, update_kwargs=update_kwargs)
+        base_plugs.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
         for name, a_plug in six.iteritems(plugs_map)
     ])
     return phase
@@ -290,7 +130,7 @@ def plug(
 class _PlugTearDownThread(threads.KillableThread):
   """Killable thread that runs a plug's tearDown function."""
 
-  def __init__(self, a_plug: BasePlug, *args: Any, **kwargs: Any):
+  def __init__(self, a_plug: base_plugs.BasePlug, *args: Any, **kwargs: Any):
     super(_PlugTearDownThread, self).__init__(*args, **kwargs)
     self._plug = a_plug
 
@@ -304,7 +144,7 @@ class _PlugTearDownThread(threads.KillableThread):
           'Exception calling tearDown on %s:', self._plug, exc_info=True)
 
 
-PlugT = TypeVar('PlugT', bound=BasePlug)
+PlugT = TypeVar('PlugT', bound=base_plugs.BasePlug)
 
 
 class PlugManager(object):
@@ -328,13 +168,14 @@ class PlugManager(object):
   """
 
   def __init__(self,
-               plug_types: Set[Type[BasePlug]] = None,
+               plug_types: Set[Type[base_plugs.BasePlug]] = None,
                record_logger: Optional[logging.Logger] = None):
     self._plug_types = plug_types or set()
     for plug_type in self._plug_types:
-      if isinstance(plug_type, PlugPlaceholder):
-        raise InvalidPlugError('Plug %s is a placeholder, replace it using '
-                               'with_plugs().' % plug_type)
+      if isinstance(plug_type, base_plugs.PlugPlaceholder):
+        raise base_plugs.InvalidPlugError(
+            'Plug {} is a placeholder, replace it using with_plugs().'.format(
+                plug_type))
     self._plugs_by_type = {}
     self._plugs_by_name = {}
     self._plug_descriptors = {}
@@ -354,11 +195,12 @@ class PlugManager(object):
         },
     }
 
-  def _make_plug_descriptor(self, plug_type: Type[BasePlug]) -> PlugDescriptor:
+  def _make_plug_descriptor(
+      self, plug_type: Type[base_plugs.BasePlug]) -> PlugDescriptor:
     """Returns the plug descriptor, containing info about this plug type."""
     return PlugDescriptor(self.get_plug_mro(plug_type))
 
-  def get_plug_mro(self, plug_type: Type[BasePlug]) -> List[Text]:
+  def get_plug_mro(self, plug_type: Type[base_plugs.BasePlug]) -> List[Text]:
     """Returns a list of names identifying the plug classes in the plug's MRO.
 
     For example:
@@ -370,13 +212,15 @@ class PlugManager(object):
     Args:
       plug_type: The plug class to get the MRO for.
     """
-    ignored_classes = (BasePlug, FrontendAwareBasePlug)
+    ignored_classes = (base_plugs.BasePlug, base_plugs.FrontendAwareBasePlug)
     return [
-        self.get_plug_name(base_class) for base_class in plug_type.mro() if
-        (issubclass(base_class, BasePlug) and base_class not in ignored_classes)
+        self.get_plug_name(base_class)  # pylint: disable=g-complex-comprehension
+        for base_class in plug_type.mro()
+        if (issubclass(base_class, base_plugs.BasePlug) and
+            base_class not in ignored_classes)
     ]
 
-  def get_plug_name(self, plug_type: Type[BasePlug]) -> Text:
+  def get_plug_name(self, plug_type: Type[base_plugs.BasePlug]) -> Text:
     """Returns the plug's name, which is the class name and module.
 
     For example:
@@ -388,7 +232,8 @@ class PlugManager(object):
     return '%s.%s' % (plug_type.__module__, plug_type.__name__)
 
   def initialize_plugs(
-      self, plug_types: Optional[Set[Type[BasePlug]]] = None) -> None:
+      self,
+      plug_types: Optional[Set[Type[base_plugs.BasePlug]]] = None) -> None:
     """Instantiate required plugs.
 
     Instantiates plug types and saves the instances in self._plugs_by_type for
@@ -406,13 +251,14 @@ class PlugManager(object):
       if plug_type in self._plugs_by_type:
         continue
       try:
-        if not issubclass(plug_type, BasePlug):
-          raise InvalidPlugError(
-              'Plug type "%s" is not an instance of BasePlug' % plug_type)
-        if plug_type.logger != _LOG:
+        if not issubclass(plug_type, base_plugs.BasePlug):
+          raise base_plugs.InvalidPlugError(
+              'Plug type "{}" is not an instance of base_plugs.BasePlug'.format(
+                  plug_type))
+        if plug_type.logger != _BASE_PLUGS_LOG:
           # They put a logger attribute on the class itself, overriding ours.
-          raise InvalidPlugError('Do not override "logger" in your plugs.',
-                                 plug_type)
+          raise base_plugs.InvalidPlugError(
+              'Do not override "logger" in your plugs.', plug_type)
 
         # Override the logger so that __init__'s logging goes into the record.
         plug_type.logger = plug_logger
@@ -420,12 +266,12 @@ class PlugManager(object):
           plug_instance = plug_type()
         finally:
           # Now set it back since we'll give the instance a logger in a moment.
-          plug_type.logger = _LOG
-        # Set the logger attribute directly (rather than in BasePlug) so we
-        # don't depend on subclasses' implementation of __init__ to have it
-        # set.
-        if plug_instance.logger != _LOG:
-          raise InvalidPlugError(
+          plug_type.logger = _BASE_PLUGS_LOG
+        # Set the logger attribute directly (rather than in base_plugs.BasePlug)
+        # so we don't depend on subclasses' implementation of __init__ to have
+        # it set.
+        if plug_instance.logger != _BASE_PLUGS_LOG:
+          raise base_plugs.InvalidPlugError(
               'Do not set "self.logger" in __init__ in your plugs', plug_type)
         else:
           # Now the instance has its own copy of the test logger.
@@ -436,7 +282,8 @@ class PlugManager(object):
         raise
       self.update_plug(plug_type, plug_instance)
 
-  def get_plug_by_class_path(self, plug_name: Text) -> Optional[BasePlug]:
+  def get_plug_by_class_path(self,
+                             plug_name: Text) -> Optional[base_plugs.BasePlug]:
     """Get a plug instance by name (class path).
 
     This provides a way for extensions to OpenHTF to access plug instances for
@@ -474,7 +321,8 @@ class PlugManager(object):
     self._plug_descriptors[plug_name] = self._make_plug_descriptor(plug_type)
 
   def provide_plugs(
-      self, plug_name_map: Dict[Text, Type[BasePlug]]) -> Dict[Text, BasePlug]:
+      self, plug_name_map: Dict[Text, Type[base_plugs.BasePlug]]
+  ) -> Dict[Text, base_plugs.BasePlug]:
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
     return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}
 
@@ -521,17 +369,19 @@ class PlugManager(object):
       An updated state, or None if the timeout runs out.
 
     Raises:
-      InvalidPlugError: The plug can't be waited on either because it's not in
-          use or it's not a frontend-aware plug.
+      base_plugs.InvalidPlugError: The plug can't be waited on either because
+        it's not in use or it's not a frontend-aware plug.
     """
     plug_instance = self._plugs_by_name.get(plug_name)
 
     if plug_instance is None:
-      raise InvalidPlugError('Cannot wait on unknown plug "%s".' % plug_name)
+      raise base_plugs.InvalidPlugError(
+          'Cannot wait on unknown plug "{}".'.format(plug_name))
 
-    if not isinstance(plug_instance, FrontendAwareBasePlug):
-      raise InvalidPlugError('Cannot wait on a plug %s that is not an subclass '
-                             'of FrontendAwareBasePlug.' % plug_name)
+    if not isinstance(plug_instance, base_plugs.FrontendAwareBasePlug):
+      raise base_plugs.InvalidPlugError(
+          'Cannot wait on a plug {} that is not an subclass '
+          'of FrontendAwareBasePlug.'.format(plug_name))
 
     state, update_event = plug_instance.asdict_with_event()
     if state != remote_state:
@@ -544,5 +394,5 @@ class PlugManager(object):
     """Returns the names of frontend-aware plugs."""
     return [
         name for name, plug in six.iteritems(self._plugs_by_name)
-        if isinstance(plug, FrontendAwareBasePlug)
+        if isinstance(plug, base_plugs.FrontendAwareBasePlug)
     ]

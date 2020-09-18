@@ -17,6 +17,7 @@ import unittest
 import openhtf
 
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.core import measurements
 from openhtf.util import test
 from openhtf.util import validators
@@ -26,7 +27,7 @@ class DummyError(Exception):
   """Raised for testing phases that raise."""
 
 
-class MyPlug(plugs.BasePlug):
+class MyPlug(base_plugs.BasePlug):
   """Stub plug for ensuring plugs get mocked correctly."""
 
   def __init__(self):

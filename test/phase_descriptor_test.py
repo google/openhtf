@@ -19,6 +19,7 @@ import mock
 
 import openhtf
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
 
 
@@ -36,7 +37,7 @@ def extra_arg_func(input_value=None):
   return input_value
 
 
-class ExtraPlug(plugs.BasePlug):
+class ExtraPlug(base_plugs.BasePlug):
   name = 'extra_plug_0'
 
   def echo(self, phrase):
@@ -49,7 +50,7 @@ def extra_plug_func(plug, phrase):
   return plug.echo(phrase)
 
 
-class PlaceholderCapablePlug(plugs.BasePlug):
+class PlaceholderCapablePlug(base_plugs.BasePlug):
   auto_placeholder = True
 
 
@@ -75,11 +76,11 @@ class NonPlugImpl(NonPlugBase):
   pass
 
 
-class PlugVersionOfNonPlug(NonPlugImpl, plugs.BasePlug):
+class PlugVersionOfNonPlug(NonPlugImpl, base_plugs.BasePlug):
   pass
 
 
-custom_placeholder = plugs.PlugPlaceholder(NonPlugBase)
+custom_placeholder = base_plugs.PlugPlaceholder(NonPlugBase)
 
 
 @plugs.plug(custom=custom_placeholder)
@@ -177,19 +178,19 @@ class TestPhaseDescriptor(unittest.TestCase):
     self.assertEqual(1, len(phase.plugs))
 
   def test_with_plugs_subclass_auto_placeholder_error(self):
-    with self.assertRaises(plugs.InvalidPlugError):
+    with self.assertRaises(base_plugs.InvalidPlugError):
       sub_placeholder_using_plug.with_plugs(subplaced=SubPlaceholderCapablePlug)
 
   def test_with_plugs_auto_placeholder_non_subclass_error(self):
-    with self.assertRaises(plugs.InvalidPlugError):
+    with self.assertRaises(base_plugs.InvalidPlugError):
       placeholder_using_plug.with_plugs(placed=ExtraPlug)
 
   def test_with_plugs_custom_placeholder_not_base_plug(self):
-    with self.assertRaises(plugs.InvalidPlugError):
+    with self.assertRaises(base_plugs.InvalidPlugError):
       custom_placeholder_phase.with_plugs(custom=NonPlugImpl)
 
   def test_with_plugs_custom_placeholder_is_base_plug(self):
     phase = custom_placeholder_phase.with_plugs(custom=PlugVersionOfNonPlug)
     self.assertIs(phase.func, custom_placeholder_phase.func)
-    self.assertEqual([plugs.PhasePlug('custom', PlugVersionOfNonPlug)],
+    self.assertEqual([base_plugs.PhasePlug('custom', PlugVersionOfNonPlug)],
                      phase.plugs)

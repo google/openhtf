@@ -16,10 +16,13 @@
 Allows for writing out to a serial port.
 """
 
+from __future__ import google_type_annotations
+
 import logging
 import threading
+from typing import Optional
 
-import openhtf
+from openhtf.core import base_plugs
 from openhtf.util import conf
 
 try:
@@ -42,7 +45,7 @@ conf.declare(
     default_value=115200)
 
 
-class SerialCollectionPlug(openhtf.plugs.BasePlug):
+class SerialCollectionPlug(base_plugs.BasePlug):
   """Plug that collects data from a serial port.
 
   Spawns a thread that will open the configured serial port, continuously
@@ -54,6 +57,11 @@ class SerialCollectionPlug(openhtf.plugs.BasePlug):
   """
   # Serial library can raise these exceptions
   SERIAL_EXCEPTIONS = (serial.SerialException, ValueError)
+
+  _serial = None  # type: serial.Serial
+  _serial_port = None  # type: int
+  _collect = None  # type: bool
+  _collection_thread = None  # type: Optional[threading.Thread]
 
   @conf.inject_positional_args
   def __init__(self, serial_collection_port, serial_collection_baud):

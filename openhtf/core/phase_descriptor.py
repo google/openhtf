@@ -29,6 +29,7 @@ import attr
 
 import openhtf
 from openhtf import util
+from openhtf.core import base_plugs
 from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
@@ -152,7 +153,7 @@ class PhaseDescriptor(object):
 
   func = attr.ib(type=PhaseCallableT)
   options = attr.ib(type=PhaseOptions, factory=PhaseOptions)
-  plugs = attr.ib(type=List['openhtf.plugs.PhasePlug'], factory=list)
+  plugs = attr.ib(type=List[base_plugs.PhasePlug], factory=list)
   measurements = attr.ib(
       type=List['core_measurements.Measurement'], factory=list)
   diagnosers = attr.ib(
@@ -233,16 +234,16 @@ class PhaseDescriptor(object):
     return new_info
 
   def with_known_plugs(
-      self, **subplugs: Type['openhtf.plugs.BasePlug']) -> 'PhaseDescriptor':
+      self, **subplugs: Type[base_plugs.BasePlug]) -> 'PhaseDescriptor':
     """Substitute only known plugs for placeholders for this phase."""
     return self._apply_with_plugs(subplugs, error_on_unknown=False)
 
-  def with_plugs(
-      self, **subplugs: Type['openhtf.plugs.BasePlug']) -> 'PhaseDescriptor':
+  def with_plugs(self,
+                 **subplugs: Type[base_plugs.BasePlug]) -> 'PhaseDescriptor':
     """Substitute plugs for placeholders for this phase, error on unknowns."""
     return self._apply_with_plugs(subplugs, error_on_unknown=True)
 
-  def _apply_with_plugs(self, subplugs: Dict[Text, Any],
+  def _apply_with_plugs(self, subplugs: Dict[Text, Type[base_plugs.BasePlug]],
                         error_on_unknown: bool) -> 'PhaseDescriptor':
     """Substitute plugs for placeholders for this phase.
 
@@ -252,8 +253,8 @@ class PhaseDescriptor(object):
         provided.
 
     Raises:
-      openhtf.plugs.InvalidPlugError if for one of the plug names one of the
-      following is true:
+      base_plugs.InvalidPlugError: if for one of the plug names one of the
+        following is true:
         - error_on_unknown is True and the plug name is not registered.
         - The new plug subclass is not a subclass of the original.
         - The original plug class is not a placeholder or automatic placeholder.
@@ -271,10 +272,10 @@ class PhaseDescriptor(object):
         if not error_on_unknown:
           continue
         accept_substitute = False
-      elif isinstance(original_plug.cls, openhtf.plugs.PlugPlaceholder):
+      elif isinstance(original_plug.cls, base_plugs.PlugPlaceholder):
         accept_substitute = (
             issubclass(sub_class, original_plug.cls.base_class) and
-            issubclass(sub_class, openhtf.plugs.BasePlug))
+            issubclass(sub_class, base_plugs.BasePlug))
       else:
         # Check __dict__ to see if the attribute is explicitly defined in the
         # class, rather than being defined in a parent class.
@@ -283,7 +284,7 @@ class PhaseDescriptor(object):
                              issubclass(sub_class, original_plug.cls))
 
       if not accept_substitute:
-        raise openhtf.plugs.InvalidPlugError(
+        raise base_plugs.InvalidPlugError(
             'Could not find valid placeholder for substitute plug %s '
             'required for phase %s' % (name, self.name))
       new_plugs[name] = data.attr_copy(original_plug, cls=sub_class)

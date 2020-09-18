@@ -28,7 +28,7 @@ import argparse
 import logging
 import time
 
-import openhtf.plugs as plugs
+from openhtf.core import base_plugs
 from openhtf.plugs import cambrionix
 from openhtf.plugs.usb import adb_device
 from openhtf.plugs.usb import adb_protocol
@@ -93,7 +93,7 @@ def _open_usb_handle(serial_number=None, **kwargs):
   return local_usb.LibUsbHandle.open(serial_number=serial_number, **kwargs)
 
 
-class FastbootPlug(plugs.BasePlug):
+class FastbootPlug(base_plugs.BasePlug):
   """Plug that provides fastboot."""
 
   def __init__(self):
@@ -111,7 +111,7 @@ class FastbootPlug(plugs.BasePlug):
     return getattr(self._device, attr)
 
 
-class AdbPlug(plugs.BasePlug):
+class AdbPlug(base_plugs.BasePlug):
   """Plug that provides ADB."""
 
   serial_number = None

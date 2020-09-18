@@ -28,10 +28,11 @@ phase can be limited specifying a PhaseOptions.repeat_limit.
 
 from __future__ import print_function
 import openhtf
-import openhtf.plugs as plugs
+from openhtf import plugs
+from openhtf.core import base_plugs
 
 
-class FailTwicePlug(plugs.BasePlug):
+class FailTwicePlug(base_plugs.BasePlug):
   """Plug that fails twice raising an exception."""
 
   def __init__(self):
@@ -47,7 +48,7 @@ class FailTwicePlug(plugs.BasePlug):
     return True
 
 
-class FailAlwaysPlug(plugs.BasePlug):
+class FailAlwaysPlug(base_plugs.BasePlug):
   """Plug that always returns False indicating failure."""
 
   def __init__(self):

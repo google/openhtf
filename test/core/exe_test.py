@@ -22,6 +22,7 @@ import mock
 import openhtf
 from openhtf import plugs
 from openhtf import util
+from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
@@ -38,7 +39,7 @@ from openhtf.util import timeouts
 logs.CLI_LOGGING_VERBOSITY = 2
 
 
-class UnittestPlug(plugs.BasePlug):
+class UnittestPlug(base_plugs.BasePlug):
 
   return_continue_count = 4
 
@@ -70,7 +71,7 @@ class FailedPlugError(Exception):
 FAIL_PLUG_MESSAGE = 'Failed'
 
 
-class FailPlug(plugs.BasePlug):
+class FailPlug(base_plugs.BasePlug):
 
   def __init__(self):
     raise FailedPlugError(FAIL_PLUG_MESSAGE)
