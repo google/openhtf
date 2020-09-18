@@ -18,7 +18,7 @@ from openhtf.util import units
 
 TEST_MULTIDIM_JSON_FILE = os.path.join(
     os.path.dirname(__file__), 'multidim_testdata.json')
-with io.open(TEST_MULTIDIM_JSON_FILE, 'r', encoding='utf-8') as f:
+with io.open(TEST_MULTIDIM_JSON_FILE, 'rb') as f:
   TEST_MULTIDIM_JSON = f.read()
 
 
@@ -65,8 +65,8 @@ class MfgEventConverterTest(unittest.TestCase):
           'meas-3': measurements.Measurement('meas-3').with_dimensions('V'),
       }
       phase.attachments = {
-          'attach-1': test_record.Attachment('data-1', ''),
-          'attach-2': test_record.Attachment('data-2', ''),
+          'attach-1': test_record.Attachment(b'data-1', ''),
+          'attach-2': test_record.Attachment(b'data-2', ''),
       }
 
     mfg_event = mfg_event_converter.mfg_event_from_test_record(record)
@@ -289,7 +289,7 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertEqual(mock_measurement_within_percent.numeric_maximum, 12.0)
 
   def testCopyAttachmentsFromPhase(self):
-    attachment = test_record.Attachment('mock-data', 'text/plain')
+    attachment = test_record.Attachment(b'mock-data', 'text/plain')
     phase = test_record.PhaseRecord(
         name='mock-phase-name',
         descriptor_id=1,
@@ -374,7 +374,7 @@ class MultiDimConversionTest(unittest.TestCase):
     data_dict = json.loads(attachment.data)
     data_dict['outcome'] = test_runs_pb2.Status.Value(data_dict['outcome'])
     attachment = test_record.Attachment(
-        json.dumps(data_dict), test_runs_pb2.MULTIDIM_JSON)
+        json.dumps(data_dict).encode('utf-8'), test_runs_pb2.MULTIDIM_JSON)
 
     reversed_mdim = mfg_event_converter.attachment_to_multidim_measurement(
         attachment)

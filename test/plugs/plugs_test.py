@@ -178,9 +178,9 @@ class PlugsTest(test.TestCase):
 
   def test_invalid_plug(self):
     with self.assertRaises(base_plugs.InvalidPlugError):
-      self.plug_manager.initialize_plugs({object})
+      self.plug_manager.initialize_plugs({object})  # pytype: disable=wrong-arg-types
     with self.assertRaises(base_plugs.InvalidPlugError):
-      plugs.plug(adder_plug=object)
+      plugs.plug(adder_plug=object)  # pytype: disable=wrong-arg-types
     with self.assertRaises(base_plugs.InvalidPlugError):
       self.plug_manager.initialize_plugs(
           {type('BadPlug', (base_plugs.BasePlug,), {'logger': None})})

@@ -176,8 +176,10 @@ class PhaseGroup(object):
     """Substitute only known plugs for placeholders for each contained phase."""
     return self.transform(functools.partial(optionally_with_plugs, **subplugs))
 
-  def _iterate(self,
-               phases: Tuple[PhaseNodeT]) -> Iterator[phase_descriptor.PhaseT]:
+  def _iterate(
+      self, phases: Tuple[Union[phase_descriptor.PhaseDescriptor, 'PhaseGroup'],
+                          ...]
+  ) -> Iterator[phase_descriptor.PhaseDescriptor]:
     for phase in phases:
       if isinstance(phase, PhaseGroup):
         for p in phase:
@@ -185,7 +187,7 @@ class PhaseGroup(object):
       else:
         yield phase
 
-  def __iter__(self) -> Iterator[phase_descriptor.PhaseT]:
+  def __iter__(self) -> Iterator[phase_descriptor.PhaseDescriptor]:
     """Iterate directly over the phases."""
     for phase in self._iterate(self.setup):
       yield phase

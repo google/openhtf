@@ -92,7 +92,7 @@ class TestPhaseDescriptor(unittest.TestCase):
 
   def test_basics(self):
     phase = openhtf.PhaseDescriptor.wrap_or_copy(plain_func)
-    self.assertIs(phase.func, plain_func)
+    self.assertIs(phase.func, plain_func)  # pytype: disable=wrong-arg-types
     self.assertEqual(0, len(phase.plugs))
     self.assertEqual('plain_func', phase.name)
     self.assertEqual('Plain Docstring.', phase.doc)

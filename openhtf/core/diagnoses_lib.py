@@ -552,13 +552,15 @@ class Diagnosis(object):
 
 
 def diagnose(
-    *diagnosers: PhaseDiagnoser
+    *diagnosers: BasePhaseDiagnoser
 ) -> Callable[[phase_descriptor.PhaseT], phase_descriptor.PhaseDescriptor]:
   """Decorator to add diagnosers to a PhaseDescriptor."""
   check_diagnosers(diagnosers, BasePhaseDiagnoser)
   diags = list(diagnosers)
 
-  def decorate(wrapped_phase):
+  def decorate(
+      wrapped_phase: phase_descriptor.PhaseT
+  ) -> phase_descriptor.PhaseDescriptor:
     """Phase decorator to be returned."""
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(wrapped_phase)
     phase.diagnosers.extend(diags)
