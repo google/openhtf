@@ -300,7 +300,7 @@ def optionally_with_args(phase, **kwargs):
   if not isinstance(phase, phase_descriptor.PhaseDescriptor):
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(phase)
   return typing.cast(phase_descriptor.PhaseDescriptor,
-                     phase).with_known_args(**kwargs)
+                     phase).with_args(**kwargs)
 
 
 @typing.overload
@@ -354,4 +354,4 @@ def optionally_with_plugs(phase, **subplugs):
   if not isinstance(phase, phase_descriptor.PhaseDescriptor):
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(phase)
   return typing.cast(phase_descriptor.PhaseDescriptor,
-                     phase).with_known_plugs(**subplugs)
+                     phase).with_plugs(**subplugs)

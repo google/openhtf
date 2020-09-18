@@ -20,7 +20,6 @@ import mock
 import openhtf
 from openhtf import plugs
 from openhtf.core import base_plugs
-from openhtf.core import phase_descriptor
 
 
 def plain_func():
@@ -69,15 +68,11 @@ def sub_placeholder_using_plug(subplaced):
 
 
 class NonPlugBase(object):
-  pass
+  """A base class that is not a BasePlug."""
 
 
-class NonPlugImpl(NonPlugBase):
-  pass
-
-
-class PlugVersionOfNonPlug(NonPlugImpl, base_plugs.BasePlug):
-  pass
+class PlugVersionOfNonPlug(NonPlugBase, base_plugs.BasePlug):
+  """Plug implementation of a non-plug base."""
 
 
 custom_placeholder = base_plugs.PlugPlaceholder(NonPlugBase)
@@ -121,7 +116,7 @@ class TestPhaseDescriptor(unittest.TestCase):
     def namer(**kwargs):
       return 'renamed_{one}_{two}'.format(**kwargs)
 
-    @phase_descriptor.PhaseOptions(name=namer)
+    @openhtf.PhaseOptions(name=namer)
     def custom_phase(one=None, two=None):
       del one  # Unused.
       del two  # Unused.
@@ -130,26 +125,11 @@ class TestPhaseDescriptor(unittest.TestCase):
     arged = custom_phase.with_args(one=1, two=2)
     self.assertEqual('renamed_1_2', arged.name)
 
-  @mock.patch.object(phase_descriptor.PhaseDescriptor, 'with_args')
-  def test_with_known_args(self, mock_with_args):
-    phase = openhtf.PhaseDescriptor.wrap_or_copy(extra_arg_func)
-    kwargs = {'input_value': True}
-    phase.with_known_args(**kwargs)
-    mock_with_args.assert_called_once_with(**kwargs)
-
-  @mock.patch.object(phase_descriptor.PhaseDescriptor, 'with_args')
-  def test_with_known_args_no_args(self, mock_with_args):
-    phase = openhtf.PhaseDescriptor.wrap_or_copy(normal_test_phase)
-    kwargs = {'input_value': True}
-    result = phase.with_known_args(**kwargs)
-    self.assertEqual(result, phase)
-    self.assertEqual(mock_with_args.call_count, 0)
-
   def test_with_args(self):
-    phase = openhtf.PhaseDescriptor.wrap_or_copy(extra_arg_func)
-    phase = phase.with_args(input_value='input arg')
+    phase = extra_arg_func.with_args(input_value='input arg')
     result = phase(self._phase_data)
     first_result = phase(self._phase_data)
+    self.assertIs(phase.func, extra_arg_func.func)
     self.assertEqual('input arg', result)
     self.assertEqual('func-name(i)', phase.name)
     self.assertEqual('input arg', first_result)
@@ -161,6 +141,19 @@ class TestPhaseDescriptor(unittest.TestCase):
     self.assertEqual('second input', second_result)
     self.assertEqual('func-name(s)', second_phase.name)
 
+  def test_with_args_argument_not_specified(self):
+    phase = extra_arg_func.with_args(arg_does_not_exist=1)
+    self.assertNotIn('arg_does_not_exist', phase.extra_kwargs)
+
+  def test_with_args_kwargs(self):
+    @openhtf.PhaseOptions()
+    def phase(test_api, **kwargs):
+      del test_api  # Unused.
+      del kwargs  # Unused.
+
+    updated = phase.with_args(arg_does_not_exist=1)
+    self.assertEqual({'arg_does_not_exist': 1}, updated.extra_kwargs)
+
   def test_with_plugs(self):
     self._phase_data.plug_manager.initialize_plugs([ExtraPlug])
     phase = extra_plug_func.with_plugs(plug=ExtraPlug).with_args(phrase='hello')
@@ -171,6 +164,10 @@ class TestPhaseDescriptor(unittest.TestCase):
 
     result = phase(self._phase_data)
     self.assertEqual('extra_plug_0 says hello', result)
+
+  def test_with_plugs_unknown_plug_name_ignored(self):
+    phase = placeholder_using_plug.with_plugs(undefined_plug=ExtraPlug)
+    self.assertIs(phase, placeholder_using_plug)
 
   def test_with_plugs_auto_placeholder(self):
     phase = placeholder_using_plug.with_plugs(placed=SubPlaceholderCapablePlug)
@@ -184,10 +181,6 @@ class TestPhaseDescriptor(unittest.TestCase):
   def test_with_plugs_auto_placeholder_non_subclass_error(self):
     with self.assertRaises(base_plugs.InvalidPlugError):
       placeholder_using_plug.with_plugs(placed=ExtraPlug)
-
-  def test_with_plugs_custom_placeholder_not_base_plug(self):
-    with self.assertRaises(base_plugs.InvalidPlugError):
-      custom_placeholder_phase.with_plugs(custom=NonPlugImpl)
 
   def test_with_plugs_custom_placeholder_is_base_plug(self):
     phase = custom_placeholder_phase.with_plugs(custom=PlugVersionOfNonPlug)

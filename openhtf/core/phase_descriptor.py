@@ -207,55 +207,45 @@ class PhaseDescriptor(object):
   def doc(self) -> Optional[Text]:
     return self.func.__doc__
 
-  def with_known_args(self, **kwargs: Any) -> 'PhaseDescriptor':
-    """Send only known keyword-arguments to the phase when called."""
+  def with_args(self, **kwargs: Any) -> 'PhaseDescriptor':
+    """Send keyword-arguments to the phase when called.
+
+    Args:
+      **kwargs: mapping of argument name to value to be passed to the phase
+        function when called.  Unknown arguments are ignored.
+
+    Returns:
+      Updated PhaseDescriptor.
+    """
     if six.PY3:
       argspec = inspect.getfullargspec(self.func)
       argspec_keywords = argspec.varkw
     else:
       argspec = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
       argspec_keywords = argspec.keywords
-    stored = {}
+    known_arguments = {}
     for key, arg in six.iteritems(kwargs):
       if key in argspec.args or argspec_keywords:
-        stored[key] = arg
-    if stored:
-      return self.with_args(**stored)
-    return self
+        known_arguments[key] = arg
 
-  def with_args(self, **kwargs: Any) -> 'PhaseDescriptor':
-    """Send these keyword-arguments to the phase when called."""
-    # Make a copy so we can have multiple of the same phase with different args
-    # in the same test.
     new_info = data.attr_copy(self)
     new_info.options = new_info.options.format_strings(**kwargs)
-    new_info.extra_kwargs.update(kwargs)
+    new_info.extra_kwargs.update(known_arguments)
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
-  def with_known_plugs(
-      self, **subplugs: Type[base_plugs.BasePlug]) -> 'PhaseDescriptor':
-    """Substitute only known plugs for placeholders for this phase."""
-    return self._apply_with_plugs(subplugs, error_on_unknown=False)
-
   def with_plugs(self,
                  **subplugs: Type[base_plugs.BasePlug]) -> 'PhaseDescriptor':
-    """Substitute plugs for placeholders for this phase, error on unknowns."""
-    return self._apply_with_plugs(subplugs, error_on_unknown=True)
-
-  def _apply_with_plugs(self, subplugs: Dict[Text, Type[base_plugs.BasePlug]],
-                        error_on_unknown: bool) -> 'PhaseDescriptor':
     """Substitute plugs for placeholders for this phase.
 
     Args:
-      subplugs: dict of plug name to plug class, plug classes to replace.
-      error_on_unknown: bool, if True, then error when an unknown plug name is
-        provided.
+      **subplugs: dict of plug name to plug class, plug classes to replace;
+        unknown plug names are ignored.  A base_plugs.InvalidPlugError is raised
+        when a test includes a phase that still has a placeholder plug.
 
     Raises:
       base_plugs.InvalidPlugError: if for one of the plug names one of the
         following is true:
-        - error_on_unknown is True and the plug name is not registered.
         - The new plug subclass is not a subclass of the original.
         - The original plug class is not a placeholder or automatic placeholder.
 
@@ -263,19 +253,15 @@ class PhaseDescriptor(object):
       PhaseDescriptor with updated plugs.
     """
     plugs_by_name = {plug.name: plug for plug in self.plugs}
-    new_plugs = dict(plugs_by_name)
+    new_plugs = {}
 
     for name, sub_class in six.iteritems(subplugs):
       original_plug = plugs_by_name.get(name)
       accept_substitute = True
       if original_plug is None:
-        if not error_on_unknown:
-          continue
-        accept_substitute = False
+        continue
       elif isinstance(original_plug.cls, base_plugs.PlugPlaceholder):
-        accept_substitute = (
-            issubclass(sub_class, original_plug.cls.base_class) and
-            issubclass(sub_class, base_plugs.BasePlug))
+        accept_substitute = issubclass(sub_class, original_plug.cls.base_class)
       else:
         # Check __dict__ to see if the attribute is explicitly defined in the
         # class, rather than being defined in a parent class.
@@ -289,9 +275,14 @@ class PhaseDescriptor(object):
             'required for phase %s' % (name, self.name))
       new_plugs[name] = data.attr_copy(original_plug, cls=sub_class)
 
+    if not new_plugs:
+      return self
+
+    plugs_by_name.update(new_plugs)
+
     return data.attr_copy(
         self,
-        plugs=list(new_plugs.values()),
+        plugs=list(plugs_by_name.values()),
         options=self.options.format_strings(**subplugs),
         measurements=[m.with_args(**subplugs) for m in self.measurements])
 
