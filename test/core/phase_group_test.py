@@ -65,9 +65,9 @@ def _abort_test_in_thread(test):
 class PhaseGroupTest(unittest.TestCase):
 
   def testInit(self):
-    setup = [1]
-    main = [2]
-    teardown = [3]
+    setup = _fake_phases('1')
+    main = _fake_phases('2')
+    teardown = _fake_phases('3')
     name = 'name'
     pg = htf.PhaseGroup(setup=setup, main=main, teardown=teardown, name=name)
     self.assertEqual(tuple(setup), pg.setup)
@@ -229,28 +229,6 @@ class PhaseGroupTest(unittest.TestCase):
             '7',  # Rest of outer main.
             '8', '9',  # Outer teardown.
         ), list(outer_group))  # pyformat: disable
-
-  def testFlatten(self):
-    inner = htf.PhaseGroup(
-        setup=_fake_phases('a', 'b') + [_fake_phases('c')],
-        main=[_fake_phases('d')],
-        teardown=[_fake_phases('e'), _fake_phases('f')] + _fake_phases('g'))
-    outer = htf.PhaseGroup(
-        setup=_fake_phases('1', '2'),
-        main=[_fake_phases('3')] + [inner, _fake_phases('4')] +
-        _fake_phases('5'),
-        teardown=_fake_phases('6') + [_fake_phases('7', '8')] +
-        _fake_phases('9'))
-
-    expected_inner = htf.PhaseGroup(
-        setup=_fake_phases('a', 'b', 'c'),
-        main=_fake_phases('d'),
-        teardown=_fake_phases('e', 'f', 'g'))
-    expected_outer = htf.PhaseGroup(
-        setup=_fake_phases('1', '2'),
-        main=_fake_phases('3') + [expected_inner] + _fake_phases('4', '5'),
-        teardown=_fake_phases('6', '7', '8', '9'))
-    self.assertEqual(expected_outer, outer.flatten())
 
   def testLoadCodeInfo(self):
     group = htf.PhaseGroup(
@@ -444,7 +422,7 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
     phases = _fake_phases('p0', 'p1', 'p2')
     teardown_phase = _rename(blank_phase, 'teardown')
 
-    test = htf.Test(phases)
+    test = htf.Test(*phases)
     test.configure(teardown_function=teardown_phase)
     test._get_running_test_descriptor()
     test_rec = yield test

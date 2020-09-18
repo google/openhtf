@@ -199,4 +199,4 @@ class TestConf(unittest.TestCase):
         self.string_default = string_default
 
     instance = TestClass()  # pylint: disable=no-value-for-parameter
-    self.assertEqual('default', instance.string_default)
+    self.assertEqual('default', instance.string_default)  # pytype: disable=attribute-error

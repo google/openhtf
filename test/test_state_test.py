@@ -69,7 +69,11 @@ TEST_STATE_BASE_TYPE_INITIAL = {
     'status': 'WAITING_FOR_TEST_START',
     'test_record': {
         'station_id': conf.station_id,
-        'code_info': None,
+        'code_info': {
+            'docstring': None,
+            'name': '',
+            'sourcecode': '',
+        },
         'dut_id': None,
         'start_time_millis': 0,
         'end_time_millis': None,
@@ -100,7 +104,8 @@ class TestTestApi(unittest.TestCase):
     self.mock_record_start_time = patcher.start()
     self.addCleanup(patcher.stop)
     self.test_descriptor = test_descriptor.TestDescriptor(
-        phase_group.PhaseGroup(main=[test_phase]), None, {'config': {}})
+        phase_group.PhaseGroup(main=[test_phase]),
+        test_record.CodeInfo.uncaptured(), {'config': {}})
     self.test_state = test_state.TestState(self.test_descriptor, 'testing-123',
                                            test_descriptor.TestOptions())
     self.test_record = self.test_state.test_record
@@ -123,6 +128,9 @@ class TestTestApi(unittest.TestCase):
     measurement_val = [1, 2, 3]
     self.test_api.measurements['test_measurement'] = measurement_val
     measurement = self.test_api.get_measurement('test_measurement')
+    if not measurement:
+      # Need branch to appease pytype.
+      self.fail('measurement not found.')
 
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
@@ -131,6 +139,9 @@ class TestTestApi(unittest.TestCase):
     measurement_val = [1, 2, 3]
     self.test_api.measurements['test_measurement'] = measurement_val
     measurement = self.test_api.get_measurement('test_measurement')
+    if not measurement:
+      # Need branch to appease pytype.
+      self.fail('measurement not found.')
 
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)

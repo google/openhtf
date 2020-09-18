@@ -24,7 +24,7 @@ from __future__ import google_type_annotations
 
 import collections
 import logging
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Text, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text, Tuple, Type, TypeVar, Union
 
 import attr
 
@@ -321,7 +321,7 @@ class PlugManager(object):
     self._plug_descriptors[plug_name] = self._make_plug_descriptor(plug_type)
 
   def provide_plugs(
-      self, plug_name_map: Dict[Text, Type[base_plugs.BasePlug]]
+      self, plug_name_map: Iterable[Tuple[Text, Type[base_plugs.BasePlug]]]
   ) -> Dict[Text, base_plugs.BasePlug]:
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
     return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}

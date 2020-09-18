@@ -20,7 +20,6 @@ actually care for.
 
 import io
 import json
-import sys
 import unittest
 
 import openhtf as htf
@@ -57,10 +56,7 @@ class TestOutput(test.TestCase):
   def test_json(self, user_mock):
     user_mock.prompt.return_value = 'SomeWidget'
     record = yield self._test
-    if sys.version_info[0] < 3:
-      json_output = io.BytesIO()
-    else:
-      json_output = io.StringIO()
+    json_output = io.BytesIO()
     json_factory.OutputToJSON(json_output, sort_keys=True, indent=2)(record)
     json_output.seek(0)
     json.loads(json_output.read())

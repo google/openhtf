@@ -133,10 +133,10 @@ class OutputToFile(object):
     with self.open_output_file(test_rec) as outfile:
       serialized_record = self.serialize_test_record(test_rec)
       if isinstance(serialized_record, six.string_types):
-        outfile.write(serialized_record)
+        outfile.write(six.ensure_binary(serialized_record))
       elif isinstance(serialized_record, collections.Iterable):
         for chunk in serialized_record:
-          outfile.write(chunk)
+          outfile.write(six.ensure_binary(chunk))
       else:
         raise TypeError('Expected string or iterable but got {}.'.format(
             type(serialized_record)))

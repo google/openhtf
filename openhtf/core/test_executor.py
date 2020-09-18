@@ -278,7 +278,10 @@ class TestExecutor(threads.KillableThread):
     else:
       self.test_state.finalize_normally()
 
-  def _handle_phase(self, phase: phase_descriptor.PhaseDescriptor) -> bool:
+  def _handle_phase(
+      self, phase: Union[phase_group.PhaseGroup,
+                         phase_descriptor.PhaseDescriptor]
+  ) -> bool:
     if isinstance(phase, phase_group.PhaseGroup):
       return self._execute_phase_group(phase)
 

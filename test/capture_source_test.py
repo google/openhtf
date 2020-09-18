@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import typing
 import unittest
 
 import openhtf as htf
@@ -28,12 +29,14 @@ class BasicCodeCaptureTest(unittest.TestCase):
   def testCaptured(self):
     htf.conf.load(capture_source=True)
     test = htf.Test(phase)
-    phase_descriptor = list(test.descriptor.phase_group)[0]
+    phase_descriptor = typing.cast(htf.PhaseDescriptor,
+                                   list(test.descriptor.phase_group)[0])
     self.assertEqual(phase_descriptor.code_info.name, phase.__name__)
 
   @htf.conf.save_and_restore
   def testNotCaptured(self):
     htf.conf.load(capture_source=False)
     test = htf.Test(phase)
-    phase_descriptor = list(test.descriptor.phase_group)[0]
+    phase_descriptor = typing.cast(htf.PhaseDescriptor,
+                                   list(test.descriptor.phase_group)[0])
     self.assertEqual(phase_descriptor.code_info.name, '')
