@@ -1,9 +1,15 @@
 Changes for 2.0.
 
+* Dropped Python 2.x support.
+* Added type annotations.
+* Replaced mutablerecords with attrs.
 * PhaseOptions:
     * The openhtf.TestPhase alias for PhaseOptions has been deprecated for a
         long time.  Removing it.
 * PhaseDescriptor:
+    * with_known_plugs and with_known_args are being rolled into with_plugs and
+         with_args, respectively.  They will no longer raise exceptions when
+         the names are not found.
     * If the options name field is a callable, the name property of
         PhaseDescriptors will only return the name of the function rather than
         the callable.  This ensures that the name property is always Text.
