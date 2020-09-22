@@ -416,15 +416,3 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
         'setup0', 'outer0', 'inner-setup0', 'inner0', 'stop_phase',
         'inner-teardown', 'teardown0'
     ], test_rec)
-
-  @htf_test.yields_phases
-  def testOldTeardown(self):
-    phases = _fake_phases('p0', 'p1', 'p2')
-    teardown_phase = _rename(blank_phase, 'teardown')
-
-    test = htf.Test(*phases)
-    test.configure(teardown_function=teardown_phase)
-    test._get_running_test_descriptor()
-    test_rec = yield test
-    self.assertTestPass(test_rec)
-    self._assert_phase_names(['p0', 'p1', 'p2', 'teardown'], test_rec)

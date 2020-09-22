@@ -65,14 +65,6 @@ conf.declare(
 
     Set to 'true' if you want to capture your test's source."""),
     default_value=False)
-# TODO(arsharma): Deprecate this configuration after removing the old teardown
-# specification.
-conf.declare(
-    'teardown_timeout_s',
-    default_value=30,
-    description='Default timeout (in seconds) for test teardown functions; '
-    'this option is deprecated and only applies to the deprecated '
-    'Test level teardown function.')
 
 
 class UnrecognizedTestUidError(Exception):
@@ -274,21 +266,6 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.test_state)
         self._executor.abort()
 
-  # TODO(arsharma): teardown_function test option is deprecated; remove this.
-  def _get_running_test_descriptor(self) -> 'TestDescriptor':
-    """If there is a teardown_function, wrap current descriptor with it."""
-    if not self._test_options.teardown_function:
-      return self._test_desc
-
-    teardown_phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(
-        self._test_options.teardown_function)
-    if not teardown_phase.options.timeout_s:
-      teardown_phase.options.timeout_s = conf.teardown_timeout_s
-    return TestDescriptor(
-        phase_group.PhaseGroup(
-            main=[self._test_desc.phase_group], teardown=[teardown_phase]),
-        self._test_desc.code_info, self._test_desc.metadata)
-
   def execute(self,
               test_start: Optional[phase_descriptor.PhaseT] = None,
               profile_filename: Optional[Text] = None) -> bool:
@@ -337,9 +314,8 @@ class Test(object):
       if conf.capture_source:
         trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)
 
-      test_desc = self._get_running_test_descriptor()
       self._executor = test_executor.TestExecutor(
-          test_desc,
+          self._test_desc,
           self.make_uid(),
           trigger,
           self._test_options,
@@ -398,7 +374,6 @@ class Test(object):
     return final_state.test_record.outcome == htf_test_record.Outcome.PASS
 
 
-# TODO(arsharma): Deprecate the teardown_function in favor of PhaseGroups.
 @attr.s(slots=True)
 class TestOptions(object):
   """Class encapsulating various tunable knobs for Tests and their defaults.
@@ -406,8 +381,6 @@ class TestOptions(object):
   name: The name of the test to be put into the metadata.
   output_callbacks: List of output callbacks to run, typically it's better to
       use add_output_callbacks(), but you can pass [] here to reset them.
-  teardown_function: Function to run at teardown.  We pass the same arguments to
-      it as a phase.
   failure_exceptions: Exceptions to cause a test FAIL instead of ERROR. When a
       test run exits early due to an exception, the run will be marked as a FAIL
       if the raised exception matches one of the types in this list. Otherwise,
@@ -422,8 +395,6 @@ class TestOptions(object):
   name = attr.ib(type=Text, default='openhtf_test')
   output_callbacks = attr.ib(
       type=List[Callable[[htf_test_record.TestRecord], None]], factory=list)
-  teardown_function = attr.ib(
-      type=Optional[phase_descriptor.PhaseT], default=None)
   failure_exceptions = attr.ib(type=List[Type[Exception]], factory=list)
   default_dut_id = attr.ib(type=Text, default='UNKNOWN_DUT')
   stop_on_first_failure = attr.ib(type=bool, default=False)
