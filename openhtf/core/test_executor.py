@@ -15,19 +15,22 @@
 
 from __future__ import google_type_annotations
 
+import enum
 import logging
 import pstats
 import sys
 import tempfile
 import threading
 import traceback
-from typing import List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
+from typing import List, Optional, Text, Type, TYPE_CHECKING
 
 from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
+from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_group
+from openhtf.core import phase_nodes
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.util import conf
@@ -57,6 +60,16 @@ class TestExecutionError(Exception):
 
 class TestStopError(Exception):
   """Test is being stopped."""
+
+
+class _ExecutorReturn(enum.Enum):
+  CONTINUE = 0
+  EXIT_SUBTEST = 1
+  TERMINAL = 2
+
+
+def _more_critical(e1: _ExecutorReturn, e2: _ExecutorReturn) -> _ExecutorReturn:
+  return _ExecutorReturn(max(e1.value, e2.value))
 
 
 def combine_profile_stats(profile_stats_iter: List[pstats.Stats],
@@ -98,6 +111,7 @@ class TestExecutor(threads.KillableThread):
     self._teardown_phases_lock = threading.Lock()
     # Populated if profiling is enabled.
     self._phase_profile_stats = []  # type: List[pstats.Stats]
+    self._subtest_name = None  # type: Optional[Text]
 
   @property
   def phase_profile_stats(self) -> List[pstats.Stats]:
@@ -186,7 +200,7 @@ class TestExecutor(threads.KillableThread):
 
       # Everything is set, set status and begin test execution.
       self.test_state.set_status_running()
-      self._execute_phase_group(self._test_descriptor.phase_group)
+      self._execute_node(self._test_descriptor.phase_sequence)
       self._execute_test_diagnosers()
     except:  # pylint: disable=bare-except
       stacktrace = traceback.format_exc()
@@ -278,14 +292,11 @@ class TestExecutor(threads.KillableThread):
     else:
       self.test_state.finalize_normally()
 
-  def _handle_phase(
-      self, phase: Union[phase_group.PhaseGroup,
-                         phase_descriptor.PhaseDescriptor]
-  ) -> bool:
-    if isinstance(phase, phase_group.PhaseGroup):
-      return self._execute_phase_group(phase)
-
-    self.test_state.state_logger.debug('Handling phase %s', phase.name)
+  def _execute_phase(
+      self, phase: phase_descriptor.PhaseDescriptor) -> _ExecutorReturn:
+    self.test_state.state_logger.debug('Executing phase %s', phase.name)
+    # TODO(arsharma): Pass subtest name to the phase executor to add to the
+    # phase record.
     outcome, profile_stats = self._phase_exec.execute_phase(
         phase, self._run_with_profiling)
 
@@ -306,57 +317,79 @@ class TestExecutor(threads.KillableThread):
     if outcome.is_terminal and not self._last_outcome:
       self._last_outcome = outcome
 
-    return outcome.is_terminal
+    # TODO(arsharma): Add subtest handling.
+    if outcome.is_terminal:
+      return _ExecutorReturn.TERMINAL
+    else:
+      return _ExecutorReturn.CONTINUE
 
-  def _execute_abortable_phases(self, type_name: Text, phases: Sequence[Union[
-      phase_descriptor.PhaseDescriptor, phase_group.PhaseGroup]],
-                                group_name: Optional[Text]) -> bool:
-    """Execute phases, returning immediately if any error or abort is triggered.
+  def _log_sequence(self, phase_sequence, override_message):
+    message = phase_sequence.name
+    if override_message:
+      message = override_message
+    if message:
+      self.test_state.state_logger.debug('Executing phase nodes for %s',
+                                         message)
+
+  def _execute_abortable_sequence(
+      self,
+      phase_sequence: phase_collections.PhaseSequence,
+      override_message: Optional[Text] = None) -> _ExecutorReturn:
+    """Execute phase sequence, returning immediately on error or test abort.
 
     Args:
-      type_name: str, type of phases running, usually 'Setup' or 'Main'.
-      phases: iterable of phase_descriptor.Phase or phase_group.PhaseGroup
-        instances, the phases to execute.
-      group_name: str or None, name of the executing group.
+      phase_sequence: Sequence of phase nodes to run.
+      override_message: Optional message to override when logging..
 
     Returns:
-      True if there is a terminal error or the test is aborted, False otherwise.
+      _ExecutorReturn for how to proceed.
     """
-    if group_name and phases:
-      self.test_state.state_logger.debug('Executing %s phases for %s',
-                                         type_name, group_name)
-    for phase in phases:
-      if self._abort.is_set() or self._handle_phase(phase):
-        return True
-    return False
+    self._log_sequence(phase_sequence, override_message)
 
-  def _execute_teardown_phases(self, teardown_phases: Sequence[Union[
-      phase_descriptor.PhaseDescriptor, phase_group.PhaseGroup]],
-                               group_name: Text) -> bool:
+    for node in phase_sequence.nodes:
+      if self._abort.is_set():
+        return _ExecutorReturn.TERMINAL
+      exe_ret = self._execute_node(node)
+      if exe_ret != _ExecutorReturn.CONTINUE:
+        return exe_ret
+    return _ExecutorReturn.CONTINUE
+
+  def _execute_teardown_sequence(
+      self,
+      phase_sequence: phase_collections.PhaseSequence,
+      override_message: Optional[Text] = None) -> _ExecutorReturn:
     """Execute all the teardown phases, regardless of errors.
 
     Args:
-      teardown_phases: iterable of phase_descriptor.Phase or
-        phase_group.PhaseGroup instances, the phases to execute.
-      group_name: str or None, name of the executing group.
+      phase_sequence: Sequence of phase nodes to run.
+      override_message: Optional message to override when logging..
 
     Returns:
-      True if there is at least one terminal error, False otherwise.
+      _ExecutorReturn for how to proceed.
     """
-    if group_name and teardown_phases:
-      self.test_state.state_logger.debug('Executing teardown phases for %s',
-                                         group_name)
-    ret = False
+    self._log_sequence(phase_sequence, override_message)
+
+    ret = _ExecutorReturn.CONTINUE
     with self._teardown_phases_lock:
-      for teardown_phase in teardown_phases:
+      for node in phase_sequence.nodes:
         if self._full_abort.is_set():
-          ret = True
-          break
-        if self._handle_phase(teardown_phase):
-          ret = True
+          return _ExecutorReturn.TERMINAL
+        ret = _more_critical(ret, self._execute_node(node))
+
     return ret
 
-  def _execute_phase_group(self, group: phase_group.PhaseGroup) -> bool:
+  def _execute_subtest(self,
+                       subtest: phase_collections.Subtest) -> _ExecutorReturn:
+    previous_subtest = self._subtest_name
+    self._subtest_name = subtest.name
+    ret = self._execute_abortable_sequence(subtest)
+    self._subtest_name = previous_subtest
+    if ret == _ExecutorReturn.EXIT_SUBTEST:
+      return _ExecutorReturn.CONTINUE
+    return ret
+
+  def _execute_phase_group(self,
+                           group: phase_group.PhaseGroup) -> _ExecutorReturn:
     """Executes the phases in a phase group.
 
     This will run the phases in the phase group, ensuring if the setup
@@ -372,13 +405,38 @@ class TestExecutor(threads.KillableThread):
     Returns:
       True if the phases are terminal; otherwise returns False.
     """
+    message_prefix = ''
     if group.name:
       self.test_state.state_logger.debug('Entering PhaseGroup %s', group.name)
-    if self._execute_abortable_phases('setup', group.setup, group.name):
-      return True
-    main_ret = self._execute_abortable_phases('main', group.main, group.name)
-    teardown_ret = self._execute_teardown_phases(group.teardown, group.name)
-    return main_ret or teardown_ret
+      message_prefix = group.name + ':'
+    if group.setup:
+      setup_ret = self._execute_abortable_sequence(
+          group.setup, override_message=message_prefix + 'setup')
+      if setup_ret != _ExecutorReturn.CONTINUE:
+        return setup_ret
+    if group.main:
+      main_ret = self._execute_abortable_sequence(
+          group.main, override_message=message_prefix + 'main')
+    else:
+      main_ret = _ExecutorReturn.CONTINUE
+    if group.teardown:
+      teardown_ret = self._execute_teardown_sequence(
+          group.teardown, override_message=message_prefix + 'teardown')
+    else:
+      teardown_ret = _ExecutorReturn.CONTINUE
+    return _more_critical(main_ret, teardown_ret)
+
+  def _execute_node(self, node: phase_nodes.PhaseNode) -> _ExecutorReturn:
+    if isinstance(node, phase_collections.Subtest):
+      return self._execute_subtest(node)
+    if isinstance(node, phase_collections.PhaseSequence):
+      return self._execute_abortable_sequence(node)
+    if isinstance(node, phase_group.PhaseGroup):
+      return self._execute_phase_group(node)
+    if isinstance(node, phase_descriptor.PhaseDescriptor):
+      return self._execute_phase(node)
+    self.test_state.state_logger.error('Unhandled node type: %s', node)
+    return _ExecutorReturn.TERMINAL
 
   def _execute_test_diagnoser(
       self, diagnoser: diagnoses_lib.BaseTestDiagnoser) -> None:

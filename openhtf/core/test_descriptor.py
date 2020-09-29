@@ -30,7 +30,7 @@ import threading
 import traceback
 import types
 import typing
-from typing import Any, Callable, Dict, List, Optional, Set, Text, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Text, Type
 import uuid
 import weakref
 
@@ -41,9 +41,9 @@ from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
+from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
-from openhtf.core import phase_group
 from openhtf.core import test_executor
 from openhtf.core import test_record as htf_test_record
 from openhtf.core import test_state
@@ -133,8 +133,8 @@ class Test(object):
   HANDLED_SIGINT_ONCE = False
   DEFAULT_SIGINT_HANDLER = None
 
-  def __init__(self, *phases: Union[phase_descriptor.PhaseT,
-                                    phase_group.PhaseGroup], **metadata: Any):
+  def __init__(self, *nodes: phase_descriptor.PhaseCallableOrNodeT,
+               **metadata: Any):
     # Some sanity checks on special metadata keys we automatically fill in.
     if 'config' in metadata:
       raise KeyError(
@@ -145,14 +145,16 @@ class Test(object):
     self._test_options = TestOptions()
     self._lock = threading.Lock()
     self._executor = None
-    group = phase_group.PhaseGroup.convert_if_not(phases)
-    self._test_desc = TestDescriptor(group,
+    # TODO(arsharma): Drop _flatten at some point.
+    sequence = phase_collections.PhaseSequence(nodes)
+    self._test_desc = TestDescriptor(sequence,
                                      htf_test_record.CodeInfo.uncaptured(),
                                      metadata)
 
     if conf.capture_source:
       # Copy the phases with the real CodeInfo for them.
-      self._test_desc.phase_group = self._test_desc.phase_group.load_code_info()
+      self._test_desc.phase_sequence = (
+          self._test_desc.phase_sequence.load_code_info())
       self._test_desc.code_info = (
           htf_test_record.CodeInfo.for_module_from_stack(levels_up=2))
 
@@ -285,7 +287,8 @@ class Test(object):
       InvalidTestStateError: if this test is already being executed.
     """
     diagnoses_lib.check_for_duplicate_results(
-        iter(self._test_desc.phase_group), self._test_options.diagnosers)
+        self._test_desc.phase_sequence.all_phases(),
+        self._test_options.diagnosers)
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
@@ -409,13 +412,13 @@ class TestDescriptor(object):
   by the framework along the way.
 
   Attributes:
-    phase_group: The top level phase group to execute for this Test.
+    phase_sequence: The top level phase collection for this test.
     metadata: Any metadata that should be associated with test records.
     code_info: Information about the module that created the Test.
     uid: UID for this test.
   """
 
-  phase_group = attr.ib(type=phase_group.PhaseGroup)
+  phase_sequence = attr.ib(type=phase_collections.PhaseSequence)
   code_info = attr.ib(type=htf_test_record.CodeInfo)
   metadata = attr.ib(type=Dict[Text, Any])
   uid = attr.ib(type=Text, factory=lambda: uuid.uuid4().hex[:16])
@@ -423,7 +426,11 @@ class TestDescriptor(object):
   @property
   def plug_types(self) -> Set[Type[base_plugs.BasePlug]]:
     """Returns set of plug types required by this test."""
-    return {plug.cls for phase in self.phase_group for plug in phase.plugs}  # pylint: disable=g-complex-comprehension
+    ret = set()
+    for phase in self.phase_sequence.all_phases():
+      for plug in phase.plugs:
+        ret.add(plug.cls)
+    return ret
 
 
 @attr.s(slots=True)

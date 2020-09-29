@@ -110,14 +110,18 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
+from __future__ import google_type_annotations
+
 import collections
 import functools
 import inspect
 import logging
 import sys
 import types
+from typing import Any, Callable, Dict, Text, Tuple, Type
 import unittest
 
+import attr
 import mock
 
 import openhtf
@@ -126,7 +130,10 @@ from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
+from openhtf.core import phase_collections
+from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
+from openhtf.core import phase_nodes
 from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
@@ -139,6 +146,93 @@ logs.CLI_LOGGING_VERBOSITY = 2
 
 class InvalidTestError(Exception):
   """Raised when there's something invalid about a test."""
+
+
+@attr.s(slots=True, frozen=True)
+class TestNode(phase_nodes.PhaseNode):
+  """General base class for comparison nodes.
+
+  This is used to test functions that create phase nodes; it cannot be run as
+  part of an actual test run.
+  """
+
+  def copy(self: phase_nodes.WithModifierT) -> phase_nodes.WithModifierT:
+    """Create a copy of the PhaseNode."""
+    return self
+
+  def with_args(self: phase_nodes.WithModifierT,
+                **kwargs: Any) -> phase_nodes.WithModifierT:
+    """Send these keyword-arguments when phases are called."""
+    del kwargs  # Unused.
+    return self
+
+  def with_plugs(
+      self: phase_nodes.WithModifierT,
+      **subplugs: Type[base_plugs.BasePlug]) -> phase_nodes.WithModifierT:
+    """Substitute plugs for placeholders for this phase, error on unknowns."""
+    del subplugs  # Unused.
+    return self
+
+  def load_code_info(
+      self: phase_nodes.WithModifierT) -> phase_nodes.WithModifierT:
+    """Load coded info for all contained phases."""
+    return self
+
+  def apply_to_all_phases(self, func: Any) -> 'TestNode':
+    return self
+
+
+@attr.s(slots=True, frozen=True, eq=False)
+class PhaseNodeNameComparable(TestNode):
+  """Compares truthfully against any phase node with the same name.
+
+  This is used to test functions that create phase nodes; it cannot be run as
+  part of an actual test run.
+  """
+
+  name = attr.ib(type=Text)
+
+  def _asdict(self) -> Dict[Text, Any]:
+    """Returns a base type dictionary for serialization."""
+    return {'name': self.name}
+
+  def __eq__(self, other: phase_nodes.PhaseNode) -> bool:
+    return self.name == other.name
+
+
+@attr.s(slots=True, frozen=True, eq=False, init=False)
+class PhaseNodeComparable(TestNode):
+  """Compares truthfully only against another with same data.
+
+  This is used to test functions that create phase nodes; it cannot be run as
+  part of an actual test run.
+  """
+
+  name = attr.ib(type=Text)
+  args = attr.ib(type=Tuple[Any, ...], factory=tuple)
+  kwargs = attr.ib(type=Dict[Text, Any], factory=dict)
+
+  def __init__(self, name, *args, **kwargs):
+    super(PhaseNodeComparable, self).__init__()
+    object.__setattr__(self, 'name', name)
+    object.__setattr__(self, 'args', tuple(args))
+    object.__setattr__(self, 'kwargs', kwargs)
+
+  @classmethod
+  def create_constructor(cls, name) -> Callable[..., 'PhaseNodeComparable']:
+
+    def constructor(*args, **kwargs):
+      return cls(name, *args, **kwargs)
+
+    return constructor
+
+  def _asdict(self) -> Dict[Text, Any]:
+    return {'name': self.name, 'args': self.args, 'kwargs': self.kwargs}
+
+  def __eq__(self, other: phase_nodes.PhaseNode) -> bool:
+    return (isinstance(other, PhaseNodeComparable) and
+            self.name == other.name and self.args == other.args and
+            self.kwargs == other.kwargs)
 
 
 class PhaseOrTestIterator(collections.Iterator):
@@ -203,8 +297,9 @@ class PhaseOrTestIterator(collections.Iterator):
     with mock.patch(
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
       test_state_ = test_state.TestState(
-          openhtf.TestDescriptor((phase_desc,), phase_desc.code_info, {}),
-          'Unittest:StubTest:UID', test_options)
+          openhtf.TestDescriptor(
+              phase_collections.PhaseSequence((phase_desc,)),
+              phase_desc.code_info, {}), 'Unittest:StubTest:UID', test_options)
       test_state_.mark_test_started()
 
     test_state_.user_defined_state.update(self.phase_user_defined_state)
@@ -270,7 +365,7 @@ class PhaseOrTestIterator(collections.Iterator):
           'individual test phases', phase_or_test)
     else:
       self.last_result, failure_message = self._handle_phase(
-          openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
+          phase_descriptor.PhaseDescriptor.wrap_or_copy(phase_or_test))
     return phase_or_test, self.last_result, failure_message
 
   def next(self):
@@ -283,7 +378,7 @@ class PhaseOrTestIterator(collections.Iterator):
           'individual test phases', phase_or_test)
     else:
       self.last_result, failure_message = self._handle_phase(
-          openhtf.PhaseDescriptor.wrap_or_copy(phase_or_test))
+          phase_descriptor.PhaseDescriptor.wrap_or_copy(phase_or_test))
     return phase_or_test, self.last_result, failure_message
 
 
@@ -579,11 +674,12 @@ class TestCase(unittest.TestCase):
                   phase_record.measurements[measurement].outcome)
 
   @_assert_phase_or_test_record
-  def assertAttachment(self, phase_record, attachment_name,
+  def assertAttachment(self,
+                       phase_record,
+                       attachment_name,
                        expected_contents=mock.ANY):
-    self.assertIn(
-        attachment_name, phase_record.attachments,
-        'Attachment {} not attached.'.format(attachment_name))
+    self.assertIn(attachment_name, phase_record.attachments,
+                  'Attachment {} not attached.'.format(attachment_name))
     if expected_contents is not mock.ANY:
       data = phase_record.attachments[attachment_name].data
       self.assertEqual(

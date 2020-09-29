@@ -20,7 +20,7 @@ import unittest
 import mock
 
 import openhtf
-from openhtf.core import phase_group
+from openhtf.core import phase_collections
 from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
@@ -104,7 +104,7 @@ class TestTestApi(unittest.TestCase):
     self.mock_record_start_time = patcher.start()
     self.addCleanup(patcher.stop)
     self.test_descriptor = test_descriptor.TestDescriptor(
-        phase_group.PhaseGroup(main=[test_phase]),
+        phase_collections.PhaseSequence((test_phase,)),
         test_record.CodeInfo.uncaptured(), {'config': {}})
     self.test_state = test_state.TestState(self.test_descriptor, 'testing-123',
                                            test_descriptor.TestOptions())

@@ -31,10 +31,12 @@ from openhtf.core.measurements import Dimension
 from openhtf.core.measurements import Measurement
 from openhtf.core.measurements import measures
 from openhtf.core.monitors import monitors
+from openhtf.core.phase_collections import PhaseSequence
 from openhtf.core.phase_descriptor import PhaseDescriptor
 from openhtf.core.phase_descriptor import PhaseOptions
 from openhtf.core.phase_descriptor import PhaseResult
 from openhtf.core.phase_group import PhaseGroup
+from openhtf.core.phase_nodes import PhaseNode
 from openhtf.core.test_descriptor import Test
 from openhtf.core.test_descriptor import TestApi
 from openhtf.core.test_descriptor import TestDescriptor
