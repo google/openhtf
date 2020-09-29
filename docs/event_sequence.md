@@ -6,12 +6,45 @@ further:
 1. `test_start`'s plugs are instantiated
 1. `test_start` is run in a new thread
 1. All plugs for the test are instantiated
-1. Each phase is run
-1. The teardown phase is run
+1. Each phase node is run
+    1. If the node is a sequence, each node is run
+    1. If the node is a group, each of the groups sequences is run
+    1. If the node is a phase descriptor, that phase is run
 1. All plugs' `tearDown` function is called
 1. All plugs are deleted
 1. Test outcome is calculated as PASS or FAIL
 1. Output callbacks are called
+
+## Phase node execution
+
+```
+[PhaseNode]
+ |
+ +--[PhaseDescriptor]
+ |
+ \--[PhaseCollection]
+     |
+     +--[PhaseSequence]
+     |
+     \--[PhaseGroup]
+```
+
+`PhaseNode`s are the basic building block for OpenHTF's phase execution.  They
+are a base class that defines a few basic operations that can get recursively
+applied.  The `PhaseDescriptor` is the primary executable unit that wraps the
+phase functions.  `PhaseCollection` is a base class for a node that contains
+multiple nodes.  The primary one of these is the `PhaseSequence`, which is a
+tuple of phase nodes; each of those nodes is executed in order with nested
+execution if those nodes are other collections.  `PhaseGroup`s are phase
+collections that have three sequences as described below.
+
+### Recursive nesting
+
+Phase collections allow for nested nodes where each nested level is handled with
+recursion.
+
+OpenHTF does not check for or handle the situation where a node is nested inside
+itself.  The current collection types are frozen to prevent this from happening.
 
 ## Test error short-circuiting
 
@@ -22,6 +55,11 @@ terminal short-circuit. Phases are additionally terminal if they return
 If a `test_start` phase is terminal, then the executor will skip to Plug
 Teardown, where only the plugs initialized for `test_start` have their
 `teardown` functions called.
+
+In all cases with terminal phases, the Test outcome is ERROR for output
+callbacks.
+
+### PhaseGroups
 
 `PhaseGroup` collections behave like contexts. They are entered if their
 `setup` phases are all non-terminal; if this happens, the `teardown` phases are
@@ -36,9 +74,6 @@ For terminal phases in a `PhaseGroup`,
   `PhaseGroup.teardown` phases of that `PhaseGroup`.
 * If the phase was a `PhaseGroup.teardown` phase, the rest of the `teardown`
   phases are run, but outer groups will trigger the shortcut logic.
-
-In all cases with terminal phases, the Test outcome is ERROR for output
-callbacks.
 
 NOTE: If a phase calls `os.abort()` or an equivalent to the C++
 `die()` function, then the process dies and you cannot recover the results from

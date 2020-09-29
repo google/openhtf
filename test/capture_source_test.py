@@ -30,7 +30,7 @@ class BasicCodeCaptureTest(unittest.TestCase):
     htf.conf.load(capture_source=True)
     test = htf.Test(phase)
     phase_descriptor = typing.cast(htf.PhaseDescriptor,
-                                   list(test.descriptor.phase_group)[0])
+                                   test.descriptor.phase_sequence.nodes[0])
     self.assertEqual(phase_descriptor.code_info.name, phase.__name__)
 
   @htf.conf.save_and_restore
@@ -38,5 +38,5 @@ class BasicCodeCaptureTest(unittest.TestCase):
     htf.conf.load(capture_source=False)
     test = htf.Test(phase)
     phase_descriptor = typing.cast(htf.PhaseDescriptor,
-                                   list(test.descriptor.phase_group)[0])
+                                   test.descriptor.phase_sequence.nodes[0])
     self.assertEqual(phase_descriptor.code_info.name, '')

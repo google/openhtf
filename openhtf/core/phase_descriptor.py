@@ -30,6 +30,7 @@ import attr
 import openhtf
 from openhtf import util
 from openhtf.core import base_plugs
+from openhtf.core import phase_nodes
 from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
@@ -72,6 +73,7 @@ class PhaseResult(enum.Enum):
 
 PhaseReturnT = Optional[PhaseResult]
 PhaseCallableT = Callable[..., PhaseReturnT]
+PhaseCallableOrNodeT = Union[PhaseCallableT, phase_nodes.PhaseNode]
 PhaseT = Union['PhaseDescriptor', PhaseCallableT]
 TimeoutT = Union[float, int]
 
@@ -136,7 +138,7 @@ TestPhase = PhaseOptions
 
 
 @attr.s(slots=True)
-class PhaseDescriptor(object):
+class PhaseDescriptor(phase_nodes.PhaseNode):
   """Phase function and related information.
 
   Attributes:
@@ -285,6 +287,16 @@ class PhaseDescriptor(object):
         plugs=list(plugs_by_name.values()),
         options=self.options.format_strings(**subplugs),
         measurements=[m.with_args(**subplugs) for m in self.measurements])
+
+  def load_code_info(self) -> 'PhaseDescriptor':
+    """Load code info for this phase."""
+    return data.attr_copy(
+        self, code_info=test_record.CodeInfo.for_function(self.func))
+
+  def apply_to_all_phases(
+      self, func: Callable[['PhaseDescriptor'],
+                           'PhaseDescriptor']) -> 'PhaseDescriptor':
+    return func(self)
 
   def __call__(self,
                running_test_state: 'test_state.TestState') -> PhaseReturnT:
