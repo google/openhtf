@@ -345,7 +345,7 @@ class PhaseOrTestIterator(collections.Iterator):
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch(
         'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
-      test.execute(test_start=lambda: 'TestDutId')
+      test.execute(test_start=self.test_case.test_start_function)
 
     test_record_ = record_saver.result
     if test_record_.outcome_details:
@@ -565,6 +565,9 @@ class TestCase(unittest.TestCase):
     # attribute will be set to the openhtf.core.test_state.TestState used in the
     # phase execution.
     self.last_test_state = None
+    # When a test is yielded, this function is provided to as the test_start
+    # argument to test.execute.
+    self.test_start_function = lambda: 'TestDutId'
 
   ##### TestRecord Assertions #####
 
