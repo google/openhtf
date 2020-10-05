@@ -173,6 +173,7 @@ class TestRecord(object):
   code_info = attr.ib(type=CodeInfo, factory=CodeInfo.uncaptured)
   metadata = attr.ib(type=Dict[Text, Any], factory=dict)
   phases = attr.ib(type=List['PhaseRecord'], factory=list)
+  subtests = attr.ib(type=List['SubtestRecord'], factory=list)
   branches = attr.ib(type=List['BranchRecord'], factory=list)
   diagnosers = attr.ib(
       type=List['diagnoses_lib.BaseTestDiagnoser'], factory=list)
@@ -182,6 +183,7 @@ class TestRecord(object):
   # Cache fields to reduce repeated base type conversions.
   _cached_record = attr.ib(type=Dict[Text, Any], factory=dict)
   _cached_phases = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_subtests = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_branches = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_diagnosers = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_diagnoses = attr.ib(type=List[Dict[Text, Any]], factory=list)
@@ -214,6 +216,10 @@ class TestRecord(object):
     self.phases.append(phase_record)
     self._cached_phases.append(phase_record.as_base_types())
 
+  def add_subtest_record(self, subtest_record: 'SubtestRecord') -> None:
+    self.subtests.append(subtest_record)
+    self._cached_subtests.append(data.convert_to_base_types(subtest_record))
+
   def add_branch_record(self, branch_record: 'BranchRecord') -> None:
     self.branches.append(branch_record)
     self._cached_branches.append(data.convert_to_base_types(branch_record))
@@ -239,6 +245,7 @@ class TestRecord(object):
         'outcome_details': data.convert_to_base_types(self.outcome_details),
         'metadata': metadata,
         'phases': self._cached_phases,
+        'subtests': self._cached_subtests,
         'branches': self._cached_branches,
         'diagnosers': self._cached_diagnosers,
         'diagnoses': self._cached_diagnoses,
@@ -317,6 +324,7 @@ class PhaseRecord(object):
   options = attr.ib(type='phase_descriptor.PhaseOptions', default=None)
   diagnosers = attr.ib(
       type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list)
+  subtest_name = attr.ib(type=Optional[Text], default=None)
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)
   attachments = attr.ib(type=Dict[Text, Attachment], factory=dict)
@@ -356,3 +364,19 @@ class PhaseRecord(object):
   def finalize_phase(self, options: 'phase_descriptor.PhaseOptions') -> None:
     self.end_time_millis = util.time_millis()
     self.options = options
+
+
+class SubtestOutcome(enum.Enum):
+  PASS = 'PASS'
+  FAIL = 'FAIL'
+  STOP = 'STOP'
+
+
+@attr.s(slots=True)
+class SubtestRecord(object):
+  """The record of a subtest."""
+
+  name = attr.ib(type=Text)
+  start_time_millis = attr.ib(type=int, default=0)
+  end_time_millis = attr.ib(type=Optional[int], default=None)
+  outcome = attr.ib(type=Optional[SubtestOutcome], default=None)

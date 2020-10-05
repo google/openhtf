@@ -15,6 +15,7 @@
 
 from __future__ import google_type_annotations
 
+import contextlib
 import enum
 import logging
 import pstats
@@ -22,7 +23,7 @@ import sys
 import tempfile
 import threading
 import traceback
-from typing import List, Optional, Text, Type, TYPE_CHECKING
+from typing import Iterator, List, Optional, Text, Type, TYPE_CHECKING
 
 from openhtf import util
 from openhtf.core import base_plugs
@@ -300,11 +301,15 @@ class TestExecutor(threads.KillableThread):
 
   def _execute_phase(
       self, phase: phase_descriptor.PhaseDescriptor) -> _ExecutorReturn:
-    self.logger.debug('Executing phase %s', phase.name)
-    # TODO(arsharma): Pass subtest name to the phase executor to add to the
-    # phase record.
+    if self._subtest_name:
+      self.logger.debug('Executing phase %s under subtest %s', phase.name,
+                        self._subtest_name)
+    else:
+      self.logger.debug('Executing phase %s', phase.name)
     outcome, profile_stats = self._phase_exec.execute_phase(
-        phase, self._run_with_profiling)
+        phase,
+        run_with_profiling=self._run_with_profiling,
+        subtest_name=self._subtest_name)
 
     if profile_stats is not None:
       self._phase_profile_stats.append(profile_stats)
@@ -322,7 +327,8 @@ class TestExecutor(threads.KillableThread):
     if outcome.is_terminal and not self._last_outcome:
       self._last_outcome = outcome
 
-    # TODO(arsharma): Add subtest handling.
+    if outcome.is_fail_subtest:
+      return _ExecutorReturn.EXIT_SUBTEST
     if outcome.is_terminal:
       return _ExecutorReturn.TERMINAL
     else:
@@ -382,15 +388,49 @@ class TestExecutor(threads.KillableThread):
 
     return ret
 
-  def _execute_subtest(self,
-                       subtest: phase_collections.Subtest) -> _ExecutorReturn:
+  @contextlib.contextmanager
+  def _subtest_context(
+      self, subtest: phase_collections.Subtest
+  ) -> Iterator[test_record.SubtestRecord]:
+    """Enter a subtest context.
+
+    This context tracks the subname and sets up the subtest record to track the
+    timing.
+
+    Args:
+      subtest: The subtest running during the context.
+
+    Yields:
+      The subtest record for updating the outcome.
+    """
     previous_subtest = self._subtest_name
     self._subtest_name = subtest.name
-    ret = self._execute_abortable_sequence(subtest)
+    self.logger.debug('%s: Starting subtest.', subtest.name)
+    subtest_rec = test_record.SubtestRecord(
+        name=subtest.name, start_time_millis=util.time_millis())
+    yield subtest_rec
+    subtest_rec.end_time_millis = util.time_millis()
+    self.test_state.test_record.add_subtest_record(subtest_rec)
     self._subtest_name = previous_subtest
-    if ret == _ExecutorReturn.EXIT_SUBTEST:
-      return _ExecutorReturn.CONTINUE
-    return ret
+
+  def _execute_subtest(self,
+                       subtest: phase_collections.Subtest) -> _ExecutorReturn:
+    """Run a subtest node."""
+    with self._subtest_context(subtest) as subtest_rec:
+      ret = self._execute_abortable_sequence(subtest)
+      if ret == _ExecutorReturn.EXIT_SUBTEST:
+        subtest_rec.outcome = test_record.SubtestOutcome.FAIL
+        self.logger.debug('%s: Subtest failed; continuing with rest of test.',
+                          subtest.name)
+        return _ExecutorReturn.CONTINUE
+
+      if ret == _ExecutorReturn.TERMINAL:
+        subtest_rec.outcome = test_record.SubtestOutcome.STOP
+        self.logger.debug('%s: Subtest stopping the test.', subtest.name)
+      else:
+        subtest_rec.outcome = test_record.SubtestOutcome.PASS
+        self.logger.debug('%s: Subtest passed.', subtest.name)
+      return ret
 
   def _execute_phase_branch(
       self, branch: phase_branches.BranchSequence) -> _ExecutorReturn:

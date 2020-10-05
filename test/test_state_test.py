@@ -52,6 +52,7 @@ PHASE_STATE_BASE_TYPE_INITIAL = {
     },
     'attachments': {},
     'start_time_millis': 11235,
+    'subtest_name': None,
 }
 
 PHASE_RECORD_BASE_TYPE = copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL)
@@ -83,6 +84,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
             'config': {}
         },
         'phases': [],
+        'subtests': [],
         'branches': [],
         'diagnosers': [],
         'diagnoses': [],

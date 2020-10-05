@@ -7,6 +7,8 @@ further:
 1. `test_start` is run in a new thread
 1. All plugs for the test are instantiated
 1. Each phase node is run
+    1. If the node is a subtest, each node is run until a FAIL_SUBTEST is
+       returned by a phase.
     1. If the node is a branch, each node is run if the condition is met
     1. If the node is a sequence, each node is run
     1. If the node is a group, each of the groups sequences is run
@@ -27,7 +29,9 @@ further:
      |
      +--[PhaseSequence]
      |   |
-     |   \--[PhaseBranch]
+     |   +--[PhaseBranch]
+     |   |
+     |   \--[Subtest]
      |
      \--[PhaseGroup]
 ```
@@ -84,6 +88,14 @@ NOTE: If a phase calls `os.abort()` or an equivalent to the C++
 `die()` function, then the process dies and you cannot recover the results from
 this, so try to avoid such behavior in any Python or C++ libraries you use.
 
+### Subtests
+
+`Subtest`s are Phase Sequences what allow phases to exit early, but continue on
+with other phases.  A phase can indicate this by returning
+`htf.PhaseResult.FAIL_SUBTEST`.  The details of subtests are included in the
+output test record.
+
+Phase group teardowns are run properly when nested in a subtest.
 
 ## Test abortion short-circuiting
 

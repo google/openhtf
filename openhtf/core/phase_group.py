@@ -194,9 +194,17 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
                   if self.teardown else None),
         name=self.name)
 
-  def all_phases(self) -> Iterator[phase_descriptor.PhaseDescriptor]:
-    """Iterate directly over the phases."""
+  def filter_by_type(
+      self, node_cls: Type[phase_collections.NodeType]
+  ) -> Iterator[phase_collections.NodeType]:
+    """Yields recursively all the nodes of the given type.
+
+    This can yield collection nodes that include each other.
+
+    Args:
+      node_cls: The phase node subtype to iterate over.
+    """
     for seq in (self.setup, self.main, self.teardown):
       if seq:
-        for phase in seq.all_phases():
+        for phase in seq.filter_by_type(node_cls):
           yield phase

@@ -257,7 +257,7 @@ class TestExecutorTest(unittest.TestCase):
     check_list = ['PhaseExecutorThread', 'phase_one']
     mock_test_state = mock.create_autospec(test_state.TestState)
     phase_thread = phase_executor.PhaseExecutorThread(
-        phase_one, mock_test_state, run_with_profiling=False)
+        phase_one, mock_test_state, run_with_profiling=False, subtest_name=None)
     name = str(phase_thread)
     found = True
     for item in check_list:
@@ -639,7 +639,8 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
                      self.test_exec._execute_phase(phase))
 
-    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
+    self.phase_exec.execute_phase.assert_called_once_with(
+        phase, run_with_profiling=False, subtest_name=None)
     self.assertIsNone(self.test_exec._last_outcome)
 
   def testPhase_NotTerminal_PreviousLastOutcome(self):
@@ -653,7 +654,8 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
                      self.test_exec._execute_phase(phase))
 
-    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
+    self.phase_exec.execute_phase.assert_called_once_with(
+        phase, run_with_profiling=False, subtest_name=None)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_SetLastOutcome(self):
@@ -664,7 +666,8 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
                      self.test_exec._execute_phase(phase))
 
-    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
+    self.phase_exec.execute_phase.assert_called_once_with(
+        phase, run_with_profiling=False, subtest_name=None)
     self.assertIs(outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_PreviousLastOutcome(self):
@@ -677,7 +680,8 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
                      self.test_exec._execute_phase(phase))
 
-    self.phase_exec.execute_phase.assert_called_once_with(phase, False)
+    self.phase_exec.execute_phase.assert_called_once_with(
+        phase, run_with_profiling=False, subtest_name=None)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
 

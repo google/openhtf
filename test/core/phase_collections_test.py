@@ -3,10 +3,13 @@
 import unittest
 
 import mock
+import openhtf as htf
 from openhtf import plugs
 from openhtf.core import base_plugs
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
+from openhtf.core import phase_executor
+from openhtf.core import phase_group
 from openhtf.core import phase_nodes
 from openhtf.core import test_record
 from openhtf.util import test as htf_test
@@ -26,6 +29,25 @@ def _prefix_name(p):
 
 def phase():
   pass
+
+
+def fail_subtest_phase():
+  return phase_descriptor.PhaseResult.FAIL_SUBTEST
+
+
+class BrokenError(Exception):
+  pass
+
+
+def error_phase():
+  raise BrokenError('broken')
+
+
+def teardown_phase():
+  pass
+
+
+teardown_group = phase_group.PhaseGroup(teardown=teardown_phase)
 
 
 @phase_descriptor.PhaseOptions()
@@ -177,3 +199,245 @@ class PhaseCollectionsTest(unittest.TestCase):
     seq = phase_collections.PhaseSequence(
         nodes=(empty_phase, plug_phase, mock_node), name='seq')
     self.assertEqual([empty_phase, plug_phase], list(seq.all_phases()))
+
+
+class SubtestTest(unittest.TestCase):
+
+  def test_init__name(self):
+    subtest = phase_collections.Subtest('subtest', phase)
+    self.assertEqual('subtest', subtest.name)
+
+  def test_check_duplicates__dupes(self):
+    seq = phase_collections.PhaseSequence(
+        nodes=(phase_collections.Subtest('dupe'),
+               phase_collections.Subtest('dupe')))
+    with self.assertRaises(phase_collections.DuplicateSubtestNamesError):
+      phase_collections.check_for_duplicate_subtest_names(seq)
+
+  def test_check_duplicates__nested_dupes(self):
+    seq = phase_collections.PhaseSequence(
+        nodes=(phase_collections.Subtest(
+            'dupe', nodes=(phase_collections.Subtest('dupe'),)),))
+    with self.assertRaises(phase_collections.DuplicateSubtestNamesError):
+      phase_collections.check_for_duplicate_subtest_names(seq)
+
+
+class _ValidTimestamp(int):
+
+  def __eq__(self, other):
+    return other is not None and other > 0
+
+
+VALID_TIMESTAMP = _ValidTimestamp()
+
+
+class SubtestIntegrationTest(htf_test.TestCase):
+
+  @htf_test.yields_phases
+  def test_pass(self):
+    subtest = phase_collections.Subtest('subtest', phase)
+
+    test_rec = yield htf.Test(subtest)
+
+    self.assertTestPass(test_rec)
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='subtest',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.PASS),
+    ], test_rec.subtests)
+    self.assertEqual('subtest', test_rec.phases[-1].subtest_name)
+
+  @htf_test.yields_phases
+  def test_fail_but_still_continues(self):
+    subtest = phase_collections.Subtest('failure', fail_subtest_phase,
+                                        error_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestFail(test_rec)
+    self.assertEqual(3, len(test_rec.phases))
+
+    fail_phase_rec = test_rec.phases[1]
+    self.assertPhaseOutcomeFail(fail_phase_rec)
+    self.assertPhaseFailSubtest(fail_phase_rec)
+    self.assertEqual('failure', fail_phase_rec.subtest_name)
+
+    continue_phase_rec = test_rec.phases[2]
+    self.assertPhaseOutcomePass(continue_phase_rec)
+    self.assertPhaseContinue(continue_phase_rec)
+    self.assertIsNone((continue_phase_rec.subtest_name))
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='failure',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_error(self):
+    subtest = phase_collections.Subtest('subtest', error_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestError(test_rec)
+    self.assertEqual(2, len(test_rec.phases))
+
+    error_phase_rec = test_rec.phases[1]
+    self.assertPhaseError(error_phase_rec, exc_type=BrokenError)
+
+  @htf_test.yields_phases
+  def test_pass__with_group(self):
+    subtest = phase_collections.Subtest('subtest', phase)
+
+    test_rec = yield htf.Test(subtest)
+
+    self.assertTestPass(test_rec)
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='subtest',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.PASS),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_fail__with_group(self):
+    subtest = phase_collections.Subtest('it_fails',
+                                        teardown_group.wrap(fail_subtest_phase),
+                                        error_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestFail(test_rec)
+    self.assertEqual(4, len(test_rec.phases))
+
+    fail_phase_rec = test_rec.phases[1]
+    self.assertPhaseOutcomeFail(fail_phase_rec)
+    self.assertPhaseFailSubtest(fail_phase_rec)
+    self.assertEqual('it_fails', fail_phase_rec.subtest_name)
+
+    teardown_phase_rec = test_rec.phases[2]
+    self.assertPhaseContinue(teardown_phase_rec)
+    self.assertPhaseOutcomePass(teardown_phase_rec)
+    self.assertEqual('it_fails', teardown_phase_rec.subtest_name)
+
+    continue_phase_rec = test_rec.phases[3]
+    self.assertPhaseOutcomePass(continue_phase_rec)
+    self.assertPhaseContinue(continue_phase_rec)
+    self.assertIsNone((continue_phase_rec.subtest_name))
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='it_fails',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_error__with_group(self):
+    subtest = phase_collections.Subtest('it_errors',
+                                        teardown_group.wrap(error_phase))
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestError(test_rec)
+    self.assertEqual(3, len(test_rec.phases))
+
+    error_phase_rec = test_rec.phases[1]
+    self.assertPhaseOutcomeError(error_phase_rec)
+    self.assertPhaseError(error_phase_rec, exc_type=BrokenError)
+    self.assertEqual('it_errors', error_phase_rec.subtest_name)
+
+    teardown_phase_rec = test_rec.phases[2]
+    self.assertPhaseContinue(teardown_phase_rec)
+    self.assertPhaseOutcomePass(teardown_phase_rec)
+    self.assertEqual('it_errors', teardown_phase_rec.subtest_name)
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='it_errors',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.STOP),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_nested__pass(self):
+    subtest = phase_collections.Subtest(
+        'outer', phase, phase_collections.Subtest('inner', phase))
+
+    test_rec = yield htf.Test(subtest)
+
+    self.assertTestPass(test_rec)
+
+    outer_phase_rec = test_rec.phases[1]
+    self.assertEqual('outer', outer_phase_rec.subtest_name)
+
+    inner_phase_rec = test_rec.phases[2]
+    self.assertEqual('inner', inner_phase_rec.subtest_name)
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='inner',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.PASS),
+        test_record.SubtestRecord(
+            name='outer',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.PASS),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_nested__fail(self):
+    subtest = phase_collections.Subtest(
+        'outer', phase,
+        phase_collections.Subtest('inner', fail_subtest_phase, error_phase),
+        phase)
+
+    test_rec = yield htf.Test(subtest)
+
+    self.assertTestFail(test_rec)
+
+    self.assertEqual(4, len(test_rec.phases))
+
+    outer_phase_rec = test_rec.phases[1]
+    self.assertEqual('outer', outer_phase_rec.subtest_name)
+
+    inner_phase_rec = test_rec.phases[2]
+    self.assertEqual('inner', inner_phase_rec.subtest_name)
+
+    outer_phase2_rec = test_rec.phases[3]
+    self.assertEqual('outer', outer_phase2_rec.subtest_name)
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='inner',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+        test_record.SubtestRecord(
+            name='outer',
+            start_time_millis=VALID_TIMESTAMP,
+            end_time_millis=VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.PASS),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_fail_subtest_not_in_subtest(self):
+    test_rec = yield htf.Test(fail_subtest_phase, phase)
+
+    self.assertTestError(
+        test_rec, exc_type=phase_executor.InvalidPhaseResultError)
+    self.assertEqual(2, len(test_rec.phases))
+    fail_phase_rec = test_rec.phases[1]
+    self.assertPhaseError(
+        fail_phase_rec, exc_type=phase_executor.InvalidPhaseResultError)
+    self.assertPhaseOutcomeError(fail_phase_rec)
+    self.assertIsNone(fail_phase_rec.subtest_name)

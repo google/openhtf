@@ -116,8 +116,16 @@ class PhaseExecutionOutcome(object):
                                     threads.ThreadTerminationError])
 
   @property
+  def is_aborted(self):
+    return isinstance(self.phase_result, threads.ThreadTerminationError)
+
+  @property
   def is_fail_and_continue(self):
     return self.phase_result is phase_descriptor.PhaseResult.FAIL_AND_CONTINUE
+
+  @property
+  def is_fail_subtest(self):
+    return self.phase_result is phase_descriptor.PhaseResult.FAIL_SUBTEST
 
   @property
   def is_repeat(self):
@@ -131,7 +139,7 @@ class PhaseExecutionOutcome(object):
   def is_terminal(self):
     """True if this result will stop the test."""
     return (self.raised_exception or self.is_timeout or
-            self.phase_result == phase_descriptor.PhaseResult.STOP)
+            self.phase_result is phase_descriptor.PhaseResult.STOP)
 
   @property
   def is_timeout(self):
@@ -144,10 +152,6 @@ class PhaseExecutionOutcome(object):
     return isinstance(self.phase_result,
                       (ExceptionInfo, threads.ThreadTerminationError))
 
-  @property
-  def is_aborted(self):
-    return isinstance(self.phase_result, threads.ThreadTerminationError)
-
 
 class PhaseExecutorThread(threads.KillableThread):
   """Handles the execution and result of a single test phase.
@@ -159,13 +163,14 @@ class PhaseExecutorThread(threads.KillableThread):
   daemon = True
 
   def __init__(self, phase_desc: phase_descriptor.PhaseDescriptor,
-               test_state: 'htf_test_state.TestState',
-               run_with_profiling: bool):
+               test_state: 'htf_test_state.TestState', run_with_profiling: bool,
+               subtest_name: Optional[Text]):
     super(PhaseExecutorThread, self).__init__(
         name='<PhaseExecutorThread: (phase_desc.name)>',
         run_with_profiling=run_with_profiling)
     self._phase_desc = phase_desc
     self._test_state = test_state
+    self._subtest_name = subtest_name
     self._phase_execution_outcome = None  # type: Optional[PhaseExecutionOutcome]
 
   def _thread_proc(self) -> None:
@@ -177,6 +182,10 @@ class PhaseExecutorThread(threads.KillableThread):
 
     if not isinstance(phase_return, phase_descriptor.PhaseResult):
       raise InvalidPhaseResultError('Invalid phase result', phase_return)
+    if (phase_return is phase_descriptor.PhaseResult.FAIL_SUBTEST and
+        not self._subtest_name):
+      raise InvalidPhaseResultError(
+          'Phase returned FAIL_SUBTEST but a subtest is not running.')
     self._phase_execution_outcome = PhaseExecutionOutcome(phase_return)
 
   def _log_exception(self, *args: Any) -> Any:
@@ -230,7 +239,8 @@ class PhaseExecutor(object):
   def execute_phase(
       self,
       phase: phase_descriptor.PhaseDescriptor,
-      run_with_profiling: bool = False
+      run_with_profiling: bool = False,
+      subtest_name: Optional[Text] = None
   ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes a phase or skips it, yielding PhaseExecutionOutcome instances.
 
@@ -238,6 +248,7 @@ class PhaseExecutor(object):
       phase: Phase to execute.
       run_with_profiling: Whether to run with cProfile stat collection for the
         phase code run inside a thread.
+      subtest_name: Optional name for the currently running subtest.
 
     Returns:
       A two-tuple; the first item is the final PhaseExecutionOutcome that wraps
@@ -252,7 +263,7 @@ class PhaseExecutor(object):
     while not self._stopping.is_set():
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome, profile_stats = self._execute_phase_once(
-          phase, is_last_repeat, run_with_profiling)
+          phase, is_last_repeat, run_with_profiling, subtest_name)
 
       if phase_execution_outcome.is_repeat and not is_last_repeat:
         repeat_count += 1
@@ -264,7 +275,7 @@ class PhaseExecutor(object):
 
   def _execute_phase_once(
       self, phase_desc: phase_descriptor.PhaseDescriptor, is_last_repeat: bool,
-      run_with_profiling: bool
+      run_with_profiling: bool, subtest_name: Optional[Text]
   ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
@@ -275,7 +286,12 @@ class PhaseExecutor(object):
 
     override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
-      _LOG.debug('Executing phase %s', phase_desc.name)
+      if subtest_name:
+        _LOG.debug('Executing phase %s under subtest %s', phase_desc.name,
+                   subtest_name)
+        phase_state.set_subtest_name(subtest_name)
+      else:
+        _LOG.debug('Executing phase %s', phase_desc.name)
       with self._current_phase_thread_lock:
         # Checking _stopping must be in the lock context, otherwise there is a
         # race condition: this thread checks _stopping and then switches to
@@ -289,7 +305,7 @@ class PhaseExecutor(object):
           phase_state.result = result
           return result, None
         phase_thread = PhaseExecutorThread(phase_desc, self.test_state,
-                                           run_with_profiling)
+                                           run_with_profiling, subtest_name)
         phase_thread.start()
         self._current_phase_thread = phase_thread
 

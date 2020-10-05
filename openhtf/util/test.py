@@ -320,7 +320,10 @@ class PhaseOrTestIterator(collections.Iterator):
         side_effect=logging.exception):
       # Use _execute_phase_once because we want to expose all possible outcomes.
       phase_result, _ = executor._execute_phase_once(
-          phase_desc, is_last_repeat=False, run_with_profiling=False)
+          phase_desc,
+          is_last_repeat=False,
+          run_with_profiling=False,
+          subtest_name=None)
 
     if phase_result.raised_exception:
       failure_message = phase_result.phase_result.get_traceback_string()
@@ -593,6 +596,10 @@ class TestCase(unittest.TestCase):
 
   def assertPhaseFailAndContinue(self, phase_record):
     self.assertIs(openhtf.PhaseResult.FAIL_AND_CONTINUE,
+                  phase_record.result.phase_result)
+
+  def assertPhaseFailSubtest(self, phase_record):
+    self.assertIs(openhtf.PhaseResult.FAIL_SUBTEST,
                   phase_record.result.phase_result)
 
   def assertPhaseRepeat(self, phase_record):
