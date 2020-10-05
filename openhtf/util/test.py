@@ -148,6 +148,15 @@ class InvalidTestError(Exception):
   """Raised when there's something invalid about a test."""
 
 
+class _ValidTimestamp(int):
+
+  def __eq__(self, other):
+    return other is not None and other > 0
+
+
+VALID_TIMESTAMP = _ValidTimestamp()
+
+
 @attr.s(slots=True, frozen=True)
 class TestNode(phase_nodes.PhaseNode):
   """General base class for comparison nodes.

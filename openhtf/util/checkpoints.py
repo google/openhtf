@@ -26,31 +26,26 @@ checks the result of all previous phases and will stop test execution if a
 previous phase has failed.
 """
 
-from openhtf.core import phase_descriptor
-from openhtf.core import test_record
+from __future__ import google_type_annotations
+
+from typing import Optional, Text
+
+from openhtf.core import phase_branches
 
 
-def checkpoint(checkpoint_name=None):
+def checkpoint(
+    checkpoint_name: Optional[Text] = None
+) -> phase_branches.PhaseFailureCheckpoint:
   """Creates a checkpoint phase that checks if all the previous phases passed.
 
   Args:
-    checkpoint_name: Optional name for the checkpoint phase.
+    checkpoint_name: Optional name for the checkpoint phase; if not specified,
+      this defaults to 'checkpoint'.
 
   Returns:
     The checkpoint phase.
   """
-  name = checkpoint_name if checkpoint_name else 'Checkpoint'
+  if not checkpoint_name:
+    checkpoint_name = 'checkpoint'
 
-  @phase_descriptor.PhaseOptions(name=name)
-  def _checkpoint(test_run):
-    failed_phases = []
-    for phase_record in test_run.test_record.phases:
-      if phase_record.outcome == test_record.PhaseOutcome.FAIL:
-        failed_phases.append(phase_record.name)
-
-    if failed_phases:
-      test_run.logger.error('Stopping execution because phases failed: %s',
-                            failed_phases)
-      return phase_descriptor.PhaseResult.STOP
-
-  return _checkpoint
+  return phase_branches.PhaseFailureCheckpoint.all_previous(checkpoint_name)

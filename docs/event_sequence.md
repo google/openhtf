@@ -25,6 +25,8 @@ further:
  |
  +--[PhaseDescriptor]
  |
+ +--[Checkpoint]
+ |
  \--[PhaseCollection]
      |
      +--[PhaseSequence]
@@ -39,13 +41,14 @@ further:
 `PhaseNode`s are the basic building block for OpenHTF's phase execution.  They
 are a base class that defines a few basic operations that can get recursively
 applied.  The `PhaseDescriptor` is the primary executable unit that wraps the
-phase functions.  `PhaseCollection` is a base class for a node that contains
+phase functions. `PhaseCollection` is a base class for a node that contains
 multiple nodes.  The primary one of these is the `PhaseSequence`, which is a
 tuple of phase nodes; each of those nodes is executed in order with nested
 execution if those nodes are other collections.  `PhaseBranch`s are phase
 sequences that are only run when the Diagnosis Result-based conditions are met.
-`PhaseGroup`s are phase collections that have three sequences as described
-below.
+`Checkpoint` nodes check conditions, like phase failure or a triggered
+diagnosis; if that condition is met, they act as a failed phase. `PhaseGroup`s
+are phase collections that have three sequences as described below.
 
 ### Recursive nesting
 

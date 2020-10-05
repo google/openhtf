@@ -222,15 +222,6 @@ class SubtestTest(unittest.TestCase):
       phase_collections.check_for_duplicate_subtest_names(seq)
 
 
-class _ValidTimestamp(int):
-
-  def __eq__(self, other):
-    return other is not None and other > 0
-
-
-VALID_TIMESTAMP = _ValidTimestamp()
-
-
 class SubtestIntegrationTest(htf_test.TestCase):
 
   @htf_test.yields_phases
@@ -243,8 +234,8 @@ class SubtestIntegrationTest(htf_test.TestCase):
     self.assertEqual([
         test_record.SubtestRecord(
             name='subtest',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.PASS),
     ], test_rec.subtests)
     self.assertEqual('subtest', test_rec.phases[-1].subtest_name)
@@ -272,8 +263,8 @@ class SubtestIntegrationTest(htf_test.TestCase):
     self.assertEqual([
         test_record.SubtestRecord(
             name='failure',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.FAIL),
     ], test_rec.subtests)
 
@@ -299,8 +290,8 @@ class SubtestIntegrationTest(htf_test.TestCase):
     self.assertEqual([
         test_record.SubtestRecord(
             name='subtest',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.PASS),
     ], test_rec.subtests)
 
@@ -333,8 +324,8 @@ class SubtestIntegrationTest(htf_test.TestCase):
     self.assertEqual([
         test_record.SubtestRecord(
             name='it_fails',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.FAIL),
     ], test_rec.subtests)
 
@@ -361,8 +352,8 @@ class SubtestIntegrationTest(htf_test.TestCase):
     self.assertEqual([
         test_record.SubtestRecord(
             name='it_errors',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.STOP),
     ], test_rec.subtests)
 
@@ -384,13 +375,13 @@ class SubtestIntegrationTest(htf_test.TestCase):
     self.assertEqual([
         test_record.SubtestRecord(
             name='inner',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.PASS),
         test_record.SubtestRecord(
             name='outer',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.PASS),
     ], test_rec.subtests)
 
@@ -419,13 +410,13 @@ class SubtestIntegrationTest(htf_test.TestCase):
     self.assertEqual([
         test_record.SubtestRecord(
             name='inner',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.FAIL),
         test_record.SubtestRecord(
             name='outer',
-            start_time_millis=VALID_TIMESTAMP,
-            end_time_millis=VALID_TIMESTAMP,
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
             outcome=test_record.SubtestOutcome.PASS),
     ], test_rec.subtests)
 

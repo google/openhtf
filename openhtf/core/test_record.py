@@ -175,6 +175,7 @@ class TestRecord(object):
   phases = attr.ib(type=List['PhaseRecord'], factory=list)
   subtests = attr.ib(type=List['SubtestRecord'], factory=list)
   branches = attr.ib(type=List['BranchRecord'], factory=list)
+  checkpoints = attr.ib(type=List['CheckpointRecord'], factory=list)
   diagnosers = attr.ib(
       type=List['diagnoses_lib.BaseTestDiagnoser'], factory=list)
   diagnoses = attr.ib(type=List['diagnoses_lib.Diagnosis'], factory=list)
@@ -185,6 +186,7 @@ class TestRecord(object):
   _cached_phases = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_subtests = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_branches = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_checkpoints = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_diagnosers = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_diagnoses = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_log_records = attr.ib(type=List[Dict[Text, Any]], factory=list)
@@ -223,6 +225,12 @@ class TestRecord(object):
   def add_branch_record(self, branch_record: 'BranchRecord') -> None:
     self.branches.append(branch_record)
     self._cached_branches.append(data.convert_to_base_types(branch_record))
+
+  def add_checkpoint_record(self,
+                            checkpoint_record: 'CheckpointRecord') -> None:
+    self.checkpoints.append(checkpoint_record)
+    self._cached_checkpoints.append(
+        data.convert_to_base_types(checkpoint_record))
 
   def add_diagnosis(self, diagnosis: 'diagnoses_lib.Diagnosis') -> None:
     self.diagnoses.append(diagnosis)
@@ -274,7 +282,29 @@ class BranchRecord(object):
         evaluated_millis=evaluated_millis)
 
 
-# PhaseResult enumerations are
+@attr.s(slots=True, frozen=True)
+class CheckpointRecord(object):
+  """The record of a checkpoint."""
+
+  name = attr.ib(type=Text)
+  action = attr.ib(type='phase_descriptor.PhaseResult')
+  conditional = attr.ib(type=Union['phase_branches.PreviousPhases',
+                                   'phase_branches.DiagnosisCondition'])
+  result = attr.ib(type='phase_executor.PhaseExecutionOutcome')
+  evaluated_millis = attr.ib(type=int)
+
+  @classmethod
+  def from_checkpoint(cls, checkpoint: 'phase_branches.Checkpoint',
+                      result: 'phase_executor.PhaseExecutionOutcome',
+                      evaluated_millis: int) -> 'CheckpointRecord':
+    return cls(
+        name=checkpoint.name,
+        action=checkpoint.action,
+        conditional=checkpoint.record_conditional(),
+        result=result,
+        evaluated_millis=evaluated_millis)
+
+
 class PhaseOutcome(enum.Enum):
   """Phase outcomes, converted to from the PhaseState."""
 

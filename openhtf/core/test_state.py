@@ -465,6 +465,9 @@ class TestState(util.SubscribableStateMixin):
       self._finalize(test_record.Outcome.ERROR)
     elif any(d.is_failure for d in self.test_record.diagnoses):
       self._finalize(test_record.Outcome.FAIL)
+    elif any(s.outcome == test_record.SubtestOutcome.FAIL
+             for s in self.test_record.subtests):
+      self._finalize(test_record.Outcome.FAIL)
     else:
       # Otherwise, the test run was successful.
       self._finalize(test_record.Outcome.PASS)

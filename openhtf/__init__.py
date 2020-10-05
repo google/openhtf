@@ -20,6 +20,7 @@ from openhtf.core import phase_executor
 from openhtf.core import test_record
 from openhtf.core.base_plugs import BasePlug
 from openhtf.core.diagnoses_lib import diagnose
+from openhtf.core.diagnoses_lib import DiagnosesStore
 from openhtf.core.diagnoses_lib import Diagnosis
 from openhtf.core.diagnoses_lib import DiagnosisComponent
 from openhtf.core.diagnoses_lib import DiagPriority
@@ -32,8 +33,11 @@ from openhtf.core.measurements import Measurement
 from openhtf.core.measurements import measures
 from openhtf.core.monitors import monitors
 from openhtf.core.phase_branches import BranchSequence
+from openhtf.core.phase_branches import DiagnosisCheckpoint
 from openhtf.core.phase_branches import DiagnosisCondition
+from openhtf.core.phase_branches import PhaseFailureCheckpoint
 from openhtf.core.phase_collections import PhaseSequence
+from openhtf.core.phase_collections import Subtest
 from openhtf.core.phase_descriptor import PhaseDescriptor
 from openhtf.core.phase_descriptor import PhaseOptions
 from openhtf.core.phase_descriptor import PhaseResult
@@ -42,6 +46,8 @@ from openhtf.core.phase_nodes import PhaseNode
 from openhtf.core.test_descriptor import Test
 from openhtf.core.test_descriptor import TestApi
 from openhtf.core.test_descriptor import TestDescriptor
+from openhtf.core.test_record import PhaseRecord
+from openhtf.core.test_record import TestRecord
 from openhtf.plugs import plug
 from openhtf.util import conf
 from openhtf.util import console_output
