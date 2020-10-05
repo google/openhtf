@@ -37,6 +37,7 @@ if TYPE_CHECKING:
   from openhtf.core import measurements as htf_measurements  # pylint: disable=g-import-not-at-top
   from openhtf.core import phase_descriptor  # pylint: disable=g-import-not-at-top
   from openhtf.core import phase_executor  # pylint: disable=g-import-not-at-top
+  from openhtf.core import phase_branches  # pylint: disable=g-import-not-at-top
 
 conf.declare(
     'attachments_directory',
@@ -172,6 +173,7 @@ class TestRecord(object):
   code_info = attr.ib(type=CodeInfo, factory=CodeInfo.uncaptured)
   metadata = attr.ib(type=Dict[Text, Any], factory=dict)
   phases = attr.ib(type=List['PhaseRecord'], factory=list)
+  branches = attr.ib(type=List['BranchRecord'], factory=list)
   diagnosers = attr.ib(
       type=List['diagnoses_lib.BaseTestDiagnoser'], factory=list)
   diagnoses = attr.ib(type=List['diagnoses_lib.Diagnosis'], factory=list)
@@ -180,6 +182,7 @@ class TestRecord(object):
   # Cache fields to reduce repeated base type conversions.
   _cached_record = attr.ib(type=Dict[Text, Any], factory=dict)
   _cached_phases = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_branches = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_diagnosers = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_diagnoses = attr.ib(type=List[Dict[Text, Any]], factory=list)
   _cached_log_records = attr.ib(type=List[Dict[Text, Any]], factory=list)
@@ -211,6 +214,10 @@ class TestRecord(object):
     self.phases.append(phase_record)
     self._cached_phases.append(phase_record.as_base_types())
 
+  def add_branch_record(self, branch_record: 'BranchRecord') -> None:
+    self.branches.append(branch_record)
+    self._cached_branches.append(data.convert_to_base_types(branch_record))
+
   def add_diagnosis(self, diagnosis: 'diagnoses_lib.Diagnosis') -> None:
     self.diagnoses.append(diagnosis)
     self._cached_diagnoses.append(data.convert_to_base_types(diagnosis))
@@ -232,12 +239,32 @@ class TestRecord(object):
         'outcome_details': data.convert_to_base_types(self.outcome_details),
         'metadata': metadata,
         'phases': self._cached_phases,
+        'branches': self._cached_branches,
         'diagnosers': self._cached_diagnosers,
         'diagnoses': self._cached_diagnoses,
         'log_records': self._cached_log_records,
     }
     ret.update(self._cached_record)
     return ret
+
+
+@attr.s(slots=True, frozen=True)
+class BranchRecord(object):
+  """The record of a branch."""
+
+  name = attr.ib(type=Optional[Text])
+  diag_condition = attr.ib(type='phase_branches.DiagnosisCondition')
+  branch_taken = attr.ib(type=bool)
+  evaluated_millis = attr.ib(type=int)
+
+  @classmethod
+  def from_branch(cls, branch: 'phase_branches.BranchSequence',
+                  branch_taken: bool, evaluated_millis: int) -> 'BranchRecord':
+    return cls(
+        name=branch.name,
+        diag_condition=branch.diag_condition,
+        branch_taken=branch_taken,
+        evaluated_millis=evaluated_millis)
 
 
 # PhaseResult enumerations are

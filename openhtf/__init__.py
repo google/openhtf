@@ -31,6 +31,8 @@ from openhtf.core.measurements import Dimension
 from openhtf.core.measurements import Measurement
 from openhtf.core.measurements import measures
 from openhtf.core.monitors import monitors
+from openhtf.core.phase_branches import BranchSequence
+from openhtf.core.phase_branches import DiagnosisCondition
 from openhtf.core.phase_collections import PhaseSequence
 from openhtf.core.phase_descriptor import PhaseDescriptor
 from openhtf.core.phase_descriptor import PhaseOptions
