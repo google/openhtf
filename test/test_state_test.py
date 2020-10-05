@@ -83,6 +83,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
             'config': {}
         },
         'phases': [],
+        'branches': [],
         'diagnosers': [],
         'diagnoses': [],
         'log_records': [],

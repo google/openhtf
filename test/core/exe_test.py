@@ -13,16 +13,20 @@
 # limitations under the License.
 """Unit tests for the openhtf.exe module."""
 
+import logging
 import threading
 import time
 import unittest
 
+from absl.testing import parameterized
 import mock
 
 import openhtf
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import base_plugs
+from openhtf.core import diagnoses_lib
+from openhtf.core import phase_branches
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
@@ -984,6 +988,128 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
     ])
 
     self.mock_execute_teardown.assert_not_called()
+
+
+class BranchDiag(diagnoses_lib.DiagResultEnum):
+  ONE = 'one'
+  TWO = 'two'
+  THREE = 'three'
+
+
+_NO_RESULTS = tuple()
+_ONE_RESULT = (BranchDiag.ONE,)
+_ALL_RESULTS = tuple(BranchDiag)
+
+
+class StringInComparer(object):
+
+  def __init__(self, expected_content):
+    self._expected_content = expected_content
+
+  def __eq__(self, other):
+    return self._expected_content in other
+
+
+class TestExecutorExecuteBranchTest(parameterized.TestCase):
+
+  def setUp(self):
+    super(TestExecutorExecuteBranchTest, self).setUp()
+    self.diag_store = diagnoses_lib.DiagnosesStore()
+    self.mock_test_record = mock.create_autospec(test_record.TestRecord)
+    self.mock_logger = mock.create_autospec(logging.Logger)
+    self.test_state = mock.MagicMock(
+        spec=test_state.TestState,
+        plug_manager=plugs.PlugManager(),
+        diagnoses_manager=mock.MagicMock(
+            spec=diagnoses_lib.DiagnosesManager, store=self.diag_store),
+        execution_uid='01234567890',
+        test_record=self.mock_test_record,
+        state_logger=self.mock_logger)
+    td = test_descriptor.TestDescriptor(
+        phase_sequence=phase_collections.PhaseSequence(
+            phase_group.PhaseGroup()),
+        code_info=test_record.CodeInfo.uncaptured(),
+        metadata={})
+    self.test_exec = test_executor.TestExecutor(
+        td,
+        td.uid,
+        None,
+        test_descriptor.TestOptions(),
+        run_with_profiling=False)
+    self.test_exec.test_state = self.test_state
+    patcher = mock.patch.object(self.test_exec, '_execute_abortable_sequence')
+    self.mock_execute_abortable = patcher.start()
+
+  @parameterized.named_parameters(
+      # on_all
+      ('on_all__one__not_triggered', 'on_all', BranchDiag.ONE, _NO_RESULTS,
+       False),
+      ('on_all__one__triggered', 'on_all', _ONE_RESULT, _ONE_RESULT, True),
+      ('on_all__multiple__none', 'on_all', _ALL_RESULTS, _NO_RESULTS, False),
+      ('on_all__multiple__one', 'on_all', _ALL_RESULTS, _ONE_RESULT, False),
+      ('on_all__multiple__all', 'on_all', _ALL_RESULTS, _ALL_RESULTS, True),
+      # on_any
+      ('on_any__one__not_triggered', 'on_any', BranchDiag.ONE, _NO_RESULTS,
+       False),
+      ('on_any__one__triggered', 'on_any', _ONE_RESULT, _ONE_RESULT, True),
+      ('on_any__multiple__none', 'on_any', _ALL_RESULTS, _NO_RESULTS, False),
+      ('on_any__multiple__one', 'on_any', _ALL_RESULTS, _ONE_RESULT, True),
+      ('on_any__multiple__all', 'on_any', _ALL_RESULTS, _ALL_RESULTS, True),
+      # on_not_any
+      ('on_not_any__one__not_triggered', 'on_not_any', BranchDiag.ONE,
+       _NO_RESULTS, True),
+      ('on_not_any__one__triggered', 'on_not_any', _ONE_RESULT, _ONE_RESULT,
+       False),
+      ('on_not_any__multiple__none', 'on_not_any', _ALL_RESULTS, _NO_RESULTS,
+       True),
+      ('on_not_any__multiple__one', 'on_not_any', _ALL_RESULTS, _ONE_RESULT,
+       False),
+      ('on_not_any__multiple__all', 'on_not_any', _ALL_RESULTS, _ALL_RESULTS,
+       False),
+      # not_all
+      ('on_not_all__one__not_triggered', 'on_not_all', _ONE_RESULT, _NO_RESULTS,
+       True),
+      ('on_not_all__one__triggered', 'on_not_all', _ONE_RESULT, _ONE_RESULT,
+       False),
+      ('on_not_all__multiple__none', 'on_not_all', _ALL_RESULTS, _NO_RESULTS,
+       True),
+      ('on_not_all__multiple__one', 'on_not_all', _ALL_RESULTS, _ONE_RESULT,
+       True),
+      ('on_not_all__multiple__all', 'on_not_all', _ALL_RESULTS, _ALL_RESULTS,
+       False),
+  )
+  def test_branch(self, constructor_name, constructor_diags, results, called):
+    diag_cond = getattr(phase_branches.DiagnosisCondition,
+                        constructor_name)(*constructor_diags)
+    branch = phase_branches.BranchSequence(diag_cond)
+    for result in results:
+      self.diag_store._add_diagnosis(diagnoses_lib.Diagnosis(result=result))
+
+    self.test_exec._execute_phase_branch(branch)
+    if called:
+      self.mock_execute_abortable.assert_called_once_with(branch)
+      self.mock_logger.debug.assert_called_once_with(
+          '%s: Branch condition met; running phases.', diag_cond.message)
+    else:
+      self.mock_execute_abortable.assert_not_called()
+      self.mock_logger.debug.assert_called_once_with(
+          '%s: Branch condition NOT met; skipping phases.', diag_cond.message)
+    self.mock_test_record.add_branch_record.assert_called_once_with(
+        test_record.BranchRecord.from_branch(branch, called, mock.ANY))
+
+  def test_branch_with_log(self):
+    diag_cond = phase_branches.DiagnosisCondition.on_all(BranchDiag.ONE)
+    branch = phase_branches.BranchSequence(diag_cond, name='branch')
+    self.diag_store._add_diagnosis(
+        diagnoses_lib.Diagnosis(result=BranchDiag.ONE))
+
+    self.test_exec._execute_phase_branch(branch)
+    self.mock_execute_abortable.assert_called_once_with(branch)
+    self.mock_test_record.add_branch_record.assert_called_once_with(
+        test_record.BranchRecord.from_branch(branch, True, mock.ANY))
+    self.mock_logger.debug.assert_called_once_with(
+        '%s: Branch condition met; running phases.',
+        'branch:{}'.format(diag_cond.message))
 
 
 class PhaseExecutorTest(unittest.TestCase):

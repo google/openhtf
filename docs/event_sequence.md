@@ -7,6 +7,7 @@ further:
 1. `test_start` is run in a new thread
 1. All plugs for the test are instantiated
 1. Each phase node is run
+    1. If the node is a branch, each node is run if the condition is met
     1. If the node is a sequence, each node is run
     1. If the node is a group, each of the groups sequences is run
     1. If the node is a phase descriptor, that phase is run
@@ -25,6 +26,8 @@ further:
  \--[PhaseCollection]
      |
      +--[PhaseSequence]
+     |   |
+     |   \--[PhaseBranch]
      |
      \--[PhaseGroup]
 ```
@@ -35,8 +38,10 @@ applied.  The `PhaseDescriptor` is the primary executable unit that wraps the
 phase functions.  `PhaseCollection` is a base class for a node that contains
 multiple nodes.  The primary one of these is the `PhaseSequence`, which is a
 tuple of phase nodes; each of those nodes is executed in order with nested
-execution if those nodes are other collections.  `PhaseGroup`s are phase
-collections that have three sequences as described below.
+execution if those nodes are other collections.  `PhaseBranch`s are phase
+sequences that are only run when the Diagnosis Result-based conditions are met.
+`PhaseGroup`s are phase collections that have three sequences as described
+below.
 
 ### Recursive nesting
 

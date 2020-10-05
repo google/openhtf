@@ -214,6 +214,7 @@ setup(
         'examples': ['pandas>=0.22.0',],
     },
     tests_require=[
+        'absl-py>=0.10.0',
         'mock>=2.0.0',
         # Remove max version here after we drop Python 2 support.
         'pandas>=0.22.0,<0.25.0',

@@ -24,8 +24,10 @@ import threading
 import traceback
 from typing import List, Optional, Text, Type, TYPE_CHECKING
 
+from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
+from openhtf.core import phase_branches
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
@@ -112,6 +114,10 @@ class TestExecutor(threads.KillableThread):
     # Populated if profiling is enabled.
     self._phase_profile_stats = []  # type: List[pstats.Stats]
     self._subtest_name = None  # type: Optional[Text]
+
+  @property
+  def logger(self) -> logging.Logger:
+    return self.test_state.state_logger
 
   @property
   def phase_profile_stats(self) -> List[pstats.Stats]:
@@ -285,7 +291,7 @@ class TestExecutor(threads.KillableThread):
 
     # Now finalize the test state.
     if self._abort.is_set():
-      self.test_state.state_logger.debug('Finishing test with outcome ABORTED.')
+      self.logger.debug('Finishing test with outcome ABORTED.')
       self.test_state.abort()
     elif self._last_outcome and self._last_outcome.is_terminal:
       self.test_state.finalize_from_phase_outcome(self._last_outcome)
@@ -294,7 +300,7 @@ class TestExecutor(threads.KillableThread):
 
   def _execute_phase(
       self, phase: phase_descriptor.PhaseDescriptor) -> _ExecutorReturn:
-    self.test_state.state_logger.debug('Executing phase %s', phase.name)
+    self.logger.debug('Executing phase %s', phase.name)
     # TODO(arsharma): Pass subtest name to the phase executor to add to the
     # phase record.
     outcome, profile_stats = self._phase_exec.execute_phase(
@@ -311,8 +317,7 @@ class TestExecutor(threads.KillableThread):
       if current_phase_result.outcome == test_record.PhaseOutcome.FAIL:
         outcome = phase_executor.PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.STOP)
-        self.test_state.state_logger.error(
-            'Stopping test because stop_on_first_failure is True')
+        self.logger.error('Stopping test because stop_on_first_failure is True')
 
     if outcome.is_terminal and not self._last_outcome:
       self._last_outcome = outcome
@@ -328,8 +333,7 @@ class TestExecutor(threads.KillableThread):
     if override_message:
       message = override_message
     if message:
-      self.test_state.state_logger.debug('Executing phase nodes for %s',
-                                         message)
+      self.logger.debug('Executing phase nodes for %s', message)
 
   def _execute_abortable_sequence(
       self,
@@ -388,6 +392,29 @@ class TestExecutor(threads.KillableThread):
       return _ExecutorReturn.CONTINUE
     return ret
 
+  def _execute_phase_branch(
+      self, branch: phase_branches.BranchSequence) -> _ExecutorReturn:
+    branch_message = branch.diag_condition.message
+    if branch.name:
+      branch_message = '{}:{}'.format(branch.name, branch_message)
+
+    evaluated_millis = util.time_millis()
+    if branch.should_run(self.test_state.diagnoses_manager.store):
+      self.logger.debug('%s: Branch condition met; running phases.',
+                        branch_message)
+      branch_taken = True
+      ret = self._execute_abortable_sequence(branch)
+    else:
+      self.logger.debug('%s: Branch condition NOT met; skipping phases.',
+                        branch_message)
+      branch_taken = False
+      ret = _ExecutorReturn.CONTINUE
+
+    branch_rec = test_record.BranchRecord.from_branch(branch, branch_taken,
+                                                      evaluated_millis)
+    self.test_state.test_record.add_branch_record(branch_rec)
+    return ret
+
   def _execute_phase_group(self,
                            group: phase_group.PhaseGroup) -> _ExecutorReturn:
     """Executes the phases in a phase group.
@@ -407,7 +434,7 @@ class TestExecutor(threads.KillableThread):
     """
     message_prefix = ''
     if group.name:
-      self.test_state.state_logger.debug('Entering PhaseGroup %s', group.name)
+      self.logger.debug('Entering PhaseGroup %s', group.name)
       message_prefix = group.name + ':'
     if group.setup:
       setup_ret = self._execute_abortable_sequence(
@@ -429,13 +456,15 @@ class TestExecutor(threads.KillableThread):
   def _execute_node(self, node: phase_nodes.PhaseNode) -> _ExecutorReturn:
     if isinstance(node, phase_collections.Subtest):
       return self._execute_subtest(node)
+    if isinstance(node, phase_branches.BranchSequence):
+      return self._execute_phase_branch(node)
     if isinstance(node, phase_collections.PhaseSequence):
       return self._execute_abortable_sequence(node)
     if isinstance(node, phase_group.PhaseGroup):
       return self._execute_phase_group(node)
     if isinstance(node, phase_descriptor.PhaseDescriptor):
       return self._execute_phase(node)
-    self.test_state.state_logger.error('Unhandled node type: %s', node)
+    self.logger.error('Unhandled node type: %s', node)
     return _ExecutorReturn.TERMINAL
 
   def _execute_test_diagnoser(
@@ -445,7 +474,7 @@ class TestExecutor(threads.KillableThread):
           diagnoser, self.test_state.test_record)
     except Exception:  # pylint: disable=broad-except
       if self._last_outcome and self._last_outcome.is_terminal:
-        self.test_state.state_logger.exception(
+        self.logger.exception(
             'Test Diagnoser %s raised an exception, but the test outcome is '
             'already terminal; logging additional exception here.',
             diagnoser.name)
