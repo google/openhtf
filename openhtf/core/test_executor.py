@@ -334,6 +334,20 @@ class TestExecutor(threads.KillableThread):
     else:
       return _ExecutorReturn.CONTINUE
 
+  def _execute_checkpoint(
+      self, checkpoint: phase_branches.Checkpoint) -> _ExecutorReturn:
+    outcome = self._phase_exec.evaluate_checkpoint(checkpoint,
+                                                   self._subtest_name)
+
+    if outcome.is_terminal and not self._last_outcome:
+      self._last_outcome = outcome
+
+    if outcome.is_terminal:
+      return _ExecutorReturn.TERMINAL
+    if outcome.is_fail_subtest:
+      return _ExecutorReturn.EXIT_SUBTEST
+    return _ExecutorReturn.CONTINUE
+
   def _log_sequence(self, phase_sequence, override_message):
     message = phase_sequence.name
     if override_message:
@@ -504,6 +518,8 @@ class TestExecutor(threads.KillableThread):
       return self._execute_phase_group(node)
     if isinstance(node, phase_descriptor.PhaseDescriptor):
       return self._execute_phase(node)
+    if isinstance(node, phase_branches.Checkpoint):
+      return self._execute_checkpoint(node)
     self.logger.error('Unhandled node type: %s', node)
     return _ExecutorReturn.TERMINAL
 

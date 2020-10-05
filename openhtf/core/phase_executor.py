@@ -42,7 +42,10 @@ import types
 from typing import Any, Dict, Optional, Text, Tuple, Type, TYPE_CHECKING, Union
 
 import attr
+from openhtf import util
+from openhtf.core import phase_branches
 from openhtf.core import phase_descriptor
+from openhtf.core import test_record
 from openhtf.util import argv
 from openhtf.util import threads
 from openhtf.util import timeouts
@@ -324,6 +327,33 @@ class PhaseExecutor(object):
                result.phase_result)
     return (result,
             phase_thread.get_profile_stats() if run_with_profiling else None)
+
+  def evaluate_checkpoint(
+      self, checkpoint: phase_branches.Checkpoint,
+      subtest_name: Optional[Text]) -> PhaseExecutionOutcome:
+    """Evaluate a checkpoint, returning a PhaseExecutionOutcome."""
+    if subtest_name:
+      _LOG.debug('Evaluating checkpoint %s under subtest %s', checkpoint.name,
+                 subtest_name)
+    else:
+      _LOG.debug('Evaluating checkpoint %s', checkpoint.name)
+    evaluated_millis = util.time_millis()
+    try:
+      outcome = PhaseExecutionOutcome(checkpoint.get_result(self.test_state))
+      _LOG.debug('Checkpoint %s result: %s', checkpoint.name,
+                 outcome.phase_result)
+      if outcome.is_fail_subtest and not subtest_name:
+        raise InvalidPhaseResultError(
+            'Checkpoint returned FAIL_SUBTEST, but subtest not running.')
+    except Exception:  # pylint: disable=broad-except
+      outcome = PhaseExecutionOutcome(ExceptionInfo(*sys.exc_info()))
+
+    checkpoint_rec = test_record.CheckpointRecord.from_checkpoint(
+        checkpoint, outcome, evaluated_millis)
+
+    self.test_state.test_record.add_checkpoint_record(checkpoint_rec)
+
+    return outcome
 
   def reset_stop(self) -> None:
     self._stopping.clear()
