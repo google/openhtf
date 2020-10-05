@@ -108,8 +108,7 @@ class PhaseExecutionOutcome(object):
   similarly be used to check for the timeout case.
 
   The only accepted values for phase_result are None (timeout), an instance
-  of Exception (phase raised), or an instance of openhtf.PhaseResult.  Any
-  other value will raise an InvalidPhaseResultError.
+  of Exception (phase raised), or an instance of openhtf.PhaseResult.
   """
 
   phase_result = attr.ib(type=Union[None, phase_descriptor.PhaseResult,
@@ -176,8 +175,8 @@ class PhaseExecutorThread(threads.KillableThread):
     if phase_return is None:
       phase_return = phase_descriptor.PhaseResult.CONTINUE
 
-    # If phase_return is invalid, this will raise, and _phase_execution_outcome
-    # will get set to the InvalidPhaseResultError in _thread_exception instead.
+    if not isinstance(phase_return, phase_descriptor.PhaseResult):
+      raise InvalidPhaseResultError('Invalid phase result', phase_return)
     self._phase_execution_outcome = PhaseExecutionOutcome(phase_return)
 
   def _log_exception(self, *args: Any) -> Any:
