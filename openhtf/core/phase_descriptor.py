@@ -69,6 +69,9 @@ class PhaseResult(enum.Enum):
   SKIP = 'SKIP'
   # Causes the framework to stop executing, indicating a failure.
   STOP = 'STOP'
+  # Causes the framework to stop the current subtest and is otherwise treated as
+  # a FAIL_AND_CONTINUE.  If not in a subtest, this is treated as an ERROR.
+  FAIL_SUBTEST = 'FAIL_SUBTEST'
 
 
 PhaseReturnT = Optional[PhaseResult]

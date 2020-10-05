@@ -25,7 +25,7 @@ from __future__ import google_type_annotations
 
 import abc
 import collections
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Type, TypeVar, Union
 
 import attr
 from openhtf import util
@@ -34,10 +34,15 @@ from openhtf.core import phase_descriptor
 from openhtf.core import phase_nodes
 import six
 
+NodeType = TypeVar('NodeType', bound=phase_nodes.PhaseNode)
 SequenceClassT = TypeVar('SequenceClassT', bound='PhaseSequence')
 PhasesOrNodesT = Iterable[phase_descriptor.PhaseCallableOrNodeT]
 SequenceInitializerT = Union[phase_descriptor.PhaseCallableOrNodeT,
                              PhasesOrNodesT]
+
+
+class DuplicateSubtestNamesError(Exception):
+  """Multiple subtests share the same name."""
 
 
 def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
@@ -65,9 +70,19 @@ class PhaseCollectionNode(
 
   __slots__ = ()
 
-  @abc.abstractmethod
   def all_phases(self) -> Iterator[phase_descriptor.PhaseDescriptor]:
     """Returns an iterator of all the Phase Descriptors for the collection."""
+    return self.filter_by_type(phase_descriptor.PhaseDescriptor)
+
+  @abc.abstractmethod
+  def filter_by_type(self, node_cls: Type[NodeType]) -> Iterator[NodeType]:
+    """Returns recursively all the nodes of the given type.
+
+    This can return collection nodes that include each other.
+
+    Args:
+      node_cls: The phase node subtype to iterate over.
+    """
 
 
 @attr.s(slots=True, frozen=True, init=False)
@@ -166,15 +181,57 @@ class PhaseSequence(PhaseCollectionNode):
         nodes=tuple(n.apply_to_all_phases(func) for n in self.nodes),
         name=self.name)
 
-  def all_phases(self) -> Iterator[phase_descriptor.PhaseDescriptor]:
-    """Returns an iterator of all the Phase Descriptors for the collection."""
+  def filter_by_type(self, node_cls: Type[NodeType]) -> Iterator[NodeType]:
+    """Yields recursively all the nodes of the given type.
+
+    This can yield collection nodes that include each other.
+
+    Args:
+      node_cls: The phase node subtype to iterate over.
+    """
     for node in self.nodes:
-      if isinstance(node, phase_descriptor.PhaseDescriptor):
+      if isinstance(node, node_cls):
         yield node
       if isinstance(node, PhaseCollectionNode):
-        for n in node.all_phases():
+        for n in node.filter_by_type(node_cls):
           yield n
 
 
+@attr.s(slots=True, frozen=True, init=False)
 class Subtest(PhaseSequence):
-  """A node for a subtest."""
+  """A node for a subtest.
+
+  A subtest must have a unique name for all subtest nodes in the overarching
+  test.
+  """
+
+  # TODO(arsharma): When fully PY3, replace kwargs with nodes keyword.
+  def __init__(self, name: Text, *args: SequenceInitializerT, **kwargs: Any):
+    kwargs['name'] = name
+    super(Subtest, self).__init__(*args, **kwargs)
+
+
+def check_for_duplicate_subtest_names(sequence: PhaseSequence):
+  """Check for subtests with duplicate names.
+
+  Args:
+    sequence: Sequence of phase nodes to check over.
+
+  Raises:
+    DuplicateSubtestNamesError: when duplicate subtest names are found.
+  """
+  names_to_subtests = collections.defaultdict(
+      list)  # type: DefaultDict[Text, List[Subtest]]
+  for subtest in sequence.filter_by_type(Subtest):
+    names_to_subtests[subtest.name].append(subtest)
+
+  duplicates = []  # type: List[Text]
+  for name, subtests in names_to_subtests.items():
+    if len(subtests) > 1:
+      duplicates.append('Name "{}" used by multiple subtests: {}'.format(
+          name, subtests))
+  if not duplicates:
+    return
+  duplicates.sort()
+  raise DuplicateSubtestNamesError('Duplicate Subtest names: {}'.format(
+      '\n'.join(duplicates)))

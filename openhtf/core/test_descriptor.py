@@ -289,6 +289,8 @@ class Test(object):
     diagnoses_lib.check_for_duplicate_results(
         self._test_desc.phase_sequence.all_phases(),
         self._test_options.diagnosers)
+    phase_collections.check_for_duplicate_subtest_names(
+        self._test_desc.phase_sequence)
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:

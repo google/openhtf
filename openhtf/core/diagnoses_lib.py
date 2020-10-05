@@ -272,7 +272,7 @@ def check_for_duplicate_results(
   """Check for any results with the same enum value in different ResultTypes.
 
   Args:
-    phase_iterator: iterator over the phases to check; can be a PhaseGroup.
+    phase_iterator: iterator over the phases to check.
     test_diagnosers: list of test level diagnosers.
 
   Raises:
@@ -298,7 +298,6 @@ def check_for_duplicate_results(
           result_value, enum_classes))
   if not duplicates:
     return
-  duplicates.sort()
   raise DuplicateResultError('Duplicate DiagResultEnum values: {}'.format(
       '\n'.join(duplicates)))
 

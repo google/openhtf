@@ -574,6 +574,8 @@ class PhaseState(object):
         'attachments': {},
         'start_time_millis':
             long(self.phase_record.record_start_time()),
+        'subtest_name':
+            None,
     }
 
   @classmethod
@@ -626,6 +628,10 @@ class PhaseState(object):
   @result.setter
   def result(self, result: phase_executor.PhaseExecutionOutcome):
     self.phase_record.result = result
+
+  def set_subtest_name(self, subtest_name: Text) -> None:
+    self.phase_record.subtest_name = subtest_name
+    self._cached['subtest_name'] = subtest_name
 
   @property
   def attachments(self) -> Dict[Text, test_record.Attachment]:
@@ -739,6 +745,9 @@ class PhaseState(object):
     elif result.is_repeat or result.is_skip:
       self.logger.debug('Phase outcome is SKIP.')
       outcome = test_record.PhaseOutcome.SKIP
+    elif result.is_fail_subtest:
+      self.logger.debug('Phase outcome is FAIL due to subtest failure.')
+      outcome = test_record.PhaseOutcome.FAIL
     elif result.is_fail_and_continue:
       self.logger.debug('Phase outcome is FAIL due to phase result.')
       outcome = test_record.PhaseOutcome.FAIL
