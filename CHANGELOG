@@ -15,3 +15,8 @@ Changes for 2.0.
         the callable.  This ensures that the name property is always Text.
 * Test:
     * The test teardown has been removed in favor of using a PhaseGroup.
+* Unit testing:
+    * Unit tests using openhtf.util.test.TestCase can customize the test start
+        function when yielding openhtf.Test instances by setting the
+        `test_start_function` attribute.  This can be set to None to remove the
+        function.
