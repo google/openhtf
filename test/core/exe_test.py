@@ -135,6 +135,11 @@ def fail_plug_phase(fail):
   del fail
 
 
+@openhtf.PhaseOptions()
+def bad_return_phase():
+  return 42
+
+
 def blank_phase():
   pass
 
@@ -1151,3 +1156,9 @@ class PhaseExecutorTest(unittest.TestCase):
     result, _ = self.phase_executor.execute_phase(
         phase_return_fail_and_continue)
     self.assertEqual(openhtf.PhaseResult.FAIL_AND_CONTINUE, result.phase_result)
+
+  def test_execute_phase_bad_phase_return(self):
+    result, _ = self.phase_executor.execute_phase(bad_return_phase)
+    self.assertEqual(
+        phase_executor.ExceptionInfo(phase_executor.InvalidPhaseResultError,
+                                     mock.ANY, mock.ANY), result.phase_result)
