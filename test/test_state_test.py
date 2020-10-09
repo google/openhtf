@@ -124,6 +124,10 @@ class TestTestApi(unittest.TestCase):
     self.test_api.attach(attachment_name, input_contents, mimetype)
 
     output_attachment = self.test_api.get_attachment(attachment_name)
+    if not output_attachment:
+      # Need branch to appease pytype.
+      self.fail('output_attachment not found')
+
     self.assertEqual(input_contents, output_attachment.data)
     self.assertEqual(mimetype, output_attachment.mimetype)
 
@@ -159,6 +163,9 @@ class TestTestApi(unittest.TestCase):
       file_name = f.name
       self.test_api.attach_from_file(file_name, 'attachment')
     attachment = self.test_api.get_attachment('attachment')
+    if not attachment:
+      # Need branch to appease pytype.
+      self.fail('attachment not found.')
     self.assertEqual(attachment.mimetype, 'text/plain')
 
   def test_infer_mime_type_from_attachment_name(self):
@@ -168,6 +175,9 @@ class TestTestApi(unittest.TestCase):
       file_name = f.name
       self.test_api.attach_from_file(file_name, 'attachment.png')
     attachment = self.test_api.get_attachment('attachment.png')
+    if not attachment:
+      # Need branch to appease pytype.
+      self.fail('attachment not found.')
     self.assertEqual(attachment.mimetype, 'image/png')
 
   def test_phase_state_cache(self):
