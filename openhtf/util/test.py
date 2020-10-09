@@ -118,7 +118,7 @@ import inspect
 import logging
 import sys
 import types
-from typing import Any, Callable, Dict, Text, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Text, Tuple, Type
 import unittest
 
 import attr
@@ -261,6 +261,22 @@ class FakeTestApi(openhtf.TestApi):
         running_test_state=self.mock_test_state)
 
 
+def filter_phases_by_names(phase_recs: Iterable[test_record.PhaseRecord],
+                           *names: Text) -> Iterable[test_record.PhaseRecord]:
+  all_names = set(names)
+  for phase_rec in phase_recs:
+    if phase_rec.name in all_names:
+      yield phase_rec
+
+
+def filter_phases_by_outcome(
+    phase_recs: Iterable[test_record.PhaseRecord],
+    outcome: test_record.PhaseOutcome) -> Iterable[test_record.PhaseRecord]:
+  for phase_rec in phase_recs:
+    if phase_rec.outcome == outcome:
+      yield phase_rec
+
+
 class PhaseOrTestIterator(collections.Iterator):
 
   def __init__(self, test_case, iterator, mock_plugs, phase_user_defined_state,
@@ -349,7 +365,7 @@ class PhaseOrTestIterator(collections.Iterator):
           phase_desc,
           is_last_repeat=False,
           run_with_profiling=False,
-          subtest_name=None)
+          subtest_rec=None)
 
     if phase_result.raised_exception:
       failure_message = phase_result.phase_result.get_traceback_string()
@@ -663,6 +679,24 @@ class TestCase(unittest.TestCase):
 
   def assertPhaseOutcomeError(self, phase_record):
     self.assertIs(test_record.PhaseOutcome.ERROR, phase_record.outcome)
+
+  def assertPhasesOutcomeByName(self,
+                                expected_outcome: test_record.PhaseOutcome,
+                                test_rec: test_record.TestRecord,
+                                *phase_names: Text):
+    errors = []  # type: List[Text]
+    for phase_rec in filter_phases_by_names(test_rec.phases, *phase_names):
+      if phase_rec.outcome is not expected_outcome:
+        errors.append('Phase "{}" outcome: {}'.format(phase_rec.name,
+                                                      phase_rec.outcome))
+    self.assertFalse(
+        errors,
+        msg='Expected phases don\'t all have outcome {}: {}'.format(
+            expected_outcome.name, errors))
+
+  def assertPhasesNotRun(self, test_rec, *phase_names):
+    phases = list(filter_phases_by_names(test_rec.phases, *phase_names))
+    self.assertFalse(phases)
 
   ##### Measurement Assertions #####
 

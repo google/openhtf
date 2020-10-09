@@ -488,3 +488,21 @@ class PhaseGroupIntegrationTest(htf_test.TestCase):
         'setup0', 'outer0', 'inner-setup0', 'inner0', 'stop_phase',
         'inner-teardown', 'teardown0'
     ], test_rec)
+
+  @htf_test.yields_phases
+  def testRecursive_InTeardownAllRun(self):
+    group = htf.PhaseGroup(
+        main=_fake_phases('main0'),
+        teardown=[
+            htf.PhaseSequence([stop_phase] +
+                              _fake_phases('teardown0', 'teardown1'))
+        ])
+
+    test_rec = yield htf.Test(group)
+    self.assertTestFail(test_rec)
+    self._assert_phase_names(['main0', 'stop_phase', 'teardown0', 'teardown1'],
+                             test_rec)
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'main0', 'teardown0', 'teardown1')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.ERROR, test_rec,
+                                   'stop_phase')

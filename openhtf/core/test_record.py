@@ -290,17 +290,20 @@ class CheckpointRecord(object):
   action = attr.ib(type='phase_descriptor.PhaseResult')
   conditional = attr.ib(type=Union['phase_branches.PreviousPhases',
                                    'phase_branches.DiagnosisCondition'])
+  subtest_name = attr.ib(type=Optional[Text])
   result = attr.ib(type='phase_executor.PhaseExecutionOutcome')
   evaluated_millis = attr.ib(type=int)
 
   @classmethod
   def from_checkpoint(cls, checkpoint: 'phase_branches.Checkpoint',
+                      subtest_name: Optional[Text],
                       result: 'phase_executor.PhaseExecutionOutcome',
                       evaluated_millis: int) -> 'CheckpointRecord':
     return cls(
         name=checkpoint.name,
         action=checkpoint.action,
         conditional=checkpoint.record_conditional(),
+        subtest_name=subtest_name,
         result=result,
         evaluated_millis=evaluated_millis)
 
@@ -410,3 +413,7 @@ class SubtestRecord(object):
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)
   outcome = attr.ib(type=Optional[SubtestOutcome], default=None)
+
+  @property
+  def is_fail(self) -> bool:
+    return self.outcome is SubtestOutcome.FAIL

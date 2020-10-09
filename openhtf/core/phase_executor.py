@@ -167,13 +167,13 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def __init__(self, phase_desc: phase_descriptor.PhaseDescriptor,
                test_state: 'htf_test_state.TestState', run_with_profiling: bool,
-               subtest_name: Optional[Text]):
+               subtest_rec: Optional[test_record.SubtestRecord]):
     super(PhaseExecutorThread, self).__init__(
         name='<PhaseExecutorThread: (phase_desc.name)>',
         run_with_profiling=run_with_profiling)
     self._phase_desc = phase_desc
     self._test_state = test_state
-    self._subtest_name = subtest_name
+    self._subtest_rec = subtest_rec
     self._phase_execution_outcome = None  # type: Optional[PhaseExecutionOutcome]
 
   def _thread_proc(self) -> None:
@@ -186,7 +186,7 @@ class PhaseExecutorThread(threads.KillableThread):
     if not isinstance(phase_return, phase_descriptor.PhaseResult):
       raise InvalidPhaseResultError('Invalid phase result', phase_return)
     if (phase_return is phase_descriptor.PhaseResult.FAIL_SUBTEST and
-        not self._subtest_name):
+        not self._subtest_rec):
       raise InvalidPhaseResultError(
           'Phase returned FAIL_SUBTEST but a subtest is not running.')
     self._phase_execution_outcome = PhaseExecutionOutcome(phase_return)
@@ -243,7 +243,7 @@ class PhaseExecutor(object):
       self,
       phase: phase_descriptor.PhaseDescriptor,
       run_with_profiling: bool = False,
-      subtest_name: Optional[Text] = None
+      subtest_rec: Optional[test_record.SubtestRecord] = None
   ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes a phase or skips it, yielding PhaseExecutionOutcome instances.
 
@@ -251,7 +251,7 @@ class PhaseExecutor(object):
       phase: Phase to execute.
       run_with_profiling: Whether to run with cProfile stat collection for the
         phase code run inside a thread.
-      subtest_name: Optional name for the currently running subtest.
+      subtest_rec: Optional subtest record.
 
     Returns:
       A two-tuple; the first item is the final PhaseExecutionOutcome that wraps
@@ -266,7 +266,7 @@ class PhaseExecutor(object):
     while not self._stopping.is_set():
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome, profile_stats = self._execute_phase_once(
-          phase, is_last_repeat, run_with_profiling, subtest_name)
+          phase, is_last_repeat, run_with_profiling, subtest_rec)
 
       if phase_execution_outcome.is_repeat and not is_last_repeat:
         repeat_count += 1
@@ -277,8 +277,11 @@ class PhaseExecutor(object):
     return PhaseExecutionOutcome(None), None
 
   def _execute_phase_once(
-      self, phase_desc: phase_descriptor.PhaseDescriptor, is_last_repeat: bool,
-      run_with_profiling: bool, subtest_name: Optional[Text]
+      self,
+      phase_desc: phase_descriptor.PhaseDescriptor,
+      is_last_repeat: bool,
+      run_with_profiling: bool,
+      subtest_rec: Optional[test_record.SubtestRecord],
   ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
@@ -289,10 +292,10 @@ class PhaseExecutor(object):
 
     override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
-      if subtest_name:
+      if subtest_rec:
         _LOG.debug('Executing phase %s under subtest %s', phase_desc.name,
-                   subtest_name)
-        phase_state.set_subtest_name(subtest_name)
+                   subtest_rec.name)
+        phase_state.set_subtest_name(subtest_rec.name)
       else:
         _LOG.debug('Executing phase %s', phase_desc.name)
       with self._current_phase_thread_lock:
@@ -308,7 +311,7 @@ class PhaseExecutor(object):
           phase_state.result = result
           return result, None
         phase_thread = PhaseExecutorThread(phase_desc, self.test_state,
-                                           run_with_profiling, subtest_name)
+                                           run_with_profiling, subtest_rec)
         phase_thread.start()
         self._current_phase_thread = phase_thread
 
@@ -328,32 +331,56 @@ class PhaseExecutor(object):
     return (result,
             phase_thread.get_profile_stats() if run_with_profiling else None)
 
+  def skip_phase(self, phase_desc: phase_descriptor.PhaseDescriptor,
+                 subtest_rec: Optional[test_record.SubtestRecord]) -> None:
+    """Skip a phase, but log a record of it."""
+    _LOG.debug('Automatically skipping phase %s', phase_desc.name)
+    with self.test_state.running_phase_context(phase_desc) as phase_state:
+      if subtest_rec:
+        phase_state.set_subtest_name(subtest_rec.name)
+      phase_state.result = PhaseExecutionOutcome(
+          phase_descriptor.PhaseResult.SKIP)
+
   def evaluate_checkpoint(
       self, checkpoint: phase_branches.Checkpoint,
-      subtest_name: Optional[Text]) -> PhaseExecutionOutcome:
+      subtest_rec: Optional[test_record.SubtestRecord]
+  ) -> PhaseExecutionOutcome:
     """Evaluate a checkpoint, returning a PhaseExecutionOutcome."""
-    if subtest_name:
+    if subtest_rec:
+      subtest_name = subtest_rec.name
       _LOG.debug('Evaluating checkpoint %s under subtest %s', checkpoint.name,
                  subtest_name)
     else:
       _LOG.debug('Evaluating checkpoint %s', checkpoint.name)
+      subtest_name = None
     evaluated_millis = util.time_millis()
     try:
       outcome = PhaseExecutionOutcome(checkpoint.get_result(self.test_state))
       _LOG.debug('Checkpoint %s result: %s', checkpoint.name,
                  outcome.phase_result)
-      if outcome.is_fail_subtest and not subtest_name:
+      if outcome.is_fail_subtest and not subtest_rec:
         raise InvalidPhaseResultError(
             'Checkpoint returned FAIL_SUBTEST, but subtest not running.')
     except Exception:  # pylint: disable=broad-except
       outcome = PhaseExecutionOutcome(ExceptionInfo(*sys.exc_info()))
 
     checkpoint_rec = test_record.CheckpointRecord.from_checkpoint(
-        checkpoint, outcome, evaluated_millis)
+        checkpoint, subtest_name, outcome, evaluated_millis)
 
     self.test_state.test_record.add_checkpoint_record(checkpoint_rec)
 
     return outcome
+
+  def skip_checkpoint(self, checkpoint: phase_branches.Checkpoint,
+                      subtest_rec: Optional[test_record.SubtestRecord]) -> None:
+    """Skip a checkpoint, but log a record of it."""
+    _LOG.debug('Automatically skipping checkpoint %s', checkpoint.name)
+    subtest_name = subtest_rec.name if subtest_rec else None
+    checkpoint_rec = test_record.CheckpointRecord.from_checkpoint(
+        checkpoint, subtest_name,
+        PhaseExecutionOutcome(phase_descriptor.PhaseResult.SKIP),
+        util.time_millis())
+    self.test_state.test_record.add_checkpoint_record(checkpoint_rec)
 
   def reset_stop(self) -> None:
     self._stopping.clear()
