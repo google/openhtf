@@ -18,7 +18,7 @@
 from __future__ import google_type_annotations
 
 import abc
-from typing import Any, Callable, Dict, Text, Type, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Dict, Optional, Text, Type, TypeVar, TYPE_CHECKING
 
 from openhtf.core import base_plugs
 from openhtf.util import data
@@ -37,7 +37,7 @@ class PhaseNode(six.with_metaclass(abc.ABCMeta, object)):
   __slots__ = ()
 
   @abc.abstractproperty
-  def name(self) -> Text:
+  def name(self) -> Optional[Text]:
     """Returns the name of this node."""
 
   @abc.abstractmethod

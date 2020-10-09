@@ -67,8 +67,7 @@ class TestStopError(Exception):
 
 class _ExecutorReturn(enum.Enum):
   CONTINUE = 0
-  EXIT_SUBTEST = 1
-  TERMINAL = 2
+  TERMINAL = 1
 
 
 def _more_critical(e1: _ExecutorReturn, e2: _ExecutorReturn) -> _ExecutorReturn:
@@ -111,10 +110,11 @@ class TestExecutor(threads.KillableThread):
     self._last_outcome = None  # type: Optional[phase_executor.PhaseExecutionOutcome]
     self._abort = threading.Event()
     self._full_abort = threading.Event()
-    self._teardown_phases_lock = threading.Lock()
+    # This is a reentrant lock so that the teardown logic that prevents aborts
+    # affects nested sequences.
+    self._teardown_phases_lock = threading.RLock()
     # Populated if profiling is enabled.
     self._phase_profile_stats = []  # type: List[pstats.Stats]
-    self._subtest_name = None  # type: Optional[Text]
 
   @property
   def logger(self) -> logging.Logger:
@@ -207,7 +207,7 @@ class TestExecutor(threads.KillableThread):
 
       # Everything is set, set status and begin test execution.
       self.test_state.set_status_running()
-      self._execute_node(self._test_descriptor.phase_sequence)
+      self._execute_node(self._test_descriptor.phase_sequence, None, False)
       self._execute_test_diagnosers()
     except:  # pylint: disable=bare-except
       stacktrace = traceback.format_exc()
@@ -299,18 +299,23 @@ class TestExecutor(threads.KillableThread):
     else:
       self.test_state.finalize_normally()
 
-  def _execute_phase(
-      self, phase: phase_descriptor.PhaseDescriptor) -> _ExecutorReturn:
-    if self._subtest_name:
+  def _execute_phase(self, phase: phase_descriptor.PhaseDescriptor,
+                     subtest_rec: Optional[test_record.SubtestRecord],
+                     in_teardown: bool) -> _ExecutorReturn:
+    if subtest_rec:
       self.logger.debug('Executing phase %s under subtest %s', phase.name,
-                        self._subtest_name)
+                        subtest_rec.name)
     else:
       self.logger.debug('Executing phase %s', phase.name)
+
+    if not in_teardown and subtest_rec and subtest_rec.is_fail:
+      self._phase_exec.skip_phase(phase, subtest_rec)
+      return _ExecutorReturn.CONTINUE
+
     outcome, profile_stats = self._phase_exec.execute_phase(
         phase,
         run_with_profiling=self._run_with_profiling,
-        subtest_name=self._subtest_name)
-
+        subtest_rec=subtest_rec)
     if profile_stats is not None:
       self._phase_profile_stats.append(profile_stats)
 
@@ -324,28 +329,38 @@ class TestExecutor(threads.KillableThread):
             phase_descriptor.PhaseResult.STOP)
         self.logger.error('Stopping test because stop_on_first_failure is True')
 
-    if outcome.is_terminal and not self._last_outcome:
-      self._last_outcome = outcome
+    if outcome.is_terminal:
+      if not self._last_outcome:
+        self._last_outcome = outcome
+      return _ExecutorReturn.TERMINAL
 
     if outcome.is_fail_subtest:
-      return _ExecutorReturn.EXIT_SUBTEST
-    if outcome.is_terminal:
-      return _ExecutorReturn.TERMINAL
-    else:
+      if not subtest_rec:
+        raise TestExecutionError(
+            'INVALID STATE: Phase returned outcome FAIL_SUBTEST when not '
+            'in subtest.')
+      subtest_rec.outcome = test_record.SubtestOutcome.FAIL
+    return _ExecutorReturn.CONTINUE
+
+  def _execute_checkpoint(self, checkpoint: phase_branches.Checkpoint,
+                          subtest_rec: Optional[test_record.SubtestRecord],
+                          in_teardown: bool) -> _ExecutorReturn:
+    if not in_teardown and subtest_rec and subtest_rec.is_fail:
+      self._phase_exec.skip_checkpoint(checkpoint, subtest_rec)
       return _ExecutorReturn.CONTINUE
 
-  def _execute_checkpoint(
-      self, checkpoint: phase_branches.Checkpoint) -> _ExecutorReturn:
-    outcome = self._phase_exec.evaluate_checkpoint(checkpoint,
-                                                   self._subtest_name)
-
-    if outcome.is_terminal and not self._last_outcome:
-      self._last_outcome = outcome
-
+    outcome = self._phase_exec.evaluate_checkpoint(checkpoint, subtest_rec)
     if outcome.is_terminal:
+      if not self._last_outcome:
+        self._last_outcome = outcome
       return _ExecutorReturn.TERMINAL
+
     if outcome.is_fail_subtest:
-      return _ExecutorReturn.EXIT_SUBTEST
+      if not subtest_rec:
+        raise TestExecutionError(
+            'INVALID STATE: Phase returned outcome FAIL_SUBTEST when not '
+            'in subtest.')
+      subtest_rec.outcome = test_record.SubtestOutcome.FAIL
     return _ExecutorReturn.CONTINUE
 
   def _log_sequence(self, phase_sequence, override_message):
@@ -355,50 +370,68 @@ class TestExecutor(threads.KillableThread):
     if message:
       self.logger.debug('Executing phase nodes for %s', message)
 
-  def _execute_abortable_sequence(
+  def _execute_sequence(
       self,
       phase_sequence: phase_collections.PhaseSequence,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
       override_message: Optional[Text] = None) -> _ExecutorReturn:
-    """Execute phase sequence, returning immediately on error or test abort.
+    """Execute phase sequence.
 
     Args:
       phase_sequence: Sequence of phase nodes to run.
-      override_message: Optional message to override when logging..
+      subtest_rec: Current subtest record, if any.
+      in_teardown: Indicates if currently processing a teardown sequence.
+      override_message: Optional message to override when logging.
 
     Returns:
       _ExecutorReturn for how to proceed.
     """
     self._log_sequence(phase_sequence, override_message)
 
+    if in_teardown:
+      return self._execute_teardown_sequence(phase_sequence, subtest_rec)
+    else:
+      return self._execute_abortable_sequence(phase_sequence, subtest_rec)
+
+  def _execute_abortable_sequence(
+      self, phase_sequence: phase_collections.PhaseSequence,
+      subtest_rec: Optional[test_record.SubtestRecord]) -> _ExecutorReturn:
+    """Execute phase sequence, returning immediately on error or test abort.
+
+    Args:
+      phase_sequence: Sequence of phase nodes to run.
+      subtest_rec: Current subtest record, if any.
+
+    Returns:
+      _ExecutorReturn for how to proceed.
+    """
     for node in phase_sequence.nodes:
       if self._abort.is_set():
         return _ExecutorReturn.TERMINAL
-      exe_ret = self._execute_node(node)
+      exe_ret = self._execute_node(node, subtest_rec, False)
       if exe_ret != _ExecutorReturn.CONTINUE:
         return exe_ret
     return _ExecutorReturn.CONTINUE
 
   def _execute_teardown_sequence(
-      self,
-      phase_sequence: phase_collections.PhaseSequence,
-      override_message: Optional[Text] = None) -> _ExecutorReturn:
+      self, phase_sequence: phase_collections.PhaseSequence,
+      subtest_rec: Optional[test_record.SubtestRecord]) -> _ExecutorReturn:
     """Execute all the teardown phases, regardless of errors.
 
     Args:
       phase_sequence: Sequence of phase nodes to run.
-      override_message: Optional message to override when logging..
+      subtest_rec: Current subtest record, if any.
 
     Returns:
       _ExecutorReturn for how to proceed.
     """
-    self._log_sequence(phase_sequence, override_message)
-
     ret = _ExecutorReturn.CONTINUE
     with self._teardown_phases_lock:
       for node in phase_sequence.nodes:
         if self._full_abort.is_set():
           return _ExecutorReturn.TERMINAL
-        ret = _more_critical(ret, self._execute_node(node))
+        ret = _more_critical(ret, self._execute_node(node, subtest_rec, True))
 
     return ret
 
@@ -417,49 +450,54 @@ class TestExecutor(threads.KillableThread):
     Yields:
       The subtest record for updating the outcome.
     """
-    previous_subtest = self._subtest_name
-    self._subtest_name = subtest.name
     self.logger.debug('%s: Starting subtest.', subtest.name)
     subtest_rec = test_record.SubtestRecord(
-        name=subtest.name, start_time_millis=util.time_millis())
+        name=subtest.name,
+        start_time_millis=util.time_millis(),
+        outcome=test_record.SubtestOutcome.PASS)
     yield subtest_rec
     subtest_rec.end_time_millis = util.time_millis()
     self.test_state.test_record.add_subtest_record(subtest_rec)
-    self._subtest_name = previous_subtest
 
-  def _execute_subtest(self,
-                       subtest: phase_collections.Subtest) -> _ExecutorReturn:
+  def _execute_subtest(self, subtest: phase_collections.Subtest,
+                       outer_subtest_rec: Optional[test_record.SubtestRecord],
+                       in_teardown: bool) -> _ExecutorReturn:
     """Run a subtest node."""
     with self._subtest_context(subtest) as subtest_rec:
-      ret = self._execute_abortable_sequence(subtest)
-      if ret == _ExecutorReturn.EXIT_SUBTEST:
+      if outer_subtest_rec and outer_subtest_rec.is_fail:
         subtest_rec.outcome = test_record.SubtestOutcome.FAIL
-        self.logger.debug('%s: Subtest failed; continuing with rest of test.',
-                          subtest.name)
-        return _ExecutorReturn.CONTINUE
+
+      ret = self._execute_sequence(subtest, subtest_rec, in_teardown)
 
       if ret == _ExecutorReturn.TERMINAL:
         subtest_rec.outcome = test_record.SubtestOutcome.STOP
         self.logger.debug('%s: Subtest stopping the test.', subtest.name)
       else:
-        subtest_rec.outcome = test_record.SubtestOutcome.PASS
-        self.logger.debug('%s: Subtest passed.', subtest.name)
+        if subtest_rec.outcome is test_record.SubtestOutcome.FAIL:
+          self.logger.debug('%s: Subtest failed;', subtest.name)
+        else:
+          self.logger.debug('%s: Subtest passed.', subtest.name)
       return ret
 
-  def _execute_phase_branch(
-      self, branch: phase_branches.BranchSequence) -> _ExecutorReturn:
+  def _execute_phase_branch(self, branch: phase_branches.BranchSequence,
+                            subtest_rec: Optional[test_record.SubtestRecord],
+                            in_teardown: bool) -> _ExecutorReturn:
     branch_message = branch.diag_condition.message
     if branch.name:
       branch_message = '{}:{}'.format(branch.name, branch_message)
+    if not in_teardown and subtest_rec and subtest_rec.is_fail:
+      self.logger.debug('%s: Branch not being run due to failed subtest.',
+                        branch_message)
+      return _ExecutorReturn.CONTINUE
 
     evaluated_millis = util.time_millis()
     if branch.should_run(self.test_state.diagnoses_manager.store):
       self.logger.debug('%s: Branch condition met; running phases.',
                         branch_message)
       branch_taken = True
-      ret = self._execute_abortable_sequence(branch)
+      ret = self._execute_sequence(branch, subtest_rec, in_teardown)
     else:
-      self.logger.debug('%s: Branch condition NOT met; skipping phases.',
+      self.logger.debug('%s: Branch condition NOT met; not running sequence.',
                         branch_message)
       branch_taken = False
       ret = _ExecutorReturn.CONTINUE
@@ -469,8 +507,9 @@ class TestExecutor(threads.KillableThread):
     self.test_state.test_record.add_branch_record(branch_rec)
     return ret
 
-  def _execute_phase_group(self,
-                           group: phase_group.PhaseGroup) -> _ExecutorReturn:
+  def _execute_phase_group(self, group: phase_group.PhaseGroup,
+                           subtest_rec: Optional[test_record.SubtestRecord],
+                           in_teardown: bool) -> _ExecutorReturn:
     """Executes the phases in a phase group.
 
     This will run the phases in the phase group, ensuring if the setup
@@ -482,6 +521,8 @@ class TestExecutor(threads.KillableThread):
 
     Args:
       group: phase_group.PhaseGroup, the phase group to execute.
+      subtest_rec: Current subtest record, if any.
+      in_teardown: Indicates if currently processing a teardown sequence.
 
     Returns:
       True if the phases are terminal; otherwise returns False.
@@ -490,36 +531,56 @@ class TestExecutor(threads.KillableThread):
     if group.name:
       self.logger.debug('Entering PhaseGroup %s', group.name)
       message_prefix = group.name + ':'
+    # If in a subtest and it is already failing, the group will not be entered,
+    # so the teardown phases will need to be skipped.
+    skip_teardown = subtest_rec is not None and subtest_rec.is_fail
     if group.setup:
-      setup_ret = self._execute_abortable_sequence(
-          group.setup, override_message=message_prefix + 'setup')
+      setup_ret = self._execute_sequence(
+          group.setup,
+          subtest_rec,
+          in_teardown,
+          override_message=message_prefix + 'setup')
       if setup_ret != _ExecutorReturn.CONTINUE:
         return setup_ret
+      if not skip_teardown:
+        # If the subtest fails during the setup, the group is still not entered,
+        # so skip the teardown phases here as well.
+        skip_teardown = (subtest_rec is not None and subtest_rec.is_fail)
     if group.main:
-      main_ret = self._execute_abortable_sequence(
-          group.main, override_message=message_prefix + 'main')
+      main_ret = self._execute_sequence(
+          group.main,
+          subtest_rec,
+          in_teardown,
+          override_message=message_prefix + 'main')
     else:
       main_ret = _ExecutorReturn.CONTINUE
     if group.teardown:
-      teardown_ret = self._execute_teardown_sequence(
-          group.teardown, override_message=message_prefix + 'teardown')
+      teardown_ret = self._execute_sequence(
+          group.teardown,
+          subtest_rec,
+          # If the subtest is already failing, record skips during the teardown
+          # sequence.
+          not skip_teardown,
+          override_message=message_prefix + 'teardown')
     else:
       teardown_ret = _ExecutorReturn.CONTINUE
     return _more_critical(main_ret, teardown_ret)
 
-  def _execute_node(self, node: phase_nodes.PhaseNode) -> _ExecutorReturn:
+  def _execute_node(self, node: phase_nodes.PhaseNode,
+                    subtest_rec: Optional[test_record.SubtestRecord],
+                    in_teardown: bool) -> _ExecutorReturn:
     if isinstance(node, phase_collections.Subtest):
-      return self._execute_subtest(node)
+      return self._execute_subtest(node, subtest_rec, in_teardown)
     if isinstance(node, phase_branches.BranchSequence):
-      return self._execute_phase_branch(node)
+      return self._execute_phase_branch(node, subtest_rec, in_teardown)
     if isinstance(node, phase_collections.PhaseSequence):
-      return self._execute_abortable_sequence(node)
+      return self._execute_sequence(node, subtest_rec, in_teardown)
     if isinstance(node, phase_group.PhaseGroup):
-      return self._execute_phase_group(node)
+      return self._execute_phase_group(node, subtest_rec, in_teardown)
     if isinstance(node, phase_descriptor.PhaseDescriptor):
-      return self._execute_phase(node)
+      return self._execute_phase(node, subtest_rec, in_teardown)
     if isinstance(node, phase_branches.Checkpoint):
-      return self._execute_checkpoint(node)
+      return self._execute_checkpoint(node, subtest_rec, in_teardown)
     self.logger.error('Unhandled node type: %s', node)
     return _ExecutorReturn.TERMINAL
 

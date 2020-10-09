@@ -42,6 +42,20 @@ def error_phase():
   raise Exception('broken')
 
 
+def _rename(phase, new_name):
+  assert isinstance(new_name, str)
+  return htf.PhaseOptions(name=new_name)(phase)
+
+
+def _fake_phases(*new_names):
+  return [_rename(run_phase, name) for name in new_names]
+
+
+phase0, phase1, phase2, phase3 = _fake_phases('phase0', 'phase1', 'phase2',
+                                              'phase3')
+skip0 = _rename(run_phase, 'skip0')
+
+
 class BranchSequenceTest(unittest.TestCase):
 
   def test_as_dict(self):
@@ -140,6 +154,7 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
             name='last_prev',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 phase_executor.ExceptionInfo(phase_branches.NoPhasesFoundError,
                                              mock.ANY, mock.ANY)),
@@ -149,17 +164,18 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last__no_failures(self):
     test_rec = yield htf.Test(
-        run_phase, phase_branches.PhaseFailureCheckpoint.last('last_pass'),
-        run_phase)
+        phase0, phase_branches.PhaseFailureCheckpoint.last('last_pass'), phase1)
 
     self.assertTestPass(test_rec)
-    self.assertEqual(3, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_pass',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -168,18 +184,21 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last__failure_too_early(self):
     test_rec = yield htf.Test(
-        fail_phase, run_phase,
-        phase_branches.PhaseFailureCheckpoint.last('last_early_fail'),
-        run_phase)
+        fail_phase, phase0,
+        phase_branches.PhaseFailureCheckpoint.last('last_early_fail'), phase1)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(4, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_early_fail',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -188,17 +207,21 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last__failure_too_late(self):
     test_rec = yield htf.Test(
-        run_phase, phase_branches.PhaseFailureCheckpoint.last('last_late_fail'),
-        fail_phase, run_phase)
+        phase0, phase_branches.PhaseFailureCheckpoint.last('last_late_fail'),
+        fail_phase, phase1)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(4, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_late_fail',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -207,17 +230,21 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last__failure(self):
     test_rec = yield htf.Test(
-        run_phase, fail_phase,
+        phase0, fail_phase,
         phase_branches.PhaseFailureCheckpoint.last('last_fail'), error_phase)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(3, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_fail',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(htf.PhaseResult.STOP),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
     ], test_rec.checkpoints)
@@ -231,13 +258,15 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
 
     self.assertTestError(test_rec)
     self.assertTestOutcomeCode(test_rec, 'InvalidPhaseResultError')
-    self.assertEqual(2, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 phase_executor.ExceptionInfo(
                     phase_executor.InvalidPhaseResultError, mock.ANY,
@@ -248,21 +277,23 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last_fail_subtest__pass_in_subtest(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         htf.Subtest(
-            'sub', run_phase,
+            'sub', phase1,
             phase_branches.PhaseFailureCheckpoint.last(
                 'last_pass_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            run_phase), run_phase)
+            phase2), phase3)
 
     self.assertTestPass(test_rec)
-    self.assertEqual(5, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2', 'phase3')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_pass_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -271,21 +302,25 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last_fail_subtest__early_fail_out_of_subtest(self):
     test_rec = yield htf.Test(
-        fail_phase, run_phase,
+        fail_phase, phase0,
         htf.Subtest(
-            'sub', run_phase,
+            'sub', phase1,
             phase_branches.PhaseFailureCheckpoint.last(
                 'last_pass_early_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            run_phase), run_phase)
+            phase2), phase3)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(6, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2', 'phase3')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_pass_early_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -294,21 +329,25 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last_fail_subtest__early_fail_in_subtest(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         htf.Subtest(
-            'sub', fail_phase, run_phase,
+            'sub', fail_phase, phase1,
             phase_branches.PhaseFailureCheckpoint.last(
                 'last_fail_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            run_phase), run_phase)
+            phase2), phase3)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(6, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2', 'phase3')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_fail_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -317,21 +356,27 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_last_fail_subtest__fail_in_subtest(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         htf.Subtest(
-            'sub', run_phase, fail_phase,
+            'sub', phase1, fail_phase,
             phase_branches.PhaseFailureCheckpoint.last(
                 'last_fail_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            error_phase), run_phase)
+            skip0), phase2)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(5, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip0')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='last_fail_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.LAST,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.FAIL_SUBTEST),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -351,6 +396,7 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
             name='all_prev',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 phase_executor.ExceptionInfo(phase_branches.NoPhasesFoundError,
                                              mock.ANY, mock.ANY)),
@@ -360,18 +406,19 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_all__pass(self):
     test_rec = yield htf.Test(
-        run_phase,
-        phase_branches.PhaseFailureCheckpoint.all_previous('all_pass'),
-        run_phase)
+        phase0, phase_branches.PhaseFailureCheckpoint.all_previous('all_pass'),
+        phase1)
 
     self.assertTestPass(test_rec)
-    self.assertEqual(3, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_pass',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -385,13 +432,15 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
         error_phase)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(2, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_fail',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(htf.PhaseResult.STOP),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
     ], test_rec.checkpoints)
@@ -399,18 +448,22 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_all__earlier_fail(self):
     test_rec = yield htf.Test(
-        fail_phase, run_phase,
+        fail_phase, phase0,
         phase_branches.PhaseFailureCheckpoint.all_previous('all_earlier_fail'),
         error_phase)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(3, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_earlier_fail',
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(htf.PhaseResult.STOP),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
     ], test_rec.checkpoints)
@@ -424,13 +477,15 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
 
     self.assertTestError(test_rec)
     self.assertTestOutcomeCode(test_rec, 'InvalidPhaseResultError')
-    self.assertEqual(2, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 phase_executor.ExceptionInfo(
                     phase_executor.InvalidPhaseResultError, mock.ANY,
@@ -441,21 +496,23 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_all_fail_subtest__pass_in_subtest(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         htf.Subtest(
-            'sub', run_phase,
+            'sub', phase1,
             phase_branches.PhaseFailureCheckpoint.all_previous(
                 'all_pass_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            run_phase), run_phase)
+            phase2), phase3)
 
     self.assertTestPass(test_rec)
-    self.assertEqual(5, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2', 'phase3')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_pass_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -464,21 +521,27 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_all_fail_subtest__early_fail_out_of_subtest(self):
     test_rec = yield htf.Test(
-        fail_phase, run_phase,
+        fail_phase, phase0,
         htf.Subtest(
-            'sub', run_phase,
+            'sub', phase1,
             phase_branches.PhaseFailureCheckpoint.all_previous(
                 'all_fail_early_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            error_phase), run_phase)
+            skip0), phase2)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(5, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip0')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_fail_early_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.FAIL_SUBTEST),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -487,21 +550,27 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_all_fail_subtest__early_fail_in_subtest(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         htf.Subtest(
-            'sub', fail_phase, run_phase,
+            'sub', fail_phase, phase1,
             phase_branches.PhaseFailureCheckpoint.all_previous(
                 'all_fail_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            error_phase), run_phase)
+            skip0), phase2)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(5, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip0')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_fail_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.FAIL_SUBTEST),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -510,21 +579,27 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_all_fail_subtest__fail_in_subtest(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         htf.Subtest(
-            'sub', run_phase, fail_phase,
+            'sub', phase1, fail_phase,
             phase_branches.PhaseFailureCheckpoint.all_previous(
                 'all_fail_subtest', action=htf.PhaseResult.FAIL_SUBTEST),
-            error_phase), run_phase)
+            skip0), phase2)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(5, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip0')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_phase')
 
     self.assertEqual([
         test_record.CheckpointRecord(
             name='all_fail_subtest',
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.PreviousPhases.ALL,
+            subtest_name='sub',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.FAIL_SUBTEST),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -551,14 +626,15 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_pass(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         phase_branches.DiagnosisCheckpoint(
             'diag_pass',
             phase_branches.DiagnosisCondition.on_all(BranchDiagResult.NOT_SET)),
-        run_phase)
+        phase1)
 
     self.assertTestPass(test_rec)
-    self.assertEqual(3, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1')
 
     self.assertEqual([
         test_record.CheckpointRecord(
@@ -566,6 +642,7 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.DiagnosisCondition(
                 phase_branches.ConditionOn.ALL, (BranchDiagResult.NOT_SET,)),
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -581,7 +658,11 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
         error_phase)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(2, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(
+        test_record.PhaseOutcome.PASS,
+        test_rec,
+        'add_set_diag',
+    )
 
     self.assertEqual([
         test_record.CheckpointRecord(
@@ -589,6 +670,7 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
             action=htf.PhaseResult.STOP,
             conditional=phase_branches.DiagnosisCondition(
                 phase_branches.ConditionOn.ALL, (BranchDiagResult.SET,)),
+            subtest_name=None,
             result=phase_executor.PhaseExecutionOutcome(htf.PhaseResult.STOP),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
     ], test_rec.checkpoints)
@@ -596,17 +678,18 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_subtest_pass(self):
     test_rec = yield htf.Test(
-        run_phase,
+        phase0,
         htf.Subtest(
-            'subtest', run_phase,
+            'subtest', phase1,
             phase_branches.DiagnosisCheckpoint(
                 'diag_subtest_pass',
                 phase_branches.DiagnosisCondition.on_all(
                     BranchDiagResult.NOT_SET),
-                action=htf.PhaseResult.FAIL_SUBTEST), run_phase), run_phase)
+                action=htf.PhaseResult.FAIL_SUBTEST), phase2), phase3)
 
     self.assertTestPass(test_rec)
-    self.assertEqual(5, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase0', 'phase1', 'phase2', 'phase1')
 
     self.assertEqual([
         test_record.CheckpointRecord(
@@ -614,6 +697,7 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.DiagnosisCondition(
                 phase_branches.ConditionOn.ALL, (BranchDiagResult.NOT_SET,)),
+            subtest_name='subtest',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.CONTINUE),
             evaluated_millis=htf_test.VALID_TIMESTAMP),
@@ -624,14 +708,17 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
     test_rec = yield htf.Test(
         add_set_diag,
         htf.Subtest(
-            'subtest', run_phase,
+            'subtest', phase0,
             phase_branches.DiagnosisCheckpoint(
                 'diag_subtest_pass',
                 phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
-                action=htf.PhaseResult.FAIL_SUBTEST), error_phase), run_phase)
+                action=htf.PhaseResult.FAIL_SUBTEST), skip0), phase1)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(4, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'add_set_diag', 'phase0', 'phase1')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip0')
 
     self.assertEqual([
         test_record.CheckpointRecord(
@@ -639,6 +726,7 @@ class DiagnosisCheckpointIntegrationTest(htf_test.TestCase):
             action=htf.PhaseResult.FAIL_SUBTEST,
             conditional=phase_branches.DiagnosisCondition(
                 phase_branches.ConditionOn.ALL, (BranchDiagResult.SET,)),
+            subtest_name='subtest',
             result=phase_executor.PhaseExecutionOutcome(
                 htf.PhaseResult.FAIL_SUBTEST),
             evaluated_millis=htf_test.VALID_TIMESTAMP),

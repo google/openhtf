@@ -257,7 +257,7 @@ class TestExecutorTest(unittest.TestCase):
     check_list = ['PhaseExecutorThread', 'phase_one']
     mock_test_state = mock.create_autospec(test_state.TestState)
     phase_thread = phase_executor.PhaseExecutorThread(
-        phase_one, mock_test_state, run_with_profiling=False, subtest_name=None)
+        phase_one, mock_test_state, run_with_profiling=False, subtest_rec=None)
     name = str(phase_thread)
     found = True
     for item in check_list:
@@ -637,10 +637,10 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
         phase_executor.PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.CONTINUE), None)
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_phase(phase))
+                     self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_name=None)
+        phase, run_with_profiling=False, subtest_rec=None)
     self.assertIsNone(self.test_exec._last_outcome)
 
   def testPhase_NotTerminal_PreviousLastOutcome(self):
@@ -652,10 +652,10 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
         phase_executor.PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.CONTINUE), None)
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_phase(phase))
+                     self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_name=None)
+        phase, run_with_profiling=False, subtest_rec=None)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_SetLastOutcome(self):
@@ -664,10 +664,10 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
         phase_descriptor.PhaseResult.STOP)
     self.phase_exec.execute_phase.return_value = outcome, None
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_phase(phase))
+                     self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_name=None)
+        phase, run_with_profiling=False, subtest_rec=None)
     self.assertIs(outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_PreviousLastOutcome(self):
@@ -678,10 +678,10 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
         phase_descriptor.PhaseResult.STOP)
     self.phase_exec.execute_phase.return_value = outcome, None
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_phase(phase))
+                     self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_name=None)
+        phase, run_with_profiling=False, subtest_rec=None)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
 
@@ -712,8 +712,10 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
   def testExecuteAbortable_NoPhases(self):
     self.assertEqual(
         test_executor._ExecutorReturn.CONTINUE,
-        self.test_exec._execute_abortable_sequence(
+        self.test_exec._execute_sequence(
             phase_collections.PhaseSequence(tuple()),
+            None,
+            False,
             override_message='main group'))
     self.mock_execute_node.assert_not_called()
 
@@ -724,20 +726,22 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
     sequence = phase_collections.PhaseSequence(_fake_phases('normal'))
     all_phases = list(sequence.all_phases())
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_abortable_sequence(sequence))
-    self.mock_execute_node.assert_called_once_with(all_phases[0])
+                     self.test_exec._execute_sequence(sequence, None, False))
+    self.mock_execute_node.assert_called_once_with(all_phases[0], None, False)
 
   def testExecuteAbortable_AbortedPrior(self):
     self.test_exec.abort()
     sequence = phase_collections.PhaseSequence(_fake_phases('not-run'))
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_abortable_sequence(sequence))
+                     self.test_exec._execute_sequence(sequence, None, False))
     self.mock_execute_node.assert_not_called()
 
   def testExecuteAbortable_AbortedDuring(self):
 
-    def execute_node(x):
-      del x  # Unused.
+    def execute_node(node, subtest_rec, in_teardown):
+      del node  # Unused.
+      del subtest_rec  # Unused.
+      del in_teardown  # Unused.
       self.test_exec.abort()
       return test_executor._ExecutorReturn.TERMINAL
 
@@ -745,8 +749,8 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
     sequence = phase_collections.PhaseSequence(_fake_phases('abort', 'not-run'))
     all_phases = list(sequence.all_phases())
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_abortable_sequence(sequence))
-    self.mock_execute_node.assert_called_once_with(all_phases[0])
+                     self.test_exec._execute_sequence(sequence, None, False))
+    self.mock_execute_node.assert_called_once_with(all_phases[0], None, False)
 
   def testExecuteAbortable_Terminal(self):
     self.mock_execute_node.side_effect = [
@@ -757,16 +761,20 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
         _fake_phases('normal', 'abort', 'not_run'))
     all_phases = list(sequence.all_phases())
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_abortable_sequence(sequence))
-    self.assertEqual([mock.call(all_phases[0]),
-                      mock.call(all_phases[1])],
-                     self.mock_execute_node.call_args_list)
+                     self.test_exec._execute_sequence(sequence, None, False))
+    self.assertEqual([
+        mock.call(all_phases[0], None, False),
+        mock.call(all_phases[1], None, False)
+    ], self.mock_execute_node.call_args_list)
 
   def testExecuteTeardown_Empty(self):
     self.assertEqual(
         test_executor._ExecutorReturn.CONTINUE,
-        self.test_exec._execute_teardown_sequence(
-            phase_collections.PhaseSequence(tuple()), override_message='group'))
+        self.test_exec._execute_sequence(
+            phase_collections.PhaseSequence(tuple()),
+            None,
+            True,
+            override_message='group'))
     self.mock_execute_node.assert_not_called()
 
   def testExecuteTeardown_Normal(self):
@@ -776,8 +784,8 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
     sequence = phase_collections.PhaseSequence(_fake_phases('normal'))
     all_phases = list(sequence.all_phases())
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_teardown_sequence(sequence))
-    self.mock_execute_node.assert_called_once_with(all_phases[0])
+                     self.test_exec._execute_sequence(sequence, None, True))
+    self.mock_execute_node.assert_called_once_with(all_phases[0], None, True)
 
   def testExecuteTeardown_AbortPrior(self):
     self.test_exec.abort()
@@ -787,12 +795,14 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
     sequence = phase_collections.PhaseSequence(_fake_phases('normal'))
     all_phases = list(sequence.all_phases())
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_teardown_sequence(sequence))
-    self.mock_execute_node.assert_called_once_with(all_phases[0])
+                     self.test_exec._execute_sequence(sequence, None, True))
+    self.mock_execute_node.assert_called_once_with(all_phases[0], None, True)
 
   def testExecuteTeardown_AbortedDuring(self):
 
-    def execute_node(node):
+    def execute_node(node, subtest_rec, in_teardown):
+      del subtest_rec  # Unused.
+      del in_teardown  # Unused.
       if node.name == 'abort':
         self.test_exec.abort()
         return test_executor._ExecutorReturn.TERMINAL
@@ -803,14 +813,17 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
         _fake_phases('abort', 'still-run'))
     all_phases = list(sequence.all_phases())
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_teardown_sequence(sequence))
-    self.assertEqual([mock.call(all_phases[0]),
-                      mock.call(all_phases[1])],
-                     self.mock_execute_node.call_args_list)
+                     self.test_exec._execute_sequence(sequence, None, True))
+    self.assertEqual([
+        mock.call(all_phases[0], None, True),
+        mock.call(all_phases[1], None, True)
+    ], self.mock_execute_node.call_args_list)
 
   def testExecuteTeardown_Terminal(self):
 
-    def execute_node(node):
+    def execute_node(node, subtest_rec, in_teardown):
+      del subtest_rec  # Unused.
+      del in_teardown  # Unused.
       if node.name == 'error':
         return test_executor._ExecutorReturn.TERMINAL
       return test_executor._ExecutorReturn.CONTINUE
@@ -820,10 +833,11 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
         _fake_phases('error', 'still-run'))
     all_phases = list(sequence.all_phases())
     self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_teardown_sequence(sequence))
-    self.assertEqual([mock.call(all_phases[0]),
-                      mock.call(all_phases[1])],
-                     self.mock_execute_node.call_args_list)
+                     self.test_exec._execute_sequence(sequence, None, True))
+    self.assertEqual([
+        mock.call(all_phases[0], None, True),
+        mock.call(all_phases[1], None, True)
+    ], self.mock_execute_node.call_args_list)
 
 
 class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
@@ -847,11 +861,8 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         test_descriptor.TestOptions(),
         run_with_profiling=False)
     self.test_exec.test_state = self.test_state
-    patcher = mock.patch.object(self.test_exec, '_execute_abortable_sequence')
-    self.mock_execute_abortable = patcher.start()
-
-    patcher = mock.patch.object(self.test_exec, '_execute_teardown_sequence')
-    self.mock_execute_teardown = patcher.start()
+    patcher = mock.patch.object(self.test_exec, '_execute_sequence')
+    self.mock_execute_sequence = patcher.start()
 
     @phase_descriptor.PhaseOptions()
     def setup():
@@ -878,111 +889,106 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         name='group')
 
   def testStopDuringSetup(self):
-    self.mock_execute_abortable.return_value = (
+    self.mock_execute_sequence.return_value = (
         test_executor._ExecutorReturn.TERMINAL)
 
-    self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_phase_group(self.group))
-    self.mock_execute_abortable.assert_called_once_with(
-        self._setup, override_message='group:setup')
-    self.mock_execute_teardown.assert_not_called()
+    self.assertEqual(
+        test_executor._ExecutorReturn.TERMINAL,
+        self.test_exec._execute_phase_group(self.group, None, False))
+    self.mock_execute_sequence.assert_called_once_with(
+        self._setup, None, False, override_message='group:setup')
 
   def testStopDuringMain(self):
-    self.mock_execute_abortable.side_effect = [
+    self.mock_execute_sequence.side_effect = [
+        test_executor._ExecutorReturn.CONTINUE,
+        test_executor._ExecutorReturn.TERMINAL,
+        test_executor._ExecutorReturn.CONTINUE,
+    ]
+
+    self.assertEqual(
+        test_executor._ExecutorReturn.TERMINAL,
+        self.test_exec._execute_phase_group(self.group, None, False))
+    self.assertEqual([
+        mock.call(self._setup, None, False, override_message='group:setup'),
+        mock.call(self._main, None, False, override_message='group:main'),
+        mock.call(
+            self._teardown, None, True, override_message='group:teardown'),
+    ], self.mock_execute_sequence.call_args_list)
+
+  def testStopDuringTeardown(self):
+    self.mock_execute_sequence.side_effect = [
+        test_executor._ExecutorReturn.CONTINUE,
         test_executor._ExecutorReturn.CONTINUE,
         test_executor._ExecutorReturn.TERMINAL,
     ]
-    self.mock_execute_teardown.return_value = (
-        test_executor._ExecutorReturn.CONTINUE)
 
-    self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_phase_group(self.group))
-    self.mock_execute_abortable.assert_has_calls([
-        mock.call(self._setup, override_message='group:setup'),
-        mock.call(self._main, override_message='group:main'),
-    ])
-    self.mock_execute_teardown.assert_called_once_with(
-        self._teardown, override_message='group:teardown')
-
-  def testStopDuringTeardown(self):
-    self.mock_execute_abortable.side_effect = [
-        test_executor._ExecutorReturn.CONTINUE,
-        test_executor._ExecutorReturn.CONTINUE,
-    ]
-    self.mock_execute_teardown.return_value = (
-        test_executor._ExecutorReturn.TERMINAL)
-
-    self.assertEqual(test_executor._ExecutorReturn.TERMINAL,
-                     self.test_exec._execute_phase_group(self.group))
-    self.mock_execute_abortable.assert_has_calls([
-        mock.call(self._setup, override_message='group:setup'),
-        mock.call(self._main, override_message='group:main'),
-    ])
-
-    self.mock_execute_teardown.assert_called_once_with(
-        self._teardown, override_message='group:teardown')
+    self.assertEqual(
+        test_executor._ExecutorReturn.TERMINAL,
+        self.test_exec._execute_phase_group(self.group, None, False))
+    self.assertEqual([
+        mock.call(self._setup, None, False, override_message='group:setup'),
+        mock.call(self._main, None, False, override_message='group:main'),
+        mock.call(
+            self._teardown, None, True, override_message='group:teardown'),
+    ], self.mock_execute_sequence.call_args_list)
 
   def testNoStop(self):
-    self.mock_execute_abortable.side_effect = [
+    self.mock_execute_sequence.side_effect = [
+        test_executor._ExecutorReturn.CONTINUE,
         test_executor._ExecutorReturn.CONTINUE,
         test_executor._ExecutorReturn.CONTINUE,
     ]
-    self.mock_execute_teardown.return_value = (
-        test_executor._ExecutorReturn.CONTINUE)
 
-    self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_phase_group(self.group))
-    self.mock_execute_abortable.assert_has_calls([
-        mock.call(self._setup, override_message='group:setup'),
-        mock.call(self._main, override_message='group:main'),
-    ])
-
-    self.mock_execute_teardown.assert_called_once_with(
-        self._teardown, override_message='group:teardown')
+    self.assertEqual(
+        test_executor._ExecutorReturn.CONTINUE,
+        self.test_exec._execute_phase_group(self.group, None, False))
+    self.assertEqual([
+        mock.call(self._setup, None, False, override_message='group:setup'),
+        mock.call(self._main, None, False, override_message='group:main'),
+        mock.call(
+            self._teardown, None, True, override_message='group:teardown'),
+    ], self.mock_execute_sequence.call_args_list)
 
   def testEmptyGroup(self):
     group = phase_group.PhaseGroup()
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_phase_group(group))
-    self.mock_execute_abortable.assert_not_called()
-    self.mock_execute_teardown.assert_not_called()
+                     self.test_exec._execute_phase_group(group, None, False))
+    self.mock_execute_sequence.assert_not_called()
 
   def testNoSetup(self):
-    self.mock_execute_abortable.side_effect = [
+    self.mock_execute_sequence.side_effect = [
+        test_executor._ExecutorReturn.CONTINUE,
         test_executor._ExecutorReturn.CONTINUE,
     ]
-    self.mock_execute_teardown.return_value = (
-        test_executor._ExecutorReturn.CONTINUE)
 
     group = phase_group.PhaseGroup(
         main=self._main, teardown=self._teardown, name='group')
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_phase_group(group))
-    self.mock_execute_abortable.called_once_with(
-        self._main, override_message='group:main')
-
-    self.mock_execute_teardown.assert_called_once_with(
-        self._teardown, override_message='group:teardown')
+                     self.test_exec._execute_phase_group(group, None, False))
+    self.assertEqual([
+        mock.call(self._main, None, False, override_message='group:main'),
+        mock.call(
+            self._teardown, None, True, override_message='group:teardown'),
+    ], self.mock_execute_sequence.call_args_list)
 
   def testNoMain(self):
-    self.mock_execute_abortable.side_effect = [
+    self.mock_execute_sequence.side_effect = [
+        test_executor._ExecutorReturn.CONTINUE,
         test_executor._ExecutorReturn.CONTINUE,
     ]
-    self.mock_execute_teardown.return_value = (
-        test_executor._ExecutorReturn.CONTINUE)
 
     group = phase_group.PhaseGroup(
         setup=self._setup, teardown=self._teardown, name='group')
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_phase_group(group))
-    self.mock_execute_abortable.called_once_with(
-        self._setup, override_message='group:setup')
-
-    self.mock_execute_teardown.assert_called_once_with(
-        self._teardown, override_message='group:teardown')
+                     self.test_exec._execute_phase_group(group, None, False))
+    self.assertEqual([
+        mock.call(self._setup, None, False, override_message='group:setup'),
+        mock.call(
+            self._teardown, None, True, override_message='group:teardown'),
+    ], self.mock_execute_sequence.call_args_list)
 
   def testNoTeardown(self):
-    self.mock_execute_abortable.side_effect = [
+    self.mock_execute_sequence.side_effect = [
         test_executor._ExecutorReturn.CONTINUE,
         test_executor._ExecutorReturn.CONTINUE,
     ]
@@ -990,13 +996,11 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
     group = phase_group.PhaseGroup(
         setup=self._setup, main=self._main, name='group')
     self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
-                     self.test_exec._execute_phase_group(group))
-    self.mock_execute_abortable.assert_has_calls([
-        mock.call(self._setup, override_message='group:setup'),
-        mock.call(self._main, override_message='group:main'),
-    ])
-
-    self.mock_execute_teardown.assert_not_called()
+                     self.test_exec._execute_phase_group(group, None, False))
+    self.assertEqual([
+        mock.call(self._setup, None, False, override_message='group:setup'),
+        mock.call(self._main, None, False, override_message='group:main'),
+    ], self.mock_execute_sequence.call_args_list)
 
 
 class BranchDiag(diagnoses_lib.DiagResultEnum):
@@ -1046,8 +1050,8 @@ class TestExecutorExecuteBranchTest(parameterized.TestCase):
         test_descriptor.TestOptions(),
         run_with_profiling=False)
     self.test_exec.test_state = self.test_state
-    patcher = mock.patch.object(self.test_exec, '_execute_abortable_sequence')
-    self.mock_execute_abortable = patcher.start()
+    patcher = mock.patch.object(self.test_exec, '_execute_sequence')
+    self.mock_execute_sequence = patcher.start()
 
   @parameterized.named_parameters(
       # on_all
@@ -1094,15 +1098,16 @@ class TestExecutorExecuteBranchTest(parameterized.TestCase):
     for result in results:
       self.diag_store._add_diagnosis(diagnoses_lib.Diagnosis(result=result))
 
-    self.test_exec._execute_phase_branch(branch)
+    self.test_exec._execute_phase_branch(branch, None, False)
     if called:
-      self.mock_execute_abortable.assert_called_once_with(branch)
+      self.mock_execute_sequence.assert_called_once_with(branch, None, False)
       self.mock_logger.debug.assert_called_once_with(
           '%s: Branch condition met; running phases.', diag_cond.message)
     else:
-      self.mock_execute_abortable.assert_not_called()
+      self.mock_execute_sequence.assert_not_called()
       self.mock_logger.debug.assert_called_once_with(
-          '%s: Branch condition NOT met; skipping phases.', diag_cond.message)
+          '%s: Branch condition NOT met; not running sequence.',
+          diag_cond.message)
     self.mock_test_record.add_branch_record.assert_called_once_with(
         test_record.BranchRecord.from_branch(branch, called, mock.ANY))
 
@@ -1112,8 +1117,8 @@ class TestExecutorExecuteBranchTest(parameterized.TestCase):
     self.diag_store._add_diagnosis(
         diagnoses_lib.Diagnosis(result=BranchDiag.ONE))
 
-    self.test_exec._execute_phase_branch(branch)
-    self.mock_execute_abortable.assert_called_once_with(branch)
+    self.test_exec._execute_phase_branch(branch, None, False)
+    self.mock_execute_sequence.assert_called_once_with(branch, None, False)
     self.mock_test_record.add_branch_record.assert_called_once_with(
         test_record.BranchRecord.from_branch(branch, True, mock.ANY))
     self.mock_logger.debug.assert_called_once_with(

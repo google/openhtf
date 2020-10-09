@@ -79,13 +79,14 @@ guarenteed to run.  `PhaseGroup` collections can contain additional `PhaseGroup`
 instances. If a nested group has a terminal phase, the outer groups will trigger
 the same shortcut logic.
 
-For terminal phases in a `PhaseGroup`,
-* If the phase was a `PhaseGroup.setup` phase, then we skip the rest of the
-  `PhaseGroup`.
-* If the phase was a `PhaseGroup.main` phase, then we skip to the
-  `PhaseGroup.teardown` phases of that `PhaseGroup`.
-* If the phase was a `PhaseGroup.teardown` phase, the rest of the `teardown`
-  phases are run, but outer groups will trigger the shortcut logic.
+For terminal phases (or phases that return `FAIL_SUBTEST`) in a `PhaseGroup`,
+* If the phase was in the `setup` sequence, then we do not run the rest of
+  the `PhaseGroup`.
+* If the phase was in the `main` sequence, then we do not run the rest of the
+  `main` sequence and proceed to the `teardown` sequence of that `PhaseGroup`.
+* If the phase was in the `teardown` sequence, the rest of the `teardown`
+  sequence ndoes are run, but outer groups will trigger the shortcut logic.
+  This also applies to all nested phase nodes.
 
 NOTE: If a phase calls `os.abort()` or an equivalent to the C++
 `die()` function, then the process dies and you cannot recover the results from
@@ -93,10 +94,24 @@ this, so try to avoid such behavior in any Python or C++ libraries you use.
 
 ### Subtests
 
-`Subtest`s are Phase Sequences what allow phases to exit early, but continue on
+`Subtest`s are Phase Sequences that allow phases to exit early, but continue on
 with other phases.  A phase can indicate this by returning
-`htf.PhaseResult.FAIL_SUBTEST`.  The details of subtests are included in the
-output test record.
+`htf.PhaseResult.FAIL_SUBTEST` or with a checkpoint with that result as its
+action.  The details of subtests are included in the output test record.
+
+The rest of the phases in a subtest after the failing node will be processed as:
+
+* Phase descriptors are all skipped.
+* Branches are not run at all, as though their condition was evaluated as false.
+* Groups entered after the failing node are entirely skipped, including their
+  `teardown` sequences.
+* Groups with the failing node in its `main` sequence will skip the rest of the
+  `main` sequence, but will run the teardown phases.
+* Groups with the failing node in its `setup` sequence will skip the rest of the
+  setup phases and will record skips for the `main` and `teardown` sequences.
+* Groups with the failing node in its `teardown` sequence will still run the
+  rest of the `teardown` sequence.
+* Sequences are recursively processed by these same rules.
 
 Phase group teardowns are run properly when nested in a subtest.
 

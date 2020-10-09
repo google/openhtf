@@ -56,6 +56,21 @@ def empty_phase():
 
 
 @phase_descriptor.PhaseOptions()
+def skip_phase():
+  pass
+
+
+@phase_descriptor.PhaseOptions()
+def skip_phase0():
+  pass
+
+
+@phase_descriptor.PhaseOptions()
+def skip_phase1():
+  pass
+
+
+@phase_descriptor.PhaseOptions()
 def phase_with_args(arg1=None):
   del arg1
 
@@ -109,8 +124,14 @@ class FlattenTest(unittest.TestCase):
     with self.assertRaises(ValueError):
       phase_collections.flatten(nodes)
 
+  def test_flatten_single_list(self):
+    seq = htf.PhaseSequence(_create_nodes('1', '2'))
+    expected = [htf.PhaseSequence(_create_nodes('1', '2'))]
 
-class PhaseCollectionsTest(unittest.TestCase):
+    self.assertEqual(expected, phase_collections.flatten([seq]))
+
+
+class PhaseSequenceTest(unittest.TestCase):
 
   def test_init__nodes_and_args(self):
     with self.assertRaises(ValueError):
@@ -201,6 +222,21 @@ class PhaseCollectionsTest(unittest.TestCase):
     self.assertEqual([empty_phase, plug_phase], list(seq.all_phases()))
 
 
+class PhaseSequenceIntegrationTest(htf_test.TestCase):
+
+  @htf_test.yields_phases
+  def test_nested(self):
+    seq = phase_collections.PhaseSequence(
+        phase_collections.PhaseSequence(phase, empty_phase))
+
+    test_rec = yield htf.Test(seq)
+
+    self.assertTestPass(test_rec)
+
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase', 'empty_phase')
+
+
 class SubtestTest(unittest.TestCase):
 
   def test_init__name(self):
@@ -229,6 +265,8 @@ class SubtestIntegrationTest(htf_test.TestCase):
     subtest = phase_collections.Subtest('subtest', phase)
 
     test_rec = yield htf.Test(subtest)
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase')
 
     self.assertTestPass(test_rec)
     self.assertEqual([
@@ -243,22 +281,26 @@ class SubtestIntegrationTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_fail_but_still_continues(self):
     subtest = phase_collections.Subtest('failure', fail_subtest_phase,
-                                        error_phase)
+                                        skip_phase)
 
     test_rec = yield htf.Test(subtest, phase)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(3, len(test_rec.phases))
 
     fail_phase_rec = test_rec.phases[1]
     self.assertPhaseOutcomeFail(fail_phase_rec)
     self.assertPhaseFailSubtest(fail_phase_rec)
     self.assertEqual('failure', fail_phase_rec.subtest_name)
 
-    continue_phase_rec = test_rec.phases[2]
+    skip_phase_rec = test_rec.phases[2]
+    self.assertPhaseOutcomeSkip(skip_phase_rec)
+    self.assertPhaseSkip(skip_phase_rec)
+    self.assertEqual('failure', skip_phase_rec.subtest_name)
+
+    continue_phase_rec = test_rec.phases[3]
     self.assertPhaseOutcomePass(continue_phase_rec)
     self.assertPhaseContinue(continue_phase_rec)
-    self.assertIsNone((continue_phase_rec.subtest_name))
+    self.assertIsNone(continue_phase_rec.subtest_name)
 
     self.assertEqual([
         test_record.SubtestRecord(
@@ -275,18 +317,34 @@ class SubtestIntegrationTest(htf_test.TestCase):
     test_rec = yield htf.Test(subtest, phase)
 
     self.assertTestError(test_rec)
-    self.assertEqual(2, len(test_rec.phases))
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.ERROR, test_rec,
+                                   'error_phase')
+    self.assertPhasesNotRun(test_rec, 'phase')
 
     error_phase_rec = test_rec.phases[1]
     self.assertPhaseError(error_phase_rec, exc_type=BrokenError)
 
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='subtest',
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.STOP),
+    ], test_rec.subtests)
+
   @htf_test.yields_phases
   def test_pass__with_group(self):
-    subtest = phase_collections.Subtest('subtest', phase)
+    subtest = phase_collections.Subtest('subtest', teardown_group.wrap(phase))
 
     test_rec = yield htf.Test(subtest)
 
     self.assertTestPass(test_rec)
+
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase', 'teardown_phase')
+
     self.assertEqual([
         test_record.SubtestRecord(
             name='subtest',
@@ -299,24 +357,181 @@ class SubtestIntegrationTest(htf_test.TestCase):
   def test_fail__with_group(self):
     subtest = phase_collections.Subtest('it_fails',
                                         teardown_group.wrap(fail_subtest_phase),
-                                        error_phase)
+                                        skip_phase)
 
     test_rec = yield htf.Test(subtest, phase)
 
     self.assertTestFail(test_rec)
-    self.assertEqual(4, len(test_rec.phases))
 
     fail_phase_rec = test_rec.phases[1]
+    self.assertEqual('fail_subtest_phase', fail_phase_rec.name)
     self.assertPhaseOutcomeFail(fail_phase_rec)
     self.assertPhaseFailSubtest(fail_phase_rec)
     self.assertEqual('it_fails', fail_phase_rec.subtest_name)
 
     teardown_phase_rec = test_rec.phases[2]
+    self.assertEqual('teardown_phase', teardown_phase_rec.name)
     self.assertPhaseContinue(teardown_phase_rec)
     self.assertPhaseOutcomePass(teardown_phase_rec)
     self.assertEqual('it_fails', teardown_phase_rec.subtest_name)
 
-    continue_phase_rec = test_rec.phases[3]
+    skip_phase_rec = test_rec.phases[3]
+    self.assertEqual('skip_phase', skip_phase_rec.name)
+    self.assertPhaseSkip(skip_phase_rec)
+    self.assertPhaseOutcomeSkip(skip_phase_rec)
+    self.assertEqual('it_fails', skip_phase_rec.subtest_name)
+
+    continue_phase_rec = test_rec.phases[4]
+    self.assertEqual('phase', continue_phase_rec.name)
+    self.assertPhaseOutcomePass(continue_phase_rec)
+    self.assertPhaseContinue(continue_phase_rec)
+    self.assertIsNone((continue_phase_rec.subtest_name))
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='it_fails',
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_fail__with_nested_group_skipped(self):
+    subtest = phase_collections.Subtest(
+        'it_fails', fail_subtest_phase,
+        htf.PhaseGroup(main=[skip_phase0], teardown=[skip_phase1]), skip_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestFail(test_rec)
+
+    fail_phase_rec = test_rec.phases[1]
+    self.assertEqual('fail_subtest_phase', fail_phase_rec.name)
+    self.assertPhaseOutcomeFail(fail_phase_rec)
+    self.assertPhaseFailSubtest(fail_phase_rec)
+    self.assertEqual('it_fails', fail_phase_rec.subtest_name)
+
+    skip_phase0_rec = test_rec.phases[2]
+    self.assertEqual('skip_phase0', skip_phase0_rec.name)
+    self.assertPhaseSkip(skip_phase0_rec)
+    self.assertPhaseOutcomeSkip(skip_phase0_rec)
+    self.assertEqual('it_fails', skip_phase0_rec.subtest_name)
+
+    skip_phase1_rec = test_rec.phases[3]
+    self.assertEqual('skip_phase1', skip_phase1_rec.name)
+    self.assertPhaseSkip(skip_phase1_rec)
+    self.assertPhaseOutcomeSkip(skip_phase1_rec)
+    self.assertEqual('it_fails', skip_phase1_rec.subtest_name)
+
+    skip_phase_rec = test_rec.phases[4]
+    self.assertEqual('skip_phase', skip_phase_rec.name)
+    self.assertPhaseSkip(skip_phase_rec)
+    self.assertPhaseOutcomeSkip(skip_phase_rec)
+    self.assertEqual('it_fails', skip_phase_rec.subtest_name)
+
+    continue_phase_rec = test_rec.phases[5]
+    self.assertEqual('phase', continue_phase_rec.name)
+    self.assertPhaseOutcomePass(continue_phase_rec)
+    self.assertPhaseContinue(continue_phase_rec)
+    self.assertIsNone((continue_phase_rec.subtest_name))
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='it_fails',
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_fail__with_nested_group_fail_in_setup(self):
+    subtest = phase_collections.Subtest(
+        'it_fails',
+        htf.PhaseGroup(
+            setup=[fail_subtest_phase],
+            main=[skip_phase0],
+            teardown=[skip_phase1]), skip_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestFail(test_rec)
+
+    fail_phase_rec = test_rec.phases[1]
+    self.assertEqual('fail_subtest_phase', fail_phase_rec.name)
+    self.assertPhaseOutcomeFail(fail_phase_rec)
+    self.assertPhaseFailSubtest(fail_phase_rec)
+    self.assertEqual('it_fails', fail_phase_rec.subtest_name)
+
+    skip_phase0_rec = test_rec.phases[2]
+    self.assertEqual('skip_phase0', skip_phase0_rec.name)
+    self.assertPhaseSkip(skip_phase0_rec)
+    self.assertPhaseOutcomeSkip(skip_phase0_rec)
+    self.assertEqual('it_fails', skip_phase0_rec.subtest_name)
+
+    skip_phase1_rec = test_rec.phases[3]
+    self.assertEqual('skip_phase1', skip_phase1_rec.name)
+    self.assertPhaseSkip(skip_phase1_rec)
+    self.assertPhaseOutcomeSkip(skip_phase1_rec)
+    self.assertEqual('it_fails', skip_phase1_rec.subtest_name)
+
+    skip_phase_rec = test_rec.phases[4]
+    self.assertEqual('skip_phase', skip_phase_rec.name)
+    self.assertPhaseSkip(skip_phase_rec)
+    self.assertPhaseOutcomeSkip(skip_phase_rec)
+    self.assertEqual('it_fails', skip_phase_rec.subtest_name)
+
+    continue_phase_rec = test_rec.phases[5]
+    self.assertEqual('phase', continue_phase_rec.name)
+    self.assertPhaseOutcomePass(continue_phase_rec)
+    self.assertPhaseContinue(continue_phase_rec)
+    self.assertIsNone((continue_phase_rec.subtest_name))
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='it_fails',
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_fail__with_nested_group_fail_in_teardown(self):
+    subtest = phase_collections.Subtest(
+        'it_fails',
+        htf.PhaseGroup(
+            main=[empty_phase], teardown=[fail_subtest_phase, teardown_phase]),
+        skip_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestFail(test_rec)
+
+    empty_phase_rec = test_rec.phases[1]
+    self.assertEqual('empty_phase', empty_phase_rec.name)
+    self.assertPhaseOutcomePass(empty_phase_rec)
+    self.assertPhaseContinue(empty_phase_rec)
+    self.assertEqual('it_fails', empty_phase_rec.subtest_name)
+
+    fail_phase_rec = test_rec.phases[2]
+    self.assertEqual('fail_subtest_phase', fail_phase_rec.name)
+    self.assertPhaseOutcomeFail(fail_phase_rec)
+    self.assertPhaseFailSubtest(fail_phase_rec)
+    self.assertEqual('it_fails', fail_phase_rec.subtest_name)
+
+    teardown_phase_rec = test_rec.phases[3]
+    self.assertEqual('teardown_phase', teardown_phase_rec.name)
+    self.assertPhaseContinue(teardown_phase_rec)
+    self.assertPhaseOutcomePass(teardown_phase_rec)
+    self.assertEqual('it_fails', teardown_phase_rec.subtest_name)
+
+    skip_phase_rec = test_rec.phases[4]
+    self.assertEqual('skip_phase', skip_phase_rec.name)
+    self.assertPhaseSkip(skip_phase_rec)
+    self.assertPhaseOutcomeSkip(skip_phase_rec)
+    self.assertEqual('it_fails', skip_phase_rec.subtest_name)
+
+    continue_phase_rec = test_rec.phases[5]
+    self.assertEqual('phase', continue_phase_rec.name)
     self.assertPhaseOutcomePass(continue_phase_rec)
     self.assertPhaseContinue(continue_phase_rec)
     self.assertIsNone((continue_phase_rec.subtest_name))
@@ -337,14 +552,15 @@ class SubtestIntegrationTest(htf_test.TestCase):
     test_rec = yield htf.Test(subtest, phase)
 
     self.assertTestError(test_rec)
-    self.assertEqual(3, len(test_rec.phases))
 
     error_phase_rec = test_rec.phases[1]
+    self.assertEqual('error_phase', error_phase_rec.name)
     self.assertPhaseOutcomeError(error_phase_rec)
     self.assertPhaseError(error_phase_rec, exc_type=BrokenError)
     self.assertEqual('it_errors', error_phase_rec.subtest_name)
 
     teardown_phase_rec = test_rec.phases[2]
+    self.assertEqual('teardown_phase', teardown_phase_rec.name)
     self.assertPhaseContinue(teardown_phase_rec)
     self.assertPhaseOutcomePass(teardown_phase_rec)
     self.assertEqual('it_errors', teardown_phase_rec.subtest_name)
@@ -389,23 +605,32 @@ class SubtestIntegrationTest(htf_test.TestCase):
   def test_nested__fail(self):
     subtest = phase_collections.Subtest(
         'outer', phase,
-        phase_collections.Subtest('inner', fail_subtest_phase, error_phase),
-        phase)
+        phase_collections.Subtest('inner', fail_subtest_phase, skip_phase),
+        empty_phase)
 
     test_rec = yield htf.Test(subtest)
 
     self.assertTestFail(test_rec)
 
-    self.assertEqual(4, len(test_rec.phases))
-
     outer_phase_rec = test_rec.phases[1]
+    self.assertEqual('phase', outer_phase_rec.name)
     self.assertEqual('outer', outer_phase_rec.subtest_name)
+    self.assertPhaseOutcomePass(outer_phase_rec)
 
     inner_phase_rec = test_rec.phases[2]
+    self.assertEqual('fail_subtest_phase', inner_phase_rec.name)
     self.assertEqual('inner', inner_phase_rec.subtest_name)
+    self.assertPhaseOutcomeFail(inner_phase_rec)
 
-    outer_phase2_rec = test_rec.phases[3]
+    skip_phase_rec = test_rec.phases[3]
+    self.assertEqual('skip_phase', skip_phase_rec.name)
+    self.assertEqual('inner', skip_phase_rec.subtest_name)
+    self.assertPhaseOutcomeSkip(skip_phase_rec)
+
+    outer_phase2_rec = test_rec.phases[4]
+    self.assertEqual('empty_phase', outer_phase2_rec.name)
     self.assertEqual('outer', outer_phase2_rec.subtest_name)
+    self.assertPhaseOutcomePass(outer_phase2_rec)
 
     self.assertEqual([
         test_record.SubtestRecord(
@@ -421,14 +646,118 @@ class SubtestIntegrationTest(htf_test.TestCase):
     ], test_rec.subtests)
 
   @htf_test.yields_phases
-  def test_fail_subtest_not_in_subtest(self):
+  def test_fail_subtest__not_in_subtest(self):
     test_rec = yield htf.Test(fail_subtest_phase, phase)
 
     self.assertTestError(
         test_rec, exc_type=phase_executor.InvalidPhaseResultError)
-    self.assertEqual(2, len(test_rec.phases))
+
     fail_phase_rec = test_rec.phases[1]
     self.assertPhaseError(
         fail_phase_rec, exc_type=phase_executor.InvalidPhaseResultError)
     self.assertPhaseOutcomeError(fail_phase_rec)
     self.assertIsNone(fail_phase_rec.subtest_name)
+
+  @htf_test.yields_phases
+  def test_fail_subtest__nested_subtest_also_skipped(self):
+    subtest = phase_collections.Subtest(
+        'outer', fail_subtest_phase, skip_phase0,
+        phase_collections.Subtest('inner', skip_phase), skip_phase1)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_subtest_phase')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip_phase0', 'skip_phase', 'skip_phase1')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase')
+
+    self.assertEqual([
+        test_record.SubtestRecord(
+            name='inner',
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+        test_record.SubtestRecord(
+            name='outer',
+            start_time_millis=htf_test.VALID_TIMESTAMP,
+            end_time_millis=htf_test.VALID_TIMESTAMP,
+            outcome=test_record.SubtestOutcome.FAIL),
+    ], test_rec.subtests)
+
+  @htf_test.yields_phases
+  def test_fail_subtest__skip_checkpoint(self):
+    subtest = phase_collections.Subtest(
+        'skip_checkpoint', fail_subtest_phase,
+        htf.PhaseFailureCheckpoint('must_be_skipped'), skip_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestFail(test_rec)
+
+    fail_phase_rec = test_rec.phases[1]
+    self.assertPhaseFailSubtest(fail_phase_rec)
+    self.assertPhaseOutcomeFail(fail_phase_rec)
+
+    skip_phase_rec = test_rec.phases[2]
+    self.assertPhaseOutcomeSkip(skip_phase_rec)
+
+    continue_phase_rec = test_rec.phases[3]
+    self.assertPhaseOutcomePass(continue_phase_rec)
+
+    self.assertTrue(test_rec.checkpoints[0].result.is_skip)
+
+  @htf_test.yields_phases
+  def test_fail_subtest__skip_branch_that_would_not_run(self):
+
+    class _Diag(htf.DiagResultEnum):
+      NOT_SET = 'not_set'
+
+    subtest = phase_collections.Subtest(
+        'skip_branch', fail_subtest_phase,
+        htf.BranchSequence(_Diag.NOT_SET, error_phase), skip_phase)
+
+    test_rec = yield htf.Test(subtest, phase)
+
+    self.assertTestFail(test_rec)
+
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_subtest_phase')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip_phase')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'phase')
+    self.assertPhasesNotRun(test_rec, 'error_phase')
+
+  @htf_test.yields_phases
+  def test_fail_subtest__skip_branch_that_would_run(self):
+
+    class _Diag(htf.DiagResultEnum):
+      SET = 'set'
+
+    @htf.PhaseDiagnoser(_Diag)
+    def diagnoser(phase_rec):
+      del phase_rec  # Unused.
+      return htf.Diagnosis(_Diag.SET)
+
+    @htf.diagnose(diagnoser)
+    def diag_phase():
+      pass
+
+    subtest = phase_collections.Subtest(
+        'skip_branch', fail_subtest_phase,
+        htf.BranchSequence(
+            htf.DiagnosisCondition.on_all(_Diag.SET), error_phase), skip_phase)
+
+    test_rec = yield htf.Test(diag_phase, subtest, phase)
+
+    self.assertTestFail(test_rec)
+
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.FAIL, test_rec,
+                                   'fail_subtest_phase')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.SKIP, test_rec,
+                                   'skip_phase')
+    self.assertPhasesOutcomeByName(test_record.PhaseOutcome.PASS, test_rec,
+                                   'diag_phase', 'phase')
+    self.assertPhasesNotRun(test_rec, 'error_phase')
