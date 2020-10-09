@@ -23,6 +23,7 @@ import sys
 from distutils.command.build import build
 from distutils.command.clean import clean
 from distutils.cmd import Command
+from distutils.spawn import find_executable
 from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.test import test
@@ -51,7 +52,6 @@ class BuildProtoCommand(Command):
                   ('outdir=', 'o', 'Where to output .py files.')]
 
   def initialize_options(self):
-    self.skip_proto = False
     try:
       prefix = subprocess.check_output(
           'pkg-config --variable prefix protobuf'.split()).strip().decode('utf-8')
@@ -63,19 +63,22 @@ class BuildProtoCommand(Command):
         # Default to /usr/local for Homebrew
         prefix = '/usr/local'
       else:
-        print('Warning: mfg-inspector output is not fully implemented for '
-              'Windows. OpenHTF will be installed without it.')
-        self.skip_proto = True
+        prefix = None
 
-    maybe_protoc = os.path.join(prefix, 'bin', 'protoc')
-    if os.path.isfile(maybe_protoc) and os.access(maybe_protoc, os.X_OK):
+    self.protoc = None
+    if prefix:
+      maybe_protoc = os.path.join(prefix, 'bin', 'protoc')
+      if os.path.isfile(maybe_protoc) and os.access(maybe_protoc, os.X_OK):
         self.protoc = maybe_protoc
-    else:
+      else:
         print('Warning: protoc not found at %s' % maybe_protoc)
         print('setup will attempt to run protoc with no prefix.')
-        self.protoc = 'protoc'
-
-    self.protodir = os.path.join(prefix, 'include')
+    if not self.protoc:
+      self.protoc = find_executable('protoc')
+      pc_path = os.path.dirname(find_executable('protoc'))
+      self.protodir = os.path.abspath(os.path.join(os.path.dirname(pc_path), os.path.pardir, 'lib'))
+    else:
+      self.protodir = os.path.join(prefix, 'include')
     self.indir = os.getcwd()
     self.outdir = os.getcwd()
 
@@ -83,10 +86,6 @@ class BuildProtoCommand(Command):
     pass
 
   def run(self):
-    if self.skip_proto:
-      print('Skipping building protocol buffers.')
-      return
-
     # Build regular proto files.
     protos = glob.glob(
         os.path.join(self.indir, 'openhtf', 'output', 'proto', '*.proto'))
@@ -109,6 +108,10 @@ class BuildProtoCommand(Command):
                   '"protobuf-compiler" and "libprotobuf-dev" packages.')
           elif sys.platform == 'darwin':
             print('On Mac, protobuf is often installed via homebrew.')
+          else:
+            print('On Windows, protoc should be installed and added '
+                  'to the path. Pre-built binaries can be found at '
+                  'https://github.com/google/protobuf/releases')
         raise
       except subprocess.CalledProcessError:
         print('Could not build proto files.')

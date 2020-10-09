@@ -58,13 +58,13 @@ when there are changes upstream after your PR was created.
 We generally tend toward squashing commits on merge rather than filling our git
 log with merge commits. Sometimes, however, especially for large, sweeping
 changes, it makes sense to preserve multiple commits in the history. If you're
-authoring such a PR, consider using a rebase with squashes and fixups to reduce 
+authoring such a PR, consider using a rebase with squashes and fixups to reduce
 the commit history down to a commit per salient change.
 
 
 ### Code Standards
 For a smooth code review, it helps to make sure your code adheres to standards,
-conventions, and design goals for OpenHTF. A best-effort attempt to understand 
+conventions, and design goals for OpenHTF. A best-effort attempt to understand
 and meet these standards before requesting code review can go a long way towards
 making the review process as fast and painless as possible.
 
@@ -73,7 +73,7 @@ making the review process as fast and painless as possible.
 OpenHTF's Python code follows the
 [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
 We provide a `pylintrc` file at the top level of our repo that you can use with
-[pylint](https://www.pylint.org/) to lint your Python code. We expect the 
+[pylint](https://www.pylint.org/) to lint your Python code. We expect the
 codebase to produce zero pylint warnings, and we allow the use of explicit
 `pylint: disable=...` comments in certain cases where it makes sense.
 
@@ -173,8 +173,7 @@ fits in based on what it does.
     |     |
     |     |
     |     '-> util
-    | 
-    |           Generic utility functions and miscellaneous tools.
+    |
     |           The contents of this submodule should be general enough to be 
     |           usable outside of OpenHTF, meaning it should not be dependent
     |           on other code in the OpenHTF package.
@@ -239,7 +238,7 @@ python setup.py develop
 ```
 
 ### MacOS
-We will use [Homebrew](https://brew.sh/) to install our dependencies and Pip to set up the virtualenv. We recommend installing [Xcode](https://developer.apple.com/xcode/) first as the GCC compiler will be needed for both; however, other GCC compilers not associated with Xcode may work just as well. 
+We will use [Homebrew](https://brew.sh/) to install our dependencies and Pip to set up the virtualenv. We recommend installing [Xcode](https://developer.apple.com/xcode/) first as the GCC compiler will be needed for both; however, other GCC compilers not associated with Xcode may work just as well.
 
 ```bash
 # Install dependencies.
@@ -271,7 +270,32 @@ virtualenv venv
 python setup.py develop
 ```
 
-If you're having issues with the python setup, it's possible that the problem is due to El Capitan not including ssl headers. This [link](http://adarsh.io/bundler-failing-on-el-capitan/) may help you in that regard. 
+If you're having issues with the python setup, it's possible that the problem is due to El Capitan not including ssl headers. This [link](http://adarsh.io/bundler-failing-on-el-capitan/) may help you in that regard.
+
+### Windows
+
+Windows is similar to other platforms. It requires Pip to set up the virutalenv and protoc to be in the path. A pre-built binary can be downloaded from
+[link](https://github.com/google/protobuf/releases).
+
+```
+# Clone into the repo.
+git clone https://github.com/google/openhtf.git
+
+# Install virtualenv via pip.
+pip install virtualenv
+
+# Change to the openhtf directory.
+cd openhtf
+
+# Create a new virtualenv.
+virtualenv venv
+
+# Activate the new virtualenv.
+venv/Scripts/activate
+
+# Install openhtf into the virtualenv in dev mode.
+python setup.py develop
+```
 
 ## Web Frontend Development
 OpenHTF ships with a built-in web gui found in the `openhtf.output.web_gui` module.
