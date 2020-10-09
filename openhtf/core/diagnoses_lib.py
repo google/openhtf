@@ -131,6 +131,7 @@ import enum  # pylint: disable=g-bad-import-order
 from openhtf.core import phase_descriptor
 from openhtf.util import data
 import six
+from six.moves import collections_abc
 
 
 class DiagnoserError(Exception):
@@ -201,7 +202,7 @@ class DiagnosesManager(object):
     elif isinstance(diagnosis_or_diagnoses, Diagnosis):
       yield self._verify_and_fix_diagnosis(diagnosis_or_diagnoses, diagnoser)
     elif (isinstance(diagnosis_or_diagnoses, six.string_types) or
-          not isinstance(diagnosis_or_diagnoses, collections.Iterable)):
+          not isinstance(diagnosis_or_diagnoses, collections_abc.Iterable)):
       raise InvalidDiagnosisError(
           'Diagnoser {} must return a single Diagnosis or an iterable '
           'of them.'.format(diagnoser.name))
