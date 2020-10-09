@@ -21,6 +21,8 @@ import sys
 import threading
 import xmlrpc.client
 import collections
+from six.moves import collections_abc
+
 
 DEFAULT_PROXY_TIMEOUT_S = 3
 
@@ -90,7 +92,7 @@ class LockedProxyMixin(object):
 
   def __getattr__(self, attr):
     method = super(LockedProxyMixin, self).__getattr__(attr)
-    if isinstance(method, collections.Callable):
+    if isinstance(method, collections_abc.Callable):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _wrapper(*args):
         with self._lock:
