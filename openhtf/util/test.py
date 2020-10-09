@@ -244,6 +244,23 @@ class PhaseNodeComparable(TestNode):
             self.kwargs == other.kwargs)
 
 
+class FakeTestApi(openhtf.TestApi):
+  """A fake TestApi used to test non-phase helper functions."""
+
+  def __init__(self):
+    self.mock_logger = mock.create_autospec(logging.Logger)
+    self.mock_phase_state = mock.create_autospec(
+        test_state.PhaseState, logger=self.mock_logger)
+    self.mock_test_state = mock.create_autospec(
+        test_state.TestState,
+        test_record=test_record.TestRecord('DUT', 'STATION'),
+        user_defined_state={})
+    super(FakeTestApi, self).__init__(
+        measurements={},
+        running_phase_state=self.mock_phase_state,
+        running_test_state=self.mock_test_state)
+
+
 class PhaseOrTestIterator(collections.Iterator):
 
   def __init__(self, test_case, iterator, mock_plugs, phase_user_defined_state,

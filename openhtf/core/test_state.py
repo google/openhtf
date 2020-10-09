@@ -228,18 +228,11 @@ class TestState(util.SubscribableStateMixin):
     if not self.running_phase_state:
       raise ValueError('test_api only available when phase is running.')
     if not self._running_test_api:
-      ps = self.running_phase_state
       self._running_test_api = openhtf.TestApi(
-          logger=self.logger,
-          state=self.user_defined_state,
-          test_record=self.test_record,
-          measurements=measurements.Collection(ps.measurements),
-          attachments=ps.attachments,
-          attach=ps.attach,
-          attach_from_file=ps.attach_from_file,
-          get_measurement=self.get_measurement,
-          get_attachment=self.get_attachment,
-          notify_update=self.notify_update,
+          measurements=measurements.Collection(
+              self.running_phase_state.measurements),
+          running_phase_state=self.running_phase_state,
+          running_test_state=self,
       )
     return self._running_test_api
 
@@ -642,7 +635,7 @@ class PhaseState(object):
 
   def attach(self,
              name: Text,
-             binary_data: bytes,
+             binary_data: Union[Text, bytes],
              mimetype: MimetypeT = INFER_MIMETYPE) -> None:
     """Store the given binary_data as an attachment with the given name.
 

@@ -80,7 +80,7 @@ class Attachment(object):
   sha1 = attr.ib(type=Text)
   _filename = attr.ib(type=Text)
 
-  def __init__(self, contents: bytes, mimetype: Text):
+  def __init__(self, contents: Union[Text, bytes], mimetype: Text):
     contents = six.ensure_binary(contents)
     self.mimetype = mimetype
     self.sha1 = hashlib.sha1(contents).hexdigest()

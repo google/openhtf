@@ -30,7 +30,7 @@ import threading
 import traceback
 import types
 import typing
-from typing import Any, Callable, Dict, List, Optional, Set, Text, Type
+from typing import Any, Callable, Dict, List, Optional, Set, Text, Type, Union
 import uuid
 import weakref
 
@@ -465,40 +465,21 @@ class TestApi(object):
       used for any test-wide state you need to persist across phases. Use this
       with caution, however, as it is not persisted in the output TestRecord or
       displayed on the web frontend in any way.
+    diagnoses_store: The diagnoses storage and lookup instance for this test.
     test_record: A reference to the output TestRecord for the currently running
       openhtf.Test.  Direct access to this attribute is *strongly* discouraged,
       but provided as a catch-all for interfaces not otherwise provided by
       TestApi.  If you find yourself using this, please file a
         feature request for an alternative at:
           https://github.com/google/openhtf/issues/new
-    attach: Attach binary data to the test, see TestState.attach(); callable.
-    attach_from_file: Attach binary data from a file, see
-      TestState.attach_from_file(); callable.
-    get_attachment:  Get copy of attachment contents from current or previous
-      phase, see TestState.get_attachment; callable.
-    get_measurement: Get copy of a measurement from a current or previous phase,
-      see TestState.get_measurement(); callable.
-    notify_update: Notify any frontends of an interesting update. Typically this
-      is automatically called internally when interesting things happen, but it
-      can be called by the user (takes no args), for instance if modifying
-      test_record directly; callable.
   """
 
-  logger = attr.ib(type=logging.Logger)
-  # TODO(arsharma): Change to Dict[Any, Any] when pytype handles it correctly.
-  state = attr.ib()
-  test_record = attr.ib(type=htf_test_record.TestRecord)
   measurements = attr.ib(type=measurements.Collection)
-  attachments = attr.ib(type=Dict[Text, htf_test_record.Attachment])
 
-  # Callables:
-  attach = attr.ib(type=Callable[..., None])
-  attach_from_file = attr.ib(type=Callable[..., None])
-  get_measurement = attr.ib(
-      type=Callable[[Text], Optional[test_state.ImmutableMeasurement]])
-  get_attachment = attr.ib(type=Callable[...,
-                                         Optional[htf_test_record.Attachment]])
-  notify_update = attr.ib(type=Callable[[], None])
+  # Internal state objects.  If you find yourself needing to use these, please
+  # use required_state=True for the phase to use the test_state object instead.
+  _running_phase_state = attr.ib(type=test_state.PhaseState)
+  _running_test_state = attr.ib(type=test_state.TestState)
 
   @property
   def dut_id(self) -> Text:
@@ -511,3 +492,101 @@ class TestApi(object):
                           self.test_record.dut_id, dut_id)
     self.test_record.dut_id = dut_id
     self.notify_update()
+
+  @property
+  def logger(self) -> logging.Logger:
+    return self._running_phase_state.logger
+
+  # TODO(arsharma): Change to Dict[Any, Any] when pytype handles it correctly.
+  @property
+  def state(self) -> Any:
+    return self._running_test_state.user_defined_state
+
+  @property
+  def test_record(self) -> htf_test_record.TestRecord:
+    return self._running_test_state.test_record
+
+  @property
+  def attachments(self) -> Dict[Text, htf_test_record.Attachment]:
+    return self._running_phase_state.attachments
+
+  def attach(
+      self,
+      name: Text,
+      binary_data: Union[Text, bytes],
+      mimetype: test_state.MimetypeT = test_state.INFER_MIMETYPE) -> None:
+    """Store the given binary_data as an attachment with the given name.
+
+    Args:
+      name: Attachment name under which to store this binary_data.
+      binary_data: Data to attach.
+      mimetype: One of the following: INFER_MIMETYPE - The type will be guessed
+        from the attachment name. None - The type will be left unspecified. A
+        string - The type will be set to the specified value.
+
+    Raises:
+      DuplicateAttachmentError: Raised if there is already an attachment with
+        the given name.
+    """
+    self._running_phase_state.attach(name, binary_data, mimetype=mimetype)
+
+  def attach_from_file(
+      self,
+      filename: Text,
+      name: Optional[Text] = None,
+      mimetype: test_state.MimetypeT = test_state.INFER_MIMETYPE) -> None:
+    """Store the contents of the given filename as an attachment.
+
+    Args:
+      filename: The file to read data from to attach.
+      name: If provided, override the attachment name, otherwise it will default
+        to the filename.
+      mimetype: One of the following:
+          * INFER_MIMETYPE: The type will be guessed first, from the file name,
+            and second (i.e. as a fallback), from the attachment name.
+          * None: The type will be left unspecified.
+          * A string: The type will be set to the specified value.
+
+    Raises:
+      DuplicateAttachmentError: Raised if there is already an attachment with
+        the given name.
+      IOError: Raised if the given filename couldn't be opened.
+    """
+    self._running_phase_state.attach_from_file(
+        filename, name=name, mimetype=mimetype)
+
+  def get_measurement(
+      self,
+      measurement_name: Text) -> Optional[test_state.ImmutableMeasurement]:
+    """Get a copy of a measurement value from current or previous phase.
+
+    Measurement and phase name uniqueness is not enforced, so this method will
+    return an immutable copy of the most recent measurement recorded.
+
+    Args:
+      measurement_name: str of the measurement name
+
+    Returns:
+      an ImmutableMeasurement or None if the measurement cannot be found.
+    """
+    return self._running_test_state.get_measurement(measurement_name)
+
+  def get_attachment(
+      self, attachment_name: Text) -> Optional[htf_test_record.Attachment]:
+    """Get a copy of an attachment from current or previous phases.
+
+    Args:
+      attachment_name:  str of the attachment name
+
+    Returns:
+      A copy of the attachment or None if the attachment cannot be found.
+    """
+    return self._running_test_state.get_attachment(attachment_name)
+
+  def notify_update(self) -> None:
+    """Notify any update events that there was an update."""
+    self._running_test_state.notify_update()
+
+  @property
+  def diagnoses_store(self) -> diagnoses_lib.DiagnosesStore:
+    return self._running_test_state.diagoses_manager.store
