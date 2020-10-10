@@ -589,4 +589,4 @@ class TestApi(object):
 
   @property
   def diagnoses_store(self) -> diagnoses_lib.DiagnosesStore:
-    return self._running_test_state.diagoses_manager.store
+    return self._running_test_state.diagnoses_manager.store
