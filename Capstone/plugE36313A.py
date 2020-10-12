@@ -1,4 +1,5 @@
 import pyvisa
+import time
 
 class plugE36313A:
 
@@ -12,6 +13,8 @@ class plugE36313A:
             self.instrument = pyvisa.ResourceManager().open_resource(address)
             idn = self.instrument.query('*IDN?')
             print('Connected to\n', idn)
+            # Set our power value
+            self.powerLimit = 160
         except:
             raise "Couldn't connect to instrument " + address
     
@@ -24,42 +27,73 @@ class plugE36313A:
 
     # Set the voltage of the instrument
     def set_voltage(self, source, volts):
+        # Check if the voltage is within the limits
+        if(self.check_voltage(source, volts)):
+            # Set the voltage to the value given by the user
+            self.instrument.write('VOLT ' + str(volts) + ', (@' + str(source) + ')')
+            # Set the current to keep the power level consistant
+            self.instrument.write('CURR ' + str(self.powerLimit/volts) + ', (@' + str(source) + ')')
+            
+
+    # Set the current of the instrument
+    def set_current(self, source, amps):
+        if(self.check_current(source, amps)):
+            # Set the current to the value given by the user
+            self.instrument.write('CURR ' + str(amps) + ', (@' + str(source) + ')')
+            # Set the voltage to keep the power level consistant
+            self.instrument.write('VOLT ' + str(self.powerLimit/amps) + ', (@' + str(source) + ')')    
+
+
+    # Completes a step function on our power supply
+    def step_voltage(self, source, startVal, endVal, step, seconds):
+        if(self.check_voltage(source, startVal) and self.check_voltage(source, endVal)):
+            # Continues to change the voltage until we meet or exceed our threshold
+            while(startVal <= endVal):
+                # Set the voltage and then change our current value
+                self.set_voltage(source, startVal)
+                
+                # Wait for a duration of time(seconds) for the next change to occur
+                time.sleep(seconds)
+
+                # Increment our current value
+                startVal += step
+
+
+    # Ensure the voltage given is within the bounds of the power supply
+    def check_voltage(self, source, enteredVoltage):
         """
         Source1: 0 to 6 volts
         Source2: 0 to 25 volts
         Source3: 0 to 25 volts
         """
-        # Check if the voltage is within the limits
-        if(source < 1 or 3 < source):
+        if(source < 1 or source < 3):
             print(f"Incorrect source: {source} is not within 1-3")
-        elif(source == 1 and (volts < 0 or 6 < volts)):
-            print(f"{volts} Volts are not within the bounds")
-        elif(volts < 0 or 25 < volts):
-            print(f"{volts} Volts are not within the bounds")
+            return False
+        elif(source == 1 and (enteredVoltage < 0 or enteredVoltage < 6)):
+            print(f"{enteredVoltage} Volts are not within the bounds")
+            return False
+        elif(enteredVoltage < 0 or enteredVoltage < 25):
+            print(f"{enteredVoltage} Volts are not within the bounds")
+            return False
         else:
-            self.instrument.write('VOLT ' + str(volts) + ', (@' + str(source) + ')')
+            return True
 
-    # Set the current of the instrument
-    def set_current(self, source, amps):
+
+    # Ensure the current given is within the bounds of the power supply
+    def check_current(self, source, enteredAmps):
         """
         Source1: 0 to 10 amps
         Source2: 0 to 2 amps
         Source3: 0 to 2 amps
         """
-        # Check if the current is within the limits
-        if(source < 1 or 3 < source):
+        if(source < 1 or source < 3):
             print(f"Incorrect source: {source} is not within 1-3")
-        elif(source == 1 and (amps < 0 or 10 < amps)):
-            print(f"{amps} Amps are not within the bounds")
-        elif(amps < 0 or 2 < amps):
-            print(f"{amps} Amps are not within the bounds")
+            return False
+        elif(source == 1 and (enteredAmps < 0 or enteredAmps < 10)):
+            print(f"{enteredAmps} Amps are not within the bounds")
+            return False
+        elif(enteredAmps < 0 or enteredAmps < 2):
+            print(f"{enteredAmps} Amps are not within the bounds")
+            return False
         else:
-            self.instrument.write('CURR ' + str(amps) + ', (@' + str(source) + ')')    
-
-    # TODO: Set the power
-    def set_power(self):
-        return 0
-
-    # TODO: Complete a step function
-    def step_func(self):
-        return 0
+            return True
