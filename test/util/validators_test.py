@@ -4,6 +4,8 @@ import copy
 import decimal
 import unittest
 
+import openhtf as htf
+from openhtf.util import test as htf_test
 from openhtf.util import validators
 import six
 
@@ -183,3 +185,68 @@ class TestWithinPercent(unittest.TestCase):
     validator_b = copy.deepcopy(validator_a)
     self.assertEqual(validator_a.expected, validator_b.expected)
     self.assertEqual(validator_a.percent, validator_b.percent)
+
+
+class DimensionPivotTest(htf_test.TestCase):
+  """Tests validators.DimensionPivot. Used with dimensioned measurements."""
+
+  _test_value = 10
+  _sub_validator = validators.in_range(0, _test_value)
+  _test_measurement = htf.Measurement('pivot').with_dimensions(
+      'height', 'width').dimension_pivot_validate(_sub_validator)
+
+  @htf_test.yields_phases
+  def testPasses(self):
+
+    @htf.measures(self._test_measurement)
+    def phase(test):
+      test.measurements.pivot[10, 10] = self._test_value - 2
+      test.measurements.pivot[11, 10] = self._test_value - 1
+
+    phase_record = yield phase
+    self.assertMeasurementPass(phase_record, 'pivot')
+
+  @htf_test.yields_phases
+  def testFails(self):
+
+    @htf.measures(self._test_measurement)
+    def phase(test):
+      test.measurements.pivot[11, 12] = self._test_value - 1
+      test.measurements.pivot[14, 12] = self._test_value + 1
+
+    phase_record = yield phase
+    self.assertMeasurementFail(phase_record, 'pivot')
+
+
+class ConsistentEndDimensionPivotTest(htf_test.TestCase):
+  """Tests validators.ConsistentEndRange. Similar to DimensionPivot."""
+
+  _sub_validator = validators.in_range(minimum=5)
+  _test_measurement = htf.Measurement('pivot').with_dimensions(
+      'time').consistent_end_dimension_pivot_validate(_sub_validator)
+
+  @htf_test.yields_phases
+  def testPasses(self):
+
+    @htf.measures(self._test_measurement)
+    def phase(test):
+      test.measurements.pivot[0] = 0
+      test.measurements.pivot[1] = 2
+      test.measurements.pivot[2] = 6
+      test.measurements.pivot[3] = 8
+
+    phase_record = yield phase
+    self.assertMeasurementPass(phase_record, 'pivot')
+
+  @htf_test.yields_phases
+  def testFails(self):
+
+    @htf.measures(self._test_measurement)
+    def phase(test):
+      test.measurements.pivot[0] = 3
+      test.measurements.pivot[1] = 4
+      test.measurements.pivot[2] = 6
+      test.measurements.pivot[3] = 4
+
+    phase_record = yield phase
+    self.assertMeasurementFail(phase_record, 'pivot')

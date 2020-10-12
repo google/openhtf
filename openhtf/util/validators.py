@@ -295,3 +295,47 @@ class WithinPercent(RangeValidatorBase):
 @register
 def within_percent(expected, percent):
   return WithinPercent(expected, percent)
+
+
+class DimensionPivot(ValidatorBase):
+  """Runs a validator on each actual value of a dimensioned measurement."""
+
+  def __init__(self, sub_validator):
+    super(DimensionPivot, self).__init__()
+    self._sub_validator = sub_validator
+
+  def __call__(self, dimensioned_value):
+    return all(self._sub_validator(row[-1]) for row in dimensioned_value)
+
+  def __str__(self):
+    return 'All values pass: {}'.format(str(self._sub_validator))
+
+
+@register
+def dimension_pivot_validate(sub_validator):
+  return DimensionPivot(sub_validator)
+
+
+class ConsistentEndDimensionPivot(ValidatorBase):
+  """If any rows validate, all following rows must also validate."""
+
+  def __init__(self, sub_validator):
+    super(ConsistentEndDimensionPivot, self).__init__()
+    self._sub_validator = sub_validator
+
+  def __call__(self, dimensioned_value):
+    for index, row in enumerate(dimensioned_value):
+      if self._sub_validator(row[-1]):
+        i = index
+        break
+    else:
+      return False
+    return all(self._sub_validator(rest[-1]) for rest in dimensioned_value[i:])
+
+  def __str__(self):
+    return 'Once pass, rest must also pass: {}'.format(str(self._sub_validator))
+
+
+@register
+def consistent_end_dimension_pivot_validate(sub_validator):
+  return ConsistentEndDimensionPivot(sub_validator)
