@@ -19,7 +19,6 @@ little easier to work with them.
 
 from __future__ import google_type_annotations
 
-import collections
 import copy
 import difflib
 import enum
@@ -38,6 +37,7 @@ from past.builtins import long
 from past.builtins import unicode
 
 import six
+from six.moves import collections_abc
 from six.moves import zip
 
 # Used by convert_to_base_types().
@@ -245,7 +245,7 @@ def total_size(obj):
       size += sum(
           map(sizeof,
               itertools.chain.from_iterable(six.iteritems(current_obj))))
-    elif (isinstance(current_obj, collections.Iterable) and
+    elif (isinstance(current_obj, collections_abc.Iterable) and
           not isinstance(current_obj, six.string_types)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):

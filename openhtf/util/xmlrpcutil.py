@@ -13,7 +13,6 @@
 # limitations under the License.
 """Utility helpers for xmlrpclib."""
 
-import collections
 import http.client
 import socketserver
 import sys
@@ -22,6 +21,7 @@ import xmlrpc.client
 import xmlrpc.server
 
 import six
+from six.moves import collections_abc
 
 DEFAULT_PROXY_TIMEOUT_S = 3
 
@@ -100,7 +100,7 @@ class LockedProxyMixin(object):
 
   def __getattr__(self, attr):
     method = super(LockedProxyMixin, self).__getattr__(attr)  # pytype: disable=attribute-error
-    if isinstance(method, collections.Callable):
+    if isinstance(method, collections_abc.Callable):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _wrapper(*args):
         with self._lock:

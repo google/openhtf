@@ -21,7 +21,6 @@ examples.
 
 from __future__ import google_type_annotations
 
-import collections
 import contextlib
 import shutil
 import tempfile
@@ -32,6 +31,7 @@ from openhtf import util
 from openhtf.core import test_record
 from openhtf.util import data
 import six
+from six.moves import collections_abc
 from six.moves import cPickle as pickle
 
 SerializedTestRecord = Union[Text, bytes, Iterator[Union[Text, bytes]]]
@@ -134,7 +134,7 @@ class OutputToFile(object):
       serialized_record = self.serialize_test_record(test_rec)
       if isinstance(serialized_record, six.string_types):
         outfile.write(six.ensure_binary(serialized_record))
-      elif isinstance(serialized_record, collections.Iterable):
+      elif isinstance(serialized_record, collections_abc.Iterable):
         for chunk in serialized_record:
           outfile.write(six.ensure_binary(chunk))
       else:

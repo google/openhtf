@@ -135,6 +135,7 @@ from openhtf.core import phase_descriptor
 from openhtf.core import test_record
 from openhtf.util import data
 import six
+from six.moves import collections_abc
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
@@ -213,7 +214,7 @@ class DiagnosesManager(object):
     elif isinstance(diagnosis_or_diagnoses, Diagnosis):
       yield self._verify_and_fix_diagnosis(diagnosis_or_diagnoses, diagnoser)
     elif (isinstance(diagnosis_or_diagnoses, six.string_types) or
-          not isinstance(diagnosis_or_diagnoses, collections.Iterable)):
+          not isinstance(diagnosis_or_diagnoses, collections_abc.Iterable)):
       raise InvalidDiagnosisError(
           'Diagnoser {} must return a single Diagnosis or an iterable '
           'of them.'.format(diagnoser.name))
