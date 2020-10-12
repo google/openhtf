@@ -18,6 +18,7 @@ is sane. It might be worth expanding the tests to also check for things we
 actually care for.
 """
 
+import collections
 import io
 import unittest
 
@@ -37,6 +38,12 @@ MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(
     dut_serial='UNITTEST1234',
     test_status=test_runs_pb2.PASS,
     test_info=test_runs_pb2.TestInfo(name='unit_test'))
+
+MOCK_TEST_RUN = collections.namedtuple('Testrun',
+                                       mfg_inspector.MfgInspector.PARAMS)(None,
+                                                                          None,
+                                                                          None,
+                                                                          None)
 
 
 class TestMfgInspector(test.TestCase):
@@ -102,7 +109,7 @@ class TestMfgInspector(test.TestCase):
         user='user', keydata='keydata',
         token_uri='').set_converter(mock_converter)
 
-    callback.upload()({})
+    callback.upload()(MOCK_TEST_RUN)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
         MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
@@ -116,8 +123,8 @@ class TestMfgInspector(test.TestCase):
         user='user', keydata='keydata', token_uri='')
     callback.set_converter(mock_converter)
 
-    callback.save_to_disk(filename_pattern=testrun_output)({})
-    callback.upload()({})
+    callback.save_to_disk(filename_pattern=testrun_output)(MOCK_TEST_RUN)
+    callback.upload()(MOCK_TEST_RUN)
 
     # Parse what was written to BytesIO back into a proto and compare
     testrun_output.seek(0)

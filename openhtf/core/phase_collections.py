@@ -33,6 +33,7 @@ from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_nodes
 import six
+from six.moves import collections_abc
 
 NodeType = TypeVar('NodeType', bound=phase_nodes.PhaseNode)
 SequenceClassT = TypeVar('SequenceClassT', bound='PhaseSequence')
@@ -47,7 +48,7 @@ class DuplicateSubtestNamesError(Exception):
 
 def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
   """Yields flattened phase nodes."""
-  if isinstance(n, collections.Iterable):
+  if isinstance(n, collections_abc.Iterable):
     for it in n:
       for node in _recursive_flatten(it):
         yield node
