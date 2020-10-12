@@ -12,6 +12,8 @@ class plugE36313A:
             self.instrument = pyvisa.ResourceManager().open_resource(address)
             idn = self.instrument.query('*IDN?')
             print('Connected to\n', idn)
+            # Set our power value
+            self.powerLimit = 160
         except:
             raise "Couldn't connect to instrument " + address
     
@@ -37,7 +39,11 @@ class plugE36313A:
         elif(volts < 0 or 25 < volts):
             print(f"{volts} Volts are not within the bounds")
         else:
+            # Set the voltage to the value given by the user
             self.instrument.write('VOLT ' + str(volts) + ', (@' + str(source) + ')')
+            # Set the current to keep the power level consistant
+            self.instrument.write('CURR ' + str(self.powerLimit/volts) + ', (@' + str(source) + ')')
+            
 
     # Set the current of the instrument
     def set_current(self, source, amps):
@@ -54,11 +60,16 @@ class plugE36313A:
         elif(amps < 0 or 2 < amps):
             print(f"{amps} Amps are not within the bounds")
         else:
-            self.instrument.write('CURR ' + str(amps) + ', (@' + str(source) + ')')    
+            # Set the current to the value given by the user
+            self.instrument.write('CURR ' + str(amps) + ', (@' + str(source) + ')')
+            # Set the voltage to keep the power level consistant
+            self.instrument.write('VOLT ' + str(self.powerLimit/amps) + ', (@' + str(source) + ')')    
 
     # TODO: Set the power
     def set_power(self):
-        return 0
+        """
+        Every source can have a max of 
+        """
 
     # TODO: Complete a step function
     def step_func(self):
