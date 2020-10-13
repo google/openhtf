@@ -3,7 +3,13 @@
 import pyvisa
 
 class DMM34461A:
+	"""
+	Connect to DMM 34461A and read the resistance. 
+	store value in resistance.
 
+	return:
+		resistance
+	"""
 	def read_resistance(self):
 		
 		rm = pyvisa.ResourceManager()
