@@ -28,8 +28,7 @@ import openhtf as htf
 from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import mfg_inspector
-from openhtf.output.proto import mfg_event_converter
-from openhtf.output.proto import mfg_event_pb2
+from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
@@ -38,32 +37,39 @@ MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(
     tester_name='mock_test_run',
     dut_serial='UNITTEST1234',
     test_status=test_runs_pb2.PASS,
-    test_info=test_runs_pb2.TestInfo(name='unit_test')
-)
+    test_info=test_runs_pb2.TestInfo(name='unit_test'))
 
-MOCK_TEST_RUN = collections.namedtuple(
-    'Testrun', mfg_inspector.MfgInspector.PARAMS)(None, None, None, None)
+MOCK_TEST_RUN = collections.namedtuple('Testrun',
+                                       mfg_inspector.MfgInspector.PARAMS)(None,
+                                                                          None,
+                                                                          None,
+                                                                          None)
 
 
 class TestMfgInspector(test.TestCase):
 
   def setUp(self):
+    super(TestMfgInspector, self).setUp()
     self.mock_credentials = mock.patch(
-        'oauth2client.client.SignedJwtAssertionCredentials'
-        ).start().return_value
+        'oauth2client.client.SignedJwtAssertionCredentials').start(
+        ).return_value
 
     self.mock_send_mfg_inspector_data = mock.patch.object(
         mfg_inspector, 'send_mfg_inspector_data').start()
 
   def tearDown(self):
     mock.patch.stopall()
+    super(TestMfgInspector, self).tearDown()
 
   @classmethod
   def setUpClass(cls):
+    super(TestMfgInspector, cls).setUpClass()
     # Create input record.
     result = util.NonLocalResult()
+
     def _save_result(test_record):
       result.result = test_record
+
     cls._test = htf.Test(
         all_the_things.hello_world,
         all_the_things.dimensions,
@@ -81,8 +87,7 @@ class TestMfgInspector(test.TestCase):
     callback = mfg_inspector.MfgInspector()
 
     callback.set_converter(
-        converter=test_runs_converter.test_run_from_test_record,
-    )
+        converter=test_runs_converter.test_run_from_test_record,)
     save_to_disk_callback = callback.save_to_disk(
         filename_pattern=testrun_output)
     save_to_disk_callback(record)
@@ -101,13 +106,14 @@ class TestMfgInspector(test.TestCase):
   def test_upload_only(self):
     mock_converter = mock.MagicMock(return_value=MOCK_TEST_RUN_PROTO)
     callback = mfg_inspector.MfgInspector(
-        user='user', keydata='keydata', token_uri='').set_converter(
-            mock_converter)
+        user='user', keydata='keydata',
+        token_uri='').set_converter(mock_converter)
 
     callback.upload()(MOCK_TEST_RUN)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url)
+        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN)
 
   def test_save_and_upload(self):
     testrun_output = io.BytesIO()
@@ -128,7 +134,8 @@ class TestMfgInspector(test.TestCase):
     self.assertEqual(MOCK_TEST_RUN_PROTO, testrun)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url)
+        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN)
 
     # Make sure mock converter only called once i.e. the test record was
     # was converted to a proto only once.  This important because some custom

@@ -11,17 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """User input module for OpenHTF.
 
 Provides a plug which can be used to prompt the user for input. The prompt can
 be displayed in the console, the OpenHTF web GUI, and custom frontends.
 """
 
-from __future__ import print_function
-
-import collections
 import functools
 import logging
 import os
@@ -29,10 +24,13 @@ import platform
 import select
 import sys
 import threading
+from typing import Any, Callable, Dict, Optional, Text, Tuple, Union
 import uuid
 
-from openhtf import PhaseOptions
+import attr
+import openhtf
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.util import console_output
 from six.moves import input
 
@@ -56,7 +54,12 @@ class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
-Prompt = collections.namedtuple('Prompt', 'id message text_input image_url')
+@attr.s(slots=True, frozen=True)
+class Prompt(object):
+  id = attr.ib(type=Text)
+  message = attr.ib(type=Text)
+  text_input = attr.ib(type=bool)
+  image_url = attr.ib(type=Optional[Text], default=None)
 
 
 class ConsolePrompt(threading.Thread):
@@ -65,7 +68,10 @@ class ConsolePrompt(threading.Thread):
   This should not be used for processes that run in the background.
   """
 
-  def __init__(self, message, callback, color=''):
+  def __init__(self,
+               message: Text,
+               callback: Callable[[Text], None],
+               color: Text = ''):
     """Initializes a ConsolePrompt.
 
     Args:
@@ -81,29 +87,27 @@ class ConsolePrompt(threading.Thread):
     self._stop_event = threading.Event()
     self._answered = False
 
-  def Stop(self):
+  def stop(self) -> None:
     """Mark this ConsolePrompt as stopped."""
     self._stop_event.set()
     if not self._answered:
-      console_output.cli_print(os.linesep, color=self._color,
-                               end='', logger=None)
+      console_output.cli_print(
+          os.linesep, color=self._color, end='', logger=None)
       _LOG.debug('Stopping ConsolePrompt--prompt was answered from elsewhere.')
 
-  def run(self):
+  def run(self) -> None:
     """Main logic for this thread to execute."""
     if platform.system() == 'Windows':
       # Windows doesn't support file-like objects for select(), so fall back
       # to raw_input().
-      response = input(''.join((self._message,
-                                os.linesep,
-                                PROMPT)))
+      response = input(''.join((self._message, os.linesep, PROMPT)))
       self._answered = True
       self._callback(response)
       return
 
     # First, display the prompt to the console.
-    console_output.cli_print(self._message, color=self._color,
-                             end=os.linesep, logger=None)
+    console_output.cli_print(
+        self._message, color=self._color, end=os.linesep, logger=None)
     console_output.cli_print(PROMPT, color=self._color, end='', logger=None)
     sys.stdout.flush()
 
@@ -129,45 +133,51 @@ class ConsolePrompt(threading.Thread):
           return
 
 
-class UserInput(plugs.FrontendAwareBasePlug):
+class UserInput(base_plugs.FrontendAwareBasePlug):
   """Get user input from inside test phases.
 
   Attributes:
     last_response: None, or a pair of (prompt_id, response) indicating the last
-        user response that was received by the plug.
+      user response that was received by the plug.
   """
 
   def __init__(self):
     super(UserInput, self).__init__()
-    self.last_response = None
-    self._prompt = None
-    self._console_prompt = None
-    self._response = None
+    self.last_response = None  # type: Optional[Tuple[Text, Text]]
+    self._prompt = None  # type: Optional[Prompt]
+    self._console_prompt = None  # type: Optional[ConsolePrompt]
+    self._response = None  # type: Optional[Text]
     self._cond = threading.Condition(threading.RLock())
 
-  def _asdict(self):
+  def _asdict(self) -> Optional[Dict[Text, Any]]:
     """Return a dictionary representation of the current prompt."""
     with self._cond:
       if self._prompt is None:
-        return
-      return {'id': self._prompt.id,
-              'message': self._prompt.message,
-              'text-input': self._prompt.text_input,
-              'image-url': self._prompt.image_url}
+        return None
+      return {
+          'id': self._prompt.id,
+          'message': self._prompt.message,
+          'text-input': self._prompt.text_input
+      }
 
-  def tearDown(self):
+  def tearDown(self) -> None:
     self.remove_prompt()
 
-  def remove_prompt(self):
+  def remove_prompt(self) -> None:
     """Remove the prompt."""
     with self._cond:
       self._prompt = None
       if self._console_prompt:
-        self._console_prompt.Stop()
+        self._console_prompt.stop()
         self._console_prompt = None
       self.notify_update()
 
-  def prompt(self, message, text_input=False, timeout_s=None, cli_color='', image_url = None):
+  def prompt(self,
+             message: Text,
+             text_input: bool = False,
+             timeout_s: Union[int, float, None] = None,
+             cli_color: Text = '',
+             image_url: Optional[Text] = None) -> Text:
     """Display a prompt and wait for a response.
 
     Args:
@@ -175,6 +185,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
       text_input: A boolean indicating whether the user must respond with text.
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
       cli_color: An ANSI color code, or the empty string.
+      image_url: Optional image URL to display or None.
 
     Returns:
       A string response, or the empty string if text_input was False.
@@ -186,13 +197,18 @@ class UserInput(plugs.FrontendAwareBasePlug):
     self.start_prompt(message, text_input, cli_color, image_url)
     return self.wait_for_prompt(timeout_s)
 
-  def start_prompt(self, message, text_input=False, cli_color='', image_url = None):
+  def start_prompt(self,
+                   message: Text,
+                   text_input: bool = False,
+                   cli_color: Text = '',
+                   image_url: Optional[Text] = None) -> Text:
     """Display a prompt.
 
     Args:
       message: A string to be presented to the user.
       text_input: A boolean indicating whether the user must respond with text.
       cli_color: An ANSI color code, or the empty string.
+      image_url: Optional image URL to display or None.
 
     Raises:
       MultiplePromptsError: There was already an existing prompt.
@@ -202,14 +218,18 @@ class UserInput(plugs.FrontendAwareBasePlug):
     """
     with self._cond:
       if self._prompt:
-        raise MultiplePromptsError
+        raise MultiplePromptsError(
+            'Multiple concurrent prompts are not supported.')
       prompt_id = uuid.uuid4().hex
       _LOG.debug('Displaying prompt (%s): "%s"%s', prompt_id, message,
                  ', Expects text input.' if text_input else '')
 
       self._response = None
       self._prompt = Prompt(
-          id=prompt_id, message=message, text_input=text_input, image_url=image_url)
+          id=prompt_id,
+          message=message,
+          text_input=text_input,
+          image_url=image_url)
       if sys.stdin.isatty():
         self._console_prompt = ConsolePrompt(
             message, functools.partial(self.respond, prompt_id), cli_color)
@@ -218,7 +238,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
       self.notify_update()
       return prompt_id
 
-  def wait_for_prompt(self, timeout_s=None):
+  def wait_for_prompt(self, timeout_s: Union[int, float, None] = None) -> Text:
     """Wait for the user to respond to the current prompt.
 
     Args:
@@ -240,7 +260,7 @@ class UserInput(plugs.FrontendAwareBasePlug):
         raise PromptUnansweredError
       return self._response
 
-  def respond(self, prompt_id, response):
+  def respond(self, prompt_id: Text, response: Text) -> None:
     """Respond to the prompt with the given ID.
 
     If there is no active prompt or the given ID doesn't match the active
@@ -249,24 +269,22 @@ class UserInput(plugs.FrontendAwareBasePlug):
     Args:
       prompt_id: A string uniquely identifying the prompt.
       response: A string response to the given prompt.
-
-    Returns:
-      True if the prompt with the given ID was active, otherwise False.
     """
     _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
     with self._cond:
       if not (self._prompt and self._prompt.id == prompt_id):
-        return False
+        return
       self._response = response
       self.last_response = (prompt_id, response)
       self.remove_prompt()
       self._cond.notifyAll()
-    return True
 
 
 def prompt_for_test_start(
-    message='Enter a DUT ID in order to start the test.', timeout_s=60*60*24,
-    validator=lambda sn: sn, cli_color=''):
+    message: Text = 'Enter a DUT ID in order to start the test.',
+    timeout_s: Union[int, float, None] = 60 * 60 * 24,
+    validator: Callable[[Text], Text] = lambda sn: sn,
+    cli_color: Text = '') -> openhtf.PhaseDescriptor:
   """Returns an OpenHTF phase for use as a prompt-based start trigger.
 
   Args:
@@ -276,9 +294,9 @@ def prompt_for_test_start(
     cli_color: An ANSI color code, or the empty string.
   """
 
-  @PhaseOptions(timeout_s=timeout_s)
+  @openhtf.PhaseOptions(timeout_s=timeout_s)
   @plugs.plug(prompts=UserInput)
-  def trigger_phase(test, prompts):
+  def trigger_phase(test: openhtf.TestApi, prompts: UserInput) -> None:
     """Test start trigger that prompts the user for a DUT ID."""
     dut_id = prompts.prompt(
         message, text_input=True, timeout_s=timeout_s, cli_color=cli_color)

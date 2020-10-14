@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Test various measurements use cases.
 
 The test cases here need improvement - they should check for things that we
@@ -29,8 +28,10 @@ from examples import all_the_things
 from openhtf.util import test as htf_test
 
 # Fields that are considered 'volatile' for record comparison.
-_VOLATILE_FIELDS = {'start_time_millis', 'end_time_millis', 'timestamp_millis',
-                    'lineno', 'codeinfo', 'code_info', 'descriptor_id'}
+_VOLATILE_FIELDS = {
+    'start_time_millis', 'end_time_millis', 'timestamp_millis', 'lineno',
+    'codeinfo', 'code_info', 'descriptor_id'
+}
 
 
 class BadValidatorError(Exception):
@@ -46,15 +47,15 @@ def bad_validator(value):
   raise BadValidatorError('This is a bad validator.')
 
 
-@htf.measures(htf.Measurement('bad').with_dimensions('a').with_validator(
-    bad_validator))
+@htf.measures(
+    htf.Measurement('bad').with_dimensions('a').with_validator(bad_validator))
 def bad_validator_phase(test):
   test.measurements.bad[1] = 1
   test.measurements.bad[2] = 2
 
 
-@htf.measures(htf.Measurement('bad').with_dimensions('a').with_validator(
-    bad_validator))
+@htf.measures(
+    htf.Measurement('bad').with_dimensions('a').with_validator(bad_validator))
 def bad_validator_with_error(test):
   test.measurements.bad[2] = 2
   raise BadPhaseError('Bad phase.')
@@ -122,11 +123,12 @@ class TestMeasurements(htf_test.TestCase):
     m.measured_value.set(1)
     m.notify_value_set()
     basetypes2 = m.as_base_types()
-    self.assertEqual({
-        'name': 'measurement',
-        'outcome': 'PASS',
-        'measured_value': 1,
-    }, basetypes2)
+    self.assertEqual(
+        {
+            'name': 'measurement',
+            'outcome': 'PASS',
+            'measured_value': 1,
+        }, basetypes2)
     self.assertIs(basetypes0, basetypes2)
 
   @htf_test.patch_plugs(user_mock='openhtf.plugs.user_input.UserInput')
@@ -141,23 +143,34 @@ class TestMeasurements(htf_test.TestCase):
   @htf_test.yields_phases
   def test_measurements_with_dimensions(self):
     record = yield all_the_things.dimensions
-    self.assertMeasured(record, 'dimensions',
-                        [(0, 1), (1, 2), (2, 4), (3, 8), (4, 16)])
-    self.assertMeasured(record, 'lots_of_dims',
-                        [(1, 21, 101, 123), (2, 22, 102, 126),
-                         (3, 23, 103, 129), (4, 24, 104, 132)])
+    self.assertMeasured(record, 'dimensions', [
+        (0, 1),
+        (1, 2),
+        (2, 4),
+        (3, 8),
+        (4, 16),
+    ])
+    self.assertMeasured(record, 'lots_of_dims', [
+        (1, 21, 101, 123),
+        (2, 22, 102, 126),
+        (3, 23, 103, 129),
+        (4, 24, 104, 132),
+    ])
 
   @htf_test.yields_phases
   def test_validator_replacement(self):
-    record = yield all_the_things.measures_with_args.with_args(min=2, max=4)
+    record = yield all_the_things.measures_with_args.with_args(
+        minimum=2, maximum=4)
     self.assertMeasurementFail(record, 'replaced_min_only')
     self.assertMeasurementPass(record, 'replaced_max_only')
     self.assertMeasurementFail(record, 'replaced_min_max')
-    record = yield all_the_things.measures_with_args.with_args(min=0, max=5)
+    record = yield all_the_things.measures_with_args.with_args(
+        minimum=0, maximum=5)
     self.assertMeasurementPass(record, 'replaced_min_only')
     self.assertMeasurementPass(record, 'replaced_max_only')
     self.assertMeasurementPass(record, 'replaced_min_max')
-    record = yield all_the_things.measures_with_args.with_args(min=-1, max=0)
+    record = yield all_the_things.measures_with_args.with_args(
+        minimum=-1, maximum=0)
     self.assertMeasurementPass(record, 'replaced_min_only')
     self.assertMeasurementFail(record, 'replaced_max_only')
     self.assertMeasurementFail(record, 'replaced_min_max')
@@ -165,12 +178,13 @@ class TestMeasurements(htf_test.TestCase):
   @htf_test.yields_phases
   def test_measurement_order(self):
     record = yield all_the_things.dimensions
-    self.assertEqual(list(record.measurements.keys()),
-                     ['dimensions', 'lots_of_dims'])
-    record = yield all_the_things.measures_with_args.with_args(min=2, max=4)
-    self.assertEqual(list(record.measurements.keys()),
-                     ['replaced_min_only', 'replaced_max_only',
-                      'replaced_min_max'])
+    self.assertEqual(
+        list(record.measurements.keys()), ['dimensions', 'lots_of_dims'])
+    record = yield all_the_things.measures_with_args.with_args(
+        minimum=2, maximum=4)
+    self.assertEqual(
+        list(record.measurements.keys()),
+        ['replaced_min_only', 'replaced_max_only', 'replaced_min_max'])
 
   @htf_test.yields_phases
   def test_bad_validation(self):
@@ -202,8 +216,7 @@ class TestMeasurement(htf_test.TestCase):
 
   def test_to_dataframe(self, units=True):
     measurement = htf.Measurement('test_multidim')
-    measurement.with_dimensions('ms', 'assembly',
-                                htf.Dimension('my_zone'))
+    measurement.with_dimensions('ms', 'assembly', htf.Dimension('my_zone'))
 
     if units:
       measurement.with_units('°C')
@@ -222,12 +235,10 @@ class TestMeasurement(htf_test.TestCase):
 
     df = measurement.to_dataframe()
     coordinates = (1, 'A', 2)
-    query = '(ms == %s) & (assembly == "%s") & (my_zone == %s)' % (
-        coordinates)
+    query = '(ms == %s) & (assembly == "%s") & (my_zone == %s)' % (coordinates)
 
-    self.assertEqual(
-        measurement.measured_value[coordinates],
-        df.query(query)[measure_column_name].values[0])
+    self.assertEqual(measurement.measured_value[coordinates],
+                     df.query(query)[measure_column_name].values[0])
 
   def test_to_dataframe__no_units(self):
     self.test_to_dataframe(units=False)
@@ -256,7 +267,10 @@ class TestMeasuredValue(htf_test.TestCase):
 
   def test_cached_complex(self):
     measured_value = measurements.MeasuredValue('complex')
-    NamedComplex = collections.namedtuple('NamedComplex', ['a'])  # pylint: disable=invalid-name
+
+    class NamedComplex(collections.namedtuple('NamedComplex', ['a'])):
+      pass
+
     named_complex = NamedComplex(10)
     measured_value.set(named_complex)
     self.assertEqual({'a': 10}, measured_value._cached_value)
@@ -273,7 +287,10 @@ class TestMeasurementDimensions(htf_test.TestCase):
     self.assertEqual(length, 1)
 
   def test_coordinates_len_tuple(self):
-    coordinates = ('string', 42,)
+    coordinates = (
+        'string',
+        42,
+    )
     length = measurements._coordinates_len(coordinates)
     self.assertEqual(length, 2)
 
@@ -305,7 +322,10 @@ class TestMeasurementDimensions(htf_test.TestCase):
   def test_multi_dimension_correct(self):
     measurement = htf.Measurement('measure')
     measurement.with_dimensions('dimension1', 'dimension2')
-    dimension_vals = ('dim val 1', 1234,)
+    dimension_vals = (
+        'dim val 1',
+        1234,
+    )
     try:
       measurement.measured_value[dimension_vals] = 42
     except measurements.InvalidDimensionsError:

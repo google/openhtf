@@ -11,16 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
 python all_the_things.py
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os.path
 import time
@@ -46,15 +41,15 @@ def example_monitor(example, frontend_aware):
 
 
 @htf.measures(
-    htf.Measurement(
-        'widget_type').matches_regex(r'.*Widget$').doc(
-            '''This measurement tracks the type of widgets.'''),
-    htf.Measurement(
-        'widget_color').doc('Color of the widget'),
+    htf.Measurement('widget_type').matches_regex(r'.*Widget$').doc(
+        """This measurement tracks the type of widgets."""),
+    htf.Measurement('widget_color').doc('Color of the widget'),
     htf.Measurement('widget_size').in_range(1, 4).doc('Size of widget'))
-@htf.measures('specified_as_args', docstring='Helpful docstring',
-              units=units.HERTZ,
-              validators=[util.validators.matches_regex('Measurement')])
+@htf.measures(
+    'specified_as_args',
+    docstring='Helpful docstring',
+    units=units.HERTZ,
+    validators=[util.validators.matches_regex('Measurement')])
 @htf.plug(example=example_plugs.ExamplePlug)
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
@@ -72,10 +67,9 @@ def hello_world(test, example, prompts):
 
 
 # Timeout if this phase takes longer than 10 seconds.
-@htf.TestPhase(timeout_s=10)
+@htf.PhaseOptions(timeout_s=10)
 @htf.measures(
-    *(htf.Measurement(
-        'level_%s' % i) for i in ['none', 'some', 'all']))
+    *(htf.Measurement('level_%s' % i) for i in ['none', 'some', 'all']))
 @htf.monitors('monitor_measurement', example_monitor)
 def set_measurements(test):
   """Test phase that sets a measurement."""
@@ -95,25 +89,32 @@ def set_measurements(test):
         units.HERTZ, units.SECOND,
         htf.Dimension(description='my_angle', unit=units.RADIAN)))
 def dimensions(test):
+  """Phase with dimensioned measurements."""
   for dim in range(5):
     test.measurements.dimensions[dim] = 1 << dim
-  for x, y, z in zip(list(range(1, 5)), list(range(21, 25)), list(range(101, 105))):
+  for x, y, z in zip(
+      list(range(1, 5)), list(range(21, 25)), list(range(101, 105))):
     test.measurements.lots_of_dims[x, y, z] = x + y + z
 
 
 @htf.measures(
-    htf.Measurement('replaced_min_only').in_range('{min}', 5, type=int),
-    htf.Measurement('replaced_max_only').in_range(0, '{max}', type=int),
-    htf.Measurement('replaced_min_max').in_range('{min}', '{max}', type=int),
+    htf.Measurement('replaced_min_only').in_range('{minimum}', 5, type=int),
+    htf.Measurement('replaced_max_only').in_range(0, '{maximum}', type=int),
+    htf.Measurement('replaced_min_max').in_range(
+        '{minimum}', '{maximum}', type=int),
 )
-def measures_with_args(test, min, max):
+def measures_with_args(test, minimum, maximum):
+  """Phase with measurement with arguments."""
+  del minimum  # Unused.
+  del maximum  # Unused.
   test.measurements.replaced_min_only = 1
   test.measurements.replaced_max_only = 1
   test.measurements.replaced_min_max = 1
 
 
 def attachments(test):
-  test.attach('test_attachment', 'This is test attachment data.'.encode('utf-8'))
+  test.attach('test_attachment',
+              'This is test attachment data.'.encode('utf-8'))
   test.attach_from_file(
       os.path.join(os.path.dirname(__file__), 'example_attachment.txt'))
 
@@ -121,12 +122,12 @@ def attachments(test):
   assert test_attachment.data == b'This is test attachment data.'
 
 
-@htf.TestPhase(run_if=lambda: False)
-def skip_phase(test):
+@htf.PhaseOptions(run_if=lambda: False)
+def skip_phase():
   """Don't run this phase."""
 
 
-def analysis(test):
+def analysis(test):  # pylint: disable=missing-function-docstring
   level_all = test.get_measurement('level_all')
   assert level_all.value == 9
   test_attachment = test.get_attachment('test_attachment')
@@ -136,7 +137,7 @@ def analysis(test):
       (1, 21, 101, 123),
       (2, 22, 102, 126),
       (3, 23, 103, 129),
-      (4, 24, 104, 132)
+      (4, 24, 104, 132),
   ]
   test.logger.info('Pandas datafram of lots_of_dims \n:%s',
                    lots_of_dims.value.to_dataframe())
@@ -146,21 +147,29 @@ def teardown(test):
   test.logger.info('Running teardown')
 
 
-if __name__ == '__main__':
+def main():
   test = htf.Test(
       htf.PhaseGroup.with_teardown(teardown)(
           hello_world,
-          set_measurements, dimensions, attachments, skip_phase,
-          measures_with_args.with_args(min=1, max=4), analysis,
+          set_measurements,
+          dimensions,
+          attachments,
+          skip_phase,
+          measures_with_args.with_args(minimum=1, maximum=4),
+          analysis,
       ),
       # Some metadata fields, these in particular are used by mfg-inspector,
       # but you can include any metadata fields.
-      test_name='MyTest', test_description='OpenHTF Example Test',
+      test_name='MyTest',
+      test_description='OpenHTF Example Test',
       test_version='1.0.0')
-  test.add_output_callbacks(callbacks.OutputToFile(
-      './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
-  test.add_output_callbacks(json_factory.OutputToJSON(
-      './{dut_id}.{metadata[test_name]}.{start_time_millis}.json', indent=4))
+  test.add_output_callbacks(
+      callbacks.OutputToFile(
+          './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))
+  test.add_output_callbacks(
+      json_factory.OutputToJSON(
+          './{dut_id}.{metadata[test_name]}.{start_time_millis}.json',
+          indent=4))
   test.add_output_callbacks(console_summary.ConsoleSummary())
 
   # Example of how to output to testrun protobuf format and save to disk then
@@ -174,5 +183,8 @@ if __name__ == '__main__':
   #     inspector.save_to_disk('./{dut_id}.{start_time_millis}.pb'),
   #     inspector.upload())
 
-
   test.execute(test_start=user_input.prompt_for_test_start())
+
+
+if __name__ == '__main__':
+  main()

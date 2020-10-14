@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """OpenHTF base plugs for thinly wrapping existing device abstractions.
 
 Sometimes you already have a Python interface to a device or instrument; you
@@ -23,7 +21,7 @@ Device-wrapping plugs are your friends in such times.
 import functools
 import types
 
-import openhtf
+from openhtf.core import base_plugs
 import six
 
 
@@ -33,7 +31,7 @@ def short_repr(obj, max_len=40):
   Args:
     obj: An object for which to return a string representation.
     max_len: Maximum length of the returned string. Longer reprs will be turned
-        into a brief descriptive string giving the type and length of obj.
+      into a brief descriptive string giving the type and length of obj.
   """
   obj_repr = repr(obj)
   if len(obj_repr) <= max_len:
@@ -41,7 +39,7 @@ def short_repr(obj, max_len=40):
   return '<{} of length {}>'.format(type(obj).__name__, len(obj_repr))
 
 
-class DeviceWrappingPlug(openhtf.plugs.BasePlug):
+class DeviceWrappingPlug(base_plugs.BasePlug):
   """A base plug for wrapping existing device abstractions.
 
   Attribute access is delegated to the _device attribute, which is normally set
@@ -63,23 +61,25 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
   counted on to do sufficient logging, some debug logging is provided here in
   the plug layer to show which attributes were called and with what arguments.
 
-  Args:
-    device: The device to wrap; must not be None.
-
   Raises:
-    openhtf.plugs.InvalidPlugError: The _device attribute has the value None
+    base_plugs.InvalidPlugError: The _device attribute has the value None
         when attribute access is attempted.
   """
 
   verbose = True  # overwrite on subclass to disable logging_wrapper.
 
   def __init__(self, device):
+    """Constructor.
+
+    Args:
+      device: The device to wrap; must not be None.
+    """
     super(DeviceWrappingPlug, self).__init__()
     self._device = device
     if hasattr(self._device, 'tearDown') and self.uses_base_tear_down():
-      self.logger.warning('Wrapped device %s implements a tearDown method, '
-                          'but using the no-op BasePlug tearDown method.',
-                          type(self._device))
+      self.logger.warning(
+          'Wrapped device %s implements a tearDown method, '
+          'but using the no-op BasePlug tearDown method.', type(self._device))
 
   def __setattr__(self, name, value):
     if (name == '_device' or '_device' not in self.__dict__ or
@@ -90,11 +90,8 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
 
   def __getattr__(self, attr):
     if self._device is None:
-      raise openhtf.plugs.InvalidPlugError(
+      raise base_plugs.InvalidPlugError(
           'DeviceWrappingPlug instances must set the _device attribute.')
-    if attr == 'as_base_types':
-      return super(DeviceWrappingPlug, self).__getattr__(attr)
-
     attribute = getattr(self._device, attr)
 
     if not self.verbose or not isinstance(attribute, types.MethodType):
@@ -102,13 +99,12 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
 
     # Attribute callable; return a wrapper that logs calls with args and kwargs.
     functools.wraps(attribute, assigned=('__name__', '__doc__'))
+
     def logging_wrapper(*args, **kwargs):
       """Wraps a callable with a logging statement."""
       args_strings = tuple(short_repr(arg) for arg in args)
-      kwargs_strings = tuple(
-          ('%s=%s' % (key, short_repr(val))
-           for key, val in six.iteritems(kwargs))
-      )
+      kwargs_strings = tuple(('%s=%s' % (key, short_repr(val))
+                              for key, val in six.iteritems(kwargs)))
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
         log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))
@@ -116,4 +112,3 @@ class DeviceWrappingPlug(openhtf.plugs.BasePlug):
       return attribute(*args, **kwargs)
 
     return logging_wrapper
-

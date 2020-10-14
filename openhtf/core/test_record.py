@@ -11,20 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """OpenHTF module responsible for managing records of tests."""
 
-import collections
 import hashlib
 import inspect
 import logging
 import os
 import tempfile
+from typing import Any, Dict, List, Optional, Text, TYPE_CHECKING, Union
 
-from enum import Enum
-
-import mutablerecords
+import attr
+import enum  # pylint: disable=g-bad-import-order
 
 from openhtf import util
 from openhtf.util import conf
@@ -33,26 +30,36 @@ from openhtf.util import logs
 
 import six
 
+if TYPE_CHECKING:
+  from openhtf.core import diagnoses_lib  # pylint: disable=g-import-not-at-top
+  from openhtf.core import measurements as htf_measurements  # pylint: disable=g-import-not-at-top
+  from openhtf.core import phase_descriptor  # pylint: disable=g-import-not-at-top
+  from openhtf.core import phase_executor  # pylint: disable=g-import-not-at-top
+  from openhtf.core import phase_branches  # pylint: disable=g-import-not-at-top
 
 conf.declare(
     'attachments_directory',
     default_value=None,
     description='Directory where temprorary files can be safely stored.')
 
-
 _LOG = logging.getLogger(__name__)
 
 
-class InvalidMeasurementDimensions(Exception):
-  """Raised when a measurement is taken with the wrong number of dimensions."""
+@attr.s(slots=True, frozen=True)
+class OutcomeDetails(object):
+  code = attr.ib(type=Union[Text, int])
+  description = attr.ib(type=Text)
 
 
-OutcomeDetails = collections.namedtuple(
-    'OutcomeDetails', 'code description')
-Outcome = Enum('Outcome', ['PASS', 'FAIL', 'ERROR', 'TIMEOUT', 'ABORTED'])  # pylint: disable=invalid-name
-# LogRecord is in openhtf.util.logs.LogRecord.
+class Outcome(enum.Enum):
+  PASS = 'PASS'
+  FAIL = 'FAIL'
+  ERROR = 'ERROR'
+  TIMEOUT = 'TIMEOUT'
+  ABORTED = 'ABORTED'
 
 
+@attr.s(slots=True, init=False)
 class Attachment(object):
   """Encapsulate attachment data and guessed MIME type.
 
@@ -63,67 +70,127 @@ class Attachment(object):
   Attributes:
     mimetype: str, MIME type of the data.
     sha1: str, SHA-1 hash of the data.
-    _file: pointer temporary File containing the data.
+    _file: Temporary File containing the data.
+    data: property that reads the data from the temporary file.
   """
 
-  __slots__ = ['mimetype', 'sha1', '_file']
+  mimetype = attr.ib(type=Text)
+  sha1 = attr.ib(type=Text)
+  _filename = attr.ib(type=Text)
 
-  def __init__(self, data, mimetype):
-    data = six.ensure_binary(data)
+  def __init__(self, contents: Union[Text, bytes], mimetype: Text):
+    contents = six.ensure_binary(contents)
     self.mimetype = mimetype
-    self.sha1 = hashlib.sha1(data).hexdigest()
-    self._file = self._create_temp_file(data)
+    self.sha1 = hashlib.sha1(contents).hexdigest()
+    self._filename = self._create_temp_file(contents)
 
-  def _create_temp_file(self, data):
-    tf = tempfile.NamedTemporaryFile('wb+', dir=conf.attachments_directory)
-    tf.write(data)
-    tf.flush()
-    return tf
+  def __del__(self):
+    self.close()
+
+  def _create_temp_file(self, contents: bytes) -> Text:
+    with tempfile.NamedTemporaryFile(
+        'w+b', dir=conf.attachments_directory, delete=False) as tf:
+      tf.write(contents)
+      return tf.name
 
   @property
-  def data(self):
-    self._file.seek(0)
-    return self._file.read()
+  def data(self) -> bytes:
+    with open(self._filename, 'rb') as contents:
+      return contents.read()
 
-  def _asdict(self):
+  def close(self):
+    if not self._filename:
+      return
+    os.remove(self._filename)
+    self._filename = None
+
+  def _asdict(self) -> Dict[Text, Any]:
     # Don't include the attachment data when converting to dict.
     return {
         'mimetype': self.mimetype,
         'sha1': self.sha1,
     }
 
-  def __copy__(self):
+  def __copy__(self) -> 'Attachment':
     return Attachment(self.data, self.mimetype)
 
-  def __deepcopy__(self, memo):
-    return Attachment(self.data, self.mimetype)
+  def __deepcopy__(self, memo) -> 'Attachment':
+    del memo  # Unused.
+    return self.__copy__()
 
 
-class TestRecord(  # pylint: disable=no-init
-    mutablerecords.Record(
-        'TestRecord', ['dut_id', 'station_id'],
-        {
-            'start_time_millis': int,
-            'end_time_millis': None,
-            'outcome': None,
-            'outcome_details': list,
-            'code_info': None,
-            'metadata': dict,
-            'phases': list,
-            'diagnosers': list,
-            'diagnoses': list,
-            'log_records': list,
-            '_cached_record': dict,
-            '_cached_phases': list,
-            '_cached_diagnosers': list,
-            '_cached_diagnoses': list,
-            '_cached_log_records': list,
-            '_cached_config_from_metadata': dict,
-        })):
+def _get_source_safely(obj: Any) -> Text:
+  try:
+    return inspect.getsource(obj)
+  except Exception:  # pylint: disable=broad-except
+    logs.log_once(_LOG.warning,
+                  'Unable to load source code for %s. Only logging this once.',
+                  obj)
+    return ''
+
+
+@attr.s(slots=True, frozen=True, hash=True)
+class CodeInfo(object):
+  """Information regarding the running tester code."""
+
+  name = attr.ib(type=Text)
+  docstring = attr.ib(type=Optional[Text])
+  sourcecode = attr.ib(type=Text)
+
+  @classmethod
+  def for_module_from_stack(cls, levels_up: int = 1) -> 'CodeInfo':
+    # levels_up is how many frames up to go:
+    #  0: This function (useless).
+    #  1: The function calling this (likely).
+    #  2+: The function calling 'you' (likely in the framework).
+    frame, filename = inspect.stack(context=0)[levels_up][:2]
+    module = inspect.getmodule(frame)
+    source = _get_source_safely(frame)
+    return cls(os.path.basename(filename), inspect.getdoc(module), source)
+
+  @classmethod
+  def for_function(cls, func: Any) -> 'CodeInfo':
+    source = _get_source_safely(func)
+    return cls(func.__name__, inspect.getdoc(func), source)
+
+  @classmethod
+  def uncaptured(cls) -> 'CodeInfo':
+    return cls('', None, '')
+
+
+@attr.s(slots=True)
+class TestRecord(object):
   """The record of a single run of a test."""
 
-  def __init__(self, *args, **kwargs):
-    super(TestRecord, self).__init__(*args, **kwargs)
+  dut_id = attr.ib(type=Optional[Text])
+  station_id = attr.ib(type=Text)
+  start_time_millis = attr.ib(type=int, default=0)
+  end_time_millis = attr.ib(type=Optional[int], default=None)
+  outcome = attr.ib(type=Optional[Outcome], default=None)
+  outcome_details = attr.ib(type=List[OutcomeDetails], factory=list)
+  code_info = attr.ib(type=CodeInfo, factory=CodeInfo.uncaptured)
+  metadata = attr.ib(type=Dict[Text, Any], factory=dict)
+  phases = attr.ib(type=List['PhaseRecord'], factory=list)
+  subtests = attr.ib(type=List['SubtestRecord'], factory=list)
+  branches = attr.ib(type=List['BranchRecord'], factory=list)
+  checkpoints = attr.ib(type=List['CheckpointRecord'], factory=list)
+  diagnosers = attr.ib(
+      type=List['diagnoses_lib.BaseTestDiagnoser'], factory=list)
+  diagnoses = attr.ib(type=List['diagnoses_lib.Diagnosis'], factory=list)
+  log_records = attr.ib(type=List[logs.LogRecord], factory=list)
+
+  # Cache fields to reduce repeated base type conversions.
+  _cached_record = attr.ib(type=Dict[Text, Any], factory=dict)
+  _cached_phases = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_subtests = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_branches = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_checkpoints = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_diagnosers = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_diagnoses = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_log_records = attr.ib(type=List[Dict[Text, Any]], factory=list)
+  _cached_config_from_metadata = attr.ib(type=Dict[Text, Any], factory=dict)
+
+  def __attrs_post_init__(self) -> None:
     # Cache data that does not change during execution.
     # Cache the metadata config so it does not recursively copied over and over
     # again.
@@ -134,7 +201,9 @@ class TestRecord(  # pylint: disable=no-init
     }
     self._cached_diagnosers = data.convert_to_base_types(self.diagnosers)
 
-  def add_outcome_details(self, code, description=''):
+  def add_outcome_details(self,
+                          code: Union[int, Text],
+                          description: Text = '') -> None:
     """Adds a code with optional description to this record's outcome_details.
 
     Args:
@@ -143,22 +212,36 @@ class TestRecord(  # pylint: disable=no-init
     """
     self.outcome_details.append(OutcomeDetails(code, description))
 
-  def add_phase_record(self, phase_record):
+  def add_phase_record(self, phase_record: 'PhaseRecord') -> None:
     self.phases.append(phase_record)
     self._cached_phases.append(phase_record.as_base_types())
 
-  def add_diagnosis(self, diagnosis):
+  def add_subtest_record(self, subtest_record: 'SubtestRecord') -> None:
+    self.subtests.append(subtest_record)
+    self._cached_subtests.append(data.convert_to_base_types(subtest_record))
+
+  def add_branch_record(self, branch_record: 'BranchRecord') -> None:
+    self.branches.append(branch_record)
+    self._cached_branches.append(data.convert_to_base_types(branch_record))
+
+  def add_checkpoint_record(self,
+                            checkpoint_record: 'CheckpointRecord') -> None:
+    self.checkpoints.append(checkpoint_record)
+    self._cached_checkpoints.append(
+        data.convert_to_base_types(checkpoint_record))
+
+  def add_diagnosis(self, diagnosis: 'diagnoses_lib.Diagnosis') -> None:
     self.diagnoses.append(diagnosis)
     self._cached_diagnoses.append(data.convert_to_base_types(diagnosis))
 
-  def add_log_record(self, log_record):
+  def add_log_record(self, log_record: logs.LogRecord) -> None:
     self.log_records.append(log_record)
     self._cached_log_records.append(log_record._asdict())
 
-  def as_base_types(self):
+  def as_base_types(self) -> Dict[Text, Any]:
     """Convert to a dict representation composed exclusively of base types."""
-    metadata = data.convert_to_base_types(self.metadata,
-                                          ignore_keys=('config',))
+    metadata = data.convert_to_base_types(
+        self.metadata, ignore_keys=('config',))
     metadata['config'] = self._cached_config_from_metadata
     ret = {
         'dut_id': data.convert_to_base_types(self.dut_id),
@@ -168,6 +251,8 @@ class TestRecord(  # pylint: disable=no-init
         'outcome_details': data.convert_to_base_types(self.outcome_details),
         'metadata': metadata,
         'phases': self._cached_phases,
+        'subtests': self._cached_subtests,
+        'branches': self._cached_branches,
         'diagnosers': self._cached_diagnosers,
         'diagnoses': self._cached_diagnoses,
         'log_records': self._cached_log_records,
@@ -176,31 +261,72 @@ class TestRecord(  # pylint: disable=no-init
     return ret
 
 
-# PhaseResult enumerations are converted to these outcomes by the PhaseState.
-PhaseOutcome = Enum(  # pylint: disable=invalid-name
-    'PhaseOutcome', [
-        'PASS',  # CONTINUE with allowed measurement outcomes.
-        'FAIL',  # CONTINUE with failed measurements or FAIL_AND_CONTINUE.
-        'SKIP',  # SKIP or REPEAT when under the phase's repeat limit.
-        'ERROR',  # Any terminal result.
-    ])
+@attr.s(slots=True, frozen=True)
+class BranchRecord(object):
+  """The record of a branch."""
+
+  name = attr.ib(type=Optional[Text])
+  diag_condition = attr.ib(type='phase_branches.DiagnosisCondition')
+  branch_taken = attr.ib(type=bool)
+  evaluated_millis = attr.ib(type=int)
+
+  @classmethod
+  def from_branch(cls, branch: 'phase_branches.BranchSequence',
+                  branch_taken: bool, evaluated_millis: int) -> 'BranchRecord':
+    return cls(
+        name=branch.name,
+        diag_condition=branch.diag_condition,
+        branch_taken=branch_taken,
+        evaluated_millis=evaluated_millis)
 
 
-class PhaseRecord(  # pylint: disable=no-init
-    mutablerecords.Record(
-        'PhaseRecord', ['descriptor_id', 'name', 'codeinfo'],
-        {
-            'measurements': None,
-            'options': None,
-            'diagnosers': list,
-            'start_time_millis': int,
-            'end_time_millis': None,
-            'attachments': dict,
-            'diagnosis_results': list,
-            'failure_diagnosis_results': list,
-            'result': None,
-            'outcome': None,
-        })):
+@attr.s(slots=True, frozen=True)
+class CheckpointRecord(object):
+  """The record of a checkpoint."""
+
+  name = attr.ib(type=Text)
+  action = attr.ib(type='phase_descriptor.PhaseResult')
+  conditional = attr.ib(type=Union['phase_branches.PreviousPhases',
+                                   'phase_branches.DiagnosisCondition'])
+  subtest_name = attr.ib(type=Optional[Text])
+  result = attr.ib(type='phase_executor.PhaseExecutionOutcome')
+  evaluated_millis = attr.ib(type=int)
+
+  @classmethod
+  def from_checkpoint(cls, checkpoint: 'phase_branches.Checkpoint',
+                      subtest_name: Optional[Text],
+                      result: 'phase_executor.PhaseExecutionOutcome',
+                      evaluated_millis: int) -> 'CheckpointRecord':
+    return cls(
+        name=checkpoint.name,
+        action=checkpoint.action,
+        conditional=checkpoint.record_conditional(),
+        subtest_name=subtest_name,
+        result=result,
+        evaluated_millis=evaluated_millis)
+
+
+class PhaseOutcome(enum.Enum):
+  """Phase outcomes, converted to from the PhaseState."""
+
+  # CONTINUE with allowed measurement outcomes.
+  PASS = 'PASS'
+  # CONTINUE with failed measurements or FAIL_AND_CONTINUE.
+  FAIL = 'FAIL'
+  # SKIP or REPEAT when under the phase's repeat limit.
+  SKIP = 'SKIP'
+  # Any terminal result.
+  ERROR = 'ERROR'
+
+
+def _phase_record_base_type_filter(attribute: attr.Attribute,
+                                   value: Any) -> bool:
+  del value  # Unused.
+  return attribute.name not in ('descriptor_id', 'name', 'codeinfo')  # pytype: disable=attribute-error
+
+
+@attr.s(slots=True)
+class PhaseRecord(object):
   """The record of a single run of a phase.
 
   Measurement metadata (declarations) and values are stored in separate
@@ -220,17 +346,40 @@ class PhaseRecord(  # pylint: disable=no-init
   of the phase's measurements or indicates that the verification was skipped.
   """
 
-  @classmethod
-  def from_descriptor(cls, phase_desc):
-    return cls(id(phase_desc), phase_desc.name, phase_desc.code_info,
-               diagnosers=list(phase_desc.diagnosers))
+  descriptor_id = attr.ib(type=int)
+  name = attr.ib(type=Text)
+  codeinfo = attr.ib(type=CodeInfo)
 
-  def as_base_types(self):
+  measurements = attr.ib(
+      type=Dict[Text, 'htf_measurements.Measurement'], default=None)
+  options = attr.ib(type='phase_descriptor.PhaseOptions', default=None)
+  diagnosers = attr.ib(
+      type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list)
+  subtest_name = attr.ib(type=Optional[Text], default=None)
+  start_time_millis = attr.ib(type=int, default=0)
+  end_time_millis = attr.ib(type=Optional[int], default=None)
+  attachments = attr.ib(type=Dict[Text, Attachment], factory=dict)
+  diagnosis_results = attr.ib(
+      type=List['diagnoses_lib.DiagResultEnum'], factory=list)
+  failure_diagnosis_results = attr.ib(
+      type=List['diagnoses_lib.DiagResultEnum'], factory=list)
+  result = attr.ib(
+      type=Optional['phase_executor.PhaseExecutionOutcome'], default=None)
+  outcome = attr.ib(type=Optional[PhaseOutcome], default=None)
+
+  @classmethod
+  def from_descriptor(
+      cls, phase_desc: 'phase_descriptor.PhaseDescriptor') -> 'PhaseRecord':
+    return cls(
+        id(phase_desc),
+        phase_desc.name,
+        phase_desc.code_info,
+        diagnosers=list(phase_desc.diagnosers))
+
+  def as_base_types(self) -> Dict[Text, Any]:
     """Convert to a dict representation composed exclusively of base types."""
-    base_types_dict = {
-        k: data.convert_to_base_types(getattr(self, k))
-        for k in self.optional_attributes
-    }
+    base_types_dict = data.convert_to_base_types(
+        attr.asdict(self, recurse=False, filter=_phase_record_base_type_filter))
     base_types_dict.update(
         descriptor_id=self.descriptor_id,
         name=self.name,
@@ -238,46 +387,31 @@ class PhaseRecord(  # pylint: disable=no-init
     )
     return base_types_dict
 
-  def record_start_time(self):
+  def record_start_time(self) -> int:
     """Record the phase start time and return it."""
     self.start_time_millis = util.time_millis()
     return self.start_time_millis
 
-  def finalize_phase(self, options):
+  def finalize_phase(self, options: 'phase_descriptor.PhaseOptions') -> None:
     self.end_time_millis = util.time_millis()
     self.options = options
 
 
-def _get_source_safely(obj):
-  try:
-    return inspect.getsource(obj)
-  except Exception:  # pylint: disable=broad-except
-    logs.log_once(
-        _LOG.warning,
-        'Unable to load source code for %s. Only logging this once.', obj)
-    return ''
+class SubtestOutcome(enum.Enum):
+  PASS = 'PASS'
+  FAIL = 'FAIL'
+  STOP = 'STOP'
 
 
-class CodeInfo(mutablerecords.HashableRecord(
-    'CodeInfo', ['name', 'docstring', 'sourcecode'])):
-  """Information regarding the running tester code."""
+@attr.s(slots=True)
+class SubtestRecord(object):
+  """The record of a subtest."""
 
-  @classmethod
-  def for_module_from_stack(cls, levels_up=1):
-    # levels_up is how many frames up to go:
-    #  0: This function (useless).
-    #  1: The function calling this (likely).
-    #  2+: The function calling 'you' (likely in the framework).
-    frame, filename = inspect.stack(context=0)[levels_up][:2]
-    module = inspect.getmodule(frame)
-    source = _get_source_safely(frame)
-    return cls(os.path.basename(filename), inspect.getdoc(module), source)
+  name = attr.ib(type=Text)
+  start_time_millis = attr.ib(type=int, default=0)
+  end_time_millis = attr.ib(type=Optional[int], default=None)
+  outcome = attr.ib(type=Optional[SubtestOutcome], default=None)
 
-  @classmethod
-  def for_function(cls, func):
-    source = _get_source_safely(func)
-    return cls(func.__name__, inspect.getdoc(func), source)
-
-  @classmethod
-  def uncaptured(cls):
-    return cls('', None, '')
+  @property
+  def is_fail(self) -> bool:
+    return self.outcome is SubtestOutcome.FAIL

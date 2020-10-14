@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Extensible HTTP server serving the OpenHTF Angular frontend."""
 
 import os
@@ -105,9 +103,6 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
 
 class TemplateLoader(tornado.template.Loader):
 
-  def __init__(self, root_directory, **kwargs):
-    super(TemplateLoader, self).__init__(root_directory, **kwargs)
-
   def resolve_path(self, name, parent_path=None):
     return name
 
@@ -140,7 +135,8 @@ class WebGuiServer(threading.Thread):
         routes,
         default_handler_class=DefaultHandler,
         template_loader=TemplateLoader(STATIC_FILES_ROOT),
-        static_path=STATIC_FILES_ROOT,)
+        static_path=STATIC_FILES_ROOT,
+    )
     self.server = tornado.httpserver.HTTPServer(application)
     self.server.add_sockets(sockets)
 

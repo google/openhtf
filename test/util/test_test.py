@@ -17,6 +17,7 @@ import unittest
 import openhtf
 
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.core import measurements
 from openhtf.util import test
 from openhtf.util import validators
@@ -26,7 +27,7 @@ class DummyError(Exception):
   """Raised for testing phases that raise."""
 
 
-class MyPlug(plugs.BasePlug):
+class MyPlug(base_plugs.BasePlug):
   """Stub plug for ensuring plugs get mocked correctly."""
 
   def __init__(self):
@@ -57,8 +58,10 @@ def raising_phase():
 
 def phase_retval(retval):
   """Helper function to generate a phase that returns the given retval."""
+
   def phase():
     return retval
+
   return phase
 
 
@@ -148,8 +151,10 @@ class TestTest(test.TestCase):
       self.assertMeasured(None)
 
   def test_doesnt_yield(self):
+
     def doesnt_yield(cls_self):  # pylint: disable=unused-argument
       pass
+
     with self.assertRaises(test.InvalidTestError):
       test.yields_phases(doesnt_yield)(self)
 
@@ -164,18 +169,22 @@ class TestTest(test.TestCase):
 
     # Test that we catch mocks that aren't expected.
     with self.assertRaises(test.InvalidTestError):
-      test.patch_plugs(plug_one='unused', plug_two='unused',
-                       plug_three='unused')(stub_test_method)
+      test.patch_plugs(
+          plug_one='unused', plug_two='unused', plug_three='unused')(
+              stub_test_method)
 
     # Test that we catch weird plug specifications.
     with self.assertRaises(ValueError):
-      test.patch_plugs(plug_one='bad_spec_no_dots',
-                       plug_two='unused')(stub_test_method)
+      test.patch_plugs(
+          plug_one='bad_spec_no_dots', plug_two='unused')(
+              stub_test_method)
     with self.assertRaises(KeyError):
-      test.patch_plugs(plug_one='bad.spec.invalid.module',
-                       plug_two='also.bad')(stub_test_method)
+      test.patch_plugs(
+          plug_one='bad.spec.invalid.module', plug_two='also.bad')(
+              stub_test_method)
 
   def test_bad_yield(self):
+
     def bad_test(cls_self):  # pylint: disable=unused-argument
       yield None
 

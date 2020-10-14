@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Example OpenHTF test logic.
 
 Run with (your virtualenv must be activated first):
@@ -64,7 +63,7 @@ def hello_world(test):
   test.measurements.hello_world_measurement = 'Hello Again!'
 
 
-if __name__ == '__main__':
+def main():
   # We instantiate our OpenHTF test with the phases we want to run as args.
   # Multiple phases would be passed as additional args, and additional
   # keyword arguments may be passed as well.  See other examples for more
@@ -87,3 +86,7 @@ if __name__ == '__main__':
   # be set later (OpenHTF will raise an exception when the test completes if
   # a DUT ID has not been set).
   test.execute(test_start=user_input.prompt_for_test_start())
+
+
+if __name__ == '__main__':
+  main()

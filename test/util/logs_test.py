@@ -16,8 +16,8 @@
 import unittest
 import mock
 
-
 from openhtf.util import logs
+
 
 class TestLogs(unittest.TestCase):
 
@@ -34,4 +34,3 @@ class TestLogs(unittest.TestCase):
       logs.log_once(mock_log, u'状态是', 'arg1')
 
     assert mock_log.call_count == 1
-

@@ -54,17 +54,18 @@ def _send_mfg_inspector_request(envelope_data, credentials, destination_url):
     raise UploadFailedError(message)
 
 
-def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
+def send_mfg_inspector_data(inspector_proto, credentials, destination_url,
+                            payload_type):
   """Upload MfgEvent to steam_engine."""
   envelope = guzzle_pb2.TestRunEnvelope()
   envelope.payload = zlib.compress(inspector_proto.SerializeToString())
-  envelope.payload_type = guzzle_pb2.COMPRESSED_TEST_RUN
+  envelope.payload_type = payload_type
   envelope_data = envelope.SerializeToString()
 
   for _ in range(5):
     try:
-      result = _send_mfg_inspector_request(
-          envelope_data, credentials, destination_url)
+      result = _send_mfg_inspector_request(envelope_data, credentials,
+                                           destination_url)
       return result
     except UploadFailedError:
       time.sleep(1)
@@ -76,7 +77,6 @@ def send_mfg_inspector_data(inspector_proto, credentials, destination_url):
 
 
 class _MemStorage(oauth2client.client.Storage):
-  # pylint: disable=invalid-name
   """Helper Storage class that keeps credentials in memory."""
 
   def __init__(self):
@@ -125,7 +125,7 @@ class MfgInspector(object):
   SCOPE_CODE_URI = 'https://www.googleapis.com/auth/glass.infra.quantum_upload'
   DESTINATION_URL = ('https://clients2.google.com/factoryfactory/'
                      'uploads/quantum_upload/?json')
-  PARAMS =  ['dut_id', 'end_time_millis', 'start_time_millis', 'station_id']
+  PARAMS = ['dut_id', 'end_time_millis', 'start_time_millis', 'station_id']
 
   # These attributes control format of callback and what actions are undertaken
   # when called.  These should either be set by a subclass or via configure.
@@ -138,8 +138,11 @@ class MfgInspector(object):
   # saving to disk via save_to_disk.
   _default_filename_pattern = None
 
-  def __init__(self, user=None, keydata=None,
-               token_uri=TOKEN_URI, destination_url=DESTINATION_URL):
+  def __init__(self,
+               user=None,
+               keydata=None,
+               token_uri=TOKEN_URI,
+               destination_url=DESTINATION_URL):
     self.user = user
     self.keydata = keydata
     self.token_uri = token_uri
@@ -175,9 +178,10 @@ class MfgInspector(object):
     Returns:
       a MfgInspectorCallback with credentials.
     """
-    return cls(user=json_data['client_email'],
-               keydata=json_data['private_key'],
-               token_uri=json_data['token_uri'])
+    return cls(
+        user=json_data['client_email'],
+        keydata=json_data['private_key'],
+        token_uri=json_data['token_uri'])
 
   def _check_cached_params(self, test_record_obj):
     """Check if all cached params equal the values in test record."""
@@ -188,7 +192,8 @@ class MfgInspector(object):
 
   def _convert(self, test_record_obj):
     """Convert and cache a test record to a mfg-inspector proto."""
-    if self._cached_proto is None or not self._check_cached_params(test_record_obj):
+    if (self._cached_proto is None or
+        not self._check_cached_params(test_record_obj)):
       self._cached_proto = self._converter(test_record_obj)
       for param in self.PARAMS:
         self._cached_params[param] = getattr(test_record_obj, param)
@@ -203,9 +208,8 @@ class MfgInspector(object):
 
     pattern = filename_pattern or self._default_filename_pattern
     if not pattern:
-      raise RuntimeError(
-          'Must specify provide a filename_pattern or set a '
-          '_default_filename_pattern on subclass.')
+      raise RuntimeError('Must specify provide a filename_pattern or set a '
+                         '_default_filename_pattern on subclass.')
 
     def save_to_disk_callback(test_record_obj):
       proto = self._convert(test_record_obj)
@@ -216,7 +220,7 @@ class MfgInspector(object):
 
     return save_to_disk_callback
 
-  def upload(self):
+  def upload(self, payload_type=guzzle_pb2.COMPRESSED_TEST_RUN):
     """Returns a callback to convert a test record to a proto and upload."""
     if not self._converter:
       raise RuntimeError(
@@ -228,8 +232,9 @@ class MfgInspector(object):
 
     def upload_callback(test_record_obj):
       proto = self._convert(test_record_obj)
-      self.upload_result = send_mfg_inspector_data(
-          proto, self.credentials, self.destination_url)
+      self.upload_result = send_mfg_inspector_data(proto, self.credentials,
+                                                   self.destination_url,
+                                                   payload_type)
 
     return upload_callback
 
@@ -268,6 +273,6 @@ class UploadToMfgInspector(MfgInspector):
   def _converter(test_record_obj):
     return test_runs_converter.test_run_from_test_record(test_record_obj)
 
-  def __call__(self, test_record_obj):  # pylint: disable=invalid-name
+  def __call__(self, test_record_obj):
     upload_callback = self.upload()
     upload_callback(test_record_obj)

@@ -11,22 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """One-off utilities."""
 
 import logging
 import re
 import threading
 import time
+import typing
+from typing import Any, Callable, Dict, Iterator, Optional, Text, Tuple, Type, TypeVar, Union
 import weakref
 
-import mutablerecords
+import attr
 
 import six
 
 
-def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable=invalid-name
+def _log_every_n_to_logger(n: int, logger: Optional[logging.Logger], level: int,
+                           message: Text, *args: Any) -> Callable[[], bool]:
   """Logs the given message every n calls to a logger.
 
   Args:
@@ -35,31 +36,36 @@ def _log_every_n_to_logger(n, logger, level, message, *args):  # pylint: disable
     level: The logging level (e.g. logging.INFO).
     message: A message to log
     *args: Any format args for the message.
+
   Returns:
     A method that logs and returns True every n calls.
   """
-  logger = logger or logging.getLogger()
-  def _gen():  # pylint: disable=missing-docstring
+  logger = logger if logger else logging.getLogger()
+
+  def _gen() -> Iterator[bool]:  # pylint: disable=missing-docstring
     while True:
       for _ in range(n):
         yield False
       logger.log(level, message, *args)
       yield True
+
   gen = _gen()
   return lambda: six.next(gen)
 
 
-def log_every_n(n, level, message, *args):  # pylint: disable=invalid-name
+def log_every_n(n: int, level: int, message: Text,
+                *args: Any) -> Callable[[], bool]:
   """Logs a message every n calls. See _log_every_n_to_logger."""
   return _log_every_n_to_logger(n, None, level, message, *args)
 
 
-def time_millis():  # pylint: disable=invalid-name
+def time_millis() -> int:
   """The time in milliseconds."""
   return int(time.time() * 1000)
 
 
-class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
+@attr.s(slots=True)
+class NonLocalResult(object):
   """Holds a single result as a nonlocal variable.
 
   Comparable to using Python 3's nonlocal keyword, it allows an inner function
@@ -77,27 +83,37 @@ class NonLocalResult(mutablerecords.Record('NonLocal', [], {'result': None})):
     return x.result
   """
 
+  result = attr.ib(type=Any, default=None)
+
 
 # TODO(jethier): Add a pylint plugin to avoid the no-self-argument for this.
-class classproperty(object):
+class classproperty(object):  # pylint: disable=invalid-name
   """Exactly what it sounds like.
 
   Note that classproperties don't have setters, so setting them will replace
   the classproperty with the new value. In most use cases (forcing subclasses
   to override the classproperty, for example) this is desired.
   """
-  def __init__(self, func):
+
+  def __init__(self, func: Callable[..., Any]):
     self._func = func
 
-  def __get__(self, instance, owner):
+  def __get__(self, instance, owner) -> Any:
     return self._func(owner)
 
 
-def partial_format(target, **kwargs):
+def partial_format(target: Text, **kwargs: Any) -> Text:
   """Formats a string without requiring all values to be present.
 
   This function allows substitutions to be gradually made in several steps
   rather than all at once.  Similar to string.Template.safe_substitute.
+
+  Args:
+    target: format string.
+    **kwargs: format replacements.
+
+  Returns:
+    Formatted string.
   """
   output = target[:]
 
@@ -109,22 +125,48 @@ def partial_format(target, **kwargs):
 
   return output
 
+
+FormatT = TypeVar('FormatT')
+
+
+@typing.overload
+def format_string(target: Text, kwargs: Dict[Text, Any]) -> Text:
+  pass
+
+
+@typing.overload
+def format_string(target: Callable[..., Text], kwargs: Dict[Text, Any]) -> Text:
+  pass
+
+
+@typing.overload
+def format_string(target: None, kwargs: Dict[Text, Any]) -> None:
+  pass
+
+
+@typing.overload
+def format_string(target: FormatT, kwargs: Dict[Text, Any]) -> FormatT:
+  pass
+
+
 def format_string(target, kwargs):
   """Formats a string in any of three ways (or not at all).
 
   Args:
     target: The target string to format. This can be a function that takes a
-        dict as its only argument, a string with {}- or %-based formatting, or
-        a basic string with none of those. In the latter case, the string is
-        returned as-is, but in all other cases the string is formatted (or the
-        callback called) with the given kwargs.
-        If this is None (or otherwise falsey), it is returned immediately.
-    kwargs: The arguments to use for formatting.
-        Passed to safe_format, %, or target if it's
-        callable.
+      dict as its only argument, a string with {}- or %-based formatting, or a
+      basic string with none of those. In the latter case, the string is
+      returned as-is, but in all other cases the string is formatted (or the
+      callback called) with the given kwargs. If this is None (or otherwise
+      falsey), it is returned immediately.
+    kwargs: The arguments to use for formatting. Passed to safe_format, %, or
+      target if it's callable.
+
+  Returns:
+    Formatted string.
   """
-  if not target:
-    return target
+  if target is None:
+    return None
   if callable(target):
     return target(**kwargs)
   if not isinstance(target, six.string_types):
@@ -151,11 +193,11 @@ class SubscribableStateMixin(object):
     self._lock = threading.Lock()
     self._update_events = weakref.WeakSet()
 
-  def _asdict(self):
+  def _asdict(self) -> Dict[Text, Any]:
     raise NotImplementedError(
         'Subclasses of SubscribableStateMixin must implement _asdict.')
 
-  def asdict_with_event(self):
+  def asdict_with_event(self) -> Tuple[Dict[Text, Any], threading.Event]:
     """Get a dict representation of this object and an update event.
 
     Returns:
@@ -168,7 +210,7 @@ class SubscribableStateMixin(object):
       self._update_events.add(event)
     return self._asdict(), event
 
-  def notify_update(self):
+  def notify_update(self) -> None:
     """Notify any update events that there was an update."""
     with self._lock:
       for event in self._update_events:

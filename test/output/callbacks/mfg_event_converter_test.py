@@ -16,11 +16,9 @@ from openhtf.output.proto import test_runs_pb2
 from openhtf.util import logs as test_logs
 from openhtf.util import units
 
-
 TEST_MULTIDIM_JSON_FILE = os.path.join(
-    os.path.dirname(__file__),
-    'multidim_testdata.json')
-with io.open(TEST_MULTIDIM_JSON_FILE, 'r', encoding='utf-8') as f:
+    os.path.dirname(__file__), 'multidim_testdata.json')
+with io.open(TEST_MULTIDIM_JSON_FILE, 'rb') as f:
   TEST_MULTIDIM_JSON = f.read()
 
 
@@ -45,20 +43,20 @@ class MfgEventConverterTest(unittest.TestCase):
     record.outcome = test_record.Outcome.PASS
     record.metadata = {
         'assembly_events': [assembly_event_pb2.AssemblyEvent()] * 2,
-        'config': {'mock-config-key': 'mock-config-value'},
+        'config': {
+            'mock-config-key': 'mock-config-value'
+        },
         'operator_name': 'mock-operator-name',
     }
     record.phases = [
-        test_record.PhaseRecord(
+        test_record.PhaseRecord(  # pylint: disable=g-complex-comprehension
             name='phase-%d' % idx,
             descriptor_id=idx,
             codeinfo=test_record.CodeInfo.uncaptured(),
             result=None,
             attachments={},
             start_time_millis=1,
-            end_time_millis=1
-        )
-        for idx in range(1, 5)
+            end_time_millis=1) for idx in range(1, 5)
     ]
     for phase in record.phases:
       phase.measurements = {
@@ -67,8 +65,8 @@ class MfgEventConverterTest(unittest.TestCase):
           'meas-3': measurements.Measurement('meas-3').with_dimensions('V'),
       }
       phase.attachments = {
-          'attach-1': test_record.Attachment(data='data-1', mimetype=''),
-          'attach-2': test_record.Attachment(data='data-2', mimetype=''),
+          'attach-1': test_record.Attachment(b'data-1', ''),
+          'attach-2': test_record.Attachment(b'data-2', ''),
       }
 
     mfg_event = mfg_event_converter.mfg_event_from_test_record(record)
@@ -76,17 +74,36 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertEqual(mfg_event.dut_serial, record.dut_id)
     self.assertEqual(len(mfg_event.assembly_events), 2)
     self.assertEqual(len(mfg_event.measurement), 8)
-    self.assertEqual(sorted(m.name for m in mfg_event.measurement),
-                     ['meas-1_0', 'meas-1_1', 'meas-1_2', 'meas-1_3',
-                      'meas-2_0', 'meas-2_1', 'meas-2_2', 'meas-2_3'])
+    self.assertEqual(  # pylint: disable=g-generic-assert
+        sorted(m.name for m in mfg_event.measurement), [
+            'meas-1_0',
+            'meas-1_1',
+            'meas-1_2',
+            'meas-1_3',
+            'meas-2_0',
+            'meas-2_1',
+            'meas-2_2',
+            'meas-2_3',
+        ])
     self.assertEqual(len(mfg_event.attachment), 15)
-    self.assertEqual(sorted(str(m.name) for m in mfg_event.attachment),
-                     ['OpenHTF_record.json', 'argv',
-                      'attach-1_0', 'attach-1_1', 'attach-1_2', 'attach-1_3',
-                      'attach-2_0', 'attach-2_1', 'attach-2_2', 'attach-2_3',
-                      'config',
-                      'multidim_meas-3_0', 'multidim_meas-3_1',
-                      'multidim_meas-3_2', 'multidim_meas-3_3'])
+    self.assertEqual(  # pylint: disable=g-generic-assert
+        sorted(str(m.name) for m in mfg_event.attachment), [
+            'OpenHTF_record.json',
+            'argv',
+            'attach-1_0',
+            'attach-1_1',
+            'attach-1_2',
+            'attach-1_3',
+            'attach-2_0',
+            'attach-2_1',
+            'attach-2_2',
+            'attach-2_3',
+            'config',
+            'multidim_meas-3_0',
+            'multidim_meas-3_1',
+            'multidim_meas-3_2',
+            'multidim_meas-3_3',
+        ])
 
   def test_populate_basic_data(self):
     outcome_details = test_record.OutcomeDetails(
@@ -166,9 +183,19 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertTrue(mfg_event.attachment[0].value_binary)  # Assert truthy.
     self.assertEqual(mfg_event.attachment[0].type, test_runs_pb2.TEXT_UTF8)
 
+  def test_convert_object_to_json_with_bytes(self):
+    input_object = {'foo': b'bar'}
+    output_json = mfg_event_converter._convert_object_to_json(input_object)
+    expected_json = (b'{\n'
+                     b'  "foo": "bar"\n'
+                     b'}')
+    self.assertEqual(output_json, expected_json)
+
   def test_attach_config(self):
-    record = test_record.TestRecord('mock-dut-id', 'mock-station-id',
-                                    metadata={'config': {'key': 'value'}})
+    record = test_record.TestRecord(
+        'mock-dut-id', 'mock-station-id', metadata={'config': {
+            'key': 'value'
+        }})
     mfg_event = mfg_event_pb2.MfgEvent()
     mfg_event_converter._attach_config(mfg_event, record)
 
@@ -181,9 +208,9 @@ class MfgEventConverterTest(unittest.TestCase):
     measured_value.set(value)
 
     measurement = measurements.Measurement(
-        name=name, outcome=measurements.Outcome.PASS)
-    # Cannot be set in initialization.
-    measurement.measured_value = measured_value
+        name=name,
+        outcome=measurements.Outcome.PASS,
+        measured_value=measured_value)
     return measurement
 
   def test_copy_measurements_from_phase(self):
@@ -262,7 +289,7 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertEqual(mock_measurement_within_percent.numeric_maximum, 12.0)
 
   def testCopyAttachmentsFromPhase(self):
-    attachment = test_record.Attachment('mock-data', 'text/plain')
+    attachment = test_record.Attachment(b'mock-data', 'text/plain')
     phase = test_record.PhaseRecord(
         name='mock-phase-name',
         descriptor_id=1,
@@ -346,8 +373,8 @@ class MultiDimConversionTest(unittest.TestCase):
     # Re-parse the data, edit the outcome field to a int, then reserialize.
     data_dict = json.loads(attachment.data)
     data_dict['outcome'] = test_runs_pb2.Status.Value(data_dict['outcome'])
-    attachment = test_record.Attachment(json.dumps(data_dict),
-                                        test_runs_pb2.MULTIDIM_JSON)
+    attachment = test_record.Attachment(
+        json.dumps(data_dict).encode('utf-8'), test_runs_pb2.MULTIDIM_JSON)
 
     reversed_mdim = mfg_event_converter.attachment_to_multidim_measurement(
         attachment)
@@ -367,5 +394,6 @@ class MultiDimConversionTest(unittest.TestCase):
       assert k in other.measured_value.value_dict, (
           'expected key %s is not present in other multidim' % k)
       other_v = other.measured_value.value_dict[k]
-      self.assertEqual(v, other_v, 'Different values for key: %s (%s != %s)' % (
-          k, v, other_v))
+      self.assertEqual(
+          v, other_v,
+          'Different values for key: %s (%s != %s)' % (k, v, other_v))

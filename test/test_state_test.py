@@ -20,7 +20,7 @@ import unittest
 import mock
 
 import openhtf
-from openhtf.core import phase_group
+from openhtf.core import phase_collections
 from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
@@ -52,6 +52,7 @@ PHASE_STATE_BASE_TYPE_INITIAL = {
     },
     'attachments': {},
     'start_time_millis': 11235,
+    'subtest_name': None,
 }
 
 PHASE_RECORD_BASE_TYPE = copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL)
@@ -69,7 +70,11 @@ TEST_STATE_BASE_TYPE_INITIAL = {
     'status': 'WAITING_FOR_TEST_START',
     'test_record': {
         'station_id': conf.station_id,
-        'code_info': None,
+        'code_info': {
+            'docstring': None,
+            'name': '',
+            'sourcecode': '',
+        },
         'dut_id': None,
         'start_time_millis': 0,
         'end_time_millis': None,
@@ -79,6 +84,8 @@ TEST_STATE_BASE_TYPE_INITIAL = {
             'config': {}
         },
         'phases': [],
+        'subtests': [],
+        'branches': [],
         'diagnosers': [],
         'diagnoses': [],
         'log_records': [],
@@ -95,12 +102,13 @@ class TestTestApi(unittest.TestCase):
 
   def setUp(self):
     super(TestTestApi, self).setUp()
-    patcher = mock.patch.object(test_record.PhaseRecord, 'record_start_time',
-                                return_value=11235)
+    patcher = mock.patch.object(
+        test_record.PhaseRecord, 'record_start_time', return_value=11235)
     self.mock_record_start_time = patcher.start()
     self.addCleanup(patcher.stop)
     self.test_descriptor = test_descriptor.TestDescriptor(
-        phase_group.PhaseGroup(main=[test_phase]), None, {'config': {}})
+        phase_collections.PhaseSequence((test_phase,)),
+        test_record.CodeInfo.uncaptured(), {'config': {}})
     self.test_state = test_state.TestState(self.test_descriptor, 'testing-123',
                                            test_descriptor.TestOptions())
     self.test_record = self.test_state.test_record
@@ -116,6 +124,10 @@ class TestTestApi(unittest.TestCase):
     self.test_api.attach(attachment_name, input_contents, mimetype)
 
     output_attachment = self.test_api.get_attachment(attachment_name)
+    if not output_attachment:
+      # Need branch to appease pytype.
+      self.fail('output_attachment not found')
+
     self.assertEqual(input_contents, output_attachment.data)
     self.assertEqual(mimetype, output_attachment.mimetype)
 
@@ -123,6 +135,9 @@ class TestTestApi(unittest.TestCase):
     measurement_val = [1, 2, 3]
     self.test_api.measurements['test_measurement'] = measurement_val
     measurement = self.test_api.get_measurement('test_measurement')
+    if not measurement:
+      # Need branch to appease pytype.
+      self.fail('measurement not found.')
 
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
@@ -131,6 +146,9 @@ class TestTestApi(unittest.TestCase):
     measurement_val = [1, 2, 3]
     self.test_api.measurements['test_measurement'] = measurement_val
     measurement = self.test_api.get_measurement('test_measurement')
+    if not measurement:
+      # Need branch to appease pytype.
+      self.fail('measurement not found.')
 
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
@@ -145,6 +163,9 @@ class TestTestApi(unittest.TestCase):
       file_name = f.name
       self.test_api.attach_from_file(file_name, 'attachment')
     attachment = self.test_api.get_attachment('attachment')
+    if not attachment:
+      # Need branch to appease pytype.
+      self.fail('attachment not found.')
     self.assertEqual(attachment.mimetype, 'text/plain')
 
   def test_infer_mime_type_from_attachment_name(self):
@@ -154,6 +175,9 @@ class TestTestApi(unittest.TestCase):
       file_name = f.name
       self.test_api.attach_from_file(file_name, 'attachment.png')
     attachment = self.test_api.get_attachment('attachment.png')
+    if not attachment:
+      # Need branch to appease pytype.
+      self.fail('attachment not found.')
     self.assertEqual(attachment.mimetype, 'image/png')
 
   def test_phase_state_cache(self):

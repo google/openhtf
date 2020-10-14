@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Console output utilities for OpenHTF.
 
 This module provides convenience methods to format output for the CLI, along
@@ -32,7 +30,6 @@ import re
 import string
 import sys
 import textwrap
-import time
 
 import colorama
 import contextlib2 as contextlib
@@ -48,12 +45,14 @@ _LOG = logging.getLogger(__name__)
 # logging that uses a CliQuietFilter.
 CLI_QUIET = False
 
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
-    '--quiet', action=argv.StoreTrueInModule, target='%s.CLI_QUIET' % __name__,
-    help=textwrap.dedent('''\
+    '--quiet',
+    action=argv.StoreTrueInModule,
+    target='%s.CLI_QUIET' % __name__,
+    help=textwrap.dedent("""\
         Suppress all CLI output from OpenHTF's printing functions and logging.
-        This flag will override any verbosity levels set with -v.'''))
+        This flag will override any verbosity levels set with -v."""))
 
 ANSI_ESC_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 
@@ -64,8 +63,8 @@ class ActionFailedError(Exception):
 
 def _printed_len(some_string):
   """Compute the visible length of the string when printed."""
-  return len([x for  x in ANSI_ESC_RE.sub('', some_string)
-              if x in string.printable])
+  return len(
+      [x for x in ANSI_ESC_RE.sub('', some_string) if x in string.printable])
 
 
 def _linesep_for_file(file):
@@ -83,19 +82,14 @@ def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
   Args:
     msg: The message to print.
     color: Optional colorama color string to be applied to the message. You can
-        concatenate colorama color strings together in order to get any set of
-        effects you want.
+      concatenate colorama color strings together in order to get any set of
+      effects you want.
     width: Total width for the resulting banner.
     file: A file object to which the banner text will be written. Intended for
-        use with CLI output file objects like sys.stdout.
+      use with CLI output file objects like sys.stdout.
     logger: A logger to use, or None to disable logging.
-
-  Example:
-
-    >>> banner_print('Foo Bar Baz')
-
-    ======================== Foo Bar Baz =======================
-
+  Example:  >>> banner_print('Foo Bar Baz')  ======================== Foo Bar
+    Baz =======================
   """
   if logger:
     logger.debug(ANSI_ESC_RE.sub('', msg))
@@ -104,7 +98,11 @@ def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
   lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
   file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
-      sep=_linesep_for_file(file), color=color, lpad=lpad, msg=msg, rpad=rpad,
+      sep=_linesep_for_file(file),
+      color=color,
+      lpad=lpad,
+      msg=msg,
+      rpad=rpad,
       reset=colorama.Style.RESET_ALL))
   file.flush()
 
@@ -115,21 +113,25 @@ def bracket_print(msg, color='', width=8, file=sys.stdout, end_line=True):
   Args:
     msg: The message to put inside the brackets (a brief status message).
     color: Optional colorama color string to be applied to the message. You can
-        concatenate colorama color strings together in order to get any set of
-        effects you want.
+      concatenate colorama color strings together in order to get any set of
+      effects you want.
     width: Total desired width of the bracketed message.
     file: A file object to which the bracketed text will be written. Intended
-        for use with CLI output file objects like sys.stdout.
+      for use with CLI output file objects like sys.stdout.
     end_line: If True, end the line and flush the file object after outputting
-        the bracketed text.
-    """
+      the bracketed text.
+  """
   if CLI_QUIET:
     return
   lpad = int(math.ceil((width - 2 - _printed_len(msg)) / 2.0)) * ' '
   rpad = int(math.floor((width - 2 - _printed_len(msg)) / 2.0)) * ' '
   file.write('[{lpad}{bright}{color}{msg}{reset}{rpad}]'.format(
-      lpad=lpad, bright=colorama.Style.BRIGHT, color=color, msg=msg,
-      reset=colorama.Style.RESET_ALL, rpad=rpad))
+      lpad=lpad,
+      bright=colorama.Style.BRIGHT,
+      color=color,
+      msg=msg,
+      reset=colorama.Style.RESET_ALL,
+      rpad=rpad))
   file.write(colorama.Style.RESET_ALL)
   if end_line:
     file.write(_linesep_for_file(file))
@@ -146,15 +148,15 @@ def cli_print(msg, color='', end=None, file=sys.stdout, logger=_LOG):
   Args:
     msg: The message to print/log.
     color: Optional colorama color string to be applied to the message. You can
-        concatenate colorama color strings together in order to get any set of
-        effects you want.
+      concatenate colorama color strings together in order to get any set of
+      effects you want.
     end: A custom line-ending string to print instead of newline.
     file: A file object to which the baracketed text will be written. Intended
-        for use with CLI output file objects like sys.stdout.
+      for use with CLI output file objects like sys.stdout.
     logger: A logger to use, or None to disable logging.
   """
   if logger:
-    logger.debug('-> {}'.format(msg))
+    logger.debug('-> %s', msg)
   if CLI_QUIET:
     return
   if end is None:
@@ -169,16 +171,20 @@ def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
   Args:
     msg: The error message to be printed.
     color: Optional colorama color string to be applied to the message. You can
-        concatenate colorama color strings together here, but note that style
-        strings will not be applied.
+      concatenate colorama color strings together here, but note that style
+      strings will not be applied.
     file: A file object to which the baracketed text will be written. Intended
-        for use with CLI output file objects, specifically sys.stderr.
+      for use with CLI output file objects, specifically sys.stderr.
   """
   if CLI_QUIET:
     return
   file.write('{sep}{bright}{color}Error: {normal}{msg}{sep}{reset}'.format(
-      sep=_linesep_for_file(file), bright=colorama.Style.BRIGHT, color=color,
-      normal=colorama.Style.NORMAL, msg=msg, reset=colorama.Style.RESET_ALL))
+      sep=_linesep_for_file(file),
+      bright=colorama.Style.BRIGHT,
+      color=color,
+      normal=colorama.Style.NORMAL,
+      msg=msg,
+      reset=colorama.Style.RESET_ALL))
   file.flush()
 
 
@@ -230,37 +236,8 @@ def action_result_context(action_text,
     file: Specific file object to write to write CLI output to.
     logger: A logger to use, or None to disable logging.
 
-  Example usage:
-    with action_result_context('Doing an action that will succeed...') as act:
-      time.sleep(2)
-      act.succeed()
-
-    with action_result_context('Doing an action with unset result...') as act:
-      time.sleep(2)
-
-    with action_result_context('Doing an action that will fail...') as act:
-      time.sleep(2)
-      act.fail()
-
-    with action_result_context('Doing an action that will raise...') as act:
-      time.sleep(2)
-      import textwrap
-      raise RuntimeError(textwrap.dedent('''\
-          Uh oh, looks like there was a raise in the mix.
-
-          If you see this message, it means you are running the console_output
-          module directly rather than using it as a library. Things to try:
-
-            * Not running it as a module.
-            * Running it as a module and enjoying the preview text.
-            * Getting another coffee.'''))
-
-  Example output:
-    Doing an action that will succeed...                [  OK  ]
-    Doing an action with unset result...                [ ???? ]
-    Doing an action that will fail...                   [ FAIL ]
-    Doing an action that will raise...                  [ FAIL ]
-    ...
+  Yields:
+    ActionResult to declare the result of the action.
   """
   if logger:
     logger.debug('Action - %s', action_text)
@@ -272,13 +249,13 @@ def action_result_context(action_text,
   result = ActionResult()
   try:
     yield result
-  except Exception as err:
+  except Exception as err:  # pylint: disable=broad-except
     if logger:
       logger.debug('Result - %s [ %s ]', action_text, fail_text)
     if not CLI_QUIET:
       file.write(''.join((action_text, spacing)))
-      bracket_print(fail_text, width=status_width, color=colorama.Fore.RED,
-                    file=file)
+      bracket_print(
+          fail_text, width=status_width, color=colorama.Fore.RED, file=file)
     if not isinstance(err, ActionFailedError):
       raise
     return
@@ -289,37 +266,8 @@ def action_result_context(action_text,
     logger.debug('Result - %s [ %s ]', action_text, result_text)
   if not CLI_QUIET:
     file.write(''.join((action_text, spacing)))
-    bracket_print(result_text, width=status_width, color=result_color,
-                  file=file)
-
-
-# If invoked as a runnable module, this module will invoke its action result
-# context in order to print colorized example output.
-if __name__ == '__main__':
-  banner_print('Running pre-flight checks.')
-
-  with action_result_context('Doing an action that will succeed...') as act:
-    time.sleep(2)
-    act.succeed()
-
-  with action_result_context('Doing an action with unset result...') as act:
-    time.sleep(2)
-
-  with action_result_context('Doing an action that will fail...') as act:
-    time.sleep(2)
-    act.fail()
-
-  with action_result_context('Doing an action that will raise...') as act:
-    time.sleep(2)
-    raise RuntimeError(textwrap.dedent('''\
-        Uh oh, looks like there was a raise in the mix.
-
-        If you see this message, it means you are running the console_output
-        module directly rather than using it as a library. Things to try:
-
-          * Not running it as a module.
-          * Running it as a module and enjoying the preview text.
-          * Getting another coffee.'''))
+    bracket_print(
+        result_text, width=status_width, color=result_color, file=file)
 
 
 class CliQuietFilter(logging.Filter):
@@ -329,5 +277,6 @@ class CliQuietFilter(logging.Filter):
   module, and can thus be overridden in test scripts. This filter should only
   be used with loggers that print to the CLI.
   """
+
   def filter(self, record):
     return not CLI_QUIET

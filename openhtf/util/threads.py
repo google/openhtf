@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Thread library defining a few helpers."""
 
 import contextlib
@@ -26,10 +24,9 @@ import threading
 
 import six
 try:
-  from six.moves import _thread
+  from six.moves import _thread  # pylint: disable=g-import-not-at-top
 except ImportError:
-  from six.moves import _dummy_thread as _thread
-
+  from six.moves import _dummy_thread as _thread  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 
@@ -101,10 +98,12 @@ def _safe_lock_release_py2(rlock):
       rlock._RLock__count = 0
       rlock._RLock__block.release()
     raise
+
+
 # pylint: enable=protected-access
 
 
-def loop(_=None, force=False):   # pylint: disable=invalid-name
+def loop(_=None, force=False):
   """Causes a function to loop indefinitely."""
   if not force:
     raise AttributeError(
@@ -113,14 +112,17 @@ def loop(_=None, force=False):   # pylint: disable=invalid-name
         'and use it as @loop(force=True) for now.')
 
   def real_loop(fn):
+
     @functools.wraps(fn)
     def _proc(*args, **kwargs):
       """Wrapper to return."""
       while True:
         fn(*args, **kwargs)
+
     _proc.once = fn  # way for tests to invoke the function once
-                     # you may need to pass in "self" since this may be unbound.
+    # you may need to pass in "self" since this may be unbound.
     return _proc
+
   return real_loop
 
 
@@ -149,11 +151,15 @@ class KillableThread(threading.Thread):
   def __init__(self, *args, **kwargs):
     """Initializer for KillableThread.
 
+    The keyword argument `run_with_profiling` is extracted from kwargs. If
+    True, run this thread with profiling data collection.
+
     Args:
-      run_with_profiling: Whether to run this thread with profiling data
-        collection. Must be passed by keyword.
+      *args: Passed to the base class.
+      **kwargs: Passed to the base class.
     """
-    self._run_with_profiling = kwargs.pop('run_with_profiling', None)
+    self._run_with_profiling = kwargs.pop('run_with_profiling',
+                                          False)  # type: bool
     super(KillableThread, self).__init__(*args, **kwargs)
     self._running_lock = threading.Lock()
     self._killed = threading.Event()
@@ -180,17 +186,17 @@ class KillableThread(threading.Thread):
       if self._profiler is not None:
         self._profiler.disable()
 
-  def get_profile_stats(self):
+  def get_profile_stats(self) -> pstats.Stats:
     """Returns profile_stats from profiler. Raises if profiling not enabled."""
     if self._profiler is not None:
       return pstats.Stats(self._profiler)
     raise InvalidUsageError(
         'Profiling not enabled via __init__, or thread has not run yet.')
 
-  def _is_thread_proc_running(self):
+  def _is_thread_proc_running(self) -> bool:
     # Acquire the lock without blocking, though this object is fully implemented
     # in C, so we cannot specify keyword arguments.
-    could_acquire = self._running_lock.acquire(0)
+    could_acquire = self._running_lock.acquire(False)
     if could_acquire:
       self._running_lock.release()
       return False
@@ -216,6 +222,8 @@ class KillableThread(threading.Thread):
       True if the exception should be ignored.  The default case ignores the
       exception raised by the kill functionality.
     """
+    del exc_val  # Unused.
+    del exc_tb  # Unused.
     return exc_type is ThreadTerminationError
 
   def kill(self):
@@ -237,8 +245,8 @@ class KillableThread(threading.Thread):
 
     # If the thread has died we don't want to raise an exception so log.
     if not self.is_alive():
-      _LOG.debug('Not raising %s because thread %s (%s) is not alive',
-                 exc_type, self.name, self.ident)
+      _LOG.debug('Not raising %s because thread %s (%s) is not alive', exc_type,
+                 self.name, self.ident)
       return
 
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
@@ -249,8 +257,8 @@ class KillableThread(threading.Thread):
     elif result > 1:
       # Something bad happened, call with a NULL exception to undo.
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
-      raise RuntimeError('Error: PyThreadState_SetAsyncExc %s %s (%s) %s' % (
-          exc_type, self.name, self.ident, result))
+      raise RuntimeError('Error: PyThreadState_SetAsyncExc %s %s (%s) %s' %
+                         (exc_type, self.name, self.ident, result))
 
 
 class NoneByDefaultThreadLocal(threading.local):
@@ -262,12 +270,13 @@ class NoneByDefaultThreadLocal(threading.local):
   check.
   """
 
-  def __getattr__(self, _):  # pylint: disable=invalid-name
+  def __getattr__(self, _):
     return None
 
 
-def synchronized(func):  # pylint: disable=invalid-name
+def synchronized(func):
   """Hold self._lock while executing func."""
+
   @functools.wraps(func)
   def synchronized_method(self, *args, **kwargs):
     """Wrapper to return."""
@@ -282,4 +291,5 @@ def synchronized(func):  # pylint: disable=invalid-name
                          (func.__name__, type(self).__name__, hint))
     with self._lock:  # pylint: disable=protected-access
       return func(self, *args, **kwargs)
+
   return synchronized_method

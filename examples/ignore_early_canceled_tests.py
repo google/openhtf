@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Example of excluding certain test records from the output callbacks.
 
 In this case, we exclude tests which were aborted before a DUT ID was set, since
@@ -25,8 +24,8 @@ start.
 """
 
 import openhtf as htf
-from openhtf.output.callbacks import json_factory
 from openhtf.core import test_record
+from openhtf.output.callbacks import json_factory
 from openhtf.plugs import user_input
 from openhtf.util import console_output
 
@@ -36,8 +35,8 @@ DEFAULT_DUT_ID = '<UNSET_DUT_ID>'
 class CustomOutputToJSON(json_factory.OutputToJSON):
 
   def __call__(self, record):
-    if (record.outcome == test_record.Outcome.ABORTED
-        and record.dut_id == DEFAULT_DUT_ID):
+    if (record.outcome == test_record.Outcome.ABORTED and
+        record.dut_id == DEFAULT_DUT_ID):
       console_output.cli_print(
           'Test was aborted at test start. Skipping output to JSON.')
     else:

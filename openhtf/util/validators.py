@@ -5,8 +5,9 @@ method.  They can then be accessed directly as attributes on the validators
 module, and will typically be a type, instances of which are callable:
 
   from openhtf.util import validators
+  from openhtf.util import measurements
 
-  class MyLessThanValidator(validators.ValidatorBase):
+  class MyLessThanValidator(ValidatorBase):
     def __init__(self, limit):
       self.limit = limit
 
@@ -34,7 +35,7 @@ simply attach them to the Measurement with the .with_validator() method:
     return value < 4
 
   @measurements.measures(
-      measurements.Measurement('my_measurement').with_validator(LessThan4))
+      measurements.Measurement('my_measurement).with_validator(LessThan4))
   def MyPhase(test):
     test.measurements.my_measurement = 5  # Will also 'FAIL'
 
@@ -79,19 +80,20 @@ def has_validator(name):
 def create_validator(name, *args, **kwargs):
   return _VALIDATORS[name](*args, **kwargs)
 
+
 _identity = lambda x: x
 
 
 class ValidatorBase(with_metaclass(abc.ABCMeta, object)):
-  @abc.abstractmethod
 
+  @abc.abstractmethod
   def __call__(self, value):
     """Should validate value, returning a boolean result."""
 
 
 class RangeValidatorBase(with_metaclass(abc.ABCMeta, ValidatorBase)):
-  @abc.abstractproperty
 
+  @abc.abstractproperty
   def minimum(self):
     """Should return the minimum, inclusive value of the range."""
 
@@ -104,6 +106,7 @@ class RangeValidatorBase(with_metaclass(abc.ABCMeta, ValidatorBase)):
 class AllInRangeValidator(ValidatorBase):
 
   def __init__(self, min_value, max_value):
+    super(AllInRangeValidator, self).__init__()
     self.min_value = min_value
     self.max_value = max_value
 
@@ -114,10 +117,12 @@ class AllInRangeValidator(ValidatorBase):
 class AllEqualsValidator(ValidatorBase):
 
   def __init__(self, spec):
+    super(AllEqualsValidator, self).__init__()
     self.spec = spec
 
   def __call__(self, values):
     return all([value == self.spec for value in values])
+
 
 register(AllInRangeValidator, name='all_in_range')
 register(AllEqualsValidator, name='all_equals')
@@ -126,13 +131,13 @@ register(AllEqualsValidator, name='all_equals')
 class InRange(RangeValidatorBase):
   """Validator to verify a numeric value is within a range."""
 
-  def __init__(self, minimum=None, maximum=None, type=None):
+  def __init__(self, minimum=None, maximum=None, type=None):  # pylint: disable=redefined-builtin
+    super(InRange, self).__init__()
     if minimum is None and maximum is None:
       raise ValueError('Must specify minimum, maximum, or both')
-    if (minimum is not None and maximum is not None
-        and isinstance(minimum, numbers.Number)
-        and isinstance(maximum, numbers.Number)
-        and minimum > maximum):
+    if (minimum is not None and maximum is not None and
+        isinstance(minimum, numbers.Number) and
+        isinstance(maximum, numbers.Number) and minimum > maximum):
       raise ValueError('Minimum cannot be greater than maximum')
     self._minimum = minimum
     self._maximum = maximum
@@ -178,18 +183,19 @@ class InRange(RangeValidatorBase):
       return 'x <= %s' % self._maximum
 
   def __eq__(self, other):
-    return (isinstance(other, type(self)) and
-            self.minimum == other.minimum and self.maximum == other.maximum)
+    return (isinstance(other, type(self)) and self.minimum == other.minimum and
+            self.maximum == other.maximum)
 
   def __ne__(self, other):
     return not self == other
+
 
 in_range = InRange  # pylint: disable=invalid-name
 register(in_range, name='in_range')
 
 
 @register
-def equals(value, type=None):
+def equals(value, type=None):  # pylint: disable=redefined-builtin
   if isinstance(value, numbers.Number):
     return InRange(minimum=value, maximum=value, type=type)
   elif isinstance(value, six.string_types):
@@ -203,7 +209,7 @@ def equals(value, type=None):
 class Equals(object):
   """Validator to verify an object is equal to the expected value."""
 
-  def __init__(self, expected, type=None):
+  def __init__(self, expected, type=None):  # pylint: disable=redefined-builtin
     self._expected = expected
     self._type = type
 
@@ -254,6 +260,7 @@ class WithinPercent(RangeValidatorBase):
   """Validates that a number is within percent of a value."""
 
   def __init__(self, expected, percent):
+    super(WithinPercent, self).__init__()
     if percent < 0:
       raise ValueError('percent argument is {}, must be >0'.format(percent))
     self.expected = expected
@@ -279,8 +286,7 @@ class WithinPercent(RangeValidatorBase):
 
   def __eq__(self, other):
     return (isinstance(other, type(self)) and
-            self.expected == other.expected and
-            self.percent == other.percent)
+            self.expected == other.expected and self.percent == other.percent)
 
   def __ne__(self, other):
     return not self == other
@@ -291,39 +297,45 @@ def within_percent(expected, percent):
   return WithinPercent(expected, percent)
 
 
-class WithinTolerance(RangeValidatorBase):
-  """Validates that a number is within a given tolerance of a value."""
+class DimensionPivot(ValidatorBase):
+  """Runs a validator on each actual value of a dimensioned measurement."""
 
-  def __init__(self, expected, tolerance):
-    if tolerance < 0:
-      raise ValueError(
-        'tolerance argument is {}, must be >0'.format(tolerance))
-    self.expected = expected
-    self.tolerance = tolerance
+  def __init__(self, sub_validator):
+    super(DimensionPivot, self).__init__()
+    self._sub_validator = sub_validator
 
-  @property
-  def minimum(self):
-    return self.expected - self.tolerance
-
-  @property
-  def maximum(self):
-    return self.expected + self.tolerance
-
-  def __call__(self, value):
-    return self.minimum <= value <= self.maximum
+  def __call__(self, dimensioned_value):
+    return all(self._sub_validator(row[-1]) for row in dimensioned_value)
 
   def __str__(self):
-    return "'x' is within {} of {}".format(self.tolerance, self.expected)
-
-  def __eq__(self, other):
-    return (isinstance(other, type(self)) and
-            self.expected == other.expected and
-            self.tolerance == other.tolerance)
-
-  def __ne__(self, other):
-    return not self == other
+    return 'All values pass: {}'.format(str(self._sub_validator))
 
 
 @register
-def within_tolerance(expected, tolerance):
-  return WithinTolerance(expected, tolerance)
+def dimension_pivot_validate(sub_validator):
+  return DimensionPivot(sub_validator)
+
+
+class ConsistentEndDimensionPivot(ValidatorBase):
+  """If any rows validate, all following rows must also validate."""
+
+  def __init__(self, sub_validator):
+    super(ConsistentEndDimensionPivot, self).__init__()
+    self._sub_validator = sub_validator
+
+  def __call__(self, dimensioned_value):
+    for index, row in enumerate(dimensioned_value):
+      if self._sub_validator(row[-1]):
+        i = index
+        break
+    else:
+      return False
+    return all(self._sub_validator(rest[-1]) for rest in dimensioned_value[i:])
+
+  def __str__(self):
+    return 'Once pass, rest must also pass: {}'.format(str(self._sub_validator))
+
+
+@register
+def consistent_end_dimension_pivot_validate(sub_validator):
+  return ConsistentEndDimensionPivot(sub_validator)

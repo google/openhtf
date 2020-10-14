@@ -11,18 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Example plugs for OpenHTF."""
 
-import openhtf.plugs as plugs
+from openhtf.core import base_plugs
 from openhtf.util import conf
 
+conf.declare(
+    'example_plug_increment_size',
+    default_value=1,
+    description='increment constant for example plug.')
 
-conf.declare('example_plug_increment_size', default_value=1,
-             description='increment constant for example plug.')
 
-
-class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
+class ExamplePlug(base_plugs.BasePlug):  # pylint: disable=no-init
   """Example of a simple plug.
 
   This plug simply keeps a value and increments it each time increment() is
@@ -79,7 +79,7 @@ class ExamplePlug(plugs.BasePlug):   # pylint: disable=no-init
     return self.value - self.increment_size
 
 
-class ExampleFrontendAwarePlug(plugs.FrontendAwareBasePlug):
+class ExampleFrontendAwarePlug(base_plugs.FrontendAwareBasePlug):
   """Example of a simple frontend-aware plug.
 
   A frontend-aware plug is a plug that agrees to call self.notify_update()
@@ -88,9 +88,10 @@ class ExampleFrontendAwarePlug(plugs.FrontendAwareBasePlug):
   plug's state in real time.
 
   See also:
-    - openhtf.plugs.FrontendAwareBasePlug
-    - openhtf.plugs.user_input.UserInput
+    - base_plugs.FrontendAwareBasePlug
+    - base_plugs.user_input.UserInput
   """
+
   def __init__(self):
     super(ExampleFrontendAwarePlug, self).__init__()
     self.value = 0

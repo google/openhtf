@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Fastboot device."""
 
 import logging
@@ -23,13 +21,26 @@ from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
 
 # From fastboot.c
-VENDORS = {0x18D1, 0x0451, 0x0502, 0x0FCE, 0x05C6, 0x22B8, 0x0955,
-           0x413C, 0x2314, 0x0BB4, 0x8087}
+VENDORS = frozenset([
+    0x18D1,
+    0x0451,
+    0x0502,
+    0x0FCE,
+    0x05C6,
+    0x22B8,
+    0x0955,
+    0x413C,
+    0x2314,
+    0x0BB4,
+    0x8087,
+])
 CLASS = 0xFF
 SUBCLASS = 0x42
 PROTOCOL = 0x03
 
 _LOG = logging.getLogger(__name__)
+
+
 class FastbootDevice(object):
   """Libusb fastboot wrapper with retries."""
 
@@ -49,12 +60,14 @@ class FastbootDevice(object):
   def get_boot_config(self, name, info_cb=None):
     """Get bootconfig, either as full dict or specific value for key."""
     result = {}
+
     def default_info_cb(msg):
       """Default Info CB."""
       if not msg.message:
         return
       key, value = msg.message.split(':', 1)
       result[key.strip()] = value.strip()
+
     info_cb = info_cb or default_info_cb
     final_result = self.oem('bootconfig %s' % name, info_cb=info_cb)
     # Return INFO messages before the final OKAY message.
@@ -77,6 +90,7 @@ class FastbootDevice(object):
 
     Args:
       attr: Attribute to get.
+
     Returns:
       Either the attribute from the device or a retrying function-wrapper
       if attr is a method on the device.
@@ -86,12 +100,14 @@ class FastbootDevice(object):
 
     val = getattr(self._protocol, attr)
     if callable(val):
+
       def _retry_wrapper(*args, **kwargs):
         """Wrap the retry function."""
         result = _retry_usb_function(self._num_retries, val, *args, **kwargs)
-        _LOG.debug('LIBUSB FASTBOOT: %s(*%s, **%s) -> %s',
-                   attr, args, kwargs, result)
+        _LOG.debug('LIBUSB FASTBOOT: %s(*%s, **%s) -> %s', attr, args, kwargs,
+                   result)
         return result
+
       return _retry_wrapper
     return val
 
@@ -101,13 +117,14 @@ class FastbootDevice(object):
 
     Args:
       usb_handle: UsbHandle instance to use for communication to the device.
-      **kwargs: Additional args to pass to the class constructor (currently
-          only num_retries).
+      **kwargs: Additional args to pass to the class constructor (currently only
+        num_retries).
 
     Returns:
       An instance of this class if the device connected successfully.
     """
     return cls(fastboot_protocol.FastbootCommands(usb_handle), **kwargs)
+
 
 def _retry_usb_function(count, func, *args, **kwargs):
   """Helper function to retry USB."""
