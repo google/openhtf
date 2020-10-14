@@ -13,8 +13,6 @@
 # limitations under the License.
 """OpenHTF module responsible for managing records of tests."""
 
-from __future__ import google_type_annotations
-
 import hashlib
 import inspect
 import logging

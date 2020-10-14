@@ -36,8 +36,6 @@ PhaseGroup instances can be nested inside of each other.  A PhaseGroup is
 terminal if any of its Phases or further nested PhaseGroups are also terminal.
 """
 
-from __future__ import google_type_annotations
-
 from typing import Any, Callable, Dict, Iterator, Optional, Text, Type
 
 import attr

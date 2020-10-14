@@ -17,9 +17,6 @@ Provides a plug which can be used to prompt the user for input. The prompt can
 be displayed in the console, the OpenHTF web GUI, and custom frontends.
 """
 
-from __future__ import google_type_annotations
-from __future__ import print_function
-
 import functools
 import logging
 import os

@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python2, python3
+# Lint as: python3
 """Implements phase node branches.
 
 A BranchSequence is a phase node sequence that runs conditiionally based on the
 diagnosis results of the test run.
 """
-
-from __future__ import google_type_annotations
 
 import abc
 from typing import Any, Callable, Dict, Iterator, Text, Tuple, TYPE_CHECKING, Union

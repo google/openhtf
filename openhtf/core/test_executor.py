@@ -13,8 +13,6 @@
 # limitations under the License.
 """TestExecutor executes tests."""
 
-from __future__ import google_type_annotations
-
 import contextlib
 import enum
 import logging

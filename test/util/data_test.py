@@ -17,7 +17,7 @@ import unittest
 
 import attr
 from openhtf.util import data
-from past.builtins import long
+import past.builtins
 
 
 class TestData(unittest.TestCase):
@@ -85,7 +85,7 @@ class TestData(unittest.TestCase):
     self.assertIsInstance(converted['unicode'], str)
     self.assertIsInstance(converted['int'], int)
     self.assertIsInstance(converted['float'], float)
-    self.assertIsInstance(converted['long'], long)
+    self.assertIsInstance(converted['long'], past.builtins.long)
     self.assertIsInstance(converted['bool'], bool)
     self.assertIsNone(converted['none'])
     self.assertIsInstance(converted['complex'], str)

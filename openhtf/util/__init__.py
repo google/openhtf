@@ -13,8 +13,6 @@
 # limitations under the License.
 """One-off utilities."""
 
-from __future__ import google_type_annotations
-
 import logging
 import re
 import threading

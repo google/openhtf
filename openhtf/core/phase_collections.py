@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python2, python3
+# Lint as: python3
 """Implements the basic PhaseNode collections.
 
 Phase Sequence are basic collections where each node is sequentially run.  These
@@ -20,8 +20,6 @@ instances can be nested inside of each other or with any other phase node.  A
 terminal error during a phase sequence will cause the rest of the nodes to be
 skipped.
 """
-
-from __future__ import google_type_annotations
 
 import abc
 import collections

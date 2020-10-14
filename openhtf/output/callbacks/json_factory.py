@@ -1,7 +1,5 @@
 """Module for outputting test record to JSON-formatted files."""
 
-from __future__ import google_type_annotations
-
 import base64
 import json
 from typing import Any, BinaryIO, Callable, Dict, Iterator, Text, Union

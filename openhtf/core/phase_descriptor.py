@@ -18,8 +18,6 @@ of PhaseDescriptor class.
 
 """
 
-from __future__ import google_type_annotations
-
 import enum
 import inspect
 import pdb

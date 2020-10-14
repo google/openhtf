@@ -86,8 +86,6 @@ This will result in the ExamplePlug being constructed with
 self._my_config having a value of 'my_config_value'.
 """
 
-from __future__ import google_type_annotations
-
 import logging
 from typing import Any, Dict, Set, Text, Type, Union
 

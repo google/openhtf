@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python2, python3
+# Lint as: python3
 """Contains the abstract interfaces for phase nodes."""
-
-from __future__ import google_type_annotations
 
 import abc
 from typing import Any, Callable, Dict, Optional, Text, Type, TypeVar, TYPE_CHECKING

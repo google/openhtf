@@ -43,8 +43,6 @@ def MyPhase(test):
 # second while MyPhase was executing.
 """
 
-from __future__ import google_type_annotations
-
 import functools
 import inspect
 import time

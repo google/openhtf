@@ -17,8 +17,6 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
-from __future__ import google_type_annotations
-
 import copy
 import difflib
 import enum

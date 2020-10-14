@@ -20,8 +20,6 @@ end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 """
 
-from __future__ import google_type_annotations
-
 import collections
 import logging
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text, Tuple, Type, TypeVar, Union

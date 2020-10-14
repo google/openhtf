@@ -156,8 +156,6 @@ in the decorator or in the decorated callable.
 """
 # pytype: skip-file
 
-from __future__ import google_type_annotations
-
 import argparse
 import enum
 import functools
