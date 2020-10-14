@@ -58,8 +58,6 @@ Examples:
 
 """
 
-from __future__ import google_type_annotations
-
 import collections
 import enum
 import functools
@@ -816,7 +814,7 @@ class Collection(object):
 # Work around for attrs bug in 20.1.0; after the next release, this can be
 # removed and `Collection._custom_setattr` can be renamed to `__setattr__`.
 # https://github.com/python-attrs/attrs/issues/680
-Collection.__setattr__ = Collection._custom_setattr
+Collection.__setattr__ = Collection._custom_setattr  # pylint: disable=protected-access
 del Collection._custom_setattr
 
 

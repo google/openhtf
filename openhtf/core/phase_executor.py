@@ -30,8 +30,6 @@ time. A phase should not return TIMEOUT or ABORT, those are handled by the
 framework.
 """
 
-from __future__ import google_type_annotations
-
 import logging
 import pstats
 import sys

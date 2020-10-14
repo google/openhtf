@@ -26,7 +26,6 @@ PhaseResult.REPEAT from a phase.  The number of repeats for a particular
 phase can be limited specifying a PhaseOptions.repeat_limit.
 """
 
-from __future__ import print_function
 import openhtf
 from openhtf import plugs
 from openhtf.core import base_plugs

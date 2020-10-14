@@ -13,8 +13,6 @@
 # limitations under the License.
 """A simple utility to do timeout checking."""
 
-from __future__ import google_type_annotations
-
 import contextlib
 import functools
 import logging

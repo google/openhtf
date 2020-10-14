@@ -13,8 +13,6 @@
 # limitations under the License.
 """Thread library defining a few helpers."""
 
-from __future__ import google_type_annotations
-
 import contextlib
 import cProfile
 import ctypes

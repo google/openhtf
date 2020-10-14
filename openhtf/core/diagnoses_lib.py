@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python2, python3
+# Lint as: python3
 """Diagnoses: Measurement and meta interpreters.
 
 Diagnoses are higher level signals that result from processing multiple
@@ -121,8 +121,6 @@ still run.
     test.add_test_diagnosers(block_test_diag)
     test.execute()
 """
-
-from __future__ import google_type_annotations
 
 import abc
 import collections

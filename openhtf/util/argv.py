@@ -1,7 +1,5 @@
 """Utilities for handling command line arguments."""
 
-from __future__ import google_type_annotations
-
 import argparse
 import sys
 import typing

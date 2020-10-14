@@ -26,8 +26,6 @@ checks the result of all previous phases and will stop test execution if a
 previous phase has failed.
 """
 
-from __future__ import google_type_annotations
-
 from typing import Optional, Text
 
 from openhtf.core import phase_branches

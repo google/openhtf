@@ -110,8 +110,6 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
-from __future__ import google_type_annotations
-
 import functools
 import inspect
 import logging

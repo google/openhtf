@@ -22,8 +22,6 @@ transitions during the course of the lifetime of a single Execute()
 invocation of an openhtf.Test instance.
 """
 
-from __future__ import google_type_annotations
-
 import collections
 import contextlib
 import copy

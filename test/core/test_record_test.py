@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 """Unit tests for test_record module."""
 
 import sys

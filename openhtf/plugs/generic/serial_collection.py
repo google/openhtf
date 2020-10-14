@@ -16,8 +16,6 @@
 Allows for writing out to a serial port.
 """
 
-from __future__ import google_type_annotations
-
 import logging
 import threading
 from typing import Optional

@@ -19,8 +19,6 @@ alternative serialization schemes, see json_factory.py and mfg_inspector.py for
 examples.
 """
 
-from __future__ import google_type_annotations
-
 import contextlib
 import shutil
 import tempfile

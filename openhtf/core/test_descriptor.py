@@ -18,8 +18,6 @@ test is a series of Phases that are executed by the OpenHTF framework.
 
 """
 
-from __future__ import google_type_annotations
-
 import argparse
 import collections
 import logging
