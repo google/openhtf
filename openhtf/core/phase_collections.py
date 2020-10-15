@@ -155,28 +155,33 @@ class PhaseSequence(PhaseCollectionNode):
 
   def with_args(self: SequenceClassT, **kwargs: Any) -> SequenceClassT:
     """Send these keyword-arguments when phases are called."""
-    return type(self)(
+    return attr.evolve(
+        self,
         nodes=tuple(n.with_args(**kwargs) for n in self.nodes),
         name=util.format_string(self.name, kwargs))
 
   def with_plugs(self: SequenceClassT,
                  **subplugs: Type[base_plugs.BasePlug]) -> SequenceClassT:
     """Substitute plugs for placeholders for this phase, error on unknowns."""
-    return type(self)(
+    return attr.evolve(
+        self,
         nodes=tuple(n.with_plugs(**subplugs) for n in self.nodes),
         name=util.format_string(self.name, subplugs))
 
   def load_code_info(self: SequenceClassT) -> SequenceClassT:
     """Load coded info for all contained phases."""
-    return type(self)(
-        nodes=tuple(n.load_code_info() for n in self.nodes), name=self.name)
+    return attr.evolve(
+        self,
+        nodes=tuple(n.load_code_info() for n in self.nodes),
+        name=self.name)
 
   def apply_to_all_phases(
       self: SequenceClassT, func: Callable[[phase_descriptor.PhaseDescriptor],
                                            phase_descriptor.PhaseDescriptor]
   ) -> SequenceClassT:
     """Apply func to all contained phases."""
-    return type(self)(
+    return attr.evolve(
+        self,
         nodes=tuple(n.apply_to_all_phases(func) for n in self.nodes),
         name=self.name)
 

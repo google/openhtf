@@ -72,6 +72,58 @@ class BranchSequenceTest(unittest.TestCase):
     }
     self.assertEqual(expected, branch._asdict())
 
+  def test_with_args(self):
+    branch = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(run_phase,),
+        name='name_{arg}')
+    expected = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(run_phase.with_args(arg=1),),
+        name='name_1')
+
+    self.assertEqual(expected, branch.with_args(arg=1))
+
+  def test_with_plugs(self):
+
+    class MyPlug(htf.BasePlug):
+      pass
+
+    branch = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(run_phase,),
+        name='name_{my_plug.__name__}')
+    expected = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(run_phase.with_plugs(my_plug=MyPlug),),
+        name='name_MyPlug')
+
+    self.assertEqual(expected, branch.with_plugs(my_plug=MyPlug))
+
+  def test_load_code_info(self):
+    branch = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(run_phase,))
+    expected = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(run_phase.load_code_info(),))
+
+    self.assertEqual(expected, branch.load_code_info())
+
+  def test_apply_to_all_phases(self):
+
+    def do_rename(phase):
+      return _rename(phase, 'blah_blah')
+
+    branch = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(run_phase,))
+    expected = phase_branches.BranchSequence(
+        phase_branches.DiagnosisCondition.on_all(BranchDiagResult.SET),
+        nodes=(do_rename(run_phase),))
+
+    self.assertEqual(expected, branch.apply_to_all_phases(do_rename))
+
 
 class BranchSequenceIntegrationTest(htf_test.TestCase):
 
