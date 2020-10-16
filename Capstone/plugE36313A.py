@@ -30,18 +30,17 @@ class plugE36313A:
         # Check if the voltage is within the limits
         if(self.check_voltage(source, volts)):
             # Set the voltage to the value given by the user
-            self.instrument.write('VOLT ' + str(volts) + ', (@' + str(source) + ')')
+            self.write('VOLT ' + str(volts) + ', (@' + str(source) + ')')
             # Set the current to keep the power level consistant
-            self.instrument.write('CURR ' + str(self.powerLimit/volts) + ', (@' + str(source) + ')')
-            
+            self.write('CURR ' + str(self.powerLimit/volts) + ', (@' + str(source) + ')')     
 
     # Set the current of the instrument
     def set_current(self, source, amps):
         if(self.check_current(source, amps)):
             # Set the current to the value given by the user
-            self.instrument.write('CURR ' + str(amps) + ', (@' + str(source) + ')')
+            self.write('CURR ' + str(amps) + ', (@' + str(source) + ')')
             # Set the voltage to keep the power level consistant
-            self.instrument.write('VOLT ' + str(self.powerLimit/amps) + ', (@' + str(source) + ')')    
+            self.write('VOLT ' + str(self.powerLimit/amps) + ', (@' + str(source) + ')')    
 
 
     # Completes a step function on our power supply
@@ -66,13 +65,13 @@ class plugE36313A:
         Source2: 0 to 25 volts
         Source3: 0 to 25 volts
         """
-        if(source < 1 or source < 3):
+        if(source < 1 or source > 3):
             print(f"Incorrect source: {source} is not within 1-3")
             return False
-        elif(source == 1 and (enteredVoltage < 0 or enteredVoltage < 6)):
+        elif(source == 1 and (enteredVoltage < 0 or enteredVoltage > 6)):
             print(f"{enteredVoltage} Volts are not within the bounds")
             return False
-        elif(enteredVoltage < 0 or enteredVoltage < 25):
+        elif(enteredVoltage < 0 or enteredVoltage > 25):
             print(f"{enteredVoltage} Volts are not within the bounds")
             return False
         else:
@@ -86,14 +85,24 @@ class plugE36313A:
         Source2: 0 to 2 amps
         Source3: 0 to 2 amps
         """
-        if(source < 1 or source < 3):
+        if(source < 1 or source > 3):
             print(f"Incorrect source: {source} is not within 1-3")
             return False
-        elif(source == 1 and (enteredAmps < 0 or enteredAmps < 10)):
+        elif(source == 1 and (enteredAmps < 0 or enteredAmps > 10)):
             print(f"{enteredAmps} Amps are not within the bounds")
             return False
-        elif(enteredAmps < 0 or enteredAmps < 2):
+        elif(enteredAmps < 0 or enteredAmps > 2):
             print(f"{enteredAmps} Amps are not within the bounds")
             return False
         else:
             return True
+
+    # TODO add try except and handle error
+    def query(self, command):
+        """Handle all queries to instrument"""
+        return self.instrument.query(command)
+
+    # TODO add try except and handle error
+    def write(self, command):
+		""" Custom write command """
+		self.instrument.write(command)

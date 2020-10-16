@@ -22,14 +22,13 @@ class plug34461A:
         """
         self.instrument.close()
 
-
     # TODO: Read the resistance
-    def read_resist(self):
-        return 0
+    def read_resistance(self):
+		return float(self.query('MEASure:RESistance?'))
 
     # TODO: Read the current
     def read_current(self):
-        return 0
+		return float(self.query('MEASure:CURRent:DC?'))
 
     # TODO: Add ranges and other parameters
     def read_voltage(self, mode):
@@ -40,12 +39,12 @@ class plug34461A:
             voltage (float): The voltage in volts
         """
         if mode <= 1:
-            values = instrument.query_ascii_values(':MEASure:VOLTage:AC?')
+            values = self.query(':MEASure:VOLTage:AC?')
             acVoltage = values[0]
             return acVoltage
 
         else:
-            values = instrument.query_ascii_values(':MEASure:VOLTage:DC?')
+            values = self.query(':MEASure:VOLTage:DC?')
             dcVoltage = values[0]
             return dcVoltage
 
@@ -59,7 +58,7 @@ class plug34461A:
         Returns:
             continuity(bool): True if beep, else false
         """
-        values = instrument.query_ascii_values(':MEASure:CONTinuity?')
+        values = self.query(':MEASure:CONTinuity?')
         continuity = values[0]
 
         if continuity <= 10:
@@ -67,5 +66,14 @@ class plug34461A:
             return True 
         else:
             return False
-
-        return 0
+    
+    # TODO add try except and handle error
+    def query(self, command):
+        """Handle all queries to instrument"""
+        return self.instrument.query(command)
+    
+    # TODO add try except and handle error
+    def write(self, command):
+		""" Custom write command """
+		self.instrument.write(command)
+        
