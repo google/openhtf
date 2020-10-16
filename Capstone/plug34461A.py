@@ -27,14 +27,31 @@ class plug34461A:
 		return float(self.query('MEASure:RESistance?'))
 
     # TODO: Read the current
-    def read_current(self):
-		return float(self.query('MEASure:CURRent:DC?'))
+    def read_current(self, mode):
+		"""
+        Args:
+            mode (int): A value of 1 or 2, representing ac or dc respectively, 
+            if the number is greater than 2, it will be treated as dc, less than 1, ac
+        Returns:
+            current (float): The current in amps
+        """
+        if mode <= 1:
+            values = self.query(':MEASure:CURRent:AC?')
+            acCurrent = values[0]
+            return acCurrent
+
+        else:
+            values = self.query(':MEASure:CURRent:DC?')
+            dcCurrent = values[0]
+            return dcCurrent
+        # return float(self.query('MEASure:CURRent:DC?'))
 
     # TODO: Add ranges and other parameters
     def read_voltage(self, mode):
         """
         Args:
-            mode (int): A value of 1 or 2, representing ac or dc respectively, if the number is greater than 2, it will be treated as dc, less than 1, ac
+            mode (int): A value of 1 or 2, representing ac or dc respectively, 
+            if the number is greater than 2, it will be treated as dc, less than 1, ac
         Returns:
             voltage (float): The voltage in volts
         """

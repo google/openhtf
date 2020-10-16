@@ -46,16 +46,29 @@ class plugE36313A:
     # Completes a step function on our power supply
     def step_voltage(self, source, startVal, endVal, step, seconds):
         if(self.check_voltage(source, startVal) and self.check_voltage(source, endVal)):
-            # Continues to change the voltage until we meet or exceed our threshold
-            while(startVal <= endVal):
-                # Set the voltage and then change our current value
-                self.set_voltage(source, startVal)
-                
-                # Wait for a duration of time(seconds) for the next change to occur
-                time.sleep(seconds)
+            if(statVal < endVal):
+                # Continues to change the voltage until we meet or exceed our threshold
+                while(startVal <= endVal):
+                    # Set the voltage and then change our current value
+                    self.set_voltage(source, startVal)
+                    
+                    # Wait for a duration of time(seconds) for the next change to occur
+                    time.sleep(seconds)
 
-                # Increment our current value
-                startVal += step
+                    # Increment our current value
+                    startVal += step
+
+            else:
+                # Continues to change the voltage until we meet or exceed our threshold
+                while(startVal >= endVal):
+                    # Set the voltage and then change our current value
+                    self.set_voltage(source, startVal)
+                    
+                    # Wait for a duration of time(seconds) for the next change to occur
+                    time.sleep(seconds)
+
+                    # Increment our current value
+                    startVal -= step
 
 
     # Ensure the voltage given is within the bounds of the power supply
@@ -99,10 +112,10 @@ class plugE36313A:
 
     # TODO add try except and handle error
     def query(self, command):
-        """Handle all queries to instrument"""
+        # """Handle all queries to instrument"""
         return self.instrument.query(command)
 
     # TODO add try except and handle error
     def write(self, command):
-		""" Custom write command """
-		self.instrument.write(command)
+        # """ Custom write command """
+        return self.instrument.write(command)
