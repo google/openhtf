@@ -15,8 +15,9 @@ class plugE36313A:
             print('Connected to\n', idn)
             # Set our power value
             self.powerLimit = 160
+            print(f"Power level is: {self.powerLimit}")
         except:
-            raise "Couldn't connect to instrument " + address
+            raise ("Couldn't connect to instrument " + address)
     
     def close(self):
         """
@@ -30,17 +31,19 @@ class plugE36313A:
         # Check if the voltage is within the limits
         if(self.check_voltage(source, volts)):
             # Set the voltage to the value given by the user
-            self.write('VOLT ' + str(volts) + ', (@' + str(source) + ')')
-            # Set the current to keep the power level consistant
-            self.write('CURR ' + str(self.powerLimit/volts) + ', (@' + str(source) + ')')     
+            print(self.write(':INSTrument:NSELect %d' % (source)))
+            print(self.write('VOLT ' + str(volts) + ', (@' + str(source) + ')'))
+            print(self.write('OUTP ON, (@' +  str(source) + ')'))
+            # Set the current to keep the power level consistant: MIGHT NOT NEED
+            # self.write('CURR ' + str(self.powerLimit/volts) + ', (@' + str(source) + ')')     
 
     # Set the current of the instrument
     def set_current(self, source, amps):
         if(self.check_current(source, amps)):
             # Set the current to the value given by the user
             self.write('CURR ' + str(amps) + ', (@' + str(source) + ')')
-            # Set the voltage to keep the power level consistant
-            self.write('VOLT ' + str(self.powerLimit/amps) + ', (@' + str(source) + ')')    
+            # Set the voltage to keep the power level consistant: MIGHT NOT NEED
+            # self.write('VOLT ' + str(self.powerLimit/amps) + ', (@' + str(source) + ')')    
 
 
     # Completes a step function on our power supply
@@ -109,6 +112,14 @@ class plugE36313A:
             return False
         else:
             return True
+
+    # Return the current displayed on the PS
+    def read_voltage(self, source):
+        return (self.query(':MEASure:SCALar:VOLTage:DC? (@' + str(source) + ')'))
+
+    # Return the current displayed on the PS
+    def read_current(self, source):
+        return (self.query(':MEASure:SCALar:CURRent:DC? (@' + str(source) + ')'))
 
     # TODO add try except and handle error
     def query(self, command):

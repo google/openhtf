@@ -14,7 +14,7 @@ class plug34461A:
             print('Connected to\n', idn)
         except:
             raise "Couldn't connect to instrument " + address
-    
+
     def close(self):
         """
         Disconnect.
@@ -24,11 +24,11 @@ class plug34461A:
 
     # TODO: Read the resistance
     def read_resistance(self):
-		return float(self.query('MEASure:RESistance?'))
+        return float(self.query('MEASure:RESistance?'))
 
     # TODO: Read the current
     def read_current(self, mode):
-		"""
+        """
         Args:
             mode (int): A value of 1 or 2, representing ac or dc respectively, 
             if the number is greater than 2, it will be treated as dc, less than 1, ac
@@ -36,15 +36,10 @@ class plug34461A:
             current (float): The current in amps
         """
         if mode <= 1:
-            values = self.query(':MEASure:CURRent:AC?')
-            acCurrent = values[0]
-            return acCurrent
+            return self.query(':MEASure:CURRent:AC?')
 
         else:
-            values = self.query(':MEASure:CURRent:DC?')
-            dcCurrent = values[0]
-            return dcCurrent
-        # return float(self.query('MEASure:CURRent:DC?'))
+            return self.query(':MEASure:CURRent:DC?')
 
     # TODO: Add ranges and other parameters
     def read_voltage(self, mode):
@@ -56,14 +51,10 @@ class plug34461A:
             voltage (float): The voltage in volts
         """
         if mode <= 1:
-            values = self.query(':MEASure:VOLTage:AC?')
-            acVoltage = values[0]
-            return acVoltage
+            return self.query(':MEASure:VOLTage:AC?')
 
         else:
-            values = self.query(':MEASure:VOLTage:DC?')
-            dcVoltage = values[0]
-            return dcVoltage
+            return self.query(':MEASure:VOLTage:DC?')
 
         return 0
 
@@ -83,14 +74,14 @@ class plug34461A:
             return True 
         else:
             return False
-    
+
     # TODO add try except and handle error
     def query(self, command):
         """Handle all queries to instrument"""
         return self.instrument.query(command)
-    
+
     # TODO add try except and handle error
     def write(self, command):
-		""" Custom write command """
-		self.instrument.write(command)
+        """ Handle all writes to instrument """
+        self.instrument.write(command)
         
