@@ -5,7 +5,7 @@ from datetime import datetime
 import csv
 
 # Instruments IP addreses
-dmm_ip = "TCPIP::192.168.10.21::INSTR"
+dmm_ip = "TCPIP::192.254.101.53::INSTR"
 sig_gen_ip = "TCPIP::192.168.10.20::INSTR"
 sleep_wait = 1
 
