@@ -242,7 +242,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
             if validator.maximum is not None:
               testrun_param.numeric_maximum = float(validator.maximum)
           elif isinstance(validator, validators.RegexMatcher):
-            testrun_param.expected_text = validator.regex
+            testrun_param.expected_text = str(validator.regex)
           else:
             testrun_param.description += '\nValidator: ' + str(validator)
       else:
