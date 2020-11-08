@@ -56,46 +56,53 @@ def save_csv(timestamp, data, prefix='test_voltage', folder_path=''):
                 file_name = folder_path + str(prefix) + '_' + timestamp \
                     + '_' + str(idx) + '_attempt_' + str(attempts) + '_' + '.csv'
 
-#first get resistor value 
-R_L = input("Please enter resistor value in ohms")
 
-#vector to hold voltage values 
-V_IN = [5,6,7,8,9,10]
 
-#output values
-i_L = []
-V_L = []
-expected = []
-diff = [] #holds expected - measured 
-#initialize instruments 
-power_supply_ip = "TCPIP::192.168.10.51::inst0::INSTR"
-dmm_ip = "TCPIP::192.168.10.52::inst0::INSTR"
-power_supply = plugE36313A(power_supply_ip)
-dmm = plug34461A(dmm_ip)
+def voltage_divider_test():
+    #first get resistor value 
+    R_L = input("Please enter resistor value in ohms")
 
-#iterate through the V_IN values 
+    #vector to hold voltage values 
+    V_IN = [5,6,7,8,9,10]
 
-for voltage in V_IN:
+    #output values
+    i_L = []
+    V_L = []
+    expected = []
+    diff = [] #holds expected - measured 
+    #initialize instruments 
+    power_supply_ip = "TCPIP::192.168.10.51::inst0::INSTR"
+    dmm_ip = "TCPIP::192.168.10.52::inst0::INSTR"
+    power_supply = plugE36313A(power_supply_ip)
+    dmm = plug34461A(dmm_ip)
 
-    #set the voltage
-    power_supply.set_voltage(1,voltage)
 
-    #calculate the expected
-    expected.append(power_supply.read_voltage(1) / 2)
+    #iterate through the V_IN values 
 
-    #read the actual 
-    V_L.append(dmm.read_voltage(2))
+    for voltage in V_IN:
 
-    #calculate the diff
-    diff.append(expected[-1] - V_L[-1])
+        #set the voltage
+        power_supply.set_voltage(1,voltage)
 
-    print("Calculated: {} Measured: {} Diff: {}".format(expected[-1], V_L[-1], diff[-1]))
+        #calculate the expected
+        expected.append(power_supply.read_voltage(1) / 2)
 
-timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-save_csv(timestamp, V_L)
+        #read the actual 
+        V_L.append(dmm.read_voltage(2))
 
-power_supply.close()
-dmm.close()
+        #calculate the diff
+        diff.append(expected[-1] - V_L[-1])
+
+        print("Calculated: {} Measured: {} Diff: {}".format(expected[-1], V_L[-1], diff[-1]))
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    save_csv(timestamp, V_L)
+
+    power_supply.close()
+    dmm.close()
+
+if __name__ == "__main__":
+    voltage_divider_test()
 
 
 
