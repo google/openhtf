@@ -26,7 +26,35 @@ from datetime import datetime
 
  
 """
-
+def save_csv(timestamp, data, prefix='test_voltage', folder_path=''):
+    """
+    Creates csv files with a list of arrays, using timestamp creates a unique
+    directory.
+    :param timestamp:
+    :param prefix:
+    :param data:
+    :param folder_path:
+    :return: True
+    """
+    if not data or not isinstance(data, list):
+        # print("Data in wrong format")
+        return False
+    # Write CSV file
+    for idx, rows in enumerate(data):
+        file_name = folder_path + str(prefix) + '_' + timestamp \
+                    + '_' + str(idx) + '.csv'
+        attempts = 4
+        while attempts > 0:
+            try:
+                with open(file_name, 'w', newline='') as results:
+                    csv_w = writer(results, delimiter=',')
+                    csv_w.writerows(rows)
+                #logger.info(f"Successfully Saved CSV file")
+                break
+            except PermissionError:
+                logger.error(f"Failed to save CSV file attempt {attempts}")
+                file_name = folder_path + str(prefix) + '_' + timestamp \
+                    + '_' + str(idx) + '_attempt_' + str(attempts) + '_' + '.csv'
 
 #first get resistor value 
 R_L = input("Please enter resistor value in ohms")
@@ -62,6 +90,9 @@ for voltage in V_IN:
     diff.append(expected[-1] - V_L[-1])
 
     print("Calculated: {} Measured: {} Diff: {}".format(expected[-1], V_L[-1], diff[-1]))
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+save_csv(timestamp, V_L)
 
 power_supply.close()
 dmm.close()
