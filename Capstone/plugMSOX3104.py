@@ -59,7 +59,7 @@ class plugMSOX3104:
 
     # TODO add try except and handle error
     def query(self, command):
-        # """Handle all queries to instrument"""
+        # """Handle all queries to instrument""" 
         return self.instrument.query(command)
 
     # TODO add try except and handle error
