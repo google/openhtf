@@ -8,6 +8,9 @@ class plugMSOX3104:
     """
 
     def __init__(self, address):
+
+        capture_count = 0 #used to store how many captures have been taken, so images are not overwritten
+
         print('Trying to connect to', address)
         try:
             self.instrument = pyvisa.ResourceManager().open_resource(address)
@@ -18,7 +21,7 @@ class plugMSOX3104:
     
     def close(self):
         """
-        Disconnect.
+        Disconnect
         :return:
         """
         self.instrument.close()
@@ -51,6 +54,34 @@ class plugMSOX3104:
 
         return {"min": minVal, "max": maxVal, "mean": mean, "stdDev": stdDev}
     
+    def capture_display(self, destination = None, fileName = None, text = None):
+        """
+        This function captures the current oscilloscope display and saves it at the current working directory or
+        specified location
+
+        Args:
+            Destination (string): Path to where to place file
+            fileName (string): file name
+            text (string): capture caption 
+        
+        Returns:
+            None
+        """
+
+        #add an annotation if specified 
+        if text not None:
+            self.write(':DISPlay:ANNotation1 %d' % (1))
+            self.write(':DISPlay:ANNotation1:TEXT "%s"' % (text)) 
+        
+        #get bytes
+        displayData = self.query_binary_values(':DISPlay:DATA? %s,%s' % ('PNG','COLor'),'B',False)
+
+        filePath = 'Capture' + int(self.capture_count) if destination is None else destination + 'Capture' + int(self.capture_count)
+
+        f = open(filePath, 'wb')
+        f.write(displayData)
+
+
     def clear_display(self):
         """
         Clears the display
