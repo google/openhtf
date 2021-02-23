@@ -66,10 +66,12 @@ def rf_gain_power(channel=1, voltage=5, start_freq=1, end_freq=10, freq_step=1,
 
     # Turn off the RF on the signal generator
 
+
     # Set the signal generator to the current frequency
     signal_generator.set_frequency(set_freq)
 
     # Turn on the RF on the signal generator
+
 
     # Wait for the Sig Gen to change
     sleep(sleep_wait)
