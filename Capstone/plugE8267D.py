@@ -24,6 +24,10 @@ class plugE8267D:
         """
         self.instrument.close()
 
+    # Set the frequency mode
+    def set_mode(self, mode):
+        self.write(':SOURce:FREQuency:MODE ' + mode)
+
     # Set frequency on sig gen
     def set_frequency(self, hertz):
         if(self.check_frequency(hertz)):

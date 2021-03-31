@@ -38,6 +38,8 @@ class plugE8257D:
 
     # Set output power on sig gen
     def set_power(self, decibels):
+        if(self.check_power(decibels)):
+            self.write(':SOURce:POWer:LEVel:IMMediate:AMPLitude ' + str(decibels))
 
     # Check if frequency is within the bounds
     def check_frequency(self, hertz):
