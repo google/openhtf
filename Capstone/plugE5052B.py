@@ -20,6 +20,31 @@ class plugE5052B:
         except:
             raise ("Couldn't connect to instrument " + address)
     
+    def setPowerDelay(self, num):
+        """
+        Sets the power delay to num in seconds. 
+        """
+        return (self.write(':SOURce:VOLTage:POWer:DELay %G' % (num)))
+    
+    def getPowerDelay(self):
+        """
+        Gets the power delay to num in seconds. 
+        """
+        return (self.write(':SOURce:VOLTage:POWer:DELay?'))
+
+    def setVoltagePowerAmplitude(self, num):
+        """
+        This command sets fixed voltage power value at voltage control sweep.
+        num must be between 0 and 16
+        """
+        return self.write(':SOURce:VOLTage:POWer:LEVel:AMPLitude %G' % (num))
+
+    def getVoltagePowerAmplitude(self):
+        """
+        This command gets fixed voltage power value at voltage control sweep.
+        """
+        return self.write(':SOURce:VOLTage:POWer:LEVel:AMPLitude?')
+
     def close(self):
         """
         Disconnect.
@@ -28,4 +53,4 @@ class plugE5052B:
         self.instrument.close()
 
     def write(self, command):
-        return self.write(command)
+        return self.instrument.write(command)
