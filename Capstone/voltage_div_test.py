@@ -59,6 +59,15 @@ def save_csv(timestamp, data, prefix='test_voltage', folder_path=''):
 
 
 def voltage_divider_test():
+    """
+    Voltage divider test
+    """
+
+    DUT = input("Please enter DUT serial number: ")
+
+    tester = input ("Please enter your name: ")
+
+
     #first get resistor value 
     R_L = input("Please enter resistor value in ohms")
 
