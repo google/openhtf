@@ -19,6 +19,30 @@ class plugN1914A:
             print('Connected to\n', idn)
         except:
             raise ("Couldn't connect to instrument " + address)
+
+    def getPowerRelativeAC(self):
+        """
+        Gets the relative AC power
+        """
+        return self.instrument.query_ascii_values(':READ:SCALar:POWer:AC:RELative?')
+
+    def calculateGainMagnitude(self, mode="DEF"):
+        """
+        Calculates the max gain
+        mode is "MIN" for minimum or "MAX" for maximum
+        """
+        if(mode is "MAX"):
+            return self.write(':CALCulate:GAIN:MAGNitude %s' % ('MAXimum'))
+
+        elif(mode is "MIN"):
+            return self.write(':CALCulate:GAIN:MAGNitude %s' % ('MINimum'))
+        
+        elif(mode is "DEF"):
+            return self.write(':CALCulate:GAIN:MAGNitude %s' % ('DEFault'))
+        
+        else:
+            print("Invalid mode " + mode + " given, using default mode.")
+            return self.write(':CALCulate:GAIN:MAGNitude %s' % ('DEFault'))
     
     def close(self):
         """
@@ -28,4 +52,4 @@ class plugN1914A:
         self.instrument.close()
 
     def write(self, command):
-        return self.write(command)
+        return self.instrument.write(command)
