@@ -192,6 +192,7 @@ setup(
     packages=find_packages(),
     package_data={
         'openhtf': [
+            'py.typed',
             'output/proto/*.proto', 'output/web_gui/dist/*.*',
             'output/web_gui/dist/css/*', 'output/web_gui/dist/js/*',
             'output/web_gui/dist/img/*', 'output/web_gui/*.*'
@@ -222,4 +223,5 @@ setup(
         'pytest>=2.9.2',
         'pytest-cov>=2.2.1',
     ],
+    zip_safe=False,
 )
