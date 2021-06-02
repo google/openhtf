@@ -33,6 +33,13 @@ const measurementStatusMap = {
   'PARTIALLY_SET': MeasurementStatus.unset,
 };
 
+const phaseRecordOutcomeMap = {
+  'PASS': PhaseStatus.pass,
+  'FAIL': PhaseStatus.fail,
+  'SKIP': PhaseStatus.skip,
+  'ERROR': PhaseStatus.error,
+};
+
 export interface RawTestState {
   plugs: RawPlugsInfo;
   running_phase_state: RawPhase|null;
@@ -78,6 +85,7 @@ export interface RawPhase {
   name: string;
   result?: {};  // Not present on running phase state.
   start_time_millis: number;
+  outcome: string;
 }
 
 export interface RawAttachment {
@@ -201,13 +209,7 @@ function makePhase(phase: RawPhase, running: boolean) {
   if (running) {
     status = PhaseStatus.running;
   } else {
-    status = PhaseStatus.pass;
-    for (const measurement of measurements) {
-      if (measurement.status !== MeasurementStatus.pass) {
-        status = PhaseStatus.fail;
-        break;
-      }
-    }
+    status = phaseRecordOutcomeMap[phase.outcome];
   }
   return new Phase({
     attachments,
