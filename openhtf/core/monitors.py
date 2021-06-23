@@ -155,7 +155,7 @@ def monitors(
 
     @openhtf.PhaseOptions(requires_state=True)
     @plugs.plug(update_kwargs=False, **monitor_plugs)
-    @measurements.measures(
+    @openhtf.measures(
         measurements.Measurement(measurement_name).with_units(
             units).with_dimensions(uom.MILLISECOND))
     @functools.wraps(phase_desc.func)

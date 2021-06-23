@@ -74,7 +74,7 @@ def _linesep_for_file(file):
   return '\n'
 
 
-def banner_print(msg, color='', width=60, file=sys.stdout, logger=_LOG):
+def banner_print(msg, color='', width=80, file=sys.stdout, logger=_LOG):
   """Print the message as a banner with a fixed width.
 
   Also logs the message (un-bannered) to the given logger at the debug level.

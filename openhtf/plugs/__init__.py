@@ -166,7 +166,7 @@ class PlugManager(object):
   """
 
   def __init__(self,
-               plug_types: Set[Type[base_plugs.BasePlug]] = None,
+               plug_types: Optional[Set[Type[base_plugs.BasePlug]]] = None,
                record_logger: Optional[logging.Logger] = None):
     self._plug_types = plug_types or set()
     for plug_type in self._plug_types:

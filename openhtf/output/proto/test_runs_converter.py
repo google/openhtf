@@ -92,7 +92,9 @@ def _populate_header(record, testrun):
     testrun.test_info.description = record.metadata['test_description']
   if 'test_version' in record.metadata:
     testrun.test_info.version_string = record.metadata['test_version']
-  testrun.test_status = OUTCOME_MAP[record.outcome]
+  testrun.test_status = (
+      test_runs_pb2.MARGINAL_PASS
+      if record.marginal else OUTCOME_MAP[record.outcome])
   testrun.start_time_millis = record.start_time_millis
   testrun.end_time_millis = record.end_time_millis
   if 'run_name' in record.metadata:
@@ -214,7 +216,9 @@ def _extract_parameters(record, testrun, used_parameter_names):
       if measurement.units and measurement.units.code in UOM_CODE_MAP:
         testrun_param.unit_code = UOM_CODE_MAP[measurement.units.code]
 
-      if measurement.outcome == measurements.Outcome.PASS:
+      if measurement.marginal:
+        testrun_param.status = test_runs_pb2.MARGINAL_PASS
+      elif measurement.outcome == measurements.Outcome.PASS:
         testrun_param.status = test_runs_pb2.PASS
       elif (not measurement.measured_value
             or not measurement.measured_value.is_value_set):

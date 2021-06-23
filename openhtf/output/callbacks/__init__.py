@@ -83,7 +83,7 @@ class OutputToFile(object):
     self.output_file = None  # type: Optional[BinaryIO]
     if (isinstance(filename_pattern_or_file, six.string_types) or
         callable(filename_pattern_or_file)):
-      self.filename_pattern = filename_pattern_or_file
+      self.filename_pattern = filename_pattern_or_file  # pytype: disable=annotation-type-mismatch
     else:
       self.output_file = filename_pattern_or_file
 

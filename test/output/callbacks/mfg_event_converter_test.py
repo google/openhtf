@@ -39,7 +39,7 @@ class MfgEventConverterTest(unittest.TestCase):
         end_time_millis=1,
         station_id='localhost',
         outcome=test_record.Outcome.PASS,
-    )
+        marginal=False)
     record.outcome = test_record.Outcome.PASS
     record.metadata = {
         'assembly_events': [assembly_event_pb2.AssemblyEvent()] * 2,
@@ -54,6 +54,7 @@ class MfgEventConverterTest(unittest.TestCase):
             descriptor_id=idx,
             codeinfo=test_record.CodeInfo.uncaptured(),
             result=None,
+            marginal=False,
             attachments={},
             start_time_millis=1,
             end_time_millis=1) for idx in range(1, 5)
@@ -131,6 +132,7 @@ class MfgEventConverterTest(unittest.TestCase):
         start_time_millis=100,
         end_time_millis=500,
         outcome=test_record.Outcome.PASS,
+        marginal=True,
         outcome_details=[outcome_details],
         metadata={
             'test_name': 'mock-test-name',
@@ -152,7 +154,7 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertEqual(mfg_event.test_name, 'mock-test-name')
     self.assertEqual(mfg_event.test_version, '1.0')
     self.assertEqual(mfg_event.test_description, 'mock-test-description')
-    self.assertEqual(mfg_event.test_status, test_runs_pb2.PASS)
+    self.assertEqual(mfg_event.test_status, test_runs_pb2.MARGINAL_PASS)
 
     # Phases.
     self.assertEqual(mfg_event.phases[0].name, 'mock-phase-name')
@@ -186,9 +188,7 @@ class MfgEventConverterTest(unittest.TestCase):
   def test_convert_object_to_json_with_bytes(self):
     input_object = {'foo': b'bar'}
     output_json = mfg_event_converter._convert_object_to_json(input_object)
-    expected_json = (b'{\n'
-                     b'  "foo": "bar"\n'
-                     b'}')
+    expected_json = (b'{\n' b'  "foo": "bar"\n' b'}')
     self.assertEqual(output_json, expected_json)
 
   def test_attach_config(self):
@@ -218,7 +218,11 @@ class MfgEventConverterTest(unittest.TestCase):
         self._create_and_set_measurement(
             'in-range',
             5).doc('mock measurement in range docstring').with_units(
-                units.Unit('radian')).in_range(1, 10))
+                units.Unit('radian')).in_range(
+                    minimum=1,
+                    maximum=10,
+                    marginal_minimum=3,
+                    marginal_maximum=7))
 
     measurement_within_percent = (
         self._create_and_set_measurement(
@@ -285,8 +289,14 @@ class MfgEventConverterTest(unittest.TestCase):
     # Measurement validators.
     self.assertEqual(mock_measurement_in_range.numeric_minimum, 1.0)
     self.assertEqual(mock_measurement_in_range.numeric_maximum, 10.0)
+    self.assertEqual(mock_measurement_in_range.numeric_marginal_minimum, 3.0)
+    self.assertEqual(mock_measurement_in_range.numeric_marginal_maximum, 7.0)
     self.assertEqual(mock_measurement_within_percent.numeric_minimum, 8.0)
     self.assertEqual(mock_measurement_within_percent.numeric_maximum, 12.0)
+    self.assertEqual(mock_measurement_within_percent.numeric_marginal_minimum,
+                     0)
+    self.assertEqual(mock_measurement_within_percent.numeric_marginal_maximum,
+                     0)
 
   def testCopyAttachmentsFromPhase(self):
     attachment = test_record.Attachment(b'mock-data', 'text/plain')

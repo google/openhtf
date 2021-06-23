@@ -14,6 +14,7 @@ import logging
 import numbers
 import os
 import sys
+from typing import Tuple
 
 from openhtf.core import measurements
 from openhtf.core import test_record as htf_test_record
@@ -23,11 +24,8 @@ from openhtf.output.proto import test_runs_pb2
 from openhtf.util import data as htf_data
 from openhtf.util import units
 from openhtf.util import validators
-
-
 from past.builtins import unicode
 import six
-
 
 TEST_RECORD_ATTACHMENT_NAME = 'OpenHTF_record.json'
 
@@ -37,6 +35,7 @@ UNITS_BY_CODE = {}
 # Map test run Status (proto) name to measurement Outcome (python) enum's and
 # the reverse.  Note: there is data lost in converting an UNSET/PARTIALLY_SET to
 # an ERROR so we can't completely reverse the transformation.
+
 MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME = {
     measurements.Outcome.PASS: 'PASS',
     measurements.Outcome.FAIL: 'FAIL',
@@ -45,9 +44,23 @@ MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME = {
 }
 TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME = {
     'PASS': measurements.Outcome.PASS,
+    'MARGINAL_PASS': measurements.Outcome.PASS,
     'FAIL': measurements.Outcome.FAIL,
     'ERROR': measurements.Outcome.UNSET
 }
+
+
+def _measurement_outcome_to_test_run_status_name(outcome: measurements.Outcome,
+                                                 marginal: bool) -> str:
+  """Returns the test run status name given the outcome and marginal args."""
+  return ('MARGINAL_PASS'
+          if marginal else MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[outcome])
+
+
+def _test_run_status_name_to_measurement_outcome_and_marginal(
+    name: str) -> Tuple[measurements.Outcome, bool]:
+  """Returns the outcome and marginal args given the test run status name."""
+  return TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME[name], 'MARGINAL' in name
 
 
 def _lazy_load_units_by_code():
@@ -103,7 +116,8 @@ def mfg_event_from_test_record(record):
   return mfg_event
 
 
-def _populate_basic_data(mfg_event, record):
+def _populate_basic_data(mfg_event: mfg_event_pb2.MfgEvent,
+                         record: htf_test_record.TestRecord) -> None:
   """Copies data from the OpenHTF TestRecord to the MfgEvent proto."""
   # TODO(openhtf-team):
   #   * Missing in proto: set run name from metadata.
@@ -117,10 +131,12 @@ def _populate_basic_data(mfg_event, record):
   mfg_event.end_time_ms = record.end_time_millis
   mfg_event.tester_name = record.station_id
   mfg_event.test_name = record.metadata.get('test_name') or record.station_id
-  mfg_event.test_status = test_runs_converter.OUTCOME_MAP[record.outcome]
   mfg_event.operator_name = record.metadata.get('operator_name', '')
   mfg_event.test_version = str(record.metadata.get('test_version', ''))
   mfg_event.test_description = record.metadata.get('test_description', '')
+  mfg_event.test_status = (
+      test_runs_pb2.MARGINAL_PASS
+      if record.marginal else test_runs_converter.OUTCOME_MAP[record.outcome])
 
   # Populate part_tags.
   mfg_event.part_tags.extend(record.metadata.get('part_tags', []))
@@ -284,9 +300,11 @@ def multidim_measurement_to_attachment(name, measurement):
     })
   # Refer to the module docstring for the expected schema.
   dimensioned_measured_value = measurement.measured_value
-  value = (sorted(dimensioned_measured_value.value, key=lambda x: x[0])
-           if dimensioned_measured_value.is_value_set else None)
-  outcome_str = MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[measurement.outcome]
+  value = (
+      sorted(dimensioned_measured_value.value, key=lambda x: x[0])
+      if dimensioned_measured_value.is_value_set else None)
+  outcome_str = _measurement_outcome_to_test_run_status_name(
+      measurement.outcome, measurement.marginal)
   data = _convert_object_to_json({
       'outcome': outcome_str,
       'name': name,
@@ -333,11 +351,11 @@ class PhaseCopier(object):
       for name, measurement in sorted(phase.measurements.items()):
         # Multi-dim measurements should already have been removed.
         assert measurement.dimensions is None
-        self._copy_unidimensional_measurement(
-            phase, name, measurement, mfg_event)
+        self._copy_unidimensional_measurement(phase, name, measurement,
+                                              mfg_event)
 
-  def _copy_unidimensional_measurement(
-      self, phase, name, measurement, mfg_event):
+  def _copy_unidimensional_measurement(self, phase, name, measurement,
+                                       mfg_event):
     """Copy uni-dimensional measurements to the MfgEvent."""
     mfg_measurement = mfg_event.measurement.add()
 
@@ -361,8 +379,8 @@ class PhaseCopier(object):
 
     # Copy measurement value.
     measured_value = measurement.measured_value
-    status_str = MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[
-        measurement.outcome]
+    status_str = _measurement_outcome_to_test_run_status_name(
+        measurement.outcome, measurement.marginal)
     mfg_measurement.status = test_runs_pb2.Status.Value(status_str)
     if not measured_value.is_value_set:
       return
@@ -388,6 +406,12 @@ class PhaseCopier(object):
           mfg_measurement.numeric_minimum = float(validator.minimum)
         if validator.maximum is not None:
           mfg_measurement.numeric_maximum = float(validator.maximum)
+        if validator.marginal_minimum is not None:
+          mfg_measurement.numeric_marginal_minimum = float(
+              validator.marginal_minimum)
+        if validator.marginal_maximum is not None:
+          mfg_measurement.numeric_marginal_maximum = float(
+              validator.marginal_maximum)
       elif isinstance(validator, validators.RegexMatcher):
         mfg_measurement.expected_text = validator.regex
       else:
@@ -430,7 +454,7 @@ def attachment_to_multidim_measurement(attachment, name=None):
   Args:
     attachment: an `openhtf.test_record.Attachment` from a multi-dim.
     name: an optional name for the measurement.  If not provided will use the
-     name included in the attachment.
+      name included in the attachment.
 
   Returns:
     An multi-dim `openhtf.Measurement`.
@@ -453,8 +477,13 @@ def attachment_to_multidim_measurement(attachment, name=None):
       attachment_outcome_str = None
 
   # Convert test status outcome str to measurement outcome
-  outcome = TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME.get(
-      attachment_outcome_str)
+  if attachment_outcome_str:
+    outcome, marginal = (
+        _test_run_status_name_to_measurement_outcome_and_marginal(
+            attachment_outcome_str))
+  else:
+    outcome = None
+    marginal = False
 
   # convert dimensions into htf.Dimensions
   _lazy_load_units_by_code()
@@ -476,9 +505,7 @@ def attachment_to_multidim_measurement(attachment, name=None):
 
   # created dimensioned_measured_value and populate with values.
   measured_value = measurements.DimensionedMeasuredValue(
-      name=name,
-      num_dimensions=len(dimensions)
-  )
+      name=name, num_dimensions=len(dimensions))
   for row in attachment_values:
     coordinates = tuple(row[:-1])
     val = row[-1]
@@ -489,6 +516,6 @@ def attachment_to_multidim_measurement(attachment, name=None):
       units=units_,
       dimensions=tuple(dimensions),
       measured_value=measured_value,
-      outcome=outcome
-  )
+      outcome=outcome,
+      marginal=marginal)
   return measurement

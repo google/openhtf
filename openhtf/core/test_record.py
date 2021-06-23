@@ -178,6 +178,7 @@ class TestRecord(object):
       type=List['diagnoses_lib.BaseTestDiagnoser'], factory=list)
   diagnoses = attr.ib(type=List['diagnoses_lib.Diagnosis'], factory=list)
   log_records = attr.ib(type=List[logs.LogRecord], factory=list)
+  marginal = attr.ib(type=Optional[bool], default=None)
 
   # Cache fields to reduce repeated base type conversions.
   _cached_record = attr.ib(type=Dict[Text, Any], factory=dict)
@@ -249,6 +250,7 @@ class TestRecord(object):
         'end_time_millis': self.end_time_millis,
         'outcome': data.convert_to_base_types(self.outcome),
         'outcome_details': data.convert_to_base_types(self.outcome_details),
+        'marginal': self.marginal,
         'metadata': metadata,
         'phases': self._cached_phases,
         'subtests': self._cached_subtests,
@@ -366,6 +368,7 @@ class PhaseRecord(object):
   result = attr.ib(
       type=Optional['phase_executor.PhaseExecutionOutcome'], default=None)
   outcome = attr.ib(type=Optional[PhaseOutcome], default=None)
+  marginal = attr.ib(type=Optional[bool], default=None)
 
   @classmethod
   def from_descriptor(
@@ -411,6 +414,7 @@ class SubtestRecord(object):
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)
   outcome = attr.ib(type=Optional[SubtestOutcome], default=None)
+  marginal = attr.ib(type=Optional[bool], default=None)
 
   @property
   def is_fail(self) -> bool:
