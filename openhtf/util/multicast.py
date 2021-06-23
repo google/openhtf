@@ -23,6 +23,8 @@ import socket
 import struct
 import sys
 import threading
+import time
+
 from six.moves import queue
 
 _LOG = logging.getLogger(__name__)
@@ -36,6 +38,7 @@ DEFAULT_PORT = 10000
 DEFAULT_TTL = 1
 LOCALHOST_ADDRESS = 0x7f000001  # 127.0.0.1
 MAX_MESSAGE_BYTES = 1024  # Maximum allowable message length in bytes.
+_SOCKOPT_RETRY_SECONDS = 10  # Short delay before retrying socket registration.
 
 
 class MulticastListener(threading.Thread):
@@ -82,6 +85,24 @@ class MulticastListener(threading.Thread):
       pass
     self.join(timeout_s)
 
+  def _add_multicast_membership(self, interface_ip: int) -> bool:
+    """Returns True if the interface is successfully added for multicast."""
+    try:
+      # IP_ADD_MEMBERSHIP takes the 8-byte group address followed by the
+      # IP assigned to the interface on which to listen.
+      self._sock.setsockopt(
+          socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+          struct.pack('!4sL', socket.inet_aton(self.address), interface_ip))  # pylint: disable=g-socket-inet-aton
+    except OSError:
+      multicast_type = ('local'
+                        if interface_ip == LOCALHOST_ADDRESS else 'default')
+      _LOG.debug(
+          'Failed setsockopt for %s multicast. Will retry. Traceback:',
+          multicast_type,
+          exc_info=True)
+      return False
+    return True
+
   def run(self):
     """Listen for pings until stopped."""
     self._live = True
@@ -91,12 +112,10 @@ class MulticastListener(threading.Thread):
     # The localhost address is used to receive messages sent in "local_only"
     # mode and the default address is used to receive all other messages.
     for interface_ip in (socket.INADDR_ANY, LOCALHOST_ADDRESS):
-      self._sock.setsockopt(
-          socket.IPPROTO_IP,
-          socket.IP_ADD_MEMBERSHIP,
-          # IP_ADD_MEMBERSHIP takes the 8-byte group address followed by the IP
-          # assigned to the interface on which to listen.
-          struct.pack('!4sL', socket.inet_aton(self.address), interface_ip))  # pylint: disable=g-socket-inet-aton
+      while not self._add_multicast_membership(interface_ip):
+        if not self._live:
+          return
+        time.sleep(_SOCKOPT_RETRY_SECONDS)
 
     if sys.platform == 'darwin':
       self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT,
@@ -162,24 +181,23 @@ def send(query,
   recv_queue = queue.Queue()
 
   def _handle_responses():
+    """Collects responses in the receive queue as soon as they are received."""
     while True:
       try:
         data, address = sock.recvfrom(MAX_MESSAGE_BYTES)
-        data = data.decode('utf-8')
       except socket.timeout:
-        recv_queue.put(None)
-        break
+        break  # Give up, all stations have likely responded.
       else:
+        data = data.decode('utf-8')
         _LOG.debug('Multicast response to query "%s": %s:%s', query, address[0],
                    data)
-        recv_queue.put((address[0], str(data)))
+        recv_queue.put((address[0], data))
 
-  # Yield responses as they come in, giving up once timeout expires.
   response_thread = threading.Thread(target=_handle_responses)
   response_thread.start()
-  while response_thread.is_alive():
-    recv_tuple = recv_queue.get()
-    if not recv_tuple:
-      break
+  while not recv_queue.empty() or response_thread.is_alive():
+    try:
+      recv_tuple = recv_queue.get(block=True, timeout=timeout_s)
+    except queue.Empty:
+      continue  # Retry until the thread is no longer alive.
     yield recv_tuple
-  response_thread.join()

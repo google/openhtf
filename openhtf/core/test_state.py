@@ -408,13 +408,19 @@ class TestState(util.SubscribableStateMixin):
             'Finishing test execution early due to an exception raised during '
             'phase execution; outcome ERROR.')
         # Enable CLI printing of the full traceback with the -v flag.
-        self.state_logger.critical(
-            'Traceback:%s%s%s%s',
-            os.linesep,
-            phase_execution_outcome.phase_result.get_traceback_string(),
-            os.linesep,
-            description,
-        )
+        if isinstance(result, phase_executor.ExceptionInfo):
+          self.state_logger.critical(
+              'Traceback:%s%s%s%s',
+              os.linesep,
+              phase_execution_outcome.phase_result.get_traceback_string(),
+              os.linesep,
+              description,
+          )
+        else:
+          self.state_logger.critical(
+              'Description:%s',
+              description,
+          )
         self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
       self.state_logger.error('Finishing test execution early due to '
@@ -461,6 +467,7 @@ class TestState(util.SubscribableStateMixin):
       self._finalize(test_record.Outcome.FAIL)
     else:
       # Otherwise, the test run was successful.
+      self.test_record.marginal = any(phase.marginal for phase in phases)
       self._finalize(test_record.Outcome.PASS)
 
     self.state_logger.debug(
@@ -535,6 +542,7 @@ class PhaseState(object):
       place to save allocation time.
     attachments: Convenience accessor for phase_record.attachments.
     result: Convenience getter/setter for phase_record.result.
+    marginal: Convenience getter/setter for phase_record.marginal.
   """
 
   name = attr.ib(type=Text)
@@ -626,6 +634,14 @@ class PhaseState(object):
   def set_subtest_name(self, subtest_name: Text) -> None:
     self.phase_record.subtest_name = subtest_name
     self._cached['subtest_name'] = subtest_name
+
+  @property
+  def marginal(self) -> Optional[phase_executor.PhaseExecutionOutcome]:
+    return self.phase_record.marginal
+
+  @marginal.setter
+  def marginal(self, marginal: bool):
+    self.phase_record.marginal = marginal
 
   @property
   def attachments(self) -> Dict[Text, test_record.Attachment]:
@@ -730,27 +746,35 @@ class PhaseState(object):
     return all(meas.outcome in allowed_outcomes
                for meas in self.phase_record.measurements.values())
 
+  def _measurements_marginal(self) -> bool:
+    return any(
+        meas.marginal for meas in self.phase_record.measurements.values())
+
   def _set_prediagnosis_phase_outcome(self) -> None:
     """Set the phase outcome before running diagnosers."""
     result = self.result
     if result is None or result.is_terminal or self.hit_repeat_limit:
-      self.logger.debug('Phase outcome is ERROR.')
+      self.logger.debug('Phase outcome of %s is ERROR.', self.name)
       outcome = test_record.PhaseOutcome.ERROR
     elif result.is_repeat or result.is_skip:
-      self.logger.debug('Phase outcome is SKIP.')
+      self.logger.debug('Phase outcome of %s is SKIP.', self.name)
       outcome = test_record.PhaseOutcome.SKIP
     elif result.is_fail_subtest:
-      self.logger.debug('Phase outcome is FAIL due to subtest failure.')
+      self.logger.debug('Phase outcome of %s is FAIL due to subtest failure.',
+                        self.name)
       outcome = test_record.PhaseOutcome.FAIL
     elif result.is_fail_and_continue:
-      self.logger.debug('Phase outcome is FAIL due to phase result.')
+      self.logger.debug('Phase outcome of %s is FAIL due to phase result.',
+                        self.name)
       outcome = test_record.PhaseOutcome.FAIL
     elif not self._measurements_pass():
-      self.logger.debug('Phase outcome is FAIL due to measurement outcome.')
+      self.logger.debug(
+          'Phase outcome of %s is FAIL due to measurement outcome.', self.name)
       outcome = test_record.PhaseOutcome.FAIL
     else:
-      self.logger.debug('Phase outcome is PASS.')
+      self.logger.debug('Phase outcome of %s is PASS.', self.name)
       outcome = test_record.PhaseOutcome.PASS
+      self.phase_record.marginal = self._measurements_marginal()
     self.phase_record.outcome = outcome
 
   def _set_postdiagnosis_phase_outcome(self) -> None:
@@ -759,13 +783,15 @@ class PhaseState(object):
       return
     # Check for errors during diagnoser execution.
     if self.result is None or self.result.is_terminal:
-      self.logger.debug('Phase outcome is ERROR due to diagnoses.')
+      self.logger.debug('Phase outcome of %s is ERROR due to diagnoses.',
+                        self.name)
       self.phase_record.outcome = test_record.PhaseOutcome.ERROR
       return
     if self.phase_record.outcome != test_record.PhaseOutcome.PASS:
       return
     if self.phase_record.failure_diagnosis_results:
-      self.logger.debug('Phase outcome is FAIL due to diagnoses.')
+      self.logger.debug('Phase outcome of %s is FAIL due to diagnoses.',
+                        self.name)
       self.phase_record.outcome = test_record.PhaseOutcome.FAIL
 
   def _execute_phase_diagnoser(

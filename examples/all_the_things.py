@@ -112,6 +112,23 @@ def measures_with_args(test, minimum, maximum):
   test.measurements.replaced_min_max = 1
 
 
+@htf.measures(
+    htf.Measurement('replaced_marginal_min_only').in_range(
+        0, 10, '{marginal_minimum}', 8, type=int),
+    htf.Measurement('replaced_marginal_max_only').in_range(
+        0, 10, 2, '{marginal_maximum}', type=int),
+    htf.Measurement('replaced_marginal_min_max').in_range(
+        0, 10, '{marginal_minimum}', '{marginal_maximum}', type=int),
+)
+def measures_with_marginal_args(test, marginal_minimum, marginal_maximum):
+  """Phase with measurement with marginal arguments."""
+  del marginal_minimum  # Unused.
+  del marginal_maximum  # Unused.
+  test.measurements.replaced_marginal_min_only = 3
+  test.measurements.replaced_marginal_max_only = 3
+  test.measurements.replaced_marginal_min_max = 3
+
+
 def attachments(test):
   test.attach('test_attachment',
               'This is test attachment data.'.encode('utf-8'))
@@ -156,6 +173,8 @@ def main():
           attachments,
           skip_phase,
           measures_with_args.with_args(minimum=1, maximum=4),
+          measures_with_marginal_args.with_args(
+              marginal_minimum=4, marginal_maximum=6),
           analysis,
       ),
       # Some metadata fields, these in particular are used by mfg-inspector,

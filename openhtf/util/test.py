@@ -14,22 +14,20 @@
 """Unit test helpers for OpenHTF tests and phases.
 
 This module provides some utility for unit testing OpenHTF test phases and
-whole tests.  Primarily, otherwise difficult to mock mechanisms are mocked
-for you, and there are a handful of convenience assertions that may be used
-to write more readable (and less fragile against output format change) tests.
+whole tests.  Primarily, there are:
+1. Mechanisms to aid in running phases and tests.
+2. Convenience methods to mock plugs.
+3. Assertions to validate phase/test output.
 
 The primary class in this module is the TestCase class, which is a subclass
 of unittest.TestCase that provides some extra utility.  Use it the same way
 you would use unittest.TestCase.  See below for examples.
 
-OpenHTF plugs are somewhat difficult to mock (because references are grabbed
-at import time, you end up having to poke at framework internals to do this),
-so there's a utility decorator for doing just this, @patch_plugs.  See below
-for examples of how to use it.  Note that plugs are initialized once and torn
-down once for a single method decorated with @patch_plugs (regardless of how
-many phases or Test objects are yielded).  If you need new plug instances,
-separate your test into separate decorated test* methods in your test case
-(this is good practice anyway).
+Since the test executor manages the plugs, TestCase.plugs and
+TestCase.auto_mock_plugs maybe be used to set or access plug instances.  Also
+available is a test method decorator, @patch_plugs, but it is less flexible and
+should be avoided in new code. In both cases, limit yourself to one phase/test
+execution per test method to avoid surprises with plug lifetimes.
 
 Lastly, while not implemented here, it's common to need to temporarily alter
 configuration values for individual tests.  This can be accomplished with the
@@ -43,6 +41,20 @@ A few isolated examples, also see test/util/test_test.py for some usage:
   import mytest  # Contains phases under test.
 
   class PhasesTest(test.TestCase):
+
+    # Using TestCase.execute_phase_or_test, which allows more flexibility.
+    def test_using_execute_phase_or_test(self):
+      self.auto_mock_plugs(PlugA)
+      # Use below stub object instead of PlugB.
+      self.plugs[PlugB] = PlugBStub()
+      self.plugs[PlugA].read_something.return_value = 1234
+
+      # Run your OpenHTF phase/test, returning phase record. Do only one of
+      # these per test method to avoid unexpected behavior with plugs.
+      phase_record = self.execute_phase_or_test(mytest.first_phase)
+      self.plugs[PlugA].read_something.assert_called_once_with()
+      # assert* methods for checking phase/test records are defined in TestCase.
+      self.assertPhaseContinue(phase_record)
 
     # Decorate with conf.save_and_restore to temporarily set conf values.
     # NOTE: This must come before yields_phases.
@@ -75,8 +87,10 @@ A few isolated examples, also see test/util/test_test.py for some usage:
       # You can apply any assertions on the mocked plug here.
       mock_my_plug.measure_voltage.assert_called_once_with()
 
-      # You can yield multiple phases/Test instances, but it's generally
-      # cleaner and more readable to limit to a single yield per test case.
+      # If you want to patch the plugs yourself, use mock.patch(.object) on the
+      # plug class; plug instances are available in the `plugs` attribute once
+      # the phase/test has been run:
+      self.plugs[my_plug.MyPlug].measure_voltage.assert_called_once_with()
 
     @test.patch_plugs(mock_my_plug='my_plug.MyPlug')
     def test_multiple(self, mock_my_plug):
@@ -115,13 +129,23 @@ import inspect
 import logging
 import sys
 import types
-from typing import Any, Callable, Dict, Iterable, List, Text, Tuple, Type
+import typing
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Text,
+    Tuple,
+    Type,
+)
 import unittest
 
 import attr
 import mock
 
-import openhtf
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import base_plugs
@@ -136,10 +160,16 @@ from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
 from openhtf.util import logs
+from openhtf.util import text
 import six
 from six.moves import collections_abc
 
 logs.CLI_LOGGING_VERBOSITY = 2
+
+
+# Maximum number of measurements per phase to be printed to the assertion
+# error message for test failures.
+_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE = 10
 
 
 class InvalidTestError(Exception):
@@ -242,7 +272,7 @@ class PhaseNodeComparable(TestNode):
             self.kwargs == other.kwargs)
 
 
-class FakeTestApi(openhtf.TestApi):
+class FakeTestApi(test_descriptor.TestApi):
   """A fake TestApi used to test non-phase helper functions."""
 
   def __init__(self):
@@ -325,19 +355,23 @@ class PhaseOrTestIterator(collections_abc.Iterator):
         plug_cls for plug_cls in plug_types if plug_cls not in self.mock_plugs)
     for plug_type, plug_value in six.iteritems(self.mock_plugs):
       self.plug_manager.update_plug(plug_type, plug_value)
+    for plug_type in plug_types:
+      self.test_case.plugs[plug_type] = (
+          self.plug_manager.get_plug_by_class_path(
+              self.plug_manager.get_plug_name(plug_type)))
 
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
-    diagnoses_lib.check_for_duplicate_results(iter([phase_desc]), [])
+    phase_descriptor.check_for_duplicate_results(iter([phase_desc]), [])
     logs.configure_logging()
     self._initialize_plugs(phase_plug.cls for phase_plug in phase_desc.plugs)
 
     # Cobble together a fake TestState to pass to the test phase.
     test_options = test_descriptor.TestOptions()
-    with mock.patch(
-        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+    with mock.patch.object(
+        plugs, 'PlugManager', new=lambda _, __: self.plug_manager):
       test_state_ = test_state.TestState(
-          openhtf.TestDescriptor(
+          test_descriptor.TestDescriptor(
               phase_collections.PhaseSequence((phase_desc,)),
               phase_desc.code_info, {}), 'Unittest:StubTest:UID', test_options)
       test_state_.mark_test_started()
@@ -373,9 +407,6 @@ class PhaseOrTestIterator(collections_abc.Iterator):
 
   def _handle_test(self, test):
     self._initialize_plugs(test.descriptor.plug_types)
-    # Make sure we inject our mock plug instances.
-    for plug_type, plug_value in six.iteritems(self.mock_plugs):
-      self.plug_manager.update_plug(plug_type, plug_value)
 
     # We'll need a place to stash the resulting TestRecord.
     record_saver = util.NonLocalResult()
@@ -383,8 +414,8 @@ class PhaseOrTestIterator(collections_abc.Iterator):
         lambda record: setattr(record_saver, 'result', record))
 
     # Mock the PlugManager to use ours instead, and execute the test.
-    with mock.patch(
-        'openhtf.plugs.PlugManager', new=lambda _, __: self.plug_manager):
+    with mock.patch.object(
+        plugs, 'PlugManager', new=lambda _, __: self.plug_manager):
       test.execute(test_start=self.test_case.test_start_function)
 
     test_record_ = record_saver.result
@@ -400,7 +431,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
 
   def __next__(self):
     phase_or_test = self.iterator.send(self.last_result)
-    if isinstance(phase_or_test, openhtf.Test):
+    if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, collections_abc.Callable):
       raise InvalidTestError(
@@ -413,7 +444,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
 
   def next(self):
     phase_or_test = self.iterator.send(self.last_result)
-    if isinstance(phase_or_test, openhtf.Test):
+    if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, collections_abc.Callable):
       raise InvalidTestError(
@@ -538,8 +569,10 @@ def patch_plugs(phase_user_defined_state=None,
           TestCase,
           msg='Must derive from openhtf.util.test.TestCase '
           'to use yields_phases/patch_plugs.')
+      plug_mocks = dict(self.plugs)
+      plug_mocks.update(plug_typemap)
       for phase_or_test, result, failure_message in PhaseOrTestIterator(
-          self, test_func(self, **plug_kwargs), plug_typemap,
+          self, test_func(self, **plug_kwargs), plug_mocks,
           phase_user_defined_state, phase_diagnoses):
         logging.info('Ran %s, result: %s', phase_or_test, result)
         if failure_message:
@@ -608,21 +641,110 @@ class TestCase(unittest.TestCase):
     # When a test is yielded, this function is provided to as the test_start
     # argument to test.execute.
     self.test_start_function = lambda: 'TestDutId'
+    # Dictionary mapping plug class (type, not instance) to plug instance.
+    # Prior to executing a phase or test, plug instances can be added here.
+    # When a OpenHTF phase or test is run in this suite, any instantiated plugs
+    # will be available here.
+    # "Any" hint below needed because pytype doesn't like heterogeneous values.
+    self.plugs = {}  # type: Any
+
+  def auto_mock_plugs(self, *plug_types: Type[plugs.BasePlug]):
+    """Specifies plugs that may be automatically mocked if needed.
+
+    Can be called from setUp, or from inside a test case.
+
+    Plug mocks created by this method will not be used if set directly in the
+    `plug` attribute in this instance. Mocks use autospec and spec_set, and so
+    this method should not be used for plugs where this isn't desired.
+
+    Args:
+      *plug_types: Plug classes for which mocks should be used.
+    """
+    for plug_type in plug_types:
+      if plug_type in self.plugs:
+        logging.info(
+            'Plug "%s" already has mock in self.plugs; skipping '
+            'automatic mock', plug_type.__name__)
+        continue
+      self.plugs[plug_type] = mock.create_autospec(
+          plug_type, spec_set=True, instance=True)
+
+  @typing.overload
+  def execute_phase_or_test(
+      self,
+      phase_or_test: test_descriptor.Test,
+      phase_user_defined_state: None = None,  # Only supported for phases.
+      phase_diagnoses: None = None,  # Only supported for phases.
+  ) -> test_record.TestRecord:
+    ...
+
+  @typing.overload
+  def execute_phase_or_test(
+      self,
+      phase_or_test: phase_descriptor.PhaseT,
+      # Pytype does not correctly support heterogeneous dict values, hence Any.
+      phase_user_defined_state: Optional[Any] = None,
+      phase_diagnoses: Optional[Iterable[diagnoses_lib.Diagnosis]] = None,
+  ) -> test_record.PhaseRecord:
+    ...
+
+  def execute_phase_or_test(self,
+                            phase_or_test,
+                            phase_user_defined_state=None,
+                            phase_diagnoses=None):
+    """Executes the provided Test or Phase, returning corresponding record.
+
+    Args:
+      phase_or_test: The Test or phase to execute.
+      phase_user_defined_state: If specified, a dictionary that will be added to
+        the test_state.user_defined_state when handling phases. This is only
+        supported when executing a phase.
+      phase_diagnoses: If specified, must be a list of Diagnosis instances;
+        these are added to the DiagnosesManager when handling phases.
+
+    Returns:
+      Test or phase record for the execution. See various assert* methods in
+      this class for possible testing.
+    """
+
+    def phase_generator():
+      phase_or_test_record = yield phase_or_test
+      return phase_or_test_record
+
+    for phase_or_test, result, failure_message in PhaseOrTestIterator(
+        self, phase_generator(), self.plugs, phase_user_defined_state,
+        phase_diagnoses):
+      logging.info('Ran %s, result: %s', phase_or_test, result)
+      if failure_message:
+        logging.error('Reported error:\n%s', failure_message)
+    # Pylint cannot determine that the loop above executes for exactly one
+    # iteration, in any path that would lead here.
+    return result  # pylint: disable=undefined-loop-variable
 
   ##### TestRecord Assertions #####
 
   def assertTestPass(self, test_rec):
-    self.assertEqual(test_record.Outcome.PASS, test_rec.outcome)
+    self.assertEqual(
+        test_record.Outcome.PASS,
+        test_rec.outcome,
+        msg='\n\n{}'.format(
+            text.StringFromTestRecord(
+                test_rec,
+                only_failures=True,
+                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE)))
 
   def assertTestFail(self, test_rec):
-    self.assertEqual(test_record.Outcome.FAIL, test_rec.outcome)
+    msg = None
+    if test_rec.outcome == test_record.Outcome.ERROR:
+      msg = text.StringFromOutcomeDetails(test_rec.outcome_details)
+    self.assertEqual(test_record.Outcome.FAIL, test_rec.outcome, msg=msg)
 
   def assertTestAborted(self, test_rec):
     self.assertEqual(test_record.Outcome.ABORTED, test_rec.outcome)
 
   def assertTestError(self, test_rec, exc_type=None):
     self.assertEqual(test_record.Outcome.ERROR, test_rec.outcome)
-    if exc_type:
+    if exc_type is not None:
       self.assertPhaseError(test_rec.phases[-1], exc_type)
 
   def assertTestOutcomeCode(self, test_rec, code):
@@ -634,25 +756,46 @@ class TestCase(unittest.TestCase):
   ##### PhaseRecord Assertions #####
 
   def assertPhaseContinue(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.CONTINUE,
-                  phase_record.result.phase_result)
+    self.assertIs(
+        phase_descriptor.PhaseResult.CONTINUE,
+        phase_record.result.phase_result,
+        msg='\n\n{}'.format(
+            text.StringFromPhaseRecord(
+                phase_record,
+                only_failures=True,
+                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE)))
 
   def assertPhaseFailAndContinue(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.FAIL_AND_CONTINUE,
-                  phase_record.result.phase_result)
+    msg = None
+    if phase_record.result.raised_exception is not None:
+      msg = ('The following exception was raised: '
+             f'{phase_record.result.phase_result}.')
+    self.assertIs(
+        phase_descriptor.PhaseResult.FAIL_AND_CONTINUE,
+        phase_record.result.phase_result,
+        msg=msg)
 
   def assertPhaseFailSubtest(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.FAIL_SUBTEST,
-                  phase_record.result.phase_result)
+    msg = None
+    if phase_record.result.raised_exception is not None:
+      msg = (f'The following exception was raised: '
+             f'{phase_record.result.phase_result}.')
+    self.assertIs(
+        phase_descriptor.PhaseResult.FAIL_SUBTEST,
+        phase_record.result.phase_result,
+        msg=msg)
 
   def assertPhaseRepeat(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.REPEAT, phase_record.result.phase_result)
+    self.assertIs(phase_descriptor.PhaseResult.REPEAT,
+                  phase_record.result.phase_result)
 
   def assertPhaseSkip(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.SKIP, phase_record.result.phase_result)
+    self.assertIs(phase_descriptor.PhaseResult.SKIP,
+                  phase_record.result.phase_result)
 
   def assertPhaseStop(self, phase_record):
-    self.assertIs(openhtf.PhaseResult.STOP, phase_record.result.phase_result)
+    self.assertIs(phase_descriptor.PhaseResult.STOP,
+                  phase_record.result.phase_result)
 
   def assertPhaseError(self, phase_record, exc_type=None):
     self.assertTrue(phase_record.result.raised_exception,
@@ -667,10 +810,21 @@ class TestCase(unittest.TestCase):
     self.assertTrue(phase_record.result.is_timeout)
 
   def assertPhaseOutcomePass(self, phase_record):
-    self.assertIs(test_record.PhaseOutcome.PASS, phase_record.outcome)
+    self.assertIs(
+        test_record.PhaseOutcome.PASS,
+        phase_record.outcome,
+        msg='\n\n{}'.format(
+            text.StringFromPhaseRecord(
+                phase_record,
+                only_failures=True,
+                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE)))
 
   def assertPhaseOutcomeFail(self, phase_record):
-    self.assertIs(test_record.PhaseOutcome.FAIL, phase_record.outcome)
+    msg = None
+    if phase_record.result.raised_exception is not None:
+      msg = ('The following exception was raised: '
+             f'{phase_record.result.phase_result}.')
+    self.assertIs(test_record.PhaseOutcome.FAIL, phase_record.outcome, msg=msg)
 
   def assertPhaseOutcomeSkip(self, phase_record):
     self.assertIs(test_record.PhaseOutcome.SKIP, phase_record.outcome)
@@ -682,7 +836,7 @@ class TestCase(unittest.TestCase):
                                 expected_outcome: test_record.PhaseOutcome,
                                 test_rec: test_record.TestRecord,
                                 *phase_names: Text):
-    errors = []  # type: List[Text]
+    errors: List[Text] = []
     for phase_rec in filter_phases_by_names(test_rec.phases, *phase_names):
       if phase_rec.outcome is not expected_outcome:
         errors.append('Phase "{}" outcome: {}'.format(phase_rec.name,
@@ -740,6 +894,16 @@ class TestCase(unittest.TestCase):
     self.assertMeasured(phase_record, measurement)
     self.assertIs(measurements.Outcome.FAIL,
                   phase_record.measurements[measurement].outcome)
+
+  @_assert_phase_or_test_record
+  def assertMeasurementMarginal(self, phase_record, measurement):
+    self.assertMeasured(phase_record, measurement)
+    self.assertTrue(phase_record.measurements[measurement].marginal)
+
+  @_assert_phase_or_test_record
+  def assertMeasurementNotMarginal(self, phase_record, measurement):
+    self.assertMeasured(phase_record, measurement)
+    self.assertFalse(phase_record.measurements[measurement].marginal)
 
   @_assert_phase_or_test_record
   def assertAttachment(self,

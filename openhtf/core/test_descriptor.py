@@ -65,6 +65,10 @@ conf.declare(
     default_value=False)
 
 
+class AttachmentNotFoundError(Exception):
+  """Raised when test attachment not found."""
+
+
 class UnrecognizedTestUidError(Exception):
   """Raised when information is requested about an unknown Test UID."""
 
@@ -284,7 +288,7 @@ class Test(object):
     Raises:
       InvalidTestStateError: if this test is already being executed.
     """
-    diagnoses_lib.check_for_duplicate_results(
+    phase_descriptor.check_for_duplicate_results(
         self._test_desc.phase_sequence.all_phases(),
         self._test_options.diagnosers)
     phase_collections.check_for_duplicate_subtest_names(
@@ -362,12 +366,17 @@ class Test(object):
               (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
           colors[htf_test_record.Outcome.FAIL] = ''.join(
               (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
-          msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
+          msg_template = (
+              'test: {name}  outcome: {color}{outcome}{marginal}{rst}')
           console_output.banner_print(
               msg_template.format(
                   name=final_state.test_record.metadata['test_name'],
-                  color=colors[final_state.test_record.outcome],
+                  color=(colorama.Fore.YELLOW
+                         if final_state.test_record.marginal else
+                         colors[final_state.test_record.outcome]),
                   outcome=final_state.test_record.outcome.name,
+                  marginal=(' (MARGINAL)'
+                            if final_state.test_record.marginal else ''),
                   rst=colorama.Style.RESET_ALL))
       finally:
         del self.TEST_INSTANCES[self.uid]
@@ -573,6 +582,9 @@ class TestApi(object):
       self, attachment_name: Text) -> Optional[htf_test_record.Attachment]:
     """Get a copy of an attachment from current or previous phases.
 
+    This method will return None when test attachment is not found. Please use
+    get_attachment_strict method if exception is expected to be raised.
+
     Args:
       attachment_name:  str of the attachment name
 
@@ -580,6 +592,25 @@ class TestApi(object):
       A copy of the attachment or None if the attachment cannot be found.
     """
     return self._running_test_state.get_attachment(attachment_name)
+
+  def get_attachment_strict(
+      self, attachment_name: Text) -> htf_test_record.Attachment:
+    """Gets a copy of an attachment or dies when attachment not found.
+
+    Args:
+      attachment_name: An attachment name.
+
+    Returns:
+      A copy of the attachment.
+
+    Raises:
+      AttachmentNotFoundError: Raised when attachment is not found.
+    """
+    attachment = self.get_attachment(attachment_name)
+    if attachment is None:
+      raise AttachmentNotFoundError('Failed to find test attachment: '
+                                    f'{attachment_name}')
+    return attachment
 
   def notify_update(self) -> None:
     """Notify any update events that there was an update."""

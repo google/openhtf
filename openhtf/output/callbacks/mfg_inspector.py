@@ -1,19 +1,23 @@
 """Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com.
 """
 
+import copy
 import json
 import logging
 import threading
 import time
+from typing import Any, Dict
 import zlib
 
 import httplib2
 import oauth2client.client
 
+from openhtf import util
+from openhtf.core import test_record
 from openhtf.output import callbacks
 from openhtf.output.proto import guzzle_pb2
+from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import test_runs_converter
-
 import six
 from six.moves import range
 
@@ -138,6 +142,12 @@ class MfgInspector(object):
   # saving to disk via save_to_disk.
   _default_filename_pattern = None
 
+  # Cached last partial upload of the run's MfgEvent.
+  _cached_partial_proto = None
+
+  # Partial proto fully uploaded.
+  _partial_proto_upload_complete = False
+
   def __init__(self,
                user=None,
                keydata=None,
@@ -199,6 +209,44 @@ class MfgInspector(object):
         self._cached_params[param] = getattr(test_record_obj, param)
     return self._cached_proto
 
+  def _get_blobref_from_cache(self, attachment_name: str):
+    """Gets the existing_blobref if attachment was already uploaded."""
+    if not self._cached_partial_proto:
+      return None
+
+    for attachment in self._cached_partial_proto.attachment:
+      if (attachment.name == attachment_name  and
+          attachment.HasField('existing_blobref')):
+        return attachment.existing_blobref
+
+  def _get_blobref_from_reply(self, reply: Dict[str, Any],
+                              attachment_name: str):
+    """Gets the existing_blobref if attachment was already uploaded."""
+    for item in reply['extendedParameters']:
+      if (item['name'] == attachment_name  and 'blobRef' in item):
+        return item['blobRef']
+
+  def _update_attachments_from_cache(self, proto: mfg_event_pb2.MfgEvent):
+    """Replaces attachments binary values with blobrefs when applicable."""
+    for attachment in proto.attachment:
+      if attachment.HasField('value_binary'):
+        blobref = self._get_blobref_from_cache(attachment.name)
+        if blobref:
+          attachment.ClearField('value')
+          attachment.existing_blobref = blobref
+
+  def _update_attachments_from_reply(self, proto: mfg_event_pb2.MfgEvent):
+    """Replaces attachments binary values with blorrefs when applicable."""
+    reply = json.loads(self.upload_result['lite_test_run'])
+    for attachment in proto.attachment:
+      if attachment.HasField('value_binary'):
+        literun_blobref = self._get_blobref_from_reply(reply, attachment.name)
+        if literun_blobref:
+          attachment.ClearField('value')
+          attachment.existing_blobref.blob_id = str.encode(
+              literun_blobref['BlobID'])
+          attachment.existing_blobref.size = int(literun_blobref['Size'])
+
   def save_to_disk(self, filename_pattern=None):
     """Returns a callback to convert test record to proto and save to disk."""
     if not self._converter:
@@ -237,6 +285,58 @@ class MfgInspector(object):
                                                    payload_type)
 
     return upload_callback
+
+  def partial_upload(self, payload_type: int = guzzle_pb2.COMPRESSED_TEST_RUN):
+    """Returns a callback to partially upload a test record as a MfgEvent."""
+    if not self._converter:
+      raise RuntimeError(
+          'Must set _converter on subclass or via set_converter before calling '
+          'partial_upload.')
+
+    if not self.credentials:
+      raise RuntimeError('Must provide credentials to use partial_upload '
+                         'callback.')
+
+    def partial_upload_callback(test_record_obj: test_record.TestRecord):
+      if not test_record_obj.end_time_millis:
+        # We cannot mutate the test_record_obj, so we copy it to add a
+        # fake end_time_millis which is needed for MfgEvent construction.
+        try:
+          tmp_test_record = copy.deepcopy(test_record_obj)
+        except TypeError:
+          # This happens when test has errored but the partial_uploader got a
+          # hold of the test record before it is finalized. We force an errored
+          # test to be processed with zero deepcopy thus only after
+          # end_time_mills is set in the test record.
+          print('Skipping this upload cycle, waiting for test to be finalized')
+          return {}
+        tmp_test_record.end_time_millis = util.time_millis()
+        # Also fake a PASS outcome for now.
+        tmp_test_record.outcome = test_record.Outcome.PASS
+        proto = self._convert(tmp_test_record)
+        proto.test_run_type = mfg_event_pb2.TEST_RUN_PARTIAL
+      else:
+        proto = self._convert(test_record_obj)
+        proto.test_run_type = mfg_event_pb2.TEST_RUN_COMPLETE
+      # Replaces the attachment payloads already uploaded with their blob_refs.
+      if (self._cached_partial_proto and
+          self._cached_partial_proto.start_time_ms == proto.start_time_ms):
+        # Reads the attachments in the _cached_partial_proto and merge them into
+        # the proto.
+        self._update_attachments_from_cache(proto)
+      # Avoids timing issue whereby last complete upload performed twice.
+      # This is only for projects that use a partial uploader to mfg-inspector.
+      if not self._partial_proto_upload_complete:
+        self.upload_result = send_mfg_inspector_data(
+            proto, self.credentials, self.destination_url, payload_type)
+      # Reads the upload_result (a lite_test_run proto) and update the
+      # attachments blob_refs.
+      self._update_attachments_from_reply(proto)
+      if proto.test_run_type == mfg_event_pb2.TEST_RUN_COMPLETE:
+        self._partial_proto_upload_complete = True
+      return self.upload_result
+
+    return partial_upload_callback
 
   def set_converter(self, converter):
     """Set converter callable to convert a OpenHTF tester_record to a proto.

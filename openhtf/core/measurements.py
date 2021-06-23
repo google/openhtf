@@ -22,7 +22,7 @@ stored as Attachments (see attachments.py).
 Measurements are described by the measurements.Measurement class.  Essentially,
 the Measurement class is used by test authors to declare measurements by name,
 and to optionally provide unit, type, and validation information.  Measurements
-are attached to Test Phases using the @measurements.measures() decorator.
+are attached to Test Phases using the @openhtf.measures() decorator.
 
 When measurements are output by the OpenHTF framework, the Measurement objects
 are serialized into the 'measurements' field on the PhaseRecord, which contain
@@ -45,11 +45,11 @@ measurement validators.
 
 Examples:
 
-  @measurements.measures(
+  @openhtf.measures(
       measurements.Measurement(
           'number_widgets').in_range(5, 10).doc(
           '''This phase parameter tracks the number of widgets.'''))
-  @measurements.measures(
+  @openhtf.measures(
       *(measurements.Measurement('level_%s' % lvl)
         for lvl in ('none', 'some', 'all')))
   def WidgetTestPhase(test):
@@ -62,17 +62,18 @@ import collections
 import enum
 import functools
 import logging
+import typing
 from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
 
 import attr
 
 from openhtf import util
-from openhtf.core import diagnoses_lib
-from openhtf.core import phase_descriptor
 from openhtf.util import data
 from openhtf.util import units as util_units
 from openhtf.util import validators
 import six
+if typing.TYPE_CHECKING:
+  from openhtf.core import diagnoses_lib
 
 try:
   # pylint: disable=g-import-not-at-top
@@ -119,7 +120,7 @@ class _ConditionalValidator(object):
   """Conditional validator declaration."""
 
   # The diagnosis result required for the validator to be used.
-  result = attr.ib(type=diagnoses_lib.DiagResultEnum)
+  result = attr.ib(type='diagnoses_lib.DiagResultEnum')
 
   # The validator to use when the result is present.
   validator = attr.ib(type=Callable[[Any], bool])
@@ -187,6 +188,8 @@ class Measurement(object):
     notification_cb: An optional function to be called when the measurement is
       set.
     outcome: One of the Outcome() enumeration values, starting at UNSET.
+    marginal: A bool flag indicating if this measurement is marginal if the
+      outcome is PASS.
     _cached: A cached dict representation of this measurement created initially
       during as_base_types and updated in place to save allocation time.
   """
@@ -211,6 +214,7 @@ class Measurement(object):
       type=Union['MeasuredValue', 'DimensionedMeasuredValue'], default=None)
   _notification_cb = attr.ib(type=Optional[Callable[[], None]], default=None)
   outcome = attr.ib(type=Outcome, default=Outcome.UNSET)
+  marginal = attr.ib(type=bool, default=False)
 
   # Runtime cache to speed up conversions.
   _cached = attr.ib(type=Optional[Dict[Text, Any]], default=None)
@@ -341,7 +345,7 @@ class Measurement(object):
     return self
 
   def validate_on(
-      self, result_to_validator_mapping: Dict[diagnoses_lib.DiagResultEnum,
+      self, result_to_validator_mapping: Dict['diagnoses_lib.DiagResultEnum',
                                               Callable[[Any], bool]]
   ) -> 'Measurement':
     """Adds conditional validators.
@@ -414,11 +418,17 @@ class Measurement(object):
     return _with_validator
 
   def validate(self) -> 'Measurement':
-    """Validate this measurement and update its 'outcome' field."""
+    """Validate this measurement and update 'outcome' and 'marginal' fields."""
     # PASS if all our validators return True, otherwise FAIL.
     try:
       if all(v(self._measured_value.value) for v in self.validators):
         self.outcome = Outcome.PASS
+
+        # Only check marginality for passing measurements.
+        if any(
+            hasattr(v, 'is_marginal') and
+            v.is_marginal(self._measured_value.value) for v in self.validators):
+          self.marginal = True
       else:
         self.outcome = Outcome.FAIL
       return self
@@ -811,69 +821,9 @@ class Collection(object):
     # Return the MeasuredValue's value, MeasuredValue will raise if not set.
     return m.measured_value.value
 
+
 # Work around for attrs bug in 20.1.0; after the next release, this can be
 # removed and `Collection._custom_setattr` can be renamed to `__setattr__`.
 # https://github.com/python-attrs/attrs/issues/680
 Collection.__setattr__ = Collection._custom_setattr  # pylint: disable=protected-access
 del Collection._custom_setattr
-
-
-def measures(
-    *measurements: Union[Text, Measurement], **kwargs: Any
-) -> Callable[[phase_descriptor.PhaseT], phase_descriptor.PhaseDescriptor]:
-  """Decorator-maker used to declare measurements for phases.
-
-  See the measurements module docstring for examples of usage.
-
-  Args:
-    *measurements: Measurement objects to declare, or a string name from which
-      to create a Measurement.
-    **kwargs: Keyword arguments to pass to Measurement constructor if we're
-      constructing one.  Note that if kwargs are provided, the length of
-      measurements must be 1, and that value must be a string containing the
-      measurement name.  For valid kwargs, see the definition of the Measurement
-      class.
-
-  Raises:
-    InvalidMeasurementTypeError: When the measurement is not defined correctly.
-
-  Returns:
-    A decorator that declares the measurement(s) for the decorated phase.
-  """
-
-  def _maybe_make(meas: Union[Text, Measurement]) -> Measurement:
-    """Turn strings into Measurement objects if necessary."""
-    if isinstance(meas, Measurement):
-      return meas
-    elif isinstance(meas, six.string_types):
-      return Measurement(meas, **kwargs)
-    raise InvalidMeasurementTypeError('Expected Measurement or string', meas)
-
-  # In case we're declaring a measurement inline, we can only declare one.
-  if kwargs and len(measurements) != 1:
-    raise InvalidMeasurementTypeError(
-        'If @measures kwargs are provided, a single measurement name must be '
-        'provided as a positional arg first.')
-
-  # Unlikely, but let's make sure we don't allow overriding initial outcome.
-  if 'outcome' in kwargs:
-    raise ValueError('Cannot specify outcome in measurement declaration!')
-
-  measurements = [_maybe_make(meas) for meas in measurements]
-
-  # 'measurements' is guaranteed to be a list of Measurement objects here.
-  def decorate(
-      wrapped_phase: phase_descriptor.PhaseT
-  ) -> phase_descriptor.PhaseDescriptor:
-    """Phase decorator to be returned."""
-    phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(wrapped_phase)
-    duplicate_names = (
-        set(m.name for m in measurements)
-        & set(m.name for m in phase.measurements))
-    if duplicate_names:
-      raise DuplicateNameError('Measurement names duplicated', duplicate_names)
-
-    phase.measurements.extend(measurements)
-    return phase
-
-  return decorate

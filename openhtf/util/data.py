@@ -169,7 +169,12 @@ def convert_to_base_types(obj,
   if hasattr(obj, 'as_base_types'):
     return obj.as_base_types()
   if hasattr(obj, '_asdict'):
-    obj = obj._asdict()
+    try:
+      obj = obj._asdict()
+    except TypeError as e:
+      # This happens if the object is an uninitialized class.
+      logging.warning(
+          'Object %s is not initialized, got error %s', obj, e)
   elif isinstance(obj, records.RecordClass):
     new_obj = {}
     for a in type(obj).all_attribute_names:

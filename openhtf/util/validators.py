@@ -101,46 +101,181 @@ class RangeValidatorBase(with_metaclass(abc.ABCMeta, ValidatorBase)):
   def maximum(self):
     """Should return the maximum, inclusive value of the range."""
 
+  @abc.abstractproperty
+  def marginal_minimum(self):
+    """Should return the marginal minimum, inclusive value of the range."""
+
+  @abc.abstractproperty
+  def marginal_maximum(self):
+    """Should return the marginal maximum, inclusive value of the range."""
+
+  @abc.abstractmethod
+  def is_marginal(self, value) -> bool:
+    """Validates the value using the marginal limits."""
+
 
 # Built-in validators below this line
-class AllInRangeValidator(ValidatorBase):
+class AllInRangeValidator(RangeValidatorBase):
+  """Validator to verify a list of values are with in a range."""
 
-  def __init__(self, min_value, max_value):
+  def __init__(self,
+               minimum,
+               maximum,
+               marginal_minimum=None,
+               marginal_maximum=None):
     super(AllInRangeValidator, self).__init__()
-    self.min_value = min_value
-    self.max_value = max_value
-
-  def __call__(self, values):
-    return all([self.min_value <= value <= self.max_value for value in values])
-
-
-class AllEqualsValidator(ValidatorBase):
-
-  def __init__(self, spec):
-    super(AllEqualsValidator, self).__init__()
-    self.spec = spec
-
-  def __call__(self, values):
-    return all([value == self.spec for value in values])
-
-
-register(AllInRangeValidator, name='all_in_range')
-register(AllEqualsValidator, name='all_equals')
-
-
-class InRange(RangeValidatorBase):
-  """Validator to verify a numeric value is within a range."""
-
-  def __init__(self, minimum=None, maximum=None, type=None):  # pylint: disable=redefined-builtin
-    super(InRange, self).__init__()
     if minimum is None and maximum is None:
       raise ValueError('Must specify minimum, maximum, or both')
     if (minimum is not None and maximum is not None and
         isinstance(minimum, numbers.Number) and
         isinstance(maximum, numbers.Number) and minimum > maximum):
       raise ValueError('Minimum cannot be greater than maximum')
+    if marginal_minimum is not None and minimum is None:
+      raise ValueError('Marginal minimum was specified without a minimum')
+    if marginal_maximum is not None and maximum is None:
+      raise ValueError('Marginal maximum was specified without a maximum')
+    if (marginal_minimum is not None and isinstance(minimum, numbers.Number) and
+        isinstance(marginal_minimum, numbers.Number) and
+        minimum > marginal_minimum):
+      raise ValueError('Marginal minimum cannot be less than the minimum')
+    if (marginal_maximum is not None and isinstance(maximum, numbers.Number) and
+        isinstance(marginal_maximum, numbers.Number) and
+        maximum < marginal_maximum):
+      raise ValueError('Marginal maximum cannot be greater than the maximum')
+    if (marginal_minimum is not None and marginal_maximum is not None and
+        isinstance(marginal_minimum, numbers.Number) and
+        isinstance(marginal_maximum, numbers.Number) and
+        marginal_minimum > marginal_maximum):
+      raise ValueError(
+          'Marginal minimum cannot be greater than the marginal maximum')
+
     self._minimum = minimum
     self._maximum = maximum
+    self._marginal_minimum = marginal_minimum
+    self._marginal_maximum = marginal_maximum
+
+  @property
+  def minimum(self):
+    return self._minimum
+
+  @property
+  def maximum(self):
+    return self._maximum
+
+  @property
+  def marginal_minimum(self):
+    return self._marginal_minimum
+
+  @property
+  def marginal_maximum(self):
+    return self._marginal_maximum
+
+  def __call__(self, values):
+    within_maximum = self._maximum is None or all(
+        value <= self.maximum for value in values)
+    within_minimum = self._minimum is None or all(
+        value >= self.minimum for value in values)
+    return within_minimum and within_maximum
+
+  def is_marginal(self, values) -> bool:
+    is_maximally_marginal = self._marginal_maximum is not None and any(
+        [self._marginal_maximum <= value <= self._maximum for value in values])
+    is_minimally_marginal = self._marginal_minimum is not None and any(
+        [self._minimum <= value <= self._marginal_minimum for value in values])
+    return is_maximally_marginal or is_minimally_marginal
+
+  def __str__(self):
+    assert self._minimum is not None or self._maximum is not None
+    if (self._minimum is not None and self._maximum is not None and
+        self._minimum == self._maximum):
+      return 'x == {}'.format(self._minimum)
+
+    string_repr = ''
+    if self._minimum is not None:
+      string_repr += '{} <= '.format(self._minimum)
+    if self._marginal_minimum is not None:
+      string_repr += 'Marginal:{} <= '.format(self._marginal_minimum)
+    string_repr += 'x'
+    if self._marginal_maximum is not None:
+      string_repr += ' <= Marginal:{}'.format(self._marginal_maximum)
+    if self._maximum is not None:
+      string_repr += ' <= {}'.format(self._maximum)
+    return string_repr
+
+
+class AllEqualsValidator(ValidatorBase):
+  """Validator to verify a list of values are equal to the expected value."""
+
+  def __init__(self, spec):
+    super(AllEqualsValidator, self).__init__()
+    self._spec = spec
+
+  @property
+  def spec(self):
+    return self._spec
+
+  def __call__(self, values):
+    return all([value == self.spec for value in values])
+
+  def __str__(self):
+    return "'x' is equal to '%s'" % self._spec
+
+
+register(AllInRangeValidator, name='all_in_range')
+
+
+@register
+def all_equals(value, type=None):  # pylint: disable=redefined-builtin
+  if isinstance(value, numbers.Number):
+    return AllInRangeValidator(minimum=value, maximum=value)
+  elif isinstance(value, six.string_types):
+    assert type is None or issubclass(type, six.string_types), (
+        'Cannot use a non-string type when matching a string')
+    return matches_regex('^{}$'.format(re.escape(value)))
+  else:
+    return AllEqualsValidator(value)
+
+
+class InRange(RangeValidatorBase):
+  """Validator to verify a numeric value is within a range."""
+
+  def __init__(self,
+               minimum=None,
+               maximum=None,
+               marginal_minimum=None,
+               marginal_maximum=None,
+               type=None):  # pylint: disable=redefined-builtin
+    super(InRange, self).__init__()
+
+    if minimum is None and maximum is None:
+      raise ValueError('Must specify minimum, maximum, or both')
+    if (minimum is not None and maximum is not None and
+        isinstance(minimum, numbers.Number) and
+        isinstance(maximum, numbers.Number) and minimum > maximum):
+      raise ValueError('Minimum cannot be greater than maximum')
+    if marginal_minimum is not None and minimum is None:
+      raise ValueError('Marginal minimum was specified without a minimum')
+    if marginal_maximum is not None and maximum is None:
+      raise ValueError('Marginal maximum was specified without a maximum')
+    if (marginal_minimum is not None and isinstance(minimum, numbers.Number) and
+        isinstance(marginal_minimum, numbers.Number) and
+        minimum > marginal_minimum):
+      raise ValueError('Marginal minimum cannot be less than the minimum')
+    if (marginal_maximum is not None and isinstance(maximum, numbers.Number) and
+        isinstance(marginal_maximum, numbers.Number) and
+        maximum < marginal_maximum):
+      raise ValueError('Marginal maximum cannot be greater than the maximum')
+    if (marginal_minimum is not None and marginal_maximum is not None and
+        isinstance(marginal_minimum, numbers.Number) and
+        isinstance(marginal_maximum, numbers.Number) and
+        marginal_minimum > marginal_maximum):
+      raise ValueError(
+          'Marginal minimum cannot be greater than the marginal maximum')
+
+    self._minimum = minimum
+    self._maximum = maximum
+    self._marginal_minimum = marginal_minimum
+    self._marginal_maximum = marginal_maximum
     self._type = type
 
   @property
@@ -153,10 +288,22 @@ class InRange(RangeValidatorBase):
     converter = self._type if self._type is not None else _identity
     return converter(self._maximum)
 
+  @property
+  def marginal_minimum(self):
+    converter = self._type if self._type is not None else _identity
+    return converter(self._marginal_minimum)
+
+  @property
+  def marginal_maximum(self):
+    converter = self._type if self._type is not None else _identity
+    return converter(self._marginal_maximum)
+
   def with_args(self, **kwargs):
     return type(self)(
         minimum=util.format_string(self._minimum, kwargs),
         maximum=util.format_string(self._maximum, kwargs),
+        marginal_minimum=util.format_string(self._marginal_minimum, kwargs),
+        marginal_maximum=util.format_string(self._marginal_maximum, kwargs),
         type=self._type,
     )
 
@@ -171,20 +318,42 @@ class InRange(RangeValidatorBase):
       return False
     return True
 
+  def is_marginal(self, value) -> bool:
+    if value is None:
+      return False
+    if math.isnan(value):
+      return False
+    if (self._marginal_minimum is not None and
+        self.minimum <= value <= self.marginal_minimum):
+      return True
+    if (self._marginal_maximum is not None and
+        self.maximum >= value >= self.marginal_maximum):
+      return True
+    return False
+
   def __str__(self):
     assert self._minimum is not None or self._maximum is not None
-    if self._minimum is not None and self._maximum is not None:
-      if self._minimum == self._maximum:
-        return 'x == %s' % self._minimum
-      return '%s <= x <= %s' % (self._minimum, self._maximum)
+    if (self._minimum is not None and self._maximum is not None and
+        self._minimum == self._maximum):
+      return 'x == {}'.format(self._minimum)
+
+    string_repr = ''
     if self._minimum is not None:
-      return '%s <= x' % self._minimum
+      string_repr += '{} <= '.format(self._minimum)
+    if self._marginal_minimum is not None:
+      string_repr += 'Marginal:{} <= '.format(self._marginal_minimum)
+    string_repr += 'x'
+    if self._marginal_maximum is not None:
+      string_repr += ' <= Marginal:{}'.format(self._marginal_maximum)
     if self._maximum is not None:
-      return 'x <= %s' % self._maximum
+      string_repr += ' <= {}'.format(self._maximum)
+    return string_repr
 
   def __eq__(self, other):
     return (isinstance(other, type(self)) and self.minimum == other.minimum and
-            self.maximum == other.maximum)
+            self.maximum == other.maximum and
+            self.marginal_minimum == other.marginal_minimum and
+            self.marginal_maximum == other.marginal_maximum)
 
   def __ne__(self, other):
     return not self == other
@@ -259,16 +428,26 @@ def matches_regex(regex):
 class WithinPercent(RangeValidatorBase):
   """Validates that a number is within percent of a value."""
 
-  def __init__(self, expected, percent):
+  def __init__(self, expected, percent, marginal_percent=None):
     super(WithinPercent, self).__init__()
     if percent < 0:
       raise ValueError('percent argument is {}, must be >0'.format(percent))
+    if marginal_percent is not None and marginal_percent < percent:
+      raise ValueError(
+          'marginal_percent argument is {}, must be < percent'.format(
+              marginal_percent))
     self.expected = expected
     self.percent = percent
+    self.marginal_percent = marginal_percent
 
   @property
   def _applied_percent(self):
     return abs(self.expected * self.percent / 100.0)
+
+  @property
+  def _applied_marginal_percent(self):
+    return (abs(self.expected * self.marginal_percent /
+                100.0) if self.marginal_percent else 0)
 
   @property
   def minimum(self):
@@ -278,15 +457,35 @@ class WithinPercent(RangeValidatorBase):
   def maximum(self):
     return self.expected + self._applied_percent
 
+  @property
+  def marginal_minimum(self):
+    return (self.expected -
+            self._applied_marginal_percent if self.marginal_percent else None)
+
+  @property
+  def marginal_maximum(self):
+    return (self.expected -
+            self._applied_marginal_percent if self.marginal_percent else None)
+
   def __call__(self, value):
     return self.minimum <= value <= self.maximum
 
+  def is_marginal(self, value) -> bool:
+    if self.marginal_percent is None:
+      return False
+    else:
+      return (self.minimum < value <= self.marginal_minimum or
+              self.marginal_maximum <= value < self.maximum)
+
   def __str__(self):
-    return "'x' is within {}% of {}".format(self.percent, self.expected)
+    return "'x' is within {}% of {}. Marginal: {}% of {}".format(
+        self.percent, self.expected, self.marginal_percent, self.expected)
 
   def __eq__(self, other):
     return (isinstance(other, type(self)) and
-            self.expected == other.expected and self.percent == other.percent)
+            self.expected == other.expected and
+            self.percent == other.percent and
+            self.marginal_percent == other.marginal_percent)
 
   def __ne__(self, other):
     return not self == other

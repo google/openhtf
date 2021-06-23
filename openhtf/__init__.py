@@ -14,12 +14,12 @@
 """The main OpenHTF entry point."""
 
 import signal
+import typing
 
 from openhtf import plugs
 from openhtf.core import phase_executor
 from openhtf.core import test_record
 from openhtf.core.base_plugs import BasePlug
-from openhtf.core.diagnoses_lib import diagnose
 from openhtf.core.diagnoses_lib import DiagnosesStore
 from openhtf.core.diagnoses_lib import Diagnosis
 from openhtf.core.diagnoses_lib import DiagnosisComponent
@@ -30,7 +30,6 @@ from openhtf.core.diagnoses_lib import TestDiagnoser
 
 from openhtf.core.measurements import Dimension
 from openhtf.core.measurements import Measurement
-from openhtf.core.measurements import measures
 from openhtf.core.monitors import monitors
 from openhtf.core.phase_branches import BranchSequence
 from openhtf.core.phase_branches import DiagnosisCheckpoint
@@ -38,6 +37,8 @@ from openhtf.core.phase_branches import DiagnosisCondition
 from openhtf.core.phase_branches import PhaseFailureCheckpoint
 from openhtf.core.phase_collections import PhaseSequence
 from openhtf.core.phase_collections import Subtest
+from openhtf.core.phase_descriptor import diagnose
+from openhtf.core.phase_descriptor import measures
 from openhtf.core.phase_descriptor import PhaseDescriptor
 from openhtf.core.phase_descriptor import PhaseOptions
 from openhtf.core.phase_descriptor import PhaseResult
@@ -56,6 +57,9 @@ from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
 import pkg_resources
+
+if typing.TYPE_CHECKING:
+  conf: conf.Configuration  # Configuration is only available here in typing.
 
 
 def get_version():

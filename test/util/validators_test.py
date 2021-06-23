@@ -66,6 +66,128 @@ class TestInRange(unittest.TestCase):
     self.assertEqual(test_validator.maximum, 0x12)
 
 
+class TestAllInRange(unittest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.minimum = -20.5
+    self.maximum = 0.3
+    self.marginal_minimum = -10.1
+    self.marginal_maximum = -8.2
+    self.validator = validators.AllInRangeValidator(self.minimum, self.maximum,
+                                                    self.marginal_minimum,
+                                                    self.marginal_maximum)
+
+  def test_properties(self):
+    with self.subTest('minimum'):
+      self.assertAlmostEqual(self.validator.minimum, self.minimum)
+    with self.subTest('maximum'):
+      self.assertAlmostEqual(self.validator.maximum, self.maximum)
+    with self.subTest('marginal_minimum'):
+      self.assertAlmostEqual(self.validator.marginal_minimum,
+                             self.marginal_minimum)
+    with self.subTest('marginal_maximum'):
+      self.assertAlmostEqual(self.validator.marginal_maximum,
+                             self.marginal_maximum)
+
+  def test_returns_false_for_out_of_range_values(self):
+    with self.subTest('beyond_minimum'):
+      self.assertFalse(self.validator([self.minimum - 1, self.maximum]))
+    with self.subTest('beyond_maximum'):
+      self.assertFalse(self.validator([self.minimum, self.maximum + 1]))
+
+  def test_returns_true_within_bounds(self):
+    with self.subTest('with_all_values_set'):
+      self.assertTrue(self.validator([self.minimum, self.maximum]))
+
+  def test_returns_true_within_bounds_without_maximum(self):
+    validator = validators.AllInRangeValidator(self.minimum, None)
+    self.assertTrue(validator([self.minimum, self.maximum]))
+
+  def test_returns_true_within_bounds_without_minimum(self):
+    validator = validators.AllInRangeValidator(None, self.maximum)
+    self.assertTrue(validator([self.minimum, self.maximum]))
+
+  def test_is_marginal_is_marginal_returns_true_for_out_of_range_values(self):
+    with self.subTest('beyond_marginal_minimum'):
+      self.assertTrue(
+          self.validator.is_marginal([self.minimum, self.marginal_maximum - 1]))
+    with self.subTest('beyond_marginal_maximum'):
+      self.assertTrue(
+          self.validator.is_marginal([self.marginal_minimum + 1, self.maximum]))
+
+  def test_is_marginal_false_within_bounds(self):
+    self.assertFalse(
+        self.validator.is_marginal(
+            [self.marginal_minimum + 1, self.marginal_maximum - 1]))
+
+  def test_is_marginal_false_fully_out_of_range(self):
+    self.assertFalse(
+        self.validator.is_marginal(
+            [self.minimum - 1, self.maximum + 1]))
+
+  def test_is_marginal_false_without_marginal_bounds(self):
+    validator = validators.AllInRangeValidator(self.minimum, self.minimum)
+    self.assertFalse(validator.is_marginal([self.minimum, self.maximum]))
+
+  def test_raises_for_unset_minimum_and_maximum(self):
+    with self.assertRaises(ValueError) as raises_context:
+      validators.AllInRangeValidator(None, None)
+    self.assertIn('Must specify minimum, maximum, or both',
+                  str(raises_context.exception))
+
+  def test_raises_for_minimum_above_maximum(self):
+    with self.assertRaises(ValueError) as raises_context:
+      validators.AllInRangeValidator(minimum=self.maximum, maximum=self.minimum)
+    self.assertIn('Minimum cannot be greater than maximum',
+                  str(raises_context.exception))
+
+  def test_raises_for_marginal_minimum_without_minimum(self):
+    with self.assertRaises(ValueError) as raises_context:
+      validators.AllInRangeValidator(None, self.maximum, self.marginal_minimum,
+                                     self.marginal_maximum)
+    self.assertIn('Marginal minimum was specified without a minimum',
+                  str(raises_context.exception))
+
+  def test_raises_for_marginal_maximum_without_maximum(self):
+    with self.assertRaises(ValueError) as raises_context:
+      validators.AllInRangeValidator(self.minimum, None, self.marginal_minimum,
+                                     self.marginal_maximum)
+    self.assertIn('Marginal maximum was specified without a maximum',
+                  str(raises_context.exception))
+
+  def test_raises_for_marginal_minimum_below_minimum(self):
+    with self.assertRaises(ValueError) as raises_context:
+      validators.AllInRangeValidator(
+          minimum=self.marginal_minimum,
+          maximum=None,
+          marginal_minimum=self.minimum,
+          marginal_maximum=None)
+    self.assertIn('Marginal minimum cannot be less than the minimum',
+                  str(raises_context.exception))
+
+  def test_raises_for_marginal_maximum_below_maximum(self):
+    with self.assertRaises(ValueError) as raises_context:
+      validators.AllInRangeValidator(
+          minimum=None,
+          maximum=self.marginal_maximum,
+          marginal_minimum=None,
+          marginal_maximum=self.maximum)
+    self.assertIn('Marginal maximum cannot be greater than the maximum',
+                  str(raises_context.exception))
+
+  def test_raises_for_marginal_minimum_above_marginal_maximum(self):
+    with self.assertRaises(ValueError) as raises_context:
+      validators.AllInRangeValidator(
+          self.minimum,
+          self.maximum,
+          marginal_minimum=self.marginal_maximum,
+          marginal_maximum=self.marginal_minimum)
+    self.assertIn(
+        'Marginal minimum cannot be greater than the marginal maximum',
+        str(raises_context.exception))
+
+
 class TestEqualsValidator(unittest.TestCase):
 
   def test_with_built_in_pods(self):

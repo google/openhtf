@@ -39,6 +39,13 @@ def short_repr(obj, max_len=40):
   return '<{} of length {}>'.format(type(obj).__name__, len(obj_repr))
 
 
+class DeviceWrappingPlugNotFullyInitializedError(base_plugs.InvalidPlugError):
+  """Raised if DeviceWrappingPlug instances do not have _device set.
+
+  Generally a by a subclass __init__ failing to call the superclass __init__.
+  """
+
+
 class DeviceWrappingPlug(base_plugs.BasePlug):
   """A base plug for wrapping existing device abstractions.
 
@@ -89,6 +96,12 @@ class DeviceWrappingPlug(base_plugs.BasePlug):
       setattr(self._device, name, value)
 
   def __getattr__(self, attr):
+    if attr == '_device':
+      # _device was not found in the instance attributes.
+      raise DeviceWrappingPlugNotFullyInitializedError(
+          f'{type(self)} must set _device. This is genally done in __init__ by '
+          'calling super().__init__(device)')
+
     if self._device is None:
       raise base_plugs.InvalidPlugError(
           'DeviceWrappingPlug instances must set the _device attribute.')
