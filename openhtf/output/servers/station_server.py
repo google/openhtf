@@ -15,6 +15,7 @@ import socket
 import threading
 import time
 import types
+from typing import Optional, Union
 
 import openhtf
 from openhtf.output.servers import pub_sub
@@ -558,7 +559,9 @@ class StationServer(web_gui_server.WebGuiServer):
       test.execute()
   """
 
-  def __init__(self, history_path=None):
+  def __init__(
+      self,
+      history_path: Optional[Union[str, bytes, os.PathLike]] = None) -> None:
     # Disable tornado's logging.
     # TODO(kenadia): Enable these logs if verbosity flag is at least -vvv.
     #     I think this will require changing how StoreRepsInModule works.
@@ -614,7 +617,7 @@ class StationServer(web_gui_server.WebGuiServer):
         'server_type': STATION_SERVER_TYPE,
     }
 
-  def run(self):
+  def run(self) -> None:
     _LOG.info('Announcing station server via multicast on %s:%s',
               self.station_multicast.address, self.station_multicast.port)
     self.station_multicast.start()
@@ -624,13 +627,13 @@ class StationServer(web_gui_server.WebGuiServer):
                   host=socket.gethostname(), port=self.port))
     super(StationServer, self).run()
 
-  def stop(self):
+  def stop(self) -> None:
     _LOG.info('Stopping station server.')
     super(StationServer, self).stop()
     _LOG.info('Stopping multicast.')
     self.station_multicast.stop(timeout_s=0)
 
-  def publish_final_state(self, test_record):
+  def publish_final_state(self, test_record: openhtf.TestRecord) -> None:
     """Test output callback publishing a final state from the test record."""
     StationPubSub.publish_test_record(test_record)
 
