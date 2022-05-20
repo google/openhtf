@@ -85,6 +85,10 @@ message Measurement {
   optional double numeric_minimum = 12;
   optional double numeric_maximum = 13;
 
+  // Fields to determine numeric marginality which are used in RangeValidators.
+  optional double numeric_marginal_minimum = 25;
+  optional double numeric_marginal_maximum = 26;
+
   // If this parameter is text then fill in these fields
   optional string text_value = 14;
   // This field may be a regular expression describing the expected value
@@ -100,9 +104,11 @@ message Measurement {
   // Created for visualization by UIs that don't support certain fancy
   // parameters. UIs that do support them should hide these parameters.
   optional string associated_attachment = 21;
-  // Next tag = 24
+  // Next tag = 27
 
   extensions 5000 to 5199;
+
+  reserved 24;
 }
 
 // A parameter which is extra information from a test run.  These values are not

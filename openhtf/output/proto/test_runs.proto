@@ -75,6 +75,7 @@ enum Status {
   REWORK = 12;
   SCRAP = 13;
   DEBUG = 14;
+  MARGINAL_PASS = 15;
 }
 
 
@@ -127,6 +128,10 @@ message TestParameter {
   optional double numeric_minimum = 12;
   optional double numeric_maximum = 13;
 
+  // Fields to determine numeric marginality which are used in RangeValidators.
+  optional double numeric_marginal_minimum = 26;
+  optional double numeric_marginal_maximum = 27;
+
   // If this parameter is text then fill in these fields
   optional string text_value = 14;
   // This field may be a regular expression describing the expected value
@@ -139,9 +144,11 @@ message TestParameter {
   // Created for visualization by UIs that don't support certain fancy
   // parameters. UIs that do support them should hide these parameters.
   optional string associated_attachment = 21;
-  // Next tag = 22
+  // Next tag = 28
 
   extensions 5000 to 5199;
+
+  reserved 25;
 }
 
 
