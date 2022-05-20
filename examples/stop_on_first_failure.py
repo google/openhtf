@@ -22,14 +22,16 @@ Two options are provided to set this option.
 test.configure(stop_on_first_failure=True)
 
 2. Using config item. This option lets you toggle this feature dynamically.
-conf.load(stop_on_first_failure=True)
+CONF.load(stop_on_first_failure=True)
 """
 
 import openhtf as htf
 from openhtf.output.callbacks import console_summary
 from openhtf.plugs import user_input
-from openhtf.util import conf  # pylint: disable=unused-import
+from openhtf.util import configuration
 from openhtf.util import validators
+
+CONF = configuration.CONF
 
 
 @htf.measures('number_sum', validators=[validators.in_range(0, 5)])
@@ -58,7 +60,7 @@ def main():
 
   # Option 2 : You can disable option 1 and enable below line
   # to get same result
-  # conf.load(stop_on_first_failure=True)
+  # CONF.load(stop_on_first_failure=True)
 
   test.execute(test_start=user_input.prompt_for_test_start())
 

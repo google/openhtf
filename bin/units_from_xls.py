@@ -44,7 +44,6 @@ import shutil
 import sys
 import tempfile
 
-import six
 import xlrd
 
 # Column names for the columns we care about. This list must be populated in
@@ -163,10 +162,10 @@ UNIT_KEY_REPLACEMENTS = {
     '15': 'FIFTEEN',
     '30': 'THIRTY',
     '\\': '_',
-    six.unichr(160): '_',  # NO-BREAK SPACE
-    six.unichr(176): 'DEG_',  # DEGREE SIGN
-    six.unichr(186): 'DEG_',  # MASCULINE ORDINAL INDICATOR
-    six.unichr(8211): '_',  # EN DASH
+    chr(160): '_',  # NO-BREAK SPACE
+    chr(176): 'DEG_',  # DEGREE SIGN
+    chr(186): 'DEG_',  # MASCULINE ORDINAL INDICATOR
+    chr(8211): '_',  # EN DASH
 }
 
 
@@ -222,7 +221,7 @@ def unit_defs_from_sheet(sheet, column_names):
     rows = sheet.get_rows()
 
     # Find the indices for the columns we care about.
-    for idx, cell in enumerate(six.next(rows)):
+    for idx, cell in enumerate(next(rows)):
       if cell.value in column_names:
         col_indices[cell.value] = idx
 
@@ -250,7 +249,7 @@ def unit_key_from_name(name):
   """Return a legal python name for the given name for use as a unit key."""
   result = name
 
-  for old, new in six.iteritems(UNIT_KEY_REPLACEMENTS):
+  for old, new in UNIT_KEY_REPLACEMENTS.items():
     result = result.replace(old, new)
 
   # Collapse redundant underscores and convert to uppercase.

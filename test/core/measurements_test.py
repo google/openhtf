@@ -20,8 +20,8 @@ actually care about.
 
 import collections
 import unittest
+from unittest import mock
 
-import mock
 import openhtf as htf
 from openhtf.core import measurements
 from examples import all_the_things

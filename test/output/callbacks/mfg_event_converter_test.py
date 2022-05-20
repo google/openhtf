@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Tests for google3.third_party.car.hw.testing.output.email."""
+"""Tests for mfg_event_converter."""
 
 import io
 import json
@@ -20,6 +20,13 @@ TEST_MULTIDIM_JSON_FILE = os.path.join(
     os.path.dirname(__file__), 'multidim_testdata.json')
 with io.open(TEST_MULTIDIM_JSON_FILE, 'rb') as f:
   TEST_MULTIDIM_JSON = f.read()
+
+
+def _create_hacked_massive_attachment() -> test_record.Attachment:
+  """Returns an attachment that seems massive by size."""
+  attachment = test_record.Attachment(b'dummy', 'text/plain')
+  attachment.size = mfg_event_converter.MAX_TOTAL_ATTACHMENT_BYTES
+  return attachment
 
 
 class MfgEventConverterTest(unittest.TestCase):
@@ -298,22 +305,103 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertEqual(mock_measurement_within_percent.numeric_marginal_maximum,
                      0)
 
-  def testCopyAttachmentsFromPhase(self):
-    attachment = test_record.Attachment(b'mock-data', 'text/plain')
+  def test_copy_attachments_from_phase(self):
+    first_attachment_name = 'first_attachment_name'
+    first_attachment = _create_hacked_massive_attachment()
+    expected_first_attachment_proto = mfg_event_pb2.EventAttachment(
+        name=first_attachment_name,
+        value_binary=first_attachment.data,
+        type=test_runs_pb2.TEXT_UTF8)
+
+    other_attachment_name = 'mock-attachment-name1'
+    other_attachment = _create_hacked_massive_attachment()
+    expected_other_attachment_proto = mfg_event_pb2.EventAttachment(
+        name=other_attachment_name,
+        value_binary=other_attachment.data,
+        type=test_runs_pb2.TEXT_UTF8)
+
     phase = test_record.PhaseRecord(
         name='mock-phase-name',
         descriptor_id=1,
         codeinfo=self.create_codeinfo(),
-        attachments={'mock-attachment-name': attachment},
+        attachments={
+            first_attachment_name: first_attachment,
+            other_attachment_name: other_attachment,
+        },
     )
 
     mfg_event = mfg_event_pb2.MfgEvent()
+    # Leave attachment_cache as None so attachment sizes are irrelevant as
+    # partial uploads are considered unavailable.
     copier = mfg_event_converter.PhaseCopier([phase])
     copier.copy_attachments(mfg_event)
 
-    self.assertEqual(mfg_event.attachment[0].name, 'mock-attachment-name')
-    self.assertEqual(mfg_event.attachment[0].value_binary, b'mock-data')
-    self.assertEqual(mfg_event.attachment[0].type, test_runs_pb2.TEXT_UTF8)
+    self.assertCountEqual(
+        tuple(mfg_event.attachment),
+        (expected_first_attachment_proto, expected_other_attachment_proto))
+
+  def test_copy_attachments_skips_if_too_much_data_and_returns_false(self):
+    attachment_names = ('mock-attachment-name0', 'mock-attachment-name1')
+
+    phase = test_record.PhaseRecord(
+        name='mock-phase-name',
+        descriptor_id=1,
+        codeinfo=self.create_codeinfo(),
+        attachments={
+            name: _create_hacked_massive_attachment()
+            for name in attachment_names
+        },
+    )
+
+    mfg_event = mfg_event_pb2.MfgEvent()
+    copier = mfg_event_converter.PhaseCopier(
+        [phase],
+        attachment_cache={},  # Indicates partial uploads are available.
+    )
+    self.assertFalse(copier.copy_attachments(mfg_event))
+
+    self.assertEqual(len(mfg_event.attachment), 1)
+
+  def test_copy_attachments_uses_attachment_cache_and_overcomes_size_limits(
+      self):
+    cached_attachment_name = 'cached_attachment_name'
+    cached_attachment = _create_hacked_massive_attachment()
+
+    cached_attachment_proto = mfg_event_pb2.EventAttachment(
+        name='incorrect_name_to_ensure_cache_is_used',
+        existing_blobref=mfg_event_pb2.EventAttachment.ExistingBlobRef(
+            blob_id=b'dummy_id', size=cached_attachment.size))
+
+    other_attachment_name = 'mock-attachment-name1'
+    other_attachment = _create_hacked_massive_attachment()
+    expected_other_attachment_proto = mfg_event_pb2.EventAttachment(
+        name=other_attachment_name,
+        value_binary=other_attachment.data,
+        type=test_runs_pb2.TEXT_UTF8)
+
+    phase = test_record.PhaseRecord(
+        name='mock-phase-name',
+        descriptor_id=1,
+        codeinfo=self.create_codeinfo(),
+        attachments={
+            cached_attachment_name: cached_attachment,
+            other_attachment_name: other_attachment,
+        },
+    )
+
+    mfg_event = mfg_event_pb2.MfgEvent()
+    copier = mfg_event_converter.PhaseCopier(
+        [phase],
+        attachment_cache={
+            mfg_event_converter.AttachmentCacheKey(
+                name=cached_attachment_name, size=cached_attachment.size):
+                cached_attachment_proto
+        })
+    self.assertTrue(copier.copy_attachments(mfg_event))
+
+    self.assertCountEqual(
+        tuple(mfg_event.attachment),
+        (cached_attachment_proto, expected_other_attachment_proto))
 
 
 class MultiDimConversionTest(unittest.TestCase):
@@ -348,7 +436,7 @@ class MultiDimConversionTest(unittest.TestCase):
     expected = self.create_multi_dim_measurement()
 
     attachment = test_record.Attachment(TEST_MULTIDIM_JSON,
-                                        test_runs_pb2.MULTIDIM_JSON)
+                                        test_runs_pb2.MULTIDIM_JSON)  # pytype: disable=wrong-arg-types  # gen-stub-imports
     measurement = mfg_event_converter.attachment_to_multidim_measurement(
         attachment)
 
@@ -384,7 +472,7 @@ class MultiDimConversionTest(unittest.TestCase):
     data_dict = json.loads(attachment.data)
     data_dict['outcome'] = test_runs_pb2.Status.Value(data_dict['outcome'])
     attachment = test_record.Attachment(
-        json.dumps(data_dict).encode('utf-8'), test_runs_pb2.MULTIDIM_JSON)
+        json.dumps(data_dict).encode('utf-8'), test_runs_pb2.MULTIDIM_JSON)  # pytype: disable=wrong-arg-types  # gen-stub-imports
 
     reversed_mdim = mfg_event_converter.attachment_to_multidim_measurement(
         attachment)

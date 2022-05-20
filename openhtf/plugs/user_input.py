@@ -32,7 +32,6 @@ import openhtf
 from openhtf import plugs
 from openhtf.core import base_plugs
 from openhtf.util import console_output
-from six.moves import input
 
 if platform.system() != 'Windows':
   import termios  # pylint: disable=g-import-not-at-top

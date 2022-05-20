@@ -3,7 +3,7 @@
  */
 
 import {Component, DebugElement, Input} from '@angular/core';
-import {async, ComponentFixture, TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 
 import {ConfigService} from '../../core/config.service';
 import {Station, StationStatus} from '../../shared/models/station.model';
@@ -103,7 +103,7 @@ describe('station component', () => {
     mockActiveTest = {dutId: 'active-dut-id'};
   }
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: (testWidgetStubs as Array<{}>).concat([
         HistoryComponentStub,

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Implements the basic PhaseNode collections.
 
 Phase Sequence are basic collections where each node is sequentially run.  These
@@ -30,8 +29,6 @@ from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_nodes
-import six
-from six.moves import collections_abc
 
 NodeType = TypeVar('NodeType', bound=phase_nodes.PhaseNode)
 SequenceClassT = TypeVar('SequenceClassT', bound='PhaseSequence')
@@ -46,7 +43,7 @@ class DuplicateSubtestNamesError(Exception):
 
 def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
   """Yields flattened phase nodes."""
-  if isinstance(n, collections_abc.Iterable):
+  if isinstance(n, collections.abc.Iterable):
     for it in n:
       for node in _recursive_flatten(it):
         yield node
@@ -63,8 +60,7 @@ def flatten(n: Any) -> List[phase_nodes.PhaseNode]:
   return list(_recursive_flatten(n))
 
 
-class PhaseCollectionNode(
-    six.with_metaclass(abc.ABCMeta, phase_nodes.PhaseNode)):
+class PhaseCollectionNode(phase_nodes.PhaseNode, metaclass=abc.ABCMeta):
   """Base class for a node that contains multiple other phase nodes."""
 
   __slots__ = ()

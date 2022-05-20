@@ -66,14 +66,13 @@ Some examples of how to use this service:
   # output.getvalue() now contains the output of the arecord command.
 """
 
+import io
 import threading
 import time
 
 from openhtf.plugs.usb import adb_protocol
 from openhtf.plugs.usb import usb_exceptions
-
 from openhtf.util import timeouts
-import six
 
 
 class AsyncCommandHandle(object):
@@ -110,7 +109,7 @@ class AsyncCommandHandle(object):
     """
     self.stream = stream
     self.stdin = stdin
-    self.stdout = stdout or six.StringIO()
+    self.stdout = stdout or io.StringIO()
     self.force_closed_or_timeout = False
 
     self.reader_thread = threading.Thread(

@@ -17,9 +17,9 @@ import logging
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from absl.testing import parameterized
-import mock
 import openhtf
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
@@ -27,8 +27,10 @@ from openhtf.core import phase_executor
 from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import threads
+
+CONF = configuration.CONF
 
 
 @openhtf.measures('test_measurement')
@@ -74,7 +76,7 @@ PHASE_RECORD_BASE_TYPE.update({
 TEST_STATE_BASE_TYPE_INITIAL = {
     'status': 'WAITING_FOR_TEST_START',
     'test_record': {
-        'station_id': conf.station_id,
+        'station_id': CONF.station_id,
         'code_info': {
             'docstring': None,
             'name': '',
@@ -152,6 +154,10 @@ class TestTestApi(parameterized.TestCase):
 
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
+
+  def test_get_measurement_strict(self):
+    with self.assertRaises(test_descriptor.MeasurementNotFoundError):
+      self.test_api.get_measurement_strict('no_such_test_measurement')
 
   def test_get_measurement_immutable(self):
     measurement_val = [1, 2, 3]

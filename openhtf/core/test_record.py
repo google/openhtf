@@ -13,6 +13,7 @@
 # limitations under the License.
 """OpenHTF module responsible for managing records of tests."""
 
+import enum
 import hashlib
 import inspect
 import logging
@@ -21,14 +22,13 @@ import tempfile
 from typing import Any, Dict, List, Optional, Text, TYPE_CHECKING, Union
 
 import attr
-import enum  # pylint: disable=g-bad-import-order
 
 from openhtf import util
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import logs
 
-import six
+CONF = configuration.CONF
 
 if TYPE_CHECKING:
   from openhtf.core import diagnoses_lib  # pylint: disable=g-import-not-at-top
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
   from openhtf.core import phase_executor  # pylint: disable=g-import-not-at-top
   from openhtf.core import phase_branches  # pylint: disable=g-import-not-at-top
 
-conf.declare(
+CONF.declare(
     'attachments_directory',
     default_value=None,
     description='Directory where temprorary files can be safely stored.')
@@ -72,16 +72,20 @@ class Attachment(object):
     sha1: str, SHA-1 hash of the data.
     _file: Temporary File containing the data.
     data: property that reads the data from the temporary file.
+    size: Number of bytes of data in the file
   """
 
   mimetype = attr.ib(type=Text)
   sha1 = attr.ib(type=Text)
   _filename = attr.ib(type=Text)
+  size = attr.ib(type=int)
 
   def __init__(self, contents: Union[Text, bytes], mimetype: Text):
-    contents = six.ensure_binary(contents)
+    if isinstance(contents, str):
+      contents = contents.encode()
     self.mimetype = mimetype
     self.sha1 = hashlib.sha1(contents).hexdigest()
+    self.size = len(contents)
     self._filename = self._create_temp_file(contents)
 
   def __del__(self):
@@ -89,7 +93,7 @@ class Attachment(object):
 
   def _create_temp_file(self, contents: bytes) -> Text:
     with tempfile.NamedTemporaryFile(
-        'w+b', dir=conf.attachments_directory, delete=False) as tf:
+        'w+b', dir=CONF.attachments_directory, delete=False) as tf:
       tf.write(contents)
       return tf.name
 
@@ -195,7 +199,7 @@ class TestRecord(object):
     # Cache data that does not change during execution.
     # Cache the metadata config so it does not recursively copied over and over
     # again.
-    self._cached_config_from_metadata = self.metadata.get('config')
+    self._cached_config_from_metadata = self.metadata.get('config')  # pytype: disable=annotation-type-mismatch
     self._cached_record = {
         'station_id': data.convert_to_base_types(self.station_id),
         'code_info': data.convert_to_base_types(self.code_info),

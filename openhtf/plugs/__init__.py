@@ -20,26 +20,23 @@ end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 """
 
-import collections
 import logging
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Text, Tuple, Type, TypeVar, Union
 
 import attr
 
-from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
-from openhtf.util import classproperty
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import data
-from openhtf.util import logs
 from openhtf.util import threads
-import six
+
+CONF = configuration.CONF
 
 _LOG = logging.getLogger(__name__)
 _BASE_PLUGS_LOG = base_plugs._LOG  # pylint: disable=protected-access
 
-conf.declare(
+CONF.declare(
     'plug_teardown_timeout_s',
     default_value=0,
     description='Timeout (in seconds) for each plug tearDown function if > 0; '
@@ -118,7 +115,7 @@ def plug(
 
     phase.plugs.extend([
         base_plugs.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
-        for name, a_plug in six.iteritems(plugs_map)
+        for name, a_plug in plugs_map.items()
     ])
     return phase
 
@@ -185,11 +182,11 @@ class PlugManager(object):
     return {
         'plug_descriptors': {
             name: attr.asdict(descriptor)
-            for name, descriptor in six.iteritems(self._plug_descriptors)
+            for name, descriptor in self._plug_descriptors.items()
         },
         'plug_states': {
             name: data.convert_to_base_types(plug)
-            for name, plug in six.iteritems(self._plugs_by_name)
+            for name, plug in self._plugs_by_name.items()
         },
     }
 
@@ -335,7 +332,7 @@ class PlugManager(object):
     by this method.
     """
     _LOG.debug('Tearing down all plugs.')
-    for plug_type, plug_instance in six.iteritems(self._plugs_by_type):
+    for plug_type, plug_instance in self._plugs_by_type.items():
       if plug_instance.uses_base_tear_down():
         name = '<PlugTearDownThread: BasePlug No-Op for %s>' % plug_type
       else:
@@ -343,8 +340,8 @@ class PlugManager(object):
       thread = _PlugTearDownThread(plug_instance, name=name)
       thread.start()
       timeout_s = (
-          conf.plug_teardown_timeout_s
-          if conf.plug_teardown_timeout_s else None)
+          CONF.plug_teardown_timeout_s
+          if CONF.plug_teardown_timeout_s else None)
       thread.join(timeout_s)
       if thread.is_alive():
         thread.kill()
@@ -391,6 +388,6 @@ class PlugManager(object):
   def get_frontend_aware_plug_names(self) -> List[Text]:
     """Returns the names of frontend-aware plugs."""
     return [
-        name for name, plug in six.iteritems(self._plugs_by_name)
+        name for name, plug in self._plugs_by_name.items()
         if isinstance(plug, base_plugs.FrontendAwareBasePlug)
     ]
