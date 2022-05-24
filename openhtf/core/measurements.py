@@ -439,7 +439,7 @@ class Measurement(object):
       raise
     finally:
       if self._cached:
-        self._cached['outcome'] = self.outcome.name
+        self._cached['outcome'] = self.outcome.name  # pytype: disable=bad-return-type
 
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert this measurement to a dict of basic types."""

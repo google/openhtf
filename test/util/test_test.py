@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import logging
+import os
+import pathlib
+import pstats
+import tempfile
 import unittest
 from unittest import mock
 
@@ -272,3 +277,63 @@ class TestTest(test.TestCase):
     # wrapping the yield statement in the assertRaises context.
     with self.assertRaises(test.InvalidTestError):
       test.yields_phases(bad_test)(self)
+
+
+class PhaseProfilingTest(test.TestCase):
+  """Test profiling an OpenHTF phase in unit testing.
+
+  Do this in its own fixture to avoid noise from other test methods.
+  """
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    cls._profile_tempdir = tempfile.TemporaryDirectory()
+    cls.set_profile_dir(pathlib.Path(cls._profile_tempdir.name))
+
+  @classmethod
+  def tearDownClass(cls):
+    super().tearDownClass()
+    cls._profile_tempdir.cleanup()
+
+  def test_profile_phase(self):
+    self.execute_phase_or_test(test_phase_with_shameless_plug)
+    with io.StringIO() as output_stream:
+      stats = pstats.Stats(
+          str(self.get_profile_filepath()), stream=output_stream)
+      stats.print_stats(test_phase_with_shameless_plug.name)
+      output_stream.seek(0)
+      output = output_stream.read()
+    self.assertIn(
+        test_phase_with_shameless_plug.func.__module__.replace(
+            '.', os.path.sep), output)
+
+
+class TestProfilingTest(test.TestCase):
+  """Test profiling an OpenHTF test in unit testing.
+
+  Do this in its own fixture to avoid noise from other test methods.
+  """
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    cls._profile_tempdir = tempfile.TemporaryDirectory()
+    cls.set_profile_dir(pathlib.Path(cls._profile_tempdir.name))
+
+  @classmethod
+  def tearDownClass(cls):
+    super().tearDownClass()
+    cls._profile_tempdir.cleanup()
+
+  def test_profile_test(self):
+    self.execute_phase_or_test(openhtf.Test(test_phase_with_shameless_plug))
+    with io.StringIO() as output_stream:
+      stats = pstats.Stats(
+          str(self.get_profile_filepath()), stream=output_stream)
+      stats.print_stats(test_phase_with_shameless_plug.name)
+      output_stream.seek(0)
+      output = output_stream.read()
+    self.assertIn(
+        test_phase_with_shameless_plug.func.__module__.replace(
+            '.', os.path.sep), output)

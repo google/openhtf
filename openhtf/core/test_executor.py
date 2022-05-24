@@ -34,21 +34,23 @@ from openhtf.core import phase_group
 from openhtf.core import phase_nodes
 from openhtf.core import test_record
 from openhtf.core import test_state
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import threads
+
+CONF = configuration.CONF
 
 if TYPE_CHECKING:
   from openhtf.core import test_descriptor  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 
-conf.declare(
+CONF.declare(
     'cancel_timeout_s',
     default_value=2,
     description='Timeout (in seconds) when the test has been cancelled'
     'to wait for the running phase to exit.')
 
-conf.declare(
+CONF.declare(
     'stop_on_first_failure',
     default_value=False,
     description='Stop current test execution and return Outcome FAIL'
@@ -277,7 +279,7 @@ class TestExecutor(threads.KillableThread):
       # If locked, teardown phases are running, so do not cancel those.
       return
     try:
-      phase_exec.stop(timeout_s=conf.cancel_timeout_s)
+      phase_exec.stop(timeout_s=CONF.cancel_timeout_s)
       # Resetting so phase_exec can run teardown phases.
       phase_exec.reset_stop()
     finally:
@@ -318,7 +320,7 @@ class TestExecutor(threads.KillableThread):
       self._phase_profile_stats.append(profile_stats)
 
     if (self.test_state.test_options.stop_on_first_failure or
-        conf.stop_on_first_failure):
+        CONF.stop_on_first_failure):
       # Stop Test on first measurement failure
       current_phase_result = self.test_state.test_record.phases[
           len(self.test_state.test_record.phases) - 1]

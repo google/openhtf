@@ -21,7 +21,9 @@ import threading
 from typing import Optional
 
 from openhtf.core import base_plugs
-from openhtf.util import conf
+from openhtf.util import configuration
+
+CONF = configuration.CONF
 
 try:
   # pylint: disable=g-import-not-at-top
@@ -33,11 +35,11 @@ except ImportError:
       'e.g. via `pip install openhtf[serial_collection_plug]`.')
   raise
 
-conf.declare(
+CONF.declare(
     'serial_collection_port',
     description='Port on which to collect serial data.',
     default_value='/dev/ttyACM0')
-conf.declare(
+CONF.declare(
     'serial_collection_baud',
     description='Baud rate for serial data collection.',
     default_value=115200)
@@ -61,7 +63,7 @@ class SerialCollectionPlug(base_plugs.BasePlug):
   _collect = None  # type: bool
   _collection_thread = None  # type: Optional[threading.Thread]
 
-  @conf.inject_positional_args
+  @CONF.inject_positional_args
   def __init__(self, serial_collection_port, serial_collection_baud):
     super(SerialCollectionPlug, self).__init__()
     # Instantiate the port with no name, then add the name, so it won't be

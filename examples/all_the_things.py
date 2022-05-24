@@ -32,7 +32,7 @@ from six.moves import range
 from six.moves import zip
 
 
-@htf.plug(example=example_plugs.ExamplePlug)
+@htf.plug(example=example_plugs.example_plug_configured)
 @htf.plug(frontend_aware=example_plugs.ExampleFrontendAwarePlug)
 def example_monitor(example, frontend_aware):
   time.sleep(.2)
@@ -50,7 +50,7 @@ def example_monitor(example, frontend_aware):
     docstring='Helpful docstring',
     units=units.HERTZ,
     validators=[util.validators.matches_regex('Measurement')])
-@htf.plug(example=example_plugs.ExamplePlug)
+@htf.plug(example=example_plugs.example_plug_configured)
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
   """A hello world test phase."""

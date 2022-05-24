@@ -331,7 +331,7 @@ def test_run_from_test_record(record):
   Returns:
     An instance of the TestRun proto for the given record.
   """
-  testrun = test_runs_pb2.TestRun()
+  testrun = test_runs_pb2.TestRun()  # pytype: disable=module-attr  # gen-stub-imports
   _populate_header(record, testrun)
   _attach_json(record, testrun)
 

@@ -1,4 +1,3 @@
-# Lint as: python3
 """Unit tests for test_descriptor module."""
 
 import re
