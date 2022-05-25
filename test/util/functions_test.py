@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import unittest
-import mock
-
+from unittest import mock
 
 from openhtf.util import functions
 
 
 class MockTime(object):
+
   def __init__(self):
     self._time = 0
+
   def sleep(self, seconds):
     self._time += seconds
+
   def time(self):
     self._time += 1
     return self._time - 1
@@ -31,24 +33,30 @@ class MockTime(object):
 
 class TestFunctions(unittest.TestCase):
 
-  def test_call_once_fails_with_args(self):
+  def test_call_once_fails_single_arg(self):
     with self.assertRaises(ValueError):
-      @functions.call_once
-      def has_args(x):
-        pass
 
-    with self.assertRaises(ValueError):
       @functions.call_once
-      def has_args(*args):
-        pass
+      def has_args(x):  # pylint: disable=unused-variable
+        del x  # Unused.
 
+  def test_call_once_fails_star_args(self):
     with self.assertRaises(ValueError):
+
       @functions.call_once
-      def has_args(**kwargs):
-        pass
+      def has_args(*args):  # pylint: disable=unused-variable
+        del args  # Unused.
+
+  def test_call_once_fails_kwargs(self):
+    with self.assertRaises(ValueError):
+
+      @functions.call_once
+      def has_args(**kwargs):  # pylint: disable=unused-variable
+        del kwargs  # Unused.
 
   def test_call_once(self):
     calls = []
+
     @functions.call_once
     def can_only_call_once():
       calls.append(None)
@@ -61,10 +69,12 @@ class TestFunctions(unittest.TestCase):
   @mock.patch('openhtf.util.functions.time', new_callable=MockTime)
   def testCallAtMostEvery(self, mock_time):
     call_times = []
+
     @functions.call_at_most_every(5)
-    def CallOnceEveryFiveSeconds():
+    def _call_once_every_five_seconds():
       call_times.append(mock_time.time())
+
     for _ in range(100):
-      CallOnceEveryFiveSeconds()
+      _call_once_every_five_seconds()
     # Each call takes "6 seconds", so we get call times up to 600.
-    self.assertEqual(list(range(2, 600, 6)), call_times) 
+    self.assertEqual(list(range(2, 600, 6)), call_times)

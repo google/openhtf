@@ -12,26 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import queue
 import time
-import mock
+import unittest
+from unittest import mock
 
 from openhtf import plugs
+from openhtf.core import base_plugs
 from openhtf.core import monitors
-from six.moves import queue
 
 
-class EmptyPlug(plugs.BasePlug):
+class EmptyPlug(base_plugs.BasePlug):
   pass
 
 
 class TestMonitors(unittest.TestCase):
 
   def setUp(self):
+    super(TestMonitors, self).setUp()
     self.test_state = mock.MagicMock(execution_uid='01234567890')
 
-    def provide_plugs(plugs):
-      return {name: cls() for name, cls in plugs}
+    def provide_plugs(plug_map):
+      return {name: cls() for name, cls in plug_map}
+
     self.test_state.plug_manager.provide_plugs = provide_plugs
 
   def test_basics(self):
@@ -40,11 +43,13 @@ class TestMonitors(unittest.TestCase):
     q = queue.Queue()
 
     def monitor_func(test):
+      del test  # Unused.
       q.put(1)
       return 1
 
     @monitors.monitors('meas', monitor_func, poll_interval_ms=100)
     def phase(test):
+      del test  # Unused.
       while q.qsize() < 2:
         time.sleep(0.1)
 
@@ -59,21 +64,24 @@ class TestMonitors(unittest.TestCase):
     # Measurement time is at the end of the monitor func, which can take
     # upwards of 100 milliseconds depending on how busy the infrastructure is,
     # so we only check that it's less than a second.
-    self.assertLessEqual(first_meas[0], 100,
-                         msg='At time 0, there should be a call made.')
-    self.assertEqual(1, first_meas[1],
-                     msg="And it should be the monitor func's return val")
+    self.assertLessEqual(
+        first_meas[0], 100, msg='At time 0, there should be a call made.')
+    self.assertEqual(
+        1, first_meas[1], msg="And it should be the monitor func's return val")
 
   def testPlugs(self):
     q = queue.Queue()
 
     @plugs.plug(empty=EmptyPlug)
     def monitor(test, empty):
+      del test  # Unused.
+      del empty  # Unused.
       q.put(2)
       return 2
 
     @monitors.monitors('meas', monitor, poll_interval_ms=100)
     def phase(test):
+      del test  # Unused.
       while q.qsize() < 2:
         time.sleep(0.1)
 
@@ -84,9 +92,7 @@ class TestMonitors(unittest.TestCase):
     # Measurement time is at the end of the monitor func, which can take
     # upwards of 100 milliseconds depending on how busy the infrastructure is,
     # so we only check that it's less than a second.
-    self.assertLessEqual(first_meas[0], 100,
-                         msg='At time 0, there should be a call made.')
-    self.assertEqual(2, first_meas[1],
-                     msg="And it should be the monitor func's return val")
-
-
+    self.assertLessEqual(
+        first_meas[0], 100, msg='At time 0, there should be a call made.')
+    self.assertEqual(
+        2, first_meas[1], msg="And it should be the monitor func's return val")

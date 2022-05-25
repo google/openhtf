@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Stub USB handle implementation for testing."""
 
 import binascii
@@ -26,8 +24,8 @@ class StubUsbHandle(usb_handle.UsbHandle):
   PRINTABLE_DATA = set(string.printable) - set(string.whitespace)
 
   def __init__(self, ignore_writes=False):
-    super(StubUsbHandle, self).__init__('StubSerial', 'StubHandle',
-                                        default_timeout_ms=0)
+    super(StubUsbHandle, self).__init__(
+        'StubSerial', 'StubHandle', default_timeout_ms=0)
     self.expected_write_data = None if ignore_writes else []
     self.expected_read_data = []
     self.closed = False
@@ -45,9 +43,9 @@ class StubUsbHandle(usb_handle.UsbHandle):
 
     expected_data = self.expected_write_data.pop(0)
     if expected_data != data:
-      raise ValueError('Expected %s, got %s (%s)' % (
-          self._dotify(expected_data), binascii.hexlify(data),
-          self._dotify(data)))
+      raise ValueError('Expected %s, got %s (%s)' %
+                       (self._dotify(expected_data), binascii.hexlify(data),
+                        self._dotify(data)))
 
   def read(self, length, dummy=None):
     """Stub Read method."""
@@ -55,8 +53,8 @@ class StubUsbHandle(usb_handle.UsbHandle):
     data = self.expected_read_data.pop(0)
     if length < len(data):
       raise ValueError(
-          'Overflow packet length. Read %d bytes, got %d bytes: %s',
-          length, len(data), self._dotify(data))
+          'Overflow packet length. Read %d bytes, got %d bytes: %s' %
+          (length, len(data), self._dotify(data)))
     return data
 
   def close(self):

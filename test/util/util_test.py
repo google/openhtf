@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import copy
-import mock
 import time
 import unittest
+from unittest import mock
 
 from openhtf import util
 from openhtf.util import timeouts
@@ -24,14 +23,10 @@ from openhtf.util import timeouts
 
 class TestUtil(unittest.TestCase):
 
-  @classmethod
-  def setUp(cls):
-    cls.timeout = 60
-    cls.polledtimeout = timeouts.PolledTimeout(cls.timeout)
-
-  @classmethod
-  def tearDown(cls):
-    pass
+  def setUp(self):
+    super(TestUtil, self).setUp()
+    self.timeout = 60
+    self.polledtimeout = timeouts.PolledTimeout(self.timeout)
 
   @mock.patch.object(time, 'time')
   def test_time_expired_false(self, mock_time):
@@ -49,8 +44,8 @@ class TestUtil(unittest.TestCase):
 
   def test_partial_format(self):
     original = ('Apples are {apple[color]} and {apple[taste]}. '
-        'Pears are {pear.color} and {pear.taste}. '
-        'Oranges are {orange_color} and {orange_taste}.')
+                'Pears are {pear.color} and {pear.taste}. '
+                'Oranges are {orange_color} and {orange_taste}.')
     text = copy.copy(original)
 
     apple = {
@@ -61,18 +56,21 @@ class TestUtil(unittest.TestCase):
     class Pear(object):
       color = 'green'
       taste = 'tart'
+
     pear = Pear()
 
     # Partial formatting
     res = util.partial_format(text, apple=apple)
     res = util.partial_format(res, pear=pear)
-    self.assertEqual('Apples are red and sweet. Pears are green and tart. '
-      'Oranges are {orange_color} and {orange_taste}.', res)
+    self.assertEqual(
+        'Apples are red and sweet. Pears are green and tart. '
+        'Oranges are {orange_color} and {orange_taste}.', res)
 
     # Format rest of string
     res = util.partial_format(res, orange_color='orange', orange_taste='sour')
-    self.assertEqual('Apples are red and sweet. Pears are green and tart. '
-      'Oranges are orange and sour.', res)
+    self.assertEqual(
+        'Apples are red and sweet. Pears are green and tart. '
+        'Oranges are orange and sour.', res)
 
     #  The original text has not changed
     self.assertEqual(original, text)

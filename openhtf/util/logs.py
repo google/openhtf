@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Logging mechanisms for use in OpenHTF.
 
 Below is an illustration of the tree of OpenHTF loggers:
@@ -113,31 +111,40 @@ from openhtf.util import argv
 from openhtf.util import console_output
 from openhtf.util import functions
 from openhtf.util import threads
-import six
 
 # The number of v's provided as command line arguments to control verbosity.
 # Will be overridden if the ARG_PARSER below parses the -v argument.
 CLI_LOGGING_VERBOSITY = 0
 
-ARG_PARSER = argv.ModuleParser()
+ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
-    '-v', action=argv.StoreRepsInModule,
+    '-v',
+    action=argv.StoreRepsInModule,
     target='%s.CLI_LOGGING_VERBOSITY' % __name__,
-    help=textwrap.dedent('''\
+    help=textwrap.dedent("""\
         CLI logging verbosity. Can be repeated to increase verbosity (i.e. -v,
-        -vv, -vvv).'''))
+        -vv, -vvv)."""))
 
 LOGGER_PREFIX = 'openhtf'
 RECORD_LOGGER_PREFIX = '.'.join((LOGGER_PREFIX, 'test_record'))
-RECORD_LOGGER_RE = re.compile(
-    r'%s\.(?P<test_uid>[^.]*)\.?' % RECORD_LOGGER_PREFIX)
+RECORD_LOGGER_RE = re.compile(r'%s\.(?P<test_uid>[^.]*)\.?' %
+                              RECORD_LOGGER_PREFIX)
 SUBSYSTEM_LOGGER_RE = re.compile(
     r'%s\.[^.]*\.(?P<subsys>plug|phase)\.(?P<id>[^.]*)' % RECORD_LOGGER_PREFIX)
 
 _LOG_ONCE_SEEN = set()
 
-LogRecord = collections.namedtuple(
-    'LogRecord', 'level logger_name source lineno timestamp_millis message')
+
+class LogRecord(
+    collections.namedtuple('LogRecord', [
+        'level',
+        'logger_name',
+        'source',
+        'lineno',
+        'timestamp_millis',
+        'message',
+    ])):
+  pass
 
 
 class HtfTestLogger(logging.Logger):
@@ -172,6 +179,11 @@ def initialize_record_handler(test_uid, test_record, notify_update):
   For each running test, we attach a record handler to the top-level OpenHTF
   logger. The handler will append OpenHTF logs to the test record, while
   filtering out logs that are specific to any other test run.
+
+  Args:
+    test_uid: UID for the test run.
+    test_record: The test record for the current test run.
+    notify_update: Function that gets called when the test record is updated.
   """
   htf_logger = logging.getLogger(LOGGER_PREFIX)
   htf_logger.addHandler(RecordHandler(test_uid, test_record, notify_update))
@@ -196,7 +208,8 @@ def log_once(log_func, msg, *args, **kwargs):
 class MacAddressLogFilter(logging.Filter):
   """A filter which redacts MAC addresses."""
 
-  MAC_REPLACE_RE = re.compile(r"""
+  MAC_REPLACE_RE = re.compile(
+      r"""
         ((?:[\dA-F]{2}:){3})       # 3-part prefix, f8:8f:ca means google
         (?:[\dA-F]{2}(:|\b)){3}    # the remaining octets
         """, re.IGNORECASE | re.VERBOSE)
@@ -205,16 +218,17 @@ class MacAddressLogFilter(logging.Filter):
   def filter(self, record):
     if self.MAC_REPLACE_RE.search(record.getMessage()):
       # Update all the things to have no mac address in them
-      if isinstance(record.msg, six.string_types):
+      if isinstance(record.msg, str):
         record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.msg)
         record.args = tuple([
             self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
-            if isinstance(arg, six.string_types)
-            else arg for arg in record.args])
+            if isinstance(arg, str) else arg for arg in record.args
+        ])
       else:
-        record.msg = self.MAC_REPLACE_RE.sub(
-            self.MAC_REPLACEMENT, record.getMessage())
+        record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT,
+                                             record.getMessage())
     return True
+
 
 # We use one shared instance of this, it has no internal state.
 MAC_FILTER = MacAddressLogFilter()
@@ -279,8 +293,12 @@ class RecordHandler(logging.Handler):
     try:
       message = self.format(record)
       log_record = LogRecord(
-          record.levelno, record.name, os.path.basename(record.pathname),
-          record.lineno, int(record.created * 1000), message,
+          record.levelno,
+          record.name,
+          os.path.basename(record.pathname),
+          record.lineno,
+          int(record.created * 1000),
+          message,
       )
       self._test_record.add_log_record(log_record)
       self._notify_update()
@@ -304,15 +322,12 @@ class CliFormatter(logging.Formatter):
       subsys_match = SUBSYSTEM_LOGGER_RE.match(record.name)
       if subsys_match:
         terse_name = '<{subsys}: {id}>'.format(
-            subsys=subsys_match.group('subsys'),
-            id=subsys_match.group('id'))
+            subsys=subsys_match.group('subsys'), id=subsys_match.group('id'))
       else:
         # Fall back to using the last five characters of the test UUID.
         terse_name = '<test %s>' % match.group('test_uid')[-5:]
-    return '{lvl} {time} {logger} - {msg}'.format(lvl=terse_level,
-                                                  time=terse_time,
-                                                  logger=terse_name,
-                                                  msg=record.message)
+    return '{lvl} {time} {logger} - {msg}'.format(
+        lvl=terse_level, time=terse_time, logger=terse_name, msg=record.message)
 
 
 @functions.call_once
