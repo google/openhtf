@@ -20,26 +20,24 @@ end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 """
 
-import collections
 import logging
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Text, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Text, Tuple, Type, TypeVar, Union
 
 import attr
 
-from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
-from openhtf.util import classproperty
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import data
-from openhtf.util import logs
 from openhtf.util import threads
 import six
+
+CONF = configuration.CONF
 
 _LOG = logging.getLogger(__name__)
 _BASE_PLUGS_LOG = base_plugs._LOG  # pylint: disable=protected-access
 
-conf.declare(
+CONF.declare(
     'plug_teardown_timeout_s',
     default_value=0,
     description='Timeout (in seconds) for each plug tearDown function if > 0; '
@@ -343,8 +341,8 @@ class PlugManager(object):
       thread = _PlugTearDownThread(plug_instance, name=name)
       thread.start()
       timeout_s = (
-          conf.plug_teardown_timeout_s
-          if conf.plug_teardown_timeout_s else None)
+          CONF.plug_teardown_timeout_s
+          if CONF.plug_teardown_timeout_s else None)
       thread.join(timeout_s)
       if thread.is_alive():
         thread.kill()

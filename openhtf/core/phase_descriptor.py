@@ -25,6 +25,7 @@ import pdb
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Text, TYPE_CHECKING, Type, Union
 
 import attr
+import inflection
 
 import openhtf
 from openhtf import util
@@ -73,6 +74,15 @@ class PhaseResult(enum.Enum):
   FAIL_SUBTEST = 'FAIL_SUBTEST'
 
 
+@enum.unique
+class PhaseNameCase(enum.Enum):
+  """Options for formatting casing for phase names."""
+  # Does not modify case for phase name.
+  KEEP = 'KEEP'
+  # Changes phase name case to CamelCase.
+  CAMEL = 'CAMEL'
+
+
 PhaseReturnT = Optional[PhaseResult]
 PhaseCallableT = Callable[..., PhaseReturnT]
 PhaseCallableOrNodeT = Union[PhaseCallableT, phase_nodes.PhaseNode]
@@ -101,6 +111,8 @@ class PhaseOptions(object):
     run_under_pdb: If True, run the phase under the Python Debugger (pdb).  When
       setting this option, increase the phase timeout as well because the
       timeout will still apply when under the debugger.
+    phase_name_case: Case formatting options for phase name.
+    stop_on_measurement_fail: Whether to stop the test if any measurements fail.
   Example Usages: @PhaseOptions(timeout_s=1)
     def PhaseFunc(test): pass  @PhaseOptions(name='Phase({port})')
     def PhaseFunc(test, port, other_info): pass
@@ -114,6 +126,8 @@ class PhaseOptions(object):
   repeat_on_timeout = attr.ib(type=bool, default=False)
   repeat_limit = attr.ib(type=Optional[int], default=None)
   run_under_pdb = attr.ib(type=bool, default=False)
+  phase_name_case = attr.ib(type=PhaseNameCase, default=PhaseNameCase.KEEP)
+  stop_on_measurement_fail = attr.ib(type=bool, default=False)
 
   def format_strings(self, **kwargs: Any) -> 'PhaseOptions':
     """String substitution of name."""
@@ -139,6 +153,11 @@ class PhaseOptions(object):
       phase.options.repeat_limit = self.repeat_limit
     if self.run_under_pdb:
       phase.options.run_under_pdb = self.run_under_pdb
+    if self.phase_name_case == PhaseNameCase.CAMEL:
+      name = phase.name if phase.options.name is None else phase.options.name
+      phase.options.name = inflection.camelize(name)
+    if self.stop_on_measurement_fail:
+      phase.options.stop_on_measurement_fail = self.stop_on_measurement_fail
     return phase
 
 
@@ -202,7 +221,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     return retval
 
   def _asdict(self) -> Dict[Text, Any]:
-    ret = attr.asdict(self, filter=attr.filters.exclude('func'))
+    ret = attr.asdict(self, filter=attr.filters.exclude('func'))  # pytype: disable=wrong-arg-types  # attr-stubs
     ret.update(name=self.name, doc=self.doc)
     return ret
 
@@ -336,6 +355,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     kwargs.update(
         running_test_state.plug_manager.provide_plugs(
             (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
+
     # Pass in test_api if the phase takes *args, or **kwargs with at least 1
     # positional, or more positional args than we have keyword args.
     if arg_info.varargs or (keywords and len(arg_info.args) >= 1) or (len(
@@ -347,13 +367,26 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
         args.append(running_test_state.test_api)
 
       if self.options.run_under_pdb:
-        return pdb.runcall(self.func, *args, **kwargs)
+        phase_result = pdb.runcall(self.func, *args, **kwargs)
       else:
-        return self.func(*args, **kwargs)
-    if self.options.run_under_pdb:
-      return pdb.runcall(self.func, **kwargs)
+        phase_result = self.func(*args, **kwargs)
+
+    elif self.options.run_under_pdb:
+      phase_result = pdb.runcall(self.func, **kwargs)
     else:
-      return self.func(**kwargs)
+      phase_result = self.func(**kwargs)
+
+    # Override the phase result if the user wants to treat ANY failed
+    # measurement of this phase as a test-stopping failure.
+    if self.options.stop_on_measurement_fail:
+      # Note: The measurement definitions do NOT have the outcome populated.
+      for measurement in self.measurements:
+        if (running_test_state.test_api.get_measurement(
+            measurement.name).outcome != core_measurements.Outcome.PASS):
+          phase_result = PhaseResult.STOP
+          break
+
+    return phase_result
 
 
 def measures(*measurements: Union[Text, core_measurements.Measurement],

@@ -40,6 +40,7 @@ from openhtf.core.phase_collections import Subtest
 from openhtf.core.phase_descriptor import diagnose
 from openhtf.core.phase_descriptor import measures
 from openhtf.core.phase_descriptor import PhaseDescriptor
+from openhtf.core.phase_descriptor import PhaseNameCase
 from openhtf.core.phase_descriptor import PhaseOptions
 from openhtf.core.phase_descriptor import PhaseResult
 from openhtf.core.phase_group import PhaseGroup
@@ -50,7 +51,7 @@ from openhtf.core.test_descriptor import TestDescriptor
 from openhtf.core.test_record import PhaseRecord
 from openhtf.core.test_record import TestRecord
 from openhtf.plugs import plug
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import console_output
 from openhtf.util import data
 from openhtf.util import functions
@@ -58,8 +59,7 @@ from openhtf.util import logs
 from openhtf.util import units
 import pkg_resources
 
-if typing.TYPE_CHECKING:
-  conf: conf.Configuration  # Configuration is only available here in typing.
+conf = configuration.CONF
 
 
 def get_version():

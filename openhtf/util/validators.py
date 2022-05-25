@@ -391,7 +391,7 @@ class Equals(object):
     return value == self.expected
 
   def __str__(self):
-    return "'x' is equal to '%s'" % self._expected
+    return f"'x' is equal to '{self._expected}'"
 
   def __eq__(self, other):
     return isinstance(other, type(self)) and self.expected == other.expected

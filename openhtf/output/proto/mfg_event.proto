@@ -114,9 +114,26 @@ message Measurement {
 // A parameter which is extra information from a test run.  These values are not
 // used to pass or fail a test but may be useful when inspecting data.
 message EventAttachment {
+  // A stripped, vendor compatible, BlobRef, we convert this to
+  // blobstore.Blobref on the backend.
+  message ExistingBlobRef {
+    optional bytes blob_id = 1;
+    optional int64 size = 2;
+  }
+
   required string name = 1;
 
-  optional bytes value_binary = 2;
+  oneof value {
+    // The binary value of the attachment.  Note that the total maximum size for
+    // all value_binary attachments is 1.9GB per test run.  If you need more,
+    // upload these in chunks as partial test runs.
+    bytes value_binary = 2;
+
+    // An existing BlobRef already uploaded into SteamEngine.  If you upload a
+    // partial test run, you should get a BlobRef back that you can use to
+    // populate this.  This does not count against the 1.9GB file limit.
+    ExistingBlobRef existing_blobref = 9;
+  }
 
   optional string description = 3;
   optional int64 set_time_millis = 4;
@@ -128,5 +145,5 @@ message EventAttachment {
     string mime_type = 7;
   }
 
-  // next tag = 9
+  // next tag = 10
 }
