@@ -20,6 +20,7 @@ import platform
 import subprocess
 import sys
 
+# pylint: disable=g-importing-member,g-bad-import-order
 from distutils.command.build import build
 from distutils.command.clean import clean
 from distutils.cmd import Command
@@ -54,7 +55,8 @@ class BuildProtoCommand(Command):
     self.skip_proto = False
     try:
       prefix = subprocess.check_output(
-          'pkg-config --variable prefix protobuf'.split()).strip().decode('utf-8')
+          'pkg-config --variable prefix protobuf'.split()).strip().decode(
+              'utf-8')
     except (subprocess.CalledProcessError, OSError):
       if platform.system() == 'Linux':
         # Default to /usr?
@@ -69,11 +71,11 @@ class BuildProtoCommand(Command):
 
     maybe_protoc = os.path.join(prefix, 'bin', 'protoc')
     if os.path.isfile(maybe_protoc) and os.access(maybe_protoc, os.X_OK):
-        self.protoc = maybe_protoc
+      self.protoc = maybe_protoc
     else:
-        print('Warning: protoc not found at %s' % maybe_protoc)
-        print('setup will attempt to run protoc with no prefix.')
-        self.protoc = 'protoc'
+      print('Warning: protoc not found at %s' % maybe_protoc)
+      print('setup will attempt to run protoc with no prefix.')
+      self.protoc = 'protoc'
 
     self.protodir = os.path.join(prefix, 'include')
     self.indir = os.getcwd()
@@ -95,9 +97,12 @@ class BuildProtoCommand(Command):
       print('Attempting to build proto files:\n%s' % '\n'.join(protos))
       cmd = [
           self.protoc,
-          '--proto_path', self.indir,
-          '--proto_path', self.protodir,
-          '--python_out', self.outdir,
+          '--proto_path',
+          self.indir,
+          '--proto_path',
+          self.protodir,
+          '--python_out',
+          self.outdir,
       ] + protos
       try:
         subprocess.check_call(cmd)
@@ -123,25 +128,25 @@ class BuildProtoCommand(Command):
 # Make building protos part of building overall.
 build.sub_commands.insert(0, ('build_proto', None))
 
-
 INSTALL_REQUIRES = [
     'attrs>=19.3.0',
     'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
-    'enum34>=1.1.2,<2.0 ; python_version<"3.4"',
+    'dataclasses;python_version<"3.7"',
     'future>=0.16.0',
+    'inflection',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
     'protobuf>=3.6.0,<4.0',
-    'PyYAML>=3.13,<4.0',
+    'PyYAML>=3.13',
     'pyOpenSSL>=17.1.0,<18.0',
     'sockjs-tornado>=1.0.3,<2.0',
     'tornado>=4.3,<5.0',
-    'six>=1.12.0',
+    'typing-extensions',
 ]
 
 
-class PyTestCommand(test):
+class PyTestCommand(test):  # pylint: disable=missing-class-docstring
   # Derived from
   # https://github.com/chainreactionmfg/cara/blob/master/setup.py
   user_options = [
@@ -163,7 +168,7 @@ class PyTestCommand(test):
   def run_tests(self):
     self.run_command('build_proto')
 
-    import pytest
+    import pytest  # pylint: disable=g-import-not-at-top
     cov = []
     if self.pytest_cov is not None:
       outputs = []
@@ -185,13 +190,14 @@ setup(
     maintainer='Joe Ethier',
     maintainer_email='jethier@google.com',
     packages=find_packages(),
-    package_data={'openhtf': ['output/proto/*.proto',
-                              'output/web_gui/dist/*.*',
-                              'output/web_gui/dist/css/*',
-                              'output/web_gui/dist/js/*',
-                              'output/web_gui/dist/img/*',
-                              'output/web_gui/*.*']},
-    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*',
+    package_data={
+        'openhtf': [
+            'output/proto/*.proto', 'output/web_gui/dist/*.*',
+            'output/web_gui/dist/css/*', 'output/web_gui/dist/js/*',
+            'output/web_gui/dist/img/*', 'output/web_gui/*.*'
+        ]
+    },
+    python_requires='>=3.6',
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
@@ -203,21 +209,14 @@ setup(
             'libusb1>=1.3.0,<2.0',
             'M2Crypto>=0.22.3,<1.0',
         ],
-        'update_units': [
-            'xlrd>=1.0.0,<2.0',
-        ],
-        'serial_collection_plug': [
-            'pyserial>=3.3.0,<4.0',
-        ],
-        'examples': [
-            'pandas>=0.22.0',
-        ],
+        'update_units': ['xlrd>=1.0.0,<2.0',],
+        'serial_collection_plug': ['pyserial>=3.3.0,<4.0',],
+        'examples': ['pandas>=0.22.0',],
     },
     tests_require=[
-        'mock>=2.0.0',
-        # Remove max version here after we drop Python 2 support.
-        'pandas>=0.22.0,<0.25.0',
-        'numpy<1.17.0',
+        'absl-py>=0.10.0',
+        'pandas>=0.22.0',
+        'numpy',
         'pytest>=2.9.2',
         'pytest-cov>=2.2.1',
     ],

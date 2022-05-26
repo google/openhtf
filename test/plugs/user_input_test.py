@@ -29,6 +29,7 @@ class PlugsTest(unittest.TestCase):
     self.plug.tearDown()
 
   def test_respond_to_blocking_prompt(self):
+
     def _respond_to_prompt():
       as_dict = None
       while not as_dict:
@@ -48,9 +49,8 @@ class PlugsTest(unittest.TestCase):
 
     self.assertIsNotNone(self.plug._asdict())
 
-    response_used = self.plug.respond(prompt_id, 'Mock response.')
+    self.plug.respond(prompt_id, 'Mock response.')
 
-    self.assertTrue(response_used)
     self.assertIsNone(self.plug._asdict())
     self.assertEqual(self.plug.last_response, (prompt_id, 'Mock response.'))
 

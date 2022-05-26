@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Monitors provide a mechanism for periodically collecting data and
-automatically persisting values in a measurement.
+"""Monitors provide a mechanism for periodically collecting a measurement.
 
 Monitors are implemented similar to phase functions - they are decorated
 with plugs.plug() to pass plugs in.  The return value of a monitor
@@ -48,37 +46,47 @@ def MyPhase(test):
 import functools
 import inspect
 import time
+from typing import Any, Callable, Dict, Optional, Text
 
 import openhtf
 from openhtf import plugs
 from openhtf.core import measurements
+from openhtf.core import phase_descriptor
+from openhtf.core import test_state as core_test_state
 from openhtf.util import threads
 from openhtf.util import units as uom
+import six
 
 
 class _MonitorThread(threads.KillableThread):
+  """Background thread that runs a monitor."""
 
   daemon = True
 
-  def __init__(self, measurement_name, monitor_desc, extra_kwargs, test_state,
-               interval_ms):
-    super(_MonitorThread, self).__init__(
-        name='%s_MonitorThread' % measurement_name)
+  def __init__(self, measurement_name: Text,
+               monitor_desc: phase_descriptor.PhaseDescriptor,
+               extra_kwargs: Dict[Any, Any],
+               test_state: core_test_state.TestState, interval_ms: int):
+    super(_MonitorThread,
+          self).__init__(name='%s_MonitorThread' % measurement_name)
     self.measurement_name = measurement_name
     self.monitor_desc = monitor_desc
     self.test_state = test_state
     self.interval_ms = interval_ms
     self.extra_kwargs = extra_kwargs
 
-  def get_value(self):
-    arg_info = inspect.getargspec(self.monitor_desc.func)
-    if arg_info.keywords:
+  def get_value(self) -> Any:
+    argspec = inspect.getfullargspec(self.monitor_desc.func)
+    argspec_args = argspec.args
+    argspec_keywords = argspec.varkw
+    if argspec_keywords:
       # Monitor phase takes **kwargs, so just pass everything in.
       kwargs = self.extra_kwargs
     else:
       # Only pass in args that the monitor phase takes.
-      kwargs = {arg: val for arg, val in self.extra_kwargs
-                if arg in arg_info.args}
+      kwargs = {
+          arg: val for arg, val in self.extra_kwargs if arg in argspec_args
+      }
     return self.monitor_desc.with_args(**kwargs)(self.test_state)
 
   def _thread_proc(self):
@@ -120,34 +128,44 @@ class _MonitorThread(threads.KillableThread):
       mean_sample_ms = ((9 * mean_sample_ms) + cur_sample_ms) / 10.0
 
 
-def monitors(measurement_name, monitor_func, units=None, poll_interval_ms=1000):
+def monitors(
+    measurement_name: Text,
+    monitor_func: phase_descriptor.PhaseT,
+    units: Optional[uom.UnitDescriptor] = None,
+    poll_interval_ms: int = 1000
+) -> Callable[[phase_descriptor.PhaseT], phase_descriptor.PhaseDescriptor]:
+  """Returns a decorator that wraps a phase with a monitor."""
   monitor_desc = openhtf.PhaseDescriptor.wrap_or_copy(monitor_func)
-  def wrapper(phase_func):
+
+  def wrapper(
+      phase_func: phase_descriptor.PhaseT) -> phase_descriptor.PhaseDescriptor:
     phase_desc = openhtf.PhaseDescriptor.wrap_or_copy(phase_func)
 
     # Re-key this dict so we don't have to worry about collisions with
     # plug.plug() decorators on the phase function.  Since we aren't
     # updating kwargs here, we don't have to worry about collisions with
     # kwarg names.
-    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug.cls for
-                     idx, plug in enumerate(monitor_desc.plugs, start=1)}
+    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug.cls
+                     for idx, plug in enumerate(monitor_desc.plugs, start=1)}
 
     @openhtf.PhaseOptions(requires_state=True)
     @plugs.plug(update_kwargs=False, **monitor_plugs)
-    @measurements.measures(
+    @openhtf.measures(
         measurements.Measurement(measurement_name).with_units(
             units).with_dimensions(uom.MILLISECOND))
     @functools.wraps(phase_desc.func)
     def monitored_phase_func(test_state, *args, **kwargs):
       # Start monitor thread, it will run monitor_desc periodically.
-      monitor_thread = _MonitorThread(
-          measurement_name, monitor_desc, phase_desc.extra_kwargs, test_state,
-          poll_interval_ms)
+      monitor_thread = _MonitorThread(measurement_name, monitor_desc,
+                                      phase_desc.extra_kwargs, test_state,
+                                      poll_interval_ms)
       monitor_thread.start()
       try:
         return phase_desc(test_state, *args, **kwargs)
       finally:
         monitor_thread.kill()
         monitor_thread.join()
+
     return monitored_phase_func
+
   return wrapper

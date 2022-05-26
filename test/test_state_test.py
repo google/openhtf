@@ -14,17 +14,23 @@
 
 import copy
 import logging
+import sys
 import tempfile
 import unittest
+from unittest import mock
 
-import mock
-
+from absl.testing import parameterized
 import openhtf
-from openhtf.core import phase_group
+from openhtf.core import phase_collections
+from openhtf.core import phase_descriptor
+from openhtf.core import phase_executor
 from openhtf.core import test_descriptor
 from openhtf.core import test_record
 from openhtf.core import test_state
-from openhtf.util import conf
+from openhtf.util import configuration
+from openhtf.util import threads
+
+CONF = configuration.CONF
 
 
 @openhtf.measures('test_measurement')
@@ -52,6 +58,7 @@ PHASE_STATE_BASE_TYPE_INITIAL = {
     },
     'attachments': {},
     'start_time_millis': 11235,
+    'subtest_name': None,
 }
 
 PHASE_RECORD_BASE_TYPE = copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL)
@@ -59,6 +66,7 @@ PHASE_RECORD_BASE_TYPE.update({
     'start_time_millis': 0,
     'end_time_millis': None,
     'outcome': None,
+    'marginal': None,
     'result': None,
     'diagnosers': [],
     'diagnosis_results': [],
@@ -68,17 +76,24 @@ PHASE_RECORD_BASE_TYPE.update({
 TEST_STATE_BASE_TYPE_INITIAL = {
     'status': 'WAITING_FOR_TEST_START',
     'test_record': {
-        'station_id': conf.station_id,
-        'code_info': None,
+        'station_id': CONF.station_id,
+        'code_info': {
+            'docstring': None,
+            'name': '',
+            'sourcecode': '',
+        },
         'dut_id': None,
         'start_time_millis': 0,
         'end_time_millis': None,
         'outcome': None,
         'outcome_details': [],
+        'marginal': None,
         'metadata': {
             'config': {}
         },
         'phases': [],
+        'subtests': [],
+        'branches': [],
         'diagnosers': [],
         'diagnoses': [],
         'log_records': [],
@@ -91,16 +106,17 @@ TEST_STATE_BASE_TYPE_INITIAL = {
 }
 
 
-class TestTestApi(unittest.TestCase):
+class TestTestApi(parameterized.TestCase):
 
   def setUp(self):
     super(TestTestApi, self).setUp()
-    patcher = mock.patch.object(test_record.PhaseRecord, 'record_start_time',
-                                return_value=11235)
+    patcher = mock.patch.object(
+        test_record.PhaseRecord, 'record_start_time', return_value=11235)
     self.mock_record_start_time = patcher.start()
     self.addCleanup(patcher.stop)
     self.test_descriptor = test_descriptor.TestDescriptor(
-        phase_group.PhaseGroup(main=[test_phase]), None, {'config': {}})
+        phase_collections.PhaseSequence((test_phase,)),
+        test_record.CodeInfo.uncaptured(), {'config': {}})
     self.test_state = test_state.TestState(self.test_descriptor, 'testing-123',
                                            test_descriptor.TestOptions())
     self.test_record = self.test_state.test_record
@@ -116,21 +132,40 @@ class TestTestApi(unittest.TestCase):
     self.test_api.attach(attachment_name, input_contents, mimetype)
 
     output_attachment = self.test_api.get_attachment(attachment_name)
+    if not output_attachment:
+      # Need branch to appease pytype.
+      self.fail('output_attachment not found')
+
     self.assertEqual(input_contents, output_attachment.data)
     self.assertEqual(mimetype, output_attachment.mimetype)
+
+  def test_get_attachment_strict(self):
+    attachment_name = 'attachment.txt'
+    with self.assertRaises(test_descriptor.AttachmentNotFoundError):
+      self.test_api.get_attachment_strict(attachment_name)
 
   def test_get_measurement(self):
     measurement_val = [1, 2, 3]
     self.test_api.measurements['test_measurement'] = measurement_val
     measurement = self.test_api.get_measurement('test_measurement')
+    if not measurement:
+      # Need branch to appease pytype.
+      self.fail('measurement not found.')
 
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
+
+  def test_get_measurement_strict(self):
+    with self.assertRaises(test_descriptor.MeasurementNotFoundError):
+      self.test_api.get_measurement_strict('no_such_test_measurement')
 
   def test_get_measurement_immutable(self):
     measurement_val = [1, 2, 3]
     self.test_api.measurements['test_measurement'] = measurement_val
     measurement = self.test_api.get_measurement('test_measurement')
+    if not measurement:
+      # Need branch to appease pytype.
+      self.fail('measurement not found.')
 
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
@@ -145,6 +180,9 @@ class TestTestApi(unittest.TestCase):
       file_name = f.name
       self.test_api.attach_from_file(file_name, 'attachment')
     attachment = self.test_api.get_attachment('attachment')
+    if not attachment:
+      # Need branch to appease pytype.
+      self.fail('attachment not found.')
     self.assertEqual(attachment.mimetype, 'text/plain')
 
   def test_infer_mime_type_from_attachment_name(self):
@@ -154,6 +192,9 @@ class TestTestApi(unittest.TestCase):
       file_name = f.name
       self.test_api.attach_from_file(file_name, 'attachment.png')
     attachment = self.test_api.get_attachment('attachment.png')
+    if not attachment:
+      # Need branch to appease pytype.
+      self.fail('attachment not found.')
     self.assertEqual(attachment.mimetype, 'image/png')
 
   def test_phase_state_cache(self):
@@ -192,3 +233,25 @@ class TestTestApi(unittest.TestCase):
     self.assertEqual(expected_after_phase_record_basetypes,
                      basetypes2['test_record']['phases'][0])
     self.assertIsNone(basetypes2['running_phase_state'])
+
+  @parameterized.parameters(
+      (phase_executor.PhaseExecutionOutcome(None), test_record.Outcome.TIMEOUT),
+      (phase_executor.PhaseExecutionOutcome(
+          phase_descriptor.PhaseResult.STOP), test_record.Outcome.FAIL),
+      (phase_executor.PhaseExecutionOutcome(
+          threads.ThreadTerminationError()), test_record.Outcome.ERROR))
+  def test_test_state_finalize_from_phase_outcome(
+      self, phase_exe_outcome: phase_executor.PhaseExecutionOutcome,
+      test_record_outcome: test_record.Outcome):
+    self.test_state.finalize_from_phase_outcome(phase_exe_outcome)
+    self.assertEqual(self.test_state.test_record.outcome, test_record_outcome)
+
+  def test_test_state_finalize_from_phase_outcome_exception_info(self):
+    try:
+      raise ValueError('Exception for unit testing.')
+    except ValueError:
+      phase_exe_outcome = phase_executor.PhaseExecutionOutcome(
+          phase_executor.ExceptionInfo(*sys.exc_info()))
+      self.test_state.finalize_from_phase_outcome(phase_exe_outcome)
+    self.assertEqual(self.test_state.test_record.outcome,
+                     test_record.Outcome.ERROR)

@@ -11,27 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Utility helpers for xmlrpclib."""
 
+import collections
 import http.client
-import xmlrpc.server
 import socketserver
 import sys
 import threading
 import xmlrpc.client
-import collections
+import xmlrpc.server
 
 DEFAULT_PROXY_TIMEOUT_S = 3
 
 # https://github.com/PythonCharmers/python-future/issues/280
+# pylint: disable=g-import-not-at-top,g-importing-member
 if sys.version_info[0] < 3:
-  from SimpleXMLRPCServer import SimpleXMLRPCServer
+  from SimpleXMLRPCServer import SimpleXMLRPCServer  # pytype: disable=import-error
 else:
-  from xmlrpc.server import SimpleXMLRPCServer as SimpleXMLRPCServer
+  from xmlrpc.server import SimpleXMLRPCServer  # pytype: disable=import-error
+# pylint: enable=g-import-not-at-top,g-importing-member
 
 
-class TimeoutHTTPConnection(http.client.HTTPConnection):
+class TimeoutHTTPConnection(http.client.HTTPConnection):  # pylint: disable=missing-class-docstring
+
   def __init__(self, timeout_s, *args, **kwargs):
     http.client.HTTPConnection.__init__(self, *args, **kwargs)
     self.timeout_s = timeout_s
@@ -45,7 +47,8 @@ class TimeoutHTTPConnection(http.client.HTTPConnection):
     self.sock.settimeout(self.timeout_s)
 
 
-class TimeoutTransport(xmlrpc.client.Transport):
+class TimeoutTransport(xmlrpc.client.Transport):  # pylint: disable=missing-class-docstring
+
   def __init__(self, timeout_s, *args, **kwargs):
     xmlrpc.client.Transport.__init__(self, *args, **kwargs)
     self._connection = None
@@ -68,14 +71,15 @@ class BaseServerProxy(xmlrpc.client.ServerProxy, object):
 
 class TimeoutProxyMixin(object):
   """Timeouts for ServerProxy objects."""
+
   def __init__(self, *args, **kwargs):
-    super(TimeoutProxyMixin, self).__init__(
+    kwargs.update(
         transport=TimeoutTransport(
-            kwargs.pop('timeout_s', DEFAULT_PROXY_TIMEOUT_S)),
-        *args, **kwargs)
+            kwargs.pop('timeout_s', DEFAULT_PROXY_TIMEOUT_S)))
+    super(TimeoutProxyMixin, self).__init__(*args, **kwargs)
 
   def __settimeout(self, timeout_s):
-    self.__transport.settimeout(timeout_s)
+    self._transport.settimeout(timeout_s)  # pytype: disable=attribute-error
 
 
 class TimeoutProxyServer(TimeoutProxyMixin, BaseServerProxy):
@@ -84,17 +88,19 @@ class TimeoutProxyServer(TimeoutProxyMixin, BaseServerProxy):
 
 class LockedProxyMixin(object):
   """A ServerProxy that locks calls to methods."""
+
   def __init__(self, *args, **kwargs):
     super(LockedProxyMixin, self).__init__(*args, **kwargs)
     self._lock = threading.Lock()
 
   def __getattr__(self, attr):
-    method = super(LockedProxyMixin, self).__getattr__(attr)
-    if isinstance(method, collections.Callable):
+    method = super(LockedProxyMixin, self).__getattr__(attr)  # pytype: disable=attribute-error
+    if isinstance(method, collections.abc.Callable):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _wrapper(*args):
         with self._lock:
           return method(*args)
+
       # functools.wraps() doesn't work with _Method internal type within
       # xmlrpclib.  We only care about the name anyway, so manually set it.
       _wrapper.__name__ = attr
@@ -106,7 +112,7 @@ class LockedTimeoutProxy(TimeoutProxyMixin, LockedProxyMixin, BaseServerProxy):
   """ServerProxy with additional features we use."""
 
 
-class SimpleThreadedXmlRpcServer(
-    socketserver.ThreadingMixIn, SimpleXMLRPCServer):
+class SimpleThreadedXmlRpcServer(socketserver.ThreadingMixIn,
+                                 SimpleXMLRPCServer):
   """Helper for handling multiple simultaneous RPCs in threads."""
   daemon_threads = True

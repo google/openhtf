@@ -11,24 +11,22 @@ import json
 import logging
 import os
 import re
-import six
 import socket
 import threading
 import time
 import types
 
-import sockjs.tornado
-
 import openhtf
-from openhtf.output.callbacks import mfg_inspector
 from openhtf.output.servers import pub_sub
 from openhtf.output.servers import web_gui_server
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import functions
-from openhtf.util import logs
 from openhtf.util import multicast
 from openhtf.util import timeouts
+import sockjs.tornado
+
+CONF = configuration.CONF
 
 STATION_SERVER_TYPE = 'station'
 
@@ -43,17 +41,21 @@ _DEFAULT_FRONTEND_THROTTLE_S = 0.15
 _WAIT_FOR_ANY_EVENT_POLL_S = 0.05
 _WAIT_FOR_EXECUTING_TEST_POLL_S = 0.1
 
-conf.declare('frontend_throttle_s', default_value=_DEFAULT_FRONTEND_THROTTLE_S,
-             description=('Min wait time between successive updates to the '
-                          'frontend.'))
-conf.declare('station_server_port', default_value=0,
-             description=('Port on which to serve the app. If set to zero (the '
-                          'default) then an arbitrary port will be chosen.'))
+CONF.declare(
+    'frontend_throttle_s',
+    default_value=_DEFAULT_FRONTEND_THROTTLE_S,
+    description=('Min wait time between successive updates to the '
+                 'frontend.'))
+CONF.declare(
+    'station_server_port',
+    default_value=0,
+    description=('Port on which to serve the app. If set to zero (the '
+                 'default) then an arbitrary port will be chosen.'))
 
 # These have default values in openhtf.util.multicast.py.
-conf.declare('station_discovery_address')
-conf.declare('station_discovery_port')
-conf.declare('station_discovery_ttl')
+CONF.declare('station_discovery_address')
+CONF.declare('station_discovery_port')
+CONF.declare('station_discovery_ttl')
 
 
 def _get_executing_test():
@@ -69,13 +71,13 @@ def _get_executing_test():
     test: The test that was executing when this function was called, or None.
     test_state: The state of the executing test, or None.
   """
-  tests = list(six.itervalues(openhtf.Test.TEST_INSTANCES))
+  tests = list(openhtf.Test.TEST_INSTANCES.values())
 
   if not tests:
     return None, None
 
   if len(tests) > 1:
-    _LOG.warn('Station server does not support multiple executing tests.')
+    _LOG.warning('Station server does not support multiple executing tests.')
 
   test = tests[0]
   test_state = test.state
@@ -123,6 +125,7 @@ def _wait_for_any_event(events, timeout_s):
   Returns:
       True if at least one event was set before the timeout expired, else False.
   """
+
   def any_event_set():
     return any(event.is_set() for event in events)
 
@@ -155,7 +158,7 @@ class StationWatcher(threading.Thread):
         # Note that because logging triggers a call to notify_update(), by
         # logging a message, we automatically retry publishing the update
         # after an error occurs.
-        if error.message == 'dictionary changed size during iteration':
+        if error.args[0] == 'dictionary changed size during iteration':
           # These errors occur occasionally and it is infeasible to get rid of
           # them entirely unless data.convert_to_base_types() is made
           # thread-safe. Ignore the error and retry quickly.
@@ -169,7 +172,7 @@ class StationWatcher(threading.Thread):
         _LOG.exception('Error in station watcher: %s', error)
         time.sleep(1)
 
-  @functions.call_at_most_every(float(conf.frontend_throttle_s))
+  @functions.call_at_most_every(float(CONF.frontend_throttle_s))
   def _poll_for_update(self):
     """Call the callback with the current test state, then wait for a change."""
     test, test_state = _get_executing_test()
@@ -236,7 +239,7 @@ class DashboardPubSub(sockjs.tornado.SockJSConnection):
     host_port = '%s:%s' % (host, cls.port)
     return {
         host_port: {
-            'station_id': conf.station_id,  # From openhtf.core.test_state.
+            'station_id': CONF.station_id,  # From openhtf.core.test_state.
             'host': host,
             'port': cls.port,
             'status': 'ONLINE',
@@ -280,9 +283,12 @@ class StationPubSub(pub_sub.PubSub):
     cls._last_message = message
 
   def on_subscribe(self, info):
-    """
-    Send the more recent test state to new subscribers when they connect,
-    unless the test has already completed.
+    """Send the more recent test state to new subscribers when they connect.
+
+    This is skipped if the test has already completed.
+
+    Args:
+      info: Subscription info.
     """
     test, _ = _get_executing_test()
 
@@ -354,7 +360,8 @@ class PhasesHandler(BaseTestHandler):
 
     phase_descriptors = [
         dict(id=id(phase), **data.convert_to_base_types(phase))
-        for phase in test.descriptor.phase_group]
+        for phase in test.descriptor.phase_sequence.all_phases()
+    ]
 
     # Wrap value in a dict because writing a list directly is prohibited.
     self.write({'data': phase_descriptors})
@@ -387,12 +394,11 @@ class PlugsHandler(BaseTestHandler):
 
     method = getattr(plug, method_name, None)
 
-    if not (plug.enable_remote and
-            isinstance(method, types.MethodType) and
+    if not (plug.enable_remote and isinstance(method, types.MethodType) and
             not method_name.startswith('_') and
             method_name not in plug.disable_remote_attrs):
-      self.write('Cannot access method %s of plug %s.' % (method_name,
-                                                          plug_name))
+      self.write('Cannot access method %s of plug %s.' %
+                 (method_name, plug_name))
       self.set_status(400)
       return
 
@@ -406,6 +412,8 @@ class PlugsHandler(BaseTestHandler):
 
 
 class BaseHistoryHandler(web_gui_server.CorsRequestHandler):
+
+  history_path = None
 
   def initialize(self, history_path):
     self.history_path = history_path
@@ -466,7 +474,7 @@ class HistoryItemHandler(BaseHistoryHandler):
   """GET endpoint for a test record from the history."""
 
   def get(self, file_name):
-    # TODO(Kenadia): Implement the history item handler. The implementation
+    # TODO(kenadia): Implement the history item handler. The implementation
     # depends on the format used to store test records on disk.
     self.write('Not implemented.')
     self.set_status(500)
@@ -482,7 +490,7 @@ class HistoryAttachmentsHandler(BaseHistoryHandler):
   """
 
   def get(self, file_name, attachment_name):
-    # TODO(Kenadia): Implement the history item handler. The implementation
+    # TODO(kenadia): Implement the history item handler. The implementation
     # depends on the format used to store test records on disk.
     self.write('Not implemented.')
     self.set_status(500)
@@ -494,9 +502,9 @@ class StationMulticast(multicast.MulticastListener):
   def __init__(self, station_server_port):
     # These have default values in openhtf.util.multicast.py.
     kwargs = {
-        attr: conf['station_discovery_%s' % attr]
+        attr: CONF['station_discovery_%s' % attr]
         for attr in ('address', 'port', 'ttl')
-        if 'station_discovery_%s' % attr in conf
+        if 'station_discovery_%s' % attr in CONF
     }
     super(StationMulticast, self).__init__(self._make_message, **kwargs)
     self.station_server_port = station_server_port
@@ -523,7 +531,7 @@ class StationMulticast(multicast.MulticastListener):
     return json.dumps({
         'cell': cell,
         'port': self.station_server_port,
-        'station_id': conf.station_id,  # From openhtf.core.test_state.
+        'station_id': CONF.station_id,  # From openhtf.core.test_state.
         'test_description': test_description,
         'test_name': test_name,
     })
@@ -552,7 +560,7 @@ class StationServer(web_gui_server.WebGuiServer):
 
   def __init__(self, history_path=None):
     # Disable tornado's logging.
-    # TODO(Kenadia): Enable these logs if verbosity flag is at least -vvv.
+    # TODO(kenadia): Enable these logs if verbosity flag is at least -vvv.
     #     I think this will require changing how StoreRepsInModule works.
     #     Currently, if we call logs.ARG_PARSER.parse_known_args() multiple
     #     times, we multiply the number of v's that we get.
@@ -562,7 +570,7 @@ class StationServer(web_gui_server.WebGuiServer):
       tornado_logger.addHandler(logging.NullHandler())
 
     # Bind port early so that the correct port number can be used in the routes.
-    sockets, port = web_gui_server.bind_port(int(conf.station_server_port))
+    sockets, port = web_gui_server.bind_port(int(CONF.station_server_port))
 
     # Set up the station watcher.
     station_watcher = StationWatcher(StationPubSub.publish_update)
@@ -586,11 +594,16 @@ class StationServer(web_gui_server.WebGuiServer):
     # Optionally enable history from disk.
     if history_path is not None:
       routes.extend((
-          (r'/history', HistoryListHandler, {'history_path': history_path}),
-          (r'/history/(?P<file_name>[^/]+)', HistoryItemHandler,
-           {'history_path': history_path}),
+          (r'/history', HistoryListHandler, {
+              'history_path': history_path
+          }),
+          (r'/history/(?P<file_name>[^/]+)', HistoryItemHandler, {
+              'history_path': history_path
+          }),
           (r'/history/(?P<file_name>[^/]+)/attachments/(?P<attachment_name>.+)',
-           HistoryAttachmentsHandler, {'history_path': history_path}),
+           HistoryAttachmentsHandler, {
+               'history_path': history_path
+           }),
       ))
 
     super(StationServer, self).__init__(routes, port, sockets=sockets)
@@ -605,11 +618,10 @@ class StationServer(web_gui_server.WebGuiServer):
     _LOG.info('Announcing station server via multicast on %s:%s',
               self.station_multicast.address, self.station_multicast.port)
     self.station_multicast.start()
-    _LOG.info(
-        'Starting station server at:\n'
-        '  Local: http://localhost:{port}\n'
-        '  Remote: http://{host}:{port}'
-        .format(host=socket.gethostname(), port=self.port))
+    _LOG.info('Starting station server at:\n'  # pylint: disable=logging-format-interpolation
+              '  Local: http://localhost:{port}\n'
+              '  Remote: http://{host}:{port}'.format(
+                  host=socket.gethostname(), port=self.port))
     super(StationServer, self).run()
 
   def stop(self):
