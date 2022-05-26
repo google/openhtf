@@ -30,6 +30,8 @@ from openhtf.util import logs
 
 CONF = configuration.CONF
 
+CONF = configuration.CONF
+
 if TYPE_CHECKING:
   from openhtf.core import diagnoses_lib  # pylint: disable=g-import-not-at-top
   from openhtf.core import measurements as htf_measurements  # pylint: disable=g-import-not-at-top

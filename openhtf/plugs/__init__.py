@@ -33,6 +33,8 @@ from openhtf.util import threads
 
 CONF = configuration.CONF
 
+CONF = configuration.CONF
+
 _LOG = logging.getLogger(__name__)
 _BASE_PLUGS_LOG = base_plugs._LOG  # pylint: disable=protected-access
 
