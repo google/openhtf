@@ -111,7 +111,6 @@ from openhtf.util import argv
 from openhtf.util import console_output
 from openhtf.util import functions
 from openhtf.util import threads
-import six
 
 # The number of v's provided as command line arguments to control verbosity.
 # Will be overridden if the ARG_PARSER below parses the -v argument.
@@ -219,11 +218,11 @@ class MacAddressLogFilter(logging.Filter):
   def filter(self, record):
     if self.MAC_REPLACE_RE.search(record.getMessage()):
       # Update all the things to have no mac address in them
-      if isinstance(record.msg, six.string_types):
+      if isinstance(record.msg, str):
         record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.msg)
         record.args = tuple([
             self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
-            if isinstance(arg, six.string_types) else arg for arg in record.args
+            if isinstance(arg, str) else arg for arg in record.args
         ])
       else:
         record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT,

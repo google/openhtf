@@ -17,9 +17,9 @@ import logging
 import threading
 import time
 import unittest
+from unittest import mock
 
 from absl.testing import parameterized
-import mock
 
 import openhtf
 from openhtf import plugs

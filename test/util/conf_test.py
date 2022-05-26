@@ -17,7 +17,6 @@ import os.path
 import unittest
 
 from openhtf.util import configuration
-import six
 
 CONF = configuration.CONF
 
@@ -116,7 +115,7 @@ class TestConf(TestConfBase):
         'string_default': 'default',
     }
     # assert first dict is a subset of second dict
-    self.assertLessEqual(six.viewitems(expected_dict), six.viewitems(conf_dict))
+    self.assertLessEqual(expected_dict.items(), conf_dict.items())
 
   def test_undeclared(self):
     with self.assertRaises(configuration.UndeclaredKeyError):

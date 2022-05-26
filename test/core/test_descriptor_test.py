@@ -2,8 +2,8 @@
 
 import re
 import unittest
+from unittest import mock
 
-import mock
 from openhtf.core import test_descriptor
 
 

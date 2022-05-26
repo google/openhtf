@@ -175,11 +175,12 @@ class TestExecutor(threads.KillableThread):
     """Waits until death."""
     # Must use a timeout here in case this is called from the main thread.
     # Otherwise, the SIGINT abort logic in test_descriptor will not get called.
-    timeout = 31557600  # Seconds in a year.
-    if sys.version_info >= (3, 2):
-      # TIMEOUT_MAX can be too large and cause overflows on 32-bit OSes, so take
-      # whichever timeout is shorter.
-      timeout = min(threading.TIMEOUT_MAX, timeout)  # pytype: disable=module-attr
+    # TIMEOUT_MAX can be too large and cause overflows on 32-bit OSes, so take
+    # whichever timeout is shorter.
+    timeout = min(
+        threading.TIMEOUT_MAX,
+        31557600,  # Seconds in a year.
+    )
     self.join(timeout)
 
   def _thread_proc(self) -> None:

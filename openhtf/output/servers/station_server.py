@@ -24,7 +24,6 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import multicast
 from openhtf.util import timeouts
-import six
 import sockjs.tornado
 
 CONF = configuration.CONF
@@ -72,7 +71,7 @@ def _get_executing_test():
     test: The test that was executing when this function was called, or None.
     test_state: The state of the executing test, or None.
   """
-  tests = list(six.itervalues(openhtf.Test.TEST_INSTANCES))
+  tests = list(openhtf.Test.TEST_INSTANCES.values())
 
   if not tests:
     return None, None
