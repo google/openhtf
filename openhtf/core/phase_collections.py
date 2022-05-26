@@ -25,7 +25,6 @@ import collections
 from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Type, TypeVar, Union
 
 import attr
-import collections
 from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor

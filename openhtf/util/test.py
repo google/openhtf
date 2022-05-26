@@ -154,7 +154,6 @@ import unittest
 from unittest import mock
 
 import attr
-
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import base_plugs

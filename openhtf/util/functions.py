@@ -18,6 +18,8 @@ import functools
 import inspect
 import time
 
+import six
+
 
 def call_once(func):
   """Decorate a function to only allow it to be called once.

@@ -55,6 +55,7 @@ from openhtf.core import phase_descriptor
 from openhtf.core import test_state as core_test_state
 from openhtf.util import threads
 from openhtf.util import units as uom
+import six
 
 
 class _MonitorThread(threads.KillableThread):

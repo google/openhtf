@@ -39,7 +39,11 @@ def convert_test_record_to_json(
   as_dict = data.convert_to_base_types(test_rec, json_safe=(not allow_nan))
   if inline_attachments:
     for phase, original_phase in zip(as_dict['phases'], test_rec.phases):
+<<<<<<< HEAD
       for name, attachment in original_phase.attachments.items():
+=======
+      for name, attachment in six.iteritems(original_phase.attachments):
+>>>>>>> upstream/master
         phase['attachments'][name] = attachment
   return as_dict
 

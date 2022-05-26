@@ -47,6 +47,13 @@ except ImportError:
                 'openhtf[usb_plugs]?')
   raise
 
+try:
+  from M2Crypto import RSA  # pylint: disable=g-import-not-at-top
+except ImportError:
+  logging.error('Failed to import M2Crypto, did you pip install '
+                'openhtf[usb_plugs]?')
+  raise
+
 # USB interface class, subclass, and protocol for matching against.
 CLASS = 0xFF
 SUBCLASS = 0x42

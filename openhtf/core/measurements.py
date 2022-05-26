@@ -716,7 +716,11 @@ class DimensionedMeasuredValue(object):
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return [
         dimensions + (value,)
+<<<<<<< HEAD
         for dimensions, value in self.value_dict.items()
+=======
+        for dimensions, value in six.iteritems(self.value_dict)
+>>>>>>> upstream/master
     ]
 
   def basetype_value(self) -> List[Any]:

@@ -30,6 +30,12 @@ from typing import BinaryIO, Callable, Iterator, Optional, Text, Union
 from openhtf import util
 from openhtf.core import test_record
 from openhtf.util import data
+<<<<<<< HEAD
+=======
+import six
+from six.moves import collections_abc
+from six.moves import cPickle as pickle
+>>>>>>> upstream/master
 
 SerializedTestRecord = Union[Text, bytes, Iterator[Union[Text, bytes]]]
 
@@ -55,7 +61,11 @@ class CloseAttachments(object):
 
   def __call__(self, test_rec: test_record.TestRecord) -> None:
     for phase_rec in test_rec.phases:
+<<<<<<< HEAD
       for attachment in phase_rec.attachments.values():
+=======
+      for attachment in six.itervalues(phase_rec.attachments):
+>>>>>>> upstream/master
         attachment.close()
 
 
@@ -80,7 +90,11 @@ class OutputToFile(object):
                                                      BinaryIO]):
     self.filename_pattern = None  # type: Optional[Union[Text, Callable[..., Text]]]
     self.output_file = None  # type: Optional[BinaryIO]
+<<<<<<< HEAD
     if (isinstance(filename_pattern_or_file, str) or
+=======
+    if (isinstance(filename_pattern_or_file, six.string_types) or
+>>>>>>> upstream/master
         callable(filename_pattern_or_file)):
       self.filename_pattern = filename_pattern_or_file  # pytype: disable=annotation-type-mismatch
     else:
@@ -129,11 +143,19 @@ class OutputToFile(object):
   def __call__(self, test_rec: test_record.TestRecord) -> None:
     with self.open_output_file(test_rec) as outfile:
       serialized_record = self.serialize_test_record(test_rec)
+<<<<<<< HEAD
       if isinstance(serialized_record, str):
         outfile.write(serialized_record.encode())
       elif isinstance(serialized_record, collections.abc.Iterable):
         for chunk in serialized_record:
           outfile.write(chunk.encode())
+=======
+      if isinstance(serialized_record, six.string_types):
+        outfile.write(six.ensure_binary(serialized_record))
+      elif isinstance(serialized_record, collections_abc.Iterable):
+        for chunk in serialized_record:
+          outfile.write(six.ensure_binary(chunk))
+>>>>>>> upstream/master
       else:
         raise TypeError('Expected string or iterable but got {}.'.format(
             type(serialized_record)))

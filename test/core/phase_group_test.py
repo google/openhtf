@@ -4,6 +4,7 @@ import threading
 import unittest
 from unittest import mock
 
+import mock
 import openhtf as htf
 from openhtf import plugs
 from openhtf.core import base_plugs

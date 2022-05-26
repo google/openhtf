@@ -1,6 +1,9 @@
 """Tests for Diagnoses in OpenHTF."""
 
+<<<<<<< HEAD
 import enum
+=======
+>>>>>>> upstream/master
 import time
 import unittest
 from unittest import mock

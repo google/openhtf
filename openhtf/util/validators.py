@@ -227,8 +227,13 @@ register(AllInRangeValidator, name='all_in_range')
 def all_equals(value, type=None):  # pylint: disable=redefined-builtin
   if isinstance(value, numbers.Number):
     return AllInRangeValidator(minimum=value, maximum=value)
+<<<<<<< HEAD
   elif isinstance(value, str):
     assert type is None or issubclass(type, str), (
+=======
+  elif isinstance(value, six.string_types):
+    assert type is None or issubclass(type, six.string_types), (
+>>>>>>> upstream/master
         'Cannot use a non-string type when matching a string')
     return matches_regex('^{}$'.format(re.escape(value)))
   else:

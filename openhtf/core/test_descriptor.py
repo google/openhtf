@@ -52,6 +52,8 @@ from openhtf.util import logs
 
 CONF = configuration.CONF
 
+CONF = configuration.CONF
+
 _LOG = logging.getLogger(__name__)
 
 CONF.declare(

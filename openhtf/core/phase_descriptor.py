@@ -40,6 +40,9 @@ from openhtf.util import data
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
+if TYPE_CHECKING:
+  from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
+
 
 class PhaseWrapError(Exception):
   """Error with phase wrapping."""
@@ -132,7 +135,11 @@ class PhaseOptions(object):
     return data.attr_copy(self, name=util.format_string(self.name, kwargs))
 
   def update(self, **kwargs: Any) -> None:
+<<<<<<< HEAD
     for key, value in kwargs.items():
+=======
+    for key, value in six.iteritems(kwargs):
+>>>>>>> upstream/master
       setattr(self, key, value)
 
   def __call__(self, phase_func: PhaseT) -> 'PhaseDescriptor':
@@ -335,8 +342,17 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
       The return value from calling the underlying function.
     """
     kwargs = {}
+<<<<<<< HEAD
     arg_info = inspect.getfullargspec(self.func)
     keywords = arg_info.varkw
+=======
+    if six.PY3:
+      arg_info = inspect.getfullargspec(self.func)
+      keywords = arg_info.varkw
+    else:
+      arg_info = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
+      keywords = arg_info.keywords
+>>>>>>> upstream/master
     if arg_info.defaults is not None:
       for arg_name, arg_value in zip(arg_info.args[-len(arg_info.defaults):],
                                      arg_info.defaults):
@@ -409,7 +425,11 @@ def measures(*measurements: Union[Text, core_measurements.Measurement],
     """Turn strings into Measurement objects if necessary."""
     if isinstance(meas, core_measurements.Measurement):
       return meas
+<<<<<<< HEAD
     elif isinstance(meas, str):
+=======
+    elif isinstance(meas, six.string_types):
+>>>>>>> upstream/master
       return core_measurements.Measurement(meas, **kwargs)
     raise core_measurements.InvalidMeasurementTypeError(
         'Expected Measurement or string', meas)

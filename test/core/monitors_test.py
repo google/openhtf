@@ -17,6 +17,7 @@ import time
 import unittest
 from unittest import mock
 
+import mock
 from openhtf import plugs
 from openhtf.core import base_plugs
 from openhtf.core import monitors

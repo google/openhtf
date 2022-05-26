@@ -7,6 +7,7 @@ import unittest
 import openhtf as htf
 from openhtf.util import test as htf_test
 from openhtf.util import validators
+import six
 
 
 class TestInRange(unittest.TestCase):

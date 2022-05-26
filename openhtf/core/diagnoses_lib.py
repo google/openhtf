@@ -122,14 +122,24 @@ still run.
 """
 
 import abc
+<<<<<<< HEAD
 import collections
 import enum
+=======
+>>>>>>> upstream/master
 import logging
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
 
 import attr
+<<<<<<< HEAD
+=======
+import enum  # pylint: disable=g-bad-import-order
+>>>>>>> upstream/master
 from openhtf.core import test_record
 from openhtf.util import data
+
+if TYPE_CHECKING:
+  from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
