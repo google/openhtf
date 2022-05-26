@@ -37,8 +37,6 @@ from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
 
-import six
-
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
@@ -134,7 +132,7 @@ class PhaseOptions(object):
     return data.attr_copy(self, name=util.format_string(self.name, kwargs))
 
   def update(self, **kwargs: Any) -> None:
-    for key, value in six.iteritems(kwargs):
+    for key, value in kwargs.items():
       setattr(self, key, value)
 
   def __call__(self, phase_func: PhaseT) -> 'PhaseDescriptor':
@@ -245,14 +243,10 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     Returns:
       Updated PhaseDescriptor.
     """
-    if six.PY3:
-      argspec = inspect.getfullargspec(self.func)
-      argspec_keywords = argspec.varkw
-    else:
-      argspec = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
-      argspec_keywords = argspec.keywords
+    argspec = inspect.getfullargspec(self.func)
+    argspec_keywords = argspec.varkw
     known_arguments = {}
-    for key, arg in six.iteritems(kwargs):
+    for key, arg in kwargs.items():
       if key in argspec.args or argspec_keywords:
         known_arguments[key] = arg
 
@@ -283,7 +277,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     plugs_by_name = {plug.name: plug for plug in self.plugs}
     new_plugs = {}
 
-    for name, sub_class in six.iteritems(subplugs):
+    for name, sub_class in subplugs.items():
       original_plug = plugs_by_name.get(name)
       accept_substitute = True
       if original_plug is None:
@@ -341,12 +335,8 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
       The return value from calling the underlying function.
     """
     kwargs = {}
-    if six.PY3:
-      arg_info = inspect.getfullargspec(self.func)
-      keywords = arg_info.varkw
-    else:
-      arg_info = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
-      keywords = arg_info.keywords
+    arg_info = inspect.getfullargspec(self.func)
+    keywords = arg_info.varkw
     if arg_info.defaults is not None:
       for arg_name, arg_value in zip(arg_info.args[-len(arg_info.defaults):],
                                      arg_info.defaults):
@@ -419,7 +409,7 @@ def measures(*measurements: Union[Text, core_measurements.Measurement],
     """Turn strings into Measurement objects if necessary."""
     if isinstance(meas, core_measurements.Measurement):
       return meas
-    elif isinstance(meas, six.string_types):
+    elif isinstance(meas, str):
       return core_measurements.Measurement(meas, **kwargs)
     raise core_measurements.InvalidMeasurementTypeError(
         'Expected Measurement or string', meas)

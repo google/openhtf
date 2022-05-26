@@ -111,7 +111,6 @@ import struct
 import sys
 import time
 
-from future.utils import raise_with_traceback
 from openhtf.plugs.usb import adb_message
 from openhtf.plugs.usb import usb_exceptions
 
@@ -231,7 +230,7 @@ class FilesyncService(object):
       if sys.exc_info()[0] is usb_exceptions.AdbRemoteError:
         raise
     # Otherwise reraise the original exception.
-    raise_with_traceback(exc_info[0](exc_info[1]), traceback=exc_info[2])
+    raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
   # pylint: disable=too-many-arguments
   def send(self,

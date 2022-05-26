@@ -1,8 +1,7 @@
 """Tests for google3.third_party.py.openhtf.test.core.phase_branches."""
 
 import unittest
-
-import mock
+from unittest import mock
 
 import openhtf as htf
 from openhtf.core import phase_branches

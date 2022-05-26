@@ -22,11 +22,10 @@ import pstats
 import sys
 import threading
 
-import six
 try:
-  from six.moves import _thread  # pylint: disable=g-import-not-at-top
+  import _thread  # pylint: disable=g-import-not-at-top
 except ImportError:
-  from six.moves import _dummy_thread as _thread  # pylint: disable=g-import-not-at-top
+  import _dummy_thread as _thread  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 
@@ -40,15 +39,13 @@ class InvalidUsageError(Exception):
 
 
 def safe_lock_release_context(rlock):
-  if six.PY2:
-    return _safe_lock_release_py2(rlock)
   # Python3 has a C-implementation of RLock, which doesn't have the thread
   # termination issues.
-  return _placeholder_release_py3()
+  return _placeholder_release()
 
 
 @contextlib.contextmanager
-def _placeholder_release_py3():
+def _placeholder_release():
   yield
 
 

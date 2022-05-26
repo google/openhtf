@@ -13,6 +13,7 @@
 # limitations under the License.
 """OpenHTF module responsible for managing records of tests."""
 
+import enum
 import hashlib
 import inspect
 import logging
@@ -21,14 +22,13 @@ import tempfile
 from typing import Any, Dict, List, Optional, Text, TYPE_CHECKING, Union
 
 import attr
-import enum  # pylint: disable=g-bad-import-order
 
 from openhtf import util
 from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import logs
 
-import six
+CONF = configuration.CONF
 
 CONF = configuration.CONF
 
@@ -83,7 +83,8 @@ class Attachment(object):
   size = attr.ib(type=int)
 
   def __init__(self, contents: Union[Text, bytes], mimetype: Text):
-    contents = six.ensure_binary(contents)
+    if isinstance(contents, str):
+      contents = contents.encode()
     self.mimetype = mimetype
     self.sha1 = hashlib.sha1(contents).hexdigest()
     self.size = len(contents)

@@ -78,6 +78,7 @@ import collections
 import enum
 import itertools
 import logging
+import queue
 import sys
 import threading
 
@@ -85,8 +86,6 @@ from openhtf.plugs.usb import adb_message
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import argv
 from openhtf.util import timeouts
-import six
-from six.moves import queue
 
 ADB_MESSAGE_LOG = False
 
@@ -913,11 +912,9 @@ class AdbConnection(object):
           ('CNXN',), timeouts.PolledTimeout.from_millis(auth_timeout_ms))
     except usb_exceptions.UsbReadFailedError as exception:
       if exception.is_timeout():
-        six.reraise(
-            usb_exceptions.DeviceAuthError,
-            usb_exceptions.DeviceAuthError(
-                message='Accept auth key on device, then retry.'),
-            sys.exc_info()[2])
+        raise usb_exceptions.DeviceAuthError(
+            message='Accept auth key on device, then retry.').with_traceback(
+                sys.exc_info()[2])
       raise
 
     # The read didn't time-out, so we got a CNXN response.

@@ -50,7 +50,7 @@ from openhtf.util import configuration
 from openhtf.util import console_output
 from openhtf.util import logs
 
-import six
+CONF = configuration.CONF
 
 CONF = configuration.CONF
 
@@ -247,7 +247,7 @@ class Test(object):
       sys.stdout.write(CONF.help_text)
       sys.exit(0)
     logs.configure_logging()
-    for key, value in six.iteritems(kwargs):
+    for key, value in kwargs.items():
       setattr(self._test_options, key, value)
 
   @classmethod
