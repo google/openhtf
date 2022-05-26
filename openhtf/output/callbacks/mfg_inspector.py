@@ -14,9 +14,6 @@ from openhtf.output import callbacks
 from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
 
-import six
-from six.moves import range
-
 
 class UploadFailedError(Exception):
   """Raised when an upload to mfg-inspector fails."""
@@ -57,7 +54,7 @@ def _send_mfg_inspector_request(envelope_data, credentials, destination_url):
 def send_mfg_inspector_data(inspector_proto, credentials, destination_url,
                             payload_type):
   """Upload MfgEvent to steam_engine."""
-  envelope = guzzle_pb2.TestRunEnvelope()
+  envelope = guzzle_pb2.TestRunEnvelope()  # pytype: disable=module-attr  # gen-stub-imports
   envelope.payload = zlib.compress(inspector_proto.SerializeToString())
   envelope.payload_type = payload_type
   envelope_data = envelope.SerializeToString()
@@ -151,7 +148,7 @@ class MfgInspector(object):
     if user and keydata:
       self.credentials = oauth2client.client.SignedJwtAssertionCredentials(
           service_account_name=self.user,
-          private_key=six.ensure_binary(self.keydata),
+          private_key=self.keydata.encode(),
           scope=self.SCOPE_CODE_URI,
           user_agent='OpenHTF Guzzle Upload Client',
           token_uri=self.token_uri)

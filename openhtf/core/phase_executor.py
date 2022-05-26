@@ -52,6 +52,8 @@ if TYPE_CHECKING:
   from openhtf.core import test_state as htf_test_state  # pylint: disable=g-import-not-at-top
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
+DEFAULT_RETRIES = 3
+_JOIN_TRY_INTERVAL_SECONDS = 3
 
 ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
@@ -69,8 +71,8 @@ _LOG = logging.getLogger(__name__)
 class ExceptionInfo(object):
   """Wrap the description of a raised exception and its traceback."""
 
-  exc_type = attr.ib(type=Type[Exception])
-  exc_val = attr.ib(type=Exception)
+  exc_type = attr.ib(type=Type[BaseException])
+  exc_val = attr.ib(type=BaseException)
   exc_tb = attr.ib(type=types.TracebackType)
 
   def as_base_types(self) -> Dict[Text, Text]:
@@ -200,10 +202,15 @@ class PhaseExecutorThread(threads.KillableThread):
 
   def join_or_die(self) -> PhaseExecutionOutcome:
     """Wait for thread to finish, returning a PhaseExecutionOutcome instance."""
+    deadline = time.monotonic() + DEFAULT_PHASE_TIMEOUT_S
     if self._phase_desc.options.timeout_s is not None:
-      self.join(self._phase_desc.options.timeout_s)
-    else:
-      self.join(DEFAULT_PHASE_TIMEOUT_S)
+      deadline = time.monotonic() + self._phase_desc.options.timeout_s
+    while time.monotonic() < deadline:
+      # Using exception to kill thread is not honored when thread is busy,
+      # so we leave the thread behind, and move on teardown.
+      self.join(_JOIN_TRY_INTERVAL_SECONDS)
+      if not self.is_alive() or self._killed.is_set():
+        break
 
     # We got a return value or an exception and handled it.
     if self._phase_execution_outcome:
@@ -260,13 +267,19 @@ class PhaseExecutor(object):
       requested and successfully ran for this phase execution.
     """
     repeat_count = 1
-    repeat_limit = phase.options.repeat_limit or sys.maxsize
+    repeat_limit = (phase.options.repeat_limit or
+                    DEFAULT_RETRIES)
     while not self._stopping.is_set():
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome, profile_stats = self._execute_phase_once(
           phase, is_last_repeat, run_with_profiling, subtest_rec)
 
-      if phase_execution_outcome.is_repeat and not is_last_repeat:
+      # Give 3 default retries for timeout phase.
+      # Force repeat up to the repeat limit if force_repeat is set.
+      if ((phase_execution_outcome.is_timeout and
+           phase.options.repeat_on_timeout) or
+          phase_execution_outcome.is_repeat or
+          phase.options.force_repeat) and not is_last_repeat:
         repeat_count += 1
         continue
 

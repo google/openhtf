@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import queue
 import time
 import unittest
+from unittest import mock
 
-import mock
 from openhtf import plugs
 from openhtf.core import base_plugs
 from openhtf.core import monitors
-from six.moves import queue
 
 
 class EmptyPlug(base_plugs.BasePlug):

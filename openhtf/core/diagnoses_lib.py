@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Diagnoses: Measurement and meta interpreters.
 
 Diagnoses are higher level signals that result from processing multiple
@@ -124,16 +123,13 @@ still run.
 
 import abc
 import collections
+import enum
 import logging
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Text, Type, TYPE_CHECKING, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
 
 import attr
-import enum  # pylint: disable=g-bad-import-order
-from openhtf.core import phase_descriptor
 from openhtf.core import test_record
 from openhtf.util import data
-import six
-from six.moves import collections_abc
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
@@ -145,10 +141,6 @@ class DiagnoserError(Exception):
 
 class InvalidDiagnosisError(Exception):
   """A Diagnosis was constructed incorrectly."""
-
-
-class DuplicateResultError(Exception):
-  """Different DiagResultEnum instances define the same value."""
 
 
 @attr.s(slots=True)
@@ -211,8 +203,8 @@ class DiagnosesManager(object):
       return
     elif isinstance(diagnosis_or_diagnoses, Diagnosis):
       yield self._verify_and_fix_diagnosis(diagnosis_or_diagnoses, diagnoser)
-    elif (isinstance(diagnosis_or_diagnoses, six.string_types) or
-          not isinstance(diagnosis_or_diagnoses, collections_abc.Iterable)):
+    elif (isinstance(diagnosis_or_diagnoses, str) or
+          not isinstance(diagnosis_or_diagnoses, collections.abc.Iterable)):
       raise InvalidDiagnosisError(
           'Diagnoser {} must return a single Diagnosis or an iterable '
           'of them.'.format(diagnoser.name))
@@ -263,42 +255,6 @@ class DiagnosesManager(object):
             'Test-level diagnosis {} cannot be Internal'.format(diag))
       test_rec.add_diagnosis(diag)
       self._add_diagnosis(diag)
-
-
-def check_for_duplicate_results(
-    phase_iterator: Iterator[phase_descriptor.PhaseDescriptor],
-    test_diagnosers: Sequence['BaseTestDiagnoser']) -> None:
-  """Check for any results with the same enum value in different ResultTypes.
-
-  Args:
-    phase_iterator: iterator over the phases to check.
-    test_diagnosers: list of test level diagnosers.
-
-  Raises:
-    DuplicateResultError: when duplicate enum values are found.
-  """
-  all_result_enums = set()  # type: Set[Type['DiagResultEnum']]
-  for phase in phase_iterator:
-    for phase_diag in phase.diagnosers:
-      all_result_enums.add(phase_diag.result_type)
-  for test_diag in test_diagnosers:
-    all_result_enums.add(test_diag.result_type)
-
-  values_to_enums = collections.defaultdict(
-      list)  # type: DefaultDict[str, Type['DiagResultEnum']]
-  for enum_cls in all_result_enums:
-    for entry in enum_cls:
-      values_to_enums[entry.value].append(enum_cls)
-
-  duplicates = []  # type: List[str]
-  for result_value, enum_classes in sorted(values_to_enums.items()):
-    if len(enum_classes) > 1:
-      duplicates.append('Value "{}" defined by {}'.format(
-          result_value, enum_classes))
-  if not duplicates:
-    return
-  raise DuplicateResultError('Duplicate DiagResultEnum values: {}'.format(
-      '\n'.join(duplicates)))
 
 
 def _check_diagnoser(diagnoser: '_BaseDiagnoser',
@@ -371,14 +327,13 @@ class _BaseDiagnoser(object):
     pass
 
 
-class BasePhaseDiagnoser(six.with_metaclass(abc.ABCMeta, _BaseDiagnoser)):
+class BasePhaseDiagnoser(_BaseDiagnoser, metaclass=abc.ABCMeta):
   """Base class for using an object to define a Phase diagnoser."""
 
   __slots__ = ()
 
   @abc.abstractmethod
-  def run(self,
-          phase_record: phase_descriptor.PhaseDescriptor) -> DiagnoserReturnT:
+  def run(self, phase_record: test_record.PhaseRecord) -> DiagnoserReturnT:
     """Must be implemented to return list of Diagnoses instances.
 
     Args:
@@ -421,7 +376,7 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
           'PhaseDiagnoser run function not defined for {}'.format(self.name))
 
 
-class BaseTestDiagnoser(six.with_metaclass(abc.ABCMeta, _BaseDiagnoser)):
+class BaseTestDiagnoser(_BaseDiagnoser, metaclass=abc.ABCMeta):
   """Base class for using an object to define a Test diagnoser."""
 
   __slots__ = ()
@@ -547,21 +502,3 @@ class Diagnosis(object):
   def as_base_types(self) -> Dict[Text, Any]:
     return data.convert_to_base_types(
         attr.asdict(self, filter=_diagnosis_serialize_filter))
-
-
-def diagnose(
-    *diagnosers: BasePhaseDiagnoser
-) -> Callable[[phase_descriptor.PhaseT], phase_descriptor.PhaseDescriptor]:
-  """Decorator to add diagnosers to a PhaseDescriptor."""
-  check_diagnosers(diagnosers, BasePhaseDiagnoser)
-  diags = list(diagnosers)
-
-  def decorate(
-      wrapped_phase: phase_descriptor.PhaseT
-  ) -> phase_descriptor.PhaseDescriptor:
-    """Phase decorator to be returned."""
-    phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(wrapped_phase)
-    phase.diagnosers.extend(diags)
-    return phase
-
-  return decorate

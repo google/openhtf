@@ -141,7 +141,7 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
 
   def wrap(self,
            main_phases: phase_collections.SequenceInitializerT,
-           name: Text = None) -> 'PhaseGroup':
+           name: Optional[Text] = None) -> 'PhaseGroup':
     """Returns PhaseGroup with additional main phases."""
     other = PhaseGroup(main=main_phases)
     return self.combine(other, name=name)

@@ -17,12 +17,10 @@ This test currently only provides line coverage, checking that the Python code
 is sane. It might be worth expanding the tests to also check for things we
 actually care for.
 """
-
 import collections
 import io
 import unittest
-
-import mock
+from unittest import mock
 
 import openhtf as htf
 from openhtf import util
@@ -33,11 +31,11 @@ from openhtf.output.proto import test_runs_converter
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
 
-MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(
+MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(  # pytype: disable=module-attr  # gen-stub-imports
     tester_name='mock_test_run',
     dut_serial='UNITTEST1234',
     test_status=test_runs_pb2.PASS,
-    test_info=test_runs_pb2.TestInfo(name='unit_test'))
+    test_info=test_runs_pb2.TestInfo(name='unit_test'))  # pytype: disable=module-attr  # gen-stub-imports
 
 MOCK_TEST_RUN = collections.namedtuple('Testrun',
                                        mfg_inspector.MfgInspector.PARAMS)(None,
@@ -67,8 +65,8 @@ class TestMfgInspector(test.TestCase):
     # Create input record.
     result = util.NonLocalResult()
 
-    def _save_result(test_record):
-      result.result = test_record
+    def _save_result(test_rec):
+      result.result = test_rec
 
     cls._test = htf.Test(
         all_the_things.hello_world,
@@ -94,7 +92,7 @@ class TestMfgInspector(test.TestCase):
 
     # Parse what was written to BytesIO back into a proto and compare
     testrun_output.seek(0)
-    testrun = test_runs_pb2.TestRun()
+    testrun = test_runs_pb2.TestRun()  # pytype: disable=module-attr  # gen-stub-imports
     testrun.ParseFromString(testrun_output.read())
 
     expected_test_run_proto = test_runs_converter.test_run_from_test_record(
@@ -128,7 +126,7 @@ class TestMfgInspector(test.TestCase):
 
     # Parse what was written to BytesIO back into a proto and compare
     testrun_output.seek(0)
-    testrun = test_runs_pb2.TestRun()
+    testrun = test_runs_pb2.TestRun()  # pytype: disable=module-attr  # gen-stub-imports
     testrun.ParseFromString(testrun_output.read())
 
     self.assertEqual(MOCK_TEST_RUN_PROTO, testrun)

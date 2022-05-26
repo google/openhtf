@@ -36,7 +36,6 @@ from openhtf.core import test_record
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import test_runs_pb2
 from openhtf.util import validators
-import six
 
 # pylint: disable=g-complex-comprehension
 
@@ -60,8 +59,8 @@ OUTCOME_MAP = {
 UOM_CODE_MAP = {
     u.GetOptions().Extensions[
         test_runs_pb2.uom_code]: num
-    for num, u in six.iteritems(
-        test_runs_pb2.Units.UnitCode.DESCRIPTOR.values_by_number)
+    for num, u in 
+        test_runs_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.items()
 }
 # pylint: enable=no-member
 
@@ -92,7 +91,9 @@ def _populate_header(record, testrun):
     testrun.test_info.description = record.metadata['test_description']
   if 'test_version' in record.metadata:
     testrun.test_info.version_string = record.metadata['test_version']
-  testrun.test_status = OUTCOME_MAP[record.outcome]
+  testrun.test_status = (
+      test_runs_pb2.MARGINAL_PASS
+      if record.marginal else OUTCOME_MAP[record.outcome])
   testrun.start_time_millis = record.start_time_millis
   testrun.end_time_millis = record.end_time_millis
   if 'run_name' in record.metadata:
@@ -145,7 +146,7 @@ def _attach_json(record, testrun):
 
 def _extract_attachments(phase, testrun, used_parameter_names):
   """Extract attachments, just copy them over."""
-  for name, attachment in sorted(six.iteritems(phase.attachments)):
+  for name, attachment in sorted(phase.attachments.items()):
     attachment_data, mimetype = attachment.data, attachment.mimetype
     name = _ensure_unique_parameter_name(name, used_parameter_names)
     testrun_param = testrun.info_parameters.add()
@@ -205,7 +206,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
   mangled_parameters = {}
   for phase in record.phases:
     _extract_attachments(phase, testrun, used_parameter_names)
-    for name, measurement in sorted(six.iteritems(phase.measurements)):
+    for name, measurement in sorted(phase.measurements.items()):
       tr_name = _ensure_unique_parameter_name(name, used_parameter_names)
       testrun_param = testrun.test_parameters.add()
       testrun_param.name = tr_name
@@ -214,7 +215,9 @@ def _extract_parameters(record, testrun, used_parameter_names):
       if measurement.units and measurement.units.code in UOM_CODE_MAP:
         testrun_param.unit_code = UOM_CODE_MAP[measurement.units.code]
 
-      if measurement.outcome == measurements.Outcome.PASS:
+      if measurement.marginal:
+        testrun_param.status = test_runs_pb2.MARGINAL_PASS
+      elif measurement.outcome == measurements.Outcome.PASS:
         testrun_param.status = test_runs_pb2.PASS
       elif (not measurement.measured_value
             or not measurement.measured_value.is_value_set):
@@ -275,7 +278,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
 
 def _add_mangled_parameters(testrun, mangled_parameters, used_parameter_names):
   """Add any mangled parameters we generated from multidim measurements."""
-  for mangled_name, mangled_param in sorted(six.iteritems(mangled_parameters)):
+  for mangled_name, mangled_param in sorted(mangled_parameters.items()):
     if mangled_name != _ensure_unique_parameter_name(mangled_name,
                                                      used_parameter_names):
       logging.warning('Mangled name %s in use by non-mangled parameter',
@@ -327,7 +330,7 @@ def test_run_from_test_record(record):
   Returns:
     An instance of the TestRun proto for the given record.
   """
-  testrun = test_runs_pb2.TestRun()
+  testrun = test_runs_pb2.TestRun()  # pytype: disable=module-attr  # gen-stub-imports
   _populate_header(record, testrun)
   _attach_json(record, testrun)
 

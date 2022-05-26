@@ -3,7 +3,7 @@
 # OpenHTF
 The open-source hardware testing framework.
 
-[![Build Status](https://travis-ci.org/google/openhtf.svg?branch=master)](https://travis-ci.org/google/openhtf)
+[![Build Status](https://github.com/google/openhtf/actions/workflows/build_and_deploy.yml/badge.svg?branch=master)](https://github.com/google/openhtf/actions?branch=master)
 [![Coverage Status](https://coveralls.io/repos/google/openhtf/badge.svg?branch=master&service=github)](https://coveralls.io/github/google/openhtf?branch=master)
 
 [Issue Stats](http://issuestats.com/github/google/openhtf)

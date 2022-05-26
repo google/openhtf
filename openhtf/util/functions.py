@@ -18,8 +18,6 @@ import functools
 import inspect
 import time
 
-import six
-
 
 def call_once(func):
   """Decorate a function to only allow it to be called once.
@@ -34,16 +32,10 @@ def call_once(func):
   Returns:
     The decorated function.
   """
-  if six.PY3:
-    argspec = inspect.getfullargspec(func)
-    argspec_args = argspec.args
-    argspec_varargs = argspec.varargs
-    argspec_keywords = argspec.varkw
-  else:
-    argspec = inspect.getargspec(func)  # pylint: disable=deprecated-method
-    argspec_args = argspec.args
-    argspec_varargs = argspec.varargs
-    argspec_keywords = argspec.keywords
+  argspec = inspect.getfullargspec(func)
+  argspec_args = argspec.args
+  argspec_varargs = argspec.varargs
+  argspec_keywords = argspec.varkw
   if argspec_args or argspec_varargs or argspec_keywords:
     raise ValueError('Can only decorate functions with no args', func, argspec)
 
