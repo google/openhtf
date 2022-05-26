@@ -122,15 +122,24 @@ still run.
 """
 
 import abc
+<<<<<<< HEAD
+import collections
+import enum
+=======
+>>>>>>> upstream/master
 import logging
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
 
 import attr
+<<<<<<< HEAD
+=======
 import enum  # pylint: disable=g-bad-import-order
+>>>>>>> upstream/master
 from openhtf.core import test_record
 from openhtf.util import data
-import six
-from six.moves import collections_abc
+
+if TYPE_CHECKING:
+  from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
@@ -204,8 +213,8 @@ class DiagnosesManager(object):
       return
     elif isinstance(diagnosis_or_diagnoses, Diagnosis):
       yield self._verify_and_fix_diagnosis(diagnosis_or_diagnoses, diagnoser)
-    elif (isinstance(diagnosis_or_diagnoses, six.string_types) or
-          not isinstance(diagnosis_or_diagnoses, collections_abc.Iterable)):
+    elif (isinstance(diagnosis_or_diagnoses, str) or
+          not isinstance(diagnosis_or_diagnoses, collections.abc.Iterable)):
       raise InvalidDiagnosisError(
           'Diagnoser {} must return a single Diagnosis or an iterable '
           'of them.'.format(diagnoser.name))
@@ -328,7 +337,7 @@ class _BaseDiagnoser(object):
     pass
 
 
-class BasePhaseDiagnoser(six.with_metaclass(abc.ABCMeta, _BaseDiagnoser)):
+class BasePhaseDiagnoser(_BaseDiagnoser, metaclass=abc.ABCMeta):
   """Base class for using an object to define a Phase diagnoser."""
 
   __slots__ = ()
@@ -377,7 +386,7 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
           'PhaseDiagnoser run function not defined for {}'.format(self.name))
 
 
-class BaseTestDiagnoser(six.with_metaclass(abc.ABCMeta, _BaseDiagnoser)):
+class BaseTestDiagnoser(_BaseDiagnoser, metaclass=abc.ABCMeta):
   """Base class for using an object to define a Test diagnoser."""
 
   __slots__ = ()

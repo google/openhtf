@@ -15,6 +15,7 @@
 import copy
 import time
 import unittest
+from unittest import mock
 
 import mock
 from openhtf import util

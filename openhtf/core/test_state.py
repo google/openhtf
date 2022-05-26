@@ -49,7 +49,6 @@ from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import units
 from past.builtins import long
-import six
 from typing_extensions import Literal
 
 CONF = configuration.CONF
@@ -559,7 +558,11 @@ class PhaseState(object):
   _update_measurements = attr.ib(type=Set[Text], factory=set)
 
   def __attrs_post_init__(self):
+<<<<<<< HEAD
+    for m in self.measurements.values():
+=======
     for m in six.itervalues(self.measurements):
+>>>>>>> upstream/master
       # Using functools.partial to capture the value of the loop variable.
       m.set_notification_callback(functools.partial(self._notify, m.name))
     self._cached = {
@@ -573,7 +576,11 @@ class PhaseState(object):
         'options':
             None,
         'measurements': {
+<<<<<<< HEAD
+            k: m.as_base_types() for k, m in self.measurements.items()
+=======
             k: m.as_base_types() for k, m in six.iteritems(self.measurements)
+>>>>>>> upstream/master
         },
         'attachments': {},
         'start_time_millis':

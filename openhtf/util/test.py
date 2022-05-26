@@ -126,6 +126,7 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
+import collections
 import functools
 import inspect
 import logging
@@ -150,10 +151,9 @@ from typing import (
     Union,
 )
 import unittest
+from unittest import mock
 
 import attr
-import mock
-
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import base_plugs
@@ -170,8 +170,6 @@ from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
 from openhtf.util import logs
 from openhtf.util import text
-import six
-from six.moves import collections_abc
 
 logs.CLI_LOGGING_VERBOSITY = 2
 
@@ -324,7 +322,7 @@ def _merge_stats(stats: pstats.Stats, filepath: pathlib.Path) -> None:
   test_executor.combine_profile_stats(stats_to_combine, str(filepath))
 
 
-class PhaseOrTestIterator(collections_abc.Iterator):
+class PhaseOrTestIterator(collections.abc.Iterator):
 
   def __init__(self, test_case, iterator, mock_plugs, phase_user_defined_state,
                phase_diagnoses):
@@ -372,7 +370,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(
         plug_cls for plug_cls in plug_types if plug_cls not in self.mock_plugs)
-    for plug_type, plug_value in six.iteritems(self.mock_plugs):
+    for plug_type, plug_value in self.mock_plugs.items():
       self.plug_manager.update_plug(plug_type, plug_value)
     for plug_type in plug_types:
       self.test_case.plugs[plug_type] = (
@@ -468,7 +466,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections_abc.Callable):
+    elif not isinstance(phase_or_test, collections.abc.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -481,7 +479,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections_abc.Callable):
+    elif not isinstance(phase_or_test, collections.abc.Callable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -549,10 +547,7 @@ def patch_plugs(phase_user_defined_state=None,
       assert isinstance(diag, diagnoses_lib.Diagnosis)
 
   def test_wrapper(test_func):
-    if six.PY3:
-      plug_argspec = inspect.getfullargspec(test_func)
-    else:
-      plug_argspec = inspect.getargspec(test_func)  # pylint: disable=deprecated-method
+    plug_argspec = inspect.getfullargspec(test_func)
     num_defaults = len(plug_argspec.defaults or ())
     plug_args = set(plug_argspec.args[1:-num_defaults or None])
 
@@ -571,8 +566,8 @@ def patch_plugs(phase_user_defined_state=None,
     # Make MagicMock instances for the plugs.
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
-    for plug_arg_name, plug_fullname in six.iteritems(mock_plugs):
-      if isinstance(plug_fullname, six.string_types):
+    for plug_arg_name, plug_fullname in mock_plugs.items():
+      if isinstance(plug_fullname, str):
         try:
           plug_module, plug_typename = plug_fullname.rsplit('.', 1)
           plug_type = getattr(sys.modules[plug_module], plug_typename)
@@ -640,16 +635,16 @@ def _assert_phase_or_test_record(func):
   @functools.wraps(func)
   def assertion_wrapper(self, phase_or_test_record, *args, **kwargs):
     if isinstance(phase_or_test_record, test_record.TestRecord):
-      exc_info = None
+      original_exception = None
       for phase_record in phase_or_test_record.phases:
         try:
           func(self, phase_record, *args, **kwargs)
           break
-        except Exception:  # pylint: disable=broad-except
-          exc_info = sys.exc_info()
+        except Exception as e:  # pylint: disable=broad-except
+          original_exception = e
       else:
-        if exc_info:
-          six.reraise(*exc_info)
+        if original_exception is not None:
+          raise original_exception
     elif isinstance(phase_or_test_record, test_record.PhaseRecord):
       func(self, phase_or_test_record, *args, **kwargs)
     else:

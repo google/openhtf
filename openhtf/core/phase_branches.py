@@ -19,10 +19,17 @@ diagnosis results of the test run.
 """
 
 import abc
+<<<<<<< HEAD
+import enum
+from typing import Any, Callable, Dict, Iterator, Text, Tuple, TYPE_CHECKING, Union
+
+import attr
+=======
 from typing import Any, Callable, Dict, Iterator, Text, Tuple, TYPE_CHECKING, Union
 
 import attr
 import enum  # pylint: disable=g-bad-import-order
+>>>>>>> upstream/master
 from openhtf import util
 from openhtf.core import diagnoses_lib
 from openhtf.core import phase_collections
@@ -30,7 +37,10 @@ from openhtf.core import phase_descriptor
 from openhtf.core import phase_nodes
 from openhtf.core import test_record
 from openhtf.util import data
+<<<<<<< HEAD
+=======
 import six
+>>>>>>> upstream/master
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
@@ -142,7 +152,11 @@ class BranchSequence(phase_collections.PhaseSequence):
 
 
 @attr.s(slots=True, frozen=True)
+<<<<<<< HEAD
+class Checkpoint(phase_nodes.PhaseNode, metaclass=abc.ABCMeta):
+=======
 class Checkpoint(six.with_metaclass(abc.ABCMeta, phase_nodes.PhaseNode)):
+>>>>>>> upstream/master
   """Nodes that check for phase failures or if diagnoses were triggered.
 
   When the condition for a checkpoint is triggered, a STOP or FAIL_SUBTEST

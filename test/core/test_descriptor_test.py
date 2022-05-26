@@ -2,6 +2,10 @@
 
 import re
 import unittest
+<<<<<<< HEAD
+from unittest import mock
+=======
+>>>>>>> upstream/master
 
 import mock
 from openhtf.core import test_descriptor

@@ -13,15 +13,13 @@
 # limitations under the License.
 """Utility helpers for xmlrpclib."""
 
+import collections
 import http.client
 import socketserver
 import sys
 import threading
 import xmlrpc.client
 import xmlrpc.server
-
-import six
-from six.moves import collections_abc
 
 DEFAULT_PROXY_TIMEOUT_S = 3
 
@@ -81,10 +79,7 @@ class TimeoutProxyMixin(object):
     super(TimeoutProxyMixin, self).__init__(*args, **kwargs)
 
   def __settimeout(self, timeout_s):
-    if six.PY3:
-      self._transport.settimeout(timeout_s)  # pytype: disable=attribute-error
-    else:
-      self.__transport.settimeout(timeout_s)  # pytype: disable=attribute-error
+    self._transport.settimeout(timeout_s)  # pytype: disable=attribute-error
 
 
 class TimeoutProxyServer(TimeoutProxyMixin, BaseServerProxy):
@@ -100,7 +95,7 @@ class LockedProxyMixin(object):
 
   def __getattr__(self, attr):
     method = super(LockedProxyMixin, self).__getattr__(attr)  # pytype: disable=attribute-error
-    if isinstance(method, collections_abc.Callable):
+    if isinstance(method, collections.abc.Callable):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _wrapper(*args):
         with self._lock:

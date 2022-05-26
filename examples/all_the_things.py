@@ -28,8 +28,6 @@ from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.plugs import user_input
 from openhtf.util import units
-from six.moves import range
-from six.moves import zip
 
 
 @htf.plug(example=example_plugs.example_plug_configured)

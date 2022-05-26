@@ -27,7 +27,6 @@ from openhtf.util import data as htf_data
 from openhtf.util import units
 from openhtf.util import validators
 from past.builtins import unicode
-import six
 
 TEST_RECORD_ATTACHMENT_NAME = 'OpenHTF_record.json'
 
@@ -214,8 +213,8 @@ def _convert_object_to_json(obj):  # pylint: disable=missing-function-docstring
 
   def unsupported_type_handler(o):
     # For bytes, JSONEncoder will fallback to this function to convert to str.
-    if six.PY3 and isinstance(o, six.binary_type):
-      return six.ensure_str(o, encoding='utf-8', errors='replace')
+    if isinstance(o, bytes):
+      return o.decode(encoding='utf-8', errors='replace')
     elif isinstance(o, (datetime.date, datetime.datetime)):
       return o.isoformat()
     else:
@@ -319,7 +318,7 @@ def multidim_measurement_to_attachment(name, measurement):
     if d.suffix is None:
       suffix = u''
     else:
-      suffix = six.ensure_text(d.suffix)
+      suffix = d.suffix
     dims.append({
         'uom_suffix': suffix,
         'uom_code': d.code,

@@ -17,6 +17,7 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
+import collections
 import copy
 import difflib
 import enum
@@ -33,10 +34,6 @@ import attr
 from mutablerecords import records
 from past.builtins import long
 from past.builtins import unicode
-
-import six
-from six.moves import collections_abc
-from six.moves import zip
 
 # Used by convert_to_base_types().
 PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
@@ -141,7 +138,7 @@ def convert_to_base_types(obj,
       skipped.
     - Enum instances are converted to strings via their .name attribute.
     - Real and integral numbers are converted to built-in types.
-    - Byte and unicode strings are left alone (instances of six.string_types).
+    - Byte and unicode strings are left alone (instances of str).
     - Other non-None values are converted to strings via str().
 
   The return value contains only the Python built-in types: dict, list, tuple,
@@ -164,7 +161,7 @@ def convert_to_base_types(obj,
     Version of the object composed of base types.
   """
   # Because it's *really* annoying to pass a single string accidentally.
-  assert not isinstance(ignore_keys, six.string_types), 'Pass a real iterable!'
+  assert not isinstance(ignore_keys, str), 'Pass a real iterable!'
 
   if hasattr(obj, 'as_base_types'):
     return obj.as_base_types()
@@ -195,7 +192,7 @@ def convert_to_base_types(obj,
     return {  # pylint: disable=g-complex-comprehension
         convert_to_base_types(k, ignore_keys, tuple_type):
         convert_to_base_types(v, ignore_keys, tuple_type)
-        for k, v in six.iteritems(obj)
+        for k, v in obj.items()
         if k not in ignore_keys
     }
   elif isinstance(obj, list):
@@ -247,9 +244,9 @@ def total_size(obj):
     if isinstance(current_obj, dict):
       size += sum(
           map(sizeof,
-              itertools.chain.from_iterable(six.iteritems(current_obj))))
-    elif (isinstance(current_obj, collections_abc.Iterable) and
-          not isinstance(current_obj, six.string_types)):
+              itertools.chain.from_iterable(current_obj.items())))
+    elif (isinstance(current_obj, collections.abc.Iterable) and
+          not isinstance(current_obj, str)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
       size += sum(
