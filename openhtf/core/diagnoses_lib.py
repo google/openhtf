@@ -327,7 +327,7 @@ class _BaseDiagnoser(object):
     pass
 
 
-class BasePhaseDiagnoser(_BaseDiagnoser, metaclass=abc.ABCMeta):
+class BasePhaseDiagnoser(_BaseDiagnoser, abc.ABC):
   """Base class for using an object to define a Phase diagnoser."""
 
   __slots__ = ()
@@ -376,7 +376,7 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
           'PhaseDiagnoser run function not defined for {}'.format(self.name))
 
 
-class BaseTestDiagnoser(_BaseDiagnoser, metaclass=abc.ABCMeta):
+class BaseTestDiagnoser(_BaseDiagnoser, abc.ABC):
   """Base class for using an object to define a Test diagnoser."""
 
   __slots__ = ()

@@ -61,7 +61,7 @@ def flatten(n: Any) -> List[phase_nodes.PhaseNode]:
   return list(_recursive_flatten(n))
 
 
-class PhaseCollectionNode(phase_nodes.PhaseNode, metaclass=abc.ABCMeta):
+class PhaseCollectionNode(phase_nodes.PhaseNode, abc.ABC):
   """Base class for a node that contains multiple other phase nodes."""
 
   __slots__ = ()

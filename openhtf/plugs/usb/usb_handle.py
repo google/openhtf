@@ -59,7 +59,7 @@ def requires_open_handle(method):
   return wrapper_requiring_open_handle
 
 
-class UsbHandle(metaclass=abc.ABCMeta):
+class UsbHandle(abc.ABC):
   """UsbHandle objects provide read/write access to USB Interfaces.
 
   Subclasses must implement this interface to provide actual Read/Write/Close

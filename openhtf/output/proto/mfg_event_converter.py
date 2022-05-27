@@ -418,10 +418,6 @@ class PhaseCopier(object):
 
     if isinstance(value, numbers.Number):
       mfg_measurement.numeric_value = float(value)
-    elif isinstance(value, bytes):
-      # text_value expects unicode or ascii-compatible strings, so we must
-      # 'decode' it, even if it's actually just garbage bytestring data.
-      mfg_measurement.text_value = value.decode(errors='replace')  # pytype: disable=wrong-keyword-args
     else:
       # Coercing to string.
       mfg_measurement.text_value = str(value)

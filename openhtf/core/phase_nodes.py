@@ -27,7 +27,7 @@ WithModifierT = TypeVar('WithModifierT', bound='PhaseNode')
 ApplyAllNodesT = TypeVar('ApplyAllNodesT', bound='PhaseNode')
 
 
-class PhaseNode(metaclass=abc.ABCMeta):
+class PhaseNode(abc.ABC):
   """Base class for all executable nodes in OpenHTF."""
 
   __slots__ = ()

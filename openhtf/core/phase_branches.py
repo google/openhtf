@@ -141,7 +141,7 @@ class BranchSequence(phase_collections.PhaseSequence):
 
 
 @attr.s(slots=True, frozen=True)
-class Checkpoint(phase_nodes.PhaseNode, metaclass=abc.ABCMeta):
+class Checkpoint(phase_nodes.PhaseNode, abc.ABC):
   """Nodes that check for phase failures or if diagnoses were triggered.
 
   When the condition for a checkpoint is triggered, a STOP or FAIL_SUBTEST

@@ -82,14 +82,14 @@ def create_validator(name, *args, **kwargs):
 _identity = lambda x: x
 
 
-class ValidatorBase(metaclass=abc.ABCMeta):
+class ValidatorBase(abc.ABC):
 
   @abc.abstractmethod
   def __call__(self, value):
     """Should validate value, returning a boolean result."""
 
 
-class RangeValidatorBase(ValidatorBase, metaclass=abc.ABCMeta):
+class RangeValidatorBase(ValidatorBase, abc.ABC):
 
   @abc.abstractproperty
   def minimum(self):
