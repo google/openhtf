@@ -418,6 +418,8 @@ class PhaseCopier(object):
 
     if isinstance(value, numbers.Number):
       mfg_measurement.numeric_value = float(value)
+    elif isinstance(value, bytes):
+      mfg_measurement.text_value = value.decode(errors='replace')
     else:
       # Coercing to string.
       mfg_measurement.text_value = str(value)
