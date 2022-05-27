@@ -43,7 +43,9 @@ class Atomic(object):
     self.temp = tempfile.NamedTemporaryFile(delete=False)
 
   def write(self, write_data: Union[Text, bytes]) -> int:
-    return self.temp.write(six.ensure_binary(write_data))
+    if isinstance(write_data, str):
+      write_data = write_data.encode()
+    return self.temp.write(write_data)
 
   def close(self) -> None:
     self.temp.close()
@@ -133,7 +135,7 @@ class OutputToFile(object):
         outfile.write(serialized_record.encode())
       elif isinstance(serialized_record, Iterable):
         for chunk in serialized_record:
-          outfile.write(chunk.encode())
+          outfile.write(chunk.encode() if isinstance(chunk, str) else chunk)
       else:
         raise TypeError('Expected string or iterable but got {}.'.format(
             type(serialized_record)))
