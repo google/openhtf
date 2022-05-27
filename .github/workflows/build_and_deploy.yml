@@ -42,5 +42,5 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
-        password: gWriMCwCITTFTXKl4k7/eVYpx07N/z2zUGxZ3lme/pl6mRfJvj8QbpvnJAQGNn5VEZfWuuKveCoAySfrLcojV8RJuaRLcAnIuJInZt/Cf8QXmHLm7LK9xAnKofi++RRqk0B81CwbKjq3/JhMmygvSjSR5vRDogo3KB2GHRnE3HQUSy3IlBeZDDDpr7LcNcNVSr/z9TXC1/UA05erhUvRWuMiDI9AKqvPZ80K+GlzWEPSxkeFotC/i7PyrZfJWEzVPrgt1iFOK9lNmh5lKyQ4do0nuVHAZFcxsMb+6uBek7WNgmUOUAhOTHa/AM//b8qIhVzSPFc8tQlqdyN6lH8l0SbbzX7BkKNqS1hL5XzLJ+/VZgBbSUDWSDq08Dmu4snRvxPZc6RzfmQKQ0H0esOKzBwS8dIAQDEVwj13WuCnV7G0yHD2yRXmyWbLcbhDW7rNwC7VsyenPA9SwJ9vrCRoCuB3+zKERAya47dgflFHtxITHVdDR/tJ7h83YiEuVp/GkdOOet2gHMO5HyqoipaXryg7fu7JAhZ727l9t8PGWWKwKE0GBL7/IgrAIhR3GuYK33fInB2SpSoAmoxipfU31TpO1Xb+WT+yQwXft+wFYK6DH65yhaedHqKnxu7ph2ZE36XB4qY84sbvE/GgWF6KJjXoA1RTxmohI97i2dmTQJI=
+        password: ${{ secrets.PYPI_PUBLISH_PASSWORD }}
         skip_existing: true
