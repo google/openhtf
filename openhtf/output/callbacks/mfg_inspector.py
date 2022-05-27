@@ -148,7 +148,8 @@ class MfgInspector(object):
     if user and keydata:
       self.credentials = oauth2client.client.SignedJwtAssertionCredentials(
           service_account_name=self.user,
-          private_key=self.keydata.encode(),
+          private_key=(self.keydata.encode()
+                       if isinstance(self.keydata, str) else self.keydata),
           scope=self.SCOPE_CODE_URI,
           user_agent='OpenHTF Guzzle Upload Client',
           token_uri=self.token_uri)

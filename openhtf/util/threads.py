@@ -13,6 +13,7 @@
 # limitations under the License.
 """Thread library defining a few helpers."""
 
+import _thread
 import contextlib
 import cProfile
 import ctypes
@@ -21,11 +22,6 @@ import logging
 import pstats
 import sys
 import threading
-
-try:
-  import _thread  # pylint: disable=g-import-not-at-top
-except ImportError:
-  import _dummy_thread as _thread  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 
