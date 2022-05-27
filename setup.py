@@ -133,8 +133,6 @@ INSTALL_REQUIRES = [
     'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
     'dataclasses;python_version<"3.7"',
-    'enum34>=1.1.2,<2.0 ; python_version<"3.4"',
-    'future>=0.16.0',
     'inflection',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<2.0',
@@ -143,7 +141,6 @@ INSTALL_REQUIRES = [
     'pyOpenSSL>=17.1.0,<18.0',
     'sockjs-tornado>=1.0.3,<2.0',
     'tornado>=4.3,<5.0',
-    'six>=1.13.0',
     'typing-extensions',
 ]
 
@@ -217,7 +214,6 @@ setup(
     },
     tests_require=[
         'absl-py>=0.10.0',
-        'mock>=2.0.0',
         'pandas>=0.22.0',
         'numpy',
         'pytest>=2.9.2',

@@ -26,8 +26,6 @@ from openhtf.output.proto import test_runs_pb2
 from openhtf.util import data as htf_data
 from openhtf.util import units
 from openhtf.util import validators
-from past.builtins import unicode
-import six
 
 TEST_RECORD_ATTACHMENT_NAME = 'OpenHTF_record.json'
 
@@ -214,8 +212,8 @@ def _convert_object_to_json(obj):  # pylint: disable=missing-function-docstring
 
   def unsupported_type_handler(o):
     # For bytes, JSONEncoder will fallback to this function to convert to str.
-    if six.PY3 and isinstance(o, six.binary_type):
-      return six.ensure_str(o, encoding='utf-8', errors='replace')
+    if isinstance(o, bytes):
+      return o.decode(encoding='utf-8', errors='replace')
     elif isinstance(o, (datetime.date, datetime.datetime)):
       return o.isoformat()
     else:
@@ -319,7 +317,7 @@ def multidim_measurement_to_attachment(name, measurement):
     if d.suffix is None:
       suffix = u''
     else:
-      suffix = six.ensure_text(d.suffix)
+      suffix = d.suffix
     dims.append({
         'uom_suffix': suffix,
         'uom_code': d.code,
@@ -421,12 +419,7 @@ class PhaseCopier(object):
     if isinstance(value, numbers.Number):
       mfg_measurement.numeric_value = float(value)
     elif isinstance(value, bytes):
-      # text_value expects unicode or ascii-compatible strings, so we must
-      # 'decode' it, even if it's actually just garbage bytestring data.
-      mfg_measurement.text_value = unicode(value, errors='replace')  # pytype: disable=wrong-keyword-args
-    elif isinstance(value, unicode):
-      # Don't waste time and potential errors decoding unicode.
-      mfg_measurement.text_value = value
+      mfg_measurement.text_value = value.decode(errors='replace')
     else:
       # Coercing to string.
       mfg_measurement.text_value = str(value)

@@ -18,7 +18,6 @@ from openhtf.output.servers import web_gui_server
 from openhtf.output.web_gui import web_launcher
 from openhtf.util import data
 from openhtf.util import multicast
-import six
 import sockjs.tornado
 import tornado.web
 
@@ -90,7 +89,7 @@ class DashboardPubSub(pub_sub.PubSub):
     with cls.station_map_lock:
 
       # By default, assume old stations are unreachable.
-      for host_port, station_info in six.iteritems(cls.station_map):
+      for host_port, station_info in cls.station_map.items():
         cls.station_map[host_port] = station_info._replace(status='UNREACHABLE')
 
       for station_info in station_info_list:

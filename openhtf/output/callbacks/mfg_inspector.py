@@ -13,8 +13,6 @@ import oauth2client.client
 from openhtf.output import callbacks
 from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
-import six
-from six.moves import range
 
 
 class UploadFailedError(Exception):
@@ -150,7 +148,7 @@ class MfgInspector(object):
     if user and keydata:
       self.credentials = oauth2client.client.SignedJwtAssertionCredentials(
           service_account_name=self.user,
-          private_key=six.ensure_binary(self.keydata),
+          private_key=self.keydata.encode(),
           scope=self.SCOPE_CODE_URI,
           user_agent='OpenHTF Guzzle Upload Client',
           token_uri=self.token_uri)

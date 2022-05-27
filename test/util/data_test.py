@@ -17,7 +17,6 @@ import unittest
 
 import attr
 from openhtf.util import data
-import past.builtins
 
 
 class TestData(unittest.TestCase):
@@ -60,10 +59,8 @@ class TestData(unittest.TestCase):
         'list': [10],
         'tuple': (10,),
         'str': '10',
-        'unicode': '10',
         'int': 2**40,
         'float': 10.0,
-        'long': 2**80,
         'bool': True,
         'none': None,
         'complex': 10j,
@@ -82,10 +79,8 @@ class TestData(unittest.TestCase):
     self.assertIsInstance(converted['list'], list)
     self.assertIsInstance(converted['tuple'], tuple)
     self.assertIsInstance(converted['str'], str)
-    self.assertIsInstance(converted['unicode'], str)
     self.assertIsInstance(converted['int'], int)
     self.assertIsInstance(converted['float'], float)
-    self.assertIsInstance(converted['long'], past.builtins.long)
     self.assertIsInstance(converted['bool'], bool)
     self.assertIsNone(converted['none'])
     self.assertIsInstance(converted['complex'], str)

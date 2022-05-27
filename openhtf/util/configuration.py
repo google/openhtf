@@ -147,7 +147,6 @@ from typing import Any, Optional, Text, Type, TypeVar
 import attr
 from openhtf.util import argv
 from openhtf.util import threads
-import six
 from typing_extensions import Protocol
 import yaml
 
@@ -549,7 +548,7 @@ class _Configuration(object):
         declarations have been evaluated.
     """
     undeclared_keys = []
-    for key, value in six.iteritems(dictionary):
+    for key, value in dictionary.items():
       # Warn in this case.  We raise if you try to access a config key that
       # hasn't been declared, but we don't raise here so that you can use
       # configuration files that are supersets of required configuration for
@@ -590,7 +589,7 @@ class _Configuration(object):
     retval.update(self._loaded_values)
     # Only update keys that are declared so we don't allow injecting
     # un-declared keys via commandline flags.
-    for key, value in six.iteritems(self._flag_values):
+    for key, value in self._flag_values.items():
       if key in self._declarations:
         retval[key] = value
     return retval
@@ -705,10 +704,7 @@ class _Configuration(object):
       A wrapper that, when invoked, will call the wrapped method, passing in
     configuration values for positional arguments.
     """
-    if six.PY3:
-      argspec = inspect.getfullargspec(method)
-    else:
-      argspec = inspect.getargspec(method)  # pylint: disable=deprecated-method
+    argspec = inspect.getfullargspec(method)
 
     # Index in argspec.args of the first keyword argument.  This index is a
     # negative number if there are any kwargs, or 0 if there are no kwargs.
