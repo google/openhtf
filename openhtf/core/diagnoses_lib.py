@@ -122,7 +122,7 @@ still run.
 """
 
 import abc
-import collections
+from collections.abc import Iterable as CollectionsIterable
 import enum
 import logging
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
@@ -204,7 +204,7 @@ class DiagnosesManager(object):
     elif isinstance(diagnosis_or_diagnoses, Diagnosis):
       yield self._verify_and_fix_diagnosis(diagnosis_or_diagnoses, diagnoser)
     elif (isinstance(diagnosis_or_diagnoses, str) or
-          not isinstance(diagnosis_or_diagnoses, collections.abc.Iterable)):
+          not isinstance(diagnosis_or_diagnoses, CollectionsIterable)):
       raise InvalidDiagnosisError(
           'Diagnoser {} must return a single Diagnosis or an iterable '
           'of them.'.format(diagnoser.name))

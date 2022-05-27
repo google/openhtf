@@ -127,6 +127,7 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
 """
 
 import collections
+from collections.abc import Callable as CollectionsCallable, Iterator
 import functools
 import inspect
 import logging
@@ -322,7 +323,7 @@ def _merge_stats(stats: pstats.Stats, filepath: pathlib.Path) -> None:
   test_executor.combine_profile_stats(stats_to_combine, str(filepath))
 
 
-class PhaseOrTestIterator(collections.abc.Iterator):
+class PhaseOrTestIterator(Iterator):
 
   def __init__(self, test_case, iterator, mock_plugs, phase_user_defined_state,
                phase_diagnoses):
@@ -466,7 +467,7 @@ class PhaseOrTestIterator(collections.abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections.abc.Callable):
+    elif not isinstance(phase_or_test, CollectionsCallable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -479,7 +480,7 @@ class PhaseOrTestIterator(collections.abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections.abc.Callable):
+    elif not isinstance(phase_or_test, CollectionsCallable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)

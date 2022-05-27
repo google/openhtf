@@ -22,6 +22,7 @@ skipped.
 
 import abc
 import collections
+from collections.abc import Iterable as CollectionsIterable
 from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Type, TypeVar, Union
 
 import attr
@@ -43,7 +44,7 @@ class DuplicateSubtestNamesError(Exception):
 
 def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
   """Yields flattened phase nodes."""
-  if isinstance(n, collections.abc.Iterable):
+  if isinstance(n, CollectionsIterable):
     for it in n:
       for node in _recursive_flatten(it):
         yield node

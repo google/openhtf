@@ -17,7 +17,7 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
-import collections
+from collections.abc import Iterable
 import copy
 import difflib
 import enum
@@ -243,7 +243,7 @@ def total_size(obj):
       size += sum(
           map(sizeof,
               itertools.chain.from_iterable(current_obj.items())))
-    elif (isinstance(current_obj, collections.abc.Iterable) and
+    elif (isinstance(current_obj, Iterable) and
           not isinstance(current_obj, str)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utility helpers for xmlrpclib."""
 
-import collections
+from collections.abc import Callable
 import http.client
 import socketserver
 import sys
@@ -88,7 +88,7 @@ class LockedProxyMixin(object):
 
   def __getattr__(self, attr):
     method = super(LockedProxyMixin, self).__getattr__(attr)  # pytype: disable=attribute-error
-    if isinstance(method, collections.abc.Callable):
+    if isinstance(method, Callable):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _wrapper(*args):
         with self._lock:

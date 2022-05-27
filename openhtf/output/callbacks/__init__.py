@@ -19,7 +19,7 @@ alternative serialization schemes, see json_factory.py and mfg_inspector.py for
 examples.
 """
 
-import collections
+from collections.abc import Iterable
 import contextlib
 import pickle
 import shutil
@@ -131,7 +131,7 @@ class OutputToFile(object):
       serialized_record = self.serialize_test_record(test_rec)
       if isinstance(serialized_record, str):
         outfile.write(serialized_record.encode())
-      elif isinstance(serialized_record, collections.abc.Iterable):
+      elif isinstance(serialized_record, Iterable):
         for chunk in serialized_record:
           outfile.write(chunk.encode())
       else:
