@@ -34,68 +34,6 @@ class InvalidUsageError(Exception):
   """Raised when an API is used in an invalid or unsupported manner."""
 
 
-def safe_lock_release_context(rlock):
-  # Python3 has a C-implementation of RLock, which doesn't have the thread
-  # termination issues.
-  return _placeholder_release()
-
-
-@contextlib.contextmanager
-def _placeholder_release():
-  yield
-
-
-# pylint: disable=protected-access
-@contextlib.contextmanager
-def _safe_lock_release_py2(rlock):
-  """Ensure that a threading.RLock is fully released for Python 2.
-
-  The RLock release code is:
-    https://github.com/python/cpython/blob/2.7/Lib/threading.py#L187
-
-  The RLock object's release method does not release all of its state if an
-  exception is raised in the middle of its operation.  There are three pieces of
-  internal state that must be cleaned up:
-  - owning thread ident, an integer.
-  - entry count, an integer that counts how many times the current owner has
-      locked the RLock.
-  - internal lock, a threading.Lock instance that handles blocking.
-
-  Args:
-    rlock: threading.RLock, lock to fully release.
-
-  Yields:
-    None.
-  """
-  assert isinstance(rlock, threading._RLock)
-  ident = _thread.get_ident()
-  expected_count = 0
-  if rlock._RLock__owner == ident:
-    expected_count = rlock._RLock__count
-  try:
-    yield
-  except ThreadTerminationError:
-    # Check if the current thread still owns the lock by checking if we can
-    # acquire the underlying lock.
-    if rlock._RLock__block.acquire(0):
-      # Lock is clean, so unlock and we are done.
-      rlock._RLock__block.release()
-    elif rlock._RLock__owner == ident and expected_count > 0:
-      # The lock is still held up the stack, so make sure the count is accurate.
-      if rlock._RLock__count != expected_count:
-        rlock._RLock__count = expected_count
-    elif rlock._RLock__owner == ident or rlock._RLock__owner is None:
-      # The internal lock is still acquired, but either this thread or no thread
-      # owns it, which means it needs to be hard reset.
-      rlock._RLock__owner = None
-      rlock._RLock__count = 0
-      rlock._RLock__block.release()
-    raise
-
-
-# pylint: enable=protected-access
-
-
 def loop(_=None, force=False):
   """Causes a function to loop indefinitely."""
   if not force:
