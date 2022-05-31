@@ -252,16 +252,6 @@ class TestUidFilter(logging.Filter):
     return match.group('test_uid') == self.test_uid
 
 
-class KillableThreadSafeStreamHandler(logging.StreamHandler):
-
-  def handle(self, record):
-    # logging.Handler objects have an internal lock attribute that is a
-    # threading.RLock instance; it can cause deadlocks in Python 2.7 when a
-    # KillableThread is killed while its release method is running.
-    with threads.safe_lock_release_context(self.lock):
-      return super(KillableThreadSafeStreamHandler, self).handle(record)
-
-
 class RecordHandler(logging.Handler):
   """A handler to save logs to an HTF TestRecord."""
 
@@ -272,13 +262,6 @@ class RecordHandler(logging.Handler):
     self._notify_update = notify_update
     self.addFilter(MAC_FILTER)
     self.addFilter(TestUidFilter(test_uid))
-
-  def handle(self, record):
-    # logging.Handler objects have an internal lock attribute that is a
-    # threading.RLock instance; it can cause deadlocks in Python 2.7 when a
-    # KillableThread is killed while its release method is running.
-    with threads.safe_lock_release_context(self.lock):
-      return super(RecordHandler, self).handle(record)
 
   def emit(self, record):
     """Save a logging.LogRecord to our test record.
@@ -350,7 +333,7 @@ def configure_logging():
     logging_level = logging.DEBUG
 
   # Configure a handler to print to the CLI.
-  cli_handler = KillableThreadSafeStreamHandler(stream=sys.stdout)
+  cli_handler = logging.StreamHandler(stream=sys.stdout)
   cli_handler.setFormatter(CliFormatter())
   cli_handler.setLevel(logging_level)
   cli_handler.addFilter(MAC_FILTER)
