@@ -16,47 +16,47 @@
 import signal
 import typing
 
-from openhtf import plugs
-from openhtf.core import phase_executor
-from openhtf.core import test_record
-from openhtf.core.base_plugs import BasePlug
-from openhtf.core.diagnoses_lib import DiagnosesStore
-from openhtf.core.diagnoses_lib import Diagnosis
-from openhtf.core.diagnoses_lib import DiagnosisComponent
-from openhtf.core.diagnoses_lib import DiagPriority
-from openhtf.core.diagnoses_lib import DiagResultEnum
-from openhtf.core.diagnoses_lib import PhaseDiagnoser
-from openhtf.core.diagnoses_lib import TestDiagnoser
+from openhtf import plugs as plugs
+from openhtf.core import phase_executor as phase_executor
+from openhtf.core import test_record as test_record
+from openhtf.core.base_plugs import BasePlug as BasePlug
+from openhtf.core.diagnoses_lib import DiagnosesStore as DiagnosesStore
+from openhtf.core.diagnoses_lib import Diagnosis as Diagnosis
+from openhtf.core.diagnoses_lib import DiagnosisComponent as DiagnosisComponent
+from openhtf.core.diagnoses_lib import DiagPriority as DiagPriority
+from openhtf.core.diagnoses_lib import DiagResultEnum as DiagResultEnum
+from openhtf.core.diagnoses_lib import PhaseDiagnoser as PhaseDiagnoser
+from openhtf.core.diagnoses_lib import TestDiagnoser as TestDiagnoser
 
-from openhtf.core.measurements import Dimension
-from openhtf.core.measurements import Measurement
-from openhtf.core.monitors import monitors
-from openhtf.core.phase_branches import BranchSequence
-from openhtf.core.phase_branches import DiagnosisCheckpoint
-from openhtf.core.phase_branches import DiagnosisCondition
-from openhtf.core.phase_branches import PhaseFailureCheckpoint
-from openhtf.core.phase_collections import PhaseSequence
-from openhtf.core.phase_collections import Subtest
-from openhtf.core.phase_descriptor import diagnose
-from openhtf.core.phase_descriptor import measures
-from openhtf.core.phase_descriptor import PhaseDescriptor
-from openhtf.core.phase_descriptor import PhaseNameCase
-from openhtf.core.phase_descriptor import PhaseOptions
-from openhtf.core.phase_descriptor import PhaseResult
-from openhtf.core.phase_group import PhaseGroup
-from openhtf.core.phase_nodes import PhaseNode
-from openhtf.core.test_descriptor import Test
-from openhtf.core.test_descriptor import TestApi
-from openhtf.core.test_descriptor import TestDescriptor
-from openhtf.core.test_record import PhaseRecord
-from openhtf.core.test_record import TestRecord
-from openhtf.plugs import plug
-from openhtf.util import configuration
-from openhtf.util import console_output
-from openhtf.util import data
-from openhtf.util import functions
-from openhtf.util import logs
-from openhtf.util import units
+from openhtf.core.measurements import Dimension as Dimension
+from openhtf.core.measurements import Measurement as Measurement
+from openhtf.core.monitors import monitors as monitors
+from openhtf.core.phase_branches import BranchSequence as BranchSequence
+from openhtf.core.phase_branches import DiagnosisCheckpoint as DiagnosisCheckpoint
+from openhtf.core.phase_branches import DiagnosisCondition as DiagnosisCondition
+from openhtf.core.phase_branches import PhaseFailureCheckpoint as PhaseFailureCheckpoint
+from openhtf.core.phase_collections import PhaseSequence as PhaseSequence
+from openhtf.core.phase_collections import Subtest as Subtest
+from openhtf.core.phase_descriptor import diagnose as diagnose
+from openhtf.core.phase_descriptor import measures as measures
+from openhtf.core.phase_descriptor import PhaseDescriptor as PhaseDescriptor
+from openhtf.core.phase_descriptor import PhaseNameCase as PhaseNameCase
+from openhtf.core.phase_descriptor import PhaseOptions as PhaseOptions
+from openhtf.core.phase_descriptor import PhaseResult as PhaseResult
+from openhtf.core.phase_group import PhaseGroup as PhaseGroup
+from openhtf.core.phase_nodes import PhaseNode as PhaseNode
+from openhtf.core.test_descriptor import Test as Test
+from openhtf.core.test_descriptor import TestApi as TestApi
+from openhtf.core.test_descriptor import TestDescriptor as TestDescriptor
+from openhtf.core.test_record import PhaseRecord as PhaseRecord
+from openhtf.core.test_record import TestRecord as TestRecord
+from openhtf.plugs import plug as plug
+from openhtf.util import configuration as configuration
+from openhtf.util import console_output as console_output
+from openhtf.util import data as data
+from openhtf.util import functions as functions
+from openhtf.util import logs as logs
+from openhtf.util import units as units
 import pkg_resources
 
 conf = configuration.CONF
