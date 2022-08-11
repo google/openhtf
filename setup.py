@@ -138,7 +138,7 @@ INSTALL_REQUIRES = [
     'oauth2client>=1.5.2,<2.0',
     'protobuf>=3.6.0,<4.0',
     'PyYAML>=3.13',
-    'pyOpenSSL>=17.1.0,<18.0',
+    'pyOpenSSL>=22.0.0',
     'sockjs-tornado>=1.0.3,<2.0',
     'tornado>=4.3,<5.0',
     'typing-extensions',
