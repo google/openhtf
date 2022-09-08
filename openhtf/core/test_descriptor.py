@@ -275,7 +275,7 @@ class Test(object):
         self._executor.abort()
 
   def execute(self,
-              test_start: Optional[phase_descriptor.PhaseT] = None,
+              test_start: Optional[Union[phase_descriptor.PhaseT, Callable[[], str]]] = None,
               profile_filename: Optional[Text] = None) -> bool:
     """Starts the framework and executes the given test.
 
