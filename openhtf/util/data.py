@@ -22,6 +22,7 @@ import copy
 import difflib
 import enum
 import itertools
+import inspect
 import logging
 import math
 import numbers
@@ -163,13 +164,8 @@ def convert_to_base_types(obj,
 
   if hasattr(obj, 'as_base_types'):
     return obj.as_base_types()
-  if hasattr(obj, '_asdict'):
-    try:
-      obj = obj._asdict()
-    except TypeError as e:
-      # This happens if the object is an uninitialized class.
-      logging.warning(
-          'Object %s is not initialized, got error %s', obj, e)
+  if hasattr(obj, '_asdict') and not inspect.isclass(obj):
+    obj = obj._asdict()
   elif isinstance(obj, records.RecordClass):
     new_obj = {}
     for a in type(obj).all_attribute_names:
