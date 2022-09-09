@@ -130,16 +130,16 @@ build.sub_commands.insert(0, ('build_proto', None))
 
 INSTALL_REQUIRES = [
     'attrs>=19.3.0',
-    'colorama>=0.3.9,<1.0',
-    'contextlib2>=0.5.1,<1.0',
-    'google-auth>=1.34.0',
+    'colorama>=0.3.9',
+    'contextlib2>=0.5.1',
     'inflection',
-    'mutablerecords>=0.4.1,<2.0',
+    'google-auth>=1.34.0',
+    'mutablerecords>=0.4.1',
     'protobuf>=3.6.0,<4.0',
     'PyYAML>=3.13',
-    'pyOpenSSL>=17.1.0,<23',
+    'pyOpenSSL>=17.1.0',
     'requests>=2.27.1',
-    'sockjs-tornado>=1.0.3,<2.0',
+    'sockjs-tornado>=1.0.3',
     'tornado>=4.3,<5.0',
     'typing-extensions',
 ]
@@ -205,11 +205,11 @@ setup(
     install_requires=INSTALL_REQUIRES,
     extras_require={
         'usb_plugs': [
-            'libusb1>=1.3.0,<2.0',
-            'M2Crypto>=0.22.3,<1.0',
+            'libusb1>=1.3.0',
+            'M2Crypto>=0.22.3',
         ],
-        'update_units': ['xlrd>=1.0.0,<2.0',],
-        'serial_collection_plug': ['pyserial>=3.3.0,<4.0',],
+        'update_units': ['xlrd>=1.0.0',],
+        'serial_collection_plug': ['pyserial>=3.3.0',],
         'examples': ['pandas>=0.22.0',],
     },
     tests_require=[
