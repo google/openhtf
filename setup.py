@@ -132,7 +132,6 @@ INSTALL_REQUIRES = [
     'attrs>=19.3.0',
     'colorama>=0.3.9,<1.0',
     'contextlib2>=0.5.1,<1.0',
-    'dataclasses;python_version<"3.7"',
     'inflection',
     'mutablerecords>=0.4.1,<2.0',
     'oauth2client>=1.5.2,<4.0',
