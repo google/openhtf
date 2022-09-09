@@ -135,12 +135,12 @@ INSTALL_REQUIRES = [
     'dataclasses;python_version<"3.7"',
     'inflection',
     'mutablerecords>=0.4.1,<2.0',
-    'oauth2client>=1.5.2,<2.0',
+    'oauth2client>=1.5.2,<4.0',
     'protobuf>=3.6.0,<4.0',
     'PyYAML>=3.13',
-    'pyOpenSSL>=17.1.0,<22.1',
+    'pyOpenSSL>=17.1.0,<23',
     'sockjs-tornado>=1.0.3,<2.0',
-    'tornado>=4.3,<5.0',
+    'tornado>=4.3,<7.0',
     'typing-extensions',
 ]
 
