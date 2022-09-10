@@ -134,7 +134,7 @@ INSTALL_REQUIRES = [
     'contextlib2>=0.5.1,<1.0',
     'inflection',
     'mutablerecords>=0.4.1,<2.0',
-    'oauth2client>=1.5.2,<4.0',
+    'oauth2client>=1.5.2,<2.0',
     'protobuf>=3.6.0,<4.0',
     'PyYAML>=3.13',
     'pyOpenSSL>=17.1.0,<23',
