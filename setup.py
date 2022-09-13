@@ -139,7 +139,7 @@ INSTALL_REQUIRES = [
     'PyYAML>=3.13',
     'pyOpenSSL>=17.1.0,<23',
     'sockjs-tornado>=1.0.3,<2.0',
-    'tornado>=4.3,<7.0',
+    'tornado>=4.3,<5.0',
     'typing-extensions',
 ]
 

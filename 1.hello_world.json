@@ -1,0 +1,244 @@
+{
+  "dut_id": "1",
+  "start_time_millis": 1663108966063,
+  "end_time_millis": 1663108966064,
+  "outcome": "PASS",
+  "outcome_details": [],
+  "marginal": false,
+  "metadata": {
+    "test_name": "openhtf_test",
+    "config": {
+      "attachments_directory": null,
+      "plug_teardown_timeout_s": 0,
+      "allow_unset_measurements": false,
+      "station_id": "jonas-asus",
+      "cancel_timeout_s": 2,
+      "stop_on_first_failure": false,
+      "capture_source": false
+    }
+  },
+  "phases": [
+    {
+      "measurements": {},
+      "options": {
+        "name": null,
+        "timeout_s": 86400,
+        "run_if": null,
+        "requires_state": false,
+        "force_repeat": false,
+        "repeat_on_timeout": false,
+        "repeat_limit": null,
+        "run_under_pdb": false,
+        "phase_name_case": "KEEP",
+        "stop_on_measurement_fail": false
+      },
+      "diagnosers": [],
+      "subtest_name": null,
+      "start_time_millis": 1663108964400,
+      "end_time_millis": 1663108966062,
+      "attachments": {},
+      "diagnosis_results": [],
+      "failure_diagnosis_results": [],
+      "result": {
+        "phase_result": "CONTINUE"
+      },
+      "outcome": "PASS",
+      "marginal": false,
+      "descriptor_id": 139918202603744,
+      "name": "trigger_phase",
+      "codeinfo": {
+        "name": "",
+        "docstring": null,
+        "sourcecode": ""
+      }
+    },
+    {
+      "measurements": {
+        "hello_world_measurement": {
+          "name": "hello_world_measurement",
+          "outcome": "PASS",
+          "measured_value": "Hello Again!"
+        }
+      },
+      "options": {
+        "name": null,
+        "timeout_s": null,
+        "run_if": null,
+        "requires_state": false,
+        "force_repeat": false,
+        "repeat_on_timeout": false,
+        "repeat_limit": null,
+        "run_under_pdb": false,
+        "phase_name_case": "KEEP",
+        "stop_on_measurement_fail": false
+      },
+      "diagnosers": [],
+      "subtest_name": null,
+      "start_time_millis": 1663108966063,
+      "end_time_millis": 1663108966063,
+      "attachments": {},
+      "diagnosis_results": [],
+      "failure_diagnosis_results": [],
+      "result": {
+        "phase_result": "CONTINUE"
+      },
+      "outcome": "PASS",
+      "marginal": false,
+      "descriptor_id": 139918202603648,
+      "name": "hello_world",
+      "codeinfo": {
+        "name": "",
+        "docstring": null,
+        "sourcecode": ""
+      }
+    }
+  ],
+  "subtests": [],
+  "branches": [],
+  "diagnosers": [],
+  "diagnoses": [],
+  "log_records": [
+    {
+      "level": 10,
+      "logger_name": "openhtf.core.phase_executor",
+      "source": "phase_executor.py",
+      "lineno": 311,
+      "timestamp_millis": 1663108964400,
+      "message": "Executing phase trigger_phase"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.plugs.user_input",
+      "source": "user_input.py",
+      "lineno": 223,
+      "timestamp_millis": 1663108964400,
+      "message": "Displaying prompt (c3551a1c77a94bd592f2ddce9a40b2cc): \"Enter a DUT ID in order to start the test.\", Expects text input."
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.plugs.user_input",
+      "source": "user_input.py",
+      "lineno": 272,
+      "timestamp_millis": 1663108966056,
+      "message": "Responding to prompt (c3551a1c77a94bd592f2ddce9a40b2cc): \"1\""
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.util.threads",
+      "source": "threads.py",
+      "lineno": 116,
+      "timestamp_millis": 1663108966062,
+      "message": "Thread finished: <PhaseExecutorThread: (trigger_phase)>"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.test_record.33250:e09df3f21e4243cc:10d9a3582e8e4d56:1663108964399.phase.trigger_phase",
+      "source": "test_state.py",
+      "lineno": 774,
+      "timestamp_millis": 1663108966062,
+      "message": "Phase outcome of trigger_phase is PASS."
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.core.phase_executor",
+      "source": "phase_executor.py",
+      "lineno": 340,
+      "timestamp_millis": 1663108966062,
+      "message": "Phase trigger_phase finished with result PhaseResult.CONTINUE"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.test_record.33250:e09df3f21e4243cc:10d9a3582e8e4d56:1663108964399",
+      "source": "test_executor.py",
+      "lineno": 310,
+      "timestamp_millis": 1663108966063,
+      "message": "Executing phase hello_world"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.core.phase_executor",
+      "source": "phase_executor.py",
+      "lineno": 311,
+      "timestamp_millis": 1663108966063,
+      "message": "Executing phase hello_world"
+    },
+    {
+      "level": 20,
+      "logger_name": "openhtf.test_record.33250:e09df3f21e4243cc:10d9a3582e8e4d56:1663108964399.phase.hello_world",
+      "source": "hello_world.py",
+      "lineno": 58,
+      "timestamp_millis": 1663108966063,
+      "message": "Hello World!"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.util.threads",
+      "source": "threads.py",
+      "lineno": 116,
+      "timestamp_millis": 1663108966063,
+      "message": "Thread finished: <PhaseExecutorThread: (hello_world)>"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.test_record.33250:e09df3f21e4243cc:10d9a3582e8e4d56:1663108964399.phase.hello_world",
+      "source": "test_state.py",
+      "lineno": 774,
+      "timestamp_millis": 1663108966063,
+      "message": "Phase outcome of hello_world is PASS."
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.core.phase_executor",
+      "source": "phase_executor.py",
+      "lineno": 340,
+      "timestamp_millis": 1663108966063,
+      "message": "Phase hello_world finished with result PhaseResult.CONTINUE"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.plugs",
+      "source": "__init__.py",
+      "lineno": 334,
+      "timestamp_millis": 1663108966064,
+      "message": "Tearing down all plugs."
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.util.threads",
+      "source": "threads.py",
+      "lineno": 116,
+      "timestamp_millis": 1663108966064,
+      "message": "Thread finished: <PlugTearDownThread: <class 'openhtf.plugs.user_input.UserInput'>>"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.test_record.33250:e09df3f21e4243cc:10d9a3582e8e4d56:1663108964399",
+      "source": "test_state.py",
+      "lineno": 473,
+      "timestamp_millis": 1663108966064,
+      "message": "Finishing test execution normally with outcome PASS."
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.util.threads",
+      "source": "threads.py",
+      "lineno": 116,
+      "timestamp_millis": 1663108966064,
+      "message": "Thread finished: TestExecutorThread"
+    },
+    {
+      "level": 10,
+      "logger_name": "openhtf.core.test_descriptor",
+      "source": "test_descriptor.py",
+      "lineno": 350,
+      "timestamp_millis": 1663108966064,
+      "message": "Test completed for openhtf_test, outputting now."
+    }
+  ],
+  "station_id": "jonas-asus",
+  "code_info": {
+    "name": "",
+    "docstring": null,
+    "sourcecode": ""
+  }
+}
