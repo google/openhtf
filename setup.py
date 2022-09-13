@@ -136,7 +136,7 @@ INSTALL_REQUIRES = [
     'inflection',
     'mutablerecords>=0.4.1',
     'oauth2client>=1.5.2',
-    'protobuf>=3.6.0',
+    'protobuf>=3.6.0,<4.0',
     'PyYAML>=3.13',
     'pyOpenSSL>=17.1.0',
     'sockjs-tornado>=1.0.3',
