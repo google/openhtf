@@ -48,10 +48,9 @@ class TestMfgInspector(test.TestCase):
 
   def setUp(self):
     super(TestMfgInspector, self).setUp()
-    self.mock_credentials = mock.patch(
-        'oauth2client.client.SignedJwtAssertionCredentials').start(
-        ).return_value
-
+    self.mock_credentials = mock.patch.object(
+        mfg_inspector.service_account.Credentials,
+        'from_service_account_info').start().return_value
     self.mock_send_mfg_inspector_data = mock.patch.object(
         mfg_inspector, 'send_mfg_inspector_data').start()
 
@@ -106,7 +105,6 @@ class TestMfgInspector(test.TestCase):
     callback = mfg_inspector.MfgInspector(
         user='user', keydata='keydata',
         token_uri='').set_converter(mock_converter)
-
     callback.upload()(MOCK_TEST_RUN)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
