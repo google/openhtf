@@ -37,14 +37,16 @@ from openhtf.plugs.usb import fastboot_protocol
 from openhtf.plugs.usb import local_usb
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.plugs.user_input import prompt_for_test_start
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import functions
+
+CONF = configuration.CONF
 
 _LOG = logging.getLogger(__name__)
 
-conf.declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
-conf.declare('remote_usb', 'ethersync or other')
-conf.declare('ethersync', 'ethersync configuration')
+CONF.declare('libusb_rsa_key', 'A private key file for use by libusb auth.')
+CONF.declare('remote_usb', 'ethersync or other')
+CONF.declare('ethersync', 'ethersync configuration')
 
 
 @functions.call_once
@@ -77,10 +79,10 @@ def _open_usb_handle(serial_number=None, **kwargs):
     Instance of UsbHandle.
   """
   init_dependent_flags()
-  remote_usb = conf.remote_usb
+  remote_usb = CONF.remote_usb
   if remote_usb:
     if remote_usb.strip() == 'ethersync':
-      device = conf.ethersync
+      device = CONF.ethersync
       try:
         mac_addr = device['mac_addr']
         port = device['plug_port']
@@ -117,8 +119,8 @@ class AdbPlug(base_plugs.BasePlug):
   serial_number = None
 
   def __init__(self):
-    if conf.libusb_rsa_key:
-      self._rsa_keys = [adb_device.M2CryptoSigner(conf.libusb_rsa_key)]
+    if CONF.libusb_rsa_key:
+      self._rsa_keys = [adb_device.M2CryptoSigner(CONF.libusb_rsa_key)]
     else:
       self._rsa_keys = None
     self._device = None

@@ -17,10 +17,12 @@ We use a few special data formats internally, these utility functions make it a
 little easier to work with them.
 """
 
+from collections.abc import Iterable
 import copy
 import difflib
 import enum
 import itertools
+import inspect
 import logging
 import math
 import numbers
@@ -31,15 +33,9 @@ from typing import Any, TypeVar
 
 import attr
 from mutablerecords import records
-from past.builtins import long
-from past.builtins import unicode
-
-import six
-from six.moves import collections_abc
-from six.moves import zip
 
 # Used by convert_to_base_types().
-PASSTHROUGH_TYPES = {bool, bytes, int, long, type(None), unicode}
+PASSTHROUGH_TYPES = {bool, bytes, int, type(None), str}
 
 
 def pprint_diff(first, second, first_name='first', second_name='second'):
@@ -141,14 +137,14 @@ def convert_to_base_types(obj,
       skipped.
     - Enum instances are converted to strings via their .name attribute.
     - Real and integral numbers are converted to built-in types.
-    - Byte and unicode strings are left alone (instances of six.string_types).
+    - Byte and strings are left alone.
     - Other non-None values are converted to strings via str().
 
   The return value contains only the Python built-in types: dict, list, tuple,
-  str, unicode, int, float, long, bool, and NoneType (unless tuple_type is set
-  to something else).  If tuples should be converted to lists (e.g. for an
-  encoding that does not differentiate between the two), pass 'tuple_type=list'
-  as an argument.
+  str, int, float, bool, and NoneType (unless tuple_type is set to something
+  else).  If tuples should be converted to lists (e.g. for an encoding that
+  does not differentiate between the two), pass 'tuple_type=list' as an
+  argument.
 
   Args:
     obj: object to recursively convert to base types.
@@ -164,17 +160,12 @@ def convert_to_base_types(obj,
     Version of the object composed of base types.
   """
   # Because it's *really* annoying to pass a single string accidentally.
-  assert not isinstance(ignore_keys, six.string_types), 'Pass a real iterable!'
+  assert not isinstance(ignore_keys, str), 'Pass a real iterable!'
 
   if hasattr(obj, 'as_base_types'):
     return obj.as_base_types()
-  if hasattr(obj, '_asdict'):
-    try:
-      obj = obj._asdict()
-    except TypeError as e:
-      # This happens if the object is an uninitialized class.
-      logging.warning(
-          'Object %s is not initialized, got error %s', obj, e)
+  if hasattr(obj, '_asdict') and not inspect.isclass(obj):
+    obj = obj._asdict()
   elif isinstance(obj, records.RecordClass):
     new_obj = {}
     for a in type(obj).all_attribute_names:
@@ -195,7 +186,7 @@ def convert_to_base_types(obj,
     return {  # pylint: disable=g-complex-comprehension
         convert_to_base_types(k, ignore_keys, tuple_type):
         convert_to_base_types(v, ignore_keys, tuple_type)
-        for k, v in six.iteritems(obj)
+        for k, v in obj.items()
         if k not in ignore_keys
     }
   elif isinstance(obj, list):
@@ -210,7 +201,7 @@ def convert_to_base_types(obj,
 
   # Convert numeric types (e.g. numpy ints and floats) into built-in types.
   elif isinstance(obj, numbers.Integral):
-    return long(obj)
+    return int(obj)
   elif isinstance(obj, numbers.Real):
     as_float = float(obj)
     if json_safe and (math.isinf(as_float) or math.isnan(as_float)):
@@ -247,9 +238,9 @@ def total_size(obj):
     if isinstance(current_obj, dict):
       size += sum(
           map(sizeof,
-              itertools.chain.from_iterable(six.iteritems(current_obj))))
-    elif (isinstance(current_obj, collections_abc.Iterable) and
-          not isinstance(current_obj, six.string_types)):
+              itertools.chain.from_iterable(current_obj.items())))
+    elif (isinstance(current_obj, Iterable) and
+          not isinstance(current_obj, str)):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
       size += sum(

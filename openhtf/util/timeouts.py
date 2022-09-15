@@ -297,7 +297,7 @@ class Interval(object):
     self.stopped.set()
     if self.thread:
       self.thread.join(timeout_s)
-      return not self.thread.isAlive()
+      return not self.thread.isAlive()  # pytype: disable=attribute-error  # py39-upgrade
     else:
       return True
 

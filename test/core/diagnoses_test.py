@@ -1,18 +1,16 @@
-# Lint as: python3
 """Tests for Diagnoses in OpenHTF."""
 
+import enum
 import time
 import unittest
+from unittest import mock
 
-import enum  # pylint: disable=g-bad-import-order
-import mock
 import openhtf as htf
 from openhtf.core import diagnoses_lib
 from openhtf.core import measurements
 from openhtf.core import test_record
 from openhtf.util import data
 from openhtf.util import test as htf_test
-import six
 
 
 class DiagPhaseError(Exception):
@@ -1079,14 +1077,14 @@ class DiagnosesTest(htf_test.TestCase):
   def test_phase_diagnoser_serialization(self):
     converted = data.convert_to_base_types(basic_wrapper_phase_diagnoser)
     self.assertEqual('basic_wrapper_phase_diagnoser', converted['name'])
-    six.assertCountEqual(self, ['okay', 'fine', 'great', 'test_ok'],
-                         converted['possible_results'])
+    self.assertCountEqual(['okay', 'fine', 'great', 'test_ok'],
+                          converted['possible_results'])
 
   def test_test_diagnoser_serialization(self):
     converted = data.convert_to_base_types(basic_wrapper_test_diagnoser)
     self.assertEqual('basic_wrapper_test_diagnoser', converted['name'])
-    six.assertCountEqual(self, ['okay', 'fine', 'great', 'test_ok'],
-                         converted['possible_results'])
+    self.assertCountEqual(['okay', 'fine', 'great', 'test_ok'],
+                          converted['possible_results'])
 
   @htf_test.yields_phases
   def test_test_record_diagnosis_serialization(self):

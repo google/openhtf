@@ -1,10 +1,9 @@
-# Lint as: python3
 """Unit tests for test_descriptor module."""
 
 import re
 import unittest
+from unittest import mock
 
-import mock
 from openhtf.core import test_descriptor
 
 

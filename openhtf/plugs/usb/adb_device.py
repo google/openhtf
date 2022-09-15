@@ -30,6 +30,7 @@ class, subclass, and protocol.
 
 # pytype: skip-file
 
+import io
 import logging
 import os.path
 
@@ -38,7 +39,6 @@ from openhtf.plugs.usb import filesync_service
 from openhtf.plugs.usb import shell_service
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
-import six
 
 try:
   from M2Crypto import RSA  # pylint: disable=g-import-not-at-top
@@ -141,7 +141,7 @@ class AdbDevice(object):
       timeout_ms: Expected timeout for any part of the push.
     """
     mtime = 0
-    if isinstance(source_file, six.string_types):
+    if isinstance(source_file, str):
       mtime = os.path.getmtime(source_file)
       source_file = open(source_file)
 
@@ -163,10 +163,10 @@ class AdbDevice(object):
       The file data if dest_file is not set, None otherwise.
     """
     should_return_data = dest_file is None
-    if isinstance(dest_file, six.string_types):
+    if isinstance(dest_file, str):
       dest_file = open(dest_file, 'w')
     elif dest_file is None:
-      dest_file = six.StringIO()
+      dest_file = io.StringIO()
     self.filesync_service.recv(device_filename, dest_file,
                                timeouts.PolledTimeout.from_millis(timeout_ms))
     if should_return_data:

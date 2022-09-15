@@ -71,7 +71,6 @@ from openhtf import util
 from openhtf.util import data
 from openhtf.util import units as util_units
 from openhtf.util import validators
-import six
 if typing.TYPE_CHECKING:
   from openhtf.core import diagnoses_lib
 
@@ -147,7 +146,7 @@ def _coordinates_len(coordinates: Any) -> int:
     coordinates: any type, measurement coordinates for multidimensional
       measurements.
   """
-  if isinstance(coordinates, six.string_types):
+  if isinstance(coordinates, str):
     return 1
   if hasattr(coordinates, '__len__'):
     return len(coordinates)
@@ -361,7 +360,7 @@ class Measurement(object):
     Returns:
       This measurement, used for chaining operations.
     """
-    for result, validator in six.iteritems(result_to_validator_mapping):
+    for result, validator in result_to_validator_mapping.items():
       if not callable(validator):
         raise ValueError('Validator must be callable', validator)
       self.conditional_validators.append(
@@ -439,7 +438,7 @@ class Measurement(object):
       raise
     finally:
       if self._cached:
-        self._cached['outcome'] = self.outcome.name
+        self._cached['outcome'] = self.outcome.name  # pytype: disable=bad-return-type
 
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert this measurement to a dict of basic types."""
@@ -658,7 +657,7 @@ class DimensionedMeasuredValue(object):
 
   def __iter__(self) -> Iterator[Any]:
     """Iterate over items, allows easy conversion to a dict."""
-    return iter(six.iteritems(self.value_dict))
+    return iter(self.value_dict.items())
 
   def __setitem__(self, coordinates: Any, value: Any) -> None:
     coordinates_len = _coordinates_len(coordinates)
@@ -717,14 +716,14 @@ class DimensionedMeasuredValue(object):
       raise MeasurementNotSetError('Measurement not yet set', self.name)
     return [
         dimensions + (value,)
-        for dimensions, value in six.iteritems(self.value_dict)
+        for dimensions, value in self.value_dict.items()
     ]
 
   def basetype_value(self) -> List[Any]:
     if self._cached_basetype_values is None:
       self._cached_basetype_values = list(
           data.convert_to_base_types(coordinates + (value,))
-          for coordinates, value in six.iteritems(self.value_dict))
+          for coordinates, value in self.value_dict.items())
     return self._cached_basetype_values
 
   def to_dataframe(self, columns: Any = None) -> Any:
@@ -791,7 +790,7 @@ class Collection(object):
   def __iter__(self) -> Iterator[Tuple[Text, Any]]:
     """Extract each MeasurementValue's value."""
     return ((key, meas.measured_value.value)
-            for key, meas in six.iteritems(self._measurements))
+            for key, meas in self._measurements.items())
 
   def _custom_setattr(self, name: Text, value: Any) -> None:
     if name == '_measurements':

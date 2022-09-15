@@ -58,9 +58,7 @@ import abc
 import math
 import numbers
 import re
-from future.utils import with_metaclass
 from openhtf import util
-import six
 
 _VALIDATORS = {}
 
@@ -84,14 +82,14 @@ def create_validator(name, *args, **kwargs):
 _identity = lambda x: x
 
 
-class ValidatorBase(with_metaclass(abc.ABCMeta, object)):
+class ValidatorBase(abc.ABC):
 
   @abc.abstractmethod
   def __call__(self, value):
     """Should validate value, returning a boolean result."""
 
 
-class RangeValidatorBase(with_metaclass(abc.ABCMeta, ValidatorBase)):
+class RangeValidatorBase(ValidatorBase, abc.ABC):
 
   @abc.abstractproperty
   def minimum(self):
@@ -228,8 +226,8 @@ register(AllInRangeValidator, name='all_in_range')
 def all_equals(value, type=None):  # pylint: disable=redefined-builtin
   if isinstance(value, numbers.Number):
     return AllInRangeValidator(minimum=value, maximum=value)
-  elif isinstance(value, six.string_types):
-    assert type is None or issubclass(type, six.string_types), (
+  elif isinstance(value, str):
+    assert type is None or issubclass(type, str), (
         'Cannot use a non-string type when matching a string')
     return matches_regex('^{}$'.format(re.escape(value)))
   else:
@@ -367,8 +365,8 @@ register(in_range, name='in_range')
 def equals(value, type=None):  # pylint: disable=redefined-builtin
   if isinstance(value, numbers.Number):
     return InRange(minimum=value, maximum=value, type=type)
-  elif isinstance(value, six.string_types):
-    assert type is None or issubclass(type, six.string_types), (
+  elif isinstance(value, str):
+    assert type is None or issubclass(type, str), (
         'Cannot use a non-string type when matching a string')
     return matches_regex('^{}$'.format(re.escape(value)))
   else:
@@ -391,7 +389,7 @@ class Equals(object):
     return value == self.expected
 
   def __str__(self):
-    return "'x' is equal to '%s'" % self._expected
+    return f"'x' is equal to '{self._expected}'"
 
   def __eq__(self, other):
     return isinstance(other, type(self)) and self.expected == other.expected

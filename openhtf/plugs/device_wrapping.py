@@ -22,7 +22,6 @@ import functools
 import types
 
 from openhtf.core import base_plugs
-import six
 
 
 def short_repr(obj, max_len=40):
@@ -117,7 +116,7 @@ class DeviceWrappingPlug(base_plugs.BasePlug):
       """Wraps a callable with a logging statement."""
       args_strings = tuple(short_repr(arg) for arg in args)
       kwargs_strings = tuple(('%s=%s' % (key, short_repr(val))
-                              for key, val in six.iteritems(kwargs)))
+                              for key, val in kwargs.items()))
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
         log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))

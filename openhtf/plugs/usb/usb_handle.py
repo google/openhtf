@@ -23,7 +23,6 @@ import abc
 import functools
 import logging
 
-from future.utils import with_metaclass
 from openhtf.plugs.usb import usb_exceptions
 
 DEFAULT_TIMEOUT_MS = 5000
@@ -60,7 +59,7 @@ def requires_open_handle(method):
   return wrapper_requiring_open_handle
 
 
-class UsbHandle(with_metaclass(abc.ABCMeta, object)):
+class UsbHandle(abc.ABC):
   """UsbHandle objects provide read/write access to USB Interfaces.
 
   Subclasses must implement this interface to provide actual Read/Write/Close

@@ -44,18 +44,18 @@ from openhtf.core import measurements
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import test_record
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import units
-from past.builtins import long
-import six
 from typing_extensions import Literal
+
+CONF = configuration.CONF
 
 if TYPE_CHECKING:
   from openhtf.core import test_descriptor  # pylint: disable=g-import-not-at-top
 
-conf.declare(
+CONF.declare(
     'allow_unset_measurements',
     default_value=False,
     description='If True, unset measurements do not cause Tests to '
@@ -65,7 +65,7 @@ conf.declare(
 # conf.load(station_id='My_OpenHTF_Station'), or alongside other configs loaded
 # with conf.load_from_dict({..., 'station_id': 'My_Station'}).  If none of those
 # are provided then we'll fall back to the machine's hostname.
-conf.declare(
+CONF.declare(
     'station_id',
     'The name of this test station',
     default_value=socket.gethostname())
@@ -76,7 +76,7 @@ class _Infer(enum.Enum):
 
 
 # Sentinel value indicating that the mimetype should be inferred.
-INFER_MIMETYPE = _Infer.INFER
+INFER_MIMETYPE: Literal[_Infer.INFER] = _Infer.INFER
 MimetypeT = Union[None, Literal[INFER_MIMETYPE], Text]
 
 
@@ -170,7 +170,7 @@ class TestState(util.SubscribableStateMixin):
 
     self.test_record = test_record.TestRecord(
         dut_id=None,
-        station_id=conf.station_id,
+        station_id=CONF.station_id,
         code_info=test_desc.code_info,
         start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
@@ -557,7 +557,7 @@ class PhaseState(object):
   _update_measurements = attr.ib(type=Set[Text], factory=set)
 
   def __attrs_post_init__(self):
-    for m in six.itervalues(self.measurements):
+    for m in self.measurements.values():
       # Using functools.partial to capture the value of the loop variable.
       m.set_notification_callback(functools.partial(self._notify, m.name))
     self._cached = {
@@ -571,11 +571,10 @@ class PhaseState(object):
         'options':
             None,
         'measurements': {
-            k: m.as_base_types() for k, m in six.iteritems(self.measurements)
+            k: m.as_base_types() for k, m in self.measurements.items()
         },
         'attachments': {},
-        'start_time_millis':
-            long(self.phase_record.record_start_time()),
+        'start_time_millis': self.phase_record.record_start_time(),
         'subtest_name':
             None,
     }
@@ -637,7 +636,7 @@ class PhaseState(object):
 
   @property
   def marginal(self) -> Optional[phase_executor.PhaseExecutionOutcome]:
-    return self.phase_record.marginal
+    return self.phase_record.marginal  # pytype: disable=bad-return-type  # bind-properties
 
   @marginal.setter
   def marginal(self, marginal: bool):
@@ -740,7 +739,7 @@ class PhaseState(object):
 
   def _measurements_pass(self) -> bool:
     allowed_outcomes = {measurements.Outcome.PASS}
-    if conf.allow_unset_measurements:
+    if CONF.allow_unset_measurements:
       allowed_outcomes.add(measurements.Outcome.UNSET)
 
     return all(meas.outcome in allowed_outcomes

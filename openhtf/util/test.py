@@ -31,12 +31,14 @@ execution per test method to avoid surprises with plug lifetimes.
 
 Lastly, while not implemented here, it's common to need to temporarily alter
 configuration values for individual tests.  This can be accomplished with the
-@conf.save_and_restore decorator (see docs in conf.py, examples below).
+@CONF.save_and_restore decorator (see docs in configuration.py, examples below).
 
 A few isolated examples, also see test/util/test_test.py for some usage:
 
-  from openhtf.util import conf
+  from openhtf.util import configuration
   from openhtf.util import test
+
+  CONF = configuration.CONF
 
   import mytest  # Contains phases under test.
 
@@ -56,9 +58,9 @@ A few isolated examples, also see test/util/test_test.py for some usage:
       # assert* methods for checking phase/test records are defined in TestCase.
       self.assertPhaseContinue(phase_record)
 
-    # Decorate with conf.save_and_restore to temporarily set conf values.
+    # Decorate with CONF.save_and_restore to temporarily set CONF values.
     # NOTE: This must come before yields_phases.
-    @conf.save_and_restore(phase_variance='test_phase_variance')
+    @CONF.save_and_restore(phase_variance='test_phase_variance')
     # Decorate the test* method with this to be able to yield a phase to run it.
     @test.yields_phases
     def test_first_phase(self):
@@ -124,10 +126,16 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
+import collections
+from collections.abc import Callable as CollectionsCallable, Iterator
 import functools
 import inspect
 import logging
+import os
+import pathlib
+import pstats
 import sys
+import tempfile
 import types
 import typing
 from typing import (
@@ -137,15 +145,16 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
     Text,
     Tuple,
     Type,
+    Union,
 )
 import unittest
+from unittest import mock
 
 import attr
-import mock
-
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import base_plugs
@@ -156,13 +165,12 @@ from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
 from openhtf.core import phase_nodes
 from openhtf.core import test_descriptor
+from openhtf.core import test_executor
 from openhtf.core import test_record
 from openhtf.core import test_state
 from openhtf.plugs import device_wrapping
 from openhtf.util import logs
 from openhtf.util import text
-import six
-from six.moves import collections_abc
 
 logs.CLI_LOGGING_VERBOSITY = 2
 
@@ -305,7 +313,17 @@ def filter_phases_by_outcome(
       yield phase_rec
 
 
-class PhaseOrTestIterator(collections_abc.Iterator):
+def _merge_stats(stats: pstats.Stats, filepath: pathlib.Path) -> None:
+  """Merges provides Stats into filepath (created if not present)."""
+  stats_to_combine = [stats]
+  try:
+    stats_to_combine.append(pstats.Stats(str(filepath)))
+  except FileNotFoundError:
+    pass
+  test_executor.combine_profile_stats(stats_to_combine, str(filepath))
+
+
+class PhaseOrTestIterator(Iterator):
 
   def __init__(self, test_case, iterator, mock_plugs, phase_user_defined_state,
                phase_diagnoses):
@@ -353,7 +371,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(
         plug_cls for plug_cls in plug_types if plug_cls not in self.mock_plugs)
-    for plug_type, plug_value in six.iteritems(self.mock_plugs):
+    for plug_type, plug_value in self.mock_plugs.items():
       self.plug_manager.update_plug(plug_type, plug_value)
     for plug_type in plug_types:
       self.test_case.plugs[plug_type] = (
@@ -387,17 +405,21 @@ class PhaseOrTestIterator(collections_abc.Iterator):
 
     # Actually execute the phase, saving the result in our return value.
     executor = phase_executor.PhaseExecutor(test_state_)
+    profile_filepath = self.test_case.get_profile_filepath()
     # Log an exception stack when a Phase errors out.
     with mock.patch.object(
         phase_executor.PhaseExecutorThread,
         '_log_exception',
         side_effect=logging.exception):
       # Use _execute_phase_once because we want to expose all possible outcomes.
-      phase_result, _ = executor._execute_phase_once(
+      phase_result, profile_stats = executor._execute_phase_once(
           phase_desc,
           is_last_repeat=False,
-          run_with_profiling=False,
+          run_with_profiling=profile_filepath,
           subtest_rec=None)
+
+    if profile_filepath is not None:
+      _merge_stats(profile_stats, profile_filepath)
 
     if phase_result.raised_exception:
       failure_message = phase_result.phase_result.get_traceback_string()
@@ -413,10 +435,22 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     test.add_output_callbacks(
         lambda record: setattr(record_saver, 'result', record))
 
+    profile_filepath = self.test_case.get_profile_filepath()
+    if profile_filepath is None:
+      profile_tempfile = None
+    else:
+      profile_tempfile = tempfile.NamedTemporaryFile()
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch.object(
         plugs, 'PlugManager', new=lambda _, __: self.plug_manager):
-      test.execute(test_start=self.test_case.test_start_function)
+      test.execute(
+          test_start=self.test_case.test_start_function,
+          profile_filename=(None if profile_tempfile is None else
+                            profile_tempfile.name))
+
+    if profile_tempfile is not None:
+      _merge_stats(pstats.Stats(profile_tempfile.name), profile_filepath)
+      profile_tempfile.close()
 
     test_record_ = record_saver.result
     if test_record_.outcome_details:
@@ -433,7 +467,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections_abc.Callable):
+    elif not isinstance(phase_or_test, CollectionsCallable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -446,7 +480,7 @@ class PhaseOrTestIterator(collections_abc.Iterator):
     phase_or_test = self.iterator.send(self.last_result)
     if isinstance(phase_or_test, test_descriptor.Test):
       self.last_result, failure_message = self._handle_test(phase_or_test)
-    elif not isinstance(phase_or_test, collections_abc.Callable):
+    elif not isinstance(phase_or_test, CollectionsCallable):
       raise InvalidTestError(
           'methods decorated with patch_plugs must yield Test instances or '
           'individual test phases', phase_or_test)
@@ -514,10 +548,7 @@ def patch_plugs(phase_user_defined_state=None,
       assert isinstance(diag, diagnoses_lib.Diagnosis)
 
   def test_wrapper(test_func):
-    if six.PY3:
-      plug_argspec = inspect.getfullargspec(test_func)
-    else:
-      plug_argspec = inspect.getargspec(test_func)  # pylint: disable=deprecated-method
+    plug_argspec = inspect.getfullargspec(test_func)
     num_defaults = len(plug_argspec.defaults or ())
     plug_args = set(plug_argspec.args[1:-num_defaults or None])
 
@@ -536,8 +567,8 @@ def patch_plugs(phase_user_defined_state=None,
     # Make MagicMock instances for the plugs.
     plug_kwargs = {}  # kwargs to pass to test func.
     plug_typemap = {}  # typemap for PlugManager, maps type to instance.
-    for plug_arg_name, plug_fullname in six.iteritems(mock_plugs):
-      if isinstance(plug_fullname, six.string_types):
+    for plug_arg_name, plug_fullname in mock_plugs.items():
+      if isinstance(plug_fullname, str):
         try:
           plug_module, plug_typename = plug_fullname.rsplit('.', 1)
           plug_type = getattr(sys.modules[plug_module], plug_typename)
@@ -605,16 +636,16 @@ def _assert_phase_or_test_record(func):
   @functools.wraps(func)
   def assertion_wrapper(self, phase_or_test_record, *args, **kwargs):
     if isinstance(phase_or_test_record, test_record.TestRecord):
-      exc_info = None
+      original_exception = None
       for phase_record in phase_or_test_record.phases:
         try:
           func(self, phase_record, *args, **kwargs)
           break
-        except Exception:  # pylint: disable=broad-except
-          exc_info = sys.exc_info()
+        except Exception as e:  # pylint: disable=broad-except
+          original_exception = e
       else:
-        if exc_info:
-          six.reraise(*exc_info)
+        if original_exception is not None:
+          raise original_exception
     elif isinstance(phase_or_test_record, test_record.PhaseRecord):
       func(self, phase_or_test_record, *args, **kwargs)
     else:
@@ -624,6 +655,8 @@ def _assert_phase_or_test_record(func):
 
 
 class TestCase(unittest.TestCase):
+  # Configure this via set_profile_dir().
+  _profile_output_dir: Optional[pathlib.Path] = None
 
   def __init__(self, methodName=None):
     super(TestCase, self).__init__(methodName=methodName)
@@ -922,3 +955,52 @@ class TestCase(unittest.TestCase):
   def get_diagnoses_store(self):
     self.assertIsNotNone(self.last_test_state)
     return self.last_test_state.diagnoses_manager.store
+
+  @classmethod
+  def set_profile_dir(cls, profile_dir: pathlib.Path) -> None:
+    """Sets the output directory for profiling, and enables profiling.
+
+    WARNING: This method is provided for debugging only, and may be removed in
+    a future update. The test.py module currently runs all tests in a thread,
+    which cannot be profiled without this feature.
+    Call this from setUpClass to enable profiling.
+
+    Args:
+      profile_dir: The directory to place the profile file in. See
+        get_profile_filepath for details.
+    """
+    cls._profile_output_dir = profile_dir
+    try:
+      # Remove file if it already exists. This has to be done in setUpClass
+      # because we want to clear it before the test case starts, but to be
+      # updated as individual test* methods are run.
+      os.remove(cls.get_profile_filepath())
+    except FileNotFoundError:
+      pass
+
+  @classmethod
+  def get_profile_filepath(cls) -> Optional[pathlib.Path]:
+    """Returns profile filepath if profile_output_dir is set, else None.
+
+    The output filename is {module}.{test_case}.pstats.
+    """
+    if cls._profile_output_dir is not None:
+      return pathlib.Path(cls._profile_output_dir,
+                          f'{__name__.split(".")[-1]}.{cls.__name__}.pstats')
+    return None
+
+
+def get_flattened_phases(
+    phases_or_phase_groups: Sequence[Union[
+        phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]]
+) -> Sequence[phase_nodes.PhaseNode]:
+  """Flattens a sequence of phase nodes or phase collection nodes into nodes."""
+  phases = []
+  for phase_or_phase_group in phases_or_phase_groups:
+    if isinstance(phase_or_phase_group, phase_collections.PhaseCollectionNode):
+      phases.extend(phase_or_phase_group.all_phases())
+    elif isinstance(phase_or_phase_group, phase_nodes.PhaseNode):
+      phases.append(phase_or_phase_group)
+    else:
+      raise TypeError('Not a phase node or a phase collection node.')
+  return phases

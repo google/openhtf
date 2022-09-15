@@ -23,8 +23,6 @@ import weakref
 
 import attr
 
-import six
-
 
 def _log_every_n_to_logger(n: int, logger: Optional[logging.Logger], level: int,
                            message: Text, *args: Any) -> Callable[[], bool]:
@@ -50,7 +48,7 @@ def _log_every_n_to_logger(n: int, logger: Optional[logging.Logger], level: int,
       yield True
 
   gen = _gen()
-  return lambda: six.next(gen)
+  return lambda: next(gen)
 
 
 def log_every_n(n: int, level: int, message: Text,
@@ -169,7 +167,7 @@ def format_string(target, kwargs):
     return None
   if callable(target):
     return target(**kwargs)
-  if not isinstance(target, six.string_types):
+  if not isinstance(target, str):
     return target
   if '{' in target:
     return partial_format(target, **kwargs)
