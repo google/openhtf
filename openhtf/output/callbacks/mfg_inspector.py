@@ -9,6 +9,7 @@ import zlib
 
 import httplib2
 import oauth2client.client
+import oauth2client.service_account
 
 from openhtf.output import callbacks
 from openhtf.output.proto import guzzle_pb2
@@ -146,13 +147,15 @@ class MfgInspector(object):
     self.destination_url = destination_url
 
     if user and keydata:
-      self.credentials = oauth2client.client.SignedJwtAssertionCredentials(
-          service_account_name=self.user,
-          private_key=(self.keydata.encode()
-                       if isinstance(self.keydata, str) else self.keydata),
-          scope=self.SCOPE_CODE_URI,
-          user_agent='OpenHTF Guzzle Upload Client',
-          token_uri=self.token_uri)
+      # Marshal back into JSON data to maintain the existing API
+      json_data = {}
+      json_data['client_email'] = user
+      json_data['private_key'] = (self.keydata.encode()
+                       if isinstance(self.keydata, str) else self.keydata)
+      json_data['token_uri'] = token_uri
+      self.credentials = oauth2client.service_account.ServiceAccountCredentials.from_json_keyfile_dict(json_data,
+          scopes=[self.SCOPE_CODE_URI],
+          user_agent='OpenHTF Guzzle Upload Client',)
       self.credentials.set_store(_MemStorage())
     else:
       self.credentials = None
