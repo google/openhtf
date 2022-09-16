@@ -189,7 +189,9 @@ function makePhase(phase: RawPhase, running: boolean) {
     measurements = Object.keys(phase.measurements).map(key => {
       const rawMeasuredValue = phase.measurements[key].measured_value;
       let measuredValue = null;
-      if (typeof rawMeasuredValue !== 'undefined') {
+      if (typeof rawMeasuredValue === 'object') {
+        measuredValue = JSON.stringify(rawMeasuredValue);
+      } else if (typeof rawMeasuredValue !== 'undefined') {
         measuredValue = `${rawMeasuredValue}`;
       }
       return new Measurement({
