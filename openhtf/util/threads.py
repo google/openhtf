@@ -79,7 +79,7 @@ class KillableThread(threading.Thread):
   during garbage collection.
   """
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, logger: logging.Logger = _LOG, **kwargs):
     """Initializer for KillableThread.
 
     The keyword argument `run_with_profiling` is extracted from kwargs. If
@@ -87,6 +87,7 @@ class KillableThread(threading.Thread):
 
     Args:
       *args: Passed to the base class.
+      logger: A logger for this class to use.
       **kwargs: Passed to the base class.
     """
     self._run_with_profiling = kwargs.pop('run_with_profiling',
@@ -98,6 +99,7 @@ class KillableThread(threading.Thread):
       self._profiler = cProfile.Profile()
     else:
       self._profiler = None
+    self._logger = logger
 
   def run(self):
     try:
@@ -109,11 +111,11 @@ class KillableThread(threading.Thread):
         self._thread_proc()
     except Exception:  # pylint: disable=broad-except
       if not self._thread_exception(*sys.exc_info()):
-        _LOG.critical('Thread raised an exception: %s', self.name)
+        self._logger.critical('Thread raised an exception: %s', self.name)
         raise
     finally:
       self._thread_finished()
-      _LOG.debug('Thread finished: %s', self.name)
+      self._logger.debug('Thread finished: %s', self.name)
       if self._profiler is not None:
         self._profiler.disable()
 
@@ -161,11 +163,11 @@ class KillableThread(threading.Thread):
     """Terminates the current thread by raising an error."""
     self._killed.set()
     if not self.is_alive():
-      logging.debug('Cannot kill thread that is no longer running.')
+      self._logger.debug('Cannot kill thread that is no longer running.')
       return
     if not self._is_thread_proc_running():
-      logging.debug("Thread's _thread_proc function is no longer running, "
-                    'will not kill; letting thread exit gracefully.')
+      self._logger.debug("Thread's _thread_proc function is no longer running, "
+                         'will not kill; letting thread exit gracefully.')
       return
     self.async_raise(ThreadTerminationError)
 
@@ -176,8 +178,8 @@ class KillableThread(threading.Thread):
 
     # If the thread has died we don't want to raise an exception so log.
     if not self.is_alive():
-      _LOG.debug('Not raising %s because thread %s (%s) is not alive', exc_type,
-                 self.name, self.ident)
+      self._logger.debug('Not raising %s because thread %s (%s) is not alive',
+                         exc_type, self.name, self.ident)
       return
 
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(

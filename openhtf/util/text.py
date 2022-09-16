@@ -130,13 +130,14 @@ def StringFromMeasurement(measurement: openhtf.Measurement,
     return _ColorText(text, _BRIGHT_RED_STYLE) if colorize_text else text
   elif measurement.outcome == measurements.Outcome.FAIL:
     text = (f'| {measurement.name} failed because '
-            f'{measurement.measured_value.value} failed these checks: '
-            '{}'.format([str(v) for v in measurement.validators]))
+            f'{measurement.measured_value.value} failed these checks: ' +
+            str([str(v) for v in measurement.validators]))
     return _ColorText(text, _BRIGHT_RED_STYLE) if colorize_text else text
   elif measurement.marginal:
-    text = (f'| {measurement.name} is marginal because '
-            f'{measurement.measured_value.value} is marginal in these checks: '
-            '{}'.format([str(v) for v in measurement.validators]))
+    text = (
+        f'| {measurement.name} is marginal because '
+        f'{measurement.measured_value.value} is marginal in these checks: ' +
+        str([str(v) for v in measurement.validators]))
     return (_ColorText(text, str(colorama.Fore.YELLOW))
             if colorize_text else text)
   return f'| {measurement.name}: {measurement.measured_value.value}'

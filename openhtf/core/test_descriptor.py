@@ -275,7 +275,8 @@ class Test(object):
         self._executor.abort()
 
   def execute(self,
-              test_start: Optional[Union[phase_descriptor.PhaseT, Callable[[], str]]] = None,
+              test_start: Optional[Union[phase_descriptor.PhaseT,
+                                         Callable[[], str]]] = None,
               profile_filename: Optional[Text] = None) -> bool:
     """Starts the framework and executes the given test.
 
@@ -480,8 +481,8 @@ class TestApi(object):
     test_record: A reference to the output TestRecord for the currently running
       openhtf.Test.  Direct access to this attribute is *strongly* discouraged,
       but provided as a catch-all for interfaces not otherwise provided by
-      TestApi.  If you find yourself using this, please file a
-        feature request for an alternative at:
+      TestApi.  If you find yourself using this, please file a feature request
+      for an alternative at:
           https://github.com/google/openhtf/issues/new
   """
 
@@ -583,8 +584,7 @@ class TestApi(object):
     return self._running_test_state.get_measurement(measurement_name)
 
   def get_measurement_strict(
-      self,
-      measurement_name: Text) -> test_state.ImmutableMeasurement:
+      self, measurement_name: Text) -> test_state.ImmutableMeasurement:
     """Get a copy of the test measurement from current or previous phase.
 
     Measurement and phase name uniqueness is not enforced, so this method will

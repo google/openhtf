@@ -181,21 +181,23 @@ class TestConsoleSummary(test.TestCase):
   def test_empty_outcome(self):
     """Console Summary must not crash if phases have been skipped."""
     checkpoint = phase_branches.PhaseFailureCheckpoint.all_previous(
-      "cp", action=phase_descriptor.PhaseResult.FAIL_SUBTEST)
+        'cp', action=phase_descriptor.PhaseResult.FAIL_SUBTEST)
     phasegroup = phase_group.PhaseGroup(
-      lambda: htf.PhaseResult.FAIL_AND_CONTINUE,
-      lambda: htf.PhaseResult.SKIP,
-      checkpoint,
+        lambda: htf.PhaseResult.FAIL_AND_CONTINUE,
+        lambda: htf.PhaseResult.SKIP,
+        checkpoint,
     )
-    subtest = phase_collections.Subtest("st", phasegroup)
-    test = htf.Test(subtest)
+    subtest = phase_collections.Subtest('st', phasegroup)
+    test_instance = htf.Test(subtest)
 
     result_store = util.NonLocalResult()
+
     def _save_result(test_record):
       result_store.result = test_record
-    test.add_output_callbacks(
-        console_summary.ConsoleSummary(), _save_result)
 
-    test.execute()
-    assert not any("Traceback" in record.message
+    test_instance.add_output_callbacks(console_summary.ConsoleSummary(),
+                                       _save_result)
+
+    test_instance.execute()
+    assert not any('Traceback' in record.message
                    for record in result_store.result.log_records)
