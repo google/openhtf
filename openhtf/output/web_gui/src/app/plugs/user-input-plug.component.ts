@@ -43,7 +43,7 @@ export declare interface UserInputPlugState {
 })
 export class UserInputPlugComponent extends BasePlug {
   private lastPromptId: string;
-  private lastPromptHtml: SafeHtml;
+  private lastPromptHtml: string;
 
   constructor(
       config: ConfigService, http: Http, flashMessage: FlashMessageService,
