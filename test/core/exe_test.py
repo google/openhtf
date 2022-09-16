@@ -258,6 +258,7 @@ class TestExecutorTest(unittest.TestCase):
   def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
     mock_test_state = mock.create_autospec(test_state.TestState)
+    mock_test_state.state_logger = logging.getLogger(__name__)
     phase_thread = phase_executor.PhaseExecutorThread(
         phase_one, mock_test_state, run_with_profiling=False, subtest_rec=None)
     name = str(phase_thread)

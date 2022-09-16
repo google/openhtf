@@ -30,6 +30,7 @@ from openhtf.core import test_record
 from openhtf.util import test
 from openhtf.util import text
 from openhtf.util import threads
+from openhtf.util import validators
 
 # colorama makes these strings at runtime but pytype cannot infer this.
 _RED = typing.cast(str, colorama.Fore.RED)
@@ -146,6 +147,47 @@ class TextTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(
         output,
         "| text_measurement_a failed because 5 failed these checks: ['x <= 3']")
+    self.assertNotIn(text._BRIGHT_RED_STYLE, output)
+
+  def testStringFromMeasurement_SuccessfullyConvertsFailBracketedMeasurement(
+      self):
+    measurement = openhtf.Measurement('text_measurement_a').equals('hello')
+    measurement._measured_value = measurements.MeasuredValue(
+        'text_measurement_a')
+    measurement._measured_value.set('{hi}')
+    measurement.notify_value_set()
+    output = text.StringFromMeasurement(measurement)
+    self.assertEqual(output,
+                     ('| text_measurement_a failed because {hi} '
+                      "failed these checks: [\"'x' matches /^hello$/\"]"))
+    self.assertNotIn(text._BRIGHT_RED_STYLE, output)
+
+  def testStringFromMeasurement_SuccessfullyConvertsMarginalBracketedMeasurement(
+      self):
+
+    class LengthInRange(validators.InRange):
+
+      def __call__(self, value):
+        return super().__call__(len(value))
+
+      def is_marginal(self, value) -> bool:
+        return super().is_marginal(len(value))
+
+    # Length of 5 is pass, 4 or 6 is marginal.
+    validator = LengthInRange(
+        minimum=4, maximum=6, marginal_minimum=5, marginal_maximum=5)
+
+    measurement = openhtf.Measurement('text_measurement_a').with_validator(
+        validator)
+    measurement._measured_value = measurements.MeasuredValue(
+        'text_measurement_a')
+    measurement._measured_value.set('{hi}')
+    measurement.notify_value_set()
+    output = text.StringFromMeasurement(measurement)
+    self.assertEqual(
+        output,
+        ('| text_measurement_a is marginal because {hi} is marginal '
+         "in these checks: ['4 <= Marginal:5 <= x <= Marginal:5 <= 6']"))
     self.assertNotIn(text._BRIGHT_RED_STYLE, output)
 
   def testStringFromMeasurement_SuccessfullyConvertsFailMeasurementColorized(
