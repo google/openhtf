@@ -10,7 +10,7 @@ import { Station } from './station.model';
 // Enum values must not overlap between any of the status enums.
 // See status-pipes.ts.
 export enum TestStatus {
-  waiting = 9,  // Corresponds to WAITING_FOR_TEST_START.
+  waiting = 11,  // Corresponds to WAITING_FOR_TEST_START.
   running,
   pass,
   fail,

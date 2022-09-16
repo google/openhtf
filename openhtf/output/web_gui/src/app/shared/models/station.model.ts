@@ -3,7 +3,7 @@
  */
 
 export enum StationStatus {
-  online = 7,
+  online = 9,
   unreachable,
 }
 
