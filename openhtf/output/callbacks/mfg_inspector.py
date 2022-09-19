@@ -1,14 +1,11 @@
-"""Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com.
-"""
+"""Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com."""
 
-import json
 import logging
-import threading
 import time
 import zlib
 
-import httplib2
-import oauth2client.client
+from google.auth.transport import requests
+from google.oauth2 import service_account
 
 from openhtf.output import callbacks
 from openhtf.output.proto import guzzle_pb2
@@ -26,26 +23,24 @@ class InvalidTestRunError(Exception):
 def _send_mfg_inspector_request(envelope_data, credentials, destination_url):
   """Send upload http request.  Intended to be run in retry loop."""
   logging.info('Uploading result...')
-  http = httplib2.Http()
 
-  if credentials.access_token_expired:
-    credentials.refresh(http)
-  credentials.authorize(http)
-
-  resp, content = http.request(destination_url, 'POST', envelope_data)
+  with requests.AuthorizedSession(credentials) as authed_session:
+    response = authed_session.request(
+        'POST', destination_url, data=envelope_data)
 
   try:
-    result = json.loads(content)
+    result = response.json()
   except Exception:
-    logging.warning('Upload failed with response %s: %s', resp, content)
-    raise UploadFailedError(resp, content)
+    logging.warning('Upload failed with response %s: %s', response,
+                    response.text)
+    raise UploadFailedError(response, response.text)
 
-  if resp.status == 200:
+  if response.status_code == 200:
     return result
 
   message = '%s: %s' % (result.get('error',
                                    'UNKNOWN_ERROR'), result.get('message'))
-  if resp.status == 400:
+  if response.status_code == 400:
     raise InvalidTestRunError(message)
   else:
     raise UploadFailedError(message)
@@ -71,26 +66,6 @@ def send_mfg_inspector_data(inspector_proto, credentials, destination_url,
       'Could not upload to mfg-inspector after 5 attempts. Giving up.')
 
   return {}
-
-
-class _MemStorage(oauth2client.client.Storage):
-  """Helper Storage class that keeps credentials in memory."""
-
-  def __init__(self):
-    self._lock = threading.Lock()
-    self._credentials = None
-
-  def acquire_lock(self):
-    self._lock.acquire(True)
-
-  def release_lock(self):
-    self._lock.release()
-
-  def locked_get(self):
-    return self._credentials
-
-  def locked_put(self, credentials):
-    self._credentials = credentials
 
 
 class MfgInspector(object):
@@ -146,14 +121,14 @@ class MfgInspector(object):
     self.destination_url = destination_url
 
     if user and keydata:
-      self.credentials = oauth2client.client.SignedJwtAssertionCredentials(
-          service_account_name=self.user,
-          private_key=(self.keydata.encode()
-                       if isinstance(self.keydata, str) else self.keydata),
-          scope=self.SCOPE_CODE_URI,
-          user_agent='OpenHTF Guzzle Upload Client',
-          token_uri=self.token_uri)
-      self.credentials.set_store(_MemStorage())
+      self.credentials = service_account.Credentials.from_service_account_info(
+          {
+              'client_email': self.user,
+              'token_uri': self.token_uri,
+              'private_key': self.keydata,
+              'user_agent': 'OpenHTF Guzzle Upload Client',
+          },
+          scopes=[self.SCOPE_CODE_URI])
     else:
       self.credentials = None
 

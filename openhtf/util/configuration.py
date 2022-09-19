@@ -30,7 +30,7 @@ and description are optional:
 
   CONF = configuration.CONF
 
-  ANITIMATTER_INTERMIX_CONSTANT = CONF.declare('antimatter_intermix_constant',
+  ANTIMATTER_INTERMIX_CONSTANT = CONF.declare('antimatter_intermix_constant',
       default_value=3.14159,
       description='Intermix constant calibrated for our warp core.')
 

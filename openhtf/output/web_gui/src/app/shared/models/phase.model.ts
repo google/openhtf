@@ -14,6 +14,8 @@ export enum PhaseStatus {
   running,
   pass,
   fail,
+  skip,
+  error,
 }
 
 export class Phase {

@@ -48,9 +48,9 @@ class TestMfgInspector(test.TestCase):
 
   def setUp(self):
     super(TestMfgInspector, self).setUp()
-    self.mock_credentials = mock.patch(
-        'oauth2client.client.SignedJwtAssertionCredentials').start(
-        ).return_value
+    self.mock_credentials = mock.patch.object(
+        mfg_inspector.service_account.Credentials,
+        'from_service_account_info').start().return_value
 
     self.mock_send_mfg_inspector_data = mock.patch.object(
         mfg_inspector, 'send_mfg_inspector_data').start()
