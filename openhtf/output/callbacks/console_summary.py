@@ -2,6 +2,7 @@
 
 import os
 import sys
+from typing import TextIO
 
 from openhtf.core import measurements
 from openhtf.core import test_record
@@ -11,7 +12,9 @@ class ConsoleSummary():
   """Print test results with failure info on console."""
 
   # pylint: disable=invalid-name
-  def __init__(self, indent=2, output_stream=sys.stdout):
+  def __init__(self,
+               indent: int = 2,
+               output_stream: TextIO = sys.stdout) -> None:
     self.indent = ' ' * indent
     if os.name == 'posix':  # Linux and Mac.
       self.RED = '\033[91m'
@@ -37,7 +40,7 @@ class ConsoleSummary():
 
   # pylint: enable=invalid-name
 
-  def __call__(self, record):
+  def __call__(self, record: test_record.TestRecord) -> None:
     output_lines = [
         ''.join((self.color_table[record.outcome], self.BOLD,
                  record.code_info.name, ':', record.outcome.name, self.RESET))
