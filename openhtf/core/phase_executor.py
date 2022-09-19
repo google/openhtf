@@ -362,7 +362,7 @@ class PhaseExecutor(object):
       subtest_name = None
     evaluated_millis = util.time_millis()
     try:
-      outcome = PhaseExecutionOutcome(checkpoint.get_result(self.test_state))
+      outcome = PhaseExecutionOutcome(checkpoint.get_result(self.test_state, subtest_rec))
       self.logger.debug('Checkpoint %s result: %s', checkpoint.name,
                         outcome.phase_result)
       if outcome.is_fail_subtest and not subtest_rec:
