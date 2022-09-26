@@ -19,7 +19,9 @@ alternative serialization schemes, see json_factory.py and mfg_inspector.py for
 examples.
 """
 
+from collections.abc import Iterable
 import contextlib
+import pickle
 import shutil
 import tempfile
 import typing
@@ -28,9 +30,6 @@ from typing import BinaryIO, Callable, Iterator, Optional, Text, Union
 from openhtf import util
 from openhtf.core import test_record
 from openhtf.util import data
-import six
-from six.moves import collections_abc
-from six.moves import cPickle as pickle
 
 SerializedTestRecord = Union[Text, bytes, Iterator[Union[Text, bytes]]]
 
@@ -44,7 +43,9 @@ class Atomic(object):
     self.temp = tempfile.NamedTemporaryFile(delete=False)
 
   def write(self, write_data: Union[Text, bytes]) -> int:
-    return self.temp.write(six.ensure_binary(write_data))
+    if isinstance(write_data, str):
+      write_data = write_data.encode()
+    return self.temp.write(write_data)
 
   def close(self) -> None:
     self.temp.close()
@@ -56,7 +57,7 @@ class CloseAttachments(object):
 
   def __call__(self, test_rec: test_record.TestRecord) -> None:
     for phase_rec in test_rec.phases:
-      for attachment in six.itervalues(phase_rec.attachments):
+      for attachment in phase_rec.attachments.values():
         attachment.close()
 
 
@@ -81,9 +82,9 @@ class OutputToFile(object):
                                                      BinaryIO]):
     self.filename_pattern = None  # type: Optional[Union[Text, Callable[..., Text]]]
     self.output_file = None  # type: Optional[BinaryIO]
-    if (isinstance(filename_pattern_or_file, six.string_types) or
+    if (isinstance(filename_pattern_or_file, str) or
         callable(filename_pattern_or_file)):
-      self.filename_pattern = filename_pattern_or_file
+      self.filename_pattern = filename_pattern_or_file  # pytype: disable=annotation-type-mismatch
     else:
       self.output_file = filename_pattern_or_file
 
@@ -130,11 +131,11 @@ class OutputToFile(object):
   def __call__(self, test_rec: test_record.TestRecord) -> None:
     with self.open_output_file(test_rec) as outfile:
       serialized_record = self.serialize_test_record(test_rec)
-      if isinstance(serialized_record, six.string_types):
-        outfile.write(six.ensure_binary(serialized_record))
-      elif isinstance(serialized_record, collections_abc.Iterable):
+      if isinstance(serialized_record, str):
+        outfile.write(serialized_record.encode())
+      elif isinstance(serialized_record, Iterable):
         for chunk in serialized_record:
-          outfile.write(six.ensure_binary(chunk))
+          outfile.write(chunk.encode() if isinstance(chunk, str) else chunk)
       else:
         raise TypeError('Expected string or iterable but got {}.'.format(
             type(serialized_record)))

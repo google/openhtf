@@ -162,6 +162,18 @@ def multdim_measurements(test):
       test.measurements['average_current'])
 
 
+# Marginal measurements can be used to obtain a finer granularity of by how much
+# a measurement is passing. Marginal measurements have stricter minimum and
+# maximum limits, which are used to flag measurements/phase/test records as
+# marginal without affecting the overall phase outcome.
+@htf.measures(
+    htf.Measurement('resistance').with_units('ohm').in_range(
+        minimum=5, maximum=17, marginal_minimum=9, marginal_maximum=11))
+def marginal_measurements(test):
+  """Phase with a marginal measurement."""
+  test.measurements.resistance = 13
+
+
 def main():
   # We instantiate our OpenHTF test with the phases we want to run as args.
   test = htf.Test(hello_phase, again_phase, lots_of_measurements,

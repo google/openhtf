@@ -46,15 +46,15 @@ from openhtf.core import test_executor
 from openhtf.core import test_record as htf_test_record
 from openhtf.core import test_state
 
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import console_output
 from openhtf.util import logs
 
-import six
+CONF = configuration.CONF
 
 _LOG = logging.getLogger(__name__)
 
-conf.declare(
+CONF.declare(
     'capture_source',
     description=textwrap.dedent(
         """Whether to capture the source of phases and the test module.  This
@@ -63,6 +63,14 @@ conf.declare(
 
     Set to 'true' if you want to capture your test's source."""),
     default_value=False)
+
+
+class MeasurementNotFoundError(Exception):
+  """Raised when test measurement not found."""
+
+
+class AttachmentNotFoundError(Exception):
+  """Raised when test attachment not found."""
 
 
 class UnrecognizedTestUidError(Exception):
@@ -96,7 +104,7 @@ def create_arg_parser(add_help: bool = False) -> argparse.ArgumentParser:
   parser = argparse.ArgumentParser(
       'OpenHTF-based testing',
       parents=[
-          conf.ARG_PARSER,
+          CONF.ARG_PARSER,
           console_output.ARG_PARSER,
           logs.ARG_PARSER,
           phase_executor.ARG_PARSER,
@@ -149,7 +157,7 @@ class Test(object):
                                      htf_test_record.CodeInfo.uncaptured(),
                                      metadata)
 
-    if conf.capture_source:
+    if CONF.capture_source:
       # Copy the phases with the real CodeInfo for them.
       self._test_desc.phase_sequence = (
           self._test_desc.phase_sequence.load_code_info())
@@ -234,10 +242,10 @@ class Test(object):
     # side effects.
     known_args, _ = create_arg_parser(add_help=True).parse_known_args()
     if known_args.config_help:
-      sys.stdout.write(conf.help_text)
+      sys.stdout.write(CONF.help_text)
       sys.exit(0)
     logs.configure_logging()
-    for key, value in six.iteritems(kwargs):
+    for key, value in kwargs.items():
       setattr(self._test_options, key, value)
 
   @classmethod
@@ -267,7 +275,8 @@ class Test(object):
         self._executor.abort()
 
   def execute(self,
-              test_start: Optional[phase_descriptor.PhaseT] = None,
+              test_start: Optional[Union[phase_descriptor.PhaseT,
+                                         Callable[[], str]]] = None,
               profile_filename: Optional[Text] = None) -> bool:
     """Starts the framework and executes the given test.
 
@@ -284,7 +293,7 @@ class Test(object):
     Raises:
       InvalidTestStateError: if this test is already being executed.
     """
-    diagnoses_lib.check_for_duplicate_results(
+    phase_descriptor.check_for_duplicate_results(
         self._test_desc.phase_sequence.all_phases(),
         self._test_options.diagnosers)
     phase_collections.check_for_duplicate_subtest_names(
@@ -301,7 +310,7 @@ class Test(object):
 
       # Snapshot some things we care about and store them.
       self._test_desc.metadata['test_name'] = self._test_options.name
-      self._test_desc.metadata['config'] = conf._asdict()
+      self._test_desc.metadata['config'] = CONF._asdict()
       self.last_run_time_millis = util.time_millis()
 
       if isinstance(test_start, types.LambdaType):
@@ -314,7 +323,7 @@ class Test(object):
       else:
         trigger = test_start
 
-      if conf.capture_source:
+      if CONF.capture_source:
         trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)
 
       self._executor = test_executor.TestExecutor(
@@ -362,12 +371,17 @@ class Test(object):
               (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
           colors[htf_test_record.Outcome.FAIL] = ''.join(
               (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
-          msg_template = 'test: {name}  outcome: {color}{outcome}{rst}'
+          msg_template = (
+              'test: {name}  outcome: {color}{outcome}{marginal}{rst}')
           console_output.banner_print(
               msg_template.format(
                   name=final_state.test_record.metadata['test_name'],
-                  color=colors[final_state.test_record.outcome],
+                  color=(colorama.Fore.YELLOW
+                         if final_state.test_record.marginal else
+                         colors[final_state.test_record.outcome]),
                   outcome=final_state.test_record.outcome.name,
+                  marginal=(' (MARGINAL)'
+                            if final_state.test_record.marginal else ''),
                   rst=colorama.Style.RESET_ALL))
       finally:
         del self.TEST_INSTANCES[self.uid]
@@ -467,8 +481,8 @@ class TestApi(object):
     test_record: A reference to the output TestRecord for the currently running
       openhtf.Test.  Direct access to this attribute is *strongly* discouraged,
       but provided as a catch-all for interfaces not otherwise provided by
-      TestApi.  If you find yourself using this, please file a
-        feature request for an alternative at:
+      TestApi.  If you find yourself using this, please file a feature request
+      for an alternative at:
           https://github.com/google/openhtf/issues/new
   """
 
@@ -569,9 +583,34 @@ class TestApi(object):
     """
     return self._running_test_state.get_measurement(measurement_name)
 
+  def get_measurement_strict(
+      self, measurement_name: Text) -> test_state.ImmutableMeasurement:
+    """Get a copy of the test measurement from current or previous phase.
+
+    Measurement and phase name uniqueness is not enforced, so this method will
+    return the value of the most recent measurement recorded.
+
+    Args:
+      measurement_name: str of the measurement name
+
+    Returns:
+      an ImmutableMeasurement.
+
+    Raises:
+      MeasurementNotFoundError: Thrown when the test measurement is not found.
+    """
+    measurement = self._running_test_state.get_measurement(measurement_name)
+    if measurement is None:
+      raise MeasurementNotFoundError(
+          f'Failed to find test measurement {measurement_name}')
+    return measurement
+
   def get_attachment(
       self, attachment_name: Text) -> Optional[htf_test_record.Attachment]:
     """Get a copy of an attachment from current or previous phases.
+
+    This method will return None when test attachment is not found. Please use
+    get_attachment_strict method if exception is expected to be raised.
 
     Args:
       attachment_name:  str of the attachment name
@@ -580,6 +619,25 @@ class TestApi(object):
       A copy of the attachment or None if the attachment cannot be found.
     """
     return self._running_test_state.get_attachment(attachment_name)
+
+  def get_attachment_strict(
+      self, attachment_name: Text) -> htf_test_record.Attachment:
+    """Gets a copy of an attachment or dies when attachment not found.
+
+    Args:
+      attachment_name: An attachment name.
+
+    Returns:
+      A copy of the attachment.
+
+    Raises:
+      AttachmentNotFoundError: Raised when attachment is not found.
+    """
+    attachment = self.get_attachment(attachment_name)
+    if attachment is None:
+      raise AttachmentNotFoundError('Failed to find test attachment: '
+                                    f'{attachment_name}')
+    return attachment
 
   def notify_update(self) -> None:
     """Notify any update events that there was an update."""

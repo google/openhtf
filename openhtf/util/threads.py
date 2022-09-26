@@ -13,6 +13,7 @@
 # limitations under the License.
 """Thread library defining a few helpers."""
 
+import _thread
 import contextlib
 import cProfile
 import ctypes
@@ -21,12 +22,6 @@ import logging
 import pstats
 import sys
 import threading
-
-import six
-try:
-  from six.moves import _thread  # pylint: disable=g-import-not-at-top
-except ImportError:
-  from six.moves import _dummy_thread as _thread  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 
@@ -37,70 +32,6 @@ class ThreadTerminationError(SystemExit):
 
 class InvalidUsageError(Exception):
   """Raised when an API is used in an invalid or unsupported manner."""
-
-
-def safe_lock_release_context(rlock):
-  if six.PY2:
-    return _safe_lock_release_py2(rlock)
-  # Python3 has a C-implementation of RLock, which doesn't have the thread
-  # termination issues.
-  return _placeholder_release_py3()
-
-
-@contextlib.contextmanager
-def _placeholder_release_py3():
-  yield
-
-
-# pylint: disable=protected-access
-@contextlib.contextmanager
-def _safe_lock_release_py2(rlock):
-  """Ensure that a threading.RLock is fully released for Python 2.
-
-  The RLock release code is:
-    https://github.com/python/cpython/blob/2.7/Lib/threading.py#L187
-
-  The RLock object's release method does not release all of its state if an
-  exception is raised in the middle of its operation.  There are three pieces of
-  internal state that must be cleaned up:
-  - owning thread ident, an integer.
-  - entry count, an integer that counts how many times the current owner has
-      locked the RLock.
-  - internal lock, a threading.Lock instance that handles blocking.
-
-  Args:
-    rlock: threading.RLock, lock to fully release.
-
-  Yields:
-    None.
-  """
-  assert isinstance(rlock, threading._RLock)
-  ident = _thread.get_ident()
-  expected_count = 0
-  if rlock._RLock__owner == ident:
-    expected_count = rlock._RLock__count
-  try:
-    yield
-  except ThreadTerminationError:
-    # Check if the current thread still owns the lock by checking if we can
-    # acquire the underlying lock.
-    if rlock._RLock__block.acquire(0):
-      # Lock is clean, so unlock and we are done.
-      rlock._RLock__block.release()
-    elif rlock._RLock__owner == ident and expected_count > 0:
-      # The lock is still held up the stack, so make sure the count is accurate.
-      if rlock._RLock__count != expected_count:
-        rlock._RLock__count = expected_count
-    elif rlock._RLock__owner == ident or rlock._RLock__owner is None:
-      # The internal lock is still acquired, but either this thread or no thread
-      # owns it, which means it needs to be hard reset.
-      rlock._RLock__owner = None
-      rlock._RLock__count = 0
-      rlock._RLock__block.release()
-    raise
-
-
-# pylint: enable=protected-access
 
 
 def loop(_=None, force=False):
@@ -148,7 +79,7 @@ class KillableThread(threading.Thread):
   during garbage collection.
   """
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, logger: logging.Logger = _LOG, **kwargs):
     """Initializer for KillableThread.
 
     The keyword argument `run_with_profiling` is extracted from kwargs. If
@@ -156,6 +87,7 @@ class KillableThread(threading.Thread):
 
     Args:
       *args: Passed to the base class.
+      logger: A logger for this class to use.
       **kwargs: Passed to the base class.
     """
     self._run_with_profiling = kwargs.pop('run_with_profiling',
@@ -167,6 +99,7 @@ class KillableThread(threading.Thread):
       self._profiler = cProfile.Profile()
     else:
       self._profiler = None
+    self._logger = logger
 
   def run(self):
     try:
@@ -178,11 +111,11 @@ class KillableThread(threading.Thread):
         self._thread_proc()
     except Exception:  # pylint: disable=broad-except
       if not self._thread_exception(*sys.exc_info()):
-        _LOG.critical('Thread raised an exception: %s', self.name)
+        self._logger.critical('Thread raised an exception: %s', self.name)
         raise
     finally:
       self._thread_finished()
-      _LOG.debug('Thread finished: %s', self.name)
+      self._logger.debug('Thread finished: %s', self.name)
       if self._profiler is not None:
         self._profiler.disable()
 
@@ -230,11 +163,11 @@ class KillableThread(threading.Thread):
     """Terminates the current thread by raising an error."""
     self._killed.set()
     if not self.is_alive():
-      logging.debug('Cannot kill thread that is no longer running.')
+      self._logger.debug('Cannot kill thread that is no longer running.')
       return
     if not self._is_thread_proc_running():
-      logging.debug("Thread's _thread_proc function is no longer running, "
-                    'will not kill; letting thread exit gracefully.')
+      self._logger.debug("Thread's _thread_proc function is no longer running, "
+                         'will not kill; letting thread exit gracefully.')
       return
     self.async_raise(ThreadTerminationError)
 
@@ -245,8 +178,8 @@ class KillableThread(threading.Thread):
 
     # If the thread has died we don't want to raise an exception so log.
     if not self.is_alive():
-      _LOG.debug('Not raising %s because thread %s (%s) is not alive', exc_type,
-                 self.name, self.ident)
+      self._logger.debug('Not raising %s because thread %s (%s) is not alive',
+                         exc_type, self.name, self.ident)
       return
 
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(

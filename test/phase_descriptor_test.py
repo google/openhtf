@@ -14,12 +14,18 @@
 
 import unittest
 
-import attr
-import mock
+from absl import logging
 
+import attr
 import openhtf
 from openhtf import plugs
 from openhtf.core import base_plugs
+from openhtf.core import phase_collections
+from openhtf.core import phase_descriptor
+from openhtf.core import test_descriptor
+from openhtf.core import test_record
+from openhtf.core import test_state
+from openhtf.util import test as htf_test
 
 
 def plain_func():
@@ -83,12 +89,33 @@ def custom_placeholder_phase(custom):
   del custom  # Unused.
 
 
-class TestPhaseDescriptor(unittest.TestCase):
+@openhtf.PhaseOptions()
+def passing_phase():
+  return openhtf.PhaseResult.CONTINUE
+
+
+@openhtf.measures(
+    openhtf.Measurement('a_measurement').equals(True),
+    openhtf.Measurement('another_measurement').equals(True),
+    openhtf.Measurement('yet_another_measurement').equals(True),
+)
+def partially_passing_phase(test: openhtf.TestApi):
+  test.measurements.a_measurement = True
+  test.measurements.another_measurement = False
+  test.measurements.yet_another_measurement = True
+
+
+class TestPhaseDescriptor(htf_test.TestCase):
 
   def setUp(self):
     super(TestPhaseDescriptor, self).setUp()
-    self._phase_data = mock.Mock(
-        plug_manager=plugs.PlugManager(), execution_uid='01234567890')
+    self._test_state = test_state.TestState(
+        test_descriptor.TestDescriptor(
+            phase_sequence=phase_collections.PhaseSequence(),
+            code_info=test_record.CodeInfo.uncaptured(),
+            metadata={}),
+        execution_uid='',
+        test_options=test_descriptor.TestOptions())
 
   def test_basics(self):
     phase = openhtf.PhaseDescriptor.wrap_or_copy(plain_func)
@@ -96,11 +123,11 @@ class TestPhaseDescriptor(unittest.TestCase):
     self.assertEqual(0, len(phase.plugs))
     self.assertEqual('plain_func', phase.name)
     self.assertEqual('Plain Docstring.', phase.doc)
-    phase(self._phase_data)
+    phase(self._test_state)
 
     test_phase = openhtf.PhaseDescriptor.wrap_or_copy(normal_test_phase)
     self.assertEqual('normal_test_phase', test_phase.name)
-    self.assertEqual('return value', test_phase(self._phase_data))
+    self.assertEqual('return value', test_phase(self._test_state))
 
   def test_multiple_phases(self):
     phase = openhtf.PhaseDescriptor.wrap_or_copy(plain_func)
@@ -127,8 +154,8 @@ class TestPhaseDescriptor(unittest.TestCase):
 
   def test_with_args(self):
     phase = extra_arg_func.with_args(input_value='input arg')
-    result = phase(self._phase_data)
-    first_result = phase(self._phase_data)
+    result = phase(self._test_state)
+    first_result = phase(self._test_state)
     self.assertIs(phase.func, extra_arg_func.func)
     self.assertEqual('input arg', result)
     self.assertEqual('func-name(i)', phase.name)
@@ -137,7 +164,7 @@ class TestPhaseDescriptor(unittest.TestCase):
     # Must do with_args() on the original phase, otherwise it has already been
     # formatted and the format-arg information is lost.
     second_phase = extra_arg_func.with_args(input_value='second input')
-    second_result = second_phase(self._phase_data)
+    second_result = second_phase(self._test_state)
     self.assertEqual('second input', second_result)
     self.assertEqual('func-name(s)', second_phase.name)
 
@@ -154,15 +181,95 @@ class TestPhaseDescriptor(unittest.TestCase):
     updated = phase.with_args(arg_does_not_exist=1)
     self.assertEqual({'arg_does_not_exist': 1}, updated.extra_kwargs)
 
+  def test_call_test_api_with_default_args(self):
+    expected_arg_two = 3
+
+    @phase_descriptor.PhaseOptions()
+    def phase(test_api, arg_one=1, arg_two=2):
+      self.assertIsInstance(test_api, test_descriptor.TestApi)
+      self.assertEqual(arg_one, 1)
+      # We are changing the arg with the with_args statement when called.
+      self.assertEqual(arg_two, expected_arg_two)
+
+    self._test_state.running_phase_state = (
+        test_state.PhaseState.from_descriptor(phase, self._test_state,
+                                              logging.get_absl_logger()))
+    phase.with_args(arg_two=expected_arg_two)(self._test_state)
+
+  def test_call_only_default_args(self):
+    expected_arg_two = 3
+
+    @phase_descriptor.PhaseOptions()
+    def phase(arg_one=1, arg_two=2):
+      self.assertEqual(arg_one, 1)
+      # We are changing the arg with the with_args statement when called.
+      self.assertEqual(arg_two, expected_arg_two)
+
+    self._test_state.running_phase_state = (
+        test_state.PhaseState.from_descriptor(phase, self._test_state,
+                                              logging.get_absl_logger()))
+    phase.with_args(arg_two=expected_arg_two)(self._test_state)
+
+  def test_call_test_api_default_args_and_plug(self):
+    expected_arg_one = 5
+    self._test_state.plug_manager.initialize_plugs([ExtraPlug])
+
+    @plugs.plug(custom_plug=ExtraPlug)
+    def phase(test_api, custom_plug, arg_one=1, arg_two=2):
+      self.assertIsInstance(test_api, test_descriptor.TestApi)
+      self.assertIsInstance(custom_plug, ExtraPlug)
+      # We are changing the arg with the with_args statement when called.
+      self.assertEqual(arg_one, expected_arg_one)
+      self.assertEqual(arg_two, 2)
+
+    self._test_state.running_phase_state = (
+        test_state.PhaseState.from_descriptor(phase, self._test_state,
+                                              logging.get_absl_logger()))
+    phase.with_args(arg_one=expected_arg_one)(self._test_state)
+
+  def test_call_only_default_args_and_plug(self):
+    expected_arg_one = 5
+    self._test_state.plug_manager.initialize_plugs([ExtraPlug])
+
+    @plugs.plug(custom_plug=ExtraPlug)
+    def phase(custom_plug, arg_one=1, arg_two=2):
+      self.assertIsInstance(custom_plug, ExtraPlug)
+      # We are changing the arg with the with_args statement when called.
+      self.assertEqual(arg_one, expected_arg_one)
+      self.assertEqual(arg_two, 2)
+
+    self._test_state.running_phase_state = (
+        test_state.PhaseState.from_descriptor(phase, self._test_state,
+                                              logging.get_absl_logger()))
+    phase.with_args(arg_one=expected_arg_one)(self._test_state)
+
+  def test_call_overrides_phase_result(self):
+    phase = openhtf.PhaseOptions(stop_on_measurement_fail=True)(
+        partially_passing_phase)
+    record = self.execute_phase_or_test(
+        openhtf.Test(passing_phase, phase, passing_phase))
+    self.assertEqual(record.outcome, test_record.Outcome.FAIL)
+    self.assertEqual(record.phases[-1].name, phase.name)
+    self.assertEqual(record.phases[-1].result.phase_result,
+                     openhtf.PhaseResult.STOP)
+
+  def test_call_skips_phase_result_override(self):
+    phase = openhtf.PhaseOptions(stop_on_measurement_fail=False)(
+        partially_passing_phase)
+    record = self.execute_phase_or_test(
+        openhtf.Test(phase, passing_phase))
+    self.assertEqual(record.outcome, test_record.Outcome.FAIL)
+    self.assertEqual(record.phases[-1].name, passing_phase.name)
+
   def test_with_plugs(self):
-    self._phase_data.plug_manager.initialize_plugs([ExtraPlug])
+    self._test_state.plug_manager.initialize_plugs([ExtraPlug])
     phase = extra_plug_func.with_plugs(plug=ExtraPlug).with_args(phrase='hello')
     self.assertIs(phase.func, extra_plug_func.func)
     self.assertEqual(1, len(phase.plugs))
     self.assertEqual('extra_plug_func[extra_plug_0][hello]', phase.options.name)
     self.assertEqual('extra_plug_func[extra_plug_0][hello]', phase.name)
 
-    result = phase(self._phase_data)
+    result = phase(self._test_state)
     self.assertEqual('extra_plug_0 says hello', result)
 
   def test_with_plugs_unknown_plug_name_ignored(self):
@@ -187,3 +294,138 @@ class TestPhaseDescriptor(unittest.TestCase):
     self.assertIs(phase.func, custom_placeholder_phase.func)
     self.assertEqual([base_plugs.PhasePlug('custom', PlugVersionOfNonPlug)],
                      phase.plugs)
+
+  def test_camel_phase_name_casing_formats_name(self):
+
+    @phase_descriptor.PhaseOptions(phase_name_case=openhtf.PhaseNameCase.CAMEL)
+    def snake_cased_phase():
+      """Empty function to generate phase descriptor."""
+
+    self.assertEqual(snake_cased_phase.name, 'SnakeCasedPhase')
+
+  def test_keep_phase_name_casing_does_not_change_name(self):
+
+    @phase_descriptor.PhaseOptions(phase_name_case=openhtf.PhaseNameCase.KEEP)
+    def keep_case_phase():
+      """Empty function to generate phase descriptor."""
+
+    self.assertEqual(keep_case_phase.name, 'keep_case_phase')
+
+
+class DupeResultA(openhtf.DiagResultEnum):
+  DUPE = 'dupe'
+
+
+class DupeResultB(openhtf.DiagResultEnum):
+  DUPE = 'dupe'
+
+
+@openhtf.PhaseDiagnoser(DupeResultA)
+def dupe_a_phase_diag(phase_record):
+  del phase_record  # Unused.
+  return DupeResultA.DUPE
+
+
+@openhtf.PhaseDiagnoser(DupeResultA)
+def dupe_a2_phase_diag(phase_record):
+  del phase_record  # Unused.
+  return DupeResultA.DUPE
+
+
+@openhtf.PhaseDiagnoser(DupeResultB)
+def dupe_b_phase_diag(phase_record):
+  del phase_record  # Unused.
+  return DupeResultB.DUPE
+
+
+@openhtf.TestDiagnoser(DupeResultA)
+def dupe_a_test_diag(test_record_, store):
+  del test_record_  # Unused.
+  del store  # Unused.
+  return DupeResultA.DUPE
+
+
+@openhtf.TestDiagnoser(DupeResultA)
+def dupe_a2_test_diag(test_record_, store):
+  del test_record_  # Unused.
+  del store  # Unused.
+  return DupeResultA.DUPE
+
+
+@openhtf.TestDiagnoser(DupeResultB)
+def dupe_b_test_diag(test_record_, store):
+  del test_record_  # Unused.
+  del store  # Unused.
+  return DupeResultB.DUPE
+
+
+class CheckForDuplicateResultsTest(unittest.TestCase):
+
+  def test_phase_phase_dupe(self):
+
+    @openhtf.diagnose(dupe_a_phase_diag)
+    def a1():
+      pass
+
+    @openhtf.diagnose(dupe_b_phase_diag)
+    def b2():
+      pass
+
+    with self.assertRaises(phase_descriptor.DuplicateResultError):
+      phase_descriptor.check_for_duplicate_results(iter([a1, b2]), [])
+
+  def test_phase_phase_same_result(self):
+
+    @openhtf.diagnose(dupe_a_phase_diag)
+    def a1():
+      pass
+
+    @openhtf.diagnose(dupe_a2_phase_diag)
+    def a2():
+      pass
+
+    phase_descriptor.check_for_duplicate_results(iter([a1, a2]), [])
+
+  def test_phase_phase_same_diagnoser(self):
+
+    @openhtf.diagnose(dupe_a_phase_diag)
+    def a1():
+      pass
+
+    @openhtf.diagnose(dupe_a_phase_diag)
+    def a2():
+      pass
+
+    phase_descriptor.check_for_duplicate_results(iter([a1, a2]), [])
+
+  def test_phase_test_dupe(self):
+
+    @openhtf.diagnose(dupe_a_phase_diag)
+    def a1():
+      pass
+
+    with self.assertRaises(phase_descriptor.DuplicateResultError):
+      phase_descriptor.check_for_duplicate_results(
+          iter([a1]), [dupe_b_test_diag])
+
+  def test_phase_test_same_result(self):
+
+    @openhtf.diagnose(dupe_a_phase_diag)
+    def a1():
+      pass
+
+    phase_descriptor.check_for_duplicate_results(
+        iter([a1]), [dupe_a2_test_diag])
+
+  def test_test_test_dupe(self):
+    with self.assertRaises(phase_descriptor.DuplicateResultError):
+      phase_descriptor.check_for_duplicate_results(
+          iter([]), [dupe_a_test_diag, dupe_b_test_diag])
+
+  def test_test_test_same_result(self):
+    phase_descriptor.check_for_duplicate_results(
+        iter([]), [dupe_a_test_diag, dupe_a2_test_diag])
+
+  def test_test_test_same_diagnoser(self):
+    phase_descriptor.check_for_duplicate_results(
+        iter([]), [dupe_a_test_diag, dupe_a_test_diag])

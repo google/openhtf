@@ -28,11 +28,9 @@ from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.plugs import user_input
 from openhtf.util import units
-from six.moves import range
-from six.moves import zip
 
 
-@htf.plug(example=example_plugs.ExamplePlug)
+@htf.plug(example=example_plugs.example_plug_configured)
 @htf.plug(frontend_aware=example_plugs.ExampleFrontendAwarePlug)
 def example_monitor(example, frontend_aware):
   time.sleep(.2)
@@ -50,7 +48,7 @@ def example_monitor(example, frontend_aware):
     docstring='Helpful docstring',
     units=units.HERTZ,
     validators=[util.validators.matches_regex('Measurement')])
-@htf.plug(example=example_plugs.ExamplePlug)
+@htf.plug(example=example_plugs.example_plug_configured)
 @htf.plug(prompts=user_input.UserInput)
 def hello_world(test, example, prompts):
   """A hello world test phase."""
@@ -112,6 +110,23 @@ def measures_with_args(test, minimum, maximum):
   test.measurements.replaced_min_max = 1
 
 
+@htf.measures(
+    htf.Measurement('replaced_marginal_min_only').in_range(
+        0, 10, '{marginal_minimum}', 8, type=int),
+    htf.Measurement('replaced_marginal_max_only').in_range(
+        0, 10, 2, '{marginal_maximum}', type=int),
+    htf.Measurement('replaced_marginal_min_max').in_range(
+        0, 10, '{marginal_minimum}', '{marginal_maximum}', type=int),
+)
+def measures_with_marginal_args(test, marginal_minimum, marginal_maximum):
+  """Phase with measurement with marginal arguments."""
+  del marginal_minimum  # Unused.
+  del marginal_maximum  # Unused.
+  test.measurements.replaced_marginal_min_only = 3
+  test.measurements.replaced_marginal_max_only = 3
+  test.measurements.replaced_marginal_min_max = 3
+
+
 def attachments(test):
   test.attach('test_attachment',
               'This is test attachment data.'.encode('utf-8'))
@@ -156,6 +171,8 @@ def main():
           attachments,
           skip_phase,
           measures_with_args.with_args(minimum=1, maximum=4),
+          measures_with_marginal_args.with_args(
+              marginal_minimum=4, marginal_maximum=6),
           analysis,
       ),
       # Some metadata fields, these in particular are used by mfg-inspector,

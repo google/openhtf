@@ -16,8 +16,9 @@ import io
 import os.path
 import unittest
 
-from openhtf.util import conf
-import six
+from openhtf.util import configuration
+
+CONF = configuration.CONF
 
 args = [
     '--config-value=flag_key=flag_value',
@@ -31,76 +32,80 @@ args = [
     'num_value=100',
 ]
 
-conf.declare('flag_key')
-conf.declare('other_flag')
-conf.declare('true_value')
-conf.declare('num_value')
-conf.declare('json_test_key')
-conf.declare('yaml_test_key')
-conf.declare('overridden_key')
-conf.declare('none_default', default_value=None)
-conf.declare('string_default', default_value='default')
-conf.declare('no_default')
+FLAG_KEY = CONF.declare('flag_key')
+OTHER_FLAG = CONF.declare('other_flag')
+TRUE_VALUE = CONF.declare('true_value')
+NUM_VALUE = CONF.declare('num_value')
+JSON_TEST_KEY = CONF.declare('json_test_key')
+YAML_TEST_KEY = CONF.declare('yaml_test_key')
+OVERRIDDEN_KEY = CONF.declare('overridden_key')
+NONE_DEFAULT = CONF.declare('none_default', default_value=None)
+STRING_DEFAULT = CONF.declare('string_default', default_value='default')
+NO_DEFAULT = CONF.declare('no_default')
 
 
-class TestConf(unittest.TestCase):
+class TestConfBase(unittest.TestCase):
+  """Base test fixture for testing the conf module."""
 
   YAML_FILENAME = os.path.join(os.path.dirname(__file__), 'test_config.yaml')
   BAD_FORMAT = os.path.join(os.path.dirname(__file__), 'bad_config.txt')
   NOT_A_DICT = os.path.join(os.path.dirname(__file__), 'bad_config.yaml')
 
   def setUp(self):
-    super(TestConf, self).setUp()
-    flags, _ = conf.ARG_PARSER.parse_known_args(args)
-    conf.load_flag_values(flags)
+    super().setUp()
+    flags, _ = CONF.ARG_PARSER.parse_known_args(args)
+    CONF.load_flag_values(flags)
 
   def tearDown(self):
-    conf._flags.config_file = None
-    conf.reset()
-    super(TestConf, self).tearDown()
+    CONF._flags.config_file = None
+    CONF.reset()
+    super().tearDown()
+
+
+class TestConf(TestConfBase):
 
   def test_yaml_config(self):
     with io.open(self.YAML_FILENAME, encoding='utf-8') as yamlfile:
-      conf._flags.config_file = yamlfile
-      conf.reset()
-    self.assertEqual('yaml_test_value', conf.yaml_test_key)
+      CONF._flags.config_file = yamlfile
+      CONF.reset()
+    self.assertEqual('yaml_test_value', CONF.yaml_test_key)
 
   def test_load_override(self):
-    conf.load(overridden_key='overridden_value')
-    conf.load(overridden_key='new_value')
-    self.assertEqual('new_value', conf.overridden_key)
+    CONF.load(overridden_key='overridden_value')
+    CONF.load(overridden_key='new_value')
+    self.assertEqual('new_value', CONF.overridden_key)
 
   def test_load_no_override(self):
-    conf.load(overridden_key='overridden_value')
-    conf.load(overridden_key='new_value', _override=False)
-    self.assertEqual('overridden_value', conf.overridden_key)
+    CONF.load(overridden_key='overridden_value')
+    CONF.load(overridden_key='new_value', _override=False)
+    self.assertEqual('overridden_value', CONF.overridden_key)
 
   def test_load_from_dict(self):
-    conf.load_from_dict({'overridden_key': 'new_value'})
-    self.assertEqual('new_value', conf.overridden_key)
+    CONF.load_from_dict({'overridden_key': 'new_value'})
+    self.assertEqual('new_value', CONF.overridden_key)
 
   def test_defaults(self):
-    self.assertEqual('default', conf.string_default)
-    self.assertIsNone(conf.none_default)
-    with self.assertRaises(conf.UnsetKeyError):
-      conf.no_default  # pylint: disable=pointless-statement
+    self.assertEqual('default', CONF.string_default)
+    self.assertIsNone(CONF.none_default)
+    with self.assertRaises(configuration.UnsetKeyError):
+      CONF.no_default  # pylint: disable=pointless-statement
 
   def test_flag_values(self):
-    self.assertEqual('flag_value', conf.flag_key)
-    self.assertEqual('other_value', conf.other_flag)
+    self.assertEqual('flag_value', CONF.flag_key)
+    self.assertEqual('other_value', CONF.other_flag)
     # Make sure flag value takes precedence, even if a value is loaded.
-    conf.load(flag_key='loaded_value')
-    self.assertEqual('flag_value', conf.flag_key)
+    CONF.load(flag_key='loaded_value')
+    self.assertEqual('flag_value', CONF.flag_key)
 
   def test_non_str_flag_values(self):
-    self.assertEqual(True, conf.true_value)
-    self.assertEqual(100, conf.num_value)
+    self.assertEqual(True, CONF.true_value)
+    self.assertEqual(100, CONF.num_value)
     # Make sure flag value takes precedence, even if a value is loaded.
-    conf.load(flag_key='loaded_value')
-    self.assertEqual(True, conf.true_value)
+    CONF.load(flag_key='loaded_value')
+    self.assertEqual(True, CONF.true_value)
 
   def test_as_dict(self):
-    conf_dict = conf._asdict()
+    conf_dict = CONF._asdict()
     expected_dict = {
         'flag_key': 'flag_value',
         'other_flag': 'other_value',
@@ -110,68 +115,68 @@ class TestConf(unittest.TestCase):
         'string_default': 'default',
     }
     # assert first dict is a subset of second dict
-    self.assertLessEqual(six.viewitems(expected_dict), six.viewitems(conf_dict))
+    self.assertLessEqual(expected_dict.items(), conf_dict.items())
 
   def test_undeclared(self):
-    with self.assertRaises(conf.UndeclaredKeyError):
-      conf.undeclared  # pylint: disable=pointless-statement
+    with self.assertRaises(configuration.UndeclaredKeyError):
+      CONF.undeclared  # pylint: disable=pointless-statement
 
-  def test_weird_attribute(self):
+  def test_unset_protected_attribute(self):
     with self.assertRaises(AttributeError):
-      conf._dont_do_this  # pylint: disable=pointless-statement
+      CONF._dont_do_this  # pylint: disable=pointless-statement
     with self.assertRaises(AttributeError):
-      conf._dont_do_this_either = None
+      CONF._dont_do_this_either = None
 
   def test_cant_set_via_attribute(self):
     with self.assertRaises(AttributeError):
-      conf.overridden_key = None
+      CONF.overridden_key = None
 
   def test_multiple_declaration(self):
-    conf.declare('multiple')
-    with self.assertRaises(conf.KeyAlreadyDeclaredError):
-      conf.declare('multiple')
+    CONF.declare('multiple')
+    with self.assertRaises(configuration.KeyAlreadyDeclaredError):
+      CONF.declare('multiple')
 
   def test_invalid_key(self):
-    with self.assertRaises(conf.InvalidKeyError):
-      conf.declare('_invalid')
-    with self.assertRaises(conf.InvalidKeyError):
-      conf.declare('Invalid')
+    with self.assertRaises(configuration.InvalidKeyError):
+      CONF.declare('_invalid')
+    with self.assertRaises(configuration.InvalidKeyError):
+      CONF.declare('Invalid')
 
   def test_bad_config_file(self):
     with io.open(self.NOT_A_DICT, encoding='utf-8') as yamlfile:
-      conf._flags.config_file = yamlfile
-      with self.assertRaises(conf.ConfigurationInvalidError):
-        conf.reset()
+      CONF._flags.config_file = yamlfile
+      with self.assertRaises(configuration.ConfigurationInvalidError):
+        CONF.reset()
 
     with io.open(self.BAD_FORMAT, encoding='utf-8') as yamlfile:
-      conf._flags.config_file = yamlfile
-      with self.assertRaises(conf.ConfigurationInvalidError):
-        conf.reset()
+      CONF._flags.config_file = yamlfile
+      with self.assertRaises(configuration.ConfigurationInvalidError):
+        CONF.reset()
 
   def test_save_and_restore(self):
 
-    @conf.save_and_restore
+    @CONF.save_and_restore
     def modifies_conf():
-      conf.load(string_default='modified')
-      self.assertEqual('modified', conf.string_default)
+      CONF.load(string_default='modified')
+      self.assertEqual('modified', CONF.string_default)
 
-    self.assertEqual('default', conf.string_default)
+    self.assertEqual('default', CONF.string_default)
     modifies_conf()
-    self.assertEqual('default', conf.string_default)
+    self.assertEqual('default', CONF.string_default)
 
   def test_save_and_restore_kwargs(self):
 
-    @conf.save_and_restore(string_default='modified')
+    @CONF.save_and_restore(string_default='modified')
     def modifies_conf():
-      self.assertEqual('modified', conf.string_default)
+      self.assertEqual('modified', CONF.string_default)
 
-    self.assertEqual('default', conf.string_default)
+    self.assertEqual('default', CONF.string_default)
     modifies_conf()
-    self.assertEqual('default', conf.string_default)
+    self.assertEqual('default', CONF.string_default)
 
   def test_inject_positional_args(self):
 
-    @conf.inject_positional_args
+    @CONF.inject_positional_args
     def test_function(string_default, no_default, not_declared):
       self.assertEqual('default', string_default)
       self.assertEqual('passed_value', no_default)
@@ -181,7 +186,7 @@ class TestConf(unittest.TestCase):
 
   def test_inject_positional_args_overrides(self):
 
-    @conf.inject_positional_args
+    @CONF.inject_positional_args
     def test_function(string_default, none_default='new_default'):
       # Make sure when we pass a kwarg, it overrides the config value.
       self.assertEqual('overridden', string_default)
@@ -194,9 +199,90 @@ class TestConf(unittest.TestCase):
 
     class TestClass(object):
 
-      @conf.inject_positional_args
+      @CONF.inject_positional_args
       def __init__(self, string_default):
         self.string_default = string_default
 
     instance = TestClass()  # pylint: disable=no-value-for-parameter
     self.assertEqual('default', instance.string_default)  # pytype: disable=attribute-error
+
+
+class ConfigValueHolderTest(TestConfBase):
+
+  def test_raises_if_equals_attempted_on_holder(self):
+    with self.assertRaises(TypeError):
+      print(NUM_VALUE == 100)
+
+  def test_raises_if_bool_attempted_on_holder(self):
+    with self.assertRaises(TypeError):
+      if NUM_VALUE:
+        print('This should not print')
+
+  def test_name_property_access(self):
+    self.assertEqual(FLAG_KEY.name, 'flag_key')
+    self.assertEqual(JSON_TEST_KEY.name, 'json_test_key')
+    self.assertEqual(NONE_DEFAULT.name, 'none_default')
+
+  def test_default_property_access(self):
+    self.assertIsNone(NONE_DEFAULT.default)
+    self.assertEqual(STRING_DEFAULT.default, 'default')
+    with self.assertRaises(configuration.DefaultNotDefinedError):
+      print(JSON_TEST_KEY.default)
+
+  def test_value_access_on_unset_config_raises(self):
+    with self.assertRaises(configuration.UnsetKeyError):
+      print(NO_DEFAULT.value)
+
+  def test_value_access_on_unset_config_with_default_returns_default(self):
+    self.assertEqual(STRING_DEFAULT.value, 'default')
+    self.assertEqual(STRING_DEFAULT.value, getattr(CONF, STRING_DEFAULT.name))
+    self.assertEqual(STRING_DEFAULT.value, STRING_DEFAULT.default)
+
+  def test_set_config_property_access_success(self):
+    self.assertEqual(FLAG_KEY.value, 'flag_value')
+    with io.open(self.YAML_FILENAME, encoding='utf-8') as yaml_file:
+      CONF._flags.config_file = yaml_file
+      CONF.reset()
+    self.assertEqual(CONF.yaml_test_key, 'yaml_test_value')
+    self.assertEqual(YAML_TEST_KEY.value, CONF.yaml_test_key)
+
+
+class AModuleLevelClass:
+  """Classdef for testing bind_init_args."""
+
+  def __init__(self, arg1, arg2, default_arg=None):
+    self.arg1 = arg1
+    self.arg2 = arg2
+    self.default_arg = default_arg
+
+
+class BindInitArgsTest(TestConfBase):
+
+  class ANestedClass:
+    """Classdef for testing bind_init_args."""
+
+    def __init__(self, arg1, arg2, default_arg=None):
+      self.arg1 = arg1
+      self.arg2 = arg2
+      self.default_arg = default_arg
+
+  def _run_test_with_classdef(self, class_def):
+    new_def = configuration.bind_init_args(
+        class_def, FLAG_KEY, arg2=NONE_DEFAULT)
+    new_def_instance = new_def()  # pytype: disable=missing-parameter
+    self.assertIsInstance(new_def_instance, class_def)
+    self.assertEqual(new_def_instance.arg1, FLAG_KEY.value)  # pytype: disable=attribute-error  # kwargs-checking
+    self.assertEqual(new_def_instance.arg2, NONE_DEFAULT.value)  # pytype: disable=attribute-error  # kwargs-checking
+    self.assertIsNone(new_def_instance.default_arg)  # pytype: disable=attribute-error  # kwargs-checking
+    self.assertIn(class_def.__doc__, new_def_instance.__class__.__doc__)
+    self.assertEqual(new_def_instance.__class__.__module__,
+                     class_def.__module__)
+    self.assertIn(class_def.__name__, new_def_instance.__class__.__name__)
+    self.assertIn(class_def.__qualname__,
+                  new_def_instance.__class__.__qualname__)
+
+  def test_with_module_level_class_success(self):
+    self._run_test_with_classdef(AModuleLevelClass)
+
+  def test_with_nested_class_success(self):
+    self._run_test_with_classdef(self.ANestedClass)

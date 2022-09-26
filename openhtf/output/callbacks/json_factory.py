@@ -7,7 +7,6 @@ from typing import Any, BinaryIO, Callable, Dict, Iterator, Text, Union
 from openhtf.core import test_record
 from openhtf.output import callbacks
 from openhtf.util import data
-import six
 
 
 class TestRecordEncoder(json.JSONEncoder):
@@ -40,7 +39,7 @@ def convert_test_record_to_json(
   as_dict = data.convert_to_base_types(test_rec, json_safe=(not allow_nan))
   if inline_attachments:
     for phase, original_phase in zip(as_dict['phases'], test_rec.phases):
-      for name, attachment in six.iteritems(original_phase.attachments):
+      for name, attachment in original_phase.attachments.items():
         phase['attachments'][name] = attachment
   return as_dict
 

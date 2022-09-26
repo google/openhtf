@@ -2,20 +2,26 @@
  * Component representing the UserInput plug.
  */
 
-import { trigger } from '@angular/animations';
+import {trigger} from '@angular/animations';
+import {Component, ElementRef} from '@angular/core';
+import {Http} from '@angular/http';
 
-import { Component, ElementRef, SecurityContext } from '@angular/core';
-import { Http } from '@angular/http';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import {ConfigService} from '../core/config.service';
+import {FlashMessageService} from '../core/flash-message.service';
+import {washIn} from '../shared/animations';
 
-import { ConfigService } from '../core/config.service';
-import { FlashMessageService } from '../core/flash-message.service';
-import { washIn } from '../shared/animations';
+import {BasePlug} from './base-plug';
 
-import { BasePlug } from './base-plug';
+const PLUG_NAME = 'openhtf.plugs.user_input.UserInput';
 
-const plugName = 'openhtf.plugs.user_input.UserInput';
-
+/**
+ * @param default: the default prompt string for element.
+ * @param error: the error message for element.
+ * @param id: the identifier for the element.
+ * @param message: the message to display to the operator.
+ * @param text-input: the text input provided by the operator.
+ * @param image-url: url to embedded image in the element.
+ */
 export declare interface UserInputPlugState {
   default?: string;  // Used by ui_plugs.advanced_user_input.AdvancedUserInput.
   error?: string;    // Used by ui_plugs.advanced_user_input.AdvancedUserInput.
@@ -25,6 +31,10 @@ export declare interface UserInputPlugState {
   'image-url': string;
 }
 
+/**
+ * @param lastPromptId: identifier of last prompt.
+ * @param lastPromptHtml: html contents of last prompt.
+ */
 @Component({
   animations: [trigger('animateIn', washIn)],
   selector: 'htf-user-input-plug',
@@ -37,8 +47,8 @@ export class UserInputPlugComponent extends BasePlug {
 
   constructor(
       config: ConfigService, http: Http, flashMessage: FlashMessageService,
-      private ref: ElementRef, private sanitizer: DomSanitizer) {
-    super(plugName, config, http, flashMessage);
+      private ref: ElementRef) {
+    super(PLUG_NAME, config, http, flashMessage);
   }
 
   get error() {
@@ -50,10 +60,9 @@ export class UserInputPlugComponent extends BasePlug {
     // Run this when a new prompt is set.
     if (this.lastPromptId !== state.id) {
       this.lastPromptId = state.id;
-      const safeHtml =
-          this.sanitizer.sanitize(SecurityContext.HTML, state.message)
-              .replace(/&#10;/g, '<br>');  // Convert newlines.
-      this.lastPromptHtml = this.sanitizer.bypassSecurityTrustHtml(safeHtml);
+      const convertedHtml =
+          state.message.replace(/&#10;/g, '<br>');  // Convert newlines.
+      this.lastPromptHtml = convertedHtml;
       this.focusSelf();
       if (state.default) {
         this.setResponse(state.default);

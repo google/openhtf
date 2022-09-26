@@ -22,7 +22,6 @@ import functools
 import types
 
 from openhtf.core import base_plugs
-import six
 
 
 def short_repr(obj, max_len=40):
@@ -37,6 +36,13 @@ def short_repr(obj, max_len=40):
   if len(obj_repr) <= max_len:
     return obj_repr
   return '<{} of length {}>'.format(type(obj).__name__, len(obj_repr))
+
+
+class DeviceWrappingPlugNotFullyInitializedError(base_plugs.InvalidPlugError):
+  """Raised if DeviceWrappingPlug instances do not have _device set.
+
+  Generally a by a subclass __init__ failing to call the superclass __init__.
+  """
 
 
 class DeviceWrappingPlug(base_plugs.BasePlug):
@@ -89,6 +95,12 @@ class DeviceWrappingPlug(base_plugs.BasePlug):
       setattr(self._device, name, value)
 
   def __getattr__(self, attr):
+    if attr == '_device':
+      # _device was not found in the instance attributes.
+      raise DeviceWrappingPlugNotFullyInitializedError(
+          f'{type(self)} must set _device. This is genally done in __init__ by '
+          'calling super().__init__(device)')
+
     if self._device is None:
       raise base_plugs.InvalidPlugError(
           'DeviceWrappingPlug instances must set the _device attribute.')
@@ -104,7 +116,7 @@ class DeviceWrappingPlug(base_plugs.BasePlug):
       """Wraps a callable with a logging statement."""
       args_strings = tuple(short_repr(arg) for arg in args)
       kwargs_strings = tuple(('%s=%s' % (key, short_repr(val))
-                              for key, val in six.iteritems(kwargs)))
+                              for key, val in kwargs.items()))
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
         log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))

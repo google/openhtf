@@ -15,17 +15,19 @@ import socket
 import threading
 import time
 import types
+from typing import Optional, Union
 
 import openhtf
 from openhtf.output.servers import pub_sub
 from openhtf.output.servers import web_gui_server
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import multicast
 from openhtf.util import timeouts
-import six
 import sockjs.tornado
+
+CONF = configuration.CONF
 
 STATION_SERVER_TYPE = 'station'
 
@@ -40,21 +42,21 @@ _DEFAULT_FRONTEND_THROTTLE_S = 0.15
 _WAIT_FOR_ANY_EVENT_POLL_S = 0.05
 _WAIT_FOR_EXECUTING_TEST_POLL_S = 0.1
 
-conf.declare(
+CONF.declare(
     'frontend_throttle_s',
     default_value=_DEFAULT_FRONTEND_THROTTLE_S,
     description=('Min wait time between successive updates to the '
                  'frontend.'))
-conf.declare(
+CONF.declare(
     'station_server_port',
     default_value=0,
     description=('Port on which to serve the app. If set to zero (the '
                  'default) then an arbitrary port will be chosen.'))
 
 # These have default values in openhtf.util.multicast.py.
-conf.declare('station_discovery_address')
-conf.declare('station_discovery_port')
-conf.declare('station_discovery_ttl')
+CONF.declare('station_discovery_address')
+CONF.declare('station_discovery_port')
+CONF.declare('station_discovery_ttl')
 
 
 def _get_executing_test():
@@ -70,7 +72,7 @@ def _get_executing_test():
     test: The test that was executing when this function was called, or None.
     test_state: The state of the executing test, or None.
   """
-  tests = list(six.itervalues(openhtf.Test.TEST_INSTANCES))
+  tests = list(openhtf.Test.TEST_INSTANCES.values())
 
   if not tests:
     return None, None
@@ -171,7 +173,7 @@ class StationWatcher(threading.Thread):
         _LOG.exception('Error in station watcher: %s', error)
         time.sleep(1)
 
-  @functions.call_at_most_every(float(conf.frontend_throttle_s))
+  @functions.call_at_most_every(float(CONF.frontend_throttle_s))
   def _poll_for_update(self):
     """Call the callback with the current test state, then wait for a change."""
     test, test_state = _get_executing_test()
@@ -238,7 +240,7 @@ class DashboardPubSub(sockjs.tornado.SockJSConnection):
     host_port = '%s:%s' % (host, cls.port)
     return {
         host_port: {
-            'station_id': conf.station_id,  # From openhtf.core.test_state.
+            'station_id': CONF.station_id,  # From openhtf.core.test_state.
             'host': host,
             'port': cls.port,
             'status': 'ONLINE',
@@ -359,7 +361,7 @@ class PhasesHandler(BaseTestHandler):
 
     phase_descriptors = [
         dict(id=id(phase), **data.convert_to_base_types(phase))
-        for phase in test.descriptor.phase_group
+        for phase in test.descriptor.phase_sequence.all_phases()
     ]
 
     # Wrap value in a dict because writing a list directly is prohibited.
@@ -501,9 +503,9 @@ class StationMulticast(multicast.MulticastListener):
   def __init__(self, station_server_port):
     # These have default values in openhtf.util.multicast.py.
     kwargs = {
-        attr: conf['station_discovery_%s' % attr]
+        attr: CONF['station_discovery_%s' % attr]
         for attr in ('address', 'port', 'ttl')
-        if 'station_discovery_%s' % attr in conf
+        if 'station_discovery_%s' % attr in CONF
     }
     super(StationMulticast, self).__init__(self._make_message, **kwargs)
     self.station_server_port = station_server_port
@@ -530,7 +532,7 @@ class StationMulticast(multicast.MulticastListener):
     return json.dumps({
         'cell': cell,
         'port': self.station_server_port,
-        'station_id': conf.station_id,  # From openhtf.core.test_state.
+        'station_id': CONF.station_id,  # From openhtf.core.test_state.
         'test_description': test_description,
         'test_name': test_name,
     })
@@ -557,7 +559,9 @@ class StationServer(web_gui_server.WebGuiServer):
       test.execute()
   """
 
-  def __init__(self, history_path=None):
+  def __init__(
+      self,
+      history_path: Optional[Union[str, bytes, os.PathLike]] = None) -> None:
     # Disable tornado's logging.
     # TODO(kenadia): Enable these logs if verbosity flag is at least -vvv.
     #     I think this will require changing how StoreRepsInModule works.
@@ -569,7 +573,7 @@ class StationServer(web_gui_server.WebGuiServer):
       tornado_logger.addHandler(logging.NullHandler())
 
     # Bind port early so that the correct port number can be used in the routes.
-    sockets, port = web_gui_server.bind_port(int(conf.station_server_port))
+    sockets, port = web_gui_server.bind_port(int(CONF.station_server_port))
 
     # Set up the station watcher.
     station_watcher = StationWatcher(StationPubSub.publish_update)
@@ -613,7 +617,7 @@ class StationServer(web_gui_server.WebGuiServer):
         'server_type': STATION_SERVER_TYPE,
     }
 
-  def run(self):
+  def run(self) -> None:
     _LOG.info('Announcing station server via multicast on %s:%s',
               self.station_multicast.address, self.station_multicast.port)
     self.station_multicast.start()
@@ -623,13 +627,13 @@ class StationServer(web_gui_server.WebGuiServer):
                   host=socket.gethostname(), port=self.port))
     super(StationServer, self).run()
 
-  def stop(self):
+  def stop(self) -> None:
     _LOG.info('Stopping station server.')
     super(StationServer, self).stop()
     _LOG.info('Stopping multicast.')
     self.station_multicast.stop(timeout_s=0)
 
-  def publish_final_state(self, test_record):
+  def publish_final_state(self, test_record: openhtf.TestRecord) -> None:
     """Test output callback publishing a final state from the test record."""
     StationPubSub.publish_test_record(test_record)
 

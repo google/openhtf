@@ -8,12 +8,15 @@ with non-unique names.  Approach taken is to append a _X to the names.
 """
 
 import collections
+import dataclasses
+import datetime
 import itertools
 import json
 import logging
 import numbers
 import os
 import sys
+from typing import Mapping, Optional, Tuple
 
 from openhtf.core import measurements
 from openhtf.core import test_record as htf_test_record
@@ -24,11 +27,6 @@ from openhtf.util import data as htf_data
 from openhtf.util import units
 from openhtf.util import validators
 
-
-from past.builtins import unicode
-import six
-
-
 TEST_RECORD_ATTACHMENT_NAME = 'OpenHTF_record.json'
 
 #  To be lazy loaded by _LazyLoadUnitsByCode when needed.
@@ -37,6 +35,7 @@ UNITS_BY_CODE = {}
 # Map test run Status (proto) name to measurement Outcome (python) enum's and
 # the reverse.  Note: there is data lost in converting an UNSET/PARTIALLY_SET to
 # an ERROR so we can't completely reverse the transformation.
+
 MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME = {
     measurements.Outcome.PASS: 'PASS',
     measurements.Outcome.FAIL: 'FAIL',
@@ -45,9 +44,37 @@ MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME = {
 }
 TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME = {
     'PASS': measurements.Outcome.PASS,
+    'MARGINAL_PASS': measurements.Outcome.PASS,
     'FAIL': measurements.Outcome.FAIL,
     'ERROR': measurements.Outcome.UNSET
 }
+
+_GIBI_BYTE_TO_BASE = 1 << 30
+MAX_TOTAL_ATTACHMENT_BYTES = int(1.9 * _GIBI_BYTE_TO_BASE)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass(eq=True, frozen=True)  # Ensures __hash__ is generated.
+class AttachmentCacheKey:
+  name: str
+  size: int
+
+
+AttachmentCacheT = Mapping[AttachmentCacheKey, mfg_event_pb2.EventAttachment]
+
+
+def _measurement_outcome_to_test_run_status_name(outcome: measurements.Outcome,
+                                                 marginal: bool) -> str:
+  """Returns the test run status name given the outcome and marginal args."""
+  return ('MARGINAL_PASS'
+          if marginal else MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[outcome])
+
+
+def _test_run_status_name_to_measurement_outcome_and_marginal(
+    name: str) -> Tuple[measurements.Outcome, bool]:
+  """Returns the outcome and marginal args given the test run status name."""
+  return TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME[name], 'MARGINAL' in name
 
 
 def _lazy_load_units_by_code():
@@ -60,7 +87,10 @@ def _lazy_load_units_by_code():
     UNITS_BY_CODE[unit.code] = unit
 
 
-def mfg_event_from_test_record(record):
+def mfg_event_from_test_record(
+    record: htf_test_record.TestRecord,
+    attachment_cache: Optional[AttachmentCacheT] = None,
+) -> mfg_event_pb2.MfgEvent:
   """Convert an OpenHTF TestRecord to an MfgEvent proto.
 
   Most fields are copied over directly and some are pulled out of metadata
@@ -79,6 +109,8 @@ def mfg_event_from_test_record(record):
 
   Args:
     record: An OpenHTF TestRecord.
+    attachment_cache: Provides a lookup to get EventAttachment protos for
+      already uploaded (or converted) attachments.
 
   Returns:
     An MfgEvent proto representing the given test record.
@@ -96,14 +128,16 @@ def mfg_event_from_test_record(record):
     for assembly_event in record.metadata['assembly_events']:
       mfg_event.assembly_events.add().CopyFrom(assembly_event)
   convert_multidim_measurements(record.phases)
-  phase_copier = PhaseCopier(phase_uniquizer(record.phases))
+  phase_copier = PhaseCopier(phase_uniquizer(record.phases), attachment_cache)
   phase_copier.copy_measurements(mfg_event)
-  phase_copier.copy_attachments(mfg_event)
+  if not phase_copier.copy_attachments(mfg_event):
+    mfg_event.test_run_type = mfg_event_pb2.TEST_RUN_PARTIAL
 
   return mfg_event
 
 
-def _populate_basic_data(mfg_event, record):
+def _populate_basic_data(mfg_event: mfg_event_pb2.MfgEvent,
+                         record: htf_test_record.TestRecord) -> None:
   """Copies data from the OpenHTF TestRecord to the MfgEvent proto."""
   # TODO(openhtf-team):
   #   * Missing in proto: set run name from metadata.
@@ -117,10 +151,12 @@ def _populate_basic_data(mfg_event, record):
   mfg_event.end_time_ms = record.end_time_millis
   mfg_event.tester_name = record.station_id
   mfg_event.test_name = record.metadata.get('test_name') or record.station_id
-  mfg_event.test_status = test_runs_converter.OUTCOME_MAP[record.outcome]
   mfg_event.operator_name = record.metadata.get('operator_name', '')
   mfg_event.test_version = str(record.metadata.get('test_version', ''))
   mfg_event.test_description = record.metadata.get('test_description', '')
+  mfg_event.test_status = (
+      test_runs_pb2.MARGINAL_PASS
+      if record.marginal else test_runs_converter.OUTCOME_MAP[record.outcome])
 
   # Populate part_tags.
   mfg_event.part_tags.extend(record.metadata.get('part_tags', []))
@@ -174,15 +210,20 @@ def _convert_object_to_json(obj):  # pylint: disable=missing-function-docstring
   # measurement or in the logs, we have to be careful and convert everything
   # to unicode, merge, then encode to UTF-8 to put it into the proto.
 
-  def bytes_handler(o):
+  def unsupported_type_handler(o):
     # For bytes, JSONEncoder will fallback to this function to convert to str.
-    if six.PY3 and isinstance(o, six.binary_type):
-      return six.ensure_str(o, encoding='utf-8', errors='replace')
+    if isinstance(o, bytes):
+      return o.decode(encoding='utf-8', errors='replace')
+    elif isinstance(o, (datetime.date, datetime.datetime)):
+      return o.isoformat()
     else:
       raise TypeError(repr(o) + ' is not JSON serializable')
 
   json_encoder = json.JSONEncoder(
-      sort_keys=True, indent=2, ensure_ascii=False, default=bytes_handler)
+      sort_keys=True,
+      indent=2,
+      ensure_ascii=False,
+      default=unsupported_type_handler)
   return json_encoder.encode(obj).encode('utf-8', errors='replace')
 
 
@@ -276,7 +317,7 @@ def multidim_measurement_to_attachment(name, measurement):
     if d.suffix is None:
       suffix = u''
     else:
-      suffix = six.ensure_text(d.suffix)
+      suffix = d.suffix
     dims.append({
         'uom_suffix': suffix,
         'uom_code': d.code,
@@ -284,16 +325,18 @@ def multidim_measurement_to_attachment(name, measurement):
     })
   # Refer to the module docstring for the expected schema.
   dimensioned_measured_value = measurement.measured_value
-  value = (sorted(dimensioned_measured_value.value, key=lambda x: x[0])
-           if dimensioned_measured_value.is_value_set else None)
-  outcome_str = MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[measurement.outcome]
+  value = (
+      sorted(dimensioned_measured_value.value, key=lambda x: x[0])
+      if dimensioned_measured_value.is_value_set else None)
+  outcome_str = _measurement_outcome_to_test_run_status_name(
+      measurement.outcome, measurement.marginal)
   data = _convert_object_to_json({
       'outcome': outcome_str,
       'name': name,
       'dimensions': dims,
       'value': value,
   })
-  attachment = htf_test_record.Attachment(data, test_runs_pb2.MULTIDIM_JSON)
+  attachment = htf_test_record.Attachment(data, test_runs_pb2.MULTIDIM_JSON)  # pytype: disable=wrong-arg-types  # gen-stub-imports
 
   return attachment
 
@@ -325,19 +368,24 @@ def convert_multidim_measurements(all_phases):
 class PhaseCopier(object):
   """Copies measurements and attachments to an MfgEvent."""
 
-  def __init__(self, all_phases):
+  def __init__(self,
+               all_phases,
+               attachment_cache: Optional[AttachmentCacheT] = None):
     self._phases = all_phases
+    self._using_partial_uploads = attachment_cache is not None
+    self._attachment_cache = (
+        attachment_cache if self._using_partial_uploads else {})
 
   def copy_measurements(self, mfg_event):
     for phase in self._phases:
       for name, measurement in sorted(phase.measurements.items()):
         # Multi-dim measurements should already have been removed.
         assert measurement.dimensions is None
-        self._copy_unidimensional_measurement(
-            phase, name, measurement, mfg_event)
+        self._copy_unidimensional_measurement(phase, name, measurement,
+                                              mfg_event)
 
-  def _copy_unidimensional_measurement(
-      self, phase, name, measurement, mfg_event):
+  def _copy_unidimensional_measurement(self, phase, name, measurement,
+                                       mfg_event):
     """Copy uni-dimensional measurements to the MfgEvent."""
     mfg_measurement = mfg_event.measurement.add()
 
@@ -361,8 +409,8 @@ class PhaseCopier(object):
 
     # Copy measurement value.
     measured_value = measurement.measured_value
-    status_str = MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[
-        measurement.outcome]
+    status_str = _measurement_outcome_to_test_run_status_name(
+        measurement.outcome, measurement.marginal)
     mfg_measurement.status = test_runs_pb2.Status.Value(status_str)
     if not measured_value.is_value_set:
       return
@@ -371,12 +419,7 @@ class PhaseCopier(object):
     if isinstance(value, numbers.Number):
       mfg_measurement.numeric_value = float(value)
     elif isinstance(value, bytes):
-      # text_value expects unicode or ascii-compatible strings, so we must
-      # 'decode' it, even if it's actually just garbage bytestring data.
-      mfg_measurement.text_value = unicode(value, errors='replace')  # pytype: disable=wrong-keyword-args
-    elif isinstance(value, unicode):
-      # Don't waste time and potential errors decoding unicode.
-      mfg_measurement.text_value = value
+      mfg_measurement.text_value = value.decode(errors='replace')
     else:
       # Coercing to string.
       mfg_measurement.text_value = str(value)
@@ -388,16 +431,58 @@ class PhaseCopier(object):
           mfg_measurement.numeric_minimum = float(validator.minimum)
         if validator.maximum is not None:
           mfg_measurement.numeric_maximum = float(validator.maximum)
+        if validator.marginal_minimum is not None:
+          mfg_measurement.numeric_marginal_minimum = float(
+              validator.marginal_minimum)
+        if validator.marginal_maximum is not None:
+          mfg_measurement.numeric_marginal_maximum = float(
+              validator.marginal_maximum)
       elif isinstance(validator, validators.RegexMatcher):
         mfg_measurement.expected_text = validator.regex
       else:
         mfg_measurement.description += '\nValidator: ' + str(validator)
 
-  def copy_attachments(self, mfg_event):
+  def copy_attachments(self, mfg_event: mfg_event_pb2.MfgEvent) -> bool:
+    """Copies attachments into the MfgEvent from the configured phases.
+
+    If partial uploads are in use (indicated by configuring this class instance
+    with an Attachments cache), this function will exit early if the total
+    attachment data size exceeds a reasonable threshold to avoid the 2 GB
+    serialized proto limit.
+
+    Args:
+      mfg_event: The MfgEvent to copy into.
+
+    Returns:
+      True if all attachments are copied and False if only some attachments
+      were copied (only possible when partial uploads are being used).
+    """
+    value_copied_attachment_sizes = []
+    skipped_attachment_names = []
     for phase in self._phases:
       for name, attachment in sorted(phase.attachments.items()):
-        self._copy_attachment(name, attachment.data, attachment.mimetype,
-                              mfg_event)
+        size = attachment.size
+        attachment_cache_key = AttachmentCacheKey(name, size)
+        if attachment_cache_key in self._attachment_cache:
+          mfg_event.attachment.append(
+              self._attachment_cache[attachment_cache_key])
+        else:
+          at_least_one_attachment_for_partial_uploads = (
+              self._using_partial_uploads and value_copied_attachment_sizes)
+          if at_least_one_attachment_for_partial_uploads and (
+              sum(value_copied_attachment_sizes) + size >
+              MAX_TOTAL_ATTACHMENT_BYTES):
+            skipped_attachment_names.append(name)
+          else:
+            value_copied_attachment_sizes.append(size)
+            self._copy_attachment(name, attachment.data, attachment.mimetype,
+                                  mfg_event)
+    if skipped_attachment_names:
+      _LOGGER.info(
+          'Skipping upload of %r attachments for this cycle. '
+          'To avoid max proto size issues.', skipped_attachment_names)
+      return False
+    return True
 
   def _copy_attachment(self, name, data, mimetype, mfg_event):
     """Copies an attachment to mfg_event."""
@@ -430,7 +515,7 @@ def attachment_to_multidim_measurement(attachment, name=None):
   Args:
     attachment: an `openhtf.test_record.Attachment` from a multi-dim.
     name: an optional name for the measurement.  If not provided will use the
-     name included in the attachment.
+      name included in the attachment.
 
   Returns:
     An multi-dim `openhtf.Measurement`.
@@ -453,8 +538,13 @@ def attachment_to_multidim_measurement(attachment, name=None):
       attachment_outcome_str = None
 
   # Convert test status outcome str to measurement outcome
-  outcome = TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME.get(
-      attachment_outcome_str)
+  if attachment_outcome_str:
+    outcome, marginal = (
+        _test_run_status_name_to_measurement_outcome_and_marginal(
+            attachment_outcome_str))
+  else:
+    outcome = None
+    marginal = False
 
   # convert dimensions into htf.Dimensions
   _lazy_load_units_by_code()
@@ -476,9 +566,7 @@ def attachment_to_multidim_measurement(attachment, name=None):
 
   # created dimensioned_measured_value and populate with values.
   measured_value = measurements.DimensionedMeasuredValue(
-      name=name,
-      num_dimensions=len(dimensions)
-  )
+      name=name, num_dimensions=len(dimensions))
   for row in attachment_values:
     coordinates = tuple(row[:-1])
     val = row[-1]
@@ -489,6 +577,6 @@ def attachment_to_multidim_measurement(attachment, name=None):
       units=units_,
       dimensions=tuple(dimensions),
       measured_value=measured_value,
-      outcome=outcome
-  )
+      outcome=outcome,
+      marginal=marginal)
   return measurement

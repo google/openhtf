@@ -18,26 +18,26 @@ of PhaseDescriptor class.
 
 """
 
+import collections
 import enum
 import inspect
 import pdb
-from typing import Any, Callable, Dict, List, Optional, Text, TYPE_CHECKING, Type, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Text, TYPE_CHECKING, Type, Union
 
 import attr
+import inflection
 
 import openhtf
 from openhtf import util
 from openhtf.core import base_plugs
+from openhtf.core import diagnoses_lib
+from openhtf.core import measurements as core_measurements
 from openhtf.core import phase_nodes
 from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
 
-import six
-
 if TYPE_CHECKING:
-  from openhtf.core import diagnoses_lib  # pylint: disable=g-import-not-at-top
-  from openhtf.core import measurements as core_measurements  # pylint: disable=g-import-not-at-top
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
 
 
@@ -72,6 +72,15 @@ class PhaseResult(enum.Enum):
   FAIL_SUBTEST = 'FAIL_SUBTEST'
 
 
+@enum.unique
+class PhaseNameCase(enum.Enum):
+  """Options for formatting casing for phase names."""
+  # Does not modify case for phase name.
+  KEEP = 'KEEP'
+  # Changes phase name case to CamelCase.
+  CAMEL = 'CAMEL'
+
+
 PhaseReturnT = Optional[PhaseResult]
 PhaseCallableT = Callable[..., PhaseReturnT]
 PhaseCallableOrNodeT = Union[PhaseCallableT, phase_nodes.PhaseNode]
@@ -93,11 +102,15 @@ class PhaseOptions(object):
       otherwise only the TestApi will be passed in.  This is useful if a phase
       needs to wrap another phase for some reason, as PhaseDescriptors can only
       be invoked with a TestState instance.
+    force_repeat: If True, force the phase to repeat up to repeat_limit times.
+    repeat_on_timeout:  If consider repeat on phase timeout, default is No.
     repeat_limit:  Maximum number of repeats.  None indicates a phase will be
       repeated infinitely as long as PhaseResult.REPEAT is returned.
     run_under_pdb: If True, run the phase under the Python Debugger (pdb).  When
       setting this option, increase the phase timeout as well because the
       timeout will still apply when under the debugger.
+    phase_name_case: Case formatting options for phase name.
+    stop_on_measurement_fail: Whether to stop the test if any measurements fail.
   Example Usages: @PhaseOptions(timeout_s=1)
     def PhaseFunc(test): pass  @PhaseOptions(name='Phase({port})')
     def PhaseFunc(test, port, other_info): pass
@@ -107,15 +120,19 @@ class PhaseOptions(object):
   timeout_s = attr.ib(type=Optional[TimeoutT], default=None)
   run_if = attr.ib(type=Optional[Callable[[], bool]], default=None)
   requires_state = attr.ib(type=bool, default=False)
+  force_repeat = attr.ib(type=bool, default=False)
+  repeat_on_timeout = attr.ib(type=bool, default=False)
   repeat_limit = attr.ib(type=Optional[int], default=None)
   run_under_pdb = attr.ib(type=bool, default=False)
+  phase_name_case = attr.ib(type=PhaseNameCase, default=PhaseNameCase.KEEP)
+  stop_on_measurement_fail = attr.ib(type=bool, default=False)
 
   def format_strings(self, **kwargs: Any) -> 'PhaseOptions':
     """String substitution of name."""
     return data.attr_copy(self, name=util.format_string(self.name, kwargs))
 
   def update(self, **kwargs: Any) -> None:
-    for key, value in six.iteritems(kwargs):
+    for key, value in kwargs.items():
       setattr(self, key, value)
 
   def __call__(self, phase_func: PhaseT) -> 'PhaseDescriptor':
@@ -128,10 +145,17 @@ class PhaseOptions(object):
       phase.options.run_if = self.run_if
     if self.requires_state:
       phase.options.requires_state = self.requires_state
+    if self.repeat_on_timeout:
+      phase.options.repeat_on_timeout = self.repeat_on_timeout
     if self.repeat_limit is not None:
       phase.options.repeat_limit = self.repeat_limit
     if self.run_under_pdb:
       phase.options.run_under_pdb = self.run_under_pdb
+    if self.phase_name_case == PhaseNameCase.CAMEL:
+      name = phase.name if phase.options.name is None else phase.options.name
+      phase.options.name = inflection.camelize(name)
+    if self.stop_on_measurement_fail:
+      phase.options.stop_on_measurement_fail = self.stop_on_measurement_fail
     return phase
 
 
@@ -157,8 +181,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
   func = attr.ib(type=PhaseCallableT)
   options = attr.ib(type=PhaseOptions, factory=PhaseOptions)
   plugs = attr.ib(type=List[base_plugs.PhasePlug], factory=list)
-  measurements = attr.ib(
-      type=List['core_measurements.Measurement'], factory=list)
+  measurements = attr.ib(type=List[core_measurements.Measurement], factory=list)
   diagnosers = attr.ib(
       type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list)
   extra_kwargs = attr.ib(type=Dict[Text, Any], factory=dict)
@@ -196,7 +219,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     return retval
 
   def _asdict(self) -> Dict[Text, Any]:
-    ret = attr.asdict(self, filter=attr.filters.exclude('func'))
+    ret = attr.asdict(self, filter=attr.filters.exclude('func'))  # pytype: disable=wrong-arg-types  # attr-stubs
     ret.update(name=self.name, doc=self.doc)
     return ret
 
@@ -220,14 +243,10 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     Returns:
       Updated PhaseDescriptor.
     """
-    if six.PY3:
-      argspec = inspect.getfullargspec(self.func)
-      argspec_keywords = argspec.varkw
-    else:
-      argspec = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
-      argspec_keywords = argspec.keywords
+    argspec = inspect.getfullargspec(self.func)
+    argspec_keywords = argspec.varkw
     known_arguments = {}
-    for key, arg in six.iteritems(kwargs):
+    for key, arg in kwargs.items():
       if key in argspec.args or argspec_keywords:
         known_arguments[key] = arg
 
@@ -258,7 +277,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     plugs_by_name = {plug.name: plug for plug in self.plugs}
     new_plugs = {}
 
-    for name, sub_class in six.iteritems(subplugs):
+    for name, sub_class in subplugs.items():
       original_plug = plugs_by_name.get(name)
       accept_substitute = True
       if original_plug is None:
@@ -315,17 +334,18 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     Returns:
       The return value from calling the underlying function.
     """
-    kwargs = dict(self.extra_kwargs)
+    kwargs = {}
+    arg_info = inspect.getfullargspec(self.func)
+    keywords = arg_info.varkw
+    if arg_info.defaults is not None:
+      for arg_name, arg_value in zip(arg_info.args[-len(arg_info.defaults):],
+                                     arg_info.defaults):
+        kwargs[arg_name] = arg_value
+    kwargs.update(self.extra_kwargs)
     kwargs.update(
         running_test_state.plug_manager.provide_plugs(
             (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
 
-    if six.PY3:
-      arg_info = inspect.getfullargspec(self.func)
-      keywords = arg_info.varkw
-    else:
-      arg_info = inspect.getargspec(self.func)  # pylint: disable=deprecated-method
-      keywords = arg_info.keywords
     # Pass in test_api if the phase takes *args, or **kwargs with at least 1
     # positional, or more positional args than we have keyword args.
     if arg_info.varargs or (keywords and len(arg_info.args) >= 1) or (len(
@@ -337,10 +357,144 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
         args.append(running_test_state.test_api)
 
       if self.options.run_under_pdb:
-        return pdb.runcall(self.func, *args, **kwargs)
+        phase_result = pdb.runcall(self.func, *args, **kwargs)
       else:
-        return self.func(*args, **kwargs)
-    if self.options.run_under_pdb:
-      return pdb.runcall(self.func, **kwargs)
+        phase_result = self.func(*args, **kwargs)
+
+    elif self.options.run_under_pdb:
+      phase_result = pdb.runcall(self.func, **kwargs)
     else:
-      return self.func(**kwargs)
+      phase_result = self.func(**kwargs)
+
+    # Override the phase result if the user wants to treat ANY failed
+    # measurement of this phase as a test-stopping failure.
+    if self.options.stop_on_measurement_fail:
+      # Note: The measurement definitions do NOT have the outcome populated.
+      for measurement in self.measurements:
+        if (running_test_state.test_api.get_measurement(
+            measurement.name).outcome != core_measurements.Outcome.PASS):
+          phase_result = PhaseResult.STOP
+          break
+
+    return phase_result
+
+
+def measures(*measurements: Union[Text, core_measurements.Measurement],
+             **kwargs: Any) -> Callable[[PhaseT], PhaseDescriptor]:
+  """Creates decorators to declare measurements for phases.
+
+  See the measurements module docstring for examples of usage.
+
+  Args:
+    *measurements: Measurement objects to declare, or a string name from which
+      to create a Measurement.
+    **kwargs: Keyword arguments to pass to Measurement constructor if we're
+      constructing one.  Note that if kwargs are provided, the length of
+      measurements must be 1, and that value must be a string containing the
+      measurement name.  For valid kwargs, see the definition of the Measurement
+      class.
+
+  Raises:
+    InvalidMeasurementTypeError: When the measurement is not defined correctly.
+    ValueError: If a measurement already has an outcome.
+    DuplicateNameError: If a measurement's name is already in use.
+
+  Returns:
+    A decorator that declares the measurement(s) for the decorated phase.
+  """
+
+  def _maybe_make(
+      meas: Union[Text, core_measurements.Measurement]
+  ) -> core_measurements.Measurement:
+    """Turn strings into Measurement objects if necessary."""
+    if isinstance(meas, core_measurements.Measurement):
+      return meas
+    elif isinstance(meas, str):
+      return core_measurements.Measurement(meas, **kwargs)
+    raise core_measurements.InvalidMeasurementTypeError(
+        'Expected Measurement or string', meas)
+
+  # In case we're declaring a measurement inline, we can only declare one.
+  if kwargs and len(measurements) != 1:
+    raise core_measurements.InvalidMeasurementTypeError(
+        'If @measures kwargs are provided, a single measurement name must be '
+        'provided as a positional arg first.')
+
+  # Unlikely, but let's make sure we don't allow overriding initial outcome.
+  if 'outcome' in kwargs:
+    raise ValueError('Cannot specify outcome in measurement declaration!')
+
+  measurements = [_maybe_make(meas) for meas in measurements]
+
+  # 'measurements' is guaranteed to be a list of Measurement objects here.
+  def decorate(wrapped_phase: PhaseT) -> PhaseDescriptor:
+    """Phase decorator to be returned."""
+    phase = PhaseDescriptor.wrap_or_copy(wrapped_phase)
+    duplicate_names = (
+        set(m.name for m in measurements)
+        & set(m.name for m in phase.measurements))
+    if duplicate_names:
+      raise core_measurements.DuplicateNameError('Measurement names duplicated',
+                                                 duplicate_names)
+
+    phase.measurements.extend(measurements)
+    return phase
+
+  return decorate
+
+
+class DuplicateResultError(Exception):
+  """Different DiagResultEnum instances define the same value."""
+
+
+def check_for_duplicate_results(
+    phase_iterator: Iterator[PhaseDescriptor],
+    test_diagnosers: Sequence[diagnoses_lib.BaseTestDiagnoser]) -> None:
+  """Check for any results with the same enum value in different ResultTypes.
+
+  Args:
+    phase_iterator: iterator over the phases to check.
+    test_diagnosers: list of test level diagnosers.
+
+  Raises:
+    DuplicateResultError: when duplicate enum values are found.
+  """
+  all_result_enums: Set[Type[diagnoses_lib.DiagResultEnum]] = set()
+  for phase in phase_iterator:
+    for phase_diag in phase.diagnosers:
+      all_result_enums.add(phase_diag.result_type)
+  for test_diag in test_diagnosers:
+    all_result_enums.add(test_diag.result_type)
+
+  values_to_enums = collections.defaultdict(list)
+  for enum_cls in all_result_enums:
+    # pytype incorrectly determines that the enum cannot be iterated over. Using
+    # __members__.values() allows direct type inference.
+    for entry in enum_cls.__members__.values():
+      values_to_enums[entry.value].append(enum_cls)
+
+  duplicates: List[str] = []
+  for result_value, enum_classes in sorted(values_to_enums.items()):
+    if len(enum_classes) > 1:
+      duplicates.append('Value "{}" defined by {}'.format(
+          result_value, enum_classes))
+  if not duplicates:
+    return
+  raise DuplicateResultError('Duplicate DiagResultEnum values: {}'.format(
+      '\n'.join(duplicates)))
+
+
+def diagnose(
+    *diagnosers: diagnoses_lib.BasePhaseDiagnoser
+) -> Callable[[PhaseT], PhaseDescriptor]:
+  """Decorator to add diagnosers to a PhaseDescriptor."""
+  diagnoses_lib.check_diagnosers(diagnosers, diagnoses_lib.BasePhaseDiagnoser)
+  diags = list(diagnosers)
+
+  def decorate(wrapped_phase: PhaseT) -> PhaseDescriptor:
+    """Phase decorator to be returned."""
+    phase = PhaseDescriptor.wrap_or_copy(wrapped_phase)
+    phase.diagnosers.extend(diags)
+    return phase
+
+  return decorate

@@ -14,30 +14,27 @@
 """Example plugs for OpenHTF."""
 
 from openhtf.core import base_plugs
-from openhtf.util import conf
+from openhtf.util import configuration
 
-conf.declare(
+CONF = configuration.CONF
+
+EXAMPLE_PLUG_INCREMENT_SIZE = CONF.declare(
     'example_plug_increment_size',
     default_value=1,
     description='increment constant for example plug.')
 
 
-class ExamplePlug(base_plugs.BasePlug):  # pylint: disable=no-init
+class ExamplePlug(base_plugs.BasePlug):
   """Example of a simple plug.
 
   This plug simply keeps a value and increments it each time increment() is
   called.  You'll notice a few paradigms here:
 
-    - @conf.inject_positional_args
+    - configuration.bind_init_args
       This is generally a good way to pass in any configuration that your
       plug needs, such as an IP address or serial port to connect to.  If
-      You want to use your plug outside of the OpenHTF framework, you can
-      still manually instantiate it, but you must pass the arguments by
-      keyword (as a side effect of the way inject_positional_args is
-      implemented).
-
-      For example, if you had no openhtf.conf loaded, you could do this:
-        my_plug = ExamplePlug(example_plug_increment_size=4)
+      you want to use your plug outside of the OpenHTF framework, you can
+      still manually instantiate it.
 
     - tearDown()
       This method will be called automatically by the OpenHTF framework at
@@ -61,7 +58,6 @@ class ExamplePlug(base_plugs.BasePlug):  # pylint: disable=no-init
       a with: block at the beginning of every phase where it is used.
   """
 
-  @conf.inject_positional_args
   def __init__(self, example_plug_increment_size):
     self.increment_size = example_plug_increment_size
     self.value = 0
@@ -77,6 +73,10 @@ class ExamplePlug(base_plugs.BasePlug):  # pylint: disable=no-init
     """Increment our value, return the previous value."""
     self.value += self.increment_size
     return self.value - self.increment_size
+
+
+example_plug_configured = configuration.bind_init_args(
+    ExamplePlug, EXAMPLE_PLUG_INCREMENT_SIZE)
 
 
 class ExampleFrontendAwarePlug(base_plugs.FrontendAwareBasePlug):

@@ -17,9 +17,9 @@ import logging
 import threading
 import time
 import unittest
+from unittest import mock
 
 from absl.testing import parameterized
-import mock
 
 import openhtf
 from openhtf import plugs
@@ -36,9 +36,11 @@ from openhtf.core import test_executor
 from openhtf.core import test_record
 from openhtf.core import test_state
 
-from openhtf.util import conf
+from openhtf.util import configuration
 from openhtf.util import logs
 from openhtf.util import timeouts
+
+CONF = configuration.CONF
 
 # Default logging to debug level.
 logs.CLI_LOGGING_VERBOSITY = 2
@@ -256,6 +258,7 @@ class TestExecutorTest(unittest.TestCase):
   def test_class_string(self):
     check_list = ['PhaseExecutorThread', 'phase_one']
     mock_test_state = mock.create_autospec(test_state.TestState)
+    mock_test_state.state_logger = logging.getLogger(__name__)
     phase_thread = phase_executor.PhaseExecutorThread(
         phase_one, mock_test_state, run_with_profiling=False, subtest_rec=None)
     name = str(phase_thread)
@@ -266,7 +269,7 @@ class TestExecutorTest(unittest.TestCase):
     if not found:
       self.assertEqual(0, 1)
 
-  @conf.save_and_restore(cancel_timeout_s=1)
+  @CONF.save_and_restore(cancel_timeout_s=1)
   def test_cancel_start(self):
 
     @openhtf.PhaseOptions()
@@ -572,7 +575,7 @@ class TestExecutorTest(unittest.TestCase):
     self.assertTrue(ev.wait(1))
     executor.close()
 
-  @conf.save_and_restore
+  @CONF.save_and_restore
   def test_conf_stop_on_first_failure_phase(self):
 
     ev = threading.Event()
@@ -584,7 +587,7 @@ class TestExecutorTest(unittest.TestCase):
         main=[phase_return_fail_and_continue, phase_one], teardown=[set_ev])
     test = openhtf.Test(group)
     test.configure(default_dut_id='dut',)
-    conf.load(stop_on_first_failure=True)
+    CONF.load(stop_on_first_failure=True)
     executor = test_executor.TestExecutor(
         test.descriptor,
         'uid',

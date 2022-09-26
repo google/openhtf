@@ -25,6 +25,7 @@ import unittest
 import openhtf as htf
 from openhtf import util
 from examples import all_the_things
+from openhtf.core import phase_branches, phase_descriptor, phase_collections, phase_group
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import mfg_event_converter
@@ -176,3 +177,27 @@ class TestConsoleSummary(test.TestCase):
     instance = console_summary.ConsoleSummary()
     for outcome in htf.test_record.Outcome:
       self.assertIn(outcome, instance.color_table)
+
+  def test_empty_outcome(self):
+    """Console Summary must not crash if phases have been skipped."""
+    checkpoint = phase_branches.PhaseFailureCheckpoint.all_previous(
+        'cp', action=phase_descriptor.PhaseResult.FAIL_SUBTEST)
+    phasegroup = phase_group.PhaseGroup(
+        lambda: htf.PhaseResult.FAIL_AND_CONTINUE,
+        lambda: htf.PhaseResult.SKIP,
+        checkpoint,
+    )
+    subtest = phase_collections.Subtest('st', phasegroup)
+    test_instance = htf.Test(subtest)
+
+    result_store = util.NonLocalResult()
+
+    def _save_result(test_record):
+      result_store.result = test_record
+
+    test_instance.add_output_callbacks(console_summary.ConsoleSummary(),
+                                       _save_result)
+
+    test_instance.execute()
+    assert not any('Traceback' in record.message
+                   for record in result_store.result.log_records)

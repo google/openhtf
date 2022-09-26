@@ -20,8 +20,8 @@ actually care about.
 
 import collections
 import unittest
+from unittest import mock
 
-import mock
 import openhtf as htf
 from openhtf.core import measurements
 from examples import all_the_things
@@ -174,6 +174,24 @@ class TestMeasurements(htf_test.TestCase):
     self.assertMeasurementPass(record, 'replaced_min_only')
     self.assertMeasurementFail(record, 'replaced_max_only')
     self.assertMeasurementFail(record, 'replaced_min_max')
+
+  @htf_test.yields_phases
+  def test_validator_replacement_marginal(self):
+    record = yield all_the_things.measures_with_marginal_args.with_args(
+        marginal_minimum=4, marginal_maximum=6)
+    self.assertMeasurementMarginal(record, 'replaced_marginal_min_only')
+    self.assertMeasurementNotMarginal(record, 'replaced_marginal_max_only')
+    self.assertMeasurementMarginal(record, 'replaced_marginal_min_max')
+    record = yield all_the_things.measures_with_marginal_args.with_args(
+        marginal_minimum=1, marginal_maximum=2)
+    self.assertMeasurementNotMarginal(record, 'replaced_marginal_min_only')
+    self.assertMeasurementMarginal(record, 'replaced_marginal_max_only')
+    self.assertMeasurementMarginal(record, 'replaced_marginal_min_max')
+    record = yield all_the_things.measures_with_marginal_args.with_args(
+        marginal_minimum=2, marginal_maximum=4)
+    self.assertMeasurementNotMarginal(record, 'replaced_marginal_min_only')
+    self.assertMeasurementNotMarginal(record, 'replaced_marginal_max_only')
+    self.assertMeasurementNotMarginal(record, 'replaced_marginal_min_max')
 
   @htf_test.yields_phases
   def test_measurement_order(self):

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains the abstract interfaces for phase nodes."""
 
 import abc
@@ -20,7 +19,6 @@ from typing import Any, Callable, Dict, Optional, Text, Type, TypeVar, TYPE_CHEC
 
 from openhtf.core import base_plugs
 from openhtf.util import data
-import six
 
 if TYPE_CHECKING:
   from openhtf.core import phase_descriptor  # pylint: disable=g-import-not-at-top
@@ -29,7 +27,7 @@ WithModifierT = TypeVar('WithModifierT', bound='PhaseNode')
 ApplyAllNodesT = TypeVar('ApplyAllNodesT', bound='PhaseNode')
 
 
-class PhaseNode(six.with_metaclass(abc.ABCMeta, object)):
+class PhaseNode(abc.ABC):
   """Base class for all executable nodes in OpenHTF."""
 
   __slots__ = ()

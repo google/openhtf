@@ -48,7 +48,6 @@ import threading
 
 from openhtf.plugs.usb import usb_exceptions
 from openhtf.util import timeouts
-import six
 
 _LOG = logging.getLogger(__name__)
 
@@ -58,7 +57,7 @@ def make_wire_commands(*ids):
   cmd_to_wire = {
       cmd: sum(ord(c) << (i * 8) for i, c in enumerate(cmd)) for cmd in ids
   }
-  wire_to_cmd = {wire: cmd for cmd, wire in six.iteritems(cmd_to_wire)}
+  wire_to_cmd = {wire: cmd for cmd, wire in cmd_to_wire.items()}
   return cmd_to_wire, wire_to_cmd
 
 

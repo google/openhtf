@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Implements phase node branches.
 
-A BranchSequence is a phase node sequence that runs conditiionally based on the
+A BranchSequence is a phase node sequence that runs conditionally based on the
 diagnosis results of the test run.
 """
 
 import abc
-from typing import Any, Callable, Dict, Iterator, Text, Tuple, TYPE_CHECKING, Union
+import enum
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional,
+                    Text, Tuple, Union)
 
 import attr
-import enum  # pylint: disable=g-bad-import-order
 from openhtf import util
 from openhtf.core import diagnoses_lib
 from openhtf.core import phase_collections
@@ -31,7 +31,6 @@ from openhtf.core import phase_descriptor
 from openhtf.core import phase_nodes
 from openhtf.core import test_record
 from openhtf.util import data
-import six
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
@@ -55,6 +54,9 @@ class PreviousPhases(enum.Enum):
 
   # Check all phases.
   ALL = 'ALL'
+
+  # Check all previous phases in the current subtest.
+  SUBTEST = "SUBTEST"
 
 
 def _not_any(iterable: Iterator[bool]) -> bool:
@@ -143,7 +145,7 @@ class BranchSequence(phase_collections.PhaseSequence):
 
 
 @attr.s(slots=True, frozen=True)
-class Checkpoint(six.with_metaclass(abc.ABCMeta, phase_nodes.PhaseNode)):
+class Checkpoint(phase_nodes.PhaseNode, abc.ABC):
   """Nodes that check for phase failures or if diagnoses were triggered.
 
   When the condition for a checkpoint is triggered, a STOP or FAIL_SUBTEST
@@ -181,15 +183,20 @@ class Checkpoint(six.with_metaclass(abc.ABCMeta, phase_nodes.PhaseNode)):
     return self
 
   def get_result(
-      self, running_test_state: 'test_state.TestState'
+    self, 
+    running_test_state: 'test_state.TestState', 
+    subtest_rec: Optional[test_record.SubtestRecord] = None
   ) -> phase_descriptor.PhaseReturnT:
-    if self._check_for_action(running_test_state):
+    if self._check_for_action(running_test_state, subtest_rec):
       return self.action
     return phase_descriptor.PhaseResult.CONTINUE
 
   @abc.abstractmethod
-  def _check_for_action(self,
-                        running_test_state: 'test_state.TestState') -> bool:
+  def _check_for_action(
+    self,
+    running_test_state: 'test_state.TestState',
+    subtest_rec: Optional[test_record.SubtestRecord] = None
+  ) -> bool:
     """Returns True when the action should be taken."""
 
   @abc.abstractmethod
@@ -199,7 +206,7 @@ class Checkpoint(six.with_metaclass(abc.ABCMeta, phase_nodes.PhaseNode)):
 
 @attr.s(slots=True, frozen=True)
 class PhaseFailureCheckpoint(Checkpoint):
-  """Node that checks if a previous phase or all previous phases failed.
+  """Node that checks if the specified previous phase(s) failed.
 
   If the phases fail, this will be resolved as `action`.
 
@@ -221,6 +228,12 @@ class PhaseFailureCheckpoint(Checkpoint):
     kwargs['previous_phases_to_check'] = PreviousPhases.ALL
     return cls(*args, **kwargs)
 
+  @classmethod
+  def subtest_previous(cls, *args, **kwargs) -> 'PhaseFailureCheckpoint':
+    """Checks if any node in the current subtest has failed."""
+    kwargs['previous_phases_to_check'] = PreviousPhases.SUBTEST
+    return cls(*args, **kwargs)
+
   def _asdict(self) -> Dict[Text, Any]:
     ret = super(PhaseFailureCheckpoint, self)._asdict()
     ret.update(previous_phases_to_check=self.previous_phases_to_check)
@@ -230,14 +243,23 @@ class PhaseFailureCheckpoint(Checkpoint):
     """Returns True if the phase_rec failed; ignores ERRORs."""
     return phase_rec.outcome == test_record.PhaseOutcome.FAIL
 
-  def _check_for_action(self,
-                        running_test_state: 'test_state.TestState') -> bool:
+  def _check_for_action(
+    self,
+    running_test_state: 'test_state.TestState',
+    subtest_rec: Optional[test_record.SubtestRecord] = None
+  ) -> bool:
     """Returns True when the specific set of phases fail."""
     phase_records = running_test_state.test_record.phases
     if not phase_records:
       raise NoPhasesFoundError('No phases found in the test record.')
     if self.previous_phases_to_check == PreviousPhases.LAST:
       return self._phase_failed(phase_records[-1])
+    elif (self.previous_phases_to_check == PreviousPhases.SUBTEST and 
+          subtest_rec is not None):
+      for phase_rec in phase_records:
+        if (phase_rec.subtest_name == subtest_rec.name and 
+            self._phase_failed(phase_rec)):
+          return True
     else:
       for phase_rec in phase_records:
         if self._phase_failed(phase_rec):
@@ -263,8 +285,11 @@ class DiagnosisCheckpoint(Checkpoint):
     ret.update(diag_condition=self.diag_condition._asdict())
     return ret
 
-  def _check_for_action(self,
-                        running_test_state: 'test_state.TestState') -> bool:
+  def _check_for_action(
+    self,
+    running_test_state: 'test_state.TestState',
+    subtest_rec: Optional[test_record.SubtestRecord] = None
+  ) -> bool:
     """Returns True if the condition is true."""
     return self.diag_condition.check(running_test_state.diagnoses_manager.store)
 
