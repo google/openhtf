@@ -70,8 +70,7 @@ class ValidatorBase(abc.ABC):
     """Should validate value, returning a boolean result."""
 
 
-_ValidatorT = TypeVar("_ValidatorT", bound=ValidatorBase)
-_ValidatorFactoryT = Union[Type[_ValidatorT], Callable[..., _ValidatorT]]
+_ValidatorFactoryT = Union[Callable[..., ValidatorBase]]
 _VALIDATORS: Dict[str, _ValidatorFactoryT] = {}
 
 
@@ -88,7 +87,7 @@ def has_validator(name: str) -> bool:
   return name in _VALIDATORS
 
 
-def create_validator(name: str, *args, **kwargs) -> _ValidatorT:
+def create_validator(name: str, *args, **kwargs) -> ValidatorBase:
   return _VALIDATORS[name](*args, **kwargs)
 
 
