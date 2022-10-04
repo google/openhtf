@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Implements phase node branches.
 
 A BranchSequence is a phase node sequence that runs conditionally based on the
@@ -56,7 +55,7 @@ class PreviousPhases(enum.Enum):
   ALL = 'ALL'
 
   # Check all previous phases in the current subtest.
-  SUBTEST = "SUBTEST"
+  SUBTEST = 'SUBTEST'
 
 
 def _not_any(iterable: Iterator[bool]) -> bool:
@@ -183,9 +182,9 @@ class Checkpoint(phase_nodes.PhaseNode, abc.ABC):
     return self
 
   def get_result(
-    self, 
-    running_test_state: 'test_state.TestState', 
-    subtest_rec: Optional[test_record.SubtestRecord] = None
+      self,
+      running_test_state: 'test_state.TestState',
+      subtest_rec: Optional[test_record.SubtestRecord] = None
   ) -> phase_descriptor.PhaseReturnT:
     if self._check_for_action(running_test_state, subtest_rec):
       return self.action
@@ -193,10 +192,9 @@ class Checkpoint(phase_nodes.PhaseNode, abc.ABC):
 
   @abc.abstractmethod
   def _check_for_action(
-    self,
-    running_test_state: 'test_state.TestState',
-    subtest_rec: Optional[test_record.SubtestRecord] = None
-  ) -> bool:
+      self,
+      running_test_state: 'test_state.TestState',
+      subtest_rec: Optional[test_record.SubtestRecord] = None) -> bool:
     """Returns True when the action should be taken."""
 
   @abc.abstractmethod
@@ -244,20 +242,19 @@ class PhaseFailureCheckpoint(Checkpoint):
     return phase_rec.outcome == test_record.PhaseOutcome.FAIL
 
   def _check_for_action(
-    self,
-    running_test_state: 'test_state.TestState',
-    subtest_rec: Optional[test_record.SubtestRecord] = None
-  ) -> bool:
+      self,
+      running_test_state: 'test_state.TestState',
+      subtest_rec: Optional[test_record.SubtestRecord] = None) -> bool:
     """Returns True when the specific set of phases fail."""
     phase_records = running_test_state.test_record.phases
     if not phase_records:
       raise NoPhasesFoundError('No phases found in the test record.')
     if self.previous_phases_to_check == PreviousPhases.LAST:
       return self._phase_failed(phase_records[-1])
-    elif (self.previous_phases_to_check == PreviousPhases.SUBTEST and 
+    elif (self.previous_phases_to_check == PreviousPhases.SUBTEST and
           subtest_rec is not None):
       for phase_rec in phase_records:
-        if (phase_rec.subtest_name == subtest_rec.name and 
+        if (phase_rec.subtest_name == subtest_rec.name and
             self._phase_failed(phase_rec)):
           return True
     else:
@@ -286,10 +283,9 @@ class DiagnosisCheckpoint(Checkpoint):
     return ret
 
   def _check_for_action(
-    self,
-    running_test_state: 'test_state.TestState',
-    subtest_rec: Optional[test_record.SubtestRecord] = None
-  ) -> bool:
+      self,
+      running_test_state: 'test_state.TestState',
+      subtest_rec: Optional[test_record.SubtestRecord] = None) -> bool:
     """Returns True if the condition is true."""
     return self.diag_condition.check(running_test_state.diagnoses_manager.store)
 
