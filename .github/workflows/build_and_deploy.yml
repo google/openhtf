@@ -44,3 +44,11 @@ jobs:
         user: __token__
         password: ${{ secrets.PYPI_PUBLISH_PASSWORD }}
         skip_existing: true
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: |
+        pip install -U autoflake
+        autoflake .
