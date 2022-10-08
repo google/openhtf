@@ -49,6 +49,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - run: |
-        pip install -U autoflake
-        autoflake .
+    - run: pip install -U autoflake isort
+    - run: autoflake .
+    - run: isort --check --diff --color .

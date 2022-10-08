@@ -6,3 +6,8 @@ build-backend = "setuptools.build_meta"
 recursive = true
 check_diff = true
 exclude = "*_pb2.py"
+
+[tool.isort]
+line_length = 80
+profile = "google"
+skip_glob = ["*_pb2.py"]
