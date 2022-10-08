@@ -324,7 +324,6 @@ class _BaseDiagnoser(object):
 
   def _check_definition(self) -> None:
     """Internal function to verify that the diagnoser is completely defined."""
-    pass
 
 
 class BasePhaseDiagnoser(_BaseDiagnoser, abc.ABC):

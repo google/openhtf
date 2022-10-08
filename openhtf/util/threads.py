@@ -14,7 +14,6 @@
 """Thread library defining a few helpers."""
 
 import _thread
-import contextlib
 import cProfile
 import ctypes
 import functools

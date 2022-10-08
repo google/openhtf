@@ -19,7 +19,6 @@ actually care for.
 """
 import collections
 import io
-import unittest
 from unittest import mock
 
 import openhtf as htf

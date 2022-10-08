@@ -58,7 +58,7 @@ import abc
 import math
 import numbers
 import re
-from typing import Callable, Dict, Optional, Type, TypeVar, Union
+from typing import Callable, Dict, Optional, Union
 
 from openhtf import util
 

@@ -14,7 +14,6 @@
 """The main OpenHTF entry point."""
 
 import signal
-import typing
 
 from openhtf import plugs
 from openhtf.core import phase_executor
