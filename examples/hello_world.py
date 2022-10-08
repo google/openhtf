@@ -30,10 +30,8 @@ For more information on output, see the output.py example.
 # from it throughout our test scripts. See __all__ at the top of
 # openhtf/__init__.py for details on what's in top-of-module namespace.
 import openhtf as htf
-
 # Import this output mechanism as it's the specific one we want to use.
 from openhtf.output.callbacks import json_factory
-
 from openhtf.plugs import user_input
 
 

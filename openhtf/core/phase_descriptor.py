@@ -22,7 +22,8 @@ import collections
 import enum
 import inspect
 import pdb
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Text, TYPE_CHECKING, Type, Union
+from typing import (Any, Callable, Dict, Iterator, List, Optional, Sequence,
+                    Set, Text, Type, TYPE_CHECKING, Union)
 
 import attr
 import inflection

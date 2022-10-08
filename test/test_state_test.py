@@ -16,10 +16,10 @@ import copy
 import logging
 import sys
 import tempfile
-import unittest
 from unittest import mock
 
 from absl.testing import parameterized
+
 import openhtf
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
@@ -37,7 +37,6 @@ CONF = configuration.CONF
 @openhtf.PhaseOptions(name='test_phase')
 def test_phase():
   """Test docstring."""
-  pass
 
 
 PHASE_STATE_BASE_TYPE_INITIAL = {

@@ -14,7 +14,8 @@
 """The main OpenHTF entry point."""
 
 import signal
-import typing
+
+import pkg_resources
 
 from openhtf import plugs
 from openhtf.core import phase_executor
@@ -27,7 +28,6 @@ from openhtf.core.diagnoses_lib import DiagPriority
 from openhtf.core.diagnoses_lib import DiagResultEnum
 from openhtf.core.diagnoses_lib import PhaseDiagnoser
 from openhtf.core.diagnoses_lib import TestDiagnoser
-
 from openhtf.core.measurements import Dimension
 from openhtf.core.measurements import Measurement
 from openhtf.core.monitors import monitors
@@ -57,7 +57,6 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
-import pkg_resources
 
 conf = configuration.CONF
 

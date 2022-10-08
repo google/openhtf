@@ -21,7 +21,8 @@ is-ready check.
 """
 
 import logging
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Text, Tuple, Type, TypeVar, Union
+from typing import (Any, Callable, Dict, Iterable, List, Optional, Set, Text,
+                    Tuple, Type, TypeVar, Union)
 
 import attr
 

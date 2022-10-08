@@ -39,6 +39,7 @@ import types
 from typing import Any, Dict, Optional, Text, Tuple, Type, TYPE_CHECKING, Union
 
 import attr
+
 from openhtf import util
 from openhtf.core import phase_branches
 from openhtf.core import phase_descriptor

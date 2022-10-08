@@ -36,6 +36,7 @@ import sys
 from typing import List, Optional
 
 import colorama
+
 import openhtf
 from openhtf.core import measurements
 from openhtf.core import phase_descriptor

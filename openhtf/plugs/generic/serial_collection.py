@@ -28,6 +28,7 @@ CONF = configuration.CONF
 try:
   # pylint: disable=g-import-not-at-top
   import serial  # pytype: disable=import-error
+
   # pylint: enable=g-import-not-at-top
 except ImportError:
   logging.error(

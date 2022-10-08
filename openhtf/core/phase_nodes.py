@@ -15,13 +15,15 @@
 """Contains the abstract interfaces for phase nodes."""
 
 import abc
-from typing import Any, Callable, Dict, Optional, Text, Type, TypeVar, TYPE_CHECKING
+from typing import (Any, Callable, Dict, Optional, Text, Type, TYPE_CHECKING,
+                    TypeVar)
 
 from openhtf.core import base_plugs
 from openhtf.util import data
 
 if TYPE_CHECKING:
-  from openhtf.core import phase_descriptor  # pylint: disable=g-import-not-at-top
+  from openhtf.core import \
+      phase_descriptor  # pylint: disable=g-import-not-at-top
 
 WithModifierT = TypeVar('WithModifierT', bound='PhaseNode')
 ApplyAllNodesT = TypeVar('ApplyAllNodesT', bound='PhaseNode')

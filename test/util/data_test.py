@@ -16,6 +16,7 @@ import collections
 import unittest
 
 import attr
+
 from openhtf.util import data
 
 

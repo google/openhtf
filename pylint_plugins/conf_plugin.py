@@ -14,7 +14,6 @@
 
 
 import astroid
-
 from astroid import MANAGER
 
 

@@ -13,6 +13,10 @@
 # limitations under the License.
 """Setup script for OpenHTF."""
 
+from distutils.cmd import Command
+# pylint: disable=g-importing-member,g-bad-import-order
+from distutils.command.build import build
+from distutils.command.clean import clean
 import errno
 import glob
 import os
@@ -20,10 +24,6 @@ import platform
 import subprocess
 import sys
 
-# pylint: disable=g-importing-member,g-bad-import-order
-from distutils.command.build import build
-from distutils.command.clean import clean
-from distutils.cmd import Command
 from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.test import test

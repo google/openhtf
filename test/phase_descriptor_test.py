@@ -15,8 +15,8 @@
 import unittest
 
 from absl import logging
-
 import attr
+
 import openhtf
 from openhtf import plugs
 from openhtf.core import base_plugs
@@ -30,7 +30,6 @@ from openhtf.util import test as htf_test
 
 def plain_func():
   """Plain Docstring."""
-  pass
 
 
 def normal_test_phase():

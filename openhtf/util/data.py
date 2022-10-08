@@ -21,8 +21,8 @@ from collections.abc import Iterable
 import copy
 import difflib
 import enum
-import itertools
 import inspect
+import itertools
 import logging
 import math
 import numbers

@@ -16,7 +16,6 @@
 from collections.abc import Callable
 import http.client
 import socketserver
-import sys
 import threading
 import xmlrpc.client
 import xmlrpc.server

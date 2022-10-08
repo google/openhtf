@@ -145,10 +145,11 @@ import threading
 from typing import Any, Optional, Text, Type, TypeVar
 
 import attr
-from openhtf.util import argv
-from openhtf.util import threads
 from typing_extensions import Protocol
 import yaml
+
+from openhtf.util import argv
+from openhtf.util import threads
 
 T = TypeVar('T')
 

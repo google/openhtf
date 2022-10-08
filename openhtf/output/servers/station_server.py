@@ -17,6 +17,8 @@ import time
 import types
 from typing import Optional, Union
 
+import sockjs.tornado
+
 import openhtf
 from openhtf.output.servers import pub_sub
 from openhtf.output.servers import web_gui_server
@@ -25,7 +27,6 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import multicast
 from openhtf.util import timeouts
-import sockjs.tornado
 
 CONF = configuration.CONF
 
