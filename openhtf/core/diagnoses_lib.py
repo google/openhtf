@@ -125,9 +125,11 @@ import abc
 from collections.abc import Iterable as CollectionsIterable
 import enum
 import logging
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Text, Type, TYPE_CHECKING, Union
+from typing import (Any, Callable, Dict, Iterable, List, Optional, Sequence,
+                    Text, Type, TYPE_CHECKING, Union)
 
 import attr
+
 from openhtf.core import test_record
 from openhtf.util import data
 

@@ -20,9 +20,9 @@ python all_the_things.py
 import os.path
 import time
 
-import openhtf as htf
-from openhtf import util
 from examples import example_plugs
+from openhtf import util
+import openhtf as htf
 from openhtf.output import callbacks
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory

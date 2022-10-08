@@ -126,7 +126,8 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
-from collections.abc import Callable as CollectionsCallable, Iterator
+from collections.abc import Callable as CollectionsCallable
+from collections.abc import Iterator
 import functools
 import inspect
 import logging
@@ -137,23 +138,13 @@ import sys
 import tempfile
 import types
 import typing
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Text,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import (Any, Callable, Dict, Iterable, List, Optional, Sequence,
+                    Text, Tuple, Type, Union)
 import unittest
 from unittest import mock
 
 import attr
+
 from openhtf import plugs
 from openhtf import util
 from openhtf.core import base_plugs

@@ -21,10 +21,13 @@ actually care for.
 import io
 import json
 
-import openhtf as htf
-from openhtf import util
 from examples import all_the_things
-from openhtf.core import phase_branches, phase_descriptor, phase_collections, phase_group
+from openhtf import util
+import openhtf as htf
+from openhtf.core import phase_branches
+from openhtf.core import phase_collections
+from openhtf.core import phase_descriptor
+from openhtf.core import phase_group
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import mfg_event_converter

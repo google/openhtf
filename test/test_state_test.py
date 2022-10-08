@@ -19,6 +19,7 @@ import tempfile
 from unittest import mock
 
 from absl.testing import parameterized
+
 import openhtf
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor

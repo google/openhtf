@@ -12,14 +12,15 @@ import socket
 import threading
 import time
 
+import sockjs.tornado
+import tornado.web
+
 from openhtf.output.servers import pub_sub
 from openhtf.output.servers import station_server
 from openhtf.output.servers import web_gui_server
 from openhtf.output.web_gui import web_launcher
 from openhtf.util import data
 from openhtf.util import multicast
-import sockjs.tornado
-import tornado.web
 
 _LOG = logging.getLogger(__name__)
 

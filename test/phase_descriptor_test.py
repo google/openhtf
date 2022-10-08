@@ -15,8 +15,8 @@
 import unittest
 
 from absl import logging
-
 import attr
+
 import openhtf
 from openhtf import plugs
 from openhtf.core import base_plugs

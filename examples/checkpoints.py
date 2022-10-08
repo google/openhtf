@@ -15,8 +15,8 @@
 
 import time
 
-import openhtf as htf
 from examples import measurements as measurements_example
+import openhtf as htf
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.util import checkpoints

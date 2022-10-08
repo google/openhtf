@@ -63,7 +63,8 @@ import enum
 import functools
 import logging
 import typing
-from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
+from typing import (Any, Callable, Dict, Iterator, List, Optional, Text, Tuple,
+                    Union)
 
 import attr
 
@@ -71,12 +72,14 @@ from openhtf import util
 from openhtf.util import data
 from openhtf.util import units as util_units
 from openhtf.util import validators
+
 if typing.TYPE_CHECKING:
   from openhtf.core import diagnoses_lib
 
 try:
   # pylint: disable=g-import-not-at-top
   import pandas  # pytype: disable=import-error
+
   # pylint: enable=g-import-not-at-top
 except ImportError:
   pandas = None

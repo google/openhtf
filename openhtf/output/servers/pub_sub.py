@@ -15,8 +15,9 @@
 
 import logging
 
-from openhtf import util as htf_util
 import sockjs.tornado
+
+from openhtf import util as htf_util
 
 _LOG = logging.getLogger(__name__)
 

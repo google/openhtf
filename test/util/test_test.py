@@ -22,7 +22,6 @@ import unittest
 from unittest import mock
 
 import openhtf
-
 from openhtf import plugs
 from openhtf.core import base_plugs
 from openhtf.util import test

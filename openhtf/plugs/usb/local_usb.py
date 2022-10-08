@@ -29,6 +29,7 @@ try:
   # pylint: disable=g-import-not-at-top
   import libusb1  # pytype: disable=import-error
   import usb1  # pytype: disable=import-error
+
   # pylint: enable=g-import-not-at-top
 except ImportError:
   logging.error('Failed to import libusb, did you pip install '

@@ -48,6 +48,8 @@ import inspect
 import time
 from typing import Any, Callable, Dict, Optional, Text
 
+import six
+
 import openhtf
 from openhtf import plugs
 from openhtf.core import measurements
@@ -55,7 +57,6 @@ from openhtf.core import phase_descriptor
 from openhtf.core import test_state as core_test_state
 from openhtf.util import threads
 from openhtf.util import units as uom
-import six
 
 
 class _MonitorThread(threads.KillableThread):

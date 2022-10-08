@@ -40,7 +40,8 @@ from openhtf.util import threads
 CONF = configuration.CONF
 
 if TYPE_CHECKING:
-  from openhtf.core import test_descriptor  # pylint: disable=g-import-not-at-top
+  from openhtf.core import \
+      test_descriptor  # pylint: disable=g-import-not-at-top
 
 _LOG = logging.getLogger(__name__)
 

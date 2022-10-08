@@ -21,9 +21,9 @@ import collections
 import io
 from unittest import mock
 
-import openhtf as htf
-from openhtf import util
 from examples import all_the_things
+from openhtf import util
+import openhtf as htf
 from openhtf.output.callbacks import mfg_inspector
 from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter

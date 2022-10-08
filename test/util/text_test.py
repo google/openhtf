@@ -21,6 +21,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 import colorama
+
 import openhtf
 from openhtf.core import measurements
 from openhtf.core import phase_descriptor

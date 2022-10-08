@@ -28,6 +28,7 @@ from typing import Any, Callable, Dict, Optional, Text, Tuple, Union
 import uuid
 
 import attr
+
 import openhtf
 from openhtf import plugs
 from openhtf.core import base_plugs

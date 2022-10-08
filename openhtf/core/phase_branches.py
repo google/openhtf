@@ -20,10 +20,11 @@ diagnosis results of the test run.
 
 import abc
 import enum
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional,
-                    Text, Tuple, Union)
+from typing import (Any, Callable, Dict, Iterator, Optional, Text, Tuple,
+                    TYPE_CHECKING, Union)
 
 import attr
+
 from openhtf import util
 from openhtf.core import diagnoses_lib
 from openhtf.core import phase_collections

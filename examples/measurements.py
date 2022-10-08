@@ -49,10 +49,8 @@ Some constraints on measurements:
 import random
 
 import openhtf as htf
-
 # Import this output mechanism as it's the specific one we want to use.
 from openhtf.output.callbacks import json_factory
-
 # You won't normally need to import this, see validators.py example for
 # more details.  It's used for the inline measurement declaration example
 # below, but normally you'll only import it when you want to define custom

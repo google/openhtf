@@ -21,9 +21,9 @@ actually care about.
 import collections
 from unittest import mock
 
+from examples import all_the_things
 import openhtf as htf
 from openhtf.core import measurements
-from examples import all_the_things
 from openhtf.util import test as htf_test
 
 # Fields that are considered 'volatile' for record comparison.

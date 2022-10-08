@@ -20,8 +20,9 @@ import logging
 import os
 import struct
 
-from . import usb_exceptions
 from openhtf.util import argv
+
+from . import usb_exceptions
 
 FASTBOOT_DOWNLOAD_CHUNK_SIZE_KB = 1024
 

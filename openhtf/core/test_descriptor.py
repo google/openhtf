@@ -45,7 +45,6 @@ from openhtf.core import phase_executor
 from openhtf.core import test_executor
 from openhtf.core import test_record as htf_test_record
 from openhtf.core import test_state
-
 from openhtf.util import configuration
 from openhtf.util import console_output
 from openhtf.util import logs

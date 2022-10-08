@@ -32,9 +32,11 @@ import mimetypes
 import os
 import socket
 import sys
-from typing import Any, Dict, Iterator, List, Optional, Set, Text, TYPE_CHECKING, Union
+from typing import (Any, Dict, Iterator, List, Optional, Set, Text,
+                    TYPE_CHECKING, Union)
 
 import attr
+from typing_extensions import Literal
 
 import openhtf
 from openhtf import plugs
@@ -48,12 +50,12 @@ from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import logs
 from openhtf.util import units
-from typing_extensions import Literal
 
 CONF = configuration.CONF
 
 if TYPE_CHECKING:
-  from openhtf.core import test_descriptor  # pylint: disable=g-import-not-at-top
+  from openhtf.core import \
+      test_descriptor  # pylint: disable=g-import-not-at-top
 
 CONF.declare(
     'allow_unset_measurements',

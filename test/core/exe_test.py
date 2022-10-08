@@ -35,7 +35,6 @@ from openhtf.core import test_descriptor
 from openhtf.core import test_executor
 from openhtf.core import test_record
 from openhtf.core import test_state
-
 from openhtf.util import configuration
 from openhtf.util import logs
 from openhtf.util import timeouts
