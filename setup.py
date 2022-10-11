@@ -135,7 +135,7 @@ INSTALL_REQUIRES = [
     'inflection',
     'google-auth>=1.34.0',
     'mutablerecords>=0.4.1',
-    'protobuf>=3.6.0,<4.0',
+    'protobuf>=3.6.0',
     'PyYAML>=3.13',
     'pyOpenSSL>=17.1.0',
     'requests>=2.27.1',
