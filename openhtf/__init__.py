@@ -19,38 +19,17 @@ import typing
 from openhtf import plugs
 from openhtf.core import phase_executor
 from openhtf.core import test_record
-from openhtf.core.base_plugs import BasePlug
-from openhtf.core.diagnoses_lib import DiagnosesStore
-from openhtf.core.diagnoses_lib import Diagnosis
-from openhtf.core.diagnoses_lib import DiagnosisComponent
-from openhtf.core.diagnoses_lib import DiagPriority
-from openhtf.core.diagnoses_lib import DiagResultEnum
-from openhtf.core.diagnoses_lib import PhaseDiagnoser
-from openhtf.core.diagnoses_lib import TestDiagnoser
-
-from openhtf.core.measurements import Dimension
-from openhtf.core.measurements import Measurement
-from openhtf.core.monitors import monitors
-from openhtf.core.phase_branches import BranchSequence
-from openhtf.core.phase_branches import DiagnosisCheckpoint
-from openhtf.core.phase_branches import DiagnosisCondition
-from openhtf.core.phase_branches import PhaseFailureCheckpoint
-from openhtf.core.phase_collections import PhaseSequence
-from openhtf.core.phase_collections import Subtest
-from openhtf.core.phase_descriptor import diagnose
-from openhtf.core.phase_descriptor import measures
-from openhtf.core.phase_descriptor import PhaseDescriptor
-from openhtf.core.phase_descriptor import PhaseNameCase
-from openhtf.core.phase_descriptor import PhaseOptions
-from openhtf.core.phase_descriptor import PhaseResult
-from openhtf.core.phase_group import PhaseGroup
-from openhtf.core.phase_nodes import PhaseNode
-from openhtf.core.test_descriptor import Test
-from openhtf.core.test_descriptor import TestApi
-from openhtf.core.test_descriptor import TestDescriptor
-from openhtf.core.test_record import PhaseRecord
-from openhtf.core.test_record import TestRecord
-from openhtf.plugs import plug
+import openhtf.core.base_plugs
+import openhtf.core.diagnoses_lib
+import openhtf.core.measurements
+import openhtf.core.monitors
+import openhtf.core.phase_branches
+import openhtf.core.phase_collections
+import openhtf.core.phase_descriptor
+import openhtf.core.phase_group
+import openhtf.core.phase_nodes
+import openhtf.core.test_descriptor
+import openhtf.util
 from openhtf.util import configuration
 from openhtf.util import console_output
 from openhtf.util import data
@@ -58,6 +37,96 @@ from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
 import pkg_resources
+
+__all__ = (  # Expliclty export certain API components.
+    # Modules.
+    'plugs',
+    'phase_executor',
+    'test_record',
+    'configuration',
+    'console_output',
+    'data',
+    'functions',
+    'logs',
+    'units',
+    # Public Functions.
+    'plug',
+    'monitors',
+    'diagnose',
+    'measures',
+    # Public Classes.
+    'BasePlug',
+    'DiagnosesStore',
+    'Diagnosis',
+    'DiagnosisComponent',
+    'DiagPriority',
+    'DiagResultEnum',
+    'PhaseDiagnoser',
+    'TestDiagnoser',
+    'Dimension',
+    'Measurement',
+    'BranchSequence',
+    'DiagnosisCheckpoint',
+    'DiagnosisCondition',
+    'PhaseFailureCheckpoint',
+    'PhaseSequence',
+    'Subtest',
+    'PhaseDescriptor',
+    'PhaseNameCase',
+    'PhaseOptions',
+    'PhaseResult',
+    'PhaseGroup',
+    'PhaseNode',
+    'Test',
+    'TestApi',
+    'TestDescriptor',
+    'PhaseRecord',
+    'TestRecord',
+    # Globals.
+    'conf',
+)
+
+plug = plugs.plug
+BasePlug = openhtf.core.base_plugs.BasePlug
+
+DiagnosesStore = openhtf.core.diagnoses_lib.DiagnosesStore
+Diagnosis = openhtf.core.diagnoses_lib.Diagnosis
+DiagnosisComponent = openhtf.core.diagnoses_lib.DiagnosisComponent
+DiagPriority = openhtf.core.diagnoses_lib.DiagPriority
+DiagResultEnum = openhtf.core.diagnoses_lib.DiagResultEnum
+PhaseDiagnoser = openhtf.core.diagnoses_lib.PhaseDiagnoser
+TestDiagnoser = openhtf.core.diagnoses_lib.TestDiagnoser
+
+Dimension = openhtf.core.measurements.Dimension
+Measurement = openhtf.core.measurements.Measurement
+
+monitors = openhtf.core.monitors.monitors
+
+BranchSequence = openhtf.core.phase_branches.BranchSequence
+DiagnosisCheckpoint = openhtf.core.phase_branches.DiagnosisCheckpoint
+DiagnosisCondition = openhtf.core.phase_branches.DiagnosisCondition
+PhaseFailureCheckpoint = openhtf.core.phase_branches.PhaseFailureCheckpoint
+
+PhaseSequence = openhtf.core.phase_collections.PhaseSequence
+Subtest = openhtf.core.phase_collections.Subtest
+
+diagnose = openhtf.core.phase_descriptor.diagnose
+measures = openhtf.core.phase_descriptor.measures
+PhaseDescriptor = openhtf.core.phase_descriptor.PhaseDescriptor
+PhaseNameCase = openhtf.core.phase_descriptor.PhaseNameCase
+PhaseOptions = openhtf.core.phase_descriptor.PhaseOptions
+PhaseResult = openhtf.core.phase_descriptor.PhaseResult
+
+PhaseGroup = openhtf.core.phase_group.PhaseGroup
+
+PhaseNode = openhtf.core.phase_nodes.PhaseNode
+
+Test = openhtf.core.test_descriptor.Test
+TestApi = openhtf.core.test_descriptor.TestApi
+TestDescriptor = openhtf.core.test_descriptor.TestDescriptor
+
+PhaseRecord = test_record.PhaseRecord
+TestRecord = test_record.TestRecord
 
 conf = configuration.CONF
 
