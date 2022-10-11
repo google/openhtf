@@ -58,3 +58,16 @@ jobs:
         user: __token__
         password: ${{ secrets.PYPI_PUBLISH_PASSWORD }}
         skip_existing: true
+
+  web_ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: openhtf/output/web_gui
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 9
+      - run: npm install
+      - run: npm run build
