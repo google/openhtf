@@ -22,7 +22,7 @@ import { Component, Input } from '@angular/core';
 
 const ellipsis = '…';
 const template = `
-  {{ trimmedContent }}
+  <div style="white-space: pre-wrap;">{{ trimmedContent }}</div>
   <button *ngIf="buttonLabel !== null" type="button" class="htf-link-button"
           (click)="onClick()">
     {{ buttonLabel }}
