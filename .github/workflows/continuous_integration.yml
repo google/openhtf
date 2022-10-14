@@ -17,14 +17,10 @@
 
 name: Continuous Integration
 
-on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+on: [push, pull_request]
 
 jobs:
-  build:
+  build_and_test:
 
     runs-on: ubuntu-latest
     strategy:
@@ -55,7 +51,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       run: coveralls --service=github
-  
+
   web_ui:
     runs-on: ubuntu-latest
     defaults:
