@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All Rights Reserved.
+# Copyright 2022 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -180,14 +180,20 @@ class PyTestCommand(test):  # pylint: disable=missing-class-docstring
     sys.exit(pytest.main(self.pytest_args + cov))
 
 
+_README_PATH = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), 'README.md')
+with open(_README_PATH, 'rb') as fp:
+    LONG_DESCRIPTION = fp.read().decode('utf-8')
+
+
 setup(
     name='openhtf',
-    version='1.4.4',
+    version='1.5.2',
     description='OpenHTF, the open hardware testing framework.',
-    author='John Hawley',
-    author_email='madsci@google.com',
-    maintainer='Joe Ethier',
-    maintainer_email='jethier@google.com',
+    url='https://github.com/google/openhtf',
+    author='The OpenHTF Authors',
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={
         'openhtf': [
@@ -196,7 +202,7 @@ setup(
             'output/web_gui/dist/img/*', 'output/web_gui/*.*'
         ]
     },
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
