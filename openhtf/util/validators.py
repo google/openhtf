@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Module containing canned measurement validators.
 
 Additional validators may be registered by passing them to the Register()
@@ -246,8 +245,8 @@ def all_equals(value, type=None):  # pylint: disable=redefined-builtin
   if isinstance(value, numbers.Number):
     return AllInRangeValidator(minimum=value, maximum=value)
   elif isinstance(value, str):
-    assert type is None or issubclass(type, str), (
-        'Cannot use a non-string type when matching a string')
+    assert type is None or issubclass(
+        type, str), ('Cannot use a non-string type when matching a string')
     return matches_regex('^{}$'.format(re.escape(value)))
   else:
     return AllEqualsValidator(value)
@@ -385,8 +384,8 @@ def equals(value, type=None):  # pylint: disable=redefined-builtin
   if isinstance(value, numbers.Number):
     return InRange(minimum=value, maximum=value, type=type)
   elif isinstance(value, str):
-    assert type is None or issubclass(type, str), (
-        'Cannot use a non-string type when matching a string')
+    assert type is None or issubclass(
+        type, str), ('Cannot use a non-string type when matching a string')
     return matches_regex('^{}$'.format(re.escape(value)))
   else:
     return Equals(value, type=type)
@@ -449,10 +448,10 @@ class WithinPercent(RangeValidatorBase):
     super(WithinPercent, self).__init__()
     if percent < 0:
       raise ValueError('percent argument is {}, must be >0'.format(percent))
-    if marginal_percent is not None and marginal_percent < percent:
+    if marginal_percent is not None and marginal_percent >= percent:
       raise ValueError(
-          'marginal_percent argument is {}, must be < percent'.format(
-              marginal_percent))
+          'marginal_percent argument is {}, must be < {} percent'.format(
+              marginal_percent, percent))
     self.expected = expected
     self.percent = percent
     self.marginal_percent = marginal_percent
@@ -481,7 +480,7 @@ class WithinPercent(RangeValidatorBase):
 
   @property
   def marginal_maximum(self):
-    return (self.expected -
+    return (self.expected +
             self._applied_marginal_percent if self.marginal_percent else None)
 
   def __call__(self, value) -> bool:

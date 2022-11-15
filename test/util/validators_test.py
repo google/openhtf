@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for util/validators.py."""
 
 import copy
@@ -136,8 +135,7 @@ class TestAllInRange(unittest.TestCase):
 
   def test_is_marginal_false_fully_out_of_range(self):
     self.assertFalse(
-        self.validator.is_marginal(
-            [self.minimum - 1, self.maximum + 1]))
+        self.validator.is_marginal([self.minimum - 1, self.maximum + 1]))
 
   def test_is_marginal_false_without_marginal_bounds(self):
     validator = validators.AllInRangeValidator(self.minimum, self.minimum)
@@ -265,6 +263,18 @@ class TestWithinPercent(unittest.TestCase):
   def test_raises_for_negative_percentage(self):
     with self.assertRaisesRegex(ValueError, 'percent argument is'):
       validators.WithinPercent(expected=100, percent=-1)
+
+  def test_raises_for_larger_marginal_percent(self):
+    with self.assertRaisesRegex(ValueError, 'marginal_percent argument is'):
+      validators.WithinPercent(expected=100, percent=2, marginal_percent=3)
+
+  def test_is_marginal(self):
+    validator = validators.WithinPercent(
+        expected=100, percent=10, marginal_percent=5)
+    with self.subTest('returns_true_on_marginal_measurement'):
+      self.assertTrue(validator.is_marginal(106))
+    with self.subTest('returns_false_on_non_marginal_measurement'):
+      self.assertFalse(validator.is_marginal(102))
 
   def test_within_percent_less_than_one_hundred(self):
     validator = validators.WithinPercent(expected=100, percent=5)
