@@ -45,11 +45,37 @@
 
       <div class="u-text-align-right">
         <button
+          [style.display]="is_user_question() ? 'none' : 'inline'"
           type="button"
           class="htf-rounded-button-grey u-push-top"
           (click)="sendResponse(response_field)">
           {{ hasTextInput() ? 'Submit' : 'Okay' }}
         </button>
+        
+        <button
+          [style.display]="Button_1() ? 'inline' : 'none'"
+          type="button"
+          class="htf-rounded-button-grey u-push-top"
+          (click)="sendAnswer($event.target.textContent)">
+          {{Button_1()}}
+        </button>
+        
+        <button
+          [style.display]="Button_2() ? 'inline' : 'none'"
+          type="button"
+          class="htf-rounded-button-grey u-push-top"
+          (click)="sendAnswer($event.target.textContent)">
+          {{Button_2()}}
+        </button>
+
+        <button
+          [style.display]="Button_3() ? 'inline' : 'none'"
+          type="button"
+          class="htf-rounded-button-grey u-push-top"
+          (click)="sendAnswer($event.target.textContent )">
+          {{Button_3()}}
+        </button>
+                
       </div>
 
     </div>

@@ -45,6 +45,10 @@ export declare interface UserInputPlugState {
   message: string;
   'text-input': string;
   'image-url': string;
+  'is-user-question': string;
+  'button-1-text': string;
+  'button-2-text': string;
+  'button-3-text': string;
 }
 
 /**
@@ -97,6 +101,38 @@ export class UserInputPlugComponent extends BasePlug {
 
   get Image_URL() {
     return this.getPlugState()['image-url'];
+  }
+
+  is_user_question() {
+  	return (((this.getPlugState()['button-1-text'] !== null) && (this.getPlugState()['button-1-text'].length !== 0))
+  		 ||((this.getPlugState()['button-2-text'] !== null) && (this.getPlugState()['button-2-text'].length !== 0))
+  		 ||((this.getPlugState()['button-3-text'] !== null) && (this.getPlugState()['button-3-text'].length !== 0))
+  	);
+  }
+
+
+ Button_1() {
+    return this.getPlugState()['button-1-text'];
+ }
+
+  Button_2() {
+    return this.getPlugState()['button-2-text'];
+  }
+
+  Button_3() {
+    return this.getPlugState()['button-3-text'];
+  }
+
+
+  sendAnswer(input: string) {
+    const promptId = this.getPlugState().id;
+    let response: string;
+    if (this.is_user_question()) {
+      response = input.trim();
+    } else {
+      response = '';
+    }
+    this.respond('respond', [promptId, response]);
   }
 
   sendResponse(input: HTMLInputElement) {
