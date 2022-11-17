@@ -156,7 +156,8 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
       return {
           'id': self._prompt.id,
           'message': self._prompt.message,
-          'text-input': self._prompt.text_input
+          'text-input': self._prompt.text_input,
+          'image-url': self._prompt.image_url
       }
 
   def tearDown(self) -> None:
