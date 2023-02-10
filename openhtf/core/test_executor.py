@@ -108,6 +108,7 @@ class TestExecutor(threads.KillableThread):
     self._phase_exec = None  # type: Optional[phase_executor.PhaseExecutor]
     self.uid = execution_uid
     self._last_outcome = None  # type: Optional[phase_executor.PhaseExecutionOutcome]
+    self._last_execution_unit: str = None
     self._abort = threading.Event()
     self._full_abort = threading.Event()
     # This is a reentrant lock so that the teardown logic that prevents aborts
@@ -235,6 +236,7 @@ class TestExecutor(threads.KillableThread):
       # Record the equivalent failure outcome and exit early.
       self._last_outcome = phase_executor.PhaseExecutionOutcome(
           phase_executor.ExceptionInfo(*sys.exc_info()))
+      self._last_execution_unit = 'Plugs Initialization'
       return True
 
   def _execute_test_start(self) -> bool:
@@ -264,6 +266,7 @@ class TestExecutor(threads.KillableThread):
 
     if outcome.is_terminal:
       self._last_outcome = outcome
+      self._last_execution_unit = 'TestStart'
       return True
 
     if self.test_state.test_record.dut_id is None:
@@ -296,7 +299,9 @@ class TestExecutor(threads.KillableThread):
       self.logger.debug('Finishing test with outcome ABORTED.')
       self.test_state.abort()
     elif self._last_outcome and self._last_outcome.is_terminal:
-      self.test_state.finalize_from_phase_outcome(self._last_outcome)
+      self.test_state.finalize_from_phase_outcome(
+          self._last_outcome, self._last_execution_unit
+      )
     else:
       self.test_state.finalize_normally()
 
@@ -333,6 +338,7 @@ class TestExecutor(threads.KillableThread):
     if outcome.is_terminal:
       if not self._last_outcome:
         self._last_outcome = outcome
+        self._last_execution_unit = phase.name
       return _ExecutorReturn.TERMINAL
 
     if outcome.is_fail_subtest:
@@ -354,6 +360,7 @@ class TestExecutor(threads.KillableThread):
     if outcome.is_terminal:
       if not self._last_outcome:
         self._last_outcome = outcome
+        self._last_execution_unit = checkpoint.name
       return _ExecutorReturn.TERMINAL
 
     if outcome.is_fail_subtest:
@@ -600,6 +607,7 @@ class TestExecutor(threads.KillableThread):
         # Record the equivalent failure outcome and exit early.
         self._last_outcome = phase_executor.PhaseExecutionOutcome(
             phase_executor.ExceptionInfo(*sys.exc_info()))
+        self._last_execution_unit = diagnoser.name
 
   def _execute_test_diagnosers(self) -> None:
     for diagnoser in self._test_options.diagnosers:

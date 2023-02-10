@@ -243,7 +243,7 @@ class TestTestApi(parameterized.TestCase):
   def test_test_state_finalize_from_phase_outcome(
       self, phase_exe_outcome: phase_executor.PhaseExecutionOutcome,
       test_record_outcome: test_record.Outcome):
-    self.test_state.finalize_from_phase_outcome(phase_exe_outcome)
+    self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
     self.assertEqual(self.test_state.test_record.outcome, test_record_outcome)
 
   def test_test_state_finalize_from_phase_outcome_exception_info(self):
@@ -252,6 +252,6 @@ class TestTestApi(parameterized.TestCase):
     except ValueError:
       phase_exe_outcome = phase_executor.PhaseExecutionOutcome(
           phase_executor.ExceptionInfo(*sys.exc_info()))
-      self.test_state.finalize_from_phase_outcome(phase_exe_outcome)
+      self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
     self.assertEqual(self.test_state.test_record.outcome,
                      test_record.Outcome.ERROR)

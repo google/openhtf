@@ -382,7 +382,9 @@ class TestState(util.SubscribableStateMixin):
 
   def finalize_from_phase_outcome(
       self,
-      phase_execution_outcome: phase_executor.PhaseExecutionOutcome) -> None:
+      phase_execution_outcome: phase_executor.PhaseExecutionOutcome,
+      phase_name: str,
+  ) -> None:
     """Finalize due to the given phase outcome."""
     if self._is_aborted():
       return
@@ -400,39 +402,49 @@ class TestState(util.SubscribableStateMixin):
       self.test_record.add_outcome_details(code, description)
       if self._outcome_is_failure_exception(phase_execution_outcome):
         self.state_logger.error(
-            'Outcome will be FAIL since exception was of type %s',
-            phase_execution_outcome.phase_result.exc_val)
+            f'Outcome of {phase_name} will be FAIL since exception was of type'
+            ' {phase_execution_outcome.phase_result.exc_val}'
+        )
         self._finalize(test_record.Outcome.FAIL)
       else:
         self.state_logger.critical(
-            'Finishing test execution early due to an exception raised during '
-            'phase execution; outcome ERROR.')
+            f'Finishing test execution of {phase_name} early due to an '
+            'exception raised during phase execution; outcome ERROR.'
+        )
         # Enable CLI printing of the full traceback with the -v flag.
         if isinstance(result, phase_executor.ExceptionInfo):
           self.state_logger.critical(
-              'Traceback:%s%s%s%s',
+              'Traceback:%s%s%s%s\n in executing %s',
               os.linesep,
               phase_execution_outcome.phase_result.get_traceback_string(),
               os.linesep,
               description,
+              phase_name,
           )
         else:
           self.state_logger.critical(
-              'Description:%s',
-              description,
+              f'Description:{description}, PhaseName:{phase_name}'
           )
         self._finalize(test_record.Outcome.ERROR)
     elif phase_execution_outcome.is_timeout:
-      self.state_logger.error('Finishing test execution early due to '
-                              'phase timeout, outcome TIMEOUT.')
-      self.test_record.add_outcome_details('TIMEOUT',
-                                           'A phase hit its timeout.')
+      self.state_logger.error(
+          'Finishing test execution early due to '
+          f'phase {phase_name} experiencing timeout, '
+          'outcome TIMEOUT.'
+      )
+      self.test_record.add_outcome_details(
+          'TIMEOUT', f'Phase {phase_name} hit its timeout.'
+      )
       self._finalize(test_record.Outcome.TIMEOUT)
     elif phase_execution_outcome.phase_result == openhtf.PhaseResult.STOP:
-      self.state_logger.error('Finishing test execution early due to '
-                              'PhaseResult.STOP, outcome FAIL.')
-      self.test_record.add_outcome_details('STOP',
-                                           'A phase stopped the test run.')
+      self.state_logger.error(
+          'Finishing test execution early due to '
+          f'{phase_name} causing PhaseResult.STOP, '
+          'outcome FAIL.'
+      )
+      self.test_record.add_outcome_details(
+          'STOP', f'Phase {phase_name} stopped the test run.'
+      )
       self._finalize(test_record.Outcome.FAIL)
 
   def finalize_normally(self) -> None:
