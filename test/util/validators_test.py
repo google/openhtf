@@ -86,9 +86,9 @@ class TestAllInRange(unittest.TestCase):
     self.maximum = 0.3
     self.marginal_minimum = -10.1
     self.marginal_maximum = -8.2
-    self.validator = validators.AllInRangeValidator(self.minimum, self.maximum,
-                                                    self.marginal_minimum,
-                                                    self.marginal_maximum)
+    self.validator = validators.AllInRangeValidator(
+        self.minimum, self.maximum, self.marginal_minimum, self.marginal_maximum
+    )
 
   def test_properties(self):
     with self.subTest('minimum'):
@@ -96,11 +96,13 @@ class TestAllInRange(unittest.TestCase):
     with self.subTest('maximum'):
       self.assertAlmostEqual(self.validator.maximum, self.maximum)
     with self.subTest('marginal_minimum'):
-      self.assertAlmostEqual(self.validator.marginal_minimum,
-                             self.marginal_minimum)
+      self.assertAlmostEqual(
+          self.validator.marginal_minimum, self.marginal_minimum
+      )
     with self.subTest('marginal_maximum'):
-      self.assertAlmostEqual(self.validator.marginal_maximum,
-                             self.marginal_maximum)
+      self.assertAlmostEqual(
+          self.validator.marginal_maximum, self.marginal_maximum
+      )
 
   def test_returns_false_for_out_of_range_values(self):
     with self.subTest('beyond_minimum'):
@@ -123,19 +125,24 @@ class TestAllInRange(unittest.TestCase):
   def test_is_marginal_is_marginal_returns_true_for_out_of_range_values(self):
     with self.subTest('beyond_marginal_minimum'):
       self.assertTrue(
-          self.validator.is_marginal([self.minimum, self.marginal_maximum - 1]))
+          self.validator.is_marginal([self.minimum, self.marginal_maximum - 1])
+      )
     with self.subTest('beyond_marginal_maximum'):
       self.assertTrue(
-          self.validator.is_marginal([self.marginal_minimum + 1, self.maximum]))
+          self.validator.is_marginal([self.marginal_minimum + 1, self.maximum])
+      )
 
   def test_is_marginal_false_within_bounds(self):
     self.assertFalse(
         self.validator.is_marginal(
-            [self.marginal_minimum + 1, self.marginal_maximum - 1]))
+            [self.marginal_minimum + 1, self.marginal_maximum - 1]
+        )
+    )
 
   def test_is_marginal_false_fully_out_of_range(self):
     self.assertFalse(
-        self.validator.is_marginal([self.minimum - 1, self.maximum + 1]))
+        self.validator.is_marginal([self.minimum - 1, self.maximum + 1])
+    )
 
   def test_is_marginal_false_without_marginal_bounds(self):
     validator = validators.AllInRangeValidator(self.minimum, self.minimum)
@@ -144,28 +151,36 @@ class TestAllInRange(unittest.TestCase):
   def test_raises_for_unset_minimum_and_maximum(self):
     with self.assertRaises(ValueError) as raises_context:
       validators.AllInRangeValidator(None, None)
-    self.assertIn('Must specify minimum, maximum, or both',
-                  str(raises_context.exception))
+    self.assertIn(
+        'Must specify minimum, maximum, or both', str(raises_context.exception)
+    )
 
   def test_raises_for_minimum_above_maximum(self):
     with self.assertRaises(ValueError) as raises_context:
       validators.AllInRangeValidator(minimum=self.maximum, maximum=self.minimum)
-    self.assertIn('Minimum cannot be greater than maximum',
-                  str(raises_context.exception))
+    self.assertIn(
+        'Minimum cannot be greater than maximum', str(raises_context.exception)
+    )
 
   def test_raises_for_marginal_minimum_without_minimum(self):
     with self.assertRaises(ValueError) as raises_context:
-      validators.AllInRangeValidator(None, self.maximum, self.marginal_minimum,
-                                     self.marginal_maximum)
-    self.assertIn('Marginal minimum was specified without a minimum',
-                  str(raises_context.exception))
+      validators.AllInRangeValidator(
+          None, self.maximum, self.marginal_minimum, self.marginal_maximum
+      )
+    self.assertIn(
+        'Marginal minimum was specified without a minimum',
+        str(raises_context.exception),
+    )
 
   def test_raises_for_marginal_maximum_without_maximum(self):
     with self.assertRaises(ValueError) as raises_context:
-      validators.AllInRangeValidator(self.minimum, None, self.marginal_minimum,
-                                     self.marginal_maximum)
-    self.assertIn('Marginal maximum was specified without a maximum',
-                  str(raises_context.exception))
+      validators.AllInRangeValidator(
+          self.minimum, None, self.marginal_minimum, self.marginal_maximum
+      )
+    self.assertIn(
+        'Marginal maximum was specified without a maximum',
+        str(raises_context.exception),
+    )
 
   def test_raises_for_marginal_minimum_below_minimum(self):
     with self.assertRaises(ValueError) as raises_context:
@@ -173,9 +188,12 @@ class TestAllInRange(unittest.TestCase):
           minimum=self.marginal_minimum,
           maximum=None,
           marginal_minimum=self.minimum,
-          marginal_maximum=None)
-    self.assertIn('Marginal minimum cannot be less than the minimum',
-                  str(raises_context.exception))
+          marginal_maximum=None,
+      )
+    self.assertIn(
+        'Marginal minimum cannot be less than the minimum',
+        str(raises_context.exception),
+    )
 
   def test_raises_for_marginal_maximum_below_maximum(self):
     with self.assertRaises(ValueError) as raises_context:
@@ -183,9 +201,12 @@ class TestAllInRange(unittest.TestCase):
           minimum=None,
           maximum=self.marginal_maximum,
           marginal_minimum=None,
-          marginal_maximum=self.maximum)
-    self.assertIn('Marginal maximum cannot be greater than the maximum',
-                  str(raises_context.exception))
+          marginal_maximum=self.maximum,
+      )
+    self.assertIn(
+        'Marginal maximum cannot be greater than the maximum',
+        str(raises_context.exception),
+    )
 
   def test_raises_for_marginal_minimum_above_marginal_maximum(self):
     with self.assertRaises(ValueError) as raises_context:
@@ -193,10 +214,12 @@ class TestAllInRange(unittest.TestCase):
           self.minimum,
           self.maximum,
           marginal_minimum=self.marginal_maximum,
-          marginal_maximum=self.marginal_minimum)
+          marginal_maximum=self.marginal_minimum,
+      )
     self.assertIn(
         'Marginal minimum cannot be greater than the marginal maximum',
-        str(raises_context.exception))
+        str(raises_context.exception),
+    )
 
 
 class TestEqualsValidator(unittest.TestCase):
@@ -206,7 +229,6 @@ class TestEqualsValidator(unittest.TestCase):
       self.assertTrue(validators.Equals(val)(val))
 
   def test_with_custom_class(self):
-
     class MyType(object):
       A = 10
 
@@ -247,7 +269,6 @@ class TestEqualsFactory(unittest.TestCase):
     self.assertFalse(string_validator('aardvarka'))
 
   def test_with_object(self):
-
     class MyType(object):
       val = 'A'
 
@@ -270,7 +291,8 @@ class TestWithinPercent(unittest.TestCase):
 
   def test_is_marginal(self):
     validator = validators.WithinPercent(
-        expected=100, percent=10, marginal_percent=5)
+        expected=100, percent=10, marginal_percent=5
+    )
     with self.subTest('returns_true_on_marginal_measurement'):
       self.assertTrue(validator.is_marginal(106))
     with self.subTest('returns_false_on_non_marginal_measurement'):
@@ -281,22 +303,26 @@ class TestWithinPercent(unittest.TestCase):
     for valid_value in [95, 95.0, 100, 100.0, 105, 105.0]:
       self.assertTrue(
           validator(valid_value),
-          msg='{} should validate, but did not'.format(valid_value))
+          msg='{} should validate, but did not'.format(valid_value),
+      )
     for invalid_value in [94, 94.0, 106, 106.0]:
       self.assertFalse(
           validator(invalid_value),
-          msg='{} should not validate, but did'.format(invalid_value))
+          msg='{} should not validate, but did'.format(invalid_value),
+      )
 
   def test_within_percent_greater_than_one_hundred(self):
     validator = validators.WithinPercent(expected=100, percent=200)
     for valid_value in [-100, 100, 300]:
       self.assertTrue(
           validator(valid_value),
-          msg='{} should validate, but did not'.format(valid_value))
+          msg='{} should validate, but did not'.format(valid_value),
+      )
     for invalid_value in [-101, 301]:
       self.assertFalse(
           validator(invalid_value),
-          msg='{} should not validate, but did'.format(invalid_value))
+          msg='{} should not validate, but did'.format(invalid_value),
+      )
 
   def test_equals_equivalent_within_percent_validator(self):
     validator_a = validators.WithinPercent(expected=100, percent=10)
@@ -304,7 +330,8 @@ class TestWithinPercent(unittest.TestCase):
     self.assertEqual(
         validator_a,
         validator_b,
-        msg='Validators should compare equal, but did not.')
+        msg='Validators should compare equal, but did not.',
+    )
 
   def test_not_equals_when_not_equivalent(self):
     validator_a = validators.WithinPercent(expected=100, percent=10)
@@ -337,12 +364,14 @@ class DimensionPivotTest(htf_test.TestCase):
 
   _test_value = 10
   _sub_validator = validators.in_range(0, _test_value)
-  _test_measurement = htf.Measurement('pivot').with_dimensions(
-      'height', 'width').dimension_pivot_validate(_sub_validator)
+  _test_measurement = (
+      htf.Measurement('pivot')
+      .with_dimensions('height', 'width')
+      .dimension_pivot_validate(_sub_validator)
+  )
 
   @htf_test.yields_phases
   def testPasses(self):
-
     @htf.measures(self._test_measurement)
     def phase(test):
       test.measurements.pivot[10, 10] = self._test_value - 2
@@ -353,7 +382,6 @@ class DimensionPivotTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def testFails(self):
-
     @htf.measures(self._test_measurement)
     def phase(test):
       test.measurements.pivot[11, 12] = self._test_value - 1
@@ -367,12 +395,14 @@ class ConsistentEndDimensionPivotTest(htf_test.TestCase):
   """Tests validators.ConsistentEndRange. Similar to DimensionPivot."""
 
   _sub_validator = validators.in_range(minimum=5)
-  _test_measurement = htf.Measurement('pivot').with_dimensions(
-      'time').consistent_end_dimension_pivot_validate(_sub_validator)
+  _test_measurement = (
+      htf.Measurement('pivot')
+      .with_dimensions('time')
+      .consistent_end_dimension_pivot_validate(_sub_validator)
+  )
 
   @htf_test.yields_phases
   def testPasses(self):
-
     @htf.measures(self._test_measurement)
     def phase(test):
       test.measurements.pivot[0] = 0
@@ -385,7 +415,6 @@ class ConsistentEndDimensionPivotTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def testFails(self):
-
     @htf.measures(self._test_measurement)
     def phase(test):
       test.measurements.pivot[0] = 3

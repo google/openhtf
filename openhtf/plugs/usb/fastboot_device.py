@@ -104,8 +104,9 @@ class FastbootDevice(object):
       def _retry_wrapper(*args, **kwargs):
         """Wrap the retry function."""
         result = _retry_usb_function(self._num_retries, val, *args, **kwargs)
-        _LOG.debug('LIBUSB FASTBOOT: %s(*%s, **%s) -> %s', attr, args, kwargs,
-                   result)
+        _LOG.debug(
+            'LIBUSB FASTBOOT: %s(*%s, **%s) -> %s', attr, args, kwargs, result
+        )
         return result
 
       return _retry_wrapper

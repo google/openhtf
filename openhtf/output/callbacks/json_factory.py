@@ -35,8 +35,9 @@ class TestRecordEncoder(json.JSONEncoder):
 
 def convert_test_record_to_json(
     test_rec: test_record.TestRecord,
-    inline_attachments: bool = True, allow_nan: bool = False
-    ) -> Dict[Text, Any]:
+    inline_attachments: bool = True,
+    allow_nan: bool = False,
+) -> Dict[Text, Any]:
   """Convert the test record to a JSON object.
 
   Args:
@@ -90,10 +91,13 @@ class OutputToJSON(callbacks.OutputToFile):
         '/data/test_records/{dut_id}.{metadata[test_name]}.json'))
   """
 
-  def __init__(self, filename_pattern_or_file: Union[Text, Callable[..., Text],
-                                                     BinaryIO],
-               inline_attachments: bool = True,
-               allow_nan: bool = False, **json_kwargs: Any):
+  def __init__(
+      self,
+      filename_pattern_or_file: Union[Text, Callable[..., Text], BinaryIO],
+      inline_attachments: bool = True,
+      allow_nan: bool = False,
+      **json_kwargs: Any
+  ):
     """Constructor.
 
     Args:
@@ -112,10 +116,12 @@ class OutputToJSON(callbacks.OutputToFile):
     self.allow_nan = allow_nan
     self._json_kwargs = json_kwargs
 
-  def serialize_test_record(self, test_rec: test_record.TestRecord
-                            ) -> Iterator[Text]:
+  def serialize_test_record(
+      self, test_rec: test_record.TestRecord
+  ) -> Iterator[Text]:
     encoded = convert_test_record_to_json(
-        test_rec, inline_attachments=self.inline_attachments,
-        allow_nan=self.allow_nan)
-    return stream_json(encoded, allow_nan=self.allow_nan,
-                       **self._json_kwargs)
+        test_rec,
+        inline_attachments=self.inline_attachments,
+        allow_nan=self.allow_nan,
+    )
+    return stream_json(encoded, allow_nan=self.allow_nan, **self._json_kwargs)

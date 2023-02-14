@@ -22,12 +22,12 @@ from openhtf.util import data
 class TestData(unittest.TestCase):
 
   def test_convert_to_base_types(self):
-
     class FloatSubclass(float):
       pass
 
     class SpecialBaseTypes(
-        collections.namedtuple('SpecialBaseTypes', ['unsafe_value'])):
+        collections.namedtuple('SpecialBaseTypes', ['unsafe_value'])
+    ):
 
       def as_base_types(self):
         return {'safe_value': True}
@@ -67,7 +67,6 @@ class TestData(unittest.TestCase):
         'float_subclass': FloatSubclass(10.0),
         'special': SpecialBaseTypes('must_not_be_present'),
         'not_copied': not_copied,
-
         # Some plugs such as UserInputPlug will return None as a response to
         # AsDict().
         'none_dict': AsDict(),

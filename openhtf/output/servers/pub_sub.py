@@ -29,14 +29,16 @@ class PubSub(sockjs.tornado.SockJSConnection):
     """Ensure subclasses don't share subscriber locks by forcing override."""
     raise AttributeError(
         'The PubSub class should not be instantiated directly. '
-        'Instead, subclass it and override the _lock attribute.')
+        'Instead, subclass it and override the _lock attribute.'
+    )
 
   @htf_util.classproperty
   def subscribers(cls):  # pylint: disable=no-self-argument
     """Ensure subclasses don't share subscribers by forcing override."""
     raise AttributeError(
         'The PubSub class should not be instantiated directly. '
-        'Instead, subclass it and override the subscribers attribute.')
+        'Instead, subclass it and override the subscribers attribute.'
+    )
 
   @classmethod
   def publish(cls, message, client_filter=None):

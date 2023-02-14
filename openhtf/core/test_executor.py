@@ -47,14 +47,20 @@ _LOG = logging.getLogger(__name__)
 CONF.declare(
     'cancel_timeout_s',
     default_value=2,
-    description='Timeout (in seconds) when the test has been cancelled'
-    'to wait for the running phase to exit.')
+    description=(
+        'Timeout (in seconds) when the test has been cancelled'
+        'to wait for the running phase to exit.'
+    ),
+)
 
 CONF.declare(
     'stop_on_first_failure',
     default_value=False,
-    description='Stop current test execution and return Outcome FAIL'
-    'on first phase with failed measurement.')
+    description=(
+        'Stop current test execution and return Outcome FAIL'
+        'on first phase with failed measurement.'
+    ),
+)
 
 
 class TestExecutionError(Exception):
@@ -74,8 +80,9 @@ def _more_critical(e1: _ExecutorReturn, e2: _ExecutorReturn) -> _ExecutorReturn:
   return _ExecutorReturn(max(e1.value, e2.value))
 
 
-def combine_profile_stats(profile_stats_iter: List[pstats.Stats],
-                          output_filename: Text) -> None:
+def combine_profile_stats(
+    profile_stats_iter: List[pstats.Stats], output_filename: Text
+) -> None:
   """Given an iterable of pstats.Stats, combine them into a single Stats."""
   profile_stats_filenames = []
   for profile_stats in profile_stats_iter:
@@ -90,15 +97,20 @@ def combine_profile_stats(profile_stats_iter: List[pstats.Stats],
 # pylint: disable=too-many-instance-attributes
 class TestExecutor(threads.KillableThread):
   """Encompasses the execution of a single test."""
+
   daemon = True
 
-  def __init__(self, test_descriptor: 'test_descriptor.TestDescriptor',
-               execution_uid: Text,
-               test_start: Optional[phase_descriptor.PhaseDescriptor],
-               test_options: 'test_descriptor.TestOptions',
-               run_with_profiling: bool):
+  def __init__(
+      self,
+      test_descriptor: 'test_descriptor.TestDescriptor',
+      execution_uid: Text,
+      test_start: Optional[phase_descriptor.PhaseDescriptor],
+      test_options: 'test_descriptor.TestOptions',
+      run_with_profiling: bool,
+  ):
     super(TestExecutor, self).__init__(
-        name='TestExecutorThread', run_with_profiling=run_with_profiling)
+        name='TestExecutorThread', run_with_profiling=run_with_profiling
+    )
     self.test_state = None  # type: Optional[test_state.TestState]
 
     self._test_descriptor = test_descriptor
@@ -107,7 +119,9 @@ class TestExecutor(threads.KillableThread):
     self._lock = threading.Lock()
     self._phase_exec = None  # type: Optional[phase_executor.PhaseExecutor]
     self.uid = execution_uid
-    self._last_outcome = None  # type: Optional[phase_executor.PhaseExecutionOutcome]
+    self._last_outcome = (
+        None
+    )  # type: Optional[phase_executor.PhaseExecutionOutcome]
     self._last_execution_unit: str = None
     self._abort = threading.Event()
     self._full_abort = threading.Event()
@@ -188,8 +202,9 @@ class TestExecutor(threads.KillableThread):
     """Handles one whole test from start to finish."""
     try:
       # Top level steps required to run a single iteration of the Test.
-      self.test_state = test_state.TestState(self._test_descriptor, self.uid,
-                                             self._test_options)
+      self.test_state = test_state.TestState(
+          self._test_descriptor, self.uid, self._test_options
+      )
       phase_exec = phase_executor.PhaseExecutor(self.test_state)
 
       # Any access to self._exit_stacks must be done while holding this lock.
@@ -219,8 +234,8 @@ class TestExecutor(threads.KillableThread):
       self._execute_test_teardown()
 
   def _initialize_plugs(
-      self,
-      plug_types: Optional[List[Type[base_plugs.BasePlug]]] = None) -> bool:
+      self, plug_types: Optional[List[Type[base_plugs.BasePlug]]] = None
+  ) -> bool:
     """Initialize plugs.
 
     Args:
@@ -235,7 +250,8 @@ class TestExecutor(threads.KillableThread):
     except Exception:  # pylint: disable=broad-except
       # Record the equivalent failure outcome and exit early.
       self._last_outcome = phase_executor.PhaseExecutionOutcome(
-          phase_executor.ExceptionInfo(*sys.exc_info()))
+          phase_executor.ExceptionInfo(*sys.exc_info())
+      )
       self._last_execution_unit = 'Plugs Initialization'
       return True
 
@@ -255,11 +271,13 @@ class TestExecutor(threads.KillableThread):
     # Have the phase executor run the start trigger phase. Do partial plug
     # initialization for just the plugs needed by the start trigger phase.
     if self._initialize_plugs(
-        plug_types=[phase_plug.cls for phase_plug in self._test_start.plugs]):
+        plug_types=[phase_plug.cls for phase_plug in self._test_start.plugs]
+    ):
       return True
 
     outcome, profile_stats = self._phase_exec.execute_phase(
-        self._test_start, self._run_with_profiling)
+        self._test_start, self._run_with_profiling
+    )
 
     if profile_stats is not None:
       self._phase_profile_stats.append(profile_stats)
@@ -305,12 +323,16 @@ class TestExecutor(threads.KillableThread):
     else:
       self.test_state.finalize_normally()
 
-  def _execute_phase(self, phase: phase_descriptor.PhaseDescriptor,
-                     subtest_rec: Optional[test_record.SubtestRecord],
-                     in_teardown: bool) -> _ExecutorReturn:
+  def _execute_phase(
+      self,
+      phase: phase_descriptor.PhaseDescriptor,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
     if subtest_rec:
-      self.logger.debug('Executing phase %s under subtest %s', phase.name,
-                        subtest_rec.name)
+      self.logger.debug(
+          'Executing phase %s under subtest %s', phase.name, subtest_rec.name
+      )
     else:
       self.logger.debug('Executing phase %s', phase.name)
 
@@ -321,18 +343,23 @@ class TestExecutor(threads.KillableThread):
     outcome, profile_stats = self._phase_exec.execute_phase(
         phase,
         run_with_profiling=self._run_with_profiling,
-        subtest_rec=subtest_rec)
+        subtest_rec=subtest_rec,
+    )
     if profile_stats is not None:
       self._phase_profile_stats.append(profile_stats)
 
-    if (self.test_state.test_options.stop_on_first_failure or
-        CONF.stop_on_first_failure):
+    if (
+        self.test_state.test_options.stop_on_first_failure
+        or CONF.stop_on_first_failure
+    ):
       # Stop Test on first measurement failure
       current_phase_result = self.test_state.test_record.phases[
-          len(self.test_state.test_record.phases) - 1]
+          len(self.test_state.test_record.phases) - 1
+      ]
       if current_phase_result.outcome == test_record.PhaseOutcome.FAIL:
         outcome = phase_executor.PhaseExecutionOutcome(
-            phase_descriptor.PhaseResult.STOP)
+            phase_descriptor.PhaseResult.STOP
+        )
         self.logger.error('Stopping test because stop_on_first_failure is True')
 
     if outcome.is_terminal:
@@ -345,13 +372,17 @@ class TestExecutor(threads.KillableThread):
       if not subtest_rec:
         raise TestExecutionError(
             'INVALID STATE: Phase returned outcome FAIL_SUBTEST when not '
-            'in subtest.')
+            'in subtest.'
+        )
       subtest_rec.outcome = test_record.SubtestOutcome.FAIL
     return _ExecutorReturn.CONTINUE
 
-  def _execute_checkpoint(self, checkpoint: phase_branches.Checkpoint,
-                          subtest_rec: Optional[test_record.SubtestRecord],
-                          in_teardown: bool) -> _ExecutorReturn:
+  def _execute_checkpoint(
+      self,
+      checkpoint: phase_branches.Checkpoint,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
     if not in_teardown and subtest_rec and subtest_rec.is_fail:
       self._phase_exec.skip_checkpoint(checkpoint, subtest_rec)
       return _ExecutorReturn.CONTINUE
@@ -367,7 +398,8 @@ class TestExecutor(threads.KillableThread):
       if not subtest_rec:
         raise TestExecutionError(
             'INVALID STATE: Phase returned outcome FAIL_SUBTEST when not '
-            'in subtest.')
+            'in subtest.'
+        )
       subtest_rec.outcome = test_record.SubtestOutcome.FAIL
     return _ExecutorReturn.CONTINUE
 
@@ -383,7 +415,8 @@ class TestExecutor(threads.KillableThread):
       phase_sequence: phase_collections.PhaseSequence,
       subtest_rec: Optional[test_record.SubtestRecord],
       in_teardown: bool,
-      override_message: Optional[Text] = None) -> _ExecutorReturn:
+      override_message: Optional[Text] = None,
+  ) -> _ExecutorReturn:
     """Execute phase sequence.
 
     Args:
@@ -403,8 +436,10 @@ class TestExecutor(threads.KillableThread):
       return self._execute_abortable_sequence(phase_sequence, subtest_rec)
 
   def _execute_abortable_sequence(
-      self, phase_sequence: phase_collections.PhaseSequence,
-      subtest_rec: Optional[test_record.SubtestRecord]) -> _ExecutorReturn:
+      self,
+      phase_sequence: phase_collections.PhaseSequence,
+      subtest_rec: Optional[test_record.SubtestRecord],
+  ) -> _ExecutorReturn:
     """Execute phase sequence, returning immediately on error or test abort.
 
     Args:
@@ -423,8 +458,10 @@ class TestExecutor(threads.KillableThread):
     return _ExecutorReturn.CONTINUE
 
   def _execute_teardown_sequence(
-      self, phase_sequence: phase_collections.PhaseSequence,
-      subtest_rec: Optional[test_record.SubtestRecord]) -> _ExecutorReturn:
+      self,
+      phase_sequence: phase_collections.PhaseSequence,
+      subtest_rec: Optional[test_record.SubtestRecord],
+  ) -> _ExecutorReturn:
     """Execute all the teardown phases, regardless of errors.
 
     Args:
@@ -462,14 +499,18 @@ class TestExecutor(threads.KillableThread):
     subtest_rec = test_record.SubtestRecord(
         name=subtest.name,
         start_time_millis=util.time_millis(),
-        outcome=test_record.SubtestOutcome.PASS)
+        outcome=test_record.SubtestOutcome.PASS,
+    )
     yield subtest_rec
     subtest_rec.end_time_millis = util.time_millis()
     self.test_state.test_record.add_subtest_record(subtest_rec)
 
-  def _execute_subtest(self, subtest: phase_collections.Subtest,
-                       outer_subtest_rec: Optional[test_record.SubtestRecord],
-                       in_teardown: bool) -> _ExecutorReturn:
+  def _execute_subtest(
+      self,
+      subtest: phase_collections.Subtest,
+      outer_subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
     """Run a subtest node."""
     with self._subtest_context(subtest) as subtest_rec:
       if outer_subtest_rec and outer_subtest_rec.is_fail:
@@ -487,37 +528,47 @@ class TestExecutor(threads.KillableThread):
           self.logger.debug('%s: Subtest passed.', subtest.name)
       return ret
 
-  def _execute_phase_branch(self, branch: phase_branches.BranchSequence,
-                            subtest_rec: Optional[test_record.SubtestRecord],
-                            in_teardown: bool) -> _ExecutorReturn:
+  def _execute_phase_branch(
+      self,
+      branch: phase_branches.BranchSequence,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
     branch_message = branch.diag_condition.message
     if branch.name:
       branch_message = '{}:{}'.format(branch.name, branch_message)
     if not in_teardown and subtest_rec and subtest_rec.is_fail:
-      self.logger.debug('%s: Branch not being run due to failed subtest.',
-                        branch_message)
+      self.logger.debug(
+          '%s: Branch not being run due to failed subtest.', branch_message
+      )
       return _ExecutorReturn.CONTINUE
 
     evaluated_millis = util.time_millis()
     if branch.should_run(self.test_state.diagnoses_manager.store):
-      self.logger.debug('%s: Branch condition met; running phases.',
-                        branch_message)
+      self.logger.debug(
+          '%s: Branch condition met; running phases.', branch_message
+      )
       branch_taken = True
       ret = self._execute_sequence(branch, subtest_rec, in_teardown)
     else:
-      self.logger.debug('%s: Branch condition NOT met; not running sequence.',
-                        branch_message)
+      self.logger.debug(
+          '%s: Branch condition NOT met; not running sequence.', branch_message
+      )
       branch_taken = False
       ret = _ExecutorReturn.CONTINUE
 
-    branch_rec = test_record.BranchRecord.from_branch(branch, branch_taken,
-                                                      evaluated_millis)
+    branch_rec = test_record.BranchRecord.from_branch(
+        branch, branch_taken, evaluated_millis
+    )
     self.test_state.test_record.add_branch_record(branch_rec)
     return ret
 
-  def _execute_phase_group(self, group: phase_group.PhaseGroup,
-                           subtest_rec: Optional[test_record.SubtestRecord],
-                           in_teardown: bool) -> _ExecutorReturn:
+  def _execute_phase_group(
+      self,
+      group: phase_group.PhaseGroup,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
     """Executes the phases in a phase group.
 
     This will run the phases in the phase group, ensuring if the setup
@@ -547,19 +598,21 @@ class TestExecutor(threads.KillableThread):
           group.setup,
           subtest_rec,
           in_teardown,
-          override_message=message_prefix + 'setup')
+          override_message=message_prefix + 'setup',
+      )
       if setup_ret != _ExecutorReturn.CONTINUE:
         return setup_ret
       if not skip_teardown:
         # If the subtest fails during the setup, the group is still not entered,
         # so skip the teardown phases here as well.
-        skip_teardown = (subtest_rec is not None and subtest_rec.is_fail)
+        skip_teardown = subtest_rec is not None and subtest_rec.is_fail
     if group.main:
       main_ret = self._execute_sequence(
           group.main,
           subtest_rec,
           in_teardown,
-          override_message=message_prefix + 'main')
+          override_message=message_prefix + 'main',
+      )
     else:
       main_ret = _ExecutorReturn.CONTINUE
     if group.teardown:
@@ -569,14 +622,18 @@ class TestExecutor(threads.KillableThread):
           # If the subtest is already failing, record skips during the teardown
           # sequence.
           not skip_teardown,
-          override_message=message_prefix + 'teardown')
+          override_message=message_prefix + 'teardown',
+      )
     else:
       teardown_ret = _ExecutorReturn.CONTINUE
     return _more_critical(main_ret, teardown_ret)
 
-  def _execute_node(self, node: phase_nodes.PhaseNode,
-                    subtest_rec: Optional[test_record.SubtestRecord],
-                    in_teardown: bool) -> _ExecutorReturn:
+  def _execute_node(
+      self,
+      node: phase_nodes.PhaseNode,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
     if isinstance(node, phase_collections.Subtest):
       return self._execute_subtest(node, subtest_rec, in_teardown)
     if isinstance(node, phase_branches.BranchSequence):
@@ -593,20 +650,26 @@ class TestExecutor(threads.KillableThread):
     return _ExecutorReturn.TERMINAL
 
   def _execute_test_diagnoser(
-      self, diagnoser: diagnoses_lib.BaseTestDiagnoser) -> None:
+      self, diagnoser: diagnoses_lib.BaseTestDiagnoser
+  ) -> None:
     try:
       self.test_state.diagnoses_manager.execute_test_diagnoser(
-          diagnoser, self.test_state.test_record)
+          diagnoser, self.test_state.test_record
+      )
     except Exception:  # pylint: disable=broad-except
       if self._last_outcome and self._last_outcome.is_terminal:
         self.logger.exception(
-            'Test Diagnoser %s raised an exception, but the test outcome is '
-            'already terminal; logging additional exception here.',
-            diagnoser.name)
+            (
+                'Test Diagnoser %s raised an exception, but the test outcome is'
+                ' already terminal; logging additional exception here.'
+            ),
+            diagnoser.name,
+        )
       else:
         # Record the equivalent failure outcome and exit early.
         self._last_outcome = phase_executor.PhaseExecutionOutcome(
-            phase_executor.ExceptionInfo(*sys.exc_info()))
+            phase_executor.ExceptionInfo(*sys.exc_info())
+        )
         self._last_execution_unit = diagnoser.name
 
   def _execute_test_diagnosers(self) -> None:

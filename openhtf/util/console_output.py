@@ -50,9 +50,12 @@ ARG_PARSER.add_argument(
     '--quiet',
     action=argv.StoreTrueInModule,
     target='%s.CLI_QUIET' % __name__,
-    help=textwrap.dedent("""\
+    help=textwrap.dedent(
+        """\
         Suppress all CLI output from OpenHTF's printing functions and logging.
-        This flag will override any verbosity levels set with -v."""))
+        This flag will override any verbosity levels set with -v."""
+    ),
+)
 
 ANSI_ESC_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 
@@ -64,7 +67,8 @@ class ActionFailedError(Exception):
 def _printed_len(some_string):
   """Compute the visible length of the string when printed."""
   return len(
-      [x for x in ANSI_ESC_RE.sub('', some_string) if x in string.printable])
+      [x for x in ANSI_ESC_RE.sub('', some_string) if x in string.printable]
+  )
 
 
 def _linesep_for_file(file):
@@ -97,13 +101,16 @@ def banner_print(msg, color='', width=80, file=sys.stdout, logger=_LOG):
     return
   lpad = int(math.ceil((width - _printed_len(msg) - 2) / 2.0)) * '='
   rpad = int(math.floor((width - _printed_len(msg) - 2) / 2.0)) * '='
-  file.write('{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
-      sep=_linesep_for_file(file),
-      color=color,
-      lpad=lpad,
-      msg=msg,
-      rpad=rpad,
-      reset=colorama.Style.RESET_ALL))
+  file.write(
+      '{sep}{color}{lpad} {msg} {rpad}{reset}{sep}{sep}'.format(
+          sep=_linesep_for_file(file),
+          color=color,
+          lpad=lpad,
+          msg=msg,
+          rpad=rpad,
+          reset=colorama.Style.RESET_ALL,
+      )
+  )
   file.flush()
 
 
@@ -125,13 +132,16 @@ def bracket_print(msg, color='', width=8, file=sys.stdout, end_line=True):
     return
   lpad = int(math.ceil((width - 2 - _printed_len(msg)) / 2.0)) * ' '
   rpad = int(math.floor((width - 2 - _printed_len(msg)) / 2.0)) * ' '
-  file.write('[{lpad}{bright}{color}{msg}{reset}{rpad}]'.format(
-      lpad=lpad,
-      bright=colorama.Style.BRIGHT,
-      color=color,
-      msg=msg,
-      reset=colorama.Style.RESET_ALL,
-      rpad=rpad))
+  file.write(
+      '[{lpad}{bright}{color}{msg}{reset}{rpad}]'.format(
+          lpad=lpad,
+          bright=colorama.Style.BRIGHT,
+          color=color,
+          msg=msg,
+          reset=colorama.Style.RESET_ALL,
+          rpad=rpad,
+      )
+  )
   file.write(colorama.Style.RESET_ALL)
   if end_line:
     file.write(_linesep_for_file(file))
@@ -161,8 +171,11 @@ def cli_print(msg, color='', end=None, file=sys.stdout, logger=_LOG):
     return
   if end is None:
     end = _linesep_for_file(file)
-  file.write('{color}{msg}{reset}{end}'.format(
-      color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end))
+  file.write(
+      '{color}{msg}{reset}{end}'.format(
+          color=color, msg=msg, reset=colorama.Style.RESET_ALL, end=end
+      )
+  )
 
 
 def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
@@ -178,13 +191,16 @@ def error_print(msg, color=colorama.Fore.RED, file=sys.stderr):
   """
   if CLI_QUIET:
     return
-  file.write('{sep}{bright}{color}Error: {normal}{msg}{sep}{reset}'.format(
-      sep=_linesep_for_file(file),
-      bright=colorama.Style.BRIGHT,
-      color=color,
-      normal=colorama.Style.NORMAL,
-      msg=msg,
-      reset=colorama.Style.RESET_ALL))
+  file.write(
+      '{sep}{bright}{color}Error: {normal}{msg}{sep}{reset}'.format(
+          sep=_linesep_for_file(file),
+          bright=colorama.Style.BRIGHT,
+          color=color,
+          normal=colorama.Style.NORMAL,
+          msg=msg,
+          reset=colorama.Style.RESET_ALL,
+      )
+  )
   file.flush()
 
 
@@ -210,14 +226,16 @@ class ActionResult(object):
 
 
 @contextlib.contextmanager
-def action_result_context(action_text,
-                          width=60,
-                          status_width=8,
-                          succeed_text='OK',
-                          fail_text='FAIL',
-                          unknown_text='????',
-                          file=sys.stdout,
-                          logger=_LOG):
+def action_result_context(
+    action_text,
+    width=60,
+    status_width=8,
+    succeed_text='OK',
+    fail_text='FAIL',
+    unknown_text='????',
+    file=sys.stdout,
+    logger=_LOG,
+):
   """A contextmanager that prints actions and results to the CLI.
 
   When entering the context, the action will be printed, and when the context
@@ -255,7 +273,8 @@ def action_result_context(action_text,
     if not CLI_QUIET:
       file.write(''.join((action_text, spacing)))
       bracket_print(
-          fail_text, width=status_width, color=colorama.Fore.RED, file=file)
+          fail_text, width=status_width, color=colorama.Fore.RED, file=file
+      )
     if not isinstance(err, ActionFailedError):
       raise
     return
@@ -267,7 +286,8 @@ def action_result_context(action_text,
   if not CLI_QUIET:
     file.write(''.join((action_text, spacing)))
     bracket_print(
-        result_text, width=status_width, color=result_color, file=file)
+        result_text, width=status_width, color=result_color, file=file
+    )
 
 
 class CliQuietFilter(logging.Filter):

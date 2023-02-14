@@ -71,10 +71,8 @@ OUTCOME_MAP = {
 }
 
 UOM_CODE_MAP = {
-    u.GetOptions().Extensions[
-        test_runs_pb2.uom_code]: num
-    for num, u in
-        test_runs_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.items()
+    u.GetOptions().Extensions[test_runs_pb2.uom_code]: num
+    for num, u in test_runs_pb2.Units.UnitCode.DESCRIPTOR.values_by_number.items()
 }
 # pylint: enable=no-member
 
@@ -107,7 +105,9 @@ def _populate_header(record, testrun):
     testrun.test_info.version_string = record.metadata['test_version']
   testrun.test_status = (
       test_runs_pb2.MARGINAL_PASS
-      if record.marginal else OUTCOME_MAP[record.outcome])
+      if record.marginal
+      else OUTCOME_MAP[record.outcome]
+  )
   testrun.start_time_millis = record.start_time_millis
   testrun.end_time_millis = record.end_time_millis
   if 'run_name' in record.metadata:
@@ -126,7 +126,8 @@ def _populate_header(record, testrun):
     attachment = testrun.info_parameters.add()
     attachment.name = 'config'
     attachment.value_binary = json.dumps(
-        record.metadata['config'], sort_keys=True, indent=4).encode('utf-8')
+        record.metadata['config'], sort_keys=True, indent=4
+    ).encode('utf-8')
 
 
 def _ensure_unique_parameter_name(name, used_parameter_names):
@@ -148,7 +149,8 @@ def _attach_json(record, testrun):
     testrun: a TestRun proto
   """
   encoded = json_factory.convert_test_record_to_json(
-      record, inline_attachments=False)
+      record, inline_attachments=False
+  )
   record_json = json_factory.stream_json(encoded, sort_keys=True, indent=2)
   testrun_param = testrun.info_parameters.add()
   testrun_param.name = 'OpenHTF_record.json'
@@ -174,22 +176,25 @@ def _extract_attachments(phase, testrun, used_parameter_names):
       # pylint: enable=no-member
 
 
-def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
-                        attachment_name):  # pylint: disable=g-doc-args
+def _mangle_measurement(
+    name, measured_value, measurement, mangled_parameters, attachment_name
+):  # pylint: disable=g-doc-args
   """Flatten parameters for backwards compatibility, watch for collisions.
 
   We generate these by doing some name mangling, using some sane limits for
   very large multidimensional measurements.
   """
-  for coord, val in list(measured_value.value_dict.items(
-      ))[:MAX_PARAMS_PER_MEASUREMENT]:
+  for coord, val in list(measured_value.value_dict.items())[
+      :MAX_PARAMS_PER_MEASUREMENT
+  ]:
     # Mangle names so they look like 'myparameter_Xsec_Ynm_ZHz'
-    mangled_name = '_'.join([name] + [
-        '%s%s' % (
-            dim_val,
-            dim_units.suffix if dim_units.suffix else '') for
-        dim_val, dim_units in zip(
-            coord, measurement.dimensions)])
+    mangled_name = '_'.join(
+        [name]
+        + [
+            '%s%s' % (dim_val, dim_units.suffix if dim_units.suffix else '')
+            for dim_val, dim_units in zip(coord, measurement.dimensions)
+        ]
+    )
     while mangled_name in mangled_parameters:
       logging.warning('Mangled name %s already in use', mangled_name)
       mangled_name += '_'
@@ -197,8 +202,9 @@ def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
     mangled_param.name = mangled_name
     mangled_param.associated_attachment = attachment_name
     mangled_param.description = (
-        'Mangled parameter from measurement %s with dimensions %s' % (
-            name, tuple(d.suffix for d in measurement.dimensions)))
+        'Mangled parameter from measurement %s with dimensions %s'
+        % (name, tuple(d.suffix for d in measurement.dimensions))
+    )
 
     if isinstance(val, numbers.Number):
       mangled_param.numeric_value = float(val)
@@ -233,8 +239,10 @@ def _extract_parameters(record, testrun, used_parameter_names):
         testrun_param.status = test_runs_pb2.MARGINAL_PASS
       elif measurement.outcome == measurements.Outcome.PASS:
         testrun_param.status = test_runs_pb2.PASS
-      elif (not measurement.measured_value
-            or not measurement.measured_value.is_value_set):
+      elif (
+          not measurement.measured_value
+          or not measurement.measured_value.is_value_set
+      ):
         testrun_param.status = test_runs_pb2.ERROR
         continue
       else:
@@ -265,20 +273,28 @@ def _extract_parameters(record, testrun, used_parameter_names):
       else:
         attachment = testrun.info_parameters.add()
         attachment.name = 'multidim_%s' % name
-        dims = [{
-            'uom_suffix': d.suffix,
-            'uom_code': d.code}
-                for d in measurement.dimensions]
+        dims = [
+            {'uom_suffix': d.suffix, 'uom_code': d.code}
+            for d in measurement.dimensions
+        ]
         # Refer to the module docstring for the expected schema.
-        attachment.value_binary = json.dumps({
-            'outcome': str(testrun_param.status), 'name': name,
-            'dimensions': dims,
-            'value': value
-        }, sort_keys=True).encode('utf-8')
+        attachment.value_binary = json.dumps(
+            {
+                'outcome': str(testrun_param.status),
+                'name': name,
+                'dimensions': dims,
+                'value': value,
+            },
+            sort_keys=True,
+        ).encode('utf-8')
         attachment.type = test_runs_pb2.MULTIDIM_JSON
         _mangle_measurement(
-            name, measurement.measured_value, measurement, mangled_parameters,
-            attachment.name)
+            name,
+            measurement.measured_value,
+            measurement,
+            mangled_parameters,
+            attachment.name,
+        )
       if testrun_param.status == test_runs_pb2.FAIL:
         testrun_code = testrun.failure_codes.add()
         testrun_code.code = testrun_param.name
@@ -293,10 +309,12 @@ def _extract_parameters(record, testrun, used_parameter_names):
 def _add_mangled_parameters(testrun, mangled_parameters, used_parameter_names):
   """Add any mangled parameters we generated from multidim measurements."""
   for mangled_name, mangled_param in sorted(mangled_parameters.items()):
-    if mangled_name != _ensure_unique_parameter_name(mangled_name,
-                                                     used_parameter_names):
-      logging.warning('Mangled name %s in use by non-mangled parameter',
-                      mangled_name)
+    if mangled_name != _ensure_unique_parameter_name(
+        mangled_name, used_parameter_names
+    ):
+      logging.warning(
+          'Mangled name %s in use by non-mangled parameter', mangled_name
+      )
     testrun_param = testrun.test_parameters.add()
     testrun_param.CopyFrom(mangled_param)
 
@@ -349,8 +367,9 @@ def test_run_from_test_record(record):
   _attach_json(record, testrun)
 
   used_parameter_names = set(['OpenHTF_record.json'])
-  mangled_parameters = _extract_parameters(record, testrun,
-                                           used_parameter_names)
+  mangled_parameters = _extract_parameters(
+      record, testrun, used_parameter_names
+  )
   _add_mangled_parameters(testrun, mangled_parameters, used_parameter_names)
   _add_log_lines(record, testrun)
   return testrun

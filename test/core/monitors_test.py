@@ -65,9 +65,11 @@ class TestMonitors(unittest.TestCase):
     # upwards of 100 milliseconds depending on how busy the infrastructure is,
     # so we only check that it's less than a second.
     self.assertLessEqual(
-        first_meas[0], 100, msg='At time 0, there should be a call made.')
+        first_meas[0], 100, msg='At time 0, there should be a call made.'
+    )
     self.assertEqual(
-        1, first_meas[1], msg="And it should be the monitor func's return val")
+        1, first_meas[1], msg="And it should be the monitor func's return val"
+    )
 
   def testPlugs(self):
     q = queue.Queue()
@@ -93,6 +95,8 @@ class TestMonitors(unittest.TestCase):
     # upwards of 100 milliseconds depending on how busy the infrastructure is,
     # so we only check that it's less than a second.
     self.assertLessEqual(
-        first_meas[0], 100, msg='At time 0, there should be a call made.')
+        first_meas[0], 100, msg='At time 0, there should be a call made.'
+    )
     self.assertEqual(
-        2, first_meas[1], msg="And it should be the monitor func's return val")
+        2, first_meas[1], msg="And it should be the monitor func's return val"
+    )

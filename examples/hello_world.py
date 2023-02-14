@@ -76,7 +76,8 @@ def main():
   # This will always output to the same ./hello_world.json file, formatted
   # slightly for human readability.
   test.add_output_callbacks(
-      json_factory.OutputToJSON('./{dut_id}.hello_world.json', indent=2))
+      json_factory.OutputToJSON('./{dut_id}.hello_world.json', indent=2)
+  )
 
   # prompt_for_test_start prompts the operator for a DUT ID, a unique identifier
   # for the DUT (Device Under Test).  OpenHTF requires that a DUT ID is set

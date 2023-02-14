@@ -113,9 +113,11 @@ class TestPhaseDescriptor(htf_test.TestCase):
         test_descriptor.TestDescriptor(
             phase_sequence=phase_collections.PhaseSequence(),
             code_info=test_record.CodeInfo.uncaptured(),
-            metadata={}),
+            metadata={},
+        ),
         execution_uid='',
-        test_options=test_descriptor.TestOptions())
+        test_options=test_descriptor.TestOptions(),
+    )
 
   def test_basics(self):
     phase = openhtf.PhaseDescriptor.wrap_or_copy(plain_func)
@@ -136,10 +138,10 @@ class TestPhaseDescriptor(htf_test.TestCase):
       if field.name == 'func':
         continue
       self.assertIsNot(
-          getattr(phase, field.name), getattr(second_phase, field.name))
+          getattr(phase, field.name), getattr(second_phase, field.name)
+      )
 
   def test_callable_name_with_args(self):
-
     def namer(**kwargs):
       return 'renamed_{one}_{two}'.format(**kwargs)
 
@@ -192,8 +194,10 @@ class TestPhaseDescriptor(htf_test.TestCase):
       self.assertEqual(arg_two, expected_arg_two)
 
     self._test_state.running_phase_state = (
-        test_state.PhaseState.from_descriptor(phase, self._test_state,
-                                              logging.get_absl_logger()))
+        test_state.PhaseState.from_descriptor(
+            phase, self._test_state, logging.get_absl_logger()
+        )
+    )
     phase.with_args(arg_two=expected_arg_two)(self._test_state)
 
   def test_call_only_default_args(self):
@@ -206,8 +210,10 @@ class TestPhaseDescriptor(htf_test.TestCase):
       self.assertEqual(arg_two, expected_arg_two)
 
     self._test_state.running_phase_state = (
-        test_state.PhaseState.from_descriptor(phase, self._test_state,
-                                              logging.get_absl_logger()))
+        test_state.PhaseState.from_descriptor(
+            phase, self._test_state, logging.get_absl_logger()
+        )
+    )
     phase.with_args(arg_two=expected_arg_two)(self._test_state)
 
   def test_call_test_api_default_args_and_plug(self):
@@ -223,8 +229,10 @@ class TestPhaseDescriptor(htf_test.TestCase):
       self.assertEqual(arg_two, 2)
 
     self._test_state.running_phase_state = (
-        test_state.PhaseState.from_descriptor(phase, self._test_state,
-                                              logging.get_absl_logger()))
+        test_state.PhaseState.from_descriptor(
+            phase, self._test_state, logging.get_absl_logger()
+        )
+    )
     phase.with_args(arg_one=expected_arg_one)(self._test_state)
 
   def test_call_only_default_args_and_plug(self):
@@ -239,25 +247,30 @@ class TestPhaseDescriptor(htf_test.TestCase):
       self.assertEqual(arg_two, 2)
 
     self._test_state.running_phase_state = (
-        test_state.PhaseState.from_descriptor(phase, self._test_state,
-                                              logging.get_absl_logger()))
+        test_state.PhaseState.from_descriptor(
+            phase, self._test_state, logging.get_absl_logger()
+        )
+    )
     phase.with_args(arg_one=expected_arg_one)(self._test_state)
 
   def test_call_overrides_phase_result(self):
     phase = openhtf.PhaseOptions(stop_on_measurement_fail=True)(
-        partially_passing_phase)
+        partially_passing_phase
+    )
     record = self.execute_phase_or_test(
-        openhtf.Test(passing_phase, phase, passing_phase))
+        openhtf.Test(passing_phase, phase, passing_phase)
+    )
     self.assertEqual(record.outcome, test_record.Outcome.FAIL)
     self.assertEqual(record.phases[-1].name, phase.name)
-    self.assertEqual(record.phases[-1].result.phase_result,
-                     openhtf.PhaseResult.STOP)
+    self.assertEqual(
+        record.phases[-1].result.phase_result, openhtf.PhaseResult.STOP
+    )
 
   def test_call_skips_phase_result_override(self):
     phase = openhtf.PhaseOptions(stop_on_measurement_fail=False)(
-        partially_passing_phase)
-    record = self.execute_phase_or_test(
-        openhtf.Test(phase, passing_phase))
+        partially_passing_phase
+    )
+    record = self.execute_phase_or_test(openhtf.Test(phase, passing_phase))
     self.assertEqual(record.outcome, test_record.Outcome.FAIL)
     self.assertEqual(record.phases[-1].name, passing_phase.name)
 
@@ -292,11 +305,11 @@ class TestPhaseDescriptor(htf_test.TestCase):
   def test_with_plugs_custom_placeholder_is_base_plug(self):
     phase = custom_placeholder_phase.with_plugs(custom=PlugVersionOfNonPlug)
     self.assertIs(phase.func, custom_placeholder_phase.func)
-    self.assertEqual([base_plugs.PhasePlug('custom', PlugVersionOfNonPlug)],
-                     phase.plugs)
+    self.assertEqual(
+        [base_plugs.PhasePlug('custom', PlugVersionOfNonPlug)], phase.plugs
+    )
 
   def test_camel_phase_name_casing_formats_name(self):
-
     @phase_descriptor.PhaseOptions(phase_name_case=openhtf.PhaseNameCase.CAMEL)
     def snake_cased_phase():
       """Empty function to generate phase descriptor."""
@@ -304,7 +317,6 @@ class TestPhaseDescriptor(htf_test.TestCase):
     self.assertEqual(snake_cased_phase.name, 'SnakeCasedPhase')
 
   def test_keep_phase_name_casing_does_not_change_name(self):
-
     @phase_descriptor.PhaseOptions(phase_name_case=openhtf.PhaseNameCase.KEEP)
     def keep_case_phase():
       """Empty function to generate phase descriptor."""
@@ -362,7 +374,6 @@ def dupe_b_test_diag(test_record_, store):
 class CheckForDuplicateResultsTest(unittest.TestCase):
 
   def test_phase_phase_dupe(self):
-
     @openhtf.diagnose(dupe_a_phase_diag)
     def a1():
       pass
@@ -375,7 +386,6 @@ class CheckForDuplicateResultsTest(unittest.TestCase):
       phase_descriptor.check_for_duplicate_results(iter([a1, b2]), [])
 
   def test_phase_phase_same_result(self):
-
     @openhtf.diagnose(dupe_a_phase_diag)
     def a1():
       pass
@@ -387,7 +397,6 @@ class CheckForDuplicateResultsTest(unittest.TestCase):
     phase_descriptor.check_for_duplicate_results(iter([a1, a2]), [])
 
   def test_phase_phase_same_diagnoser(self):
-
     @openhtf.diagnose(dupe_a_phase_diag)
     def a1():
       pass
@@ -399,33 +408,36 @@ class CheckForDuplicateResultsTest(unittest.TestCase):
     phase_descriptor.check_for_duplicate_results(iter([a1, a2]), [])
 
   def test_phase_test_dupe(self):
-
     @openhtf.diagnose(dupe_a_phase_diag)
     def a1():
       pass
 
     with self.assertRaises(phase_descriptor.DuplicateResultError):
       phase_descriptor.check_for_duplicate_results(
-          iter([a1]), [dupe_b_test_diag])
+          iter([a1]), [dupe_b_test_diag]
+      )
 
   def test_phase_test_same_result(self):
-
     @openhtf.diagnose(dupe_a_phase_diag)
     def a1():
       pass
 
     phase_descriptor.check_for_duplicate_results(
-        iter([a1]), [dupe_a2_test_diag])
+        iter([a1]), [dupe_a2_test_diag]
+    )
 
   def test_test_test_dupe(self):
     with self.assertRaises(phase_descriptor.DuplicateResultError):
       phase_descriptor.check_for_duplicate_results(
-          iter([]), [dupe_a_test_diag, dupe_b_test_diag])
+          iter([]), [dupe_a_test_diag, dupe_b_test_diag]
+      )
 
   def test_test_test_same_result(self):
     phase_descriptor.check_for_duplicate_results(
-        iter([]), [dupe_a_test_diag, dupe_a2_test_diag])
+        iter([]), [dupe_a_test_diag, dupe_a2_test_diag]
+    )
 
   def test_test_test_same_diagnoser(self):
     phase_descriptor.check_for_duplicate_results(
-        iter([]), [dupe_a_test_diag, dupe_a_test_diag])
+        iter([]), [dupe_a_test_diag, dupe_a_test_diag]
+    )

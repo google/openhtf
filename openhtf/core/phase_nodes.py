@@ -49,8 +49,9 @@ class PhaseNode(abc.ABC):
     """Send these keyword-arguments when phases are called."""
 
   @abc.abstractmethod
-  def with_plugs(self: WithModifierT,
-                 **subplugs: Type[base_plugs.BasePlug]) -> WithModifierT:
+  def with_plugs(
+      self: WithModifierT, **subplugs: Type[base_plugs.BasePlug]
+  ) -> WithModifierT:
     """Substitute plugs for placeholders for this phase, error on unknowns."""
 
   @abc.abstractmethod
@@ -59,7 +60,10 @@ class PhaseNode(abc.ABC):
 
   @abc.abstractmethod
   def apply_to_all_phases(
-      self: WithModifierT, func: Callable[['phase_descriptor.PhaseDescriptor'],
-                                          'phase_descriptor.PhaseDescriptor']
+      self: WithModifierT,
+      func: Callable[
+          ['phase_descriptor.PhaseDescriptor'],
+          'phase_descriptor.PhaseDescriptor',
+      ],
   ) -> WithModifierT:
     """Apply func to all contained phases."""

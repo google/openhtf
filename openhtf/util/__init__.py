@@ -24,8 +24,13 @@ import weakref
 import attr
 
 
-def _log_every_n_to_logger(n: int, logger: Optional[logging.Logger], level: int,
-                           message: Text, *args: Any) -> Callable[[], bool]:
+def _log_every_n_to_logger(
+    n: int,
+    logger: Optional[logging.Logger],
+    level: int,
+    message: Text,
+    *args: Any
+) -> Callable[[], bool]:
   """Logs the given message every n calls to a logger.
 
   Args:
@@ -51,8 +56,9 @@ def _log_every_n_to_logger(n: int, logger: Optional[logging.Logger], level: int,
   return lambda: next(gen)
 
 
-def log_every_n(n: int, level: int, message: Text,
-                *args: Any) -> Callable[[], bool]:
+def log_every_n(
+    n: int, level: int, message: Text, *args: Any
+) -> Callable[[], bool]:
   """Logs a message every n calls. See _log_every_n_to_logger."""
   return _log_every_n_to_logger(n, None, level, message, *args)
 
@@ -193,7 +199,8 @@ class SubscribableStateMixin(object):
 
   def _asdict(self) -> Dict[Text, Any]:
     raise NotImplementedError(
-        'Subclasses of SubscribableStateMixin must implement _asdict.')
+        'Subclasses of SubscribableStateMixin must implement _asdict.'
+    )
 
   def asdict_with_event(self) -> Tuple[Dict[Text, Any], threading.Event]:
     """Get a dict representation of this object and an update event.

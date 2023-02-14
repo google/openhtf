@@ -84,12 +84,19 @@ class DeviceWrappingPlug(base_plugs.BasePlug):
     self._device = device
     if hasattr(self._device, 'tearDown') and self.uses_base_tear_down():
       self.logger.warning(
-          'Wrapped device %s implements a tearDown method, '
-          'but using the no-op BasePlug tearDown method.', type(self._device))
+          (
+              'Wrapped device %s implements a tearDown method, '
+              'but using the no-op BasePlug tearDown method.'
+          ),
+          type(self._device),
+      )
 
   def __setattr__(self, name, value):
-    if (name == '_device' or '_device' not in self.__dict__ or
-        name in self.__dict__):
+    if (
+        name == '_device'
+        or '_device' not in self.__dict__
+        or name in self.__dict__
+    ):
       super(DeviceWrappingPlug, self).__setattr__(name, value)
     else:
       setattr(self._device, name, value)
@@ -99,11 +106,13 @@ class DeviceWrappingPlug(base_plugs.BasePlug):
       # _device was not found in the instance attributes.
       raise DeviceWrappingPlugNotFullyInitializedError(
           f'{type(self)} must set _device. This is genally done in __init__ by '
-          'calling super().__init__(device)')
+          'calling super().__init__(device)'
+      )
 
     if self._device is None:
       raise base_plugs.InvalidPlugError(
-          'DeviceWrappingPlug instances must set the _device attribute.')
+          'DeviceWrappingPlug instances must set the _device attribute.'
+      )
     attribute = getattr(self._device, attr)
 
     if not self.verbose or not isinstance(attribute, types.MethodType):
@@ -115,11 +124,12 @@ class DeviceWrappingPlug(base_plugs.BasePlug):
     def logging_wrapper(*args, **kwargs):
       """Wraps a callable with a logging statement."""
       args_strings = tuple(short_repr(arg) for arg in args)
-      kwargs_strings = tuple(('%s=%s' % (key, short_repr(val))
-                              for key, val in kwargs.items()))
+      kwargs_strings = tuple(
+          ('%s=%s' % (key, short_repr(val)) for key, val in kwargs.items())
+      )
       log_line = '%s calling "%s" on device.' % (type(self).__name__, attr)
       if args_strings or kwargs_strings:
-        log_line += ' Args: \n  %s' % (', '.join(args_strings + kwargs_strings))
+        log_line += ' Args: \n  %s' % ', '.join(args_strings + kwargs_strings)
       self.logger.debug(log_line)
       return attribute(*args, **kwargs)
 

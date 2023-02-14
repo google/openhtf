@@ -40,10 +40,10 @@ def loop(_=None, force=False):
     raise AttributeError(
         'threads.loop() is DEPRECATED.  If you really like this and want to '
         'keep it, file an issue at https://github.com/google/openhtf/issues '
-        'and use it as @loop(force=True) for now.')
+        'and use it as @loop(force=True) for now.'
+    )
 
   def real_loop(fn):
-
     @functools.wraps(fn)
     def _proc(*args, **kwargs):
       """Wrapper to return."""
@@ -90,8 +90,9 @@ class KillableThread(threading.Thread):
       logger: A logger for this class to use.
       **kwargs: Passed to the base class.
     """
-    self._run_with_profiling = kwargs.pop('run_with_profiling',
-                                          False)  # type: bool
+    self._run_with_profiling = kwargs.pop(
+        'run_with_profiling', False
+    )  # type: bool
     super(KillableThread, self).__init__(*args, **kwargs)
     self._running_lock = threading.Lock()
     self._killed = threading.Event()
@@ -124,7 +125,8 @@ class KillableThread(threading.Thread):
     if self._profiler is not None:
       return pstats.Stats(self._profiler)
     raise InvalidUsageError(
-        'Profiling not enabled via __init__, or thread has not run yet.')
+        'Profiling not enabled via __init__, or thread has not run yet.'
+    )
 
   def _is_thread_proc_running(self) -> bool:
     # Acquire the lock without blocking, though this object is fully implemented
@@ -166,8 +168,10 @@ class KillableThread(threading.Thread):
       self._logger.debug('Cannot kill thread that is no longer running.')
       return
     if not self._is_thread_proc_running():
-      self._logger.debug("Thread's _thread_proc function is no longer running, "
-                         'will not kill; letting thread exit gracefully.')
+      self._logger.debug(
+          "Thread's _thread_proc function is no longer running, "
+          'will not kill; letting thread exit gracefully.'
+      )
       return
     self.async_raise(ThreadTerminationError)
 
@@ -178,20 +182,27 @@ class KillableThread(threading.Thread):
 
     # If the thread has died we don't want to raise an exception so log.
     if not self.is_alive():
-      self._logger.debug('Not raising %s because thread %s (%s) is not alive',
-                         exc_type, self.name, self.ident)
+      self._logger.debug(
+          'Not raising %s because thread %s (%s) is not alive',
+          exc_type,
+          self.name,
+          self.ident,
+      )
       return
 
     result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-        ctypes.c_long(self.ident), ctypes.py_object(exc_type))
+        ctypes.c_long(self.ident), ctypes.py_object(exc_type)
+    )
     if result == 0 and self.is_alive():
       # Don't raise an exception an error unnecessarily if the thread is dead.
       raise ValueError('Thread ID was invalid.', self.ident)
     elif result > 1:
       # Something bad happened, call with a NULL exception to undo.
       ctypes.pythonapi.PyThreadState_SetAsyncExc(self.ident, None)
-      raise RuntimeError('Error: PyThreadState_SetAsyncExc %s %s (%s) %s' %
-                         (exc_type, self.name, self.ident, result))
+      raise RuntimeError(
+          'Error: PyThreadState_SetAsyncExc %s %s (%s) %s'
+          % (exc_type, self.name, self.ident, result)
+      )
 
 
 class NoneByDefaultThreadLocal(threading.local):
@@ -217,11 +228,14 @@ def synchronized(func):
       if func.__name__ in type(self).__dict__:
         hint = ''
       else:
-        hint = (' Might be missing call to super in %s.__init__?' %
-                type(self).__name__)
-      raise RuntimeError('Can\'t synchronize method `%s` of %s without '
-                         'attribute `_lock`.%s' %
-                         (func.__name__, type(self).__name__, hint))
+        hint = (
+            ' Might be missing call to super in %s.__init__?'
+            % type(self).__name__
+        )
+      raise RuntimeError(
+          "Can't synchronize method `%s` of %s without attribute `_lock`.%s"
+          % (func.__name__, type(self).__name__, hint)
+      )
     with self._lock:  # pylint: disable=protected-access
       return func(self, *args, **kwargs)
 

@@ -39,8 +39,11 @@ _BASE_PLUGS_LOG = base_plugs._LOG  # pylint: disable=protected-access
 CONF.declare(
     'plug_teardown_timeout_s',
     default_value=0,
-    description='Timeout (in seconds) for each plug tearDown function if > 0; '
-    'otherwise, will wait an unlimited time.')
+    description=(
+        'Timeout (in seconds) for each plug tearDown function if > 0; '
+        'otherwise, will wait an unlimited time.'
+    ),
+)
 
 # TODO(arsharma): Remove this aliases when users have moved to using the core
 # library.
@@ -86,14 +89,18 @@ def plug(
       BasePlug.
   """
   for a_plug in plugs_map.values():
-    if not (isinstance(a_plug, base_plugs.PlugPlaceholder) or
-            issubclass(a_plug, base_plugs.BasePlug)):
+    if not (
+        isinstance(a_plug, base_plugs.PlugPlaceholder)
+        or issubclass(a_plug, base_plugs.BasePlug)
+    ):
       raise base_plugs.InvalidPlugError(
           'Plug %s is not a subclass of base_plugs.BasePlug nor a placeholder '
-          'for one' % a_plug)
+          'for one' % a_plug
+      )
 
   def result(
-      func: 'phase_descriptor.PhaseT') -> 'phase_descriptor.PhaseDescriptor':
+      func: 'phase_descriptor.PhaseT',
+  ) -> 'phase_descriptor.PhaseDescriptor':
     """Wrap the given function and return the wrapper.
 
     Args:
@@ -108,15 +115,18 @@ def plug(
           same function.
     """
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(func)
-    duplicates = (frozenset(p.name for p in phase.plugs) & frozenset(plugs_map))
+    duplicates = frozenset(p.name for p in phase.plugs) & frozenset(plugs_map)
     if duplicates:
-      raise DuplicatePlugError('Plugs %s required multiple times on phase %s' %
-                               (duplicates, func))
+      raise DuplicatePlugError(
+          'Plugs %s required multiple times on phase %s' % (duplicates, func)
+      )
 
-    phase.plugs.extend([
-        base_plugs.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
-        for name, a_plug in plugs_map.items()
-    ])
+    phase.plugs.extend(
+        [
+            base_plugs.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
+            for name, a_plug in plugs_map.items()
+        ]
+    )
     return phase
 
   return result
@@ -136,7 +146,8 @@ class _PlugTearDownThread(threads.KillableThread):
       # Including the stack trace from ThreadTerminationErrors received when
       # killed.
       _LOG.warning(
-          'Exception calling tearDown on %s:', self._plug, exc_info=True)
+          'Exception calling tearDown on %s:', self._plug, exc_info=True
+      )
 
 
 PlugT = TypeVar('PlugT', bound=base_plugs.BasePlug)
@@ -162,15 +173,19 @@ class PlugManager(object):
       record.
   """
 
-  def __init__(self,
-               plug_types: Optional[Set[Type[base_plugs.BasePlug]]] = None,
-               record_logger: Optional[logging.Logger] = None):
+  def __init__(
+      self,
+      plug_types: Optional[Set[Type[base_plugs.BasePlug]]] = None,
+      record_logger: Optional[logging.Logger] = None,
+  ):
     self._plug_types = plug_types or set()
     for plug_type in self._plug_types:
       if isinstance(plug_type, base_plugs.PlugPlaceholder):
         raise base_plugs.InvalidPlugError(
             'Plug {} is a placeholder, replace it using with_plugs().'.format(
-                plug_type))
+                plug_type
+            )
+        )
     self._plugs_by_type = {}
     self._plugs_by_name = {}
     self._plug_descriptors = {}
@@ -191,7 +206,8 @@ class PlugManager(object):
     }
 
   def _make_plug_descriptor(
-      self, plug_type: Type[base_plugs.BasePlug]) -> PlugDescriptor:
+      self, plug_type: Type[base_plugs.BasePlug]
+  ) -> PlugDescriptor:
     """Returns the plug descriptor, containing info about this plug type."""
     return PlugDescriptor(self.get_plug_mro(plug_type))
 
@@ -211,8 +227,10 @@ class PlugManager(object):
     return [
         self.get_plug_name(base_class)  # pylint: disable=g-complex-comprehension
         for base_class in plug_type.mro()
-        if (issubclass(base_class, base_plugs.BasePlug) and
-            base_class not in ignored_classes)
+        if (
+            issubclass(base_class, base_plugs.BasePlug)
+            and base_class not in ignored_classes
+        )
     ]
 
   def get_plug_name(self, plug_type: Type[base_plugs.BasePlug]) -> Text:
@@ -227,8 +245,8 @@ class PlugManager(object):
     return '%s.%s' % (plug_type.__module__, plug_type.__name__)
 
   def initialize_plugs(
-      self,
-      plug_types: Optional[Set[Type[base_plugs.BasePlug]]] = None) -> None:
+      self, plug_types: Optional[Set[Type[base_plugs.BasePlug]]] = None
+  ) -> None:
     """Instantiate required plugs.
 
     Instantiates plug types and saves the instances in self._plugs_by_type for
@@ -249,11 +267,14 @@ class PlugManager(object):
         if not issubclass(plug_type, base_plugs.BasePlug):
           raise base_plugs.InvalidPlugError(
               'Plug type "{}" is not an instance of base_plugs.BasePlug'.format(
-                  plug_type))
+                  plug_type
+              )
+          )
         if plug_type.logger != _BASE_PLUGS_LOG:
           # They put a logger attribute on the class itself, overriding ours.
           raise base_plugs.InvalidPlugError(
-              'Do not override "logger" in your plugs.', plug_type)
+              'Do not override "logger" in your plugs.', plug_type
+          )
 
         # Override the logger so that __init__'s logging goes into the record.
         plug_type.logger = plug_logger
@@ -267,7 +288,8 @@ class PlugManager(object):
         # it set.
         if plug_instance.logger != _BASE_PLUGS_LOG:
           raise base_plugs.InvalidPlugError(
-              'Do not set "self.logger" in __init__ in your plugs', plug_type)
+              'Do not set "self.logger" in __init__ in your plugs', plug_type
+          )
         else:
           # Now the instance has its own copy of the test logger.
           plug_instance.logger = plug_logger
@@ -277,8 +299,9 @@ class PlugManager(object):
         raise
       self.update_plug(plug_type, plug_instance)
 
-  def get_plug_by_class_path(self,
-                             plug_name: Text) -> Optional[base_plugs.BasePlug]:
+  def get_plug_by_class_path(
+      self, plug_name: Text
+  ) -> Optional[base_plugs.BasePlug]:
     """Get a plug instance by name (class path).
 
     This provides a way for extensions to OpenHTF to access plug instances for
@@ -340,19 +363,23 @@ class PlugManager(object):
       thread = _PlugTearDownThread(plug_instance, name=name)
       thread.start()
       timeout_s = (
-          CONF.plug_teardown_timeout_s
-          if CONF.plug_teardown_timeout_s else None)
+          CONF.plug_teardown_timeout_s if CONF.plug_teardown_timeout_s else None
+      )
       thread.join(timeout_s)
       if thread.is_alive():
         thread.kill()
-        _LOG.warning('Killed tearDown for plug %s after timeout.',
-                     plug_instance)
+        _LOG.warning(
+            'Killed tearDown for plug %s after timeout.', plug_instance
+        )
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
 
   def wait_for_plug_update(
-      self, plug_name: Text, remote_state: Dict[Text, Any],
-      timeout_s: Union[int, float]) -> Optional[Dict[Text, Any]]:
+      self,
+      plug_name: Text,
+      remote_state: Dict[Text, Any],
+      timeout_s: Union[int, float],
+  ) -> Optional[Dict[Text, Any]]:
     """Wait for a change in the state of a frontend-aware plug.
 
     Args:
@@ -371,12 +398,14 @@ class PlugManager(object):
 
     if plug_instance is None:
       raise base_plugs.InvalidPlugError(
-          'Cannot wait on unknown plug "{}".'.format(plug_name))
+          'Cannot wait on unknown plug "{}".'.format(plug_name)
+      )
 
     if not isinstance(plug_instance, base_plugs.FrontendAwareBasePlug):
       raise base_plugs.InvalidPlugError(
           'Cannot wait on a plug {} that is not an subclass '
-          'of FrontendAwareBasePlug.'.format(plug_name))
+          'of FrontendAwareBasePlug.'.format(plug_name)
+      )
 
     state, update_event = plug_instance.asdict_with_event()
     if state != remote_state:
@@ -388,6 +417,7 @@ class PlugManager(object):
   def get_frontend_aware_plug_names(self) -> List[Text]:
     """Returns the names of frontend-aware plugs."""
     return [
-        name for name, plug in self._plugs_by_name.items()
+        name
+        for name, plug in self._plugs_by_name.items()
         if isinstance(plug, base_plugs.FrontendAwareBasePlug)
     ]

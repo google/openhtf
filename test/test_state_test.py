@@ -88,9 +88,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
         'outcome': None,
         'outcome_details': [],
         'marginal': None,
-        'metadata': {
-            'config': {}
-        },
+        'metadata': {'config': {}},
         'phases': [],
         'subtests': [],
         'branches': [],
@@ -111,17 +109,22 @@ class TestTestApi(parameterized.TestCase):
   def setUp(self):
     super(TestTestApi, self).setUp()
     patcher = mock.patch.object(
-        test_record.PhaseRecord, 'record_start_time', return_value=11235)
+        test_record.PhaseRecord, 'record_start_time', return_value=11235
+    )
     self.mock_record_start_time = patcher.start()
     self.addCleanup(patcher.stop)
     self.test_descriptor = test_descriptor.TestDescriptor(
         phase_collections.PhaseSequence((test_phase,)),
-        test_record.CodeInfo.uncaptured(), {'config': {}})
-    self.test_state = test_state.TestState(self.test_descriptor, 'testing-123',
-                                           test_descriptor.TestOptions())
+        test_record.CodeInfo.uncaptured(),
+        {'config': {}},
+    )
+    self.test_state = test_state.TestState(
+        self.test_descriptor, 'testing-123', test_descriptor.TestOptions()
+    )
     self.test_record = self.test_state.test_record
     self.running_phase_state = test_state.PhaseState.from_descriptor(
-        test_phase, self.test_state, logging.getLogger())
+        test_phase, self.test_state, logging.getLogger()
+    )
     self.test_state.running_phase_state = self.running_phase_state
     self.test_api = self.test_state.test_api
 
@@ -204,8 +207,9 @@ class TestTestApi(parameterized.TestCase):
     self.assertEqual(expected_initial_basetypes, basetypes)
     self.assertFalse(self.running_phase_state._update_measurements)
     self.test_api.measurements.test_measurement = 5
-    self.assertEqual({'test_measurement'},
-                     self.running_phase_state._update_measurements)
+    self.assertEqual(
+        {'test_measurement'}, self.running_phase_state._update_measurements
+    )
     self.running_phase_state.as_base_types()
     expected_after_basetypes = copy.deepcopy(expected_initial_basetypes)
     expected_after_basetypes['measurements']['test_measurement'].update({
@@ -220,29 +224,44 @@ class TestTestApi(parameterized.TestCase):
     # The descriptor id is not static, so grab it.
     expected_initial_basetypes = copy.deepcopy(TEST_STATE_BASE_TYPE_INITIAL)
     descriptor_id = basetypes['running_phase_state']['descriptor_id']
-    expected_initial_basetypes['running_phase_state']['descriptor_id'] = (
-        descriptor_id)
+    expected_initial_basetypes['running_phase_state'][
+        'descriptor_id'
+    ] = descriptor_id
     self.assertEqual(expected_initial_basetypes, basetypes)
     self.running_phase_state._finalize_measurements()
     self.test_record.add_phase_record(self.running_phase_state.phase_record)
     self.test_state.running_phase_state = None
     basetypes2 = self.test_state.as_base_types()
     expected_after_phase_record_basetypes = copy.deepcopy(
-        PHASE_RECORD_BASE_TYPE)
+        PHASE_RECORD_BASE_TYPE
+    )
     expected_after_phase_record_basetypes['descriptor_id'] = descriptor_id
-    self.assertEqual(expected_after_phase_record_basetypes,
-                     basetypes2['test_record']['phases'][0])
+    self.assertEqual(
+        expected_after_phase_record_basetypes,
+        basetypes2['test_record']['phases'][0],
+    )
     self.assertIsNone(basetypes2['running_phase_state'])
 
   @parameterized.parameters(
       (phase_executor.PhaseExecutionOutcome(None), test_record.Outcome.TIMEOUT),
-      (phase_executor.PhaseExecutionOutcome(
-          phase_descriptor.PhaseResult.STOP), test_record.Outcome.FAIL),
-      (phase_executor.PhaseExecutionOutcome(
-          threads.ThreadTerminationError()), test_record.Outcome.ERROR))
+      (
+          phase_executor.PhaseExecutionOutcome(
+              phase_descriptor.PhaseResult.STOP
+          ),
+          test_record.Outcome.FAIL,
+      ),
+      (
+          phase_executor.PhaseExecutionOutcome(
+              threads.ThreadTerminationError()
+          ),
+          test_record.Outcome.ERROR,
+      ),
+  )
   def test_test_state_finalize_from_phase_outcome(
-      self, phase_exe_outcome: phase_executor.PhaseExecutionOutcome,
-      test_record_outcome: test_record.Outcome):
+      self,
+      phase_exe_outcome: phase_executor.PhaseExecutionOutcome,
+      test_record_outcome: test_record.Outcome,
+  ):
     self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
     self.assertEqual(self.test_state.test_record.outcome, test_record_outcome)
 
@@ -251,7 +270,9 @@ class TestTestApi(parameterized.TestCase):
       raise ValueError('Exception for unit testing.')
     except ValueError:
       phase_exe_outcome = phase_executor.PhaseExecutionOutcome(
-          phase_executor.ExceptionInfo(*sys.exc_info()))
+          phase_executor.ExceptionInfo(*sys.exc_info())
+      )
       self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
-    self.assertEqual(self.test_state.test_record.outcome,
-                     test_record.Outcome.ERROR)
+    self.assertEqual(
+        self.test_state.test_record.outcome, test_record.Outcome.ERROR
+    )

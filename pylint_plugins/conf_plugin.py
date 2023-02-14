@@ -31,10 +31,12 @@ def transform_declare(node):
   """Transform conf.declare calls by stashing the declared names."""
   global CURRENT_ROOT
 
-  if not (isinstance(node.func, astroid.Attribute)
-          and isinstance(node.func.expr, astroid.Name)
-          and node.func.expr.name == 'conf'
-          and node.func.attrname == 'declare'):
+  if not (
+      isinstance(node.func, astroid.Attribute)
+      and isinstance(node.func.expr, astroid.Name)
+      and node.func.expr.name == 'conf'
+      and node.func.attrname == 'declare'
+  ):
     return
 
   conf_key_name = None
@@ -46,7 +48,7 @@ def transform_declare(node):
         # Assume the name is an astroid.Const(str), so it has a str value.
         conf_key_name = keyword.value.value
         break
-    assert conf_key_name != None, "Invalid conf.declare() syntax"
+    assert conf_key_name != None, 'Invalid conf.declare() syntax'
 
   if CONF_NODE:
     # Keep track of the current root, refreshing the locals if it changes.

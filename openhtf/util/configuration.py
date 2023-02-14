@@ -158,15 +158,19 @@ ARG_PARSER = argv.module_parser()
 ARG_PARSER.add_argument(
     '--config-file',
     type=argparse.FileType('r'),
-    help='File from which to load configuration values.')
+    help='File from which to load configuration values.',
+)
 
 ARG_PARSER.add_argument(
     '--config-value',
     action='append',
     default=[],
-    help='Allows specifying a configuration key=value on the command line. '
-    'The format should be --config-value=key=value. This value will override '
-    'any loaded value, and will be a string.')
+    help=(
+        'Allows specifying a configuration key=value on the command line. The'
+        ' format should be --config-value=key=value. This value will override'
+        ' any loaded value, and will be a string.'
+    ),
+)
 
 
 class ConfigValueHolderType(Protocol):
@@ -180,11 +184,16 @@ class ConfigValueHolderType(Protocol):
     del other
     raise TypeError(
         '== comparison not supported for: "{0}". Use "{0}".value'.format(
-            self.__class__.__name__))
+            self.__class__.__name__
+        )
+    )
 
   def __bool__(self):
-    raise TypeError('bool() not supported for: "{0}". Use "{0}".value'.format(
-        self.__class__.__name__))
+    raise TypeError(
+        'bool() not supported for: "{0}". Use "{0}".value'.format(
+            self.__class__.__name__
+        )
+    )
 
   __nonzero__ = __bool__
 
@@ -210,8 +219,9 @@ class ConfigValueHolderType(Protocol):
 class _ConfigValueHolder(ConfigValueHolderType):
   """OpenHTF's implementation of ConfigValueHolderType."""
 
-  def __init__(self, declaration: 'Declaration',
-               configuration: '_Configuration'):
+  def __init__(
+      self, declaration: 'Declaration', configuration: '_Configuration'
+  ):
     super().__init__()
     self._declaration = declaration
     self._configuration = configuration
@@ -237,8 +247,11 @@ class _ConfigValueHolder(ConfigValueHolderType):
 # is a subclass of T but with different __init__ signature". Since users do not
 # initialize plugs themselves, and would benefit from being able to type hint
 # plugs in their phase definitions, we've decided to keep the type hint below.
-def bind_init_args(class_def: Type[T], *args: ConfigValueHolderType,
-                   **kwargs: ConfigValueHolderType) -> Type[T]:
+def bind_init_args(
+    class_def: Type[T],
+    *args: ConfigValueHolderType,
+    **kwargs: ConfigValueHolderType,
+) -> Type[T]:
   """Binds __init__ args and kwargs with supplied config.
 
   Example usage:
@@ -279,8 +292,14 @@ def bind_init_args(class_def: Type[T], *args: ConfigValueHolderType,
       if logger is None:
         logger = logging.getLogger(self.__class__.__qualname__)
       logger.debug(
-          'Initializing %s with args %s and kwargs %s (and any remaining '
-          'default kwargs).', self.__class__.__name__, arg_values, kwarg_values)
+          (
+              'Initializing %s with args %s and kwargs %s (and any remaining '
+              'default kwargs).'
+          ),
+          self.__class__.__name__,
+          arg_values,
+          kwarg_values,
+      )
       super().__init__(*arg_values, **kwarg_values)
 
   # Distinguish the names, but let the args/kwargs be logged only.
@@ -293,7 +312,8 @@ def bind_init_args(class_def: Type[T], *args: ConfigValueHolderType,
     doc_tail = ''
   NewClass.__doc__ = (
       f'Plug class defined at runtime from {class_def.__module__}.'
-      f'{class_def.__qualname__}.{doc_tail}')
+      f'{class_def.__qualname__}.{doc_tail}'
+  )
   return NewClass
 
 
@@ -323,12 +343,14 @@ class UnsetKeyError(Exception):
 
 class _DefaultSetting(enum.Enum):
   """NOT_SET is a sentinal for an Declaration with no default set."""
+
   NOT_SET = 0
 
 
 @attr.s(slots=True)
 class Declaration(object):
   """Record type encapsulating information about a config declaration."""
+
   name = attr.ib(type=Text)
   description = attr.ib(type=Optional[Text], default=None)
   default_value = attr.ib(type=Any, default=_DefaultSetting.NOT_SET)
@@ -349,8 +371,16 @@ class _Configuration(object):
   as to avoid naming conflicts with configuration keys.
   """
 
-  __slots__ = ('_logger', '_lock', '_declarations', '_flag_values', '_flags',
-               '_loaded_values', 'ARG_PARSER', '__name__')
+  __slots__ = (
+      '_logger',
+      '_lock',
+      '_declarations',
+      '_flag_values',
+      '_flags',
+      '_loaded_values',
+      'ARG_PARSER',
+      '__name__',
+  )
 
   def __init__(self):
     """Initializes the configuration state."""
@@ -408,8 +438,9 @@ class _Configuration(object):
     if self._is_valid_key(field):
       return self[field]
     # Config keys all begin with a lowercase letter, so treat this normally.
-    raise AttributeError("'%s' object has no attribute '%s'" %
-                         (type(self).__name__, field))
+    raise AttributeError(
+        "'%s' object has no attribute '%s'" % (type(self).__name__, field)
+    )
 
   @threads.synchronized
   def __getitem__(self, item):
@@ -436,8 +467,11 @@ class _Configuration(object):
     if item in self._flag_values:
       if item in self._loaded_values:
         self._logger.warning(
-            'Overriding loaded value for %s (%s) with flag value: %s', item,
-            self._loaded_values[item], self._flag_values[item])
+            'Overriding loaded value for %s (%s) with flag value: %s',
+            item,
+            self._loaded_values[item],
+            self._flag_values[item],
+        )
       return self._flag_values[item]
     if item in self._loaded_values:
       return self._loaded_values[item]
@@ -449,9 +483,11 @@ class _Configuration(object):
   @threads.synchronized
   def __contains__(self, name):
     """True if we have a value for name."""
-    return (name in self._declarations and
-            (self._declarations[name].has_default or
-             name in self._loaded_values or name in self._flag_values))
+    return name in self._declarations and (
+        self._declarations[name].has_default
+        or name in self._loaded_values
+        or name in self._flag_values
+    )
 
   @threads.synchronized
   def declare(self, name, description=None, **kwargs) -> ConfigValueHolderType:
@@ -473,11 +509,13 @@ class _Configuration(object):
     """
     if not self._is_valid_key(name):
       raise InvalidKeyError(
-          'Invalid key name, must begin with a lowercase letter', name)
+          'Invalid key name, must begin with a lowercase letter', name
+      )
     if name in self._declarations:
       raise KeyAlreadyDeclaredError('Configuration key already declared', name)
     self._declarations[name] = Declaration(
-        name, description=description, **kwargs)
+        name, description=description, **kwargs
+    )
     return _ConfigValueHolder(self._declarations[name], self)
 
   @threads.synchronized
@@ -516,22 +554,26 @@ class _Configuration(object):
       parsed_yaml = yaml.safe_load(yamlfile.read())
     except yaml.YAMLError:
       self._logger.exception('Problem parsing YAML')
-      raise ConfigurationInvalidError('Failed to load from %s as YAML' %
-                                      yamlfile)
+      raise ConfigurationInvalidError(
+          'Failed to load from %s as YAML' % yamlfile
+      )
 
     if not isinstance(parsed_yaml, dict):
       # Parsed YAML, but it's not a dict.
       raise ConfigurationInvalidError(
-          'YAML parsed, but wrong type, should be dict', parsed_yaml)
+          'YAML parsed, but wrong type, should be dict', parsed_yaml
+      )
 
     self._logger.debug('Configuration loaded from file: %s', parsed_yaml)
     self.load_from_dict(
-        parsed_yaml, _override=_override, _allow_undeclared=_allow_undeclared)
+        parsed_yaml, _override=_override, _allow_undeclared=_allow_undeclared
+    )
 
   def load(self, _override=True, _allow_undeclared=False, **kwargs):  # pylint: disable=invalid-name
     """load configuration values from kwargs, see load_from_dict()."""
     self.load_from_dict(
-        kwargs, _override=_override, _allow_undeclared=_allow_undeclared)
+        kwargs, _override=_override, _allow_undeclared=_allow_undeclared
+    )
 
   @threads.synchronized
   def load_from_dict(self, dictionary, _override=True, _allow_undeclared=False):  # pylint: disable=invalid-name
@@ -560,11 +602,17 @@ class _Configuration(object):
         if _override:
           self._logger.info(
               'Overriding previously loaded value for %s (%s) with value: %s',
-              key, self._loaded_values[key], value)
+              key,
+              self._loaded_values[key],
+              value,
+          )
         else:
           self._logger.info(
               'Ignoring new value (%s), keeping previous value for %s: %s',
-              value, key, self._loaded_values[key])
+              value,
+              key,
+              self._loaded_values[key],
+          )
           continue
 
       # Force any keys and values that are bytes to unicode.
@@ -573,8 +621,9 @@ class _Configuration(object):
 
       self._loaded_values[key] = value
     if undeclared_keys:
-      self._logger.warning('Ignoring undeclared configuration keys: %s',
-                           undeclared_keys)
+      self._logger.warning(
+          'Ignoring undeclared configuration keys: %s', undeclared_keys
+      )
 
   @threads.synchronized
   def _asdict(self):
@@ -612,8 +661,11 @@ class _Configuration(object):
       if decl.has_default:
         result.append('')
         quotes = '"' if isinstance(decl.default_value, str) else ''
-        result.append('  default_value={quotes}{val}{quotes}'.format(
-            quotes=quotes, val=decl.default_value))
+        result.append(
+            '  default_value={quotes}{val}{quotes}'.format(
+                quotes=quotes, val=decl.default_value
+            )
+        )
       result.append('')
       result.append('')
     return '\n'.join(result)
@@ -674,7 +726,9 @@ class _Configuration(object):
         self.load_from_dict(config_values)
         return _func(*args, **kwargs)
       finally:
-        self._loaded_values = saved_config  # pylint: disable=attribute-defined-outside-init
+        self._loaded_values = (
+            saved_config  # pylint: disable=attribute-defined-outside-init
+        )
 
     return _saving_wrapper
 
@@ -709,8 +763,8 @@ class _Configuration(object):
     # Index in argspec.args of the first keyword argument.  This index is a
     # negative number if there are any kwargs, or 0 if there are no kwargs.
     keyword_arg_index = -1 * len(argspec.defaults or [])
-    arg_names = argspec.args[:keyword_arg_index or None]
-    kwarg_names = argspec.args[len(arg_names):]
+    arg_names = argspec.args[: keyword_arg_index or None]
+    kwarg_names = argspec.args[len(arg_names) :]
 
     # Create the actual method wrapper, all we do is update kwargs.  Note we
     # don't pass any *args through because there can't be any - we've filled
@@ -724,17 +778,26 @@ class _Configuration(object):
       for kwarg in kwarg_names:
         if kwarg in self:
           self._logger.warning(
-              'Keyword arg %s not set from configuration, but '
-              'is a configuration key', kwarg)
+              (
+                  'Keyword arg %s not set from configuration, but '
+                  'is a configuration key'
+              ),
+              kwarg,
+          )
 
       # Set positional args from configuration values.
       final_kwargs = {name: self[name] for name in arg_names if name in self}
 
       for overridden in set(kwargs) & set(final_kwargs):
         self._logger.warning(
-            'Overriding configuration value for kwarg %s (%s) '
-            'with provided kwarg value: %s', overridden, self[overridden],
-            kwargs[overridden])
+            (
+                'Overriding configuration value for kwarg %s (%s) '
+                'with provided kwarg value: %s'
+            ),
+            overridden,
+            self[overridden],
+            kwargs[overridden],
+        )
 
       final_kwargs.update(kwargs)
       if inspect.ismethod(method):

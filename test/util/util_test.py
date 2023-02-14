@@ -43,9 +43,11 @@ class TestUtil(unittest.TestCase):
     self.assertTrue(self.polledtimeout.has_expired())
 
   def test_partial_format(self):
-    original = ('Apples are {apple[color]} and {apple[taste]}. '
-                'Pears are {pear.color} and {pear.taste}. '
-                'Oranges are {orange_color} and {orange_taste}.')
+    original = (
+        'Apples are {apple[color]} and {apple[taste]}. '
+        'Pears are {pear.color} and {pear.taste}. '
+        'Oranges are {orange_color} and {orange_taste}.'
+    )
     text = copy.copy(original)
 
     apple = {
@@ -63,14 +65,22 @@ class TestUtil(unittest.TestCase):
     res = util.partial_format(text, apple=apple)
     res = util.partial_format(res, pear=pear)
     self.assertEqual(
-        'Apples are red and sweet. Pears are green and tart. '
-        'Oranges are {orange_color} and {orange_taste}.', res)
+        (
+            'Apples are red and sweet. Pears are green and tart. '
+            'Oranges are {orange_color} and {orange_taste}.'
+        ),
+        res,
+    )
 
     # Format rest of string
     res = util.partial_format(res, orange_color='orange', orange_taste='sour')
     self.assertEqual(
-        'Apples are red and sweet. Pears are green and tart. '
-        'Oranges are orange and sour.', res)
+        (
+            'Apples are red and sweet. Pears are green and tart. '
+            'Oranges are orange and sour.'
+        ),
+        res,
+    )
 
     #  The original text has not changed
     self.assertEqual(original, text)

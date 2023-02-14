@@ -122,15 +122,19 @@ class UsbHandle(abc.ABC):
       _LOG.error('!!!!!USB!!!!! %s not closed!', type(self).__name__)
 
   def __str__(self):
-    return '<%s: (%s %s)>' % (type(self).__name__, self.name,
-                              self.serial_number)
+    return '<%s: (%s %s)>' % (
+        type(self).__name__,
+        self.name,
+        self.serial_number,
+    )
 
   __repr__ = __str__
 
   def _timeout_or_default(self, timeout_ms):
     """Specify a timeout or take the default."""
     return int(
-        timeout_ms if timeout_ms is not None else self._default_timeout_ms)
+        timeout_ms if timeout_ms is not None else self._default_timeout_ms
+    )
 
   def flush_buffers(self):
     """Default implementation, calls Read() until it blocks."""

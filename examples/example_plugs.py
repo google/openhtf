@@ -21,7 +21,8 @@ CONF = configuration.CONF
 EXAMPLE_PLUG_INCREMENT_SIZE = CONF.declare(
     'example_plug_increment_size',
     default_value=1,
-    description='increment constant for example plug.')
+    description='increment constant for example plug.',
+)
 
 
 class ExamplePlug(base_plugs.BasePlug):
@@ -76,7 +77,8 @@ class ExamplePlug(base_plugs.BasePlug):
 
 
 example_plug_configured = configuration.bind_init_args(
-    ExamplePlug, EXAMPLE_PLUG_INCREMENT_SIZE)
+    ExamplePlug, EXAMPLE_PLUG_INCREMENT_SIZE
+)
 
 
 class ExampleFrontendAwarePlug(base_plugs.FrontendAwareBasePlug):

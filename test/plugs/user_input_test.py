@@ -29,7 +29,6 @@ class PlugsTest(unittest.TestCase):
     self.plug.tearDown()
 
   def test_respond_to_blocking_prompt(self):
-
     def _respond_to_prompt():
       as_dict = None
       while not as_dict:

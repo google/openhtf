@@ -172,17 +172,24 @@ UNIT_KEY_REPLACEMENTS = {
 def main():
   """Main entry point for UNECE code .xls parsing."""
   parser = argparse.ArgumentParser(
-      description='Reads in a .xls file and generates a units module for '
-      'OpenHTF.',
-      prog='python units_from_xls.py')
+      description=(
+          'Reads in a .xls file and generates a units module for OpenHTF.'
+      ),
+      prog='python units_from_xls.py',
+  )
   parser.add_argument('xlsfile', type=str, help='the .xls file to parse')
   parser.add_argument(
       '--outfile',
       type=str,
       default=os.path.join(
-          os.path.dirname(__file__), os.path.pardir, 'openhtf', 'util',
-          'units.py'),
-      help='where to put the generated .py file.')
+          os.path.dirname(__file__),
+          os.path.pardir,
+          'openhtf',
+          'util',
+          'units.py',
+      ),
+      help='where to put the generated .py file.',
+  )
   args = parser.parse_args()
 
   if not os.path.exists(args.xlsfile):
@@ -191,7 +198,8 @@ def main():
     sys.exit()
 
   unit_defs = unit_defs_from_sheet(
-      xlrd.open_workbook(args.xlsfile).sheet_by_name(SHEET_NAME), COLUMN_NAMES)
+      xlrd.open_workbook(args.xlsfile).sheet_by_name(SHEET_NAME), COLUMN_NAMES
+  )
 
   _, tmp_path = tempfile.mkstemp()
   with open(tmp_path, 'w') as new_file:
@@ -237,8 +245,12 @@ def unit_defs_from_sheet(sheet, column_names):
 
       # Split on ' or ' to support the units like '% or pct'
       for suffix in suffix.split(' or '):
-        yield "%s = UnitDescriptor('%s', '%s', '''%s''')\n" % (key, name, code,
-                                                               suffix)
+        yield "%s = UnitDescriptor('%s', '%s', '''%s''')\n" % (
+            key,
+            name,
+            code,
+            suffix,
+        )
         yield 'ALL_UNITS.append(%s)\n' % key
 
   except xlrd.XLRDError:

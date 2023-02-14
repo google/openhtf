@@ -31,18 +31,21 @@ try:
   # pylint: enable=g-import-not-at-top
 except ImportError:
   logging.error(
-      'Failed to import pyserial. Please install the `serial_collection_plug` extra, '
-      'e.g. via `pip install openhtf[serial_collection_plug]`.')
+      'Failed to import pyserial. Please install the `serial_collection_plug`'
+      ' extra, e.g. via `pip install openhtf[serial_collection_plug]`.'
+  )
   raise
 
 CONF.declare(
     'serial_collection_port',
     description='Port on which to collect serial data.',
-    default_value='/dev/ttyACM0')
+    default_value='/dev/ttyACM0',
+)
 CONF.declare(
     'serial_collection_baud',
     description='Baud rate for serial data collection.',
-    default_value=115200)
+    default_value=115200,
+)
 
 
 class SerialCollectionPlug(base_plugs.BasePlug):
@@ -55,6 +58,7 @@ class SerialCollectionPlug(base_plugs.BasePlug):
   Otherwise, data collection stops and the serial port is closed when
   stop_collection() is called.
   """
+
   # Serial library can raise these exceptions
   SERIAL_EXCEPTIONS = (serial.SerialException, ValueError)
 
@@ -69,13 +73,13 @@ class SerialCollectionPlug(base_plugs.BasePlug):
     # Instantiate the port with no name, then add the name, so it won't be
     # opened until the collection context is entered.
     self._serial = serial.Serial(
-        port=None, baudrate=serial_collection_baud, timeout=1)
+        port=None, baudrate=serial_collection_baud, timeout=1
+    )
     self._serial.port = serial_collection_port
     self._collect = False
     self._collection_thread = None
 
   def start_collection(self, dest):
-
     def _poll():
       try:
         with open(dest, 'w+') as outfile:
@@ -84,13 +88,15 @@ class SerialCollectionPlug(base_plugs.BasePlug):
             outfile.write(data)
       except self.SERIAL_EXCEPTIONS:
         self.logger.error(
-            'Serial port error. Stopping data collection.', exc_info=True)
+            'Serial port error. Stopping data collection.', exc_info=True
+        )
 
     self._collect = True
     self._collection_thread = threading.Thread(target=_poll)
     self._collection_thread.daemon = True
-    self.logger.debug('Starting serial data collection on port %s.' %
-                      self._serial.port)
+    self.logger.debug(
+        'Starting serial data collection on port %s.' % self._serial.port
+    )
     self._serial.open()
     self._collection_thread.start()
 

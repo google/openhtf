@@ -154,7 +154,6 @@ class TestConf(TestConfBase):
         CONF.reset()
 
   def test_save_and_restore(self):
-
     @CONF.save_and_restore
     def modifies_conf():
       CONF.load(string_default='modified')
@@ -165,7 +164,6 @@ class TestConf(TestConfBase):
     self.assertEqual('default', CONF.string_default)
 
   def test_save_and_restore_kwargs(self):
-
     @CONF.save_and_restore(string_default='modified')
     def modifies_conf():
       self.assertEqual('modified', CONF.string_default)
@@ -175,7 +173,6 @@ class TestConf(TestConfBase):
     self.assertEqual('default', CONF.string_default)
 
   def test_inject_positional_args(self):
-
     @CONF.inject_positional_args
     def test_function(string_default, no_default, not_declared):
       self.assertEqual('default', string_default)
@@ -185,7 +182,6 @@ class TestConf(TestConfBase):
     test_function(no_default='passed_value', not_declared='not_declared')  # pylint: disable=no-value-for-parameter
 
   def test_inject_positional_args_overrides(self):
-
     @CONF.inject_positional_args
     def test_function(string_default, none_default='new_default'):
       # Make sure when we pass a kwarg, it overrides the config value.
@@ -196,7 +192,6 @@ class TestConf(TestConfBase):
     test_function(string_default='overridden')
 
   def test_inject_positional_args_class(self):
-
     class TestClass(object):
 
       @CONF.inject_positional_args
@@ -268,18 +263,21 @@ class BindInitArgsTest(TestConfBase):
 
   def _run_test_with_classdef(self, class_def):
     new_def = configuration.bind_init_args(
-        class_def, FLAG_KEY, arg2=NONE_DEFAULT)
+        class_def, FLAG_KEY, arg2=NONE_DEFAULT
+    )
     new_def_instance = new_def()  # pytype: disable=missing-parameter
     self.assertIsInstance(new_def_instance, class_def)
     self.assertEqual(new_def_instance.arg1, FLAG_KEY.value)  # pytype: disable=attribute-error  # kwargs-checking
     self.assertEqual(new_def_instance.arg2, NONE_DEFAULT.value)  # pytype: disable=attribute-error  # kwargs-checking
     self.assertIsNone(new_def_instance.default_arg)  # pytype: disable=attribute-error  # kwargs-checking
     self.assertIn(class_def.__doc__, new_def_instance.__class__.__doc__)
-    self.assertEqual(new_def_instance.__class__.__module__,
-                     class_def.__module__)
+    self.assertEqual(
+        new_def_instance.__class__.__module__, class_def.__module__
+    )
     self.assertIn(class_def.__name__, new_def_instance.__class__.__name__)
-    self.assertIn(class_def.__qualname__,
-                  new_def_instance.__class__.__qualname__)
+    self.assertIn(
+        class_def.__qualname__, new_def_instance.__class__.__qualname__
+    )
 
   def test_with_module_level_class_success(self):
     self._run_test_with_classdef(AModuleLevelClass)

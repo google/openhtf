@@ -127,8 +127,12 @@ def get_mock_diag(**kwargs):
   if 'side_effect' not in kwargs and 'return_value' not in kwargs:
     kwargs['return_value'] = None
   mock_diag = mock.MagicMock(**kwargs)
-  return diagnoses_lib.PhaseDiagnoser(
-      OkayResult, name='mock_diag', run_func=mock_diag), mock_diag
+  return (
+      diagnoses_lib.PhaseDiagnoser(
+          OkayResult, name='mock_diag', run_func=mock_diag
+      ),
+      mock_diag,
+  )
 
 
 class DupeResultA(htf.DiagResultEnum):
@@ -138,29 +142,31 @@ class DupeResultA(htf.DiagResultEnum):
 class CheckDiagnosersTest(unittest.TestCase):
 
   def test_invalid_class(self):
-
     class NotDiagnoser(object):
       pass
 
     with self.assertRaises(diagnoses_lib.DiagnoserError) as cm:
-      diagnoses_lib._check_diagnoser(NotDiagnoser(),
-                                     diagnoses_lib.BasePhaseDiagnoser)  # pytype: disable=wrong-arg-types
-    self.assertEqual('Diagnoser "NotDiagnoser" is not a BasePhaseDiagnoser.',
-                     cm.exception.args[0])
+      diagnoses_lib._check_diagnoser(
+          NotDiagnoser(), diagnoses_lib.BasePhaseDiagnoser
+      )  # pytype: disable=wrong-arg-types
+    self.assertEqual(
+        'Diagnoser "NotDiagnoser" is not a BasePhaseDiagnoser.',
+        cm.exception.args[0],
+    )
 
   def test_result_type_not_set(self):
-
     @htf.PhaseDiagnoser(None)  # pytype: disable=wrong-arg-types
     def bad_diag(phase_rec):
       del phase_rec  # Unused.
 
     with self.assertRaises(diagnoses_lib.DiagnoserError) as cm:
       diagnoses_lib._check_diagnoser(bad_diag, diagnoses_lib.BasePhaseDiagnoser)
-    self.assertEqual('Diagnoser "bad_diag" does not have a result_type set.',
-                     cm.exception.args[0])
+    self.assertEqual(
+        'Diagnoser "bad_diag" does not have a result_type set.',
+        cm.exception.args[0],
+    )
 
   def test_result_type_not_result_enum(self):
-
     class BadEnum(str, enum.Enum):
       BAD = 'bad'
 
@@ -169,35 +175,42 @@ class CheckDiagnosersTest(unittest.TestCase):
       del phase_rec  # Unused.
 
     with self.assertRaises(diagnoses_lib.DiagnoserError) as cm:
-      diagnoses_lib._check_diagnoser(bad_enum_diag,
-                                     diagnoses_lib.BasePhaseDiagnoser)
+      diagnoses_lib._check_diagnoser(
+          bad_enum_diag, diagnoses_lib.BasePhaseDiagnoser
+      )
     self.assertEqual(
-        'Diagnoser "bad_enum_diag" result_type "BadEnum" does not inherit '
-        'from DiagResultEnum.', cm.exception.args[0])
+        (
+            'Diagnoser "bad_enum_diag" result_type "BadEnum" does not inherit '
+            'from DiagResultEnum.'
+        ),
+        cm.exception.args[0],
+    )
 
   def test_pass(self):
-    diagnoses_lib._check_diagnoser(basic_wrapper_phase_diagnoser,
-                                   diagnoses_lib.BasePhaseDiagnoser)
+    diagnoses_lib._check_diagnoser(
+        basic_wrapper_phase_diagnoser, diagnoses_lib.BasePhaseDiagnoser
+    )
 
   def test_inomplete_phase_diagnoser(self):
     incomplete = htf.PhaseDiagnoser(BadResult, 'NotFinished')
 
     with self.assertRaises(diagnoses_lib.DiagnoserError):
-      diagnoses_lib._check_diagnoser(incomplete,
-                                     diagnoses_lib.BasePhaseDiagnoser)
+      diagnoses_lib._check_diagnoser(
+          incomplete, diagnoses_lib.BasePhaseDiagnoser
+      )
 
   def test_inomplete_test_diagnoser(self):
     incomplete = htf.TestDiagnoser(BadResult, 'NotFinished')
 
     with self.assertRaises(diagnoses_lib.DiagnoserError):
-      diagnoses_lib._check_diagnoser(incomplete,
-                                     diagnoses_lib.BaseTestDiagnoser)
+      diagnoses_lib._check_diagnoser(
+          incomplete, diagnoses_lib.BaseTestDiagnoser
+      )
 
 
 class DiagnoserTest(unittest.TestCase):
 
   def test_phase_diagnoser_name_from_function(self):
-
     @htf.PhaseDiagnoser(OkayResult.OKAY)
     def from_function(phase_record):
       del phase_record  # Unused.
@@ -206,7 +219,6 @@ class DiagnoserTest(unittest.TestCase):
     self.assertEqual('from_function', from_function.name)
 
   def test_phase_diagnoser_name_set(self):
-
     @htf.PhaseDiagnoser(OkayResult.OKAY, name='from_arg')
     def from_function(phase_record):
       del phase_record  # Unused.
@@ -215,7 +227,6 @@ class DiagnoserTest(unittest.TestCase):
     self.assertEqual('from_arg', from_function.name)
 
   def test_phase_diagnoser_use_again(self):
-
     @htf.PhaseDiagnoser(DupeResultA)
     def reuse(phase_record):
       del phase_record  # Unused.
@@ -229,7 +240,6 @@ class DiagnoserTest(unittest.TestCase):
         return None
 
   def test_test_diagnoser_name_from_function(self):
-
     @htf.TestDiagnoser(OkayResult.OKAY)
     def from_function(test_record_, store):
       del test_record_  # Unused.
@@ -239,7 +249,6 @@ class DiagnoserTest(unittest.TestCase):
     self.assertEqual('from_function', from_function.name)
 
   def test_test_diagnoser_name_set(self):
-
     @htf.TestDiagnoser(OkayResult.OKAY, name='from_arg')
     def from_function(test_record_, store):
       del test_record_  # Unused.
@@ -249,7 +258,6 @@ class DiagnoserTest(unittest.TestCase):
     self.assertEqual('from_arg', from_function.name)
 
   def test_test_diagnoser_use_again(self):
-
     @htf.TestDiagnoser(DupeResultA)
     def reuse(test_record_, store):
       del test_record_  # Unused.
@@ -270,7 +278,8 @@ class DiagnosisTest(unittest.TestCase):
   def test_internal_cannot_be_failure(self):
     with self.assertRaises(diagnoses_lib.InvalidDiagnosisError):
       _ = htf.Diagnosis(
-          BadResult.ONE, 'blarg', is_internal=True, is_failure=True)
+          BadResult.ONE, 'blarg', is_internal=True, is_failure=True
+      )
 
 
 class DiagnosesTest(htf_test.TestCase):
@@ -281,7 +290,8 @@ class DiagnosesTest(htf_test.TestCase):
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(BadResult.ONE, 'Oh no!', is_failure=True),
-        store.get_diagnosis(BadResult.ONE))
+        store.get_diagnosis(BadResult.ONE),
+    )
 
   def assertPhaseHasBasicOkayDiagnosis(self, phase_rec):
     self.assertEqual([OkayResult.OKAY], phase_rec.diagnosis_results)
@@ -289,38 +299,44 @@ class DiagnosesTest(htf_test.TestCase):
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(OkayResult.OKAY, 'Everything is okay.'),
-        store.get_diagnosis(OkayResult.OKAY))
+        store.get_diagnosis(OkayResult.OKAY),
+    )
 
   def test_diagnose_decorator_first(self):
-
     def phase_func():
       pass
 
     phase = htf.diagnose(basic_wrapper_phase_diagnoser)(
-        htf.measures('m')(phase_func))
+        htf.measures('m')(phase_func)
+    )
 
     self.assertEqual(
         htf.PhaseDescriptor(
             phase_func,
             measurements=[htf.Measurement('m')],
-            diagnosers=[basic_wrapper_phase_diagnoser]), phase)
+            diagnosers=[basic_wrapper_phase_diagnoser],
+        ),
+        phase,
+    )
 
   def test_diagnose_decorator_later(self):
-
     def phase_func():
       pass
 
     phase = htf.measures('m')(
-        htf.diagnose(basic_wrapper_phase_diagnoser)(phase_func))
+        htf.diagnose(basic_wrapper_phase_diagnoser)(phase_func)
+    )
 
     self.assertEqual(
         htf.PhaseDescriptor(
             phase_func,
             measurements=[htf.Measurement('m')],
-            diagnosers=[basic_wrapper_phase_diagnoser]), phase)
+            diagnosers=[basic_wrapper_phase_diagnoser],
+        ),
+        phase,
+    )
 
   def test_diagnose_decorator__check_diagnosers_fail(self):
-
     def totally_not_a_diagnoser():
       pass
 
@@ -328,7 +344,6 @@ class DiagnosesTest(htf_test.TestCase):
       _ = htf.diagnose(totally_not_a_diagnoser)(basic_phase)  # pytype: disable=wrong-arg-types
 
   def test_test_diagnoses__check_diagnosers_fail(self):
-
     def totally_not_a_diagnoser():
       pass
 
@@ -338,7 +353,6 @@ class DiagnosesTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_phase_no_diagnoses(self):
-
     @htf.PhaseDiagnoser(BadResult)
     def no_result(phase_record):
       del phase_record  # Unused.
@@ -358,7 +372,6 @@ class DiagnosesTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_test_no_diagnoses(self):
-
     @htf.TestDiagnoser(BadResult)
     def no_result(test_record_, store):
       del test_record_  # Unused.
@@ -384,12 +397,12 @@ class DiagnosesTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_basic_subclass_diagnoser(self):
-
     class SubclassBasicPhaseDiagnoser(diagnoses_lib.BasePhaseDiagnoser):
 
       def __init__(self):
         super(SubclassBasicPhaseDiagnoser, self).__init__(
-            OkayResult, name='SubclassBasicPhaseDiagnoser')
+            OkayResult, name='SubclassBasicPhaseDiagnoser'
+        )
 
       def run(self, phase_record):
         del phase_record  # Unused.
@@ -405,7 +418,8 @@ class DiagnosesTest(htf_test.TestCase):
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(OkayResult.FINE, 'Everything is fine.'),
-        store.get_diagnosis(OkayResult.FINE))
+        store.get_diagnosis(OkayResult.FINE),
+    )
 
   @htf_test.yields_phases
   def test_basic_phase_diagnoser_on_test(self):
@@ -413,12 +427,16 @@ class DiagnosesTest(htf_test.TestCase):
 
     test_rec = yield htf.Test(phase)
     self.assertTestPass(test_rec)
-    self.assertEqual([
-        htf.Diagnosis(
-            OkayResult.OKAY,
-            'Everything is okay.',
-            priority=htf.DiagPriority.NORMAL)
-    ], test_rec.diagnoses)
+    self.assertEqual(
+        [
+            htf.Diagnosis(
+                OkayResult.OKAY,
+                'Everything is okay.',
+                priority=htf.DiagPriority.NORMAL,
+            )
+        ],
+        test_rec.diagnoses,
+    )
 
   @htf_test.yields_phases
   def test_failed_phase_diagnoser(self):
@@ -446,8 +464,10 @@ class DiagnosesTest(htf_test.TestCase):
 
     test_rec = yield htf.Test(phase)
     self.assertTestFail(test_rec)
-    self.assertEqual([htf.Diagnosis(BadResult.ONE, 'Oh no!', is_failure=True)],
-                     test_rec.diagnoses)
+    self.assertEqual(
+        [htf.Diagnosis(BadResult.ONE, 'Oh no!', is_failure=True)],
+        test_rec.diagnoses,
+    )
 
   @htf_test.yields_phases
   def test_test_diagnoser(self):
@@ -457,8 +477,9 @@ class DiagnosesTest(htf_test.TestCase):
     test_rec = yield test
 
     self.assertTestPass(test_rec)
-    self.assertEqual([htf.Diagnosis(OkayResult.TEST_OK, 'Okay')],
-                     test_rec.diagnoses)
+    self.assertEqual(
+        [htf.Diagnosis(OkayResult.TEST_OK, 'Okay')], test_rec.diagnoses
+    )
 
   @htf_test.yields_phases
   def test_failed_test_diagnoser(self):
@@ -468,8 +489,10 @@ class DiagnosesTest(htf_test.TestCase):
     test_rec = yield test
 
     self.assertTestFail(test_rec)
-    self.assertEqual([htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True)],
-                     test_rec.diagnoses)
+    self.assertEqual(
+        [htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True)],
+        test_rec.diagnoses,
+    )
 
   @htf_test.yields_phases
   def test_always_failed_test_diagnoser(self):
@@ -479,12 +502,13 @@ class DiagnosesTest(htf_test.TestCase):
     test_rec = yield test
 
     self.assertTestFail(test_rec)
-    self.assertEqual([htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True)],
-                     test_rec.diagnoses)
+    self.assertEqual(
+        [htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True)],
+        test_rec.diagnoses,
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser__wrong_result_type(self):
-
     @htf.PhaseDiagnoser(OkayResult)
     def bad_result(phase_record):
       del phase_record  # Unused.
@@ -495,11 +519,11 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
 
     self.assertPhaseError(
-        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError)
+        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser__single_result(self):
-
     @htf.PhaseDiagnoser(BadResult)
     def not_diag(phase_record):
       del phase_record  # Unused.
@@ -510,11 +534,11 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
 
     self.assertPhaseError(
-        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError)
+        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser__single_not_diagnosis(self):
-
     @htf.PhaseDiagnoser(BadResult)
     def not_diag(phase_record):
       del phase_record  # Unused.
@@ -525,11 +549,11 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
 
     self.assertPhaseError(
-        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError)
+        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser__wrong_result_type_list(self):
-
     @htf.PhaseDiagnoser(OkayResult)
     def bad_result(phase_record):
       del phase_record  # Unused.
@@ -540,11 +564,11 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
 
     self.assertPhaseError(
-        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError)
+        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser__single_not_diagnosis_list(self):
-
     @htf.PhaseDiagnoser(BadResult)
     def not_diag(phase_record):
       del phase_record  # Unused.
@@ -555,11 +579,11 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
 
     self.assertPhaseError(
-        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError)
+        phase_rec, exc_type=diagnoses_lib.InvalidDiagnosisError
+    )
 
   @htf_test.yields_phases
   def test_test_diagnoser__wrong_result_type(self):
-
     @htf.TestDiagnoser(OkayResult)
     def bad_result(test_record_, store):
       del test_record_  # Unused.
@@ -574,11 +598,11 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertTestError(test_rec)
     self.assertEqual(
         [test_record.OutcomeDetails('InvalidDiagnosisError', mock.ANY)],
-        test_rec.outcome_details)
+        test_rec.outcome_details,
+    )
 
   @htf_test.yields_phases
   def test_test_diagnoser__single_result(self):
-
     @htf.TestDiagnoser(BadResult)
     def not_diag(test_record_, store):
       del test_record_  # Unused.
@@ -593,11 +617,11 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertTestError(test_rec)
     self.assertEqual(
         [test_record.OutcomeDetails('InvalidDiagnosisError', mock.ANY)],
-        test_rec.outcome_details)
+        test_rec.outcome_details,
+    )
 
   @htf_test.yields_phases
   def test_test_diagnoser__single_not_diagnosis(self):
-
     @htf.TestDiagnoser(BadResult)
     def not_diag(test_record_, store):
       del test_record_  # Unused.
@@ -612,11 +636,11 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertTestError(test_rec)
     self.assertEqual(
         [test_record.OutcomeDetails('InvalidDiagnosisError', mock.ANY)],
-        test_rec.outcome_details)
+        test_rec.outcome_details,
+    )
 
   @htf_test.yields_phases
   def test_test_diagnoser__wrong_result_type_list(self):
-
     @htf.TestDiagnoser(OkayResult)
     def bad_result(test_record_, store):
       del test_record_  # Unused.
@@ -631,11 +655,11 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertTestError(test_rec)
     self.assertEqual(
         [test_record.OutcomeDetails('InvalidDiagnosisError', mock.ANY)],
-        test_rec.outcome_details)
+        test_rec.outcome_details,
+    )
 
   @htf_test.yields_phases
   def test_test_diagnoser__single_not_diagnosis_list(self):
-
     @htf.TestDiagnoser(BadResult)
     def not_diag(test_record_, store):
       del test_record_  # Unused.
@@ -650,11 +674,11 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertTestError(test_rec)
     self.assertEqual(
         [test_record.OutcomeDetails('InvalidDiagnosisError', mock.ANY)],
-        test_rec.outcome_details)
+        test_rec.outcome_details,
+    )
 
   @htf_test.yields_phases
   def test_phase_multiple_diagnoses_from_one_diagnoser(self):
-
     @htf.PhaseDiagnoser(OkayResult)
     def multi(phase_record):
       del phase_record  # Unused.
@@ -668,20 +692,22 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
     self.assertPhaseContinue(phase_rec)
     self.assertPhaseOutcomePass(phase_rec)
-    self.assertEqual([OkayResult.FINE, OkayResult.GREAT],
-                     phase_rec.diagnosis_results)
+    self.assertEqual(
+        [OkayResult.FINE, OkayResult.GREAT], phase_rec.diagnosis_results
+    )
     self.assertEqual([], phase_rec.failure_diagnosis_results)
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(OkayResult.FINE, 'Fine'),
-        store.get_diagnosis(OkayResult.FINE))
+        store.get_diagnosis(OkayResult.FINE),
+    )
     self.assertEqual(
         htf.Diagnosis(OkayResult.GREAT, 'Great'),
-        store.get_diagnosis(OkayResult.GREAT))
+        store.get_diagnosis(OkayResult.GREAT),
+    )
 
   @htf_test.yields_phases
   def test_phase_multiple_diagnoses_from_multiple_diagnosers(self):
-
     @htf.PhaseDiagnoser(OkayResult)
     def fine_diag(phase_record):
       del phase_record  # Unused.
@@ -697,20 +723,22 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
     self.assertPhaseContinue(phase_rec)
     self.assertPhaseOutcomePass(phase_rec)
-    self.assertEqual([OkayResult.FINE, OkayResult.GREAT],
-                     phase_rec.diagnosis_results)
+    self.assertEqual(
+        [OkayResult.FINE, OkayResult.GREAT], phase_rec.diagnosis_results
+    )
     self.assertEqual([], phase_rec.failure_diagnosis_results)
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(OkayResult.FINE, 'Fine'),
-        store.get_diagnosis(OkayResult.FINE))
+        store.get_diagnosis(OkayResult.FINE),
+    )
     self.assertEqual(
         htf.Diagnosis(OkayResult.GREAT, 'Great'),
-        store.get_diagnosis(OkayResult.GREAT))
+        store.get_diagnosis(OkayResult.GREAT),
+    )
 
   @htf_test.yields_phases
   def test_phase_multiple_diagnoses__same_result(self):
-
     @htf.PhaseDiagnoser(OkayResult)
     def multi_diag(phase_record):
       del phase_record  # Unused.
@@ -724,25 +752,29 @@ class DiagnosesTest(htf_test.TestCase):
     phase_rec = yield phase
     self.assertPhaseContinue(phase_rec)
     self.assertPhaseOutcomePass(phase_rec)
-    self.assertEqual([OkayResult.FINE, OkayResult.FINE],
-                     phase_rec.diagnosis_results)
+    self.assertEqual(
+        [OkayResult.FINE, OkayResult.FINE], phase_rec.diagnosis_results
+    )
     self.assertEqual([], phase_rec.failure_diagnosis_results)
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(OkayResult.FINE, 'Fine2'),
-        store.get_diagnosis(OkayResult.FINE))
-    self.assertEqual([
-        htf.Diagnosis(OkayResult.FINE, 'Fine1'),
-        htf.Diagnosis(OkayResult.FINE, 'Fine2'),
-    ], self.last_test_state.test_record.diagnoses)
+        store.get_diagnosis(OkayResult.FINE),
+    )
+    self.assertEqual(
+        [
+            htf.Diagnosis(OkayResult.FINE, 'Fine1'),
+            htf.Diagnosis(OkayResult.FINE, 'Fine2'),
+        ],
+        self.last_test_state.test_record.diagnoses,
+    )
 
   @htf_test.yields_phases
   def test_phase_multiple_diagnoses_with_failure(self):
-
     @htf.PhaseDiagnoser(OkayResult)
     def fine_diag(phase_record):
       del phase_record  # Unused.
-      return htf.Diagnosis(OkayResult.FINE, 'Fine'),
+      return (htf.Diagnosis(OkayResult.FINE, 'Fine'),)
 
     @htf.PhaseDiagnoser(BadResult)
     def bad_diag(phase_record):
@@ -759,15 +791,18 @@ class DiagnosesTest(htf_test.TestCase):
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(OkayResult.FINE, 'Fine'),
-        store.get_diagnosis(OkayResult.FINE))
+        store.get_diagnosis(OkayResult.FINE),
+    )
     self.assertEqual(
         htf.Diagnosis(BadResult.ONE, 'Bad!', is_failure=True),
-        store.get_diagnosis(BadResult.ONE))
+        store.get_diagnosis(BadResult.ONE),
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser_exception__later_diags_still_run(self):
     phase = htf.diagnose(exception_phase_diag, basic_wrapper_phase_diagnoser)(
-        basic_phase)
+        basic_phase
+    )
 
     phase_rec = yield phase
 
@@ -777,7 +812,6 @@ class DiagnosesTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_phase_diagnoser_exception__generator_exceptions_after_add(self):
-
     @htf.PhaseDiagnoser(BadResult)
     def generate_diag_then_error(phase_record):
       del phase_record  # Unused.
@@ -795,12 +829,14 @@ class DiagnosesTest(htf_test.TestCase):
     store = self.get_diagnoses_store()
     self.assertEqual(
         htf.Diagnosis(BadResult.ONE, 'Bad!', is_failure=True),
-        store.get_diagnosis(BadResult.ONE))
+        store.get_diagnosis(BadResult.ONE),
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser_exception__later_diags_still_run_with_fail(self):
     phase = htf.diagnose(exception_phase_diag, fail_phase_diagnoser)(
-        basic_phase)
+        basic_phase
+    )
 
     phase_rec = yield phase
 
@@ -811,7 +847,8 @@ class DiagnosesTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_phase_diagnoser_exception__measurement_fail(self):
     phase = htf.diagnose(exception_phase_diag, basic_wrapper_phase_diagnoser)(
-        fail_measurement_phase)
+        fail_measurement_phase
+    )
 
     phase_rec = yield phase
 
@@ -822,7 +859,6 @@ class DiagnosesTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_phase_diagnoser_exception__fail_and_continue(self):
-
     @htf.diagnose(exception_phase_diag, basic_wrapper_phase_diagnoser)
     def phase():
       return htf.PhaseResult.FAIL_AND_CONTINUE
@@ -836,7 +872,8 @@ class DiagnosesTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_phase_diagnoser_exception__phase_exception(self):
     phase = htf.diagnose(exception_phase_diag, basic_wrapper_phase_diagnoser)(
-        exception_phase)
+        exception_phase
+    )
 
     phase_rec = yield phase
 
@@ -847,7 +884,8 @@ class DiagnosesTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_phase_diagnoser_exception__later_phases_not_run(self):
     fail_phase = htf.PhaseOptions(name='fail')(
-        htf.diagnose(exception_phase_diag)(basic_phase))
+        htf.diagnose(exception_phase_diag)(basic_phase)
+    )
     not_run_phase = htf.PhaseOptions(name='not_run')(basic_phase)
 
     test_rec = yield htf.Test(fail_phase, not_run_phase)
@@ -959,30 +997,38 @@ class DiagnosesTest(htf_test.TestCase):
   @htf_test.yields_phases
   def test_test_diagnoser__exception(self):
     test = htf.Test(basic_phase)
-    test.add_test_diagnosers(exception_test_diagnoser,
-                             basic_wrapper_test_diagnoser)
+    test.add_test_diagnosers(
+        exception_test_diagnoser, basic_wrapper_test_diagnoser
+    )
 
     test_rec = yield test
 
     self.assertTestError(test_rec)
-    self.assertEqual([test_record.OutcomeDetails('DiagTestError', mock.ANY)],
-                     test_rec.outcome_details)
-    self.assertEqual([htf.Diagnosis(OkayResult.TEST_OK, 'Okay')],
-                     test_rec.diagnoses)
+    self.assertEqual(
+        [test_record.OutcomeDetails('DiagTestError', mock.ANY)],
+        test_rec.outcome_details,
+    )
+    self.assertEqual(
+        [htf.Diagnosis(OkayResult.TEST_OK, 'Okay')], test_rec.diagnoses
+    )
 
   @htf_test.yields_phases
   def test_test_diagnoser__exception_with_phase_excption(self):
     test = htf.Test(exception_phase)
-    test.add_test_diagnosers(exception_test_diagnoser,
-                             basic_wrapper_test_diagnoser)
+    test.add_test_diagnosers(
+        exception_test_diagnoser, basic_wrapper_test_diagnoser
+    )
 
     test_rec = yield test
 
     self.assertTestError(test_rec, exc_type=PhaseError)
-    self.assertEqual([test_record.OutcomeDetails('PhaseError', mock.ANY)],
-                     test_rec.outcome_details)
-    self.assertEqual([htf.Diagnosis(OkayResult.TEST_OK, 'Okay')],
-                     test_rec.diagnoses)
+    self.assertEqual(
+        [test_record.OutcomeDetails('PhaseError', mock.ANY)],
+        test_rec.outcome_details,
+    )
+    self.assertEqual(
+        [htf.Diagnosis(OkayResult.TEST_OK, 'Okay')], test_rec.diagnoses
+    )
 
   @htf_test.yields_phases
   def test_test_diagnosis_pass__phase_diagnosis_pass(self):
@@ -993,10 +1039,13 @@ class DiagnosesTest(htf_test.TestCase):
     test_rec = yield test
 
     self.assertTestPass(test_rec)
-    self.assertEqual([
-        htf.Diagnosis(OkayResult.OKAY, 'Everything is okay.'),
-        htf.Diagnosis(OkayResult.TEST_OK, 'Okay'),
-    ], test_rec.diagnoses)
+    self.assertEqual(
+        [
+            htf.Diagnosis(OkayResult.OKAY, 'Everything is okay.'),
+            htf.Diagnosis(OkayResult.TEST_OK, 'Okay'),
+        ],
+        test_rec.diagnoses,
+    )
     phase_rec = test_rec.phases[1]
     self.assertEqual([OkayResult.OKAY], phase_rec.diagnosis_results)
     self.assertEqual([], phase_rec.failure_diagnosis_results)
@@ -1010,10 +1059,13 @@ class DiagnosesTest(htf_test.TestCase):
     test_rec = yield test
 
     self.assertTestFail(test_rec)
-    self.assertEqual([
-        htf.Diagnosis(BadResult.ONE, 'Oh no!', is_failure=True),
-        htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True),
-    ], test_rec.diagnoses)
+    self.assertEqual(
+        [
+            htf.Diagnosis(BadResult.ONE, 'Oh no!', is_failure=True),
+            htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True),
+        ],
+        test_rec.diagnoses,
+    )
     phase_rec = test_rec.phases[1]
     self.assertEqual([], phase_rec.diagnosis_results)
     self.assertEqual([BadResult.ONE], phase_rec.failure_diagnosis_results)
@@ -1027,10 +1079,13 @@ class DiagnosesTest(htf_test.TestCase):
     test_rec = yield test
 
     self.assertTestFail(test_rec)
-    self.assertEqual([
-        htf.Diagnosis(OkayResult.OKAY, 'Everything is okay.'),
-        htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True),
-    ], test_rec.diagnoses)
+    self.assertEqual(
+        [
+            htf.Diagnosis(OkayResult.OKAY, 'Everything is okay.'),
+            htf.Diagnosis(BadResult.TWO, 'Uh oh!', is_failure=True),
+        ],
+        test_rec.diagnoses,
+    )
     phase_rec = test_rec.phases[1]
     self.assertEqual([OkayResult.OKAY], phase_rec.diagnosis_results)
     self.assertEqual([], phase_rec.failure_diagnosis_results)
@@ -1044,17 +1099,19 @@ class DiagnosesTest(htf_test.TestCase):
     test_rec = yield test
 
     self.assertTestFail(test_rec)
-    self.assertEqual([
-        htf.Diagnosis(BadResult.ONE, 'Oh no!', is_failure=True),
-        htf.Diagnosis(OkayResult.TEST_OK, 'Okay'),
-    ], test_rec.diagnoses)
+    self.assertEqual(
+        [
+            htf.Diagnosis(BadResult.ONE, 'Oh no!', is_failure=True),
+            htf.Diagnosis(OkayResult.TEST_OK, 'Okay'),
+        ],
+        test_rec.diagnoses,
+    )
     phase_rec = test_rec.phases[1]
     self.assertEqual([], phase_rec.diagnosis_results)
     self.assertEqual([BadResult.ONE], phase_rec.failure_diagnosis_results)
 
   @htf_test.yields_phases
   def test_test_diagnoser__internal_not_allowed(self):
-
     @htf.TestDiagnoser(OkayResult)
     def internal_diag(test_record_, store):
       del test_record_  # Unused.
@@ -1069,11 +1126,11 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertTestError(test_rec)
     self.assertEqual(
         [test_record.OutcomeDetails('InvalidDiagnosisError', mock.ANY)],
-        test_rec.outcome_details)
+        test_rec.outcome_details,
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser__internal_not_recorded_on_test_record(self):
-
     @htf.PhaseDiagnoser(OkayResult)
     def internal_diag(phase_record):
       del phase_record  # Unused.
@@ -1091,21 +1148,25 @@ class DiagnosesTest(htf_test.TestCase):
   def test_phase_diagnoser_serialization(self):
     converted = data.convert_to_base_types(basic_wrapper_phase_diagnoser)
     self.assertEqual('basic_wrapper_phase_diagnoser', converted['name'])
-    self.assertCountEqual(['okay', 'fine', 'great', 'test_ok'],
-                          converted['possible_results'])
+    self.assertCountEqual(
+        ['okay', 'fine', 'great', 'test_ok'], converted['possible_results']
+    )
 
   def test_test_diagnoser_serialization(self):
     converted = data.convert_to_base_types(basic_wrapper_test_diagnoser)
     self.assertEqual('basic_wrapper_test_diagnoser', converted['name'])
-    self.assertCountEqual(['okay', 'fine', 'great', 'test_ok'],
-                          converted['possible_results'])
+    self.assertCountEqual(
+        ['okay', 'fine', 'great', 'test_ok'], converted['possible_results']
+    )
 
   @htf_test.yields_phases
   def test_test_record_diagnosis_serialization(self):
     phase1 = htf.PhaseOptions(name='pass_diag_phase')(
-        htf.diagnose(basic_wrapper_phase_diagnoser)(basic_phase))
+        htf.diagnose(basic_wrapper_phase_diagnoser)(basic_phase)
+    )
     phase2 = htf.PhaseOptions(name='fail_diag_phase')(
-        htf.diagnose(fail_phase_diagnoser)(basic_phase))
+        htf.diagnose(fail_phase_diagnoser)(basic_phase)
+    )
 
     test = htf.Test(phase1, phase2)
     test.add_test_diagnosers(basic_wrapper_test_diagnoser)
@@ -1117,38 +1178,41 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertPhaseOutcomeFail(test_rec.phases[2])
 
     converted = data.convert_to_base_types(test_rec)
-    self.assertEqual([
-        {
-            'result': 'okay',
-            'description': 'Everything is okay.',
-            'component': None,
-            'priority': 'NORMAL',
-        },
-        {
-            'result': 'bad_one',
-            'description': 'Oh no!',
-            'component': None,
-            'priority': 'NORMAL',
-            'is_failure': True,
-        },
-        {
-            'result': 'test_ok',
-            'description': 'Okay',
-            'component': None,
-            'priority': 'NORMAL',
-        },
-    ], converted['diagnoses'])
+    self.assertEqual(
+        [
+            {
+                'result': 'okay',
+                'description': 'Everything is okay.',
+                'component': None,
+                'priority': 'NORMAL',
+            },
+            {
+                'result': 'bad_one',
+                'description': 'Oh no!',
+                'component': None,
+                'priority': 'NORMAL',
+                'is_failure': True,
+            },
+            {
+                'result': 'test_ok',
+                'description': 'Okay',
+                'component': None,
+                'priority': 'NORMAL',
+            },
+        ],
+        converted['diagnoses'],
+    )
 
     self.assertEqual(['okay'], converted['phases'][1]['diagnosis_results'])
     self.assertEqual([], converted['phases'][1]['failure_diagnosis_results'])
 
     self.assertEqual([], converted['phases'][2]['diagnosis_results'])
-    self.assertEqual(['bad_one'],
-                     converted['phases'][2]['failure_diagnosis_results'])
+    self.assertEqual(
+        ['bad_one'], converted['phases'][2]['failure_diagnosis_results']
+    )
 
   @htf_test.yields_phases
   def test_phase_diagnoser__access_to_phase_record(self):
-
     def is_true(value):
       return value
 
@@ -1163,8 +1227,12 @@ class DiagnosesTest(htf_test.TestCase):
                   'pass_measure',
                   is_value_set=True,
                   stored_value=True,
-                  cached_value=True),
-              cached=mock.ANY), phase_record.measurements['pass_measure'])
+                  cached_value=True,
+              ),
+              cached=mock.ANY,
+          ),
+          phase_record.measurements['pass_measure'],
+      )
       self.assertEqual(
           htf.Measurement(
               'fail_measure',
@@ -1173,15 +1241,20 @@ class DiagnosesTest(htf_test.TestCase):
                   'fail_measure',
                   is_value_set=True,
                   stored_value=False,
-                  cached_value=False),
+                  cached_value=False,
+              ),
               validators=[is_true],
-              cached=mock.ANY), phase_record.measurements['fail_measure'])
+              cached=mock.ANY,
+          ),
+          phase_record.measurements['fail_measure'],
+      )
       return None
 
     @htf.diagnose(check_record_diagnoser)
     @htf.measures(
         htf.Measurement('pass_measure'),
-        htf.Measurement('fail_measure').with_validator(is_true))
+        htf.Measurement('fail_measure').with_validator(is_true),
+    )
     def phase(test):
       test.measurements.pass_measure = True
       test.measurements.fail_measure = False
@@ -1200,7 +1273,6 @@ class ConditionalValidatorsTest(htf_test.TestCase):
     self.validator_return_value = False
 
   def _make_validator(self):
-
     def _validator(value):
       self.validator_values.append(value)
       return self.validator_return_value
@@ -1209,10 +1281,11 @@ class ConditionalValidatorsTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_conditional_measurement__not_run_no_results(self):
-
     @htf.measures(
         htf.Measurement('validator_not_run').validate_on(
-            {OkayResult.OKAY: self._make_validator()}))
+            {OkayResult.OKAY: self._make_validator()}
+        )
+    )
     def phase(test):
       test.measurements.validator_not_run = True
 
@@ -1223,12 +1296,14 @@ class ConditionalValidatorsTest(htf_test.TestCase):
     self.assertEqual([], self.validator_values)
 
   @htf_test.yields_phases_with(
-      phase_diagnoses=[htf.Diagnosis(OkayResult.FINE, 'Fine.')])
+      phase_diagnoses=[htf.Diagnosis(OkayResult.FINE, 'Fine.')]
+  )
   def test_conditional_measurement__not_run_different_results(self):
-
     @htf.measures(
         htf.Measurement('validator_not_run').validate_on(
-            {OkayResult.OKAY: self._make_validator()}))
+            {OkayResult.OKAY: self._make_validator()}
+        )
+    )
     def phase(test):
       test.measurements.validator_not_run = True
 
@@ -1239,13 +1314,16 @@ class ConditionalValidatorsTest(htf_test.TestCase):
     self.assertEqual([], self.validator_values)
 
   @htf_test.yields_phases_with(
-      phase_diagnoses=[htf.Diagnosis(OkayResult.OKAY, 'Okay.')])
+      phase_diagnoses=[htf.Diagnosis(OkayResult.OKAY, 'Okay.')]
+  )
   def test_conditional_measurement__run(self):
     self.validator_return_value = True
 
     @htf.measures(
         htf.Measurement('validator_run').validate_on(
-            {OkayResult.OKAY: self._make_validator()}))
+            {OkayResult.OKAY: self._make_validator()}
+        )
+    )
     def phase(test):
       test.measurements.validator_run = True
 

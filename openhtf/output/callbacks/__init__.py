@@ -78,19 +78,26 @@ class OutputToFile(object):
     output_file: A file object.  Exclusive with filename_pattern.
   """
 
-  def __init__(self, filename_pattern_or_file: Union[Text, Callable[..., Text],
-                                                     BinaryIO]):
-    self.filename_pattern = None  # type: Optional[Union[Text, Callable[..., Text]]]
+  def __init__(
+      self, filename_pattern_or_file: Union[Text, Callable[..., Text], BinaryIO]
+  ):
+    self.filename_pattern = (
+        None
+    )  # type: Optional[Union[Text, Callable[..., Text]]]
     self.output_file = None  # type: Optional[BinaryIO]
-    if (isinstance(filename_pattern_or_file, str) or
-        callable(filename_pattern_or_file)):
-      self.filename_pattern = filename_pattern_or_file  # pytype: disable=annotation-type-mismatch
+    if isinstance(filename_pattern_or_file, str) or callable(
+        filename_pattern_or_file
+    ):
+      self.filename_pattern = (
+          filename_pattern_or_file  # pytype: disable=annotation-type-mismatch
+      )
     else:
       self.output_file = filename_pattern_or_file
 
   @staticmethod
   def serialize_test_record(
-      test_rec: test_record.TestRecord) -> SerializedTestRecord:
+      test_rec: test_record.TestRecord,
+  ) -> SerializedTestRecord:
     """Override method to alter how test records are serialized to file data."""
     return pickle.dumps(test_rec, -1)
 
@@ -103,17 +110,20 @@ class OutputToFile(object):
     """Use filename_pattern and test_rec to create filename."""
     if self.filename_pattern is None:
       raise ValueError(
-          'filename_pattern must be string or callable to create file name.')
+          'filename_pattern must be string or callable to create file name.'
+      )
     # Ignore keys for the log filename to not convert larger data structures.
     record_dict = data.convert_to_base_types(
-        test_rec, ignore_keys=('code_info', 'phases', 'log_records'))
-    return typing.cast(Text,
-                       util.format_string(self.filename_pattern, record_dict))
+        test_rec, ignore_keys=('code_info', 'phases', 'log_records')
+    )
+    return typing.cast(
+        Text, util.format_string(self.filename_pattern, record_dict)
+    )
 
   @contextlib.contextmanager
   def open_output_file(
-      self,
-      test_rec: test_record.TestRecord) -> Iterator[Union[Atomic, BinaryIO]]:
+      self, test_rec: test_record.TestRecord
+  ) -> Iterator[Union[Atomic, BinaryIO]]:
     """Open file based on pattern."""
     if self.filename_pattern:
       filename = self.create_file_name(test_rec)
@@ -126,7 +136,8 @@ class OutputToFile(object):
       yield self.output_file
     else:
       raise TypeError(
-          'filename_pattern must be string, callable, or File-like object')
+          'filename_pattern must be string, callable, or File-like object'
+      )
 
   def __call__(self, test_rec: test_record.TestRecord) -> None:
     with self.open_output_file(test_rec) as outfile:
@@ -137,5 +148,8 @@ class OutputToFile(object):
         for chunk in serialized_record:
           outfile.write(chunk.encode() if isinstance(chunk, str) else chunk)
       else:
-        raise TypeError('Expected string or iterable but got {}.'.format(
-            type(serialized_record)))
+        raise TypeError(
+            'Expected string or iterable but got {}.'.format(
+                type(serialized_record)
+            )
+        )

@@ -15,7 +15,6 @@
 
 Phases in OpenHTF are distinct steps in a test.  Each phase is an instance
 of PhaseDescriptor class.
-
 """
 
 import collections
@@ -75,6 +74,7 @@ class PhaseResult(enum.Enum):
 @enum.unique
 class PhaseNameCase(enum.Enum):
   """Options for formatting casing for phase names."""
+
   # Does not modify case for phase name.
   KEEP = 'KEEP'
   # Changes phase name case to CamelCase.
@@ -111,9 +111,9 @@ class PhaseOptions(object):
       timeout will still apply when under the debugger.
     phase_name_case: Case formatting options for phase name.
     stop_on_measurement_fail: Whether to stop the test if any measurements fail.
-  Example Usages: @PhaseOptions(timeout_s=1)
-    def PhaseFunc(test): pass  @PhaseOptions(name='Phase({port})')
-    def PhaseFunc(test, port, other_info): pass
+      Example Usages: @PhaseOptions(timeout_s=1) def PhaseFunc(test): pass
+      @PhaseOptions(name='Phase({port})') def PhaseFunc(test, port, other_info):
+      pass
   """
 
   name = attr.ib(type=Optional[Union[Text, Callable[..., Text]]], default=None)
@@ -183,10 +183,12 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
   plugs = attr.ib(type=List[base_plugs.PhasePlug], factory=list)
   measurements = attr.ib(type=List[core_measurements.Measurement], factory=list)
   diagnosers = attr.ib(
-      type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list)
+      type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list
+  )
   extra_kwargs = attr.ib(type=Dict[Text, Any], factory=dict)
   code_info = attr.ib(
-      type=test_record.CodeInfo, factory=test_record.CodeInfo.uncaptured)
+      type=test_record.CodeInfo, factory=test_record.CodeInfo.uncaptured
+  )
 
   @classmethod
   def wrap_or_copy(cls, func: PhaseT, **options: Any) -> 'PhaseDescriptor':
@@ -207,8 +209,9 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     """
     # TODO(arsharma): Remove when type annotations are more enforced.
     if isinstance(func, openhtf.PhaseGroup):
-      raise PhaseWrapError('Cannot wrap PhaseGroup <%s> as a phase.' %
-                           (func.name or 'Unnamed'))  # pytype: disable=attribute-error
+      raise PhaseWrapError(
+          'Cannot wrap PhaseGroup <%s> as a phase.' % (func.name or 'Unnamed')
+      )  # pytype: disable=attribute-error
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
       # or kwargs.  See with_args() below for more details.
@@ -256,8 +259,9 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     new_info.measurements = [m.with_args(**kwargs) for m in self.measurements]
     return new_info
 
-  def with_plugs(self,
-                 **subplugs: Type[base_plugs.BasePlug]) -> 'PhaseDescriptor':
+  def with_plugs(
+      self, **subplugs: Type[base_plugs.BasePlug]
+  ) -> 'PhaseDescriptor':
     """Substitute plugs for placeholders for this phase.
 
     Args:
@@ -287,14 +291,17 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
       else:
         # Check __dict__ to see if the attribute is explicitly defined in the
         # class, rather than being defined in a parent class.
-        accept_substitute = ('auto_placeholder' in original_plug.cls.__dict__
-                             and original_plug.cls.auto_placeholder and
-                             issubclass(sub_class, original_plug.cls))
+        accept_substitute = (
+            'auto_placeholder' in original_plug.cls.__dict__
+            and original_plug.cls.auto_placeholder
+            and issubclass(sub_class, original_plug.cls)
+        )
 
       if not accept_substitute:
         raise base_plugs.InvalidPlugError(
             'Could not find valid placeholder for substitute plug %s '
-            'required for phase %s' % (name, self.name))
+            'required for phase %s' % (name, self.name)
+        )
       new_plugs[name] = data.attr_copy(original_plug, cls=sub_class)
 
     if not new_plugs:
@@ -306,20 +313,23 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
         self,
         plugs=list(plugs_by_name.values()),
         options=self.options.format_strings(**subplugs),
-        measurements=[m.with_args(**subplugs) for m in self.measurements])
+        measurements=[m.with_args(**subplugs) for m in self.measurements],
+    )
 
   def load_code_info(self) -> 'PhaseDescriptor':
     """Load code info for this phase."""
     return data.attr_copy(
-        self, code_info=test_record.CodeInfo.for_function(self.func))
+        self, code_info=test_record.CodeInfo.for_function(self.func)
+    )
 
   def apply_to_all_phases(
-      self, func: Callable[['PhaseDescriptor'],
-                           'PhaseDescriptor']) -> 'PhaseDescriptor':
+      self, func: Callable[['PhaseDescriptor'], 'PhaseDescriptor']
+  ) -> 'PhaseDescriptor':
     return func(self)
 
-  def __call__(self,
-               running_test_state: 'test_state.TestState') -> PhaseReturnT:
+  def __call__(
+      self, running_test_state: 'test_state.TestState'
+  ) -> PhaseReturnT:
     """Invoke this Phase, passing in the appropriate args.
 
     By default, an openhtf.TestApi is passed as the first positional arg, but if
@@ -338,18 +348,24 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     arg_info = inspect.getfullargspec(self.func)
     keywords = arg_info.varkw
     if arg_info.defaults is not None:
-      for arg_name, arg_value in zip(arg_info.args[-len(arg_info.defaults):],
-                                     arg_info.defaults):
+      for arg_name, arg_value in zip(
+          arg_info.args[-len(arg_info.defaults) :], arg_info.defaults
+      ):
         kwargs[arg_name] = arg_value
     kwargs.update(self.extra_kwargs)
     kwargs.update(
         running_test_state.plug_manager.provide_plugs(
-            (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
+            (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs
+        )
+    )
 
     # Pass in test_api if the phase takes *args, or **kwargs with at least 1
     # positional, or more positional args than we have keyword args.
-    if arg_info.varargs or (keywords and len(arg_info.args) >= 1) or (len(
-        arg_info.args) > len(kwargs)):
+    if (
+        arg_info.varargs
+        or (keywords and len(arg_info.args) >= 1)
+        or (len(arg_info.args) > len(kwargs))
+    ):
       args = []
       if self.options.requires_state:
         args.append(running_test_state)
@@ -371,16 +387,21 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     if self.options.stop_on_measurement_fail:
       # Note: The measurement definitions do NOT have the outcome populated.
       for measurement in self.measurements:
-        if (running_test_state.test_api.get_measurement(
-            measurement.name).outcome != core_measurements.Outcome.PASS):
+        if (
+            running_test_state.test_api.get_measurement(
+                measurement.name
+            ).outcome
+            != core_measurements.Outcome.PASS
+        ):
           phase_result = PhaseResult.STOP
           break
 
     return phase_result
 
 
-def measures(*measurements: Union[Text, core_measurements.Measurement],
-             **kwargs: Any) -> Callable[[PhaseT], PhaseDescriptor]:
+def measures(
+    *measurements: Union[Text, core_measurements.Measurement], **kwargs: Any
+) -> Callable[[PhaseT], PhaseDescriptor]:
   """Creates decorators to declare measurements for phases.
 
   See the measurements module docstring for examples of usage.
@@ -412,13 +433,15 @@ def measures(*measurements: Union[Text, core_measurements.Measurement],
     elif isinstance(meas, str):
       return core_measurements.Measurement(meas, **kwargs)
     raise core_measurements.InvalidMeasurementTypeError(
-        'Expected Measurement or string', meas)
+        'Expected Measurement or string', meas
+    )
 
   # In case we're declaring a measurement inline, we can only declare one.
   if kwargs and len(measurements) != 1:
     raise core_measurements.InvalidMeasurementTypeError(
         'If @measures kwargs are provided, a single measurement name must be '
-        'provided as a positional arg first.')
+        'provided as a positional arg first.'
+    )
 
   # Unlikely, but let's make sure we don't allow overriding initial outcome.
   if 'outcome' in kwargs:
@@ -430,12 +453,13 @@ def measures(*measurements: Union[Text, core_measurements.Measurement],
   def decorate(wrapped_phase: PhaseT) -> PhaseDescriptor:
     """Phase decorator to be returned."""
     phase = PhaseDescriptor.wrap_or_copy(wrapped_phase)
-    duplicate_names = (
-        set(m.name for m in measurements)
-        & set(m.name for m in phase.measurements))
+    duplicate_names = set(m.name for m in measurements) & set(
+        m.name for m in phase.measurements
+    )
     if duplicate_names:
-      raise core_measurements.DuplicateNameError('Measurement names duplicated',
-                                                 duplicate_names)
+      raise core_measurements.DuplicateNameError(
+          'Measurement names duplicated', duplicate_names
+      )
 
     phase.measurements.extend(measurements)
     return phase
@@ -449,7 +473,8 @@ class DuplicateResultError(Exception):
 
 def check_for_duplicate_results(
     phase_iterator: Iterator[PhaseDescriptor],
-    test_diagnosers: Sequence[diagnoses_lib.BaseTestDiagnoser]) -> None:
+    test_diagnosers: Sequence[diagnoses_lib.BaseTestDiagnoser],
+) -> None:
   """Check for any results with the same enum value in different ResultTypes.
 
   Args:
@@ -476,16 +501,18 @@ def check_for_duplicate_results(
   duplicates: List[str] = []
   for result_value, enum_classes in sorted(values_to_enums.items()):
     if len(enum_classes) > 1:
-      duplicates.append('Value "{}" defined by {}'.format(
-          result_value, enum_classes))
+      duplicates.append(
+          'Value "{}" defined by {}'.format(result_value, enum_classes)
+      )
   if not duplicates:
     return
-  raise DuplicateResultError('Duplicate DiagResultEnum values: {}'.format(
-      '\n'.join(duplicates)))
+  raise DuplicateResultError(
+      'Duplicate DiagResultEnum values: {}'.format('\n'.join(duplicates))
+  )
 
 
 def diagnose(
-    *diagnosers: diagnoses_lib.BasePhaseDiagnoser
+    *diagnosers: diagnoses_lib.BasePhaseDiagnoser,
 ) -> Callable[[PhaseT], PhaseDescriptor]:
   """Decorator to add diagnosers to a PhaseDescriptor."""
   diagnoses_lib.check_diagnosers(diagnosers, diagnoses_lib.BasePhaseDiagnoser)

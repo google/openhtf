@@ -127,6 +127,7 @@ class BasePlug(object):
       doesn't appear here), and is the same logger as passed into test phases
       via TestApi.
   """
+
   # Override this to True in subclasses to support remote Plug access.
   enable_remote = False  # type: bool
   # Allow explicitly disabling remote access to specific attributes.
@@ -160,7 +161,6 @@ class BasePlug(object):
     You can also implement an `as_base_types` function that can return a dict
     where the values must be base types at all levels.  This can help prevent
     recursive copying, which is time intensive.
-
     """
     return {}
 
@@ -185,6 +185,7 @@ class FrontendAwareBasePlug(BasePlug, util.SubscribableStateMixin):
   Since the Station API runs in a separate thread, the _asdict() method of
   frontend-aware plugs should be written with thread safety in mind.
   """
+
   enable_remote = True  # type: bool
 
 

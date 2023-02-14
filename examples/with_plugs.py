@@ -33,6 +33,7 @@ from openhtf.core import base_plugs
 
 class PingPlug(base_plugs.BasePlug):
   """This plug simply does a ping against the host attribute."""
+
   host = None
 
   def __init__(self):
@@ -73,8 +74,10 @@ class PingDnsB(PingPlug):
 # passed into the phase so each phase has a unique name.
 @htf.PhaseOptions(name='Ping-{pinger.host}-{count}')
 @htf.plug(pinger=PingPlug.placeholder)
-@htf.measures('total_time_{pinger.host}_{count}',
-              htf.Measurement('retcode').equals('{expected_retcode}', type=int))
+@htf.measures(
+    'total_time_{pinger.host}_{count}',
+    htf.Measurement('retcode').equals('{expected_retcode}', type=int),
+)
 def test_ping(test, pinger, count, expected_retcode):
   """This tests that we can ping a host.
 

@@ -34,8 +34,9 @@ from openhtf.core import phase_nodes
 NodeType = TypeVar('NodeType', bound=phase_nodes.PhaseNode)
 SequenceClassT = TypeVar('SequenceClassT', bound='PhaseSequence')
 PhasesOrNodesT = Iterable[phase_descriptor.PhaseCallableOrNodeT]
-SequenceInitializerT = Union[phase_descriptor.PhaseCallableOrNodeT,
-                             PhasesOrNodesT]
+SequenceInitializerT = Union[
+    phase_descriptor.PhaseCallableOrNodeT, PhasesOrNodesT
+]
 
 
 class DuplicateSubtestNamesError(Exception):
@@ -106,7 +107,8 @@ class PhaseSequence(PhaseCollectionNode):
     name = kwargs.pop('name', None)  # type: Optional[Text]
     object.__setattr__(self, 'name', name)
     nodes = kwargs.pop(
-        'nodes', None)  # type: Optional[Tuple[phase_nodes.PhaseNode, ...]]
+        'nodes', None
+    )  # type: Optional[Tuple[phase_nodes.PhaseNode, ...]]
     if nodes is None:
       nodes = tuple(_recursive_flatten(args))
     elif args:
@@ -117,8 +119,11 @@ class PhaseSequence(PhaseCollectionNode):
 
   # TODO(arsharma): When fully PY3, replace kwargs with name keyword.
   @classmethod
-  def combine(cls: Type[SequenceClassT], *sequences: Optional['PhaseSequence'],
-              **kwargs: Any) -> Optional[SequenceClassT]:
+  def combine(
+      cls: Type[SequenceClassT],
+      *sequences: Optional['PhaseSequence'],
+      **kwargs: Any
+  ) -> Optional[SequenceClassT]:
     """Combine multiple phase node sequences that could be None.
 
     Args:
@@ -155,32 +160,39 @@ class PhaseSequence(PhaseCollectionNode):
     return attr.evolve(
         self,
         nodes=tuple(n.with_args(**kwargs) for n in self.nodes),
-        name=util.format_string(self.name, kwargs))
+        name=util.format_string(self.name, kwargs),
+    )
 
-  def with_plugs(self: SequenceClassT,
-                 **subplugs: Type[base_plugs.BasePlug]) -> SequenceClassT:
+  def with_plugs(
+      self: SequenceClassT, **subplugs: Type[base_plugs.BasePlug]
+  ) -> SequenceClassT:
     """Substitute plugs for placeholders for this phase, error on unknowns."""
     return attr.evolve(
         self,
         nodes=tuple(n.with_plugs(**subplugs) for n in self.nodes),
-        name=util.format_string(self.name, subplugs))
+        name=util.format_string(self.name, subplugs),
+    )
 
   def load_code_info(self: SequenceClassT) -> SequenceClassT:
     """Load coded info for all contained phases."""
     return attr.evolve(
         self,
         nodes=tuple(n.load_code_info() for n in self.nodes),
-        name=self.name)
+        name=self.name,
+    )
 
   def apply_to_all_phases(
-      self: SequenceClassT, func: Callable[[phase_descriptor.PhaseDescriptor],
-                                           phase_descriptor.PhaseDescriptor]
+      self: SequenceClassT,
+      func: Callable[
+          [phase_descriptor.PhaseDescriptor], phase_descriptor.PhaseDescriptor
+      ],
   ) -> SequenceClassT:
     """Apply func to all contained phases."""
     return attr.evolve(
         self,
         nodes=tuple(n.apply_to_all_phases(func) for n in self.nodes),
-        name=self.name)
+        name=self.name,
+    )
 
   def filter_by_type(self, node_cls: Type[NodeType]) -> Iterator[NodeType]:
     """Yields recursively all the nodes of the given type.
@@ -222,17 +234,20 @@ def check_for_duplicate_subtest_names(sequence: PhaseSequence):
     DuplicateSubtestNamesError: when duplicate subtest names are found.
   """
   names_to_subtests = collections.defaultdict(
-      list)  # type: DefaultDict[Text, List[Subtest]]
+      list
+  )  # type: DefaultDict[Text, List[Subtest]]
   for subtest in sequence.filter_by_type(Subtest):
     names_to_subtests[subtest.name].append(subtest)
 
   duplicates = []  # type: List[Text]
   for name, subtests in names_to_subtests.items():
     if len(subtests) > 1:
-      duplicates.append('Name "{}" used by multiple subtests: {}'.format(
-          name, subtests))
+      duplicates.append(
+          'Name "{}" used by multiple subtests: {}'.format(name, subtests)
+      )
   if not duplicates:
     return
   duplicates.sort()
-  raise DuplicateSubtestNamesError('Duplicate Subtest names: {}'.format(
-      '\n'.join(duplicates)))
+  raise DuplicateSubtestNamesError(
+      'Duplicate Subtest names: {}'.format('\n'.join(duplicates))
+  )

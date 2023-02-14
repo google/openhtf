@@ -23,9 +23,11 @@ from openhtf.util import checkpoints
 
 
 @htf.measures(
-    htf.Measurement('fixed_time').in_range(
-        0, 10).doc('This is going to fail validation.').with_units(
-            htf.units.SECOND))
+    htf.Measurement('fixed_time')
+    .in_range(0, 10)
+    .doc('This is going to fail validation.')
+    .with_units(htf.units.SECOND)
+)
 def failing_phase(test):
   # The 'outcome' of this measurement in the test_record result will be a FAIL
   # because its value fails the validator specified (0 <= 5 <= 10).
@@ -60,7 +62,8 @@ def main():
   # The complete summary is viable in json, including the measurements
   # included in measurements_example.lots_of_measurements.
   test.add_output_callbacks(
-      json_factory.OutputToJSON('./checkpoints.json', indent=2))
+      json_factory.OutputToJSON('./checkpoints.json', indent=2)
+  )
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.
