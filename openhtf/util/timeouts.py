@@ -184,15 +184,14 @@ def loop_until_timeout_or_not_none(timeout_s, function, sleep_s=1):
   Returns:
     Whatever the function returned last.
   """
-  return loop_until_timeout_or_valid(timeout_s, function,
-                                     lambda x: x is not None, sleep_s)
+  return loop_until_timeout_or_valid(
+      timeout_s, function, lambda x: x is not None, sleep_s
+  )
 
 
-def loop_until_true_else_raise(timeout_s,
-                               function,
-                               invert=False,
-                               message=None,
-                               sleep_s=1):
+def loop_until_true_else_raise(
+    timeout_s, function, invert=False, message=None, sleep_s=1
+):
   """Repeatedly call the given function until truthy, or raise on a timeout.
 
   Args:
@@ -215,7 +214,8 @@ def loop_until_true_else_raise(timeout_s,
     return bool(x) != invert
 
   result = loop_until_timeout_or_valid(
-      timeout_s, function, validate, sleep_s=sleep_s)
+      timeout_s, function, validate, sleep_s=sleep_s
+  )
   if validate(result):
     return result
 
@@ -225,11 +225,14 @@ def loop_until_true_else_raise(timeout_s,
   name = '(unknown)'
   if hasattr(function, '__name__'):
     name = function.__name__
-  elif (isinstance(function, functools.partial) and
-        hasattr(function.func, '__name__')):
+  elif isinstance(function, functools.partial) and hasattr(
+      function.func, '__name__'
+  ):
     name = function.func.__name__
-  raise RuntimeError('Function %s failed to return %s within %d seconds.' %
-                     (name, 'falsey' if invert else 'truthy', timeout_s))
+  raise RuntimeError(
+      'Function %s failed to return %s within %d seconds.'
+      % (name, 'falsey' if invert else 'truthy', timeout_s)
+  )
 
 
 class Interval(object):
@@ -348,30 +351,27 @@ def execute_until_false(method, interval_s):
   return interval
 
 
-def retry_until_true_or_limit_reached(method,
-                                      limit,
-                                      sleep_s=1,
-                                      catch_exceptions=()):
+def retry_until_true_or_limit_reached(
+    method, limit, sleep_s=1, catch_exceptions=()
+):
   """Executes a method until the retry limit is hit or True is returned."""
-  return retry_until_valid_or_limit_reached(method, limit, lambda x: x, sleep_s,
-                                            catch_exceptions)
+  return retry_until_valid_or_limit_reached(
+      method, limit, lambda x: x, sleep_s, catch_exceptions
+  )
 
 
-def retry_until_not_none_or_limit_reached(method,
-                                          limit,
-                                          sleep_s=1,
-                                          catch_exceptions=()):
+def retry_until_not_none_or_limit_reached(
+    method, limit, sleep_s=1, catch_exceptions=()
+):
   """Executes a method until the retry limit is hit or not None is returned."""
-  return retry_until_valid_or_limit_reached(method, limit,
-                                            lambda x: x is not None, sleep_s,
-                                            catch_exceptions)
+  return retry_until_valid_or_limit_reached(
+      method, limit, lambda x: x is not None, sleep_s, catch_exceptions
+  )
 
 
-def retry_until_valid_or_limit_reached(method,
-                                       limit,
-                                       validation_fn,
-                                       sleep_s=1,
-                                       catch_exceptions=()):
+def retry_until_valid_or_limit_reached(
+    method, limit, validation_fn, sleep_s=1, catch_exceptions=()
+):
   """Executes a method until the retry limit or validation_fn returns True.
 
   The method is always called once so the effective lower limit for 'limit' is

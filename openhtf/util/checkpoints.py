@@ -32,7 +32,7 @@ from openhtf.core import phase_branches
 
 
 def checkpoint(
-    checkpoint_name: Optional[Text] = None
+    checkpoint_name: Optional[Text] = None,
 ) -> phase_branches.PhaseFailureCheckpoint:
   """Creates a checkpoint phase that checks if all the previous phases passed.
 

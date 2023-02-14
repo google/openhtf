@@ -68,7 +68,9 @@ class TimeoutProxyMixin(object):
   def __init__(self, *args, **kwargs):
     kwargs.update(
         transport=TimeoutTransport(
-            kwargs.pop('timeout_s', DEFAULT_PROXY_TIMEOUT_S)))
+            kwargs.pop('timeout_s', DEFAULT_PROXY_TIMEOUT_S)
+        )
+    )
     super(TimeoutProxyMixin, self).__init__(*args, **kwargs)
 
   def __settimeout(self, timeout_s):
@@ -105,7 +107,9 @@ class LockedTimeoutProxy(TimeoutProxyMixin, LockedProxyMixin, BaseServerProxy):
   """ServerProxy with additional features we use."""
 
 
-class SimpleThreadedXmlRpcServer(socketserver.ThreadingMixIn,
-                                 SimpleXMLRPCServer):
+class SimpleThreadedXmlRpcServer(
+    socketserver.ThreadingMixIn, SimpleXMLRPCServer
+):
   """Helper for handling multiple simultaneous RPCs in threads."""
+
   daemon_threads = True

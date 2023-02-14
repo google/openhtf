@@ -42,19 +42,21 @@ class StoreInModule(argparse.Action):
   """
 
   def __init__(self, *args: Any, **kwargs: Any):
-    self._tgt_mod, self._tgt_attr = typing.cast(Text,
-                                                kwargs.pop('target')).rsplit(
-                                                    '.', 1)
+    self._tgt_mod, self._tgt_attr = typing.cast(
+        Text, kwargs.pop('target')
+    ).rsplit('.', 1)
     proxy_cls = kwargs.pop('proxy', None)
     if proxy_cls is not None:
       self._proxy = proxy_cls(*args, **kwargs)
     super(StoreInModule, self).__init__(*args, **kwargs)
 
-  def __call__(self,
-               parser: argparse.ArgumentParser,
-               namespace: argparse.Namespace,
-               values: Any,
-               option_string: Optional[Text] = None) -> None:
+  def __call__(
+      self,
+      parser: argparse.ArgumentParser,
+      namespace: argparse.Namespace,
+      values: Any,
+      option_string: Optional[Text] = None,
+  ) -> None:
     if hasattr(self, '_proxy'):
       values = self._proxy(parser, namespace, values)
     setattr(self._resolve_module(), self._tgt_attr, values)
@@ -76,14 +78,17 @@ class _StoreValueInModule(StoreInModule):
     kwargs.update(nargs=0, const=const)
     super(_StoreValueInModule, self).__init__(*args, **kwargs)
 
-  def __call__(self,
-               parser: argparse.ArgumentParser,
-               namespace: argparse.Namespace,
-               values: Any,
-               option_string: Optional[Text] = None) -> None:
+  def __call__(
+      self,
+      parser: argparse.ArgumentParser,
+      namespace: argparse.Namespace,
+      values: Any,
+      option_string: Optional[Text] = None,
+  ) -> None:
     del values  # Unused.
     super(_StoreValueInModule, self).__call__(
-        parser, namespace, self.const, option_string=option_string)
+        parser, namespace, self.const, option_string=option_string
+    )
 
 
 class StoreTrueInModule(_StoreValueInModule):
@@ -107,16 +112,20 @@ class StoreRepsInModule(StoreInModule):
     kwargs.update(nargs=0, const=None)  # pytype: disable=wrong-arg-types
     super(StoreRepsInModule, self).__init__(*args, **kwargs)
 
-  def __call__(self,
-               parser: argparse.ArgumentParser,
-               namespace: argparse.Namespace,
-               values: Any,
-               option_string: Optional[Text] = None) -> None:
+  def __call__(
+      self,
+      parser: argparse.ArgumentParser,
+      namespace: argparse.Namespace,
+      values: Any,
+      option_string: Optional[Text] = None,
+  ) -> None:
     del values  # Unused.
     old_count = getattr(self._resolve_module(), self._tgt_attr)
     if old_count is None:
       super(StoreRepsInModule, self).__call__(
-          parser, namespace, 0, option_string=option_string)
+          parser, namespace, 0, option_string=option_string
+      )
     else:
       super(StoreRepsInModule, self).__call__(
-          parser, namespace, old_count + 1, option_string=option_string)
+          parser, namespace, old_count + 1, option_string=option_string
+      )

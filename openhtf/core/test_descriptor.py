@@ -15,7 +15,6 @@
 
 Tests are main entry point for OpenHTF tests.  In its simplest form a
 test is a series of Phases that are executed by the OpenHTF framework.
-
 """
 
 import argparse
@@ -61,8 +60,10 @@ CONF.declare(
     defaults to False since this potentially reads many files and makes large
     string copies.
 
-    Set to 'true' if you want to capture your test's source."""),
-    default_value=False)
+    Set to 'true' if you want to capture your test's source."""
+    ),
+    default_value=False,
+)
 
 
 class MeasurementNotFoundError(Exception):
@@ -99,7 +100,6 @@ def create_arg_parser(add_help: bool = False) -> argparse.ArgumentParser:
 
   Returns:
     an `argparse.ArgumentParser`
-
   """
   parser = argparse.ArgumentParser(
       'OpenHTF-based testing',
@@ -109,12 +109,16 @@ def create_arg_parser(add_help: bool = False) -> argparse.ArgumentParser:
           logs.ARG_PARSER,
           phase_executor.ARG_PARSER,
       ],
-      add_help=add_help)
+      add_help=add_help,
+  )
   parser.add_argument(
       '--config-help',
       action='store_true',
-      help='Instead of executing the test, simply print all available config '
-      'keys and their description strings.')
+      help=(
+          'Instead of executing the test, simply print all available config '
+          'keys and their description strings.'
+      ),
+  )
   return parser
 
 
@@ -139,12 +143,14 @@ class Test(object):
   HANDLED_SIGINT_ONCE = False
   DEFAULT_SIGINT_HANDLER = None
 
-  def __init__(self, *nodes: phase_descriptor.PhaseCallableOrNodeT,
-               **metadata: Any):
+  def __init__(
+      self, *nodes: phase_descriptor.PhaseCallableOrNodeT, **metadata: Any
+  ):
     # Some sanity checks on special metadata keys we automatically fill in.
     if 'config' in metadata:
       raise KeyError(
-          'Invalid metadata key "config", it will be automatically populated.')
+          'Invalid metadata key "config", it will be automatically populated.'
+      )
 
     self.created_time_millis = util.time_millis()
     self.last_run_time_millis = None
@@ -153,16 +159,18 @@ class Test(object):
     self._executor = None
     # TODO(arsharma): Drop _flatten at some point.
     sequence = phase_collections.PhaseSequence(nodes)
-    self._test_desc = TestDescriptor(sequence,
-                                     htf_test_record.CodeInfo.uncaptured(),
-                                     metadata)
+    self._test_desc = TestDescriptor(
+        sequence, htf_test_record.CodeInfo.uncaptured(), metadata
+    )
 
     if CONF.capture_source:
       # Copy the phases with the real CodeInfo for them.
       self._test_desc.phase_sequence = (
-          self._test_desc.phase_sequence.load_code_info())
+          self._test_desc.phase_sequence.load_code_info()
+      )
       self._test_desc.code_info = (
-          htf_test_record.CodeInfo.for_module_from_stack(levels_up=2))
+          htf_test_record.CodeInfo.for_module_from_stack(levels_up=2)
+      )
 
     # Make sure configure() gets called at least once before Execute().  The
     # user might call configure() again to override options, but we don't want
@@ -207,8 +215,12 @@ class Test(object):
     * Test descriptor-specific (decided on descriptor creation)
     * Execution-specific (decided on test start)
     """
-    return '%s:%s:%s:%s' % (os.getpid(), self.descriptor.uid,
-                            uuid.uuid4().hex[:16], util.time_millis())
+    return '%s:%s:%s:%s' % (
+        os.getpid(),
+        self.descriptor.uid,
+        uuid.uuid4().hex[:16],
+        util.time_millis(),
+    )
 
   @property
   def descriptor(self) -> 'TestDescriptor':
@@ -227,12 +239,14 @@ class Test(object):
     return getattr(self._test_options, option)
 
   def add_output_callbacks(
-      self, *callbacks: Callable[[htf_test_record.TestRecord], None]) -> None:
+      self, *callbacks: Callable[[htf_test_record.TestRecord], None]
+  ) -> None:
     """Add the given function as an output module to this test."""
     self._test_options.output_callbacks.extend(callbacks)
 
-  def add_test_diagnosers(self,
-                          *diagnosers: diagnoses_lib.BaseTestDiagnoser) -> None:
+  def add_test_diagnosers(
+      self, *diagnosers: diagnoses_lib.BaseTestDiagnoser
+  ) -> None:
     diagnoses_lib.check_diagnosers(diagnosers, diagnoses_lib.BaseTestDiagnoser)
     self._test_options.diagnosers.extend(diagnosers)
 
@@ -274,10 +288,13 @@ class Test(object):
         _LOG.error('Test state: %s', self._executor.test_state)
         self._executor.abort()
 
-  def execute(self,
-              test_start: Optional[Union[phase_descriptor.PhaseT,
-                                         Callable[[], str]]] = None,
-              profile_filename: Optional[Text] = None) -> bool:
+  def execute(
+      self,
+      test_start: Optional[
+          Union[phase_descriptor.PhaseT, Callable[[], str]]
+      ] = None,
+      profile_filename: Optional[Text] = None,
+  ) -> bool:
     """Starts the framework and executes the given test.
 
     Args:
@@ -295,9 +312,11 @@ class Test(object):
     """
     phase_descriptor.check_for_duplicate_results(
         self._test_desc.phase_sequence.all_phases(),
-        self._test_options.diagnosers)
+        self._test_options.diagnosers,
+    )
     phase_collections.check_for_duplicate_subtest_names(
-        self._test_desc.phase_sequence)
+        self._test_desc.phase_sequence
+    )
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with self._lock:
@@ -331,7 +350,8 @@ class Test(object):
           self.make_uid(),
           trigger,
           self._test_options,
-          run_with_profiling=profile_filename is not None)
+          run_with_profiling=profile_filename is not None,
+      )
 
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
@@ -348,17 +368,23 @@ class Test(object):
       try:
         final_state = self._executor.finalize()
 
-        _LOG.debug('Test completed for %s, outputting now.',
-                   final_state.test_record.metadata['test_name'])
-        test_executor.combine_profile_stats(self._executor.phase_profile_stats,
-                                            profile_filename)
+        _LOG.debug(
+            'Test completed for %s, outputting now.',
+            final_state.test_record.metadata['test_name'],
+        )
+        test_executor.combine_profile_stats(
+            self._executor.phase_profile_stats, profile_filename
+        )
         for output_cb in self._test_options.output_callbacks:
           try:
             output_cb(final_state.test_record)
           except Exception:  # pylint: disable=broad-except
             stacktrace = traceback.format_exc()
-            _LOG.error('Output callback %s raised:\n%s\nContinuing anyway...',
-                       output_cb, stacktrace)
+            _LOG.error(
+                'Output callback %s raised:\n%s\nContinuing anyway...',
+                output_cb,
+                stacktrace,
+            )
 
         # Make sure the final outcome of the test is printed last and in a
         # noticeable color so it doesn't get scrolled off the screen or missed.
@@ -368,21 +394,29 @@ class Test(object):
         else:
           colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
           colors[htf_test_record.Outcome.PASS] = ''.join(
-              (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
+              (colorama.Style.BRIGHT, colorama.Fore.GREEN)
+          )  # pytype: disable=wrong-arg-types
           colors[htf_test_record.Outcome.FAIL] = ''.join(
-              (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
+              (colorama.Style.BRIGHT, colorama.Fore.RED)
+          )  # pytype: disable=wrong-arg-types
           msg_template = (
-              'test: {name}  outcome: {color}{outcome}{marginal}{rst}')
+              'test: {name}  outcome: {color}{outcome}{marginal}{rst}'
+          )
           console_output.banner_print(
               msg_template.format(
                   name=final_state.test_record.metadata['test_name'],
-                  color=(colorama.Fore.YELLOW
-                         if final_state.test_record.marginal else
-                         colors[final_state.test_record.outcome]),
+                  color=(
+                      colorama.Fore.YELLOW
+                      if final_state.test_record.marginal
+                      else colors[final_state.test_record.outcome]
+                  ),
                   outcome=final_state.test_record.outcome.name,
-                  marginal=(' (MARGINAL)'
-                            if final_state.test_record.marginal else ''),
-                  rst=colorama.Style.RESET_ALL))
+                  marginal=(
+                      ' (MARGINAL)' if final_state.test_record.marginal else ''
+                  ),
+                  rst=colorama.Style.RESET_ALL,
+              )
+          )
       finally:
         del self.TEST_INSTANCES[self.uid]
         self._executor.close()
@@ -411,7 +445,8 @@ class TestOptions(object):
 
   name = attr.ib(type=Text, default='openhtf_test')
   output_callbacks = attr.ib(
-      type=List[Callable[[htf_test_record.TestRecord], None]], factory=list)
+      type=List[Callable[[htf_test_record.TestRecord], None]], factory=list
+  )
   failure_exceptions = attr.ib(type=List[Type[Exception]], factory=list)
   default_dut_id = attr.ib(type=Text, default='UNKNOWN_DUT')
   stop_on_first_failure = attr.ib(type=bool, default=False)
@@ -500,8 +535,11 @@ class TestApi(object):
   @dut_id.setter
   def dut_id(self, dut_id: Text) -> None:
     if self.test_record.dut_id:
-      self.logger.warning('Overriding previous DUT ID "%s" with "%s".',
-                          self.test_record.dut_id, dut_id)
+      self.logger.warning(
+          'Overriding previous DUT ID "%s" with "%s".',
+          self.test_record.dut_id,
+          dut_id,
+      )
     self.test_record.dut_id = dut_id
     self.notify_update()
 
@@ -526,7 +564,8 @@ class TestApi(object):
       self,
       name: Text,
       binary_data: Union[Text, bytes],
-      mimetype: test_state.MimetypeT = test_state.INFER_MIMETYPE) -> None:
+      mimetype: test_state.MimetypeT = test_state.INFER_MIMETYPE,
+  ) -> None:
     """Store the given binary_data as an attachment with the given name.
 
     Args:
@@ -546,7 +585,8 @@ class TestApi(object):
       self,
       filename: Text,
       name: Optional[Text] = None,
-      mimetype: test_state.MimetypeT = test_state.INFER_MIMETYPE) -> None:
+      mimetype: test_state.MimetypeT = test_state.INFER_MIMETYPE,
+  ) -> None:
     """Store the contents of the given filename as an attachment.
 
     Args:
@@ -556,8 +596,8 @@ class TestApi(object):
       mimetype: One of the following:
           * INFER_MIMETYPE: The type will be guessed first, from the file name,
             and second (i.e. as a fallback), from the attachment name.
-          * None: The type will be left unspecified.
-          * A string: The type will be set to the specified value.
+          * None: The type will be left unspecified. * A string: The type will
+            be set to the specified value.
 
     Raises:
       DuplicateAttachmentError: Raised if there is already an attachment with
@@ -565,11 +605,12 @@ class TestApi(object):
       IOError: Raised if the given filename couldn't be opened.
     """
     self._running_phase_state.attach_from_file(
-        filename, name=name, mimetype=mimetype)
+        filename, name=name, mimetype=mimetype
+    )
 
   def get_measurement(
-      self,
-      measurement_name: Text) -> Optional[test_state.ImmutableMeasurement]:
+      self, measurement_name: Text
+  ) -> Optional[test_state.ImmutableMeasurement]:
     """Get a copy of a measurement value from current or previous phase.
 
     Measurement and phase name uniqueness is not enforced, so this method will
@@ -584,7 +625,8 @@ class TestApi(object):
     return self._running_test_state.get_measurement(measurement_name)
 
   def get_measurement_strict(
-      self, measurement_name: Text) -> test_state.ImmutableMeasurement:
+      self, measurement_name: Text
+  ) -> test_state.ImmutableMeasurement:
     """Get a copy of the test measurement from current or previous phase.
 
     Measurement and phase name uniqueness is not enforced, so this method will
@@ -602,11 +644,13 @@ class TestApi(object):
     measurement = self._running_test_state.get_measurement(measurement_name)
     if measurement is None:
       raise MeasurementNotFoundError(
-          f'Failed to find test measurement {measurement_name}')
+          f'Failed to find test measurement {measurement_name}'
+      )
     return measurement
 
   def get_attachment(
-      self, attachment_name: Text) -> Optional[htf_test_record.Attachment]:
+      self, attachment_name: Text
+  ) -> Optional[htf_test_record.Attachment]:
     """Get a copy of an attachment from current or previous phases.
 
     This method will return None when test attachment is not found. Please use
@@ -621,7 +665,8 @@ class TestApi(object):
     return self._running_test_state.get_attachment(attachment_name)
 
   def get_attachment_strict(
-      self, attachment_name: Text) -> htf_test_record.Attachment:
+      self, attachment_name: Text
+  ) -> htf_test_record.Attachment:
     """Gets a copy of an attachment or dies when attachment not found.
 
     Args:
@@ -635,8 +680,9 @@ class TestApi(object):
     """
     attachment = self.get_attachment(attachment_name)
     if attachment is None:
-      raise AttachmentNotFoundError('Failed to find test attachment: '
-                                    f'{attachment_name}')
+      raise AttachmentNotFoundError(
+          f'Failed to find test attachment: {attachment_name}'
+      )
     return attachment
 
   def notify_update(self) -> None:

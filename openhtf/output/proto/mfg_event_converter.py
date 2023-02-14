@@ -60,7 +60,7 @@ TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME = {
     'PASS': measurements.Outcome.PASS,
     'MARGINAL_PASS': measurements.Outcome.PASS,
     'FAIL': measurements.Outcome.FAIL,
-    'ERROR': measurements.Outcome.UNSET
+    'ERROR': measurements.Outcome.UNSET,
 }
 
 _GIBI_BYTE_TO_BASE = 1 << 30
@@ -78,15 +78,20 @@ class AttachmentCacheKey:
 AttachmentCacheT = Mapping[AttachmentCacheKey, mfg_event_pb2.EventAttachment]
 
 
-def _measurement_outcome_to_test_run_status_name(outcome: measurements.Outcome,
-                                                 marginal: bool) -> str:
+def _measurement_outcome_to_test_run_status_name(
+    outcome: measurements.Outcome, marginal: bool
+) -> str:
   """Returns the test run status name given the outcome and marginal args."""
-  return ('MARGINAL_PASS'
-          if marginal else MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[outcome])
+  return (
+      'MARGINAL_PASS'
+      if marginal
+      else MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME[outcome]
+  )
 
 
 def _test_run_status_name_to_measurement_outcome_and_marginal(
-    name: str) -> Tuple[measurements.Outcome, bool]:
+    name: str,
+) -> Tuple[measurements.Outcome, bool]:
   """Returns the outcome and marginal args given the test run status name."""
   return TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME[name], 'MARGINAL' in name
 
@@ -137,8 +142,10 @@ def mfg_event_from_test_record(
   _attach_config(mfg_event, record)
 
   # Only include assembly events if the test passed.
-  if ('assembly_events' in record.metadata and
-      mfg_event.test_status == test_runs_pb2.PASS):
+  if (
+      'assembly_events' in record.metadata
+      and mfg_event.test_status == test_runs_pb2.PASS
+  ):
     for assembly_event in record.metadata['assembly_events']:
       mfg_event.assembly_events.add().CopyFrom(assembly_event)
   convert_multidim_measurements(record.phases)
@@ -150,8 +157,9 @@ def mfg_event_from_test_record(
   return mfg_event
 
 
-def _populate_basic_data(mfg_event: mfg_event_pb2.MfgEvent,
-                         record: htf_test_record.TestRecord) -> None:
+def _populate_basic_data(
+    mfg_event: mfg_event_pb2.MfgEvent, record: htf_test_record.TestRecord
+) -> None:
   """Copies data from the OpenHTF TestRecord to the MfgEvent proto."""
   # TODO(openhtf-team):
   #   * Missing in proto: set run name from metadata.
@@ -170,7 +178,9 @@ def _populate_basic_data(mfg_event: mfg_event_pb2.MfgEvent,
   mfg_event.test_description = record.metadata.get('test_description', '')
   mfg_event.test_status = (
       test_runs_pb2.MARGINAL_PASS
-      if record.marginal else test_runs_converter.OUTCOME_MAP[record.outcome])
+      if record.marginal
+      else test_runs_converter.OUTCOME_MAP[record.outcome]
+  )
 
   # Populate part_tags.
   mfg_event.part_tags.extend(record.metadata.get('part_tags', []))
@@ -237,7 +247,8 @@ def _convert_object_to_json(obj):  # pylint: disable=missing-function-docstring
       sort_keys=True,
       indent=2,
       ensure_ascii=False,
-      default=unsupported_type_handler)
+      default=unsupported_type_handler,
+  )
   return json_encoder.encode(obj).encode('utf-8', errors='replace')
 
 
@@ -293,14 +304,27 @@ def phase_uniquizer(all_phases):
   """
   measurement_name_maker = UniqueNameMaker(
       itertools.chain.from_iterable(
-          phase.measurements.keys() for phase in all_phases
-          if phase.measurements))
-  attachment_names = list(itertools.chain.from_iterable(
-      phase.attachments.keys() for phase in all_phases))
-  attachment_names.extend(itertools.chain.from_iterable([
-      'multidim_' + name for name, meas in phase.measurements.items()
-      if meas.dimensions is not None
-  ] for phase in all_phases if phase.measurements))
+          phase.measurements.keys()
+          for phase in all_phases
+          if phase.measurements
+      )
+  )
+  attachment_names = list(
+      itertools.chain.from_iterable(
+          phase.attachments.keys() for phase in all_phases
+      )
+  )
+  attachment_names.extend(
+      itertools.chain.from_iterable(
+          [
+              'multidim_' + name
+              for name, meas in phase.measurements.items()
+              if meas.dimensions is not None
+          ]
+          for phase in all_phases
+          if phase.measurements
+      )
+  )
   attachment_name_maker = UniqueNameMaker(attachment_names)
   for phase in all_phases:
     # Make measurements unique.
@@ -324,12 +348,13 @@ def multidim_measurement_to_attachment(name, measurement):
   dimensions = list(measurement.dimensions)
   if measurement.units:
     dimensions.append(
-        measurements.Dimension.from_unit_descriptor(measurement.units))
+        measurements.Dimension.from_unit_descriptor(measurement.units)
+    )
 
   dims = []
   for d in dimensions:
     if d.suffix is None:
-      suffix = u''
+      suffix = ''
     else:
       suffix = d.suffix
     dims.append({
@@ -341,9 +366,12 @@ def multidim_measurement_to_attachment(name, measurement):
   dimensioned_measured_value = measurement.measured_value
   value = (
       sorted(dimensioned_measured_value.value, key=lambda x: x[0])
-      if dimensioned_measured_value.is_value_set else None)
+      if dimensioned_measured_value.is_value_set
+      else None
+  )
   outcome_str = _measurement_outcome_to_test_run_status_name(
-      measurement.outcome, measurement.marginal)
+      measurement.outcome, measurement.marginal
+  )
   data = _convert_object_to_json({
       'outcome': outcome_str,
       'name': name,
@@ -359,12 +387,22 @@ def convert_multidim_measurements(all_phases):
   """Converts each multidim measurements into attachments for all phases.."""
   # Combine actual attachments with attachments we make from multi-dim
   # measurements.
-  attachment_names = list(itertools.chain.from_iterable(
-      phase.attachments.keys() for phase in all_phases))
-  attachment_names.extend(itertools.chain.from_iterable([
-      'multidim_' + name for name, meas in phase.measurements.items()
-      if meas.dimensions is not None
-  ] for phase in all_phases if phase.measurements))
+  attachment_names = list(
+      itertools.chain.from_iterable(
+          phase.attachments.keys() for phase in all_phases
+      )
+  )
+  attachment_names.extend(
+      itertools.chain.from_iterable(
+          [
+              'multidim_' + name
+              for name, meas in phase.measurements.items()
+              if meas.dimensions is not None
+          ]
+          for phase in all_phases
+          if phase.measurements
+      )
+  )
   attachment_name_maker = UniqueNameMaker(attachment_names)
 
   for phase in all_phases:
@@ -382,24 +420,27 @@ def convert_multidim_measurements(all_phases):
 class PhaseCopier(object):
   """Copies measurements and attachments to an MfgEvent."""
 
-  def __init__(self,
-               all_phases,
-               attachment_cache: Optional[AttachmentCacheT] = None):
+  def __init__(
+      self, all_phases, attachment_cache: Optional[AttachmentCacheT] = None
+  ):
     self._phases = all_phases
     self._using_partial_uploads = attachment_cache is not None
     self._attachment_cache = (
-        attachment_cache if self._using_partial_uploads else {})
+        attachment_cache if self._using_partial_uploads else {}
+    )
 
   def copy_measurements(self, mfg_event):
     for phase in self._phases:
       for name, measurement in sorted(phase.measurements.items()):
         # Multi-dim measurements should already have been removed.
         assert measurement.dimensions is None
-        self._copy_unidimensional_measurement(phase, name, measurement,
-                                              mfg_event)
+        self._copy_unidimensional_measurement(
+            phase, name, measurement, mfg_event
+        )
 
-  def _copy_unidimensional_measurement(self, phase, name, measurement,
-                                       mfg_event):
+  def _copy_unidimensional_measurement(
+      self, phase, name, measurement, mfg_event
+  ):
     """Copy uni-dimensional measurements to the MfgEvent."""
     mfg_measurement = mfg_event.measurement.add()
 
@@ -408,15 +449,20 @@ class PhaseCopier(object):
     if measurement.docstring:
       mfg_measurement.description = measurement.docstring
     mfg_measurement.parameter_tag.append(phase.name)
-    if (measurement.units and
-        measurement.units.code in test_runs_converter.UOM_CODE_MAP):
-      mfg_measurement.unit_code = (
-          test_runs_converter.UOM_CODE_MAP[measurement.units.code])
+    if (
+        measurement.units
+        and measurement.units.code in test_runs_converter.UOM_CODE_MAP
+    ):
+      mfg_measurement.unit_code = test_runs_converter.UOM_CODE_MAP[
+          measurement.units.code
+      ]
 
     # Copy failed measurements as failure_codes. This happens early to include
     # unset measurements.
-    if (measurement.outcome != measurements.Outcome.PASS and
-        phase.outcome != htf_test_record.PhaseOutcome.SKIP):
+    if (
+        measurement.outcome != measurements.Outcome.PASS
+        and phase.outcome != htf_test_record.PhaseOutcome.SKIP
+    ):
       failure_code = mfg_event.failure_codes.add()
       failure_code.code = name
       failure_code.details = '\n'.join(str(v) for v in measurement.validators)
@@ -424,7 +470,8 @@ class PhaseCopier(object):
     # Copy measurement value.
     measured_value = measurement.measured_value
     status_str = _measurement_outcome_to_test_run_status_name(
-        measurement.outcome, measurement.marginal)
+        measurement.outcome, measurement.marginal
+    )
     mfg_measurement.status = test_runs_pb2.Status.Value(status_str)
     if not measured_value.is_value_set:
       return
@@ -447,10 +494,12 @@ class PhaseCopier(object):
           mfg_measurement.numeric_maximum = float(validator.maximum)
         if validator.marginal_minimum is not None:
           mfg_measurement.numeric_marginal_minimum = float(
-              validator.marginal_minimum)
+              validator.marginal_minimum
+          )
         if validator.marginal_maximum is not None:
           mfg_measurement.numeric_marginal_maximum = float(
-              validator.marginal_maximum)
+              validator.marginal_maximum
+          )
       elif isinstance(validator, validators.RegexMatcher):
         mfg_measurement.expected_text = validator.regex
       else:
@@ -479,22 +528,30 @@ class PhaseCopier(object):
         attachment_cache_key = AttachmentCacheKey(name, size)
         if attachment_cache_key in self._attachment_cache:
           mfg_event.attachment.append(
-              self._attachment_cache[attachment_cache_key])
+              self._attachment_cache[attachment_cache_key]
+          )
         else:
           at_least_one_attachment_for_partial_uploads = (
-              self._using_partial_uploads and value_copied_attachment_sizes)
+              self._using_partial_uploads and value_copied_attachment_sizes
+          )
           if at_least_one_attachment_for_partial_uploads and (
-              sum(value_copied_attachment_sizes) + size >
-              MAX_TOTAL_ATTACHMENT_BYTES):
+              sum(value_copied_attachment_sizes) + size
+              > MAX_TOTAL_ATTACHMENT_BYTES
+          ):
             skipped_attachment_names.append(name)
           else:
             value_copied_attachment_sizes.append(size)
-            self._copy_attachment(name, attachment.data, attachment.mimetype,
-                                  mfg_event)
+            self._copy_attachment(
+                name, attachment.data, attachment.mimetype, mfg_event
+            )
     if skipped_attachment_names:
       _LOGGER.info(
-          'Skipping upload of %r attachments for this cycle. '
-          'To avoid max proto size issues.', skipped_attachment_names)
+          (
+              'Skipping upload of %r attachments for this cycle. '
+              'To avoid max proto size issues.'
+          ),
+          skipped_attachment_names,
+      )
       return False
     return True
 
@@ -547,7 +604,8 @@ def attachment_to_multidim_measurement(attachment, name=None):
     # Fpr backward compatibility with saved data we'll convert integers to str
     try:
       attachment_outcome_str = test_runs_pb2.Status.Name(
-          int(attachment_outcome_str))
+          int(attachment_outcome_str)
+      )
     except ValueError:
       attachment_outcome_str = None
 
@@ -555,7 +613,9 @@ def attachment_to_multidim_measurement(attachment, name=None):
   if attachment_outcome_str:
     outcome, marginal = (
         _test_run_status_name_to_measurement_outcome_and_marginal(
-            attachment_outcome_str))
+            attachment_outcome_str
+        )
+    )
   else:
     outcome = None
     marginal = False
@@ -580,7 +640,8 @@ def attachment_to_multidim_measurement(attachment, name=None):
 
   # created dimensioned_measured_value and populate with values.
   measured_value = measurements.DimensionedMeasuredValue(
-      name=name, num_dimensions=len(dimensions))
+      name=name, num_dimensions=len(dimensions)
+  )
   for row in attachment_values:
     coordinates = tuple(row[:-1])
     val = row[-1]
@@ -592,5 +653,6 @@ def attachment_to_multidim_measurement(attachment, name=None):
       dimensions=tuple(dimensions),
       measured_value=measured_value,
       outcome=outcome,
-      marginal=marginal)
+      marginal=marginal,
+  )
   return measurement

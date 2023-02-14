@@ -94,8 +94,11 @@ ARG_PARSER.add_argument(
     '--adb_messsage_log',
     action=argv.StoreTrueInModule,
     target='%s.ADB_MESSAGE_LOG' % __name__,
-    help='Set to True to save all incoming and outgoing '
-    'AdbMessages and print them on Close().')
+    help=(
+        'Set to True to save all incoming and outgoing '
+        'AdbMessages and print them on Close().'
+    ),
+)
 
 _LOG = logging.getLogger(__name__)
 
@@ -109,7 +112,7 @@ ADB_BANNER = 'googlex_adb'
 # One greater than the maximum value for an ADB stream id.  There is a hard
 # limit at 2**32, because it's an unsigned int, but we start seeing memory
 # problems and the like way sooner, so lower this to catch leaking stream ids.
-STREAM_ID_LIMIT = (2**16)
+STREAM_ID_LIMIT = 2**16
 
 
 class AuthSigner(object):
@@ -155,9 +158,12 @@ class AdbStream(object):
     return self._transport.is_closed()
 
   def __str__(self):
-    return '<%s: (%s, %s->%s)>' % (type(self).__name__, self._destination,
-                                   self._transport.local_id,
-                                   self._transport.remote_id)
+    return '<%s: (%s, %s->%s)>' % (
+        type(self).__name__,
+        self._destination,
+        self._transport.local_id,
+        self._transport.remote_id,
+    )
 
   __repr__ = __str__
 
@@ -177,9 +183,10 @@ class AdbStream(object):
     timeout = timeouts.PolledTimeout.from_millis(timeout_ms)
     # Break the data up into our transport's maxdata sized WRTE messages.
     while data:
-      self._transport.write(data[:self._transport.adb_connection.maxdata],
-                            timeout)
-      data = data[self._transport.adb_connection.maxdata:]
+      self._transport.write(
+          data[: self._transport.adb_connection.maxdata], timeout
+      )
+      data = data[self._transport.adb_connection.maxdata :]
 
   def read(self, length=0, timeout_ms=None):
     """Reads data from the remote end of this stream.
@@ -202,8 +209,9 @@ class AdbStream(object):
       AdbStreamClosedError: The stream is already closed.
       AdbTimeoutError: Timed out waiting for a message.
     """
-    return self._transport.read(length,
-                                timeouts.PolledTimeout.from_millis(timeout_ms))
+    return self._transport.read(
+        length, timeouts.PolledTimeout.from_millis(timeout_ms)
+    )
 
   def read_until_close(self, timeout_ms=None):
     """Yield data until this stream is closed.
@@ -271,8 +279,11 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
     self._reader_lock = threading.Lock()
 
   def __str__(self):
-    return '<%s: (%s->%s)>' % (type(self).__name__, self.local_id,
-                               self.remote_id)
+    return '<%s: (%s->%s)>' % (
+        type(self).__name__,
+        self.local_id,
+        self.remote_id,
+    )
 
   __repr__ = __str__
 
@@ -283,8 +294,9 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
       self.remote_id = remote_id
       self.closed_state = self.ClosedState.OPEN
     elif self.remote_id != remote_id:
-      raise usb_exceptions.AdbProtocolError('%s remote-id change to %s' %
-                                            (self, remote_id))
+      raise usb_exceptions.AdbProtocolError(
+          '%s remote-id change to %s' % (self, remote_id)
+      )
 
   def _send_command(self, command, timeout, data=''):
     """Send the given command/data over this transport.
@@ -301,17 +313,20 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
     """
     if len(data) > self.adb_connection.maxdata:
       raise usb_exceptions.AdbProtocolError(
-          'Message data too long (%s>%s): %s' %
-          (len(data), self.adb_connection.maxdata, data))
+          'Message data too long (%s>%s): %s'
+          % (len(data), self.adb_connection.maxdata, data)
+      )
     if not self.remote_id:
       # If we get here, we probably missed the OKAY response to our OPEN.  We
       # should have failed earlier, but in case someone does something tricky
       # with multiple threads, we sanity check this here.
-      raise usb_exceptions.AdbProtocolError('%s send before OKAY: %s' %
-                                            (self, data))
+      raise usb_exceptions.AdbProtocolError(
+          '%s send before OKAY: %s' % (self, data)
+      )
     self.adb_connection.transport.write_message(
         adb_message.AdbMessage(command, self.local_id, self.remote_id, data),
-        timeout)
+        timeout,
+    )
 
   def _handle_message(self, message, handle_wrte=True):
     """Handle a message that was read for this stream.
@@ -334,13 +349,15 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
       self._set_or_check_remote_id(message.arg0)
       if not self._expecting_okay:
         raise usb_exceptions.AdbProtocolError(
-            '%s received unexpected OKAY: %s' % (self, message))
+            '%s received unexpected OKAY: %s' % (self, message)
+        )
       self._expecting_okay = False
     elif message.command == 'CLSE':
       self.closed_state = self.ClosedState.CLOSED
     elif not handle_wrte:
       raise usb_exceptions.AdbProtocolError(
-          '%s received WRTE before OKAY/CLSE: %s' % (self, message))
+          '%s received WRTE before OKAY/CLSE: %s' % (self, message)
+      )
     else:
       with self._read_buffer_lock:
         self._read_buffer.append(message.data)
@@ -389,7 +406,8 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
 
           # Read and handle a message, using our timeout.
           self._handle_message(
-              self.adb_connection.read_for_stream(self, timeout))
+              self.adb_connection.read_for_stream(self, timeout)
+          )
 
           # Notify anyone interested that we handled a message, causing them to
           # check their predicate again.
@@ -404,7 +422,8 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
           self._message_received.wait(timeout.remaining)
           if timeout.has_expired():
             raise usb_exceptions.AdbTimeoutError(
-                '%s timed out reading messages.' % self)
+                '%s timed out reading messages.' % self
+            )
         finally:
           # Make sure we release this even if an exception occurred.
           self._message_received.release()
@@ -428,7 +447,8 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
       AdbProtocolError: If we receive a WRTE message instead of OKAY/CLSE.
     """
     self._handle_message(
-        self.adb_connection.read_for_stream(self, timeout), handle_wrte=False)
+        self.adb_connection.read_for_stream(self, timeout), handle_wrte=False
+    )
     return self.is_open()
 
   def is_open(self):
@@ -460,13 +480,16 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
     """Write data to this stream, using the given timeouts.PolledTimeout."""
     if not self.remote_id:
       raise usb_exceptions.AdbStreamClosedError(
-          'Cannot write() to half-opened %s' % self)
+          'Cannot write() to half-opened %s' % self
+      )
     if self.closed_state != self.ClosedState.OPEN:
-      raise usb_exceptions.AdbStreamClosedError('Cannot write() to closed %s' %
-                                                self)
+      raise usb_exceptions.AdbStreamClosedError(
+          'Cannot write() to closed %s' % self
+      )
     elif self._expecting_okay:
       raise usb_exceptions.AdbProtocolError(
-          'Previous WRTE failed, %s in unknown state' % self)
+          'Previous WRTE failed, %s in unknown state' % self
+      )
 
     # Make sure we only have one WRTE in flight at a time, because ADB doesn't
     # identify which WRTE it is ACK'ing when it sends the OKAY message back.
@@ -487,7 +510,8 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
       The bytes read from this stream.
     """
     self._read_messages_until_true(
-        lambda: self._buffer_size and self._buffer_size >= length, timeout)
+        lambda: self._buffer_size and self._buffer_size >= length, timeout
+    )
 
     with self._read_buffer_lock:
       data, push_back = ''.join(self._read_buffer), ''
@@ -507,7 +531,8 @@ class AdbStreamTransport(object):  # pylint: disable=too-many-instance-attribute
     self.closed_state = self.ClosedState.CLOSED
     try:
       if not self.adb_connection.close_stream_transport(
-          self, timeouts.PolledTimeout.from_millis(timeout_ms)):
+          self, timeouts.PolledTimeout.from_millis(timeout_ms)
+      ):
         _LOG.warning('Attempt to close mystery %s', self)
     except usb_exceptions.AdbTimeoutError:
       _LOG.warning('%s close() timed out, ignoring', self)
@@ -556,8 +581,9 @@ class AdbConnection(object):
     try:
       self.systemtype, self.serial, self.banner = remote_banner.split(':', 2)
     except ValueError:
-      raise usb_exceptions.AdbProtocolError('Received malformed banner %s' %
-                                            remote_banner)
+      raise usb_exceptions.AdbProtocolError(
+          'Received malformed banner %s' % remote_banner
+      )
     self.transport = transport
     self.maxdata = maxdata
     self._last_id_used = 0
@@ -582,7 +608,10 @@ class AdbConnection(object):
       for local_id in itertools.islice(
           itertools.chain(
               range(self._last_id_used, STREAM_ID_LIMIT),
-              range(1, self._last_id_used)), 64):
+              range(1, self._last_id_used),
+          ),
+          64,
+      ):
         if local_id not in list(self._stream_transport_map.keys()):
           self._last_id_used = local_id
           break
@@ -615,7 +644,8 @@ class AdbConnection(object):
     """
     if message.command not in ('OKAY', 'CLSE', 'WRTE'):
       raise usb_exceptions.AdbProtocolError(
-          '%s received unexpected message: %s' % self, message)
+          '%s received unexpected message: %s' % self, message
+      )
 
     if message.arg1 == stream_transport.local_id:
       # Ack writes immediately.
@@ -623,11 +653,15 @@ class AdbConnection(object):
         # Make sure we don't get a WRTE before an OKAY/CLSE message.
         if not stream_transport.remote_id:
           raise usb_exceptions.AdbProtocolError(
-              '%s received WRTE before OKAY/CLSE: %s' %
-              (stream_transport, message))
+              '%s received WRTE before OKAY/CLSE: %s'
+              % (stream_transport, message)
+          )
         self.transport.write_message(
-            adb_message.AdbMessage('OKAY', stream_transport.local_id,
-                                   stream_transport.remote_id), timeout)
+            adb_message.AdbMessage(
+                'OKAY', stream_transport.local_id, stream_transport.remote_id
+            ),
+            timeout,
+        )
       elif message.command == 'CLSE':
         self.close_stream_transport(stream_transport, timeout)
       return message
@@ -676,7 +710,10 @@ class AdbConnection(object):
             command='OPEN',
             arg0=stream_transport.local_id,
             arg1=0,
-            data=destination + '\0'), timeout)
+            data=destination + '\0',
+        ),
+        timeout,
+    )
     if not stream_transport.ensure_opened(timeout):
       return None
     return AdbStream(destination, stream_transport)
@@ -703,8 +740,11 @@ class AdbConnection(object):
         # If we never got a remote_id, there's no CLSE message to send.
         if stream_transport.remote_id:
           self.transport.write_message(
-              adb_message.AdbMessage('CLSE', stream_transport.local_id,
-                                     stream_transport.remote_id), timeout)
+              adb_message.AdbMessage(
+                  'CLSE', stream_transport.local_id, stream_transport.remote_id
+              ),
+              timeout,
+          )
         return True
     return False
 
@@ -729,7 +769,8 @@ class AdbConnection(object):
     stream = self.open_stream('%s:%s' % (service, command), timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
-          '%s does not support service: %s' % (self, service))
+          '%s does not support service: %s' % (self, service)
+      )
     for data in stream.read_until_close(timeout):
       yield data
 
@@ -782,11 +823,13 @@ class AdbConnection(object):
     # Bail when the timeout expires, or when we no longer have the given stream
     # in our map (it may have been closed, we don't want to leave a thread
     # hanging in this loop when that happens).
-    while (not timeout.has_expired() and
-           stream_transport.local_id in self._stream_transport_map):
+    while (
+        not timeout.has_expired()
+        and stream_transport.local_id in self._stream_transport_map
+    ):
       try:
         # Block for up to 10ms to rate-limit how fast we spin.
-        return stream_transport.message_queue.get(True, .01)
+        return stream_transport.message_queue.get(True, 0.01)
       except queue.Empty:
         pass
 
@@ -806,15 +849,17 @@ class AdbConnection(object):
 
         while not timeout.has_expired():
           msg = self._handle_message_for_stream(
-              stream_transport, self.transport.read_message(timeout), timeout)
+              stream_transport, self.transport.read_message(timeout), timeout
+          )
           if msg:
             return msg
       finally:
         self._reader_lock.release()
 
     if timeout.has_expired():
-      raise usb_exceptions.AdbTimeoutError('Read timed out for %s' %
-                                           stream_transport)
+      raise usb_exceptions.AdbTimeoutError(
+          'Read timed out for %s' % stream_transport
+      )
 
     # The stream is no longer in the map, so it's closed, but check for any
     # queued messages.
@@ -822,14 +867,13 @@ class AdbConnection(object):
       return stream_transport.message_queue.get_nowait()
     except queue.Empty:
       raise usb_exceptions.AdbStreamClosedError(
-          'Attempt to read from closed or unknown %s' % stream_transport)
+          'Attempt to read from closed or unknown %s' % stream_transport
+      )
 
   @classmethod
-  def connect(cls,
-              transport,
-              rsa_keys=None,
-              timeout_ms=1000,
-              auth_timeout_ms=100):
+  def connect(
+      cls, transport, rsa_keys=None, timeout_ms=1000, auth_timeout_ms=100
+  ):
     """Establish a new connection to a device, connected via transport.
 
     Args:
@@ -872,7 +916,10 @@ class AdbConnection(object):
             command='CNXN',
             arg0=ADB_VERSION,
             arg1=MAX_ADB_DATA,
-            data='host::%s\0' % ADB_BANNER), timeout)
+            data='host::%s\0' % ADB_BANNER,
+        ),
+        timeout,
+    )
 
     msg = adb_transport.read_until(('AUTH', 'CNXN'), timeout)
     if msg.command == 'CNXN':
@@ -881,7 +928,8 @@ class AdbConnection(object):
     # We got an AUTH response, so we have to try to authenticate.
     if not rsa_keys:
       raise usb_exceptions.DeviceAuthError(
-          'Device authentication required, no keys available.')
+          'Device authentication required, no keys available.'
+      )
 
     # Loop through our keys, signing the last 'banner' or token.
     for rsa_key in rsa_keys:
@@ -891,10 +939,10 @@ class AdbConnection(object):
       signed_token = rsa_key.sign(msg.data)
       adb_transport.write_message(
           adb_message.AdbMessage(
-              command='AUTH',
-              arg0=cls.AUTH_SIGNATURE,
-              arg1=0,
-              data=signed_token), timeout)
+              command='AUTH', arg0=cls.AUTH_SIGNATURE, arg1=0, data=signed_token
+          ),
+          timeout,
+      )
 
       msg = adb_transport.read_until(('AUTH', 'CNXN'), timeout)
       if msg.command == 'CNXN':
@@ -906,15 +954,19 @@ class AdbConnection(object):
             command='AUTH',
             arg0=cls.AUTH_RSAPUBLICKEY,
             arg1=0,
-            data=rsa_keys[0].get_public_key() + '\0'), timeout)
+            data=rsa_keys[0].get_public_key() + '\0',
+        ),
+        timeout,
+    )
     try:
       msg = adb_transport.read_until(
-          ('CNXN',), timeouts.PolledTimeout.from_millis(auth_timeout_ms))
+          ('CNXN',), timeouts.PolledTimeout.from_millis(auth_timeout_ms)
+      )
     except usb_exceptions.UsbReadFailedError as exception:
       if exception.is_timeout():
         raise usb_exceptions.DeviceAuthError(
-            message='Accept auth key on device, then retry.').with_traceback(
-                sys.exc_info()[2])
+            message='Accept auth key on device, then retry.'
+        ).with_traceback(sys.exc_info()[2])
       raise
 
     # The read didn't time-out, so we got a CNXN response.

@@ -45,7 +45,8 @@ def pprint_diff(first, second, first_name='first', second_name='second'):
       pprint.pformat(second).splitlines(),
       fromfile=first_name,
       tofile=second_name,
-      lineterm='')
+      lineterm='',
+  )
 
 
 def equals_log_diff(expected, actual, level=logging.ERROR):
@@ -60,7 +61,8 @@ def equals_log_diff(expected, actual, level=logging.ERROR):
       actual.splitlines(),
       fromfile='expected',
       tofile='actual',
-      lineterm=''):
+      lineterm='',
+  ):
     logging.log(level, line)
   logging.log(level, '^^^^^  Data diff  ^^^^^')
 
@@ -89,15 +91,17 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
       if key in volatile_fields:
         continue
       try:
-        assert_records_equal_nonvolatile(first[key], second[key],
-                                         volatile_fields, indent + 2)
+        assert_records_equal_nonvolatile(
+            first[key], second[key], volatile_fields, indent + 2
+        )
       except AssertionError:
         logging.error('%sKey: %s ^', ' ' * indent, key)
         raise
   elif hasattr(first, '_asdict') and hasattr(second, '_asdict'):
     # Compare namedtuples as dicts so we get more useful output.
-    assert_records_equal_nonvolatile(first._asdict(), second._asdict(),
-                                     volatile_fields, indent)
+    assert_records_equal_nonvolatile(
+        first._asdict(), second._asdict(), volatile_fields, indent
+    )
   elif hasattr(first, '__iter__') and hasattr(second, '__iter__'):
     for idx, (fir, sec) in enumerate(zip(first, second)):
       try:
@@ -105,21 +109,23 @@ def assert_records_equal_nonvolatile(first, second, volatile_fields, indent=0):
       except AssertionError:
         logging.error('%sIndex: %s ^', ' ' * indent, idx)
         raise
-  elif (isinstance(first, records.RecordClass) and
-        isinstance(second, records.RecordClass)):
+  elif isinstance(first, records.RecordClass) and isinstance(
+      second, records.RecordClass
+  ):
     assert_records_equal_nonvolatile(
         {slot: getattr(first, slot) for slot in first.__slots__},
         {slot: getattr(second, slot) for slot in second.__slots__},
-        volatile_fields, indent)
+        volatile_fields,
+        indent,
+    )
   elif first != second:
     logging.error('%sRaw: "%s" != "%s"', ' ' * indent, first, second)
     assert first == second
 
 
-def convert_to_base_types(obj,
-                          ignore_keys=tuple(),
-                          tuple_type=tuple,
-                          json_safe=True):
+def convert_to_base_types(
+    obj, ignore_keys=tuple(), tuple_type=tuple, json_safe=True
+):
   """Recursively convert objects into base types.
 
   This is used to convert some special types of objects used internally into
@@ -184,8 +190,9 @@ def convert_to_base_types(obj,
   # Recursively convert values in dicts, lists, and tuples.
   if isinstance(obj, dict):
     return {  # pylint: disable=g-complex-comprehension
-        convert_to_base_types(k, ignore_keys, tuple_type):
-        convert_to_base_types(v, ignore_keys, tuple_type)
+        convert_to_base_types(
+            k, ignore_keys, tuple_type
+        ): convert_to_base_types(v, ignore_keys, tuple_type)
         for k, v in obj.items()
         if k not in ignore_keys
     }
@@ -197,7 +204,8 @@ def convert_to_base_types(obj,
   elif isinstance(obj, tuple):
     return tuple_type(
         convert_to_base_types(value, ignore_keys, tuple_type, json_safe)
-        for value in obj)
+        for value in obj
+    )
 
   # Convert numeric types (e.g. numpy ints and floats) into built-in types.
   elif isinstance(obj, numbers.Integral):
@@ -237,14 +245,14 @@ def total_size(obj):
 
     if isinstance(current_obj, dict):
       size += sum(
-          map(sizeof,
-              itertools.chain.from_iterable(current_obj.items())))
-    elif (isinstance(current_obj, Iterable) and
-          not isinstance(current_obj, str)):
+          map(sizeof, itertools.chain.from_iterable(current_obj.items()))
+      )
+    elif isinstance(current_obj, Iterable) and not isinstance(current_obj, str):
       size += sum(sizeof(item) for item in current_obj)
     elif isinstance(current_obj, records.RecordClass):
       size += sum(
-          sizeof(getattr(current_obj, a)) for a in current_obj.__slots__)
+          sizeof(getattr(current_obj, a)) for a in current_obj.__slots__
+      )
     return size
 
   return sizeof(obj)

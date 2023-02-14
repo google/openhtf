@@ -94,9 +94,11 @@ def lots_of_measurements(test):
 # describing the measurement.  Validators can get quite complex, for more
 # details, see the validators.py example.
 @htf.measures(
-    htf.Measurement('validated_measurement').in_range(
-        0,
-        10).doc('This measurement is validated.').with_units(htf.units.SECOND))
+    htf.Measurement('validated_measurement')
+    .in_range(0, 10)
+    .doc('This measurement is validated.')
+    .with_units(htf.units.SECOND)
+)
 def measure_seconds(test):
   # The 'outcome' of this measurement in the test_record result will be a PASS
   # because its value passes the validator specified (0 <= 5 <= 10).
@@ -112,7 +114,8 @@ def measure_seconds(test):
     'inline_kwargs',
     docstring='This measurement is declared inline!',
     units=htf.units.HERTZ,
-    validators=[validators.in_range(0, 10)])
+    validators=[validators.in_range(0, 10)],
+)
 @htf.measures('another_inline', docstring='Because why not?')
 def inline_phase(test):
   """Phase that declares a measurements validators as a keyword argument."""
@@ -128,7 +131,8 @@ def inline_phase(test):
 # A multidim measurement including how to convert to a pandas dataframe and
 # a numpy array.
 @htf.measures(
-    htf.Measurement('power_time_series').with_dimensions('ms', 'V', 'A'))
+    htf.Measurement('power_time_series').with_dimensions('ms', 'V', 'A')
+)
 @htf.measures(htf.Measurement('average_voltage').with_units('V'))
 @htf.measures(htf.Measurement('average_current').with_units('A'))
 @htf.measures(htf.Measurement('resistance').with_units('ohm').in_range(9, 11))
@@ -138,7 +142,7 @@ def multdim_measurements(test):
   for t in range(10):
     resistance = 10
     voltage = 10 + 10.0 * t
-    current = voltage / resistance + .01 * random.random()
+    current = voltage / resistance + 0.01 * random.random()
     dimensions = (t, voltage, current)
     test.measurements['power_time_series'][dimensions] = 0
 
@@ -158,8 +162,9 @@ def multdim_measurements(test):
 
   # Finally, let's estimate the resistance
   test.measurements['resistance'] = (
-      test.measurements['average_voltage'] /
-      test.measurements['average_current'])
+      test.measurements['average_voltage']
+      / test.measurements['average_current']
+  )
 
 
 # Marginal measurements can be used to obtain a finer granularity of by how much
@@ -167,8 +172,10 @@ def multdim_measurements(test):
 # maximum limits, which are used to flag measurements/phase/test records as
 # marginal without affecting the overall phase outcome.
 @htf.measures(
-    htf.Measurement('resistance').with_units('ohm').in_range(
-        minimum=5, maximum=17, marginal_minimum=9, marginal_maximum=11))
+    htf.Measurement('resistance')
+    .with_units('ohm')
+    .in_range(minimum=5, maximum=17, marginal_minimum=9, marginal_maximum=11)
+)
 def marginal_measurements(test):
   """Phase with a marginal measurement."""
   test.measurements.resistance = 13
@@ -176,8 +183,14 @@ def marginal_measurements(test):
 
 def main():
   # We instantiate our OpenHTF test with the phases we want to run as args.
-  test = htf.Test(hello_phase, again_phase, lots_of_measurements,
-                  measure_seconds, inline_phase, multdim_measurements)
+  test = htf.Test(
+      hello_phase,
+      again_phase,
+      lots_of_measurements,
+      measure_seconds,
+      inline_phase,
+      multdim_measurements,
+  )
 
   # In order to view the result of the test, we have to output it somewhere,
   # and a local JSON file is a convenient way to do this.  Custom output
@@ -185,7 +198,8 @@ def main():
   # This will always output to the same ./measurements.json file, formatted
   # slightly for human readability.
   test.add_output_callbacks(
-      json_factory.OutputToJSON('./measurements.json', indent=2))
+      json_factory.OutputToJSON('./measurements.json', indent=2)
+  )
 
   # Unlike hello_world.py, where we prompt for a DUT ID, here we'll just
   # use an arbitrary one.

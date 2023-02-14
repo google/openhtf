@@ -43,8 +43,9 @@ from openhtf.util import timeouts
 try:
   from M2Crypto import RSA  # pylint: disable=g-import-not-at-top
 except ImportError:
-  logging.error('Failed to import M2Crypto, did you pip install '
-                'openhtf[usb_plugs]?')
+  logging.error(
+      'Failed to import M2Crypto, did you pip install openhtf[usb_plugs]?'
+  )
   raise
 
 # USB interface class, subclass, and protocol for matching against.
@@ -83,14 +84,19 @@ class AdbDevice(object):
   def __init__(self, adb_connection):
     self._adb_connection = adb_connection
     self.filesync_service = filesync_service.FilesyncService.using_connection(
-        adb_connection)
+        adb_connection
+    )
     self.shell_service = shell_service.ShellService.using_connection(
-        adb_connection)
+        adb_connection
+    )
 
   def __str__(self):
     return '<%s: %s(%s) @%s>' % (
-        type(self).__name__, self._adb_connection.serial,
-        self._adb_connection.systemtype, self._adb_connection.transport)
+        type(self).__name__,
+        self._adb_connection.serial,
+        self._adb_connection.systemtype,
+        self._adb_connection.transport,
+    )
 
   __repr__ = __str__
 
@@ -128,7 +134,8 @@ class AdbDevice(object):
     destination_path = destination_dir + basename
     self.push(apk_path, destination_path, timeout_ms=timeout_ms)
     return self.Shell(
-        'pm install -r "%s"' % destination_path, timeout_ms=timeout_ms)
+        'pm install -r "%s"' % destination_path, timeout_ms=timeout_ms
+    )
 
   def push(self, source_file, device_filename, timeout_ms=None):
     """Push source_file to file on device.
@@ -149,7 +156,8 @@ class AdbDevice(object):
         source_file,
         device_filename,
         mtime=mtime,
-        timeout=timeouts.PolledTimeout.from_millis(timeout_ms))
+        timeout=timeouts.PolledTimeout.from_millis(timeout_ms),
+    )
 
   def pull(self, device_filename, dest_file=None, timeout_ms=None):
     """Pull file from device.
@@ -167,27 +175,33 @@ class AdbDevice(object):
       dest_file = open(dest_file, 'w')
     elif dest_file is None:
       dest_file = io.StringIO()
-    self.filesync_service.recv(device_filename, dest_file,
-                               timeouts.PolledTimeout.from_millis(timeout_ms))
+    self.filesync_service.recv(
+        device_filename,
+        dest_file,
+        timeouts.PolledTimeout.from_millis(timeout_ms),
+    )
     if should_return_data:
       return dest_file.getvalue()
 
   def list(self, device_path, timeout_ms=None):
     """Yield filesync_service.DeviceFileStat objects for directory contents."""
     return self.filesync_service.list(
-        device_path, timeouts.PolledTimeout.from_millis(timeout_ms))
+        device_path, timeouts.PolledTimeout.from_millis(timeout_ms)
+    )
 
   def command(self, command, raw=False, timeout_ms=None):
     """Run command on the device, returning the output."""
     return self.shell_service.command(
-        str(command), raw=raw, timeout_ms=timeout_ms)
+        str(command), raw=raw, timeout_ms=timeout_ms
+    )
 
   Shell = command  # pylint: disable=invalid-name
 
   def async_command(self, command, raw=False, timeout_ms=None):
     """See shell_service.ShellService.async_command()."""
     return self.shell_service.async_command(
-        str(command), raw=raw, timeout_ms=timeout_ms)
+        str(command), raw=raw, timeout_ms=timeout_ms
+    )
 
   def _check_remote_command(self, destination, timeout_ms, success_msgs=None):
     """Open a stream to destination, check for remote errors.
@@ -211,7 +225,8 @@ class AdbDevice(object):
     stream = self._adb_connection.open_stream(destination, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
-          'Service %s not supported' % destination)
+          'Service %s not supported' % destination
+      )
     try:
       message = stream.read(timeout_ms=timeout)
       # Some commands report success messages, ignore them.
@@ -235,8 +250,10 @@ class AdbDevice(object):
   def root(self, timeout_ms=None):
     """Restart adbd as root on device."""
     self._check_remote_command(
-        'root:', timeout_ms,
-        ['already running as root', 'restarting adbd as root'])
+        'root:',
+        timeout_ms,
+        ['already running as root', 'restarting adbd as root'],
+    )
 
   @classmethod
   def connect(cls, usb_handle, **kwargs):

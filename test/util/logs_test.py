@@ -31,6 +31,6 @@ class TestLogs(unittest.TestCase):
   def test_log_once_utf8(self):
     mock_log = mock.Mock()
     for _ in range(10):
-      logs.log_once(mock_log, u'状态是', 'arg1')
+      logs.log_once(mock_log, '状态是', 'arg1')
 
     assert mock_log.call_count == 1

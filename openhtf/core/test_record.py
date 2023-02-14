@@ -40,7 +40,8 @@ if TYPE_CHECKING:
 CONF.declare(
     'attachments_directory',
     default_value=None,
-    description='Directory where temprorary files can be safely stored.')
+    description='Directory where temprorary files can be safely stored.',
+)
 
 _LOG = logging.getLogger(__name__)
 
@@ -93,7 +94,8 @@ class Attachment(object):
 
   def _create_temp_file(self, contents: bytes) -> Text:
     with tempfile.NamedTemporaryFile(
-        'w+b', dir=CONF.attachments_directory, delete=False) as tf:
+        'w+b', dir=CONF.attachments_directory, delete=False
+    ) as tf:
       tf.write(contents)
       return tf.name
 
@@ -127,9 +129,11 @@ def _get_source_safely(obj: Any) -> Text:
   try:
     return inspect.getsource(obj)
   except Exception:  # pylint: disable=broad-except
-    logs.log_once(_LOG.warning,
-                  'Unable to load source code for %s. Only logging this once.',
-                  obj)
+    logs.log_once(
+        _LOG.warning,
+        'Unable to load source code for %s. Only logging this once.',
+        obj,
+    )
     return ''
 
 
@@ -179,7 +183,8 @@ class TestRecord(object):
   branches = attr.ib(type=List['BranchRecord'], factory=list)
   checkpoints = attr.ib(type=List['CheckpointRecord'], factory=list)
   diagnosers = attr.ib(
-      type=List['diagnoses_lib.BaseTestDiagnoser'], factory=list)
+      type=List['diagnoses_lib.BaseTestDiagnoser'], factory=list
+  )
   diagnoses = attr.ib(type=List['diagnoses_lib.Diagnosis'], factory=list)
   log_records = attr.ib(type=List[logs.LogRecord], factory=list)
   marginal = attr.ib(type=Optional[bool], default=None)
@@ -206,9 +211,9 @@ class TestRecord(object):
     }
     self._cached_diagnosers = data.convert_to_base_types(self.diagnosers)
 
-  def add_outcome_details(self,
-                          code: Union[int, Text],
-                          description: Text = '') -> None:
+  def add_outcome_details(
+      self, code: Union[int, Text], description: Text = ''
+  ) -> None:
     """Adds a code with optional description to this record's outcome_details.
 
     Args:
@@ -229,11 +234,13 @@ class TestRecord(object):
     self.branches.append(branch_record)
     self._cached_branches.append(data.convert_to_base_types(branch_record))
 
-  def add_checkpoint_record(self,
-                            checkpoint_record: 'CheckpointRecord') -> None:
+  def add_checkpoint_record(
+      self, checkpoint_record: 'CheckpointRecord'
+  ) -> None:
     self.checkpoints.append(checkpoint_record)
     self._cached_checkpoints.append(
-        data.convert_to_base_types(checkpoint_record))
+        data.convert_to_base_types(checkpoint_record)
+    )
 
   def add_diagnosis(self, diagnosis: 'diagnoses_lib.Diagnosis') -> None:
     self.diagnoses.append(diagnosis)
@@ -246,7 +253,8 @@ class TestRecord(object):
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert to a dict representation composed exclusively of base types."""
     metadata = data.convert_to_base_types(
-        self.metadata, ignore_keys=('config',))
+        self.metadata, ignore_keys=('config',)
+    )
     metadata['config'] = self._cached_config_from_metadata
     ret = {
         'dut_id': data.convert_to_base_types(self.dut_id),
@@ -277,13 +285,18 @@ class BranchRecord(object):
   evaluated_millis = attr.ib(type=int)
 
   @classmethod
-  def from_branch(cls, branch: 'phase_branches.BranchSequence',
-                  branch_taken: bool, evaluated_millis: int) -> 'BranchRecord':
+  def from_branch(
+      cls,
+      branch: 'phase_branches.BranchSequence',
+      branch_taken: bool,
+      evaluated_millis: int,
+  ) -> 'BranchRecord':
     return cls(
         name=branch.name,
         diag_condition=branch.diag_condition,
         branch_taken=branch_taken,
-        evaluated_millis=evaluated_millis)
+        evaluated_millis=evaluated_millis,
+    )
 
 
 @attr.s(slots=True, frozen=True)
@@ -292,24 +305,31 @@ class CheckpointRecord(object):
 
   name = attr.ib(type=Text)
   action = attr.ib(type='phase_descriptor.PhaseResult')
-  conditional = attr.ib(type=Union['phase_branches.PreviousPhases',
-                                   'phase_branches.DiagnosisCondition'])
+  conditional = attr.ib(
+      type=Union[
+          'phase_branches.PreviousPhases', 'phase_branches.DiagnosisCondition'
+      ]
+  )
   subtest_name = attr.ib(type=Optional[Text])
   result = attr.ib(type='phase_executor.PhaseExecutionOutcome')
   evaluated_millis = attr.ib(type=int)
 
   @classmethod
-  def from_checkpoint(cls, checkpoint: 'phase_branches.Checkpoint',
-                      subtest_name: Optional[Text],
-                      result: 'phase_executor.PhaseExecutionOutcome',
-                      evaluated_millis: int) -> 'CheckpointRecord':
+  def from_checkpoint(
+      cls,
+      checkpoint: 'phase_branches.Checkpoint',
+      subtest_name: Optional[Text],
+      result: 'phase_executor.PhaseExecutionOutcome',
+      evaluated_millis: int,
+  ) -> 'CheckpointRecord':
     return cls(
         name=checkpoint.name,
         action=checkpoint.action,
         conditional=checkpoint.record_conditional(),
         subtest_name=subtest_name,
         result=result,
-        evaluated_millis=evaluated_millis)
+        evaluated_millis=evaluated_millis,
+    )
 
 
 class PhaseOutcome(enum.Enum):
@@ -325,8 +345,9 @@ class PhaseOutcome(enum.Enum):
   ERROR = 'ERROR'
 
 
-def _phase_record_base_type_filter(attribute: attr.Attribute,
-                                   value: Any) -> bool:
+def _phase_record_base_type_filter(
+    attribute: attr.Attribute, value: Any
+) -> bool:
   del value  # Unused.
   return attribute.name not in ('descriptor_id', 'name', 'codeinfo')  # pytype: disable=attribute-error
 
@@ -357,36 +378,44 @@ class PhaseRecord(object):
   codeinfo = attr.ib(type=CodeInfo)
 
   measurements = attr.ib(
-      type=Dict[Text, 'htf_measurements.Measurement'], default=None)
+      type=Dict[Text, 'htf_measurements.Measurement'], default=None
+  )
   options = attr.ib(type='phase_descriptor.PhaseOptions', default=None)
   diagnosers = attr.ib(
-      type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list)
+      type=List['diagnoses_lib.BasePhaseDiagnoser'], factory=list
+  )
   subtest_name = attr.ib(type=Optional[Text], default=None)
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)
   attachments = attr.ib(type=Dict[Text, Attachment], factory=dict)
   diagnosis_results = attr.ib(
-      type=List['diagnoses_lib.DiagResultEnum'], factory=list)
+      type=List['diagnoses_lib.DiagResultEnum'], factory=list
+  )
   failure_diagnosis_results = attr.ib(
-      type=List['diagnoses_lib.DiagResultEnum'], factory=list)
+      type=List['diagnoses_lib.DiagResultEnum'], factory=list
+  )
   result = attr.ib(
-      type=Optional['phase_executor.PhaseExecutionOutcome'], default=None)
+      type=Optional['phase_executor.PhaseExecutionOutcome'], default=None
+  )
   outcome = attr.ib(type=Optional[PhaseOutcome], default=None)
   marginal = attr.ib(type=Optional[bool], default=None)
 
   @classmethod
   def from_descriptor(
-      cls, phase_desc: 'phase_descriptor.PhaseDescriptor') -> 'PhaseRecord':
+      cls, phase_desc: 'phase_descriptor.PhaseDescriptor'
+  ) -> 'PhaseRecord':
     return cls(
         id(phase_desc),
         phase_desc.name,
         phase_desc.code_info,
-        diagnosers=list(phase_desc.diagnosers))
+        diagnosers=list(phase_desc.diagnosers),
+    )
 
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert to a dict representation composed exclusively of base types."""
     base_types_dict = data.convert_to_base_types(
-        attr.asdict(self, recurse=False, filter=_phase_record_base_type_filter))
+        attr.asdict(self, recurse=False, filter=_phase_record_base_type_filter)
+    )
     base_types_dict.update(
         descriptor_id=self.descriptor_id,
         name=self.name,

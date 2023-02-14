@@ -40,7 +40,8 @@ _GREEN = typing.cast(str, colorama.Fore.GREEN)
 @openhtf.measures(
     openhtf.Measurement('text_measurement_a').equals('a'),
     openhtf.Measurement('text_measurement_b').equals('b'),
-    openhtf.Measurement('text_measurement_c').equals('c'))
+    openhtf.Measurement('text_measurement_c').equals('c'),
+)
 def PhaseWithFailure(test_api):
   """Phase with measurement failures."""
   test_api.measurements.text_measurement_a = 'intentionally wrong measurement'
@@ -56,7 +57,8 @@ def PhaseWithSkip():
 
 @openhtf.measures(
     openhtf.Measurement('text_measurement_a').equals('a'),
-    openhtf.Measurement('text_measurement_b').equals('b'))
+    openhtf.Measurement('text_measurement_b').equals('b'),
+)
 def PhaseWithError():
   """Phase raising an error."""
   raise Exception('Intentional exception from test case.')
@@ -64,7 +66,8 @@ def PhaseWithError():
 
 @openhtf.measures(
     openhtf.Measurement('text_measurement_a').equals('a'),
-    openhtf.Measurement('text_measurement_b').equals('b'))
+    openhtf.Measurement('text_measurement_b').equals('b'),
+)
 def PhaseThatSucceeds(test_api):
   """Phase with passing measurements and attachments."""
   test_api.measurements.text_measurement_a = 'a'
@@ -89,19 +92,22 @@ class TextTest(test.TestCase, parameterized.TestCase):
     text_to_colorize = 'Foo Bar'
     self.assertEqual(
         text._ColorText(text_to_colorize, _GREEN),
-        f'{_GREEN}{text_to_colorize}{colorama.Style.RESET_ALL}')
+        f'{_GREEN}{text_to_colorize}{colorama.Style.RESET_ALL}',
+    )
 
   # TODO(b/70517332): Pytype currently doesn't properly support the functional
   # API of enums: https://github.com/google/pytype/issues/459. Remove
   # disabling pytype once fixed.
   @parameterized.named_parameters(
       (headline_member.name, headline_member.name, headline_member.value)
-      for headline_member in text._HeadlineFromTestOutcome.__iter__())  # pytype: disable=attribute-error
+      for headline_member in text._HeadlineFromTestOutcome.__iter__()
+  )  # pytype: disable=attribute-error
   def testGetTestOutcomeHeadline_TestNotColorized(self, outcome, headline):
     record = test_record.TestRecord(
         dut_id='TestDutId',
         station_id='test_station',
-        outcome=test_record.Outcome[outcome])
+        outcome=test_record.Outcome[outcome],
+    )
     self.assertEqual(text._GetTestOutcomeHeadline(record), headline)
 
   # TODO(b/70517332): Pytype currently doesn't properly support the functional
@@ -109,62 +115,78 @@ class TextTest(test.TestCase, parameterized.TestCase):
   # disabling pytype once fixed.
   @parameterized.named_parameters(
       (headline_member.name, headline_member.name, headline_member.value)
-      for headline_member in text._HeadlineFromTestOutcome.__iter__())  # pytype: disable=attribute-error
+      for headline_member in text._HeadlineFromTestOutcome.__iter__()
+  )  # pytype: disable=attribute-error
   def testGetTestOutcomeHeadline_TestColorized(self, outcome, headline):
     record = test_record.TestRecord(
         dut_id='TestDutId',
         station_id='test_station',
-        outcome=test_record.Outcome[outcome])
+        outcome=test_record.Outcome[outcome],
+    )
     # TODO(b/70517332): Pytype currently doesn't properly support the functional
     # API of enums: https://github.com/google/pytype/issues/459. Remove
     # disabling pytype once fixed.
     self.assertEqual(
         text._GetTestOutcomeHeadline(record, colorize_text=True),
-        f'{text._ColorFromTestOutcome[outcome].value}{headline}'  # pytype: disable=unsupported-operands
-        f'{colorama.Style.RESET_ALL}')
+        (  # pytype: disable=unsupported-operands
+            f'{text._ColorFromTestOutcome[outcome].value}{headline}'
+            f'{colorama.Style.RESET_ALL}'
+        ),
+    )
 
   def testStringFromMeasurement_SuccessfullyConvertsUnsetMeasurement(self):
     self.assertEqual(
         text.StringFromMeasurement(openhtf.Measurement('text_measurement_a')),
-        '| text_measurement_a was not set')
+        '| text_measurement_a was not set',
+    )
 
   def testStringFromMeasurement_SuccessfullyConvertsPassMeasurement(self):
     measurement = openhtf.Measurement('text_measurement_a')
     measurement._measured_value = measurements.MeasuredValue(
-        'text_measurement_a')
+        'text_measurement_a'
+    )
     measurement._measured_value.set(10)
     measurement.notify_value_set()
     self.assertEqual(
-        text.StringFromMeasurement(measurement), '| text_measurement_a: 10')
+        text.StringFromMeasurement(measurement), '| text_measurement_a: 10'
+    )
 
   def testStringFromMeasurement_SuccessfullyConvertsFailMeasurement(self):
     measurement = openhtf.Measurement('text_measurement_a').in_range(maximum=3)
     measurement._measured_value = measurements.MeasuredValue(
-        'text_measurement_a')
+        'text_measurement_a'
+    )
     measurement._measured_value.set(5)
     measurement.notify_value_set()
     output = text.StringFromMeasurement(measurement)
     self.assertEqual(
         output,
-        "| text_measurement_a failed because 5 failed these checks: ['x <= 3']")
+        "| text_measurement_a failed because 5 failed these checks: ['x <= 3']",
+    )
     self.assertNotIn(text._BRIGHT_RED_STYLE, output)
 
   def testStringFromMeasurement_SuccessfullyConvertsFailBracketedMeasurement(
-      self):
+      self,
+  ):
     measurement = openhtf.Measurement('text_measurement_a').equals('hello')
     measurement._measured_value = measurements.MeasuredValue(
-        'text_measurement_a')
+        'text_measurement_a'
+    )
     measurement._measured_value.set('{hi}')
     measurement.notify_value_set()
     output = text.StringFromMeasurement(measurement)
-    self.assertEqual(output,
-                     ('| text_measurement_a failed because {hi} '
-                      "failed these checks: [\"'x' matches /^hello$/\"]"))
+    self.assertEqual(
+        output,
+        (
+            '| text_measurement_a failed because {hi} '
+            'failed these checks: ["\'x\' matches /^hello$/"]'
+        ),
+    )
     self.assertNotIn(text._BRIGHT_RED_STYLE, output)
 
   def testStringFromMeasurement_SuccessfullyConvertsMarginalBracketedMeasurement(
-      self):
-
+      self,
+  ):
     class LengthInRange(validators.InRange):
 
       def __call__(self, value):
@@ -175,243 +197,291 @@ class TextTest(test.TestCase, parameterized.TestCase):
 
     # Length of 5 is pass, 4 or 6 is marginal.
     validator = LengthInRange(
-        minimum=4, maximum=6, marginal_minimum=5, marginal_maximum=5)
+        minimum=4, maximum=6, marginal_minimum=5, marginal_maximum=5
+    )
 
     measurement = openhtf.Measurement('text_measurement_a').with_validator(
-        validator)
+        validator
+    )
     measurement._measured_value = measurements.MeasuredValue(
-        'text_measurement_a')
+        'text_measurement_a'
+    )
     measurement._measured_value.set('{hi}')
     measurement.notify_value_set()
     output = text.StringFromMeasurement(measurement)
     self.assertEqual(
         output,
-        ('| text_measurement_a is marginal because {hi} is marginal '
-         "in these checks: ['4 <= Marginal:5 <= x <= Marginal:5 <= 6']"))
+        (
+            '| text_measurement_a is marginal because {hi} is marginal '
+            "in these checks: ['4 <= Marginal:5 <= x <= Marginal:5 <= 6']"
+        ),
+    )
     self.assertNotIn(text._BRIGHT_RED_STYLE, output)
 
   def testStringFromMeasurement_SuccessfullyConvertsFailMeasurementColorized(
-      self):
+      self,
+  ):
     measurement = openhtf.Measurement('text_measurement_a').in_range(maximum=3)
     measurement._measured_value = measurements.MeasuredValue(
-        'text_measurement_a')
+        'text_measurement_a'
+    )
     measurement._measured_value.set(5)
     measurement.notify_value_set()
     self.assertEqual(
         text.StringFromMeasurement(measurement, colorize_text=True).count(
-            text._BRIGHT_RED_STYLE), 1)
+            text._BRIGHT_RED_STYLE
+        ),
+        1,
+    )
 
   def testStringFromAttachment_SuccessfullyConvertsPassMeasurement(self):
     attachment = test_record.Attachment('content', 'text/plain')
     self.assertEqual(
         text.StringFromAttachment(attachment, 'attachment_a.txt'),
-        '| attachment: attachment_a.txt (mimetype=text/plain)')
+        '| attachment: attachment_a.txt (mimetype=text/plain)',
+    )
 
   @parameterized.named_parameters([
-      {
-          'testcase_name': 'None',
-          'phase_result': None,
-          'expected_str': ''
-      },
+      {'testcase_name': 'None', 'phase_result': None, 'expected_str': ''},
       {
           'testcase_name': 'PhaseResult',
           'phase_result': phase_descriptor.PhaseResult.CONTINUE,
-          'expected_str': 'CONTINUE'
+          'expected_str': 'CONTINUE',
       },
       {
-          'testcase_name':
-              'ExceptionInfo',
-          'phase_result':
-              phase_executor.ExceptionInfo(
-                  ValueError, ValueError('Invalid Value'),
-                  mock.create_autospec(types.TracebackType, spec_set=True)),
-          'expected_str':
-              'ValueError'
+          'testcase_name': 'ExceptionInfo',
+          'phase_result': phase_executor.ExceptionInfo(
+              ValueError,
+              ValueError('Invalid Value'),
+              mock.create_autospec(types.TracebackType, spec_set=True),
+          ),
+          'expected_str': 'ValueError',
       },
       {
           'testcase_name': 'ThreadTerminationError',
           'phase_result': threads.ThreadTerminationError(),
-          'expected_str': 'ThreadTerminationError'
+          'expected_str': 'ThreadTerminationError',
       },
   ])
   def testStringFromPhaseExecutionOutcome_SuccessfullyConvertsOutcome(
-      self, phase_result, expected_str):
+      self, phase_result, expected_str
+  ):
     self.assertEqual(
         text.StringFromPhaseExecutionOutcome(
-            phase_executor.PhaseExecutionOutcome(phase_result)), expected_str)
+            phase_executor.PhaseExecutionOutcome(phase_result)
+        ),
+        expected_str,
+    )
 
   def testStringFromPhaseRecord_SuccessfullyConvertsPhaseRecordPassPhase(self):
     record = self.execute_phase_or_test(PhaseThatSucceeds)
     output = text.StringFromPhaseRecord(record)
     self.assertEqual(
-        output, 'Phase PhaseThatSucceeds\n'
-        '+ Outcome: PASS Result: CONTINUE\n'
-        '| text_measurement_a: a\n'
-        '| text_measurement_b: b\n'
-        '| attachment: attachment_a.txt (mimetype=text/plain)\n'
-        '| attachment: attachment_b.json (mimetype=application/json)')
+        output,
+        (
+            'Phase PhaseThatSucceeds\n'
+            '+ Outcome: PASS Result: CONTINUE\n'
+            '| text_measurement_a: a\n'
+            '| text_measurement_b: b\n'
+            '| attachment: attachment_a.txt (mimetype=text/plain)\n'
+            '| attachment: attachment_b.json (mimetype=application/json)'
+        ),
+    )
     self.assertNotIn(text._BRIGHT_RED_STYLE, output)
 
   def testStringFromPhaseRecord_SuccessfullyConvertsPhaseRecordFailPhase(self):
     record = self.execute_phase_or_test(PhaseWithFailure)
     output = text.StringFromPhaseRecord(record)
     self.assertEqual(
-        output, 'Phase PhaseWithFailure\n'
-        '+ Outcome: FAIL Result: CONTINUE\n'
-        '| text_measurement_a failed because intentionally wrong measurement '
-        'failed these checks: ["\'x\' matches /^a$/"]\n'
-        '| text_measurement_b was not set\n'
-        '| text_measurement_c: c')
+        output,
+        (
+            'Phase PhaseWithFailure\n+ Outcome: FAIL Result: CONTINUE\n|'
+            ' text_measurement_a failed because intentionally wrong measurement'
+            ' failed these checks: ["\'x\' matches /^a$/"]\n|'
+            ' text_measurement_b was not set\n| text_measurement_c: c'
+        ),
+    )
 
   def testStringFromPhaseRecord_SuccessfullyConvertsPhaseFailLimitPhase(self):
     record = self.execute_phase_or_test(PhaseWithFailure)
     output = text.StringFromPhaseRecord(record, maximum_num_measurements=2)
     self.assertEqual(
-        output, 'Phase PhaseWithFailure\n'
-        '+ Outcome: FAIL Result: CONTINUE\n'
-        '| text_measurement_a failed because intentionally wrong measurement '
-        'failed these checks: ["\'x\' matches /^a$/"]\n'
-        '| text_measurement_b was not set\n'
-        '...')
+        output,
+        (
+            'Phase PhaseWithFailure\n+ Outcome: FAIL Result: CONTINUE\n|'
+            ' text_measurement_a failed because intentionally wrong measurement'
+            ' failed these checks: ["\'x\' matches /^a$/"]\n|'
+            ' text_measurement_b was not set\n...'
+        ),
+    )
 
   def testStringFromPhaseRecord_SuccessfullyConvertsPhaseRecordOnlyFailPhase(
-      self):
+      self,
+  ):
     record = self.execute_phase_or_test(PhaseWithFailure)
     output = text.StringFromPhaseRecord(record, only_failures=True)
     self.assertEqual(
-        output, 'Phase PhaseWithFailure\n'
-        '+ Outcome: FAIL Result: CONTINUE\n'
-        '| text_measurement_a failed because intentionally wrong measurement '
-        'failed these checks: ["\'x\' matches /^a$/"]')
+        output,
+        (
+            'Phase PhaseWithFailure\n+ Outcome: FAIL Result: CONTINUE\n|'
+            ' text_measurement_a failed because intentionally wrong measurement'
+            ' failed these checks: ["\'x\' matches /^a$/"]'
+        ),
+    )
 
   def testStringFromPhaseRecord_SuccessfullyConvertsPhaseRecordFailPhaseColored(
-      self):
+      self,
+  ):
     record = self.execute_phase_or_test(PhaseWithFailure)
     self.assertEqual(
-        text.StringFromPhaseRecord(record, colorize_text=True).count(_RED), 3)
+        text.StringFromPhaseRecord(record, colorize_text=True).count(_RED), 3
+    )
 
   def testStringFromPhaseRecord_SuccessfullyConvertsPhaseRecordSkipPhaseColored(
-      self):
+      self,
+  ):
     record = self.execute_phase_or_test(PhaseWithSkip)
-    self.assertNotIn(text._BRIGHT_RED_STYLE,
-                     text.StringFromPhaseRecord(record, colorize_text=True))
+    self.assertNotIn(
+        text._BRIGHT_RED_STYLE,
+        text.StringFromPhaseRecord(record, colorize_text=True),
+    )
 
   @parameterized.named_parameters([
       {
-          'testcase_name':
-              'OneOutcome',
+          'testcase_name': 'OneOutcome',
           'outcome_details': [
               test_record.OutcomeDetails(
-                  code=1, description='Unknown exception.')
+                  code=1, description='Unknown exception.'
+              )
           ],
-          'expected_str': ('The test thinks this may be the reason:\n'
-                           '1: Unknown exception.'),
+          'expected_str': (
+              'The test thinks this may be the reason:\n1: Unknown exception.'
+          ),
       },
       {
-          'testcase_name':
-              'TwoOutcomes',
+          'testcase_name': 'TwoOutcomes',
           'outcome_details': [
               test_record.OutcomeDetails(
-                  code=1, description='Unknown exception.'),
+                  code=1, description='Unknown exception.'
+              ),
               test_record.OutcomeDetails(
-                  code='FooError', description='Foo exception.')
+                  code='FooError', description='Foo exception.'
+              ),
           ],
-          'expected_str': ('The test thinks these may be the reason:\n'
-                           '1: Unknown exception.\n'
-                           'FooError: Foo exception.'),
+          'expected_str': (
+              'The test thinks these may be the reason:\n'
+              '1: Unknown exception.\n'
+              'FooError: Foo exception.'
+          ),
       },
   ])
   def testStringFromOutcomeDetails_SuccessfullyConvertsOutcomeDetails(
-      self, outcome_details, expected_str):
+      self, outcome_details, expected_str
+  ):
     self.assertEqual(
-        text.StringFromOutcomeDetails(outcome_details), expected_str)
+        text.StringFromOutcomeDetails(outcome_details), expected_str
+    )
 
   def testStringFromTestRecord_SuccessfullyConvertsTestRecordSinglePassPhase(
-      self):
+      self,
+  ):
     record = self.execute_phase_or_test(openhtf.Test(PhaseThatSucceeds))
     self.assertEqual(
-        text.StringFromTestRecord(record), 'Test finished with a PASS!\n'
-        'Woohoo!\n'
-        'Phase trigger_phase\n'
-        '+ Outcome: PASS Result: CONTINUE\n'
-        'Phase PhaseThatSucceeds\n'
-        '+ Outcome: PASS Result: CONTINUE\n'
-        '| text_measurement_a: a\n'
-        '| text_measurement_b: b\n'
-        '| attachment: attachment_a.txt (mimetype=text/plain)\n'
-        '| attachment: attachment_b.json (mimetype=application/json)\n'
-        'Test finished with a PASS!')
+        text.StringFromTestRecord(record),
+        (
+            'Test finished with a PASS!\n'
+            'Woohoo!\n'
+            'Phase trigger_phase\n'
+            '+ Outcome: PASS Result: CONTINUE\n'
+            'Phase PhaseThatSucceeds\n'
+            '+ Outcome: PASS Result: CONTINUE\n'
+            '| text_measurement_a: a\n'
+            '| text_measurement_b: b\n'
+            '| attachment: attachment_a.txt (mimetype=text/plain)\n'
+            '| attachment: attachment_b.json (mimetype=application/json)\n'
+            'Test finished with a PASS!'
+        ),
+    )
 
   def testStringFromTestRecord_SuccessfullyConvertsTestErrorPhase(self):
     record = self.execute_phase_or_test(openhtf.Test(PhaseWithError))
     self.assertEqual(
-        text.StringFromTestRecord(record), 'Test encountered an ERROR!!!\n'
-        'Phase trigger_phase\n'
-        '+ Outcome: PASS Result: CONTINUE\n'
-        'Phase PhaseWithError\n'
-        '+ Outcome: ERROR Result: Exception\n'
-        '| text_measurement_a was not set\n'
-        '| text_measurement_b was not set\n'
-        'The test thinks this may be the reason:\n'
-        'Exception: Intentional exception from test case.\n'
-        'Test encountered an ERROR!!!')
+        text.StringFromTestRecord(record),
+        (
+            'Test encountered an ERROR!!!\n'
+            'Phase trigger_phase\n'
+            '+ Outcome: PASS Result: CONTINUE\n'
+            'Phase PhaseWithError\n'
+            '+ Outcome: ERROR Result: Exception\n'
+            '| text_measurement_a was not set\n'
+            '| text_measurement_b was not set\n'
+            'The test thinks this may be the reason:\n'
+            'Exception: Intentional exception from test case.\n'
+            'Test encountered an ERROR!!!'
+        ),
+    )
 
   def testStringFromTestRecord_SuccessfullyConvertsTestFailurePhase(self):
     record = self.execute_phase_or_test(openhtf.Test(PhaseWithFailure))
     output = text.StringFromTestRecord(record)
     self.assertEqual(
-        output, 'Test finished with a FAIL :(\n'
-        'Phase trigger_phase\n'
-        '+ Outcome: PASS Result: CONTINUE\n'
-        'Phase PhaseWithFailure\n'
-        '+ Outcome: FAIL Result: CONTINUE\n'
-        '| text_measurement_a failed because intentionally wrong measurement '
-        'failed these checks: ["\'x\' matches /^a$/"]\n'
-        '| text_measurement_b was not set\n'
-        '| text_measurement_c: c\n'
-        'Test finished with a FAIL :(')
+        output,
+        (
+            'Test finished with a FAIL :(\nPhase trigger_phase\n+ Outcome: PASS'
+            ' Result: CONTINUE\nPhase PhaseWithFailure\n+ Outcome: FAIL Result:'
+            ' CONTINUE\n| text_measurement_a failed because intentionally wrong'
+            ' measurement failed these checks: ["\'x\' matches /^a$/"]\n|'
+            ' text_measurement_b was not set\n| text_measurement_c: c\nTest'
+            ' finished with a FAIL :('
+        ),
+    )
     self.assertNotIn(text._BRIGHT_RED_STYLE, output)
 
   def testStringFromTestRecord_SuccessfullyConvertsTestOnlyFailurePhase(self):
     record = self.execute_phase_or_test(
-        openhtf.Test(PhaseThatSucceeds, PhaseWithFailure))
+        openhtf.Test(PhaseThatSucceeds, PhaseWithFailure)
+    )
     output = text.StringFromTestRecord(record, only_failures=True)
     self.assertEqual(
-        output, 'Test finished with a FAIL :(\n'
-        'Phase PhaseWithFailure\n'
-        '+ Outcome: FAIL Result: CONTINUE\n'
-        '| text_measurement_a failed because intentionally wrong measurement '
-        'failed these checks: ["\'x\' matches /^a$/"]\n'
-        'Test finished with a FAIL :(')
+        output,
+        (
+            'Test finished with a FAIL :(\nPhase PhaseWithFailure\n+ Outcome:'
+            ' FAIL Result: CONTINUE\n| text_measurement_a failed because'
+            " intentionally wrong measurement failed these checks: [\"'x'"
+            ' matches /^a$/"]\nTest finished with a FAIL :('
+        ),
+    )
     self.assertNotIn(text._BRIGHT_RED_STYLE, output)
 
   def testStringFromTestRecord_SuccessfullyConvertsTestFailurePhaseColored(
-      self):
+      self,
+  ):
     record = self.execute_phase_or_test(openhtf.Test(PhaseWithFailure))
     self.assertEqual(
-        text.StringFromTestRecord(record, colorize_text=True).count(_RED), 5)
+        text.StringFromTestRecord(record, colorize_text=True).count(_RED), 5
+    )
 
   def testStringFromTestRecord_SuccessfullyConvertsTestFailureMultiplePhases(
-      self):
+      self,
+  ):
     record = self.execute_phase_or_test(
-        openhtf.Test(PhaseThatSucceeds, PhaseWithFailure))
+        openhtf.Test(PhaseThatSucceeds, PhaseWithFailure)
+    )
     self.assertEqual(
-        text.StringFromTestRecord(record), 'Test finished with a FAIL :(\n'
-        'Phase trigger_phase\n'
-        '+ Outcome: PASS Result: CONTINUE\n'
-        'Phase PhaseThatSucceeds\n'
-        '+ Outcome: PASS Result: CONTINUE\n'
-        '| text_measurement_a: a\n'
-        '| text_measurement_b: b\n'
-        '| attachment: attachment_a.txt (mimetype=text/plain)\n'
-        '| attachment: attachment_b.json (mimetype=application/json)\n'
-        'Phase PhaseWithFailure\n'
-        '+ Outcome: FAIL Result: CONTINUE\n'
-        '| text_measurement_a failed because intentionally wrong measurement '
-        'failed these checks: ["\'x\' matches /^a$/"]\n'
-        '| text_measurement_b was not set\n'
-        '| text_measurement_c: c\n'
-        'Test finished with a FAIL :(')
+        text.StringFromTestRecord(record),
+        (
+            'Test finished with a FAIL :(\nPhase trigger_phase\n+ Outcome: PASS'
+            ' Result: CONTINUE\nPhase PhaseThatSucceeds\n+ Outcome: PASS'
+            ' Result: CONTINUE\n| text_measurement_a: a\n| text_measurement_b:'
+            ' b\n| attachment: attachment_a.txt (mimetype=text/plain)\n|'
+            ' attachment: attachment_b.json (mimetype=application/json)\nPhase'
+            ' PhaseWithFailure\n+ Outcome: FAIL Result: CONTINUE\n|'
+            ' text_measurement_a failed because intentionally wrong measurement'
+            ' failed these checks: ["\'x\' matches /^a$/"]\n|'
+            ' text_measurement_b was not set\n| text_measurement_c: c\nTest'
+            ' finished with a FAIL :('
+        ),
+    )
 
   def testPrintTestRecord_SuccessfullyLogsNotColored(self):
     record = self.execute_phase_or_test(openhtf.Test(PhaseThatSucceeds))
@@ -421,7 +491,8 @@ class TextTest(test.TestCase, parameterized.TestCase):
           sys.stdout.isatty.__name__,
           autospec=True,
           spec_set=True,
-          return_value=False):
+          return_value=False,
+      ):
         text.PrintTestRecord(record)
     self.assertTrue(cm.getvalue())
     self.assertNotIn(_GREEN, cm.getvalue())
@@ -434,6 +505,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
           sys.stdout.isatty.__name__,
           autospec=True,
           spec_set=True,
-          return_value=True):
+          return_value=True,
+      ):
         text.PrintTestRecord(record)
     self.assertIn(_GREEN, cm.getvalue())

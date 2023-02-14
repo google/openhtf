@@ -148,7 +148,8 @@ class DiagnosesStore(object):
   """Storage and lookup of diagnoses."""
 
   _diagnoses_by_results = attr.ib(
-      type=Dict['DiagResultEnum', 'Diagnosis'], default=attr.Factory(dict))
+      type=Dict['DiagResultEnum', 'Diagnosis'], default=attr.Factory(dict)
+  )
   _diagnoses = attr.ib(type=List['Diagnosis'], default=attr.Factory(list))
 
   def _add_diagnosis(self, diagnosis: 'Diagnosis') -> None:
@@ -161,7 +162,8 @@ class DiagnosesStore(object):
     return diagnosis_result in self._diagnoses_by_results
 
   def get_diagnosis(
-      self, diagnosis_result: 'DiagResultEnum') -> Optional['Diagnosis']:
+      self, diagnosis_result: 'DiagResultEnum'
+  ) -> Optional['Diagnosis']:
     """Returns the latest diagnosis with the passed in result."""
     return self._diagnoses_by_results.get(diagnosis_result)
 
@@ -176,7 +178,8 @@ class DiagnosesManager(object):
 
   _logger = attr.ib(type=logging.Logger)
   store = attr.ib(
-      type=DiagnosesStore, default=attr.Factory(DiagnosesStore), init=False)
+      type=DiagnosesStore, default=attr.Factory(DiagnosesStore), init=False
+  )
 
   def _add_diagnosis(self, diagnosis: 'Diagnosis') -> None:
     """Adds a diagnosis to the internal store."""
@@ -184,42 +187,52 @@ class DiagnosesManager(object):
       self._logger.warning('Duplicate diagnosis result: %s', diagnosis)
     self.store._add_diagnosis(diagnosis)  # pylint: disable=protected-access
 
-  def _verify_and_fix_diagnosis(self, diag: 'Diagnosis',
-                                diagnoser: '_BaseDiagnoser') -> 'Diagnosis':
+  def _verify_and_fix_diagnosis(
+      self, diag: 'Diagnosis', diagnoser: '_BaseDiagnoser'
+  ) -> 'Diagnosis':
     if not isinstance(diag.result, diagnoser.result_type):
       raise InvalidDiagnosisError(
           'Diagnoser {} returned different result then its result_type.'.format(
-              diagnoser.name))
+              diagnoser.name
+          )
+      )
     if diagnoser.always_fail:
       return attr.evolve(diag, is_failure=True)
     return diag
 
-  def _convert_result(self,
-                      diagnosis_or_diagnoses: Union['Diagnosis',
-                                                    Sequence['Diagnosis']],
-                      diagnoser: '_BaseDiagnoser') -> Iterable['Diagnosis']:
+  def _convert_result(
+      self,
+      diagnosis_or_diagnoses: Union['Diagnosis', Sequence['Diagnosis']],
+      diagnoser: '_BaseDiagnoser',
+  ) -> Iterable['Diagnosis']:
     """Convert parameter into a list if a single Diagnosis."""
     if not diagnosis_or_diagnoses:
       return
     elif isinstance(diagnosis_or_diagnoses, Diagnosis):
       yield self._verify_and_fix_diagnosis(diagnosis_or_diagnoses, diagnoser)
-    elif (isinstance(diagnosis_or_diagnoses, str) or
-          not isinstance(diagnosis_or_diagnoses, CollectionsIterable)):
+    elif isinstance(diagnosis_or_diagnoses, str) or not isinstance(
+        diagnosis_or_diagnoses, CollectionsIterable
+    ):
       raise InvalidDiagnosisError(
           'Diagnoser {} must return a single Diagnosis or an iterable '
-          'of them.'.format(diagnoser.name))
+          'of them.'.format(diagnoser.name)
+      )
     else:
       for diag in diagnosis_or_diagnoses:
         if not isinstance(diag, Diagnosis):
           raise InvalidDiagnosisError(
               'Diagnoser {} iterable includes non-Diagnosis of type {}.'.format(
-                  diagnoser.name,
-                  type(diag).__name__))
+                  diagnoser.name, type(diag).__name__
+              )
+          )
         yield self._verify_and_fix_diagnosis(diag, diagnoser)
 
-  def execute_phase_diagnoser(self, diagnoser: 'BasePhaseDiagnoser',
-                              phase_state: 'test_state.PhaseState',
-                              test_rec: test_record.TestRecord) -> None:
+  def execute_phase_diagnoser(
+      self,
+      diagnoser: 'BasePhaseDiagnoser',
+      phase_state: 'test_state.PhaseState',
+      test_rec: test_record.TestRecord,
+  ) -> None:
     """Execute a phase diagnoser.
 
     Args:
@@ -237,8 +250,9 @@ class DiagnosesManager(object):
         test_rec.add_diagnosis(diag)
       self._add_diagnosis(diag)
 
-  def execute_test_diagnoser(self, diagnoser: 'BaseTestDiagnoser',
-                             test_rec: test_record.TestRecord) -> None:
+  def execute_test_diagnoser(
+      self, diagnoser: 'BaseTestDiagnoser', test_rec: test_record.TestRecord
+  ) -> None:
     """Execute a test diagnoser.
 
     Args:
@@ -252,31 +266,38 @@ class DiagnosesManager(object):
     for diag in self._convert_result(diagnosis_or_diagnoses, diagnoser):
       if diag.is_internal:
         raise InvalidDiagnosisError(
-            'Test-level diagnosis {} cannot be Internal'.format(diag))
+            'Test-level diagnosis {} cannot be Internal'.format(diag)
+        )
       test_rec.add_diagnosis(diag)
       self._add_diagnosis(diag)
 
 
-def _check_diagnoser(diagnoser: '_BaseDiagnoser',
-                     diagnoser_cls: Type['_BaseDiagnoser']) -> None:
+def _check_diagnoser(
+    diagnoser: '_BaseDiagnoser', diagnoser_cls: Type['_BaseDiagnoser']
+) -> None:
   """Check that a diagnoser is properly created."""
   if not isinstance(diagnoser, diagnoser_cls):
-    raise DiagnoserError('Diagnoser "{}" is not a {}.'.format(
-        diagnoser.__class__.__name__, diagnoser_cls.__name__))
+    raise DiagnoserError(
+        'Diagnoser "{}" is not a {}.'.format(
+            diagnoser.__class__.__name__, diagnoser_cls.__name__
+        )
+    )
   if not diagnoser.result_type:
     raise DiagnoserError(
-        'Diagnoser "{}" does not have a result_type set.'.format(
-            diagnoser.name))
+        'Diagnoser "{}" does not have a result_type set.'.format(diagnoser.name)
+    )
   if not issubclass(diagnoser.result_type, DiagResultEnum):
     raise DiagnoserError(
         'Diagnoser "{}" result_type "{}" does not inherit from '
-        'DiagResultEnum.'.format(diagnoser.name,
-                                 diagnoser.result_type.__name__))
+        'DiagResultEnum.'.format(diagnoser.name, diagnoser.result_type.__name__)
+    )
   diagnoser._check_definition()  # pylint: disable=protected-access
 
 
-def check_diagnosers(diagnosers: Sequence['_BaseDiagnoser'],
-                     diagnoser_cls: Type['_BaseDiagnoser']) -> None:
+def check_diagnosers(
+    diagnosers: Sequence['_BaseDiagnoser'],
+    diagnoser_cls: Type['_BaseDiagnoser'],
+) -> None:
   """Check if all the diagnosers are properly created.
 
   Args:
@@ -352,7 +373,8 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
   # The function to run.  Set with run_func in the initializer.
   _run_func = attr.ib(
       type=Optional[Callable[[test_record.PhaseRecord], DiagnoserReturnT]],
-      default=None)
+      default=None,
+  )
 
   def __call__(
       self, func: Callable[[test_record.PhaseRecord], DiagnoserReturnT]
@@ -360,7 +382,8 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
     """Returns PhaseDiagnoser for the provided function."""
     if self._run_func:
       raise DiagnoserError(
-          'Fully defined diagnoser cannot decorate another function.')
+          'Fully defined diagnoser cannot decorate another function.'
+      )
     changes = dict(run_func=func)
     if not self.name:
       changes['name'] = func.__name__
@@ -373,7 +396,8 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
   def _check_definition(self) -> None:
     if not self._run_func:
       raise DiagnoserError(
-          'PhaseDiagnoser run function not defined for {}'.format(self.name))
+          'PhaseDiagnoser run function not defined for {}'.format(self.name)
+      )
 
 
 class BaseTestDiagnoser(_BaseDiagnoser, abc.ABC):
@@ -382,8 +406,9 @@ class BaseTestDiagnoser(_BaseDiagnoser, abc.ABC):
   __slots__ = ()
 
   @abc.abstractmethod
-  def run(self, test_rec: test_record.TestRecord,
-          diagnoses_store: DiagnosesStore) -> DiagnoserReturnT:
+  def run(
+      self, test_rec: test_record.TestRecord, diagnoses_store: DiagnosesStore
+  ) -> DiagnoserReturnT:
     """Must be implemented to return list of Diagnoses instances.
 
     Args:
@@ -403,32 +428,39 @@ class TestDiagnoser(BaseTestDiagnoser):
 
   # The function to run.  Set with run_func in the initializer.
   _run_func = attr.ib(
-      type=Optional[Callable[[test_record.TestRecord, DiagnosesStore],
-                             DiagnoserReturnT]],
-      default=None)
+      type=Optional[
+          Callable[[test_record.TestRecord, DiagnosesStore], DiagnoserReturnT]
+      ],
+      default=None,
+  )
 
   def __call__(
-      self, func: Callable[[test_record.TestRecord, DiagnosesStore],
-                           DiagnoserReturnT]
+      self,
+      func: Callable[
+          [test_record.TestRecord, DiagnosesStore], DiagnoserReturnT
+      ],
   ) -> 'TestDiagnoser':
     """Returns TestDiagnoser for the provided function."""
     if self._run_func:
       raise DiagnoserError(
-          'Fully defined diagnoser cannot decorate another function.')
+          'Fully defined diagnoser cannot decorate another function.'
+      )
     changes = dict(run_func=func)
     if not self.name:
       changes['name'] = func.__name__
     return attr.evolve(self, **changes)
 
-  def run(self, test_rec: test_record.TestRecord,
-          diagnoses_store: DiagnosesStore) -> DiagnoserReturnT:
+  def run(
+      self, test_rec: test_record.TestRecord, diagnoses_store: DiagnosesStore
+  ) -> DiagnoserReturnT:
     """Runs the test diagnoser and returns the diagnoses."""
     return self._run_func(test_rec, diagnoses_store)
 
   def _check_definition(self) -> None:
     if not self._run_func:
       raise DiagnoserError(
-          'TestDiagnoser run function not defined for {}'.format(self.name))
+          'TestDiagnoser run function not defined for {}'.format(self.name)
+      )
 
 
 @enum.unique
@@ -450,6 +482,7 @@ class DiagPriority(str, enum.Enum):
   These priorities are defined for the test developer to differentiate between
   the priority or severity of different diagnoses.
   """
+
   HIGHEST = 'highest'
   NORMAL = 'normal'
   INFORMATIVE = 'informative'
@@ -501,4 +534,5 @@ class Diagnosis(object):
 
   def as_base_types(self) -> Dict[Text, Any]:
     return data.convert_to_base_types(
-        attr.asdict(self, filter=_diagnosis_serialize_filter))
+        attr.asdict(self, filter=_diagnosis_serialize_filter)
+    )

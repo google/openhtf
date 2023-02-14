@@ -60,7 +60,8 @@ def run_basic_group():
           setup=[setup_phase],
           main=[main_phase],
           teardown=[teardown_phase],
-      ))
+      )
+  )
   test.execute()
 
 
@@ -76,7 +77,8 @@ def run_setup_error_group():
           setup=[error_setup_phase],
           main=[main_phase],
           teardown=[teardown_phase],
-      ))
+      )
+  )
   test.execute()
 
 
@@ -92,7 +94,8 @@ def run_main_error_group():
           setup=[setup_phase],
           main=[error_main_phase, main_phase],
           teardown=[teardown_phase],
-      ))
+      )
+  )
   test.execute()
 
 
@@ -111,9 +114,12 @@ def run_nested_groups():
           main=[
               main_phase,
               htf.PhaseGroup.with_teardown(inner_teardown_phase)(
-                  inner_main_phase),
+                  inner_main_phase
+              ),
           ],
-          teardown=[teardown_phase]))
+          teardown=[teardown_phase],
+      )
+  )
   test.execute()
 
 
@@ -128,11 +134,13 @@ def run_nested_error_groups():
       htf.PhaseGroup(
           main=[
               htf.PhaseGroup.with_teardown(inner_teardown_phase)(
-                  error_main_phase, main_phase),
+                  error_main_phase, main_phase
+              ),
               main_phase,
           ],
           teardown=[teardown_phase],
-      ))
+      )
+  )
   test.execute()
 
 
@@ -151,7 +159,8 @@ def run_nested_error_skip_unentered_groups():
               main_phase,
           ],
           teardown=[teardown_phase],
-      ))
+      )
+  )
   test.execute()
 
 

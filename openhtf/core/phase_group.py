@@ -48,7 +48,7 @@ from openhtf.util import data
 
 
 def _initialize_group_sequence(
-    seq: Optional[phase_collections.SequenceInitializerT]
+    seq: Optional[phase_collections.SequenceInitializerT],
 ) -> Optional[phase_collections.PhaseSequence]:
   if not seq:
     return None
@@ -69,7 +69,8 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
   setup = attr.ib(type=Optional[phase_collections.PhaseSequence], default=None)
   main = attr.ib(type=Optional[phase_collections.PhaseSequence], default=None)
   teardown = attr.ib(
-      type=Optional[phase_collections.PhaseSequence], default=None)
+      type=Optional[phase_collections.PhaseSequence], default=None
+  )
   name = attr.ib(type=Optional[Text], default=None)
 
   def __init__(
@@ -77,7 +78,8 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
       setup: Optional[phase_collections.SequenceInitializerT] = None,
       main: Optional[phase_collections.SequenceInitializerT] = None,
       teardown: Optional[phase_collections.SequenceInitializerT] = None,
-      name: Optional[Text] = None):
+      name: Optional[Text] = None,
+  ):
     object.__setattr__(self, 'setup', _initialize_group_sequence(setup))
     object.__setattr__(self, 'main', _initialize_group_sequence(main))
     object.__setattr__(self, 'teardown', _initialize_group_sequence(teardown))
@@ -85,8 +87,9 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
 
   @classmethod
   def with_context(
-      cls, setup_nodes: Optional[phase_collections.SequenceInitializerT],
-      teardown_nodes: Optional[phase_collections.SequenceInitializerT]
+      cls,
+      setup_nodes: Optional[phase_collections.SequenceInitializerT],
+      teardown_nodes: Optional[phase_collections.SequenceInitializerT],
   ) -> Callable[..., 'PhaseGroup']:
     """Create PhaseGroup creator function with setup and teardown phases.
 
@@ -100,17 +103,23 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
       Function that takes *phases and returns a PhaseGroup with the predefined
       setup and teardown phases, with *phases as the main phases.
     """
-    setup = phase_collections.PhaseSequence(
-        setup_nodes) if setup_nodes else None
-    teardown = phase_collections.PhaseSequence(
-        teardown_nodes) if teardown_nodes else None
+    setup = (
+        phase_collections.PhaseSequence(setup_nodes) if setup_nodes else None
+    )
+    teardown = (
+        phase_collections.PhaseSequence(teardown_nodes)
+        if teardown_nodes
+        else None
+    )
 
     def _context_wrapper(
-        *phases: phase_descriptor.PhaseCallableOrNodeT) -> 'PhaseGroup':
+        *phases: phase_descriptor.PhaseCallableOrNodeT,
+    ) -> 'PhaseGroup':
       return cls(
           setup=data.attr_copy(setup) if setup else None,
           main=phase_collections.PhaseSequence(phases),
-          teardown=data.attr_copy(teardown) if teardown else None)
+          teardown=data.attr_copy(teardown) if teardown else None,
+      )
 
     return _context_wrapper
 
@@ -128,20 +137,24 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
     """Create PhaseGroup creator function with predefined teardown phases."""
     return cls.with_context(None, teardown_phases)
 
-  def combine(self,
-              other: 'PhaseGroup',
-              name: Optional[Text] = None) -> 'PhaseGroup':
+  def combine(
+      self, other: 'PhaseGroup', name: Optional[Text] = None
+  ) -> 'PhaseGroup':
     """Combine with another PhaseGroup and return the result."""
     return PhaseGroup(
         setup=phase_collections.PhaseSequence.combine(self.setup, other.setup),
         main=phase_collections.PhaseSequence.combine(self.main, other.main),
         teardown=phase_collections.PhaseSequence.combine(
-            self.teardown, other.teardown),
-        name=name)
+            self.teardown, other.teardown
+        ),
+        name=name,
+    )
 
-  def wrap(self,
-           main_phases: phase_collections.SequenceInitializerT,
-           name: Optional[Text] = None) -> 'PhaseGroup':
+  def wrap(
+      self,
+      main_phases: phase_collections.SequenceInitializerT,
+      name: Optional[Text] = None,
+  ) -> 'PhaseGroup':
     """Returns PhaseGroup with additional main phases."""
     other = PhaseGroup(main=main_phases)
     return self.combine(other, name=name)
@@ -161,16 +174,19 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
         setup=self.setup.with_args(**kwargs) if self.setup else None,
         main=self.main.with_args(**kwargs) if self.main else None,
         teardown=self.teardown.with_args(**kwargs) if self.teardown else None,
-        name=util.format_string(self.name, kwargs))
+        name=util.format_string(self.name, kwargs),
+    )
 
   def with_plugs(self, **subplugs: Type[base_plugs.BasePlug]) -> 'PhaseGroup':
     """Substitute only known plugs for placeholders for each contained phase."""
     return PhaseGroup(
         setup=self.setup.with_plugs(**subplugs) if self.setup else None,
         main=self.main.with_plugs(**subplugs) if self.main else None,
-        teardown=self.teardown.with_plugs(
-            **subplugs) if self.teardown else None,
-        name=util.format_string(self.name, subplugs))
+        teardown=self.teardown.with_plugs(**subplugs)
+        if self.teardown
+        else None,
+        name=util.format_string(self.name, subplugs),
+    )
 
   def load_code_info(self) -> 'PhaseGroup':
     """Load coded info for all contained phases."""
@@ -178,19 +194,24 @@ class PhaseGroup(phase_collections.PhaseCollectionNode):
         setup=self.setup.load_code_info() if self.setup else None,
         main=self.main.load_code_info() if self.main else None,
         teardown=self.teardown.load_code_info() if self.teardown else None,
-        name=self.name)
+        name=self.name,
+    )
 
   def apply_to_all_phases(
-      self, func: Callable[[phase_descriptor.PhaseDescriptor],
-                           phase_descriptor.PhaseDescriptor]
+      self,
+      func: Callable[
+          [phase_descriptor.PhaseDescriptor], phase_descriptor.PhaseDescriptor
+      ],
   ) -> 'PhaseGroup':
     """Apply func to all contained phases."""
     return PhaseGroup(
         setup=self.setup.apply_to_all_phases(func) if self.setup else None,
         main=self.main.apply_to_all_phases(func) if self.main else None,
-        teardown=(self.teardown.apply_to_all_phases(func)
-                  if self.teardown else None),
-        name=self.name)
+        teardown=(
+            self.teardown.apply_to_all_phases(func) if self.teardown else None
+        ),
+        name=self.name,
+    )
 
   def filter_by_type(
       self, node_cls: Type[phase_collections.NodeType]

@@ -57,16 +57,17 @@ class EtherSync(object):
 
     port = self.port_map[str(port_num)]
     arg = 'DEVICE INFO,{}.{}'.format(self._addr, port)
-    cmd = (['esuit64', '-t', arg])
-    info = subprocess.check_output(
-        cmd, stderr=subprocess.STDOUT).decode('utf-8')
+    cmd = ['esuit64', '-t', arg]
+    info = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode(
+        'utf-8'
+    )
     serial = None
     if 'SERIAL:' in info:
       serial_info = info.split('SERIAL:')[1]
       serial = serial_info.split('\n')[0].strip()
       use_info = info.split('BY')[1].split(' ')[1]
       if use_info == 'NO':
-        cmd = (['esuit64', '-t', 'AUTO USE ALL'])
+        cmd = ['esuit64', '-t', 'AUTO USE ALL']
         subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         time.sleep(50.0 / 1000.0)
     else:

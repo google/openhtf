@@ -35,25 +35,30 @@ MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(  # pytype: disable=module-attr  # g
     tester_name='mock_test_run',
     dut_serial='UNITTEST1234',
     test_status=test_runs_pb2.PASS,
-    test_info=test_runs_pb2.TestInfo(name='unit_test'))  # pytype: disable=module-attr  # gen-stub-imports
+    test_info=test_runs_pb2.TestInfo(name='unit_test'),
+)  # pytype: disable=module-attr  # gen-stub-imports
 
-MOCK_TEST_RUN = collections.namedtuple('Testrun',
-                                       mfg_inspector.MfgInspector.PARAMS)(None,
-                                                                          None,
-                                                                          None,
-                                                                          None)
+MOCK_TEST_RUN = collections.namedtuple(
+    'Testrun', mfg_inspector.MfgInspector.PARAMS
+)(None, None, None, None)
 
 
 class TestMfgInspector(test.TestCase):
 
   def setUp(self):
     super(TestMfgInspector, self).setUp()
-    self.mock_credentials = mock.patch.object(
-        mfg_inspector.service_account.Credentials,
-        'from_service_account_info').start().return_value
+    self.mock_credentials = (
+        mock.patch.object(
+            mfg_inspector.service_account.Credentials,
+            'from_service_account_info',
+        )
+        .start()
+        .return_value
+    )
 
     self.mock_send_mfg_inspector_data = mock.patch.object(
-        mfg_inspector, 'send_mfg_inspector_data').start()
+        mfg_inspector, 'send_mfg_inspector_data'
+    ).start()
 
   def tearDown(self):
     mock.patch.stopall()
@@ -85,9 +90,11 @@ class TestMfgInspector(test.TestCase):
     callback = mfg_inspector.MfgInspector()
 
     callback.set_converter(
-        converter=test_runs_converter.test_run_from_test_record,)
+        converter=test_runs_converter.test_run_from_test_record,
+    )
     save_to_disk_callback = callback.save_to_disk(
-        filename_pattern=testrun_output)
+        filename_pattern=testrun_output
+    )
     save_to_disk_callback(record)
 
     # Parse what was written to BytesIO back into a proto and compare
@@ -96,7 +103,8 @@ class TestMfgInspector(test.TestCase):
     testrun.ParseFromString(testrun_output.read())
 
     expected_test_run_proto = test_runs_converter.test_run_from_test_record(
-        record)
+        record
+    )
     self.assertEqual(expected_test_run_proto, testrun)
 
     self.assertFalse(self.mock_send_mfg_inspector_data.called)
@@ -104,21 +112,25 @@ class TestMfgInspector(test.TestCase):
   def test_upload_only(self):
     mock_converter = mock.MagicMock(return_value=MOCK_TEST_RUN_PROTO)
     callback = mfg_inspector.MfgInspector(
-        user='user', keydata='keydata',
-        token_uri='').set_converter(mock_converter)
+        user='user', keydata='keydata', token_uri=''
+    ).set_converter(mock_converter)
 
     callback.upload()(MOCK_TEST_RUN)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
-        guzzle_pb2.COMPRESSED_TEST_RUN)
+        MOCK_TEST_RUN_PROTO,
+        self.mock_credentials,
+        callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN,
+    )
 
   def test_save_and_upload(self):
     testrun_output = io.BytesIO()
     mock_converter = mock.MagicMock(return_value=MOCK_TEST_RUN_PROTO)
 
     callback = mfg_inspector.MfgInspector(
-        user='user', keydata='keydata', token_uri='')
+        user='user', keydata='keydata', token_uri=''
+    )
     callback.set_converter(mock_converter)
 
     callback.save_to_disk(filename_pattern=testrun_output)(MOCK_TEST_RUN)
@@ -132,8 +144,11 @@ class TestMfgInspector(test.TestCase):
     self.assertEqual(MOCK_TEST_RUN_PROTO, testrun)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
-        guzzle_pb2.COMPRESSED_TEST_RUN)
+        MOCK_TEST_RUN_PROTO,
+        self.mock_credentials,
+        callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN,
+    )
 
     # Make sure mock converter only called once i.e. the test record was
     # was converted to a proto only once.  This important because some custom

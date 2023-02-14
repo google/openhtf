@@ -44,29 +44,43 @@ from openhtf.core import test_record
 from openhtf.util import threads
 
 _ColorFromTestOutcome = enum.Enum(
-    '_ColorFromTestOutcome', [
+    '_ColorFromTestOutcome',
+    [
         (test_record.Outcome.PASS.name, colorama.Fore.GREEN),
         (test_record.Outcome.FAIL.name, colorama.Fore.RED),
         (test_record.Outcome.ERROR.name, colorama.Fore.YELLOW),
         (test_record.Outcome.TIMEOUT.name, colorama.Fore.CYAN),
         (test_record.Outcome.ABORTED.name, colorama.Fore.YELLOW),
     ],
-    module=__name__)
+    module=__name__,
+)
 
 _HeadlineFromTestOutcome = enum.Enum(
-    '_HeadlineFromTestOutcome', [
-        (test_record.Outcome.PASS.name,
-         f'Test finished with a {test_record.Outcome.PASS.name}!'),
-        (test_record.Outcome.FAIL.name,
-         f'Test finished with a {test_record.Outcome.FAIL.name} :('),
-        (test_record.Outcome.ERROR.name,
-         f'Test encountered an {test_record.Outcome.ERROR.name}!!!'),
-        (test_record.Outcome.TIMEOUT.name,
-         f'Test hit a {test_record.Outcome.TIMEOUT.name}.'),
-        (test_record.Outcome.ABORTED.name,
-         f'Test was {test_record.Outcome.ABORTED.name}.'),
+    '_HeadlineFromTestOutcome',
+    [
+        (
+            test_record.Outcome.PASS.name,
+            f'Test finished with a {test_record.Outcome.PASS.name}!',
+        ),
+        (
+            test_record.Outcome.FAIL.name,
+            f'Test finished with a {test_record.Outcome.FAIL.name} :(',
+        ),
+        (
+            test_record.Outcome.ERROR.name,
+            f'Test encountered an {test_record.Outcome.ERROR.name}!!!',
+        ),
+        (
+            test_record.Outcome.TIMEOUT.name,
+            f'Test hit a {test_record.Outcome.TIMEOUT.name}.',
+        ),
+        (
+            test_record.Outcome.ABORTED.name,
+            f'Test was {test_record.Outcome.ABORTED.name}.',
+        ),
     ],
-    module=__name__)
+    module=__name__,
+)
 
 _BRIGHT_RED_STYLE = f'{colorama.Style.BRIGHT}{colorama.Fore.RED}'
 
@@ -86,8 +100,9 @@ def _ColorText(text: str, ansi_color: str) -> str:
   return f'{ansi_color}{text}{colorama.Style.RESET_ALL}'
 
 
-def _GetTestOutcomeHeadline(record: test_record.TestRecord,
-                            colorize_text: bool = False) -> str:
+def _GetTestOutcomeHeadline(
+    record: test_record.TestRecord, colorize_text: bool = False
+) -> str:
   """Returns a headline of the test result.
 
   Args:
@@ -109,12 +124,16 @@ def _GetTestOutcomeHeadline(record: test_record.TestRecord,
   if record.marginal:
     color = str(colorama.Fore.YELLOW)
     test_outcome_headline += '(MARGINAL)'
-  return _ColorText(test_outcome_headline,
-                    color) if colorize_text else test_outcome_headline
+  return (
+      _ColorText(test_outcome_headline, color)
+      if colorize_text
+      else test_outcome_headline
+  )
 
 
-def StringFromMeasurement(measurement: openhtf.Measurement,
-                          colorize_text: bool = False) -> str:
+def StringFromMeasurement(
+    measurement: openhtf.Measurement, colorize_text: bool = False
+) -> str:
   """Returns a text summary of the measurement.
 
   Args:
@@ -129,17 +148,21 @@ def StringFromMeasurement(measurement: openhtf.Measurement,
     text = f'| {measurement.name} was not set'
     return _ColorText(text, _BRIGHT_RED_STYLE) if colorize_text else text
   elif measurement.outcome == measurements.Outcome.FAIL:
-    text = (f'| {measurement.name} failed because '
-            f'{measurement.measured_value.value} failed these checks: ' +
-            str([str(v) for v in measurement.validators]))
+    text = (
+        f'| {measurement.name} failed because '
+        f'{measurement.measured_value.value} failed these checks: '
+        + str([str(v) for v in measurement.validators])
+    )
     return _ColorText(text, _BRIGHT_RED_STYLE) if colorize_text else text
   elif measurement.marginal:
     text = (
         f'| {measurement.name} is marginal because '
-        f'{measurement.measured_value.value} is marginal in these checks: ' +
-        str([str(v) for v in measurement.validators]))
-    return (_ColorText(text, str(colorama.Fore.YELLOW))
-            if colorize_text else text)
+        f'{measurement.measured_value.value} is marginal in these checks: '
+        + str([str(v) for v in measurement.validators])
+    )
+    return (
+        _ColorText(text, str(colorama.Fore.YELLOW)) if colorize_text else text
+    )
   return f'| {measurement.name}: {measurement.measured_value.value}'
 
 
@@ -157,7 +180,8 @@ def StringFromAttachment(attachment: test_record.Attachment, name: str) -> str:
 
 
 def StringFromPhaseExecutionOutcome(
-    execution_outcome: phase_executor.PhaseExecutionOutcome) -> str:
+    execution_outcome: phase_executor.PhaseExecutionOutcome,
+) -> str:
   """Returns a text representation of the phase execution outcome.
 
   Args:
@@ -170,21 +194,24 @@ def StringFromPhaseExecutionOutcome(
     return execution_outcome.phase_result.exc_type.__name__
   elif isinstance(execution_outcome.phase_result, phase_descriptor.PhaseResult):
     return execution_outcome.phase_result.name
-  elif isinstance(execution_outcome.phase_result,
-                  threads.ThreadTerminationError):
+  elif isinstance(
+      execution_outcome.phase_result, threads.ThreadTerminationError
+  ):
     return type(execution_outcome.phase_result).__name__
   elif execution_outcome.phase_result is None:
     return ''
   raise TypeError(
       f'{execution_outcome.phase_result.__name__} cannot be converted to a '
-      'string.')
+      'string.'
+  )
 
 
 def StringFromPhaseRecord(
     phase: test_record.PhaseRecord,
     only_failures: bool = False,
     colorize_text: bool = False,
-    maximum_num_measurements: Optional[int] = None) -> str:
+    maximum_num_measurements: Optional[int] = None,
+) -> str:
   """Returns a text summary of the phase record that ran.
 
   Args:
@@ -202,15 +229,21 @@ def StringFromPhaseRecord(
   output = []
 
   text = 'Phase {}\n+ Outcome: {} Result: {}'.format(
-      phase.name, phase.outcome.name,
-      StringFromPhaseExecutionOutcome(phase.result))
-  if (phase.outcome != test_record.PhaseOutcome.PASS and
-      phase.outcome != test_record.PhaseOutcome.SKIP and colorize_text):
+      phase.name,
+      phase.outcome.name,
+      StringFromPhaseExecutionOutcome(phase.result),
+  )
+  if (
+      phase.outcome != test_record.PhaseOutcome.PASS
+      and phase.outcome != test_record.PhaseOutcome.SKIP
+      and colorize_text
+  ):
     text = _ColorText(text, _BRIGHT_RED_STYLE)
   output.append(text)
   sorted_measurement = sorted(
       phase.measurements.values(),
-      key=lambda measurement: measurement.outcome == measurements.Outcome.PASS)
+      key=lambda measurement: measurement.outcome == measurements.Outcome.PASS,
+  )
   num_measurements_can_be_printed = maximum_num_measurements
   for measurement in sorted_measurement:
     if not only_failures or measurement.outcome == measurements.Outcome.FAIL:
@@ -221,7 +254,8 @@ def StringFromPhaseRecord(
             output.append('...')
           break
       output.append(
-          StringFromMeasurement(measurement, colorize_text=colorize_text))
+          StringFromMeasurement(measurement, colorize_text=colorize_text)
+      )
 
   for name, attachment in phase.attachments.items():
     output.append(StringFromAttachment(attachment, name))
@@ -229,7 +263,8 @@ def StringFromPhaseRecord(
 
 
 def StringFromOutcomeDetails(
-    outcome_details: List[test_record.OutcomeDetails]) -> str:
+    outcome_details: List[test_record.OutcomeDetails],
+) -> str:
   """Returns a text summary of the outcome details.
 
   Args:
@@ -246,10 +281,12 @@ def StringFromOutcomeDetails(
   return '\n'.join(output)
 
 
-def StringFromTestRecord(record: test_record.TestRecord,
-                         only_failures: bool = False,
-                         colorize_text: bool = False,
-                         maximum_num_measurements: Optional[int] = None) -> str:
+def StringFromTestRecord(
+    record: test_record.TestRecord,
+    only_failures: bool = False,
+    colorize_text: bool = False,
+    maximum_num_measurements: Optional[int] = None,
+) -> str:
   """Returns a text summary of the test record that ran.
 
   Args:
@@ -269,18 +306,23 @@ def StringFromTestRecord(record: test_record.TestRecord,
     output.append('Woohoo!')
 
   for phase in record.phases:
-    if (not only_failures or (phase.outcome != test_record.PhaseOutcome.PASS and
-                              phase.outcome != test_record.PhaseOutcome.SKIP)):
+    if not only_failures or (
+        phase.outcome != test_record.PhaseOutcome.PASS
+        and phase.outcome != test_record.PhaseOutcome.SKIP
+    ):
       output.append(
           StringFromPhaseRecord(
               phase,
               only_failures=only_failures,
               colorize_text=colorize_text,
-              maximum_num_measurements=maximum_num_measurements))
+              maximum_num_measurements=maximum_num_measurements,
+          )
+      )
 
   # Check for top-level exceptions.
   if record.outcome_details and record.outcome in {
-      test_record.Outcome.FAIL, test_record.Outcome.ERROR
+      test_record.Outcome.FAIL,
+      test_record.Outcome.ERROR,
   }:
     output.append(StringFromOutcomeDetails(record.outcome_details))
 

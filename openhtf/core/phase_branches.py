@@ -20,8 +20,17 @@ diagnosis results of the test run.
 
 import abc
 import enum
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterator, Optional,
-                    Text, Tuple, Union)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    Text,
+    Tuple,
+    Union,
+)
 
 import attr
 from openhtf import util
@@ -94,19 +103,22 @@ class DiagnosisCondition(object):
     return cls(condition=ConditionOn.ANY, diagnosis_results=tuple(diags))
 
   @classmethod
-  def on_not_all(cls,
-                 *diags: diagnoses_lib.DiagResultEnum) -> 'DiagnosisCondition':
+  def on_not_all(
+      cls, *diags: diagnoses_lib.DiagResultEnum
+  ) -> 'DiagnosisCondition':
     return cls(condition=ConditionOn.NOT_ALL, diagnosis_results=tuple(diags))
 
   @classmethod
-  def on_not_any(cls,
-                 *diags: diagnoses_lib.DiagResultEnum) -> 'DiagnosisCondition':
+  def on_not_any(
+      cls, *diags: diagnoses_lib.DiagResultEnum
+  ) -> 'DiagnosisCondition':
     return cls(condition=ConditionOn.NOT_ANY, diagnosis_results=tuple(diags))
 
   def check(self, diag_store: diagnoses_lib.DiagnosesStore) -> bool:
     condition_func = _CONDITION_LOOKUP[self.condition]
     return condition_func(
-        diag_store.has_diagnosis_result(d) for d in self.diagnosis_results)
+        diag_store.has_diagnosis_result(d) for d in self.diagnosis_results
+    )
 
   def _asdict(self) -> Dict[Text, Any]:
     """Returns a base type dictionary for serialization."""
@@ -129,8 +141,12 @@ class BranchSequence(phase_collections.PhaseSequence):
 
   diag_condition = attr.ib(type=DiagnosisCondition, default=None)
 
-  def __init__(self, diag_condition: DiagnosisCondition,
-               *args: phase_collections.SequenceInitializerT, **kwargs: Any):
+  def __init__(
+      self,
+      diag_condition: DiagnosisCondition,
+      *args: phase_collections.SequenceInitializerT,
+      **kwargs: Any
+  ):
     super(BranchSequence, self).__init__(*args, **kwargs)
     object.__setattr__(self, 'diag_condition', diag_condition)
 
@@ -157,9 +173,10 @@ class Checkpoint(phase_nodes.PhaseNode, abc.ABC):
       type=phase_descriptor.PhaseResult,
       validator=attr.validators.in_([
           phase_descriptor.PhaseResult.STOP,
-          phase_descriptor.PhaseResult.FAIL_SUBTEST
+          phase_descriptor.PhaseResult.FAIL_SUBTEST,
       ]),
-      default=phase_descriptor.PhaseResult.STOP)
+      default=phase_descriptor.PhaseResult.STOP,
+  )
 
   def _asdict(self) -> Dict[Text, Any]:
     return {
@@ -177,15 +194,17 @@ class Checkpoint(phase_nodes.PhaseNode, abc.ABC):
     return self
 
   def apply_to_all_phases(
-      self, func: Callable[[phase_descriptor.PhaseDescriptor],
-                           phase_descriptor.PhaseDescriptor]
+      self,
+      func: Callable[
+          [phase_descriptor.PhaseDescriptor], phase_descriptor.PhaseDescriptor
+      ],
   ) -> 'Checkpoint':
     return self
 
   def get_result(
       self,
       running_test_state: 'test_state.TestState',
-      subtest_rec: Optional[test_record.SubtestRecord] = None
+      subtest_rec: Optional[test_record.SubtestRecord] = None,
   ) -> phase_descriptor.PhaseReturnT:
     if self._check_for_action(running_test_state, subtest_rec):
       return self.action
@@ -195,7 +214,8 @@ class Checkpoint(phase_nodes.PhaseNode, abc.ABC):
   def _check_for_action(
       self,
       running_test_state: 'test_state.TestState',
-      subtest_rec: Optional[test_record.SubtestRecord] = None) -> bool:
+      subtest_rec: Optional[test_record.SubtestRecord] = None,
+  ) -> bool:
     """Returns True when the action should be taken."""
 
   @abc.abstractmethod
@@ -214,7 +234,8 @@ class PhaseFailureCheckpoint(Checkpoint):
   """
 
   previous_phases_to_check = attr.ib(
-      type=PreviousPhases, default=PreviousPhases.ALL)
+      type=PreviousPhases, default=PreviousPhases.ALL
+  )
 
   @classmethod
   def last(cls, *args, **kwargs) -> 'PhaseFailureCheckpoint':
@@ -245,18 +266,22 @@ class PhaseFailureCheckpoint(Checkpoint):
   def _check_for_action(
       self,
       running_test_state: 'test_state.TestState',
-      subtest_rec: Optional[test_record.SubtestRecord] = None) -> bool:
+      subtest_rec: Optional[test_record.SubtestRecord] = None,
+  ) -> bool:
     """Returns True when the specific set of phases fail."""
     phase_records = running_test_state.test_record.phases
     if not phase_records:
       raise NoPhasesFoundError('No phases found in the test record.')
     if self.previous_phases_to_check == PreviousPhases.LAST:
       return self._phase_failed(phase_records[-1])
-    elif (self.previous_phases_to_check == PreviousPhases.SUBTEST and
-          subtest_rec is not None):
+    elif (
+        self.previous_phases_to_check == PreviousPhases.SUBTEST
+        and subtest_rec is not None
+    ):
       for phase_rec in phase_records:
-        if (phase_rec.subtest_name == subtest_rec.name and
-            self._phase_failed(phase_rec)):
+        if phase_rec.subtest_name == subtest_rec.name and self._phase_failed(
+            phase_rec
+        ):
           return True
     else:
       for phase_rec in phase_records:
@@ -286,7 +311,8 @@ class DiagnosisCheckpoint(Checkpoint):
   def _check_for_action(
       self,
       running_test_state: 'test_state.TestState',
-      subtest_rec: Optional[test_record.SubtestRecord] = None) -> bool:
+      subtest_rec: Optional[test_record.SubtestRecord] = None,
+  ) -> bool:
     """Returns True if the condition is true."""
     return self.diag_condition.check(running_test_state.diagnoses_manager.store)
 

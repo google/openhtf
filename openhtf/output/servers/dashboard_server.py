@@ -41,15 +41,19 @@ DASHBOARD_SERVER_TYPE = 'dashboard'
 
 
 class StationInfo(  # pylint: disable=missing-class-docstring
-    collections.namedtuple('StationInfo', [
-        'cell',
-        'host',
-        'port',
-        'station_id',
-        'status',
-        'test_description',
-        'test_name',
-    ])):
+    collections.namedtuple(
+        'StationInfo',
+        [
+            'cell',
+            'host',
+            'port',
+            'station_id',
+            'status',
+            'test_description',
+            'test_name',
+        ],
+    )
+):
   pass
 
 
@@ -60,18 +64,26 @@ def _discover(**kwargs):
     try:
       result = json.loads(response)
     except ValueError:
-      _LOG.warning('Received bad JSON over multicast from %s: %s', host,
-                   response)
+      _LOG.warning(
+          'Received bad JSON over multicast from %s: %s', host, response
+      )
     try:
-      yield StationInfo(result['cell'], host, result['port'],
-                        result['station_id'], 'ONLINE',
-                        result.get('test_description'), result['test_name'])
+      yield StationInfo(
+          result['cell'],
+          host,
+          result['port'],
+          result['station_id'],
+          'ONLINE',
+          result.get('test_description'),
+          result['test_name'],
+      )
     except KeyError:
       if 'last_activity_time_millis' in result:
         _LOG.debug('Received old station API response on multicast. Ignoring.')
       else:
-        _LOG.warning('Received bad multicast response from %s: %s', host,
-                     response)
+        _LOG.warning(
+            'Received bad multicast response from %s: %s', host, response
+        )
 
 
 class StationListHandler(tornado.web.RequestHandler):
@@ -86,6 +98,7 @@ class StationListHandler(tornado.web.RequestHandler):
 
 class DashboardPubSub(pub_sub.PubSub):
   """WebSocket endpoint for the list of available stations."""
+
   _lock = threading.Lock()  # Required by pub_sub.PubSub.
   subscribers = set()  # Required by pub_sub.PubSub.
   last_message = None
@@ -101,7 +114,6 @@ class DashboardPubSub(pub_sub.PubSub):
   def update_stations(cls, station_info_list):
     """Called by the station discovery loop to update the station map."""
     with cls.station_map_lock:
-
       # By default, assume old stations are unreachable.
       for host_port, station_info in cls.station_map.items():
         cls.station_map[host_port] = station_info._replace(status='UNREACHABLE')
@@ -140,10 +152,13 @@ class DashboardServer(web_gui_server.WebGuiServer):
     }
 
   def run(self):
-    _LOG.info('Starting dashboard server at:\n'  # pylint: disable=logging-format-interpolation
-              '  Local: http://localhost:{port}\n'
-              '  Remote: http://{host}:{port}'.format(
-                  host=socket.gethostname(), port=self.port))
+    _LOG.info(
+        'Starting dashboard server at:\n'  # pylint: disable=logging-format-interpolation
+        '  Local: http://localhost:{port}\n'
+        '  Remote: http://{host}:{port}'.format(
+            host=socket.gethostname(), port=self.port
+        )
+    )
     super(DashboardServer, self).run()
 
   def stop(self):
@@ -155,28 +170,34 @@ def main():
   logging.basicConfig(level=logging.INFO)
 
   parser = argparse.ArgumentParser(
-      description='Serves web GUI for interacting with multiple OpenHTF '
-      'stations.')
+      description=(
+          'Serves web GUI for interacting with multiple OpenHTF stations.'
+      )
+  )
   parser.add_argument(
       '--discovery-interval-s',
       type=int,
       default=1,
-      help='Seconds between station discovery attempts.')
+      help='Seconds between station discovery attempts.',
+  )
   parser.add_argument(
       '--launch-web-gui',
       default=True,
       action='store_true',
-      help='Whether to automatically open web GUI.')
+      help='Whether to automatically open web GUI.',
+  )
   parser.add_argument(
       '--no-launch-web-gui',
       dest='launch_web_gui',
       action='store_false',
-      help='Whether to automatically open web GUI.')
+      help='Whether to automatically open web GUI.',
+  )
   parser.add_argument(
       '--dashboard-server-port',
       type=int,
       default=12000,
-      help='Port on which to serve the dashboard server.')
+      help='Port on which to serve the dashboard server.',
+  )
 
   # These have default values in openhtf.util.multicast.py.
   parser.add_argument('--station-discovery-address', type=str)
@@ -187,12 +208,12 @@ def main():
       action='store_false',
       default=True,
       dest='station_discovery_local_only',
-      help=('Whether to discover only local stations.'))
+      help='Whether to discover only local stations.',
+  )
 
   args = parser.parse_args()
 
   with DashboardServer(args.dashboard_server_port) as server:
-
     if args.launch_web_gui:
       url = 'http://localhost:%s' % (server.port,)
       try:

@@ -74,7 +74,10 @@ class TestOutput(test.TestCase):
 
     # Verify all expected phases included.
     expected_phase_names = [
-        'trigger_phase', 'hello_world', 'dimensions', 'attachments'
+        'trigger_phase',
+        'hello_world',
+        'dimensions',
+        'attachments',
     ]
     actual_phase_names = [phase.name for phase in test_run_proto.phases]
     self.assertEqual(expected_phase_names, actual_phase_names)
@@ -140,8 +143,12 @@ class TestMfgEventOutput(test.TestCase):
 
     # Verify all expected phases included.
     expected_phase_names = [
-        'trigger_phase', 'hello_world', 'dimensions', 'attachments',
-        'hello_world', 'attachments'
+        'trigger_phase',
+        'hello_world',
+        'dimensions',
+        'attachments',
+        'hello_world',
+        'attachments',
     ]
     actual_phase_names = [phase.name for phase in mfg_event.phases]
     self.assertEqual(expected_phase_names, actual_phase_names)
@@ -157,7 +164,8 @@ class TestMfgEventOutput(test.TestCase):
 
     # Spot check an attachment (example_attachment.txt)
     for attachment_name in [
-        'example_attachment_0.txt', 'example_attachment_1.txt'
+        'example_attachment_0.txt',
+        'example_attachment_1.txt',
     ]:
       for attachment in mfg_event.attachment:
         if attachment.name == attachment_name:
@@ -181,7 +189,8 @@ class TestConsoleSummary(test.TestCase):
   def test_empty_outcome(self):
     """Console Summary must not crash if phases have been skipped."""
     checkpoint = phase_branches.PhaseFailureCheckpoint.all_previous(
-        'cp', action=phase_descriptor.PhaseResult.FAIL_SUBTEST)
+        'cp', action=phase_descriptor.PhaseResult.FAIL_SUBTEST
+    )
     phasegroup = phase_group.PhaseGroup(
         lambda: htf.PhaseResult.FAIL_AND_CONTINUE,
         lambda: htf.PhaseResult.SKIP,
@@ -195,9 +204,12 @@ class TestConsoleSummary(test.TestCase):
     def _save_result(test_record):
       result_store.result = test_record
 
-    test_instance.add_output_callbacks(console_summary.ConsoleSummary(),
-                                       _save_result)
+    test_instance.add_output_callbacks(
+        console_summary.ConsoleSummary(), _save_result
+    )
 
     test_instance.execute()
-    assert not any('Traceback' in record.message
-                   for record in result_store.result.log_records)
+    assert not any(
+        'Traceback' in record.message
+        for record in result_store.result.log_records
+    )

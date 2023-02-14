@@ -52,6 +52,7 @@ class ShamelessPlug(base_plugs.BasePlug):
 
 class ShamelessPlugStub(base_plugs.BasePlug):
   """Stub/fake implementation for ShamelessPlug."""
+
   plug_away_call_counts: int
 
   def __init__(self):
@@ -103,7 +104,6 @@ def phase_retval(retval):
 class PatchPlugsTest(unittest.TestCase):
 
   def test_patch_plugs_fails_for_bad_subtype(self):
-
     class NormalUnitTest(unittest.TestCase):
 
       @test.yields_phases
@@ -123,7 +123,8 @@ class TestTest(test.TestCase):
 
   def test_execute_phase_or_test_test_with_no_patched_plugs(self):
     test_record = self.execute_phase_or_test(
-        openhtf.Test(test_phase_with_shameless_plug))
+        openhtf.Test(test_phase_with_shameless_plug)
+    )
     self.assertTestPass(test_record)
 
   def test_execute_phase_or_test_phase_with_patched_plugs(self):
@@ -132,8 +133,8 @@ class TestTest(test.TestCase):
     shameless_plug = ShamelessPlug()
     self.plugs[ShamelessPlug] = shameless_plug
     with mock.patch.object(
-        shameless_plug, shameless_plug.plug_away.__name__,
-        autospec=True) as mocked_plug_away:
+        shameless_plug, shameless_plug.plug_away.__name__, autospec=True
+    ) as mocked_plug_away:
       phase_record = self.execute_phase_or_test(test_phase)
       mocked_plug_away.assert_called_once_with()
     self.assertPhaseContinue(phase_record)
@@ -166,8 +167,8 @@ class TestTest(test.TestCase):
     shameless_plug = ShamelessPlug()
     self.plugs[ShamelessPlug] = shameless_plug
     with mock.patch.object(
-        shameless_plug, shameless_plug.plug_away.__name__,
-        autospec=True) as mocked_plug_away:
+        shameless_plug, shameless_plug.plug_away.__name__, autospec=True
+    ) as mocked_plug_away:
       test_record = self.execute_phase_or_test(openhtf.Test(test_phase))
       mocked_plug_away.assert_called_once_with()
     self._run_my_phase_in_test_asserts(self.plugs[MyPlug], test_record)
@@ -234,7 +235,6 @@ class TestTest(test.TestCase):
       self.assertMeasured(None)
 
   def test_doesnt_yield(self):
-
     def doesnt_yield(cls_self):  # pylint: disable=unused-argument
       pass
 
@@ -253,21 +253,20 @@ class TestTest(test.TestCase):
     # Test that we catch mocks that aren't expected.
     with self.assertRaises(test.InvalidTestError):
       test.patch_plugs(
-          plug_one='unused', plug_two='unused', plug_three='unused')(
-              stub_test_method)
+          plug_one='unused', plug_two='unused', plug_three='unused'
+      )(stub_test_method)
 
     # Test that we catch weird plug specifications.
     with self.assertRaises(ValueError):
-      test.patch_plugs(
-          plug_one='bad_spec_no_dots', plug_two='unused')(
-              stub_test_method)
+      test.patch_plugs(plug_one='bad_spec_no_dots', plug_two='unused')(
+          stub_test_method
+      )
     with self.assertRaises(KeyError):
-      test.patch_plugs(
-          plug_one='bad.spec.invalid.module', plug_two='also.bad')(
-              stub_test_method)
+      test.patch_plugs(plug_one='bad.spec.invalid.module', plug_two='also.bad')(
+          stub_test_method
+      )
 
   def test_bad_yield(self):
-
     def bad_test(cls_self):  # pylint: disable=unused-argument
       yield None
 
@@ -300,13 +299,17 @@ class PhaseProfilingTest(test.TestCase):
     self.execute_phase_or_test(test_phase_with_shameless_plug)
     with io.StringIO() as output_stream:
       stats = pstats.Stats(
-          str(self.get_profile_filepath()), stream=output_stream)
+          str(self.get_profile_filepath()), stream=output_stream
+      )
       stats.print_stats(test_phase_with_shameless_plug.name)
       output_stream.seek(0)
       output = output_stream.read()
     self.assertIn(
         test_phase_with_shameless_plug.func.__module__.replace(
-            '.', os.path.sep), output)
+            '.', os.path.sep
+        ),
+        output,
+    )
 
 
 class TestProfilingTest(test.TestCase):
@@ -330,10 +333,14 @@ class TestProfilingTest(test.TestCase):
     self.execute_phase_or_test(openhtf.Test(test_phase_with_shameless_plug))
     with io.StringIO() as output_stream:
       stats = pstats.Stats(
-          str(self.get_profile_filepath()), stream=output_stream)
+          str(self.get_profile_filepath()), stream=output_stream
+      )
       stats.print_stats(test_phase_with_shameless_plug.name)
       output_stream.seek(0)
       output = output_stream.read()
     self.assertIn(
         test_phase_with_shameless_plug.func.__module__.replace(
-            '.', os.path.sep), output)
+            '.', os.path.sep
+        ),
+        output,
+    )

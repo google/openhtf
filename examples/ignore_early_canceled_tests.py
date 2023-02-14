@@ -35,10 +35,13 @@ DEFAULT_DUT_ID = '<UNSET_DUT_ID>'
 class CustomOutputToJSON(json_factory.OutputToJSON):
 
   def __call__(self, record):
-    if (record.outcome == test_record.Outcome.ABORTED and
-        record.dut_id == DEFAULT_DUT_ID):
+    if (
+        record.outcome == test_record.Outcome.ABORTED
+        and record.dut_id == DEFAULT_DUT_ID
+    ):
       console_output.cli_print(
-          'Test was aborted at test start. Skipping output to JSON.')
+          'Test was aborted at test start. Skipping output to JSON.'
+      )
     else:
       console_output.cli_print('Outputting test record to JSON.')
       super(CustomOutputToJSON, self).__call__(record)
@@ -47,15 +50,17 @@ class CustomOutputToJSON(json_factory.OutputToJSON):
 @htf.plug(user=user_input.UserInput)
 def HelloWorldPhase(test, user):
   test.logger.info('Hello World!')
-  user.prompt('The DUT ID is `%s`. Press enter to continue.' %
-              test.test_record.dut_id)
+  user.prompt(
+      'The DUT ID is `%s`. Press enter to continue.' % test.test_record.dut_id
+  )
 
 
 def main():
   test = htf.Test(HelloWorldPhase)
   test.configure(default_dut_id=DEFAULT_DUT_ID)
   test.add_output_callbacks(
-      CustomOutputToJSON('./{dut_id}.hello_world.json', indent=2))
+      CustomOutputToJSON('./{dut_id}.hello_world.json', indent=2)
+  )
   test.execute(test_start=user_input.prompt_for_test_start())
 
 

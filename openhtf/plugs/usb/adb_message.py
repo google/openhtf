@@ -64,17 +64,23 @@ def make_wire_commands(*ids):
 class RawAdbMessage(
     collections.namedtuple(
         'RawAdbMessage',
-        ['cmd', 'arg0', 'arg1', 'data_length', 'data_checksum', 'magic'])):
+        ['cmd', 'arg0', 'arg1', 'data_length', 'data_checksum', 'magic'],
+    )
+):
   """Helper class for handling the struct -> AdbMessage mapping."""
 
   def to_adb_message(self, data):
     """Turn the data into an ADB message."""
     message = AdbMessage(
-        AdbMessage.WIRE_TO_CMD.get(self.cmd), self.arg0, self.arg1, data)
-    if (len(data) != self.data_length or
-        message.data_crc32 != self.data_checksum):
+        AdbMessage.WIRE_TO_CMD.get(self.cmd), self.arg0, self.arg1, data
+    )
+    if (
+        len(data) != self.data_length
+        or message.data_crc32 != self.data_checksum
+    ):
       raise usb_exceptions.AdbDataIntegrityError(
-          '%s (%s) received invalid data: %s' % (message, self, repr(data)))
+          '%s (%s) received invalid data: %s' % (message, self, repr(data))
+      )
     return message
 
 
@@ -122,8 +128,10 @@ class AdbTransportAdapter(object):
       # because we don't want the remote end to get out of sync because we sent
       # a header but no data.
       if timeout.has_expired():
-        _LOG.warning('Timed out between AdbMessage header and data, sending '
-                     'data anyway with 10ms timeout')
+        _LOG.warning(
+            'Timed out between AdbMessage header and data, sending '
+            'data anyway with 10ms timeout'
+        )
         timeout = timeouts.PolledTimeout.from_millis(10)
       self._transport.write(message.data, timeout.remaining_ms)
 
@@ -146,26 +154,31 @@ class AdbTransportAdapter(object):
     """
     with self._reader_lock:
       raw_header = self._transport.read(
-          struct.calcsize(AdbMessage.HEADER_STRUCT_FORMAT),
-          timeout.remaining_ms)
+          struct.calcsize(AdbMessage.HEADER_STRUCT_FORMAT), timeout.remaining_ms
+      )
       if not raw_header:
         raise usb_exceptions.AdbProtocolError('Adb connection lost')
 
       try:
         raw_message = RawAdbMessage(
-            *struct.unpack(AdbMessage.HEADER_STRUCT_FORMAT, raw_header))
+            *struct.unpack(AdbMessage.HEADER_STRUCT_FORMAT, raw_header)
+        )
       except struct.error as exception:
         raise usb_exceptions.AdbProtocolError(
-            'Unable to unpack ADB command (%s): %s (%s)' %
-            (AdbMessage.HEADER_STRUCT_FORMAT, raw_header, exception))
+            'Unable to unpack ADB command (%s): %s (%s)'
+            % (AdbMessage.HEADER_STRUCT_FORMAT, raw_header, exception)
+        )
 
       if raw_message.data_length > 0:
         if timeout.has_expired():
-          _LOG.warning('Timed out between AdbMessage header and data, reading '
-                       'data anyway with 10ms timeout')
+          _LOG.warning(
+              'Timed out between AdbMessage header and data, reading '
+              'data anyway with 10ms timeout'
+          )
           timeout = timeouts.PolledTimeout.from_millis(10)
-        data = self._transport.read(raw_message.data_length,
-                                    timeout.remaining_ms)
+        data = self._transport.read(
+            raw_message.data_length, timeout.remaining_ms
+        )
       else:
         data = ''
 
@@ -193,12 +206,16 @@ class AdbTransportAdapter(object):
         if we are getting spammed with unexpected commands.
     """
     msg = timeouts.loop_until_timeout_or_valid(
-        timeout, lambda: self.read_message(timeout),
-        lambda m: m.command in expected_commands, 0)
+        timeout,
+        lambda: self.read_message(timeout),
+        lambda m: m.command in expected_commands,
+        0,
+    )
     if msg.command not in expected_commands:
       raise usb_exceptions.AdbTimeoutError(
-          'Timed out establishing connection, waiting for: %s' %
-          expected_commands)
+          'Timed out establishing connection, waiting for: %s'
+          % expected_commands
+      )
     return msg
 
 
@@ -251,15 +268,17 @@ class AdbMessage(object):
   """
 
   PRINTABLE_DATA = set(string.printable) - set(string.whitespace)
-  CMD_TO_WIRE, WIRE_TO_CMD = make_wire_commands('SYNC', 'CNXN', 'AUTH', 'OPEN',
-                                                'OKAY', 'CLSE', 'WRTE')
+  CMD_TO_WIRE, WIRE_TO_CMD = make_wire_commands(
+      'SYNC', 'CNXN', 'AUTH', 'OPEN', 'OKAY', 'CLSE', 'WRTE'
+  )
   # An ADB message is 6 words in little-endian.
   HEADER_STRUCT_FORMAT = '<6I'
 
   def __init__(self, command, arg0=0, arg1=0, data=''):
     if command not in self.CMD_TO_WIRE:
-      raise usb_exceptions.AdbProtocolError('Unrecognized ADB command: %s' %
-                                            command)
+      raise usb_exceptions.AdbProtocolError(
+          'Unrecognized ADB command: %s' % command
+      )
     self._command = self.CMD_TO_WIRE[command]
     self.arg0 = arg0
     self.arg1 = arg1
@@ -269,8 +288,15 @@ class AdbMessage(object):
   @property
   def header(self):
     """The message header."""
-    return struct.pack(self.HEADER_STRUCT_FORMAT, self._command, self.arg0,
-                       self.arg1, len(self.data), self.data_crc32, self.magic)
+    return struct.pack(
+        self.HEADER_STRUCT_FORMAT,
+        self._command,
+        self.arg0,
+        self.arg1,
+        len(self.data),
+        self.data_crc32,
+        self.magic,
+    )
 
   @property
   def command(self):
@@ -279,9 +305,16 @@ class AdbMessage(object):
 
   def __str__(self):
     return '<%s: %s(%s, %s): %s (%s bytes)>' % (
-        type(self).__name__, self.command, self.arg0, self.arg1, ''.join(
+        type(self).__name__,
+        self.command,
+        self.arg0,
+        self.arg1,
+        ''.join(
             char if char in self.PRINTABLE_DATA else '.'
-            for char in self.data[:64]), len(self.data))
+            for char in self.data[:64]
+        ),
+        len(self.data),
+    )
 
   __repr__ = __str__
 

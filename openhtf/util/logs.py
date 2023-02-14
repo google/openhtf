@@ -121,29 +121,38 @@ ARG_PARSER.add_argument(
     '-v',
     action=argv.StoreRepsInModule,
     target='%s.CLI_LOGGING_VERBOSITY' % __name__,
-    help=textwrap.dedent("""\
+    help=textwrap.dedent(
+        """\
         CLI logging verbosity. Can be repeated to increase verbosity (i.e. -v,
-        -vv, -vvv)."""))
+        -vv, -vvv)."""
+    ),
+)
 
 LOGGER_PREFIX = 'openhtf'
 RECORD_LOGGER_PREFIX = '.'.join((LOGGER_PREFIX, 'test_record'))
-RECORD_LOGGER_RE = re.compile(r'%s\.(?P<test_uid>[^.]*)\.?' %
-                              RECORD_LOGGER_PREFIX)
+RECORD_LOGGER_RE = re.compile(
+    r'%s\.(?P<test_uid>[^.]*)\.?' % RECORD_LOGGER_PREFIX
+)
 SUBSYSTEM_LOGGER_RE = re.compile(
-    r'%s\.[^.]*\.(?P<subsys>plug|phase)\.(?P<id>[^.]*)' % RECORD_LOGGER_PREFIX)
+    r'%s\.[^.]*\.(?P<subsys>plug|phase)\.(?P<id>[^.]*)' % RECORD_LOGGER_PREFIX
+)
 
 _LOG_ONCE_SEEN = set()
 
 
 class LogRecord(
-    collections.namedtuple('LogRecord', [
-        'level',
-        'logger_name',
-        'source',
-        'lineno',
-        'timestamp_millis',
-        'message',
-    ])):
+    collections.namedtuple(
+        'LogRecord',
+        [
+            'level',
+            'logger_name',
+            'source',
+            'lineno',
+            'timestamp_millis',
+            'message',
+        ],
+    )
+):
   pass
 
 
@@ -198,7 +207,7 @@ def remove_record_handler(test_uid):
 
 
 def log_once(log_func, msg, *args, **kwargs):
-  """"Logs a message only once."""
+  """ "Logs a message only once."""
   if msg not in _LOG_ONCE_SEEN:
     log_func(msg, *args, **kwargs)
     # Key on the message, ignoring args. This should fit most use cases.
@@ -212,7 +221,9 @@ class MacAddressLogFilter(logging.Filter):
       r"""
         ((?:[\dA-F]{2}:){3})       # 3-part prefix, f8:8f:ca means google
         (?:[\dA-F]{2}(:|\b)){3}    # the remaining octets
-        """, re.IGNORECASE | re.VERBOSE)
+        """,
+      re.IGNORECASE | re.VERBOSE,
+  )
   MAC_REPLACEMENT = r'\1<REDACTED>'
 
   def filter(self, record):
@@ -220,13 +231,18 @@ class MacAddressLogFilter(logging.Filter):
       # Update all the things to have no mac address in them
       if isinstance(record.msg, str):
         record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, record.msg)
-        record.args = tuple([
-            self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
-            if isinstance(arg, str) else arg for arg in record.args
-        ])
+        record.args = tuple(
+            [
+                self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT, str(arg))
+                if isinstance(arg, str)
+                else arg
+                for arg in record.args
+            ]
+        )
       else:
-        record.msg = self.MAC_REPLACE_RE.sub(self.MAC_REPLACEMENT,
-                                             record.getMessage())
+        record.msg = self.MAC_REPLACE_RE.sub(
+            self.MAC_REPLACEMENT, record.getMessage()
+        )
     return True
 
 
@@ -296,7 +312,7 @@ class CliFormatter(logging.Formatter):
     """Format the record as tersely as possible but preserve info."""
     super(CliFormatter, self).format(record)
     localized_time = datetime.datetime.fromtimestamp(record.created)
-    terse_time = localized_time.strftime(u'%H:%M:%S')
+    terse_time = localized_time.strftime('%H:%M:%S')
     terse_level = record.levelname[0]
     terse_name = record.name.split('.')[-1]
     match = RECORD_LOGGER_RE.match(record.name)
@@ -305,12 +321,14 @@ class CliFormatter(logging.Formatter):
       subsys_match = SUBSYSTEM_LOGGER_RE.match(record.name)
       if subsys_match:
         terse_name = '<{subsys}: {id}>'.format(
-            subsys=subsys_match.group('subsys'), id=subsys_match.group('id'))
+            subsys=subsys_match.group('subsys'), id=subsys_match.group('id')
+        )
       else:
         # Fall back to using the last five characters of the test UUID.
         terse_name = '<test %s>' % match.group('test_uid')[-5:]
     return '{lvl} {time} {logger} - {msg}'.format(
-        lvl=terse_level, time=terse_time, logger=terse_name, msg=record.message)
+        lvl=terse_level, time=terse_time, logger=terse_name, msg=record.message
+    )
 
 
 @functions.call_once

@@ -113,13 +113,15 @@ class AsyncCommandHandle(object):
     self.force_closed_or_timeout = False
 
     self.reader_thread = threading.Thread(
-        target=self._reader_thread_proc, args=(timeout,))
+        target=self._reader_thread_proc, args=(timeout,)
+    )
     self.reader_thread.daemon = True
     self.reader_thread.start()
 
     if stdin:
       self.writer_thread = threading.Thread(
-          target=self._writer_thread_proc, args=(is_raw,))
+          target=self._writer_thread_proc, args=(is_raw,)
+      )
       self.writer_thread.daemon = True
       self.writer_thread.start()
 
@@ -177,8 +179,10 @@ class AsyncCommandHandle(object):
     return value explicitly for None, as the output may be ''.
     """
     closed = timeouts.loop_until_timeout_or_true(
-        timeouts.PolledTimeout.from_millis(timeout_ms), self.stream.is_closed,
-        .1)
+        timeouts.PolledTimeout.from_millis(timeout_ms),
+        self.stream.is_closed,
+        0.1,
+    )
     if closed:
       if hasattr(self.stdout, 'getvalue'):
         return self.stdout.getvalue()
@@ -212,10 +216,12 @@ class ShellService(object):
     # that we leave the other control characters at their defaults, but they
     # should be ignored since we disable them with flags and put the terminal
     # into non-canonical input mode (not newline delimited).
-    return ('ioctl -l 23 -a 1 /proc/self/fd/0 0x5403 '  # TCSETA (0x5403)
-            '0 0 0 0 0 0 0 0 0xbf 0 0 0 0 0 0 0 '  # Flags
-            '0 0x3 0x1c 0x7f 0x15 0x4 0xff '  # Control characters
-            '&>/dev/null;%s' % command)
+    return (
+        'ioctl -l 23 -a 1 /proc/self/fd/0 0x5403 '  # TCSETA (0x5403)
+        '0 0 0 0 0 0 0 0 0xbf 0 0 0 0 0 0 0 '  # Flags
+        '0 0x3 0x1c 0x7f 0x15 0x4 0xff '  # Control characters
+        '&>/dev/null;%s' % command
+    )
 
   def command(self, command, raw=False, timeout_ms=None):
     """Run the given command and return the output."""
@@ -228,12 +234,9 @@ class ShellService(object):
     return self.adb_connection.streaming_command('shell', command, timeout_ms)
 
   # pylint: disable=too-many-arguments
-  def async_command(self,
-                    command,
-                    stdin=None,
-                    stdout=None,
-                    raw=False,
-                    timeout_ms=None):
+  def async_command(
+      self, command, stdin=None, stdout=None, raw=False, timeout_ms=None
+  ):
     """Run the given command on the device asynchronously.
 
     Input will be read from stdin, output written to stdout.  ADB doesn't
@@ -266,11 +269,12 @@ class ShellService(object):
     stream = self.adb_connection.open_stream('shell:%s' % command, timeout)
     if not stream:
       raise usb_exceptions.AdbStreamUnavailableError(
-          '%s does not support service: shell' % self)
+          '%s does not support service: shell' % self
+      )
     if raw and stdin is not None:
       # Short delay to make sure the ioctl to set raw mode happens before we do
       # any writes to the stream, if we don't do this bad things happen...
-      time.sleep(.1)
+      time.sleep(0.1)
     return AsyncCommandHandle(stream, stdin, stdout, timeout, raw)
 
   # pylint: enable=too-many-arguments

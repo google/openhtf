@@ -31,8 +31,9 @@ try:
   import usb1  # pytype: disable=import-error
   # pylint: enable=g-import-not-at-top
 except ImportError:
-  logging.error('Failed to import libusb, did you pip install '
-                'openhtf[usb_plugs]?')
+  logging.error(
+      'Failed to import libusb, did you pip install openhtf[usb_plugs]?'
+  )
   raise
 
 
@@ -60,7 +61,8 @@ class LibUsbHandle(usb_handle.UsbHandle):
     super(LibUsbHandle, self).__init__(
         device.getSerialNumber(),
         name=name,
-        default_timeout_ms=default_timeout_ms)
+        default_timeout_ms=default_timeout_ms,
+    )
     self._setting = setting
     self._device = device
 
@@ -73,12 +75,14 @@ class LibUsbHandle(usb_handle.UsbHandle):
       if address & libusb1.USB_ENDPOINT_DIR_MASK == libusb1.LIBUSB_ENDPOINT_IN:
         if self._read_endpoint is not None:
           raise usb_exceptions.InvalidEndpointsError(
-              'Multiple in endpoints found')
+              'Multiple in endpoints found'
+          )
         self._read_endpoint = address
       else:
         if self._write_endpoint is not None:
           raise usb_exceptions.InvalidEndpointsError(
-              'Multiple out endpoints found')
+              'Multiple out endpoints found'
+          )
         self._write_endpoint = address
 
     if self._read_endpoint is None:
@@ -96,13 +100,15 @@ class LibUsbHandle(usb_handle.UsbHandle):
         _LOG.warning('Kernel driver not found for interface: %s.', iface_number)
       else:
         raise usb_exceptions.LibusbWrappingError(
-            exception, '%s failed to detach kernel driver', self)
+            exception, '%s failed to detach kernel driver', self
+        )
     # Try to claim the interface, if the device is gone, raise an IOError
     try:
       handle.claimInterface(iface_number)
     except libusb1.USBError as exception:
       raise usb_exceptions.LibusbWrappingError(
-          exception, '%s failed to claim interface: %d', self, iface_number)
+          exception, '%s failed to claim interface: %d', self, iface_number
+      )
 
     self._handle = handle
     self._interface_number = iface_number
@@ -113,8 +119,10 @@ class LibUsbHandle(usb_handle.UsbHandle):
   @staticmethod
   def _device_to_sysfs_path(device):
     """Convert device to corresponding sysfs path."""
-    return '%s-%s' % (device.getBusNumber(), '.'.join(
-        [str(item) for item in device.GetPortNumberList()]))
+    return '%s-%s' % (
+        device.getBusNumber(),
+        '.'.join([str(item) for item in device.GetPortNumberList()]),
+    )
 
   @property
   def port_path(self):
@@ -127,11 +135,15 @@ class LibUsbHandle(usb_handle.UsbHandle):
       return self._handle.bulkRead(
           self._read_endpoint,
           length,
-          timeout=self._timeout_or_default(timeout_ms))
+          timeout=self._timeout_or_default(timeout_ms),
+      )
     except libusb1.USBError as exception:
       raise usb_exceptions.UsbReadFailedError(
-          exception, '%s failed read (timeout %sms)', self,
-          self._timeout_or_default(timeout_ms))
+          exception,
+          '%s failed read (timeout %sms)',
+          self,
+          self._timeout_or_default(timeout_ms),
+      )
 
   @usb_handle.requires_open_handle
   def write(self, data, timeout_ms=None):
@@ -139,11 +151,15 @@ class LibUsbHandle(usb_handle.UsbHandle):
       return self._handle.bulkWrite(
           self._write_endpoint,
           data,
-          timeout=self._timeout_or_default(timeout_ms))
+          timeout=self._timeout_or_default(timeout_ms),
+      )
     except libusb1.USBError as exception:
       raise usb_exceptions.UsbWriteFailedError(
-          exception, '%s failed write (timeout %sms)', self,
-          self._timeout_or_default(timeout_ms))
+          exception,
+          '%s failed write (timeout %sms)',
+          self,
+          self._timeout_or_default(timeout_ms),
+      )
 
   def close(self):
     if self.is_closed():
@@ -166,8 +182,9 @@ class LibUsbHandle(usb_handle.UsbHandle):
       handle = next(handle_iter)
     except StopIteration:
       # No matching interface, raise.
-      raise usb_exceptions.DeviceNotFoundError('Open failed with args: %s' %
-                                               kwargs)
+      raise usb_exceptions.DeviceNotFoundError(
+          'Open failed with args: %s' % kwargs
+      )
 
     try:
       multiple_handle = next(handle_iter)
@@ -182,14 +199,16 @@ class LibUsbHandle(usb_handle.UsbHandle):
 
   # pylint: disable=too-many-arguments
   @classmethod
-  def iter_open(cls,
-                name=None,
-                interface_class=None,
-                interface_subclass=None,
-                interface_protocol=None,
-                serial_number=None,
-                port_path=None,
-                default_timeout_ms=None):
+  def iter_open(
+      cls,
+      name=None,
+      interface_class=None,
+      interface_subclass=None,
+      interface_protocol=None,
+      serial_number=None,
+      port_path=None,
+      default_timeout_ms=None,
+  ):
     """Find and yield locally connected devices that match.
 
     Note that devices are opened (and interfaces claimd) as they are yielded.
@@ -216,36 +235,58 @@ class LibUsbHandle(usb_handle.UsbHandle):
       devices = ctx.getDeviceList(skip_on_error=True)
     except libusb1.USBError as exception:
       raise usb_exceptions.LibusbWrappingError(
-          exception, 'Open(name=%s, class=%s, subclass=%s, protocol=%s, '
-          'serial=%s, port=%s) failed', name, interface_class,
-          interface_subclass, interface_protocol, serial_number, port_path)
+          exception,
+          (
+              'Open(name=%s, class=%s, subclass=%s, protocol=%s, '
+              'serial=%s, port=%s) failed'
+          ),
+          name,
+          interface_class,
+          interface_subclass,
+          interface_protocol,
+          serial_number,
+          port_path,
+      )
 
     for device in devices:
       try:
-        if (serial_number is not None and
-            device.getSerialNumber() != serial_number):
+        if (
+            serial_number is not None
+            and device.getSerialNumber() != serial_number
+        ):
           continue
 
-        if (port_path is not None and
-            cls._device_to_sysfs_path(device) != port_path):
+        if (
+            port_path is not None
+            and cls._device_to_sysfs_path(device) != port_path
+        ):
           continue
 
         for setting in device.iterSettings():
-          if (interface_class is not None and
-              setting.getClass() != interface_class):
+          if (
+              interface_class is not None
+              and setting.getClass() != interface_class
+          ):
             continue
-          if (interface_subclass is not None and
-              setting.getSubClass() != interface_subclass):
+          if (
+              interface_subclass is not None
+              and setting.getSubClass() != interface_subclass
+          ):
             continue
-          if (interface_protocol is not None and
-              setting.getProtocol() != interface_protocol):
+          if (
+              interface_protocol is not None
+              and setting.getProtocol() != interface_protocol
+          ):
             continue
 
           yield cls(
-              device, setting, name=name, default_timeout_ms=default_timeout_ms)
+              device, setting, name=name, default_timeout_ms=default_timeout_ms
+          )
       except libusb1.USBError as exception:
-        if (exception.value !=
-            libusb1.libusb_error.forward_dict['LIBUSB_ERROR_ACCESS']):
+        if (
+            exception.value
+            != libusb1.libusb_error.forward_dict['LIBUSB_ERROR_ACCESS']
+        ):
           raise
 
   # pylint: disable=too-many-arguments

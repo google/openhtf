@@ -54,7 +54,8 @@ def init_dependent_flags():
   parser = argparse.ArgumentParser(
       'USB Plug flags',
       parents=[adb_protocol.ARG_PARSER, fastboot_protocol.ARG_PARSER],
-      add_help=False)
+      add_help=False,
+  )
   parser.parse_known_args()
 
 
@@ -103,7 +104,9 @@ class FastbootPlug(base_plugs.BasePlug):
         _open_usb_handle(
             interface_class=fastboot_device.CLASS,
             interface_subclass=fastboot_device.SUBCLASS,
-            interface_protocol=fastboot_device.PROTOCOL))
+            interface_protocol=fastboot_device.PROTOCOL,
+        )
+    )
 
   def tearDown(self):
     self._device.close()
@@ -134,8 +137,10 @@ class AdbPlug(base_plugs.BasePlug):
     if self._device:
       try:
         self._device.close()
-      except (usb_exceptions.UsbWriteFailedError,
-              usb_exceptions.UsbReadFailedError):
+      except (
+          usb_exceptions.UsbWriteFailedError,
+          usb_exceptions.UsbReadFailedError,
+      ):
         pass
       self._device = None
 
@@ -148,7 +153,10 @@ class AdbPlug(base_plugs.BasePlug):
             interface_class=adb_device.CLASS,
             interface_subclass=adb_device.SUBCLASS,
             interface_protocol=adb_device.PROTOCOL,
-            serial_number=self.serial_number), **kwargs)
+            serial_number=self.serial_number,
+        ),
+        **kwargs
+    )
 
   def __getattr__(self, attr):
     """Forward other attributes to the device."""
@@ -166,15 +174,19 @@ class AndroidTriggers(object):  # pylint: disable=invalid-name
     handle = None
     for usb_cls, subcls, protocol in [
         (adb_device.CLASS, adb_device.SUBCLASS, adb_device.PROTOCOL),
-        (fastboot_device.CLASS, fastboot_device.SUBCLASS,
-         fastboot_device.PROTOCOL)
+        (
+            fastboot_device.CLASS,
+            fastboot_device.SUBCLASS,
+            fastboot_device.PROTOCOL,
+        ),
     ]:
       try:
         handle = local_usb.LibUsbHandle.open(
             serial_number=cls.serial_number,
             interface_class=usb_cls,
             interface_subclass=subcls,
-            interface_protocol=protocol)
+            interface_protocol=protocol,
+        )
         cls.serial_number = handle.serial_number
         return True
       except usb_exceptions.DeviceNotFoundError:

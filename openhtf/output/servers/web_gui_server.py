@@ -80,6 +80,7 @@ class DefaultHandler(CorsRequestHandler):
 
 class IndexHandler(tornado.web.RequestHandler):
   """GET endpoint for the home page."""
+
   config = None  # Set via with_config().
 
   @classmethod
@@ -116,9 +117,7 @@ class WebGuiServer(threading.Thread):
     # Set up routes.
     routes = [
         ('/', IndexHandler.with_config(self._get_config())),
-        (STATIC_FILE_ROUTES, StaticFileHandler, {
-            'path': STATIC_FILES_ROOT
-        }),
+        (STATIC_FILE_ROUTES, StaticFileHandler, {'path': STATIC_FILES_ROOT}),
     ]
     routes.extend(additional_routes)
 
@@ -126,8 +125,10 @@ class WebGuiServer(threading.Thread):
       sockets, self.port = bind_port(port)
     else:
       if not port:
-        raise ValueError('When sockets are passed to the server, port must be '
-                         'specified and nonzero.')
+        raise ValueError(
+            'When sockets are passed to the server, port must be '
+            'specified and nonzero.'
+        )
       self.port = port
 
     # Configure the Tornado application.

@@ -122,12 +122,16 @@ MAX_PUSH_DATA_BYTES = 64 * 1024
 
 
 class DeviceFileStat(
-    collections.namedtuple('DeviceFileStat', [
-        'filename',
-        'mode',
-        'size',
-        'mtime',
-    ])):
+    collections.namedtuple(
+        'DeviceFileStat',
+        [
+            'filename',
+            'mode',
+            'size',
+            'mtime',
+        ],
+    )
+):
   pass
 
 
@@ -137,8 +141,9 @@ def _make_message_type(name, attributes, has_data=True):
   def assert_command_is(self, command):
     """Assert that a message's command matches the given command."""
     if self.command != command:
-      raise usb_exceptions.AdbProtocolError('Expected %s command, received %s' %
-                                            (command, self))
+      raise usb_exceptions.AdbProtocolError(
+          'Expected %s command, received %s' % (command, self)
+      )
 
   return type(
       name,
@@ -148,7 +153,8 @@ def _make_message_type(name, attributes, has_data=True):
           'has_data': has_data,
           # Struct format on the wire has an unsigned int for each attr.
           'struct_format': '<%sI' % len(attributes.split()),
-      })
+      },
+  )
 
 
 class FilesyncService(object):
@@ -197,9 +203,12 @@ class FilesyncService(object):
     """
     transport = DentFilesyncTransport(self.stream)
     transport.write_data('LIST', path, timeout)
-    return (DeviceFileStat(dent_msg.name, dent_msg.mode, dent_msg.size,
-                           dent_msg.time)
-            for dent_msg in transport.read_until_done('DENT', timeout))
+    return (
+        DeviceFileStat(
+            dent_msg.name, dent_msg.mode, dent_msg.size, dent_msg.time
+        )
+        for dent_msg in transport.read_until_done('DENT', timeout)
+    )
 
   def recv(self, filename, dest_file, timeout=None):
     """Retrieve a file from the device into the file-like dest_file."""
@@ -233,12 +242,14 @@ class FilesyncService(object):
     raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
   # pylint: disable=too-many-arguments
-  def send(self,
-           src_file,
-           filename,
-           st_mode=DEFAULT_PUSH_MODE,
-           mtime=None,
-           timeout=None):
+  def send(
+      self,
+      src_file,
+      filename,
+      st_mode=DEFAULT_PUSH_MODE,
+      mtime=None,
+      timeout=None,
+  ):
     """Push a file-like object to the device.
 
     Args:
@@ -264,7 +275,8 @@ class FilesyncService(object):
 
       mtime = mtime or int(time.time())
       transport.write_message(
-          FilesyncMessageTypes.DoneMessage('DONE', mtime), timeout)
+          FilesyncMessageTypes.DoneMessage('DONE', mtime), timeout
+      )
     except usb_exceptions.AdbStreamClosedError:
       # Try to do one last read to see if we can get any more information,
       # ignoring any errors for this Read attempt. Note that this always
@@ -337,6 +349,7 @@ class AbstractFilesyncTransport(object):
     VALID_RESPONSES: A tuple of valid command responses we can expect to
       receive over this transport.
   """
+
   CMD_TO_WIRE, WIRE_TO_CMD = adb_message.make_wire_commands(
       'STAT',
       'LIST',
@@ -373,7 +386,11 @@ class AbstractFilesyncTransport(object):
 
   def __str__(self):
     return '<%s(%s) id(%x), Receives: %s>' % (
-        type(self).__name__, self.stream, id(self), self.RECV_MSG_TYPE.__name__)
+        type(self).__name__,
+        self.stream,
+        id(self),
+        self.RECV_MSG_TYPE.__name__,
+    )
 
   __repr__ = __str__
 
@@ -400,7 +417,8 @@ class AbstractFilesyncTransport(object):
       replace_dict[msg._fields[-1]] = len(data)
 
     self.stream.write(
-        struct.pack(msg.struct_format, *msg._replace(**replace_dict)), timeout)
+        struct.pack(msg.struct_format, *msg._replace(**replace_dict)), timeout
+    )
     if msg.has_data:
       self.stream.write(data, timeout)
 
@@ -448,17 +466,20 @@ class AbstractFilesyncTransport(object):
       AdbRemoteError: If a FAIL response is received.
     """
     raw_data = self.stream.read(
-        struct.calcsize(self.RECV_MSG_TYPE.struct_format), timeout)
+        struct.calcsize(self.RECV_MSG_TYPE.struct_format), timeout
+    )
     try:
       raw_message = struct.unpack(self.RECV_MSG_TYPE.struct_format, raw_data)
     except struct.error:
       raise usb_exceptions.AdbProtocolError(
-          '%s expected format "%s", got data %s' %
-          (self, self.RECV_MSG_TYPE.struct_format, raw_data))
+          '%s expected format "%s", got data %s'
+          % (self, self.RECV_MSG_TYPE.struct_format, raw_data)
+      )
 
     if raw_message[0] not in self.WIRE_TO_CMD:
-      raise usb_exceptions.AdbProtocolError('Unrecognized command id: %s' %
-                                            raw_message)
+      raise usb_exceptions.AdbProtocolError(
+          'Unrecognized command id: %s' % raw_message
+      )
 
     # Swap out the wire command with the string equivalent.
     raw_message = (self.WIRE_TO_CMD[raw_message[0]],) + raw_message[1:]
@@ -471,11 +492,13 @@ class AbstractFilesyncTransport(object):
       raw_message = raw_message[:-1] + (self.stream.read(data_len, timeout),)
 
     if raw_message[0] not in self.VALID_RESPONSES:
-      raise usb_exceptions.AdbProtocolError('%s not a valid response for %s' %
-                                            (raw_message[0], self))
+      raise usb_exceptions.AdbProtocolError(
+          '%s not a valid response for %s' % (raw_message[0], self)
+      )
     if raw_message[0] == 'FAIL':
-      raise usb_exceptions.AdbRemoteError('Remote ADB failure: %s' %
-                                          raw_message)
+      raise usb_exceptions.AdbRemoteError(
+          'Remote ADB failure: %s' % raw_message
+      )
     return self.RECV_MSG_TYPE(*raw_message)
 
 
@@ -491,11 +514,14 @@ class FilesyncMessageTypes(object):
   the mtime of the file... derp, this is actually a different type entirely, so
   we do that.
   """
+
   # pylint: disable=invalid-name
   DoneMessage = _make_message_type(
-      'DoneMessage', 'command mtime', has_data=False)
+      'DoneMessage', 'command mtime', has_data=False
+  )
   StatMessage = _make_message_type(
-      'StatMessage', 'command mode size time', has_data=False)
+      'StatMessage', 'command mode size time', has_data=False
+  )
   DentMessage = _make_message_type('DentMessage', 'command mode size time name')
   DataMessage = _make_message_type('DataMessage', 'command data')
   # pylint: enable=invalid-name
@@ -503,17 +529,20 @@ class FilesyncMessageTypes(object):
 
 class StatFilesyncTransport(AbstractFilesyncTransport):
   """Subclass of AbstractFilesyncTransport for STAT requests."""
+
   RECV_MSG_TYPE = FilesyncMessageTypes.StatMessage
   VALID_RESPONSES = ('STAT',)
 
 
 class DentFilesyncTransport(AbstractFilesyncTransport):
   """Subclass of AbstractFilesyncTransport for LIST requests."""
+
   RECV_MSG_TYPE = FilesyncMessageTypes.DentMessage
   VALID_RESPONSES = ('DENT', 'DONE')
 
 
 class DataFilesyncTransport(AbstractFilesyncTransport):
   """Sublcass of AbstractFilesyncTransport for DATA-based requests."""
+
   RECV_MSG_TYPE = FilesyncMessageTypes.DataMessage
   VALID_RESPONSES = ('DATA', 'DONE', 'OKAY', 'FAIL')

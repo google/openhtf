@@ -63,12 +63,17 @@ class _MonitorThread(threads.KillableThread):
 
   daemon = True
 
-  def __init__(self, measurement_name: Text,
-               monitor_desc: phase_descriptor.PhaseDescriptor,
-               extra_kwargs: Dict[Any, Any],
-               test_state: core_test_state.TestState, interval_ms: int):
-    super(_MonitorThread,
-          self).__init__(name='%s_MonitorThread' % measurement_name)
+  def __init__(
+      self,
+      measurement_name: Text,
+      monitor_desc: phase_descriptor.PhaseDescriptor,
+      extra_kwargs: Dict[Any, Any],
+      test_state: core_test_state.TestState,
+      interval_ms: int,
+  ):
+    super(_MonitorThread, self).__init__(
+        name='%s_MonitorThread' % measurement_name
+    )
     self.measurement_name = measurement_name
     self.monitor_desc = monitor_desc
     self.test_state = test_state
@@ -90,8 +95,9 @@ class _MonitorThread(threads.KillableThread):
     return self.monitor_desc.with_args(**kwargs)(self.test_state)
 
   def _thread_proc(self):
-    measurement = getattr(self.test_state.test_api.measurements,
-                          self.measurement_name)
+    measurement = getattr(
+        self.test_state.test_api.measurements, self.measurement_name
+    )
     start_time = time.time()
 
     # Special case tight-loop monitoring.
@@ -103,8 +109,10 @@ class _MonitorThread(threads.KillableThread):
     def _take_sample():
       pre_time, value, post_time = time.time(), self.get_value(), time.time()
       measurement[(post_time - start_time) * 1000] = value
-      return (int((post_time - start_time) * 1000 / self.interval_ms),
-              (post_time - pre_time) * 1000)
+      return (
+          int((post_time - start_time) * 1000 / self.interval_ms),
+          (post_time - pre_time) * 1000,
+      )
 
     # Track the last sample number, and an approximation of the mean time
     # it takes to sample (so we can account for it in how long we sleep).
@@ -112,17 +120,23 @@ class _MonitorThread(threads.KillableThread):
     while True:
       # Find what sample number (float) we would be on if we sampled now.
       current_time = time.time()
-      new_sample = ((((current_time - start_time) * 1000) + mean_sample_ms) /
-                    self.interval_ms)
+      new_sample = (
+          ((current_time - start_time) * 1000) + mean_sample_ms
+      ) / self.interval_ms
       if new_sample < last_sample + 1:
-        time.sleep(start_time - current_time +
-                   ((last_sample + 1) * self.interval_ms / 1000.0) -
-                   (mean_sample_ms / 1000.0))
+        time.sleep(
+            start_time
+            - current_time
+            + ((last_sample + 1) * self.interval_ms / 1000.0)
+            - (mean_sample_ms / 1000.0)
+        )
         continue
       elif new_sample > last_sample + 2:
         self.test_state.state_logger.warning(
-            'Monitor for "%s" skipping %s sample(s).', self.measurement_name,
-            new_sample - last_sample - 1)
+            'Monitor for "%s" skipping %s sample(s).',
+            self.measurement_name,
+            new_sample - last_sample - 1,
+        )
       last_sample, cur_sample_ms = _take_sample()
       # Approximate 10-element sliding window average.
       mean_sample_ms = ((9 * mean_sample_ms) + cur_sample_ms) / 10.0
@@ -132,33 +146,42 @@ def monitors(
     measurement_name: Text,
     monitor_func: phase_descriptor.PhaseT,
     units: Optional[uom.UnitDescriptor] = None,
-    poll_interval_ms: int = 1000
+    poll_interval_ms: int = 1000,
 ) -> Callable[[phase_descriptor.PhaseT], phase_descriptor.PhaseDescriptor]:
   """Returns a decorator that wraps a phase with a monitor."""
   monitor_desc = openhtf.PhaseDescriptor.wrap_or_copy(monitor_func)
 
   def wrapper(
-      phase_func: phase_descriptor.PhaseT) -> phase_descriptor.PhaseDescriptor:
+      phase_func: phase_descriptor.PhaseT,
+  ) -> phase_descriptor.PhaseDescriptor:
     phase_desc = openhtf.PhaseDescriptor.wrap_or_copy(phase_func)
 
     # Re-key this dict so we don't have to worry about collisions with
     # plug.plug() decorators on the phase function.  Since we aren't
     # updating kwargs here, we don't have to worry about collisions with
     # kwarg names.
-    monitor_plugs = {('_' * idx) + measurement_name + '_monitor': plug.cls
-                     for idx, plug in enumerate(monitor_desc.plugs, start=1)}
+    monitor_plugs = {
+        ('_' * idx) + measurement_name + '_monitor': plug.cls
+        for idx, plug in enumerate(monitor_desc.plugs, start=1)
+    }
 
     @openhtf.PhaseOptions(requires_state=True)
     @plugs.plug(update_kwargs=False, **monitor_plugs)
     @openhtf.measures(
-        measurements.Measurement(measurement_name).with_units(
-            units).with_dimensions(uom.MILLISECOND))
+        measurements.Measurement(measurement_name)
+        .with_units(units)
+        .with_dimensions(uom.MILLISECOND)
+    )
     @functools.wraps(phase_desc.func)
     def monitored_phase_func(test_state, *args, **kwargs):
       # Start monitor thread, it will run monitor_desc periodically.
-      monitor_thread = _MonitorThread(measurement_name, monitor_desc,
-                                      phase_desc.extra_kwargs, test_state,
-                                      poll_interval_ms)
+      monitor_thread = _MonitorThread(
+          measurement_name,
+          monitor_desc,
+          phase_desc.extra_kwargs,
+          test_state,
+          poll_interval_ms,
+      )
       monitor_thread.start()
       try:
         return phase_desc(test_state, *args, **kwargs)

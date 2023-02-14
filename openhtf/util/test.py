@@ -205,21 +205,23 @@ class TestNode(phase_nodes.PhaseNode):
     """Create a copy of the PhaseNode."""
     return self
 
-  def with_args(self: phase_nodes.WithModifierT,
-                **kwargs: Any) -> phase_nodes.WithModifierT:
+  def with_args(
+      self: phase_nodes.WithModifierT, **kwargs: Any
+  ) -> phase_nodes.WithModifierT:
     """Send these keyword-arguments when phases are called."""
     del kwargs  # Unused.
     return self
 
   def with_plugs(
-      self: phase_nodes.WithModifierT,
-      **subplugs: Type[base_plugs.BasePlug]) -> phase_nodes.WithModifierT:
+      self: phase_nodes.WithModifierT, **subplugs: Type[base_plugs.BasePlug]
+  ) -> phase_nodes.WithModifierT:
     """Substitute plugs for placeholders for this phase, error on unknowns."""
     del subplugs  # Unused.
     return self
 
   def load_code_info(
-      self: phase_nodes.WithModifierT) -> phase_nodes.WithModifierT:
+      self: phase_nodes.WithModifierT,
+  ) -> phase_nodes.WithModifierT:
     """Load coded info for all contained phases."""
     return self
 
@@ -265,7 +267,6 @@ class PhaseNodeComparable(TestNode):
 
   @classmethod
   def create_constructor(cls, name) -> Callable[..., 'PhaseNodeComparable']:
-
     def constructor(*args, **kwargs):
       return cls(name, *args, **kwargs)
 
@@ -275,9 +276,12 @@ class PhaseNodeComparable(TestNode):
     return {'name': self.name, 'args': self.args, 'kwargs': self.kwargs}
 
   def __eq__(self, other: phase_nodes.PhaseNode) -> bool:
-    return (isinstance(other, PhaseNodeComparable) and
-            self.name == other.name and self.args == other.args and
-            self.kwargs == other.kwargs)
+    return (
+        isinstance(other, PhaseNodeComparable)
+        and self.name == other.name
+        and self.args == other.args
+        and self.kwargs == other.kwargs
+    )
 
 
 class FakeTestApi(test_descriptor.TestApi):
@@ -286,19 +290,23 @@ class FakeTestApi(test_descriptor.TestApi):
   def __init__(self):
     self.mock_logger = mock.create_autospec(logging.Logger)
     self.mock_phase_state = mock.create_autospec(
-        test_state.PhaseState, logger=self.mock_logger)
+        test_state.PhaseState, logger=self.mock_logger
+    )
     self.mock_test_state = mock.create_autospec(
         test_state.TestState,
         test_record=test_record.TestRecord('DUT', 'STATION'),
-        user_defined_state={})
+        user_defined_state={},
+    )
     super(FakeTestApi, self).__init__(
         measurements={},
         running_phase_state=self.mock_phase_state,
-        running_test_state=self.mock_test_state)
+        running_test_state=self.mock_test_state,
+    )
 
 
-def filter_phases_by_names(phase_recs: Iterable[test_record.PhaseRecord],
-                           *names: Text) -> Iterable[test_record.PhaseRecord]:
+def filter_phases_by_names(
+    phase_recs: Iterable[test_record.PhaseRecord], *names: Text
+) -> Iterable[test_record.PhaseRecord]:
   all_names = set(names)
   for phase_rec in phase_recs:
     if phase_rec.name in all_names:
@@ -307,7 +315,8 @@ def filter_phases_by_names(phase_recs: Iterable[test_record.PhaseRecord],
 
 def filter_phases_by_outcome(
     phase_recs: Iterable[test_record.PhaseRecord],
-    outcome: test_record.PhaseOutcome) -> Iterable[test_record.PhaseRecord]:
+    outcome: test_record.PhaseOutcome,
+) -> Iterable[test_record.PhaseRecord]:
   for phase_rec in phase_recs:
     if phase_rec.outcome == outcome:
       yield phase_rec
@@ -325,8 +334,14 @@ def _merge_stats(stats: pstats.Stats, filepath: pathlib.Path) -> None:
 
 class PhaseOrTestIterator(Iterator):
 
-  def __init__(self, test_case, iterator, mock_plugs, phase_user_defined_state,
-               phase_diagnoses):
+  def __init__(
+      self,
+      test_case,
+      iterator,
+      mock_plugs,
+      phase_user_defined_state,
+      phase_diagnoses,
+  ):
     """Create an iterator for iterating over Tests or phases to run.
 
     This should only be instantiated internally.
@@ -347,8 +362,12 @@ class PhaseOrTestIterator(Iterator):
     """
     if not isinstance(iterator, types.GeneratorType):
       raise InvalidTestError(
-          'Methods decorated with patch_plugs or yields_phases must yield '
-          'test phases or openhtf.Test objects.', iterator)
+          (
+              'Methods decorated with patch_plugs or yields_phases must yield '
+              'test phases or openhtf.Test objects.'
+          ),
+          iterator,
+      )
 
     # Since we want to run single phases, we instantiate our own PlugManager.
     # Don't do this sort of thing outside OpenHTF unless you really know what
@@ -370,13 +389,16 @@ class PhaseOrTestIterator(Iterator):
     # been initialized.
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(
-        plug_cls for plug_cls in plug_types if plug_cls not in self.mock_plugs)
+        plug_cls for plug_cls in plug_types if plug_cls not in self.mock_plugs
+    )
     for plug_type, plug_value in self.mock_plugs.items():
       self.plug_manager.update_plug(plug_type, plug_value)
     for plug_type in plug_types:
       self.test_case.plugs[plug_type] = (
           self.plug_manager.get_plug_by_class_path(
-              self.plug_manager.get_plug_name(plug_type)))
+              self.plug_manager.get_plug_name(plug_type)
+          )
+      )
 
   def _handle_phase(self, phase_desc):
     """Handle execution of a single test phase."""
@@ -387,11 +409,17 @@ class PhaseOrTestIterator(Iterator):
     # Cobble together a fake TestState to pass to the test phase.
     test_options = test_descriptor.TestOptions()
     with mock.patch.object(
-        plugs, 'PlugManager', new=lambda _, __: self.plug_manager):
+        plugs, 'PlugManager', new=lambda _, __: self.plug_manager
+    ):
       test_state_ = test_state.TestState(
           test_descriptor.TestDescriptor(
               phase_collections.PhaseSequence((phase_desc,)),
-              phase_desc.code_info, {}), 'Unittest:StubTest:UID', test_options)
+              phase_desc.code_info,
+              {},
+          ),
+          'Unittest:StubTest:UID',
+          test_options,
+      )
       test_state_.mark_test_started()
 
     test_state_.user_defined_state.update(self.phase_user_defined_state)
@@ -410,13 +438,15 @@ class PhaseOrTestIterator(Iterator):
     with mock.patch.object(
         phase_executor.PhaseExecutorThread,
         '_log_exception',
-        side_effect=logging.exception):
+        side_effect=logging.exception,
+    ):
       # Use _execute_phase_once because we want to expose all possible outcomes.
       phase_result, profile_stats = executor._execute_phase_once(
           phase_desc,
           is_last_repeat=False,
           run_with_profiling=profile_filepath,
-          subtest_rec=None)
+          subtest_rec=None,
+      )
 
     if profile_filepath is not None:
       _merge_stats(profile_stats, profile_filepath)
@@ -433,7 +463,8 @@ class PhaseOrTestIterator(Iterator):
     # We'll need a place to stash the resulting TestRecord.
     record_saver = util.NonLocalResult()
     test.add_output_callbacks(
-        lambda record: setattr(record_saver, 'result', record))
+        lambda record: setattr(record_saver, 'result', record)
+    )
 
     profile_filepath = self.test_case.get_profile_filepath()
     if profile_filepath is None:
@@ -442,11 +473,14 @@ class PhaseOrTestIterator(Iterator):
       profile_tempfile = tempfile.NamedTemporaryFile()
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch.object(
-        plugs, 'PlugManager', new=lambda _, __: self.plug_manager):
+        plugs, 'PlugManager', new=lambda _, __: self.plug_manager
+    ):
       test.execute(
           test_start=self.test_case.test_start_function,
-          profile_filename=(None if profile_tempfile is None else
-                            profile_tempfile.name))
+          profile_filename=(
+              None if profile_tempfile is None else profile_tempfile.name
+          ),
+      )
 
     if profile_tempfile is not None:
       _merge_stats(pstats.Stats(profile_tempfile.name), profile_filepath)
@@ -456,8 +490,9 @@ class PhaseOrTestIterator(Iterator):
     if test_record_.outcome_details:
       msgs = []
       for detail in test_record_.outcome_details:
-        msgs.append('code: {}\ndescription: {}'.format(detail.code,
-                                                       detail.description))
+        msgs.append(
+            'code: {}\ndescription: {}'.format(detail.code, detail.description)
+        )
       failure_message = '\n'.join(msgs)
     else:
       failure_message = None
@@ -469,11 +504,16 @@ class PhaseOrTestIterator(Iterator):
       self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, CollectionsCallable):
       raise InvalidTestError(
-          'methods decorated with patch_plugs must yield Test instances or '
-          'individual test phases', phase_or_test)
+          (
+              'methods decorated with patch_plugs must yield Test instances or '
+              'individual test phases'
+          ),
+          phase_or_test,
+      )
     else:
       self.last_result, failure_message = self._handle_phase(
-          phase_descriptor.PhaseDescriptor.wrap_or_copy(phase_or_test))
+          phase_descriptor.PhaseDescriptor.wrap_or_copy(phase_or_test)
+      )
     return phase_or_test, self.last_result, failure_message
 
   def next(self):
@@ -482,11 +522,16 @@ class PhaseOrTestIterator(Iterator):
       self.last_result, failure_message = self._handle_test(phase_or_test)
     elif not isinstance(phase_or_test, CollectionsCallable):
       raise InvalidTestError(
-          'methods decorated with patch_plugs must yield Test instances or '
-          'individual test phases', phase_or_test)
+          (
+              'methods decorated with patch_plugs must yield Test instances or '
+              'individual test phases'
+          ),
+          phase_or_test,
+      )
     else:
       self.last_result, failure_message = self._handle_phase(
-          phase_descriptor.PhaseDescriptor.wrap_or_copy(phase_or_test))
+          phase_descriptor.PhaseDescriptor.wrap_or_copy(phase_or_test)
+      )
     return phase_or_test, self.last_result, failure_message
 
 
@@ -499,12 +544,13 @@ def yields_phases_with(phase_user_defined_state=None, phase_diagnoses=None):
   """Apply patch_plugs with no plugs, but add test state modifications."""
   return patch_plugs(
       phase_user_defined_state=phase_user_defined_state,
-      phase_diagnoses=phase_diagnoses)
+      phase_diagnoses=phase_diagnoses,
+  )
 
 
-def patch_plugs(phase_user_defined_state=None,
-                phase_diagnoses=None,
-                **mock_plugs):
+def patch_plugs(
+    phase_user_defined_state=None, phase_diagnoses=None, **mock_plugs
+):
   """Decorator for mocking plugs for a test phase.
 
   Usage:
@@ -550,19 +596,23 @@ def patch_plugs(phase_user_defined_state=None,
   def test_wrapper(test_func):
     plug_argspec = inspect.getfullargspec(test_func)
     num_defaults = len(plug_argspec.defaults or ())
-    plug_args = set(plug_argspec.args[1:-num_defaults or None])
+    plug_args = set(plug_argspec.args[1 : -num_defaults or None])
 
     # Some sanity checks to make sure the mock arg names match.
     for arg in plug_args:
       if arg not in mock_plugs:
         raise InvalidTestError(
             'Test method %s expected arg %s, but it was not provided in '
-            'patch_plugs kwargs: ' % (test_func.__name__, arg), mock_plugs)
+            'patch_plugs kwargs: ' % (test_func.__name__, arg),
+            mock_plugs,
+        )
     for mock_name in mock_plugs:
       if mock_name not in plug_args:
         raise InvalidTestError(
-            'patch_plugs got kwarg %s, but test method %s does not expect '
-            'it.' % (mock_name, test_func.__name__), plug_args)
+            'patch_plugs got kwarg %s, but test method %s does not expect it.'
+            % (mock_name, test_func.__name__),
+            plug_args,
+        )
 
     # Make MagicMock instances for the plugs.
     plug_kwargs = {}  # kwargs to pass to test func.
@@ -573,21 +623,27 @@ def patch_plugs(phase_user_defined_state=None,
           plug_module, plug_typename = plug_fullname.rsplit('.', 1)
           plug_type = getattr(sys.modules[plug_module], plug_typename)
         except Exception:
-          logging.error("Invalid plug type specification %s='%s'",
-                        plug_arg_name, plug_fullname)
+          logging.error(
+              "Invalid plug type specification %s='%s'",
+              plug_arg_name,
+              plug_fullname,
+          )
           raise
       elif issubclass(plug_fullname, base_plugs.BasePlug):
         plug_type = plug_fullname
       else:
-        raise ValueError('Invalid plug type specification %s="%s"' %
-                         (plug_arg_name, plug_fullname))
+        raise ValueError(
+            'Invalid plug type specification %s="%s"'
+            % (plug_arg_name, plug_fullname)
+        )
       if issubclass(plug_type, device_wrapping.DeviceWrappingPlug):
         # We can't strictly spec because calls to attributes are proxied to the
         # underlying device.
         plug_mock = mock.MagicMock()
       else:
         plug_mock = mock.create_autospec(
-            plug_type, spec_set=True, instance=True)
+            plug_type, spec_set=True, instance=True
+        )
       plug_typemap[plug_type] = plug_mock
       plug_kwargs[plug_arg_name] = plug_mock
 
@@ -598,13 +654,20 @@ def patch_plugs(phase_user_defined_state=None,
       self.assertIsInstance(
           self,
           TestCase,
-          msg='Must derive from openhtf.util.test.TestCase '
-          'to use yields_phases/patch_plugs.')
+          msg=(
+              'Must derive from openhtf.util.test.TestCase '
+              'to use yields_phases/patch_plugs.'
+          ),
+      )
       plug_mocks = dict(self.plugs)
       plug_mocks.update(plug_typemap)
       for phase_or_test, result, failure_message in PhaseOrTestIterator(
-          self, test_func(self, **plug_kwargs), plug_mocks,
-          phase_user_defined_state, phase_diagnoses):
+          self,
+          test_func(self, **plug_kwargs),
+          plug_mocks,
+          phase_user_defined_state,
+          phase_diagnoses,
+      ):
         logging.info('Ran %s, result: %s', phase_or_test, result)
         if failure_message:
           logging.error('Reported error:\n%s', failure_message)
@@ -662,8 +725,9 @@ class TestCase(unittest.TestCase):
     super(TestCase, self).__init__(methodName=methodName)
     test_method = getattr(self, methodName)
     if inspect.isgeneratorfunction(test_method):
-      raise ValueError('%s yields without @openhtf.util.test.yields_phases' %
-                       methodName)
+      raise ValueError(
+          '%s yields without @openhtf.util.test.yields_phases' % methodName
+      )
 
   def setUp(self):
     super(TestCase, self).setUp()
@@ -696,11 +760,13 @@ class TestCase(unittest.TestCase):
     for plug_type in plug_types:
       if plug_type in self.plugs:
         logging.info(
-            'Plug "%s" already has mock in self.plugs; skipping '
-            'automatic mock', plug_type.__name__)
+            'Plug "%s" already has mock in self.plugs; skipping automatic mock',
+            plug_type.__name__,
+        )
         continue
       self.plugs[plug_type] = mock.create_autospec(
-          plug_type, spec_set=True, instance=True)
+          plug_type, spec_set=True, instance=True
+      )
 
   @typing.overload
   def execute_phase_or_test(
@@ -721,10 +787,9 @@ class TestCase(unittest.TestCase):
   ) -> test_record.PhaseRecord:
     ...
 
-  def execute_phase_or_test(self,
-                            phase_or_test,
-                            phase_user_defined_state=None,
-                            phase_diagnoses=None):
+  def execute_phase_or_test(
+      self, phase_or_test, phase_user_defined_state=None, phase_diagnoses=None
+  ):
     """Executes the provided Test or Phase, returning corresponding record.
 
     Args:
@@ -745,8 +810,12 @@ class TestCase(unittest.TestCase):
       return phase_or_test_record
 
     for phase_or_test, result, failure_message in PhaseOrTestIterator(
-        self, phase_generator(), self.plugs, phase_user_defined_state,
-        phase_diagnoses):
+        self,
+        phase_generator(),
+        self.plugs,
+        phase_user_defined_state,
+        phase_diagnoses,
+    ):
       logging.info('Ran %s, result: %s', phase_or_test, result)
       if failure_message:
         logging.error('Reported error:\n%s', failure_message)
@@ -764,7 +833,10 @@ class TestCase(unittest.TestCase):
             text.StringFromTestRecord(
                 test_rec,
                 only_failures=True,
-                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE)))
+                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE,
+            )
+        ),
+    )
 
   def assertTestFail(self, test_rec):
     msg = None
@@ -784,7 +856,8 @@ class TestCase(unittest.TestCase):
     """Assert that the given code is in some OutcomeDetails in the record."""
     self.assertTrue(
         any(details.code == code for details in test_rec.outcome_details),
-        'No OutcomeDetails had code %s' % code)
+        'No OutcomeDetails had code %s' % code,
+    )
 
   ##### PhaseRecord Assertions #####
 
@@ -796,48 +869,63 @@ class TestCase(unittest.TestCase):
             text.StringFromPhaseRecord(
                 phase_record,
                 only_failures=True,
-                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE)))
+                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE,
+            )
+        ),
+    )
 
   def assertPhaseFailAndContinue(self, phase_record):
     msg = None
     if phase_record.result.raised_exception is not None:
-      msg = ('The following exception was raised: '
-             f'{phase_record.result.phase_result}.')
+      msg = (
+          'The following exception was raised: '
+          f'{phase_record.result.phase_result}.'
+      )
     self.assertIs(
         phase_descriptor.PhaseResult.FAIL_AND_CONTINUE,
         phase_record.result.phase_result,
-        msg=msg)
+        msg=msg,
+    )
 
   def assertPhaseFailSubtest(self, phase_record):
     msg = None
     if phase_record.result.raised_exception is not None:
-      msg = (f'The following exception was raised: '
-             f'{phase_record.result.phase_result}.')
+      msg = (
+          'The following exception was raised: '
+          f'{phase_record.result.phase_result}.'
+      )
     self.assertIs(
         phase_descriptor.PhaseResult.FAIL_SUBTEST,
         phase_record.result.phase_result,
-        msg=msg)
+        msg=msg,
+    )
 
   def assertPhaseRepeat(self, phase_record):
-    self.assertIs(phase_descriptor.PhaseResult.REPEAT,
-                  phase_record.result.phase_result)
+    self.assertIs(
+        phase_descriptor.PhaseResult.REPEAT, phase_record.result.phase_result
+    )
 
   def assertPhaseSkip(self, phase_record):
-    self.assertIs(phase_descriptor.PhaseResult.SKIP,
-                  phase_record.result.phase_result)
+    self.assertIs(
+        phase_descriptor.PhaseResult.SKIP, phase_record.result.phase_result
+    )
 
   def assertPhaseStop(self, phase_record):
-    self.assertIs(phase_descriptor.PhaseResult.STOP,
-                  phase_record.result.phase_result)
+    self.assertIs(
+        phase_descriptor.PhaseResult.STOP, phase_record.result.phase_result
+    )
 
   def assertPhaseError(self, phase_record, exc_type=None):
-    self.assertTrue(phase_record.result.raised_exception,
-                    'Phase did not raise an exception')
+    self.assertTrue(
+        phase_record.result.raised_exception, 'Phase did not raise an exception'
+    )
     if exc_type:
       self.assertIsInstance(
-          phase_record.result.phase_result.exc_val, exc_type,
-          'Raised exception %r is not a subclass of %r' %
-          (phase_record.result.phase_result, exc_type))
+          phase_record.result.phase_result.exc_val,
+          exc_type,
+          'Raised exception %r is not a subclass of %r'
+          % (phase_record.result.phase_result, exc_type),
+      )
 
   def assertPhaseTimeout(self, phase_record):
     self.assertTrue(phase_record.result.is_timeout)
@@ -850,13 +938,18 @@ class TestCase(unittest.TestCase):
             text.StringFromPhaseRecord(
                 phase_record,
                 only_failures=True,
-                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE)))
+                maximum_num_measurements=_MAXIMUM_NUM_MEASUREMENTS_PER_PHASE,
+            )
+        ),
+    )
 
   def assertPhaseOutcomeFail(self, phase_record):
     msg = None
     if phase_record.result.raised_exception is not None:
-      msg = ('The following exception was raised: '
-             f'{phase_record.result.phase_result}.')
+      msg = (
+          'The following exception was raised: '
+          f'{phase_record.result.phase_result}.'
+      )
     self.assertIs(test_record.PhaseOutcome.FAIL, phase_record.outcome, msg=msg)
 
   def assertPhaseOutcomeSkip(self, phase_record):
@@ -865,19 +958,24 @@ class TestCase(unittest.TestCase):
   def assertPhaseOutcomeError(self, phase_record):
     self.assertIs(test_record.PhaseOutcome.ERROR, phase_record.outcome)
 
-  def assertPhasesOutcomeByName(self,
-                                expected_outcome: test_record.PhaseOutcome,
-                                test_rec: test_record.TestRecord,
-                                *phase_names: Text):
+  def assertPhasesOutcomeByName(
+      self,
+      expected_outcome: test_record.PhaseOutcome,
+      test_rec: test_record.TestRecord,
+      *phase_names: Text,
+  ):
     errors: List[Text] = []
     for phase_rec in filter_phases_by_names(test_rec.phases, *phase_names):
       if phase_rec.outcome is not expected_outcome:
-        errors.append('Phase "{}" outcome: {}'.format(phase_rec.name,
-                                                      phase_rec.outcome))
+        errors.append(
+            'Phase "{}" outcome: {}'.format(phase_rec.name, phase_rec.outcome)
+        )
     self.assertFalse(
         errors,
-        msg='Expected phases don\'t all have outcome {}: {}'.format(
-            expected_outcome.name, errors))
+        msg="Expected phases don't all have outcome {}: {}".format(
+            expected_outcome.name, errors
+        ),
+    )
 
   def assertPhasesNotRun(self, test_rec, *phase_names):
     phases = list(filter_phases_by_names(test_rec.phases, *phase_names))
@@ -886,16 +984,18 @@ class TestCase(unittest.TestCase):
   ##### Measurement Assertions #####
 
   def assertNotMeasured(self, phase_or_test_record, measurement):
-
     def _check_phase(phase_record, strict=False):
       if strict:
         self.assertIn(measurement, phase_record.measurements)
       if measurement in phase_record.measurements:
         self.assertFalse(
             phase_record.measurements[measurement].measured_value.is_value_set,
-            'Measurement %s unexpectedly set' % measurement)
-        self.assertIs(measurements.Outcome.UNSET,
-                      phase_record.measurements[measurement].outcome)
+            'Measurement %s unexpectedly set' % measurement,
+        )
+        self.assertIs(
+            measurements.Outcome.UNSET,
+            phase_record.measurements[measurement].outcome,
+        )
 
     if isinstance(phase_or_test_record, test_record.PhaseRecord):
       _check_phase(phase_or_test_record, True)
@@ -908,25 +1008,35 @@ class TestCase(unittest.TestCase):
   def assertMeasured(self, phase_record, measurement, value=mock.ANY):
     self.assertTrue(
         phase_record.measurements[measurement].measured_value.is_value_set,
-        'Measurement %s not set' % measurement)
+        'Measurement %s not set' % measurement,
+    )
     if value is not mock.ANY:
       self.assertEqual(
-          value, phase_record.measurements[measurement].measured_value.value,
-          'Measurement %s has wrong value: expected %s, got %s' %
-          (measurement, value,
-           phase_record.measurements[measurement].measured_value.value))
+          value,
+          phase_record.measurements[measurement].measured_value.value,
+          'Measurement %s has wrong value: expected %s, got %s'
+          % (
+              measurement,
+              value,
+              phase_record.measurements[measurement].measured_value.value,
+          ),
+      )
 
   @_assert_phase_or_test_record
   def assertMeasurementPass(self, phase_record, measurement):
     self.assertMeasured(phase_record, measurement)
-    self.assertIs(measurements.Outcome.PASS,
-                  phase_record.measurements[measurement].outcome)
+    self.assertIs(
+        measurements.Outcome.PASS,
+        phase_record.measurements[measurement].outcome,
+    )
 
   @_assert_phase_or_test_record
   def assertMeasurementFail(self, phase_record, measurement):
     self.assertMeasured(phase_record, measurement)
-    self.assertIs(measurements.Outcome.FAIL,
-                  phase_record.measurements[measurement].outcome)
+    self.assertIs(
+        measurements.Outcome.FAIL,
+        phase_record.measurements[measurement].outcome,
+    )
 
   @_assert_phase_or_test_record
   def assertMeasurementMarginal(self, phase_record, measurement):
@@ -939,18 +1049,23 @@ class TestCase(unittest.TestCase):
     self.assertFalse(phase_record.measurements[measurement].marginal)
 
   @_assert_phase_or_test_record
-  def assertAttachment(self,
-                       phase_record,
-                       attachment_name,
-                       expected_contents=mock.ANY):
-    self.assertIn(attachment_name, phase_record.attachments,
-                  'Attachment {} not attached.'.format(attachment_name))
+  def assertAttachment(
+      self, phase_record, attachment_name, expected_contents=mock.ANY
+  ):
+    self.assertIn(
+        attachment_name,
+        phase_record.attachments,
+        'Attachment {} not attached.'.format(attachment_name),
+    )
     if expected_contents is not mock.ANY:
       data = phase_record.attachments[attachment_name].data
       self.assertEqual(
-          expected_contents, data,
+          expected_contents,
+          data,
           'Attachment {} has wrong value: expected {}, got {}'.format(
-              attachment_name, expected_contents, data))
+              attachment_name, expected_contents, data
+          ),
+      )
 
   def get_diagnoses_store(self):
     self.assertIsNotNone(self.last_test_state)
@@ -985,14 +1100,17 @@ class TestCase(unittest.TestCase):
     The output filename is {module}.{test_case}.pstats.
     """
     if cls._profile_output_dir is not None:
-      return pathlib.Path(cls._profile_output_dir,
-                          f'{__name__.split(".")[-1]}.{cls.__name__}.pstats')
+      return pathlib.Path(
+          cls._profile_output_dir,
+          f'{__name__.split(".")[-1]}.{cls.__name__}.pstats',
+      )
     return None
 
 
 def get_flattened_phases(
-    phases_or_phase_groups: Sequence[Union[
-        phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]]
+    phases_or_phase_groups: Sequence[
+        Union[phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]
+    ]
 ) -> Sequence[phase_nodes.PhaseNode]:
   """Flattens a sequence of phase nodes or phase collection nodes into nodes."""
   phases = []

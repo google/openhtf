@@ -34,7 +34,6 @@ class TestTest(unittest.TestCase):
 
   @mock.patch.object(test_descriptor, '_LOG')
   def test_output_cb_error_stacktrace_log(self, mock_log):
-
     def phase():
       return
 
@@ -46,4 +45,5 @@ class TestTest(unittest.TestCase):
     test.add_output_callbacks(callback)
     test.execute()
     mock_log.error.assert_called_once_with(
-        mock.ANY, callback, RegexMatcher(r'test_descriptor_test(.|\n)*test123'))
+        mock.ANY, callback, RegexMatcher(r'test_descriptor_test(.|\n)*test123')
+    )

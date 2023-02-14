@@ -59,13 +59,16 @@ _WAIT_FOR_EXECUTING_TEST_POLL_S = 0.1
 CONF.declare(
     'frontend_throttle_s',
     default_value=_DEFAULT_FRONTEND_THROTTLE_S,
-    description=('Min wait time between successive updates to the '
-                 'frontend.'))
+    description='Min wait time between successive updates to the frontend.',
+)
 CONF.declare(
     'station_server_port',
     default_value=0,
-    description=('Port on which to serve the app. If set to zero (the '
-                 'default) then an arbitrary port will be chosen.'))
+    description=(
+        'Port on which to serve the app. If set to zero (the '
+        'default) then an arbitrary port will be chosen.'
+    ),
+)
 
 # These have default values in openhtf.util.multicast.py.
 CONF.declare('station_discovery_address')
@@ -145,7 +148,8 @@ def _wait_for_any_event(events, timeout_s):
     return any(event.is_set() for event in events)
 
   result = timeouts.loop_until_timeout_or_true(
-      timeout_s, any_event_set, sleep_s=_WAIT_FOR_ANY_EVENT_POLL_S)
+      timeout_s, any_event_set, sleep_s=_WAIT_FOR_ANY_EVENT_POLL_S
+  )
 
   return result or any_event_set()
 
@@ -158,6 +162,7 @@ class StationWatcher(threading.Thread):
   when a change occurs. Authors of frontend-aware plugs must ensure that
   notify_update() is called when a change occurs to that plug's state.
   """
+
   daemon = True
 
   def __init__(self, update_callback):
@@ -177,8 +182,10 @@ class StationWatcher(threading.Thread):
           # These errors occur occasionally and it is infeasible to get rid of
           # them entirely unless data.convert_to_base_types() is made
           # thread-safe. Ignore the error and retry quickly.
-          _LOG.debug('Ignoring (probably harmless) error in station watcher: '
-                     '`dictionary changed size during iteration`.')
+          _LOG.debug(
+              'Ignoring (probably harmless) error in station watcher: '
+              '`dictionary changed size during iteration`.'
+          )
           time.sleep(0.1)
         else:
           _LOG.exception('Error in station watcher: %s', error)
@@ -237,6 +244,7 @@ class DashboardPubSub(sockjs.tornado.SockJSConnection):
   server, it should be smart enough not to look for this endpoint on the station
   server.
   """
+
   port = None  # Set by for_port().
 
   @classmethod
@@ -269,6 +277,7 @@ class StationPubSub(pub_sub.PubSub):
   with this StationServer. Two types of message are sent: 'update' and 'record',
   where 'record' indicates the final state of a test.
   """
+
   _lock = threading.Lock()  # Required by pub_sub.PubSub.
   subscribers = set()  # Required by pub_sub.PubSub.
   _last_execution_uid = None
@@ -277,8 +286,9 @@ class StationPubSub(pub_sub.PubSub):
   @classmethod
   def publish_test_record(cls, test_record):
     test_record_dict = data.convert_to_base_types(test_record)
-    test_state_dict = _test_state_from_record(test_record_dict,
-                                              cls._last_execution_uid)
+    test_state_dict = _test_state_from_record(
+        test_record_dict, cls._last_execution_uid
+    )
     cls._publish_test_state(test_state_dict, 'record')
 
   @classmethod
@@ -339,7 +349,8 @@ class AttachmentsHandler(BaseTestHandler):
     running_phase = test_state.running_phase_state
     phase_records = itertools.chain(
         test_state.test_record.phases,
-        [running_phase.phase_record] if running_phase is not None else [])
+        [running_phase.phase_record] if running_phase is not None else [],
+    )
 
     matched_phase = None
     for phase in phase_records:
@@ -409,11 +420,15 @@ class PlugsHandler(BaseTestHandler):
 
     method = getattr(plug, method_name, None)
 
-    if not (plug.enable_remote and isinstance(method, types.MethodType) and
-            not method_name.startswith('_') and
-            method_name not in plug.disable_remote_attrs):
-      self.write('Cannot access method %s of plug %s.' %
-                 (method_name, plug_name))
+    if not (
+        plug.enable_remote
+        and isinstance(method, types.MethodType)
+        and not method_name.startswith('_')
+        and method_name not in plug.disable_remote_attrs
+    ):
+      self.write(
+          'Cannot access method %s of plug %s.' % (method_name, plug_name)
+      )
       self.set_status(400)
       return
 
@@ -427,7 +442,6 @@ class PlugsHandler(BaseTestHandler):
 
 
 class BaseHistoryHandler(web_gui_server.CorsRequestHandler):
-
   history_path = None
 
   def initialize(self, history_path):
@@ -471,8 +485,10 @@ class HistoryListHandler(BaseHistoryHandler):
       if filter_dut_id and dut_id not in filter_dut_id:
         continue
 
-      if (filter_start_time_millis and
-          str(start_time_millis) not in filter_start_time_millis):
+      if (
+          filter_start_time_millis
+          and str(start_time_millis) not in filter_start_time_millis
+      ):
         continue
 
       history_items.append({
@@ -574,8 +590,8 @@ class StationServer(web_gui_server.WebGuiServer):
   """
 
   def __init__(
-      self,
-      history_path: Optional[Union[str, bytes, os.PathLike]] = None) -> None:
+      self, history_path: Optional[Union[str, bytes, os.PathLike]] = None
+  ) -> None:
     # Disable tornado's logging.
     # TODO(kenadia): Enable these logs if verbosity flag is at least -vvv.
     #     I think this will require changing how StoreRepsInModule works.
@@ -602,25 +618,31 @@ class StationServer(web_gui_server.WebGuiServer):
     # Set up the other endpoints.
     routes.extend((
         (r'/tests/(?P<test_uid>[\w\d:]+)/phases', PhasesHandler),
-        (r'/tests/(?P<test_uid>[\w\d:]+)/plugs/(?P<plug_name>.+)',
-         PlugsHandler),
-        (r'/tests/(?P<test_uid>[\w\d:]+)/phases/(?P<phase_descriptor_id>\d+)/'
-         'attachments/(?P<attachment_name>.+)', AttachmentsHandler),
+        (
+            r'/tests/(?P<test_uid>[\w\d:]+)/plugs/(?P<plug_name>.+)',
+            PlugsHandler,
+        ),
+        (
+            r'/tests/(?P<test_uid>[\w\d:]+)/phases/(?P<phase_descriptor_id>\d+)/'
+            'attachments/(?P<attachment_name>.+)',
+            AttachmentsHandler,
+        ),
     ))
 
     # Optionally enable history from disk.
     if history_path is not None:
       routes.extend((
-          (r'/history', HistoryListHandler, {
-              'history_path': history_path
-          }),
-          (r'/history/(?P<file_name>[^/]+)', HistoryItemHandler, {
-              'history_path': history_path
-          }),
-          (r'/history/(?P<file_name>[^/]+)/attachments/(?P<attachment_name>.+)',
-           HistoryAttachmentsHandler, {
-               'history_path': history_path
-           }),
+          (r'/history', HistoryListHandler, {'history_path': history_path}),
+          (
+              r'/history/(?P<file_name>[^/]+)',
+              HistoryItemHandler,
+              {'history_path': history_path},
+          ),
+          (
+              r'/history/(?P<file_name>[^/]+)/attachments/(?P<attachment_name>.+)',
+              HistoryAttachmentsHandler,
+              {'history_path': history_path},
+          ),
       ))
 
     super(StationServer, self).__init__(routes, port, sockets=sockets)
@@ -632,13 +654,19 @@ class StationServer(web_gui_server.WebGuiServer):
     }
 
   def run(self) -> None:
-    _LOG.info('Announcing station server via multicast on %s:%s',
-              self.station_multicast.address, self.station_multicast.port)
+    _LOG.info(
+        'Announcing station server via multicast on %s:%s',
+        self.station_multicast.address,
+        self.station_multicast.port,
+    )
     self.station_multicast.start()
-    _LOG.info('Starting station server at:\n'  # pylint: disable=logging-format-interpolation
-              '  Local: http://localhost:{port}\n'
-              '  Remote: http://{host}:{port}'.format(
-                  host=socket.gethostname(), port=self.port))
+    _LOG.info(
+        'Starting station server at:\n'  # pylint: disable=logging-format-interpolation
+        '  Local: http://localhost:{port}\n'
+        '  Remote: http://{host}:{port}'.format(
+            host=socket.gethostname(), port=self.port
+        )
+    )
     super(StationServer, self).run()
 
   def stop(self) -> None:
