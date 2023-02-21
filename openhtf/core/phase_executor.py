@@ -242,6 +242,20 @@ class PhaseExecutor(object):
     self._current_phase_thread = None  # type: Optional[PhaseExecutorThread]
     self._stopping = threading.Event()
 
+  def _should_repeat(self, phase: phase_descriptor.PhaseDescriptor,
+                     phase_execution_outcome: PhaseExecutionOutcome) -> bool:
+    """Returns whether a phase should be repeated."""
+    if phase_execution_outcome.is_timeout and phase.options.repeat_on_timeout:
+      return True
+    elif phase_execution_outcome.is_repeat:
+      return True
+    elif phase.options.force_repeat:
+      return True
+    elif phase.options.repeat_on_measurement_fail:
+      last_phase_outcome = self.test_state.test_record.phases[-1].outcome
+      return last_phase_outcome == test_record.PhaseOutcome.FAIL
+    return False
+
   def execute_phase(
       self,
       phase: phase_descriptor.PhaseDescriptor,
@@ -270,12 +284,8 @@ class PhaseExecutor(object):
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome, profile_stats = self._execute_phase_once(
           phase, is_last_repeat, run_with_profiling, subtest_rec)
-
-      # Give 3 default retries for timeout phase.
-      # Force repeat up to the repeat limit if force_repeat is set.
-      if ((phase_execution_outcome.is_timeout and
-           phase.options.repeat_on_timeout) or phase_execution_outcome.is_repeat
-          or phase.options.force_repeat) and not is_last_repeat:
+      if (self._should_repeat(phase, phase_execution_outcome) and
+          not is_last_repeat):
         repeat_count += 1
         continue
 
@@ -362,7 +372,8 @@ class PhaseExecutor(object):
       subtest_name = None
     evaluated_millis = util.time_millis()
     try:
-      outcome = PhaseExecutionOutcome(checkpoint.get_result(self.test_state, subtest_rec))
+      outcome = PhaseExecutionOutcome(checkpoint.get_result(self.test_state,
+                                                            subtest_rec))
       self.logger.debug('Checkpoint %s result: %s', checkpoint.name,
                         outcome.phase_result)
       if outcome.is_fail_subtest and not subtest_rec:

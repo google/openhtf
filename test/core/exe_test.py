@@ -71,6 +71,18 @@ class MoreRepeatsUnittestPlug(UnittestPlug):
   return_continue_count = 100
 
 
+class RepeatTracker():
+
+  def __init__(self):
+    self.count = 0
+
+  def increment(self):
+    self.count += 1
+
+  def get_num_repeats(self) -> int:
+    return self.count
+
+
 class FailedPlugError(Exception):
   """Exception for the failed plug."""
 
@@ -113,6 +125,29 @@ def phase_repeat(test, test_plug):
   ret = test_plug.increment()
   print('phase_repeat completed for %s time' % test_plug.count)
   return openhtf.PhaseResult.CONTINUE if ret else openhtf.PhaseResult.REPEAT
+
+
+@openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+@openhtf.measures(
+    openhtf.Measurement('example_dimension').with_dimensions(
+        'dim').dimension_pivot_validate(
+            util.validators.InRange(
+                minimum=-5,
+                maximum=5,
+            )))
+def phase_repeat_on_multidim_measurement_fail(test, meas_value: int,
+                                              tracker: RepeatTracker):
+  test.measurements['example_dimension'][0] = meas_value
+  tracker.increment()
+
+
+@openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+@openhtf.measures(
+    openhtf.Measurement('meas_val').in_range(minimum=-5, maximum=5,))
+def phase_repeat_on_measurement_fail(test, meas_value: int,
+                                     tracker: RepeatTracker):
+  test.measurements['meas_val'] = meas_value
+  tracker.increment()
 
 
 @openhtf.PhaseOptions(run_if=lambda: False)
@@ -1129,7 +1164,7 @@ class TestExecutorExecuteBranchTest(parameterized.TestCase):
         'branch:{}'.format(diag_cond.message))
 
 
-class PhaseExecutorTest(unittest.TestCase):
+class PhaseExecutorTest(parameterized.TestCase):
 
   def setUp(self):
     super(PhaseExecutorTest, self).setUp()
@@ -1137,7 +1172,8 @@ class PhaseExecutorTest(unittest.TestCase):
         spec=test_state.TestState,
         plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
-        state_logger=mock.MagicMock())
+        state_logger=mock.MagicMock(),
+        test_record=mock.MagicMock(spec=test_record.TestRecord))
     self.test_state.plug_manager.initialize_plugs(
         [UnittestPlug, MoreRepeatsUnittestPlug])
     self.phase_executor = phase_executor.PhaseExecutor(self.test_state)
@@ -1148,13 +1184,53 @@ class PhaseExecutorTest(unittest.TestCase):
 
   def test_execute_repeat_okay_phase(self):
     result, _ = self.phase_executor.execute_phase(
-        phase_repeat.with_plugs(test_plug=UnittestPlug))
+        phase_repeat.with_plugs(test_plug=UnittestPlug)
+    )
     self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
 
   def test_execute_repeat_limited_phase(self):
     result, _ = self.phase_executor.execute_phase(
-        phase_repeat.with_plugs(test_plug=MoreRepeatsUnittestPlug))
+        phase_repeat.with_plugs(test_plug=MoreRepeatsUnittestPlug)
+    )
     self.assertEqual(openhtf.PhaseResult.STOP, result.phase_result)
+
+  @parameterized.named_parameters(
+      # NAME, PHASE, MEASUREMENT_VALUE, OUTCOME, EXPECTED_NUMBER_OF_RUNS.
+      # Not failing phase with a simple measurement value in range [-5, +5].
+      ('measurement_phase_not_failing', phase_repeat_on_measurement_fail, 4,
+       test_record.PhaseOutcome.PASS, 1),
+      # Failing phase with simple measurement value out of range.
+      ('measurement_phase_failing', phase_repeat_on_measurement_fail, 10,
+       test_record.PhaseOutcome.FAIL, 5),
+      # Not failing phase with a multidim measurement value in range [-5, +5].
+      ('multidim_measurement_phase_not_failing',
+       phase_repeat_on_multidim_measurement_fail, 4,
+       test_record.PhaseOutcome.PASS, 1),
+      # Failing phase with multidim measurement value out of range.
+      ('multidim_measurement_phase_failing',
+       phase_repeat_on_multidim_measurement_fail, 10,
+       test_record.PhaseOutcome.FAIL, 5),
+  )
+  def test_execute_repeat_on_measurement_fail_phase(self, phase, meas_value,
+                                                    outcome, num_runs):
+    mock_test_state = mock.MagicMock(
+        spec=test_state.TestState,
+        plug_manager=plugs.PlugManager(),
+        execution_uid='01234567890',
+        state_logger=mock.MagicMock(),
+        test_record=test_record.TestRecord('mock-dut-id', 'mock-station-id'))
+    mock_test_state.plug_manager.initialize_plugs(
+        [UnittestPlug, MoreRepeatsUnittestPlug])
+    my_phase_record = test_record.PhaseRecord.from_descriptor(phase)
+    my_phase_record.outcome = outcome
+    mock_test_state.test_record.add_phase_record(my_phase_record)
+    my_phase_executor = phase_executor.PhaseExecutor(mock_test_state)
+    tracker = RepeatTracker()
+    result, _ = my_phase_executor.execute_phase(
+        phase.with_args(tracker=tracker, meas_value=meas_value)
+    )
+    self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
+    self.assertEqual(tracker.get_num_repeats(), num_runs)
 
   def test_execute_run_if_false(self):
     result, _ = self.phase_executor.execute_phase(phase_skip_from_run_if)

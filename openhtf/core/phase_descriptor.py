@@ -103,6 +103,8 @@ class PhaseOptions(object):
       needs to wrap another phase for some reason, as PhaseDescriptors can only
       be invoked with a TestState instance.
     force_repeat: If True, force the phase to repeat up to repeat_limit times.
+    repeat_on_measurement_fail: If true, force phase with failed
+      measurements to repeat up to repeat_limit times.
     repeat_on_timeout:  If consider repeat on phase timeout, default is No.
     repeat_limit:  Maximum number of repeats.  None indicates a phase will be
       repeated infinitely as long as PhaseResult.REPEAT is returned.
@@ -121,6 +123,7 @@ class PhaseOptions(object):
   run_if = attr.ib(type=Optional[Callable[[], bool]], default=None)
   requires_state = attr.ib(type=bool, default=False)
   force_repeat = attr.ib(type=bool, default=False)
+  repeat_on_measurement_fail = attr.ib(type=bool, default=False)
   repeat_on_timeout = attr.ib(type=bool, default=False)
   repeat_limit = attr.ib(type=Optional[int], default=None)
   run_under_pdb = attr.ib(type=bool, default=False)
@@ -147,6 +150,10 @@ class PhaseOptions(object):
       phase.options.requires_state = self.requires_state
     if self.repeat_on_timeout:
       phase.options.repeat_on_timeout = self.repeat_on_timeout
+    if self.force_repeat:
+      phase.options.force_repeat = self.force_repeat
+    if self.repeat_on_measurement_fail:
+      phase.options.repeat_on_measurement_fail = self.repeat_on_measurement_fail
     if self.repeat_limit is not None:
       phase.options.repeat_limit = self.repeat_limit
     if self.run_under_pdb:
