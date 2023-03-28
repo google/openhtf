@@ -844,7 +844,7 @@ class PhaseState(object):
     if self.phase_record.outcome == test_record.PhaseOutcome.ERROR:
       return
     # Check for errors during diagnoser execution.
-    if self.result is None or self.result.is_terminal:
+    if self.result is None or self.result.is_terminal:  # pytype: disable=attribute-error  # always-use-return-annotations
       self.logger.debug('Phase outcome of %s is ERROR due to diagnoses.',
                         self.name)
       self.phase_record.outcome = test_record.PhaseOutcome.ERROR
