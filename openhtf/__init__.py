@@ -86,7 +86,7 @@ __all__ = (  # Expliclty export certain API components.
     'conf',
 )
 
-plug = plugs.plug
+plug = openhtf.plugs.plug
 BasePlug = openhtf.core.base_plugs.BasePlug
 
 DiagnosesStore = openhtf.core.diagnoses_lib.DiagnosesStore
