@@ -16,7 +16,6 @@
 import signal
 import typing
 
-from openhtf import plugs
 from openhtf.core import phase_executor
 from openhtf.core import test_record
 import openhtf.core.base_plugs
@@ -29,6 +28,7 @@ import openhtf.core.phase_descriptor
 import openhtf.core.phase_group
 import openhtf.core.phase_nodes
 import openhtf.core.test_descriptor
+import openhtf.plugs
 import openhtf.util
 from openhtf.util import configuration
 from openhtf.util import console_output
@@ -86,6 +86,7 @@ __all__ = (  # Expliclty export certain API components.
     'conf',
 )
 
+plugs = openhtf.plugs
 plug = openhtf.plugs.plug
 BasePlug = openhtf.core.base_plugs.BasePlug
 
