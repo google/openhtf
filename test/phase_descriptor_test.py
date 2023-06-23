@@ -303,6 +303,17 @@ class TestPhaseDescriptor(htf_test.TestCase):
 
     self.assertEqual(snake_cased_phase.name, 'SnakeCasedPhase')
 
+  def test_camel_phase_name_casing_formats_templated_name(self):
+    @phase_descriptor.PhaseOptions(
+        name='{snake}_cased_phase', phase_name_case=openhtf.PhaseNameCase.CAMEL
+    )
+    def snake_cased_phase():
+      """Empty function to generate phase descriptor."""
+
+    self.assertEqual(
+        snake_cased_phase.with_args(snake='snake').name, 'SnakeCasedPhase'
+    )
+
   def test_keep_phase_name_casing_does_not_change_name(self):
 
     @phase_descriptor.PhaseOptions(phase_name_case=openhtf.PhaseNameCase.KEEP)

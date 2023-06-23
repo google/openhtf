@@ -158,11 +158,10 @@ class PhaseOptions(object):
       phase.options.repeat_limit = self.repeat_limit
     if self.run_under_pdb:
       phase.options.run_under_pdb = self.run_under_pdb
-    if self.phase_name_case == PhaseNameCase.CAMEL:
-      name = phase.name if phase.options.name is None else phase.options.name
-      phase.options.name = inflection.camelize(name)
     if self.stop_on_measurement_fail:
       phase.options.stop_on_measurement_fail = self.stop_on_measurement_fail
+    if self.phase_name_case:
+      phase.options.phase_name_case = self.phase_name_case
     return phase
 
 
@@ -233,8 +232,12 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
   @property
   def name(self) -> Text:
     if self.options.name and isinstance(self.options.name, str):
-      return self.options.name
-    return self.func.__name__
+      name = self.options.name
+    else:
+      name = self.func.__name__
+    if self.options.phase_name_case == PhaseNameCase.CAMEL:
+      name = inflection.camelize(name)
+    return name
 
   @property
   def doc(self) -> Optional[Text]:
