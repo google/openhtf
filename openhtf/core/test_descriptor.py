@@ -252,7 +252,7 @@ class Test(object):
   def handle_sig_int(cls, signalnum: Optional[int], handler: Any) -> None:
     """Handle the SIGINT callback."""
     if not cls.TEST_INSTANCES:
-      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)  # pylint: disable=not-callable
+      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)  # pylint: disable=not-callable # pytype: disable=not-callable
       return
 
     _LOG.error('Received SIGINT, stopping all tests.')

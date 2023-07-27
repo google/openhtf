@@ -181,6 +181,11 @@ class MfgInspector(object):
     """Convert and cache a test record to a mfg-inspector proto."""
     if (self._cached_proto is None or
         not self._check_cached_params(test_record_obj)):
+      if self._converter is None:
+        raise RuntimeError(
+            'Must set _converter on subclass or via set_converter before'
+            ' calling save_to_disk.'
+        )
       self._cached_proto = self._converter(test_record_obj)
       for param in self.PARAMS:
         self._cached_params[param] = getattr(test_record_obj, param)
