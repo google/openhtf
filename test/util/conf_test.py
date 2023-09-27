@@ -203,7 +203,7 @@ class TestConf(TestConfBase):
       def __init__(self, string_default):
         self.string_default = string_default
 
-    instance = TestClass()  # pylint: disable=no-value-for-parameter
+    instance = TestClass()  # pylint: disable=no-value-for-parameter  # pytype: disable=missing-parameter
     self.assertEqual('default', instance.string_default)  # pytype: disable=attribute-error
 
 
