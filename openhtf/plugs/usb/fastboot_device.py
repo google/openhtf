@@ -51,6 +51,8 @@ class FastbootDevice(object):
   @property
   def usb_handle(self):
     """Return our USB handle."""
+    if not self._protocol:
+      raise usb_exceptions.HandleClosedError()
     return self._protocol.usb_handle
 
   def set_boot_config(self, name, value):
