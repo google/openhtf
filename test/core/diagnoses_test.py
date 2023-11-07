@@ -198,7 +198,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_phase_diagnoser_name_from_function(self):
 
-    @htf.PhaseDiagnoser(OkayResult.OKAY)
+    @htf.PhaseDiagnoser(OkayResult.OKAY)  # pytype: disable=wrong-arg-types  # use-enum-overlay
     def from_function(phase_record):
       del phase_record  # Unused.
       return None
@@ -207,7 +207,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_phase_diagnoser_name_set(self):
 
-    @htf.PhaseDiagnoser(OkayResult.OKAY, name='from_arg')
+    @htf.PhaseDiagnoser(OkayResult.OKAY, name='from_arg')  # pytype: disable=wrong-arg-types  # use-enum-overlay
     def from_function(phase_record):
       del phase_record  # Unused.
       return None
@@ -230,7 +230,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_test_diagnoser_name_from_function(self):
 
-    @htf.TestDiagnoser(OkayResult.OKAY)
+    @htf.TestDiagnoser(OkayResult.OKAY)  # pytype: disable=wrong-arg-types  # use-enum-overlay
     def from_function(test_record_, store):
       del test_record_  # Unused.
       del store  # Unused.
@@ -240,7 +240,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_test_diagnoser_name_set(self):
 
-    @htf.TestDiagnoser(OkayResult.OKAY, name='from_arg')
+    @htf.TestDiagnoser(OkayResult.OKAY, name='from_arg')  # pytype: disable=wrong-arg-types  # use-enum-overlay
     def from_function(test_record_, store):
       del test_record_  # Unused.
       del store  # Unused.
