@@ -167,6 +167,9 @@ class TestRecord(object):
   """The record of a single run of a test."""
 
   dut_id = attr.ib(type=Optional[Text])
+  dut_mac = attr.ib(type=Optional[Text])
+  dut_halter_sn = attr.ib(type=Optional[Text])
+  dut_part_number = attr.ib(type=Optional[Text])
   station_id = attr.ib(type=Text)
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)

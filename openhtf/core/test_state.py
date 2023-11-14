@@ -174,6 +174,9 @@ class TestState(util.SubscribableStateMixin):
 
     self.test_record = test_record.TestRecord(
         dut_id=None,
+        dut_mac=None,
+        dut_halter_sn=None,
+        dut_part_number=None,
         station_id=CONF.station_id,
         code_info=test_desc.code_info,
         start_time_millis=0,
