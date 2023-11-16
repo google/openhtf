@@ -45,6 +45,7 @@ from openhtf.core import phase_executor
 from openhtf.core import test_executor
 from openhtf.core import test_record as htf_test_record
 from openhtf.core import test_state
+from openhtf.core.dut_id import DutIdentifier
 
 from openhtf.util import configuration
 from openhtf.util import console_output
@@ -276,7 +277,9 @@ class Test(object):
 
   def execute(self,
               test_start: Optional[Union[phase_descriptor.PhaseT,
-                                         Callable[[], str]]] = None,
+              Callable[[], str],
+              Callable[[], DutIdentifier],
+              ]] = None,
               profile_filename: Optional[Text] = None) -> bool:
     """Starts the framework and executes the given test.
 
@@ -300,7 +303,7 @@ class Test(object):
         self._test_desc.phase_sequence)
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
-    with self._lock:
+    with (self._lock):
       # Sanity check to make sure someone isn't doing something weird like
       # trying to Execute() the same test twice in two separate threads.  We
       # hold the lock between here and Start()'ing the executor to guarantee
@@ -317,7 +320,13 @@ class Test(object):
 
         @phase_descriptor.PhaseOptions()
         def trigger_phase(test):
-          test.test_record.dut_id = typing.cast(types.LambdaType, test_start)()
+          dut_id = typing.cast(types.LambdaType, test_start)()
+          if isinstance(dut_id, DutIdentifier):
+            test.test_record.dut_id = dut_id.test_id
+            test.test_record.dut_extended_id = dut_id
+          else:
+            test.test_record.dut_id = dut_id
+            test.test_record.dut_extended_id = DutIdentifier()
 
         trigger = trigger_phase
       else:
