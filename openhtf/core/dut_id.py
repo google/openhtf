@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 @dataclass
 class DutIdentifier:
-    halter_serial_number: str
+    halter_serial_number: Optional [str] = None
     mac_address: Optional[str] = None
     part_number: Optional[str] = None
     additional: Optional[dict] = None
