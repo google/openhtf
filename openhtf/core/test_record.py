@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 CONF.declare(
     'attachments_directory',
     default_value=None,
-    description='Directory where temprorary files can be safely stored.')
+    description='Directory where temporary files can be safely stored.')
 
 _LOG = logging.getLogger(__name__)
 
@@ -339,7 +339,7 @@ class PhaseRecord(object):
   dictionaries, each of which map measurement name to the respective object.  In
   the case of the measurements field, those objects are measurements.Measurement
   instances.  The 'value' attribute of each of those instances is an instance of
-  measurments.MeasuredValue, which contains either a single value, or a list of
+  measurements.MeasuredValue, which contains either a single value, or a list of
   values in the case of a dimensioned measurement.
 
   See measurements.Record.GetValues() for more information.

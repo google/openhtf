@@ -27,7 +27,7 @@ message MfgEvent {
   // The serial number or lot info of the device under test.
   // For non-serialized items, we can track them via lot_number and an
   // optional lot_index within the lot (such as "This tray of items is lot
-  // #FOT123 and this is the part in slot 6 of the tray.
+  // #FOT123 and this is the part in slot 6 of the tray.)s
   message ByLot {
     required string lot_number = 1;
     optional string lot_index = 2;

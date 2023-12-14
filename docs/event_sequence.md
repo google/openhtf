@@ -75,7 +75,7 @@ callbacks.
 
 `PhaseGroup` collections behave like contexts. They are entered if their
 `setup` phases are all non-terminal; if this happens, the `teardown` phases are
-guarenteed to run.  `PhaseGroup` collections can contain additional `PhaseGroup`
+guaranteed to run.  `PhaseGroup` collections can contain additional `PhaseGroup`
 instances. If a nested group has a terminal phase, the outer groups will trigger
 the same shortcut logic.
 

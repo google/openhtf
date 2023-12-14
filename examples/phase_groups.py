@@ -14,7 +14,7 @@
 """Example OpenHTF Phase Groups.
 
 PhaseGroups are used to control phase shortcutting due to terminal errors to
-better guarentee when teardown phases run.
+better guarantee when teardown phases run.
 """
 
 import openhtf as htf

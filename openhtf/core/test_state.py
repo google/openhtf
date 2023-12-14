@@ -866,7 +866,7 @@ class PhaseState(object):
       if self.phase_record.result.is_terminal:
         self.logger.exception(
             'Phase Diagnoser %s raised an exception, but phase result is '
-            'already terminal; logging additonal exception here.',
+            'already terminal; logging additional exception here.',
             diagnoser.name)
       else:
         self.phase_record.result = phase_executor.PhaseExecutionOutcome(
