@@ -101,7 +101,7 @@ class MfgInspector(object):
   username and authentication key (which should be the key data itself, not a
   filename or file).
 
-  In typical production setups, we *first* save the protobuf to disk then attempt
+  In typical productn setups, we *first* save the protobuf to disk then attempt
   to upload the protobuf to mfg-inspector.  In the event of a network outage,
   the result of the test run is available on disk and a separate process can
   retry the upload when network is available.
