@@ -110,7 +110,7 @@ message Phase {
   optional TimeInfo timing = 4;
 }
 
-// A parameter which is tested during a test run. These are parameteric values
+// A parameter which is tested during a test run. These are parametric values
 // which are used to pass or fail the test.
 message TestParameter {
   // reserved 9;
@@ -223,7 +223,7 @@ message TestRun {
   // Not supported by OpenHTF.
   // For non-serialized items, we can track them via lot_number and a part_id
   // within the lot (such as "This try of items is lot #FOT123 and this is the
-  // part in slot 6 of the tray.  In this case, a unique dut should be
+  // part in slot 6 of the tray).  In this case, a unique dut should be
   // synthesized and stored in the required field dut_serial, and the
   // synthetic_dut flag should be set.
   optional string lot_number = 23;

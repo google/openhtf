@@ -107,7 +107,7 @@ still run.
   def block_test_diag(test_record, diagnoses_store):
     if (diagnoses_store.has_diagnosis_result(
             BlockStatusResult.BLOCK0_OUT_OF_SPEC) and
-        diagnoses_store.has_diganosis_result(
+        diagnoses_store.has_diagnosis_result(
             BlockStatusResult.BLOCK1_OUT_OF_SPEC)):
       return openhtf.Diagnosis(
           BlockStatusResult.UNIT_OUT_OF_SPEC,
