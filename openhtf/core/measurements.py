@@ -59,14 +59,15 @@ Examples:
 """
 
 import collections
+import copy
 import enum
 import functools
 import logging
 import typing
-from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Text, Tuple, Union
 
 import attr
-
+import immutabledict
 from openhtf import util
 from openhtf.util import data
 from openhtf.util import units as util_units
@@ -735,6 +736,42 @@ class DimensionedMeasuredValue(object):
     return pandas.DataFrame.from_records(self.value, columns=columns)
 
 
+@attr.s(slots=True, frozen=True)
+class ImmutableMeasurement(object):
+  """Immutable copy of a measurement."""
+
+  name = attr.ib(type=Text)
+  value = attr.ib(type=Any)
+  units = attr.ib(type=Optional[util_units.UnitDescriptor])
+  dimensions = attr.ib(type=Optional[List[Dimension]])
+  outcome = attr.ib(type=Optional[Outcome])
+  docstring = attr.ib(type=Optional[Text], default=None)
+
+  @classmethod
+  def from_measurement(cls, measurement: Measurement) -> 'ImmutableMeasurement':
+    """Convert a Measurement into an ImmutableMeasurement."""
+    measured_value = measurement.measured_value
+    if isinstance(measured_value, DimensionedMeasuredValue):
+      value = data.attr_copy(
+          measured_value, value_dict=copy.deepcopy(measured_value.value_dict)
+      )
+    else:
+      value = (
+          copy.deepcopy(measured_value.value)
+          if measured_value.is_value_set
+          else None
+      )
+
+    return cls(
+        name=measurement.name,
+        value=value,
+        units=measurement.units,
+        dimensions=measurement.dimensions,
+        outcome=measurement.outcome,
+        docstring=measurement.docstring,
+    )
+
+
 @attr.s(slots=True)
 class Collection(object):
   """Encapsulates a collection of measurements.
@@ -819,6 +856,12 @@ class Collection(object):
 
     # Return the MeasuredValue's value, MeasuredValue will raise if not set.
     return m.measured_value.value
+
+  def immutable_measurements(self) -> Mapping[Text, ImmutableMeasurement]:
+    return immutabledict.immutabledict({
+        name: ImmutableMeasurement.from_measurement(meas)
+        for name, meas in self._measurements.items()
+    })
 
 
 # Work around for attrs bug in 20.1.0; after the next release, this can be
