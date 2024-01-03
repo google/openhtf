@@ -105,6 +105,7 @@ class ImmutableMeasurement(object):
   units = attr.ib(type=Optional[units.UnitDescriptor])
   dimensions = attr.ib(type=Optional[List[measurements.Dimension]])
   outcome = attr.ib(type=Optional[measurements.Outcome])
+  docstring = attr.ib(type=Optional[Text], default=None)
 
   @classmethod
   def from_measurement(
@@ -124,7 +125,9 @@ class ImmutableMeasurement(object):
         value=value,
         units=measurement.units,
         dimensions=measurement.dimensions,
-        outcome=measurement.outcome)
+        outcome=measurement.outcome,
+        docstring=measurement.docstring,
+    )
 
 
 class TestState(util.SubscribableStateMixin):
