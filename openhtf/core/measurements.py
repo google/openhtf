@@ -820,6 +820,10 @@ class Collection(object):
     # Return the MeasuredValue's value, MeasuredValue will raise if not set.
     return m.measured_value.value
 
+  @property
+  def measurements(self) -> Dict[Text, Measurement]:
+    return self._measurements
+
 
 # Work around for attrs bug in 20.1.0; after the next release, this can be
 # removed and `Collection._custom_setattr` can be renamed to `__setattr__`.
