@@ -38,7 +38,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install tox tox-gh-actions
-        pip install coveralls
         wget https://github.com/protocolbuffers/protobuf/releases/download/v21.6/protoc-21.6-linux-x86_64.zip
         unzip protoc-21.6-linux-x86_64.zip
         sudo cp bin/protoc /usr/bin/protoc && sudo chmod 777 /usr/bin/protoc
@@ -47,10 +46,11 @@ jobs:
         sudo apt-get install -y libusb-1.0-0-dev libprotobuf-dev swig
     - name: Test with tox
       run: tox
-    - name: Publish to coveralls.io
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      run: coveralls --service=github
+    - name: Publish to Coveralls with GitHub Action
+      uses: coverallsapp/github-action@v2.2.3
+      with:
+        parallel: true
+        flag-name: python-${{ matrix.python-version }}
 
   web_ui:
     runs-on: ubuntu-latest
@@ -62,3 +62,13 @@ jobs:
       - uses: actions/setup-node@v3
       - run: npm install
       - run: npm run build
+
+  finish:
+    needs: build_and_test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@v2
+      with:
+        parallel-finished: true
