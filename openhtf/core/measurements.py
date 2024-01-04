@@ -59,6 +59,7 @@ Examples:
 """
 
 import collections
+import copy
 import enum
 import functools
 import logging
@@ -66,7 +67,6 @@ import typing
 from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
 
 import attr
-
 from openhtf import util
 from openhtf.util import data
 from openhtf.util import units as util_units
@@ -733,6 +733,42 @@ class DimensionedMeasuredValue(object):
     if not pandas:
       raise RuntimeError('Install pandas to convert to pandas.DataFrame')
     return pandas.DataFrame.from_records(self.value, columns=columns)
+
+
+@attr.s(slots=True, frozen=True)
+class ImmutableMeasurement(object):
+  """Immutable copy of a measurement."""
+
+  name = attr.ib(type=Text)
+  value = attr.ib(type=Any)
+  units = attr.ib(type=Optional[util_units.UnitDescriptor])
+  dimensions = attr.ib(type=Optional[List[Dimension]])
+  outcome = attr.ib(type=Optional[Outcome])
+  docstring = attr.ib(type=Optional[Text], default=None)
+
+  @classmethod
+  def from_measurement(cls, measurement: Measurement) -> 'ImmutableMeasurement':
+    """Convert a Measurement into an ImmutableMeasurement."""
+    measured_value = measurement.measured_value
+    if isinstance(measured_value, DimensionedMeasuredValue):
+      value = data.attr_copy(
+          measured_value, value_dict=copy.deepcopy(measured_value.value_dict)
+      )
+    else:
+      value = (
+          copy.deepcopy(measured_value.value)
+          if measured_value.is_value_set
+          else None
+      )
+
+    return cls(
+        name=measurement.name,
+        value=value,
+        units=measurement.units,
+        dimensions=measurement.dimensions,
+        outcome=measurement.outcome,
+        docstring=measurement.docstring,
+    )
 
 
 @attr.s(slots=True)
