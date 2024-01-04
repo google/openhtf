@@ -48,6 +48,8 @@ jobs:
       run: tox
     - name: Publish to Coveralls with GitHub Action
       uses: coverallsapp/github-action@v2.2.3
+      with:
+        parallel: true
 
   web_ui:
     runs-on: ubuntu-latest
