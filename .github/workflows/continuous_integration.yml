@@ -50,6 +50,7 @@ jobs:
       uses: coverallsapp/github-action@v2.2.3
       with:
         parallel: true
+        flag-name: python-${{ matrix.python-version }}
 
   web_ui:
     runs-on: ubuntu-latest
@@ -61,3 +62,13 @@ jobs:
       - uses: actions/setup-node@v3
       - run: npm install
       - run: npm run build
+
+  finish:
+    needs: build_and_test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@v2
+      with:
+        parallel-finished: true
