@@ -98,6 +98,10 @@ def _GetTestOutcomeHeadline(record: test_record.TestRecord,
   Returns:
     Text headline of the test result.
   """
+
+  if record.outcome is None:
+    return 'No Outcome Set'
+
   # TODO(b/70517332): Pytype currently doesn't properly support the functional
   # API of enums: https://github.com/google/pytype/issues/459. Remove
   # disabling pytype once fixed.
@@ -200,7 +204,8 @@ def StringFromPhaseRecord(
     Text summary of the phase record.
   """
   output = []
-
+  if phase.outcome is None:
+    return 'No Outcome Set'
   text = 'Phase {}\n+ Outcome: {} Result: {}'.format(
       phase.name, phase.outcome.name,
       StringFromPhaseExecutionOutcome(phase.result))
