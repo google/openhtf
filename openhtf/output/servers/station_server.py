@@ -453,10 +453,12 @@ class HistoryListHandler(BaseHistoryHandler):
 
     history_items = []
 
+    if self.history_path is None:
+      raise ValueError('history_path is None, try calling initialize() first')
+
     for file_name in os.listdir(self.history_path):
       if not file_name.endswith('.pb'):
         continue
-
       if not os.path.isfile(os.path.join(self.history_path, file_name)):
         continue
 
