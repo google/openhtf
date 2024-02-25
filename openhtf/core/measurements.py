@@ -63,6 +63,7 @@ import copy
 import enum
 import functools
 import logging
+import time
 import typing
 from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
 
@@ -504,7 +505,8 @@ class MeasuredValue(object):
   stored_value = attr.ib(type=Optional[Any], default=None)
   is_value_set = attr.ib(type=bool, default=False)
   _cached_value = attr.ib(type=Optional[Any], default=None)
-
+  set_time_millis = attr.ib(type=int, default=None)
+  
   def __str__(self) -> Text:
     return str(self.value) if self.is_value_set else 'UNSET'
 
@@ -527,6 +529,7 @@ class MeasuredValue(object):
 
   def set(self, value: Any) -> None:
     """Set the value for this measurement, with some sanity checks."""
+    self.set_time_millis = int(time.time() * 1000)
 
     # Apply transform function if it is set.
     if self.transform_fn:
