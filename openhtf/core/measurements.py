@@ -63,6 +63,7 @@ import copy
 import enum
 import functools
 import logging
+import time
 import typing
 from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
 
@@ -189,6 +190,7 @@ class Measurement(object):
     outcome: One of the Outcome() enumeration values, starting at UNSET.
     marginal: A bool flag indicating if this measurement is marginal if the
       outcome is PASS.
+    set_time_millis: The time the measurement is set in milliseconds.
     _cached: A cached dict representation of this measurement created initially
       during as_base_types and updated in place to save allocation time.
   """
@@ -214,6 +216,7 @@ class Measurement(object):
   _notification_cb = attr.ib(type=Optional[Callable[[], None]], default=None)
   outcome = attr.ib(type=Outcome, default=Outcome.UNSET)
   marginal = attr.ib(type=bool, default=False)
+  set_time_millis = attr.ib(type=int, default=None)
 
   # Runtime cache to speed up conversions.
   _cached = attr.ib(type=Optional[Dict[Text, Any]], default=None)
@@ -845,6 +848,7 @@ class Collection(object):
           'Cannot set dimensioned measurement without indices')
     m.measured_value.set(value)
     m.notify_value_set()
+    m.set_time_millis = int(time.time() * 1000)
 
   def __getitem__(self, name: Text) -> Any:
     self._assert_valid_key(name)
