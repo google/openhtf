@@ -954,6 +954,7 @@ class TestCase(unittest.TestCase):
 
   def get_diagnoses_store(self):
     self.assertIsNotNone(self.last_test_state)
+    assert self.last_test_state is not None
     return self.last_test_state.diagnoses_manager.store
 
   @classmethod
