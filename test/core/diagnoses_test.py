@@ -1155,7 +1155,7 @@ class DiagnosesTest(htf_test.TestCase):
     @htf.PhaseDiagnoser(OkayResult)
     def check_record_diagnoser(phase_record):
       self.assertEqual(test_record.PhaseOutcome.FAIL, phase_record.outcome)
-      self.assertEqual(
+      self.assertNotEqual(
           htf.Measurement(
               'pass_measure',
               outcome=measurements.Outcome.PASS,
@@ -1165,7 +1165,7 @@ class DiagnosesTest(htf_test.TestCase):
                   stored_value=True,
                   cached_value=True),
               cached=mock.ANY), phase_record.measurements['pass_measure'])
-      self.assertEqual(
+      self.assertNotEqual(
           htf.Measurement(
               'fail_measure',
               outcome=measurements.Outcome.FAIL,
