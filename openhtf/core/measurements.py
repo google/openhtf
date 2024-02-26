@@ -848,7 +848,7 @@ class Collection(object):
           'Cannot set dimensioned measurement without indices')
     m.measured_value.set(value)
     m.notify_value_set()
-    m.set_time_millis = int(time.time() * 1000)
+    m.set_time_millis = util.time_millis()
 
   def __getitem__(self, name: Text) -> Any:
     self._assert_valid_key(name)
