@@ -1164,6 +1164,7 @@ class DiagnosesTest(htf_test.TestCase):
                   is_value_set=True,
                   stored_value=True,
                   cached_value=True),
+              set_time_millis=phase_record.measurements['pass_measure'].set_time_millis,
               cached=mock.ANY), phase_record.measurements['pass_measure'])
       self.assertEqual(
           htf.Measurement(
@@ -1175,6 +1176,7 @@ class DiagnosesTest(htf_test.TestCase):
                   stored_value=False,
                   cached_value=False),
               validators=[is_true],
+              set_time_millis=phase_record.measurements['fail_measure'].set_time_millis,
               cached=mock.ANY), phase_record.measurements['fail_measure'])
       return None
 
