@@ -170,7 +170,6 @@ class TestRecord(object):
 
   dut_id = attr.ib(type=Optional[Text])
   dut_extended_id = attr.ib(type=Optional[DutIdentifier])
-  test_station = attr.ib(type=Text)
   station_id = attr.ib(type=Text)
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)
@@ -255,7 +254,6 @@ class TestRecord(object):
     ret = {
         'dut_id': data.convert_to_base_types(self.dut_id),
         'dut_extended_id': data.convert_to_base_types (self.dut_extended_id),
-        'test_station': data.convert_to_base_types (self.test_station),
         'start_time_millis': self.start_time_millis,
         'end_time_millis': self.end_time_millis,
         'outcome': data.convert_to_base_types(self.outcome),
