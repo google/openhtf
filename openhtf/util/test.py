@@ -504,6 +504,7 @@ def yields_phases_with(phase_user_defined_state=None, phase_diagnoses=None):
 
 def patch_plugs(phase_user_defined_state=None,
                 phase_diagnoses=None,
+                check_all_kwargs_plugs=True,
                 **mock_plugs):
   """Decorator for mocking plugs for a test phase.
 
@@ -536,6 +537,9 @@ def patch_plugs(phase_user_defined_state=None,
       the test_state.user_defined_state when handling phases.
     phase_diagnoses: If specified, must be a list of Diagnosis instances; these
       are added to the DiagnosesManager when handling phases.
+    check_all_kwargs_plugs: Keeps the existing check that all kwargs without
+      defaults are fufilled by mocked plugs. Set to false to allow wrapping the
+      test method returned by this wrapper, and passing additional kwargs.
     **mock_plugs: kwargs mapping argument name to be passed to the test case to
       a string describing the plug type to mock.  The corresponding mock will be
       passed to the decorated test case as a keyword argument.
@@ -554,7 +558,7 @@ def patch_plugs(phase_user_defined_state=None,
 
     # Some sanity checks to make sure the mock arg names match.
     for arg in plug_args:
-      if arg not in mock_plugs:
+      if arg not in mock_plugs and check_all_kwargs_plugs:
         raise InvalidTestError(
             'Test method %s expected arg %s, but it was not provided in '
             'patch_plugs kwargs: ' % (test_func.__name__, arg), mock_plugs)
@@ -594,7 +598,7 @@ def patch_plugs(phase_user_defined_state=None,
     # functools.wraps is more than just aesthetic here, we need the original
     # name to match so we don't mess with unittest's TestLoader mechanism.
     @functools.wraps(test_func)
-    def wrapped_test(self):
+    def wrapped_test(self, **kwargs):
       self.assertIsInstance(
           self,
           TestCase,
@@ -603,7 +607,7 @@ def patch_plugs(phase_user_defined_state=None,
       plug_mocks = dict(self.plugs)
       plug_mocks.update(plug_typemap)
       for phase_or_test, result, failure_message in PhaseOrTestIterator(
-          self, test_func(self, **plug_kwargs), plug_mocks,
+          self, test_func(self, **plug_kwargs, **kwargs), plug_mocks,
           phase_user_defined_state, phase_diagnoses):
         logging.info('Ran %s, result: %s', phase_or_test, result)
         if failure_message:
