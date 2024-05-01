@@ -262,7 +262,7 @@ class TestExecutorTest(unittest.TestCase):
 
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.outcome, test_record.Outcome.ERROR)
 
     # Same as above, but now specify that the TestDummyExceptionError should
@@ -276,7 +276,7 @@ class TestExecutorTest(unittest.TestCase):
         run_with_profiling=False)
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.outcome, test_record.Outcome.FAIL)
 
   def test_plug_map(self):
@@ -335,7 +335,7 @@ class TestExecutorTest(unittest.TestCase):
 
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, cancel_phase.name)
     # The test will end at the same time it starts because the test never
     # actually started, we canceled it inside of test_start, resulting in a
@@ -370,7 +370,7 @@ class TestExecutorTest(unittest.TestCase):
 
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertLessEqual(record.start_time_millis, util.time_millis())
     self.assertLessEqual(record.start_time_millis, record.end_time_millis)
@@ -412,7 +412,7 @@ class TestExecutorTest(unittest.TestCase):
 
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertLessEqual(record.start_time_millis, util.time_millis())
     self.assertLessEqual(record.start_time_millis, record.end_time_millis)
@@ -463,7 +463,7 @@ class TestExecutorTest(unittest.TestCase):
 
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertLessEqual(record.start_time_millis, util.time_millis())
     self.assertLessEqual(record.start_time_millis, record.end_time_millis)
@@ -491,7 +491,7 @@ class TestExecutorTest(unittest.TestCase):
         run_with_profiling=False)
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.outcome, test_record.Outcome.ERROR)
     self.assertEqual(record.outcome_details[0].code, FailedPlugError.__name__)
     self.assertEqual(record.outcome_details[0].description, FAIL_PLUG_MESSAGE)
@@ -525,7 +525,7 @@ class TestExecutorTest(unittest.TestCase):
         run_with_profiling=False)
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.outcome, test_record.Outcome.ERROR)
     self.assertEqual(record.outcome_details[0].code, FailedPlugError.__name__)
     self.assertEqual(record.outcome_details[0].description, FAIL_PLUG_MESSAGE)
@@ -547,7 +547,7 @@ class TestExecutorTest(unittest.TestCase):
         run_with_profiling=False)
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.outcome, test_record.Outcome.ERROR)
     self.assertEqual(record.outcome_details[0].code, TeardownError.__name__)
     executor.close()
@@ -571,7 +571,7 @@ class TestExecutorTest(unittest.TestCase):
         run_with_profiling=False)
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.outcome, test_record.Outcome.PASS)
     log_records = [
         log_record for log_record in record.log_records
@@ -600,7 +600,7 @@ class TestExecutorTest(unittest.TestCase):
 
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertTrue(record.outcome, test_record.Outcome.FAIL)
     # Verify phase_one was not run
@@ -632,7 +632,7 @@ class TestExecutorTest(unittest.TestCase):
 
     executor.start()
     executor.wait()
-    record = executor.test_state.test_record
+    record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertTrue(record.outcome, test_record.Outcome.FAIL)
     # Verify phase_one was not run
