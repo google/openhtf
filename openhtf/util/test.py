@@ -660,10 +660,11 @@ class TestCase(unittest.TestCase):
 
   def __init__(self, methodName=None):
     super(TestCase, self).__init__(methodName=methodName)
-    test_method = getattr(self, methodName)
-    if inspect.isgeneratorfunction(test_method):
-      raise ValueError('%s yields without @openhtf.util.test.yields_phases' %
-                       methodName)
+    if methodName != 'runTest':
+      test_method = getattr(self, methodName)
+      if inspect.isgeneratorfunction(test_method):
+        raise ValueError('%s yields without @openhtf.util.test.yields_phases' %
+                         methodName)
 
   def setUp(self):
     super(TestCase, self).setUp()
