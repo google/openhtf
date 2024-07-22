@@ -18,12 +18,16 @@ import logging
 import time
 import zlib
 
+from google.auth import credentials as credentials_lib
 from google.auth.transport import requests
 from google.oauth2 import service_account
-
 from openhtf.output import callbacks
-from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
+
+from openhtf.output.proto import guzzle_pb2
+
+
+_MFG_INSPECTOR_UPLOAD_TIMEOUT = 60 * 5
 
 
 class UploadFailedError(Exception):
@@ -34,20 +38,29 @@ class InvalidTestRunError(Exception):
   """Raised if test run is invalid."""
 
 
-def _send_mfg_inspector_request(envelope_data, credentials, destination_url):
+def _send_mfg_inspector_request(
+    envelope_data: bytes,
+    credentials: credentials_lib.Credentials,
+    destination_url: str,
+):
   """Send upload http request.  Intended to be run in retry loop."""
   logging.info('Uploading result...')
 
   with requests.AuthorizedSession(credentials) as authed_session:
     response = authed_session.request(
-        'POST', destination_url, data=envelope_data)
+        'POST',
+        destination_url,
+        data=envelope_data,
+        timeout=_MFG_INSPECTOR_UPLOAD_TIMEOUT,
+    )
 
   try:
     result = response.json()
-  except Exception:
-    logging.warning('Upload failed with response %s: %s', response,
-                    response.text)
-    raise UploadFailedError(response, response.text)
+  except Exception as e:
+    logging.exception(
+        'Upload failed with response %s: %s', response, response.text
+    )
+    raise UploadFailedError(response, response.text) from e
 
   if response.status_code == 200:
     return result
