@@ -47,7 +47,7 @@ jobs:
     - name: Test with tox
       run: tox
     - name: Publish to Coveralls with GitHub Action
-      uses: coverallsapp/github-action@v2.2.3
+      uses: coverallsapp/github-action@v2.3.0
       with:
         parallel: true
         flag-name: python-${{ matrix.python-version }}
