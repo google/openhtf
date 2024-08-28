@@ -1,4 +1,5 @@
 Changes for 2.0.
+...
 
 * Dropped Python 2.x support.
 * Added type annotations.
