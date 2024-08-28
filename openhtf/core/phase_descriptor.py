@@ -21,6 +21,8 @@ of PhaseDescriptor class.
 import collections
 import enum
 import inspect
+import logging
+import os.path
 import pdb
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Text, TYPE_CHECKING, Type, Union
 
@@ -36,9 +38,12 @@ from openhtf.core import phase_nodes
 from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
+from openhtf.util import logs
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class PhaseWrapError(Exception):
@@ -174,6 +179,8 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
 
   Attributes:
     func: Function to be called (with TestApi as first argument).
+    func_location: Location of the function, as 'name at file:line' for
+      user-defined functions, or 'name <builtin>' for built-in functions.
     options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
     measurements: List of Measurement objects.
@@ -185,6 +192,29 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
   """
 
   func = attr.ib(type=PhaseCallableT)
+  func_location = attr.ib(type=Text)
+
+  @func_location.default
+  def _func_location(self):
+    """Assigns this field assuming func is a function or callable instance."""
+    obj = self.func
+    try:
+      name = obj.__name__
+    except AttributeError:
+      try:
+        name = obj.__class__.__name__
+      except AttributeError:
+        logs.log_once(_LOGGER.warning,
+                      'Cannot determine name of callable: %r', obj)
+        return '<unknown>'
+      obj = obj.__class__
+    try:
+      filename = os.path.basename(inspect.getsourcefile(obj))
+      line_number = inspect.getsourcelines(obj)[1]
+    except TypeError:
+      return name + ' <builtin>'
+    return f'{name} at {filename}:{line_number}'
+
   options = attr.ib(type=PhaseOptions, factory=PhaseOptions)
   plugs = attr.ib(type=List[base_plugs.PhasePlug], factory=list)
   measurements = attr.ib(type=List[core_measurements.Measurement], factory=list)

@@ -133,7 +133,8 @@ class TestPhaseDescriptor(htf_test.TestCase):
     phase = openhtf.PhaseDescriptor.wrap_or_copy(plain_func)
     second_phase = openhtf.PhaseDescriptor.wrap_or_copy(phase)
     for field in attr.fields(type(phase)):
-      if field.name == 'func':
+      if field.name in [openhtf.PhaseDescriptor.func.__name__,
+                        openhtf.PhaseDescriptor.func_location.__name__]:
         continue
       self.assertIsNot(
           getattr(phase, field.name), getattr(second_phase, field.name))

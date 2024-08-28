@@ -327,10 +327,11 @@ class TestExecutor(threads.KillableThread):
                      subtest_rec: Optional[test_record.SubtestRecord],
                      in_teardown: bool) -> _ExecutorReturn:
     if subtest_rec:
-      self.logger.debug('Executing phase %s under subtest %s', phase.name,
-                        subtest_rec.name)
+      self.logger.debug('Executing phase %s (from %s) under subtest %s',
+                        phase.name, phase.func_location, subtest_rec.name)
     else:
-      self.logger.debug('Executing phase %s', phase.name)
+      self.logger.debug('Executing phase %s (from %s)', phase.name,
+                        phase.func_location)
 
     if not in_teardown and subtest_rec and subtest_rec.is_fail:
       self.phase_executor.skip_phase(phase, subtest_rec)

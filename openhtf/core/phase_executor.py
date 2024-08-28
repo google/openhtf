@@ -310,11 +310,13 @@ class PhaseExecutor(object):
     override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
       if subtest_rec:
-        self.logger.debug('Executing phase %s under subtest %s',
-                          phase_desc.name, subtest_rec.name)
+        self.logger.debug('Executing phase %s under subtest %s (from %s)',
+                          phase_desc.name, phase_desc.func_location,
+                          subtest_rec.name)
         phase_state.set_subtest_name(subtest_rec.name)
       else:
-        self.logger.debug('Executing phase %s', phase_desc.name)
+        self.logger.debug('Executing phase %s (from %s)', phase_desc.name,
+                          phase_desc.func_location)
       with self._current_phase_thread_lock:
         # Checking _stopping must be in the lock context, otherwise there is a
         # race condition: this thread checks _stopping and then switches to
