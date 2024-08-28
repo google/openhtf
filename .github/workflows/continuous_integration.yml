@@ -43,11 +43,11 @@ jobs:
         sudo cp bin/protoc /usr/bin/protoc && sudo chmod 777 /usr/bin/protoc
         sudo cp -r include/. /usr/include && sudo chmod -R +r /usr/include/google
         protoc --version
-        sudo apt-get install -y libusb-1.0-0-dev libprotobuf-dev swig
+        sudo apt-get install -y libusb-1.0-0-dev libprotobuf-dev swig libevent-dev
     - name: Test with tox
       run: tox
     - name: Publish to Coveralls with GitHub Action
-      uses: coverallsapp/github-action@v2.2.3
+      uses: coverallsapp/github-action@v2.3.0
       with:
         parallel: true
         flag-name: python-${{ matrix.python-version }}
