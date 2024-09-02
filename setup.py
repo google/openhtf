@@ -24,6 +24,7 @@ import sys
 from distutils.command.build import build
 from distutils.command.clean import clean
 from distutils.cmd import Command
+from distutils.spawn import find_executable
 from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.test import test
@@ -52,7 +53,8 @@ class BuildProtoCommand(Command):
                   ('outdir=', 'o', 'Where to output .py files.')]
 
   def initialize_options(self):
-    self.skip_proto = False
+    self.indir = os.getcwd()
+    self.outdir = os.getcwd()
     try:
       prefix = subprocess.check_output(
           'pkg-config --variable prefix protobuf'.split()).strip().decode(
@@ -65,9 +67,12 @@ class BuildProtoCommand(Command):
         # Default to /usr/local for Homebrew
         prefix = '/usr/local'
       else:
-        print('Warning: mfg-inspector output is not fully implemented for '
-              'Windows. OpenHTF will be installed without it.')
-        self.skip_proto = True
+        # Handle installing on Windows.
+        self.protoc = find_executable('protoc')
+        self.protodir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(self.protoc))),
+            'lib')
+        return
 
     maybe_protoc = os.path.join(prefix, 'bin', 'protoc')
     if os.path.isfile(maybe_protoc) and os.access(maybe_protoc, os.X_OK):
@@ -78,17 +83,11 @@ class BuildProtoCommand(Command):
       self.protoc = 'protoc'
 
     self.protodir = os.path.join(prefix, 'include')
-    self.indir = os.getcwd()
-    self.outdir = os.getcwd()
 
   def finalize_options(self):
     pass
 
   def run(self):
-    if self.skip_proto:
-      print('Skipping building protocol buffers.')
-      return
-
     # Build regular proto files.
     protos = glob.glob(
         os.path.join(self.indir, 'openhtf', 'output', 'proto', '*.proto'))
