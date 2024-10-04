@@ -166,7 +166,7 @@ setup(
             'output/web_gui/dist/img/*', 'output/web_gui/*.*'
         ]
     },
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
