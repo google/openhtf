@@ -26,7 +26,6 @@ from distutils.command.clean import clean
 from distutils.cmd import Command
 from setuptools import find_packages
 from setuptools import setup
-from setuptools.command.test import test
 
 
 class CleanCommand(clean):
@@ -145,41 +144,6 @@ INSTALL_REQUIRES = [
 ]
 
 
-class PyTestCommand(test):  # pylint: disable=missing-class-docstring
-  # Derived from
-  # https://github.com/chainreactionmfg/cara/blob/master/setup.py
-  user_options = [
-      ('pytest-args=', None, 'Arguments to pass to py.test'),
-      ('pytest-cov=', None, 'Enable coverage. Choose output type: '
-       'term, html, xml, annotate, or multiple with comma separation'),
-  ]
-
-  def initialize_options(self):
-    test.initialize_options(self)
-    self.pytest_args = ['test']
-    self.pytest_cov = None
-
-  def finalize_options(self):
-    test.finalize_options(self)
-    self.test_args = []
-    self.test_suite = True
-
-  def run_tests(self):
-    self.run_command('build_proto')
-
-    import pytest  # pylint: disable=g-import-not-at-top
-    cov = []
-    if self.pytest_cov is not None:
-      outputs = []
-      for output in self.pytest_cov.split(','):
-        outputs.extend(['--cov-report', output])
-      cov = ['--cov', 'openhtf'] + outputs
-
-    sys.argv = [sys.argv[0]]
-    print('invoking pytest.main with %s' % (self.pytest_args + cov))
-    sys.exit(pytest.main(self.pytest_args + cov))
-
-
 _README_PATH = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), 'README.md')
 with open(_README_PATH, 'rb') as fp:
@@ -202,11 +166,10 @@ setup(
             'output/web_gui/dist/img/*', 'output/web_gui/*.*'
         ]
     },
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     cmdclass={
         'build_proto': BuildProtoCommand,
         'clean': CleanCommand,
-        'test': PyTestCommand,
     },
     install_requires=INSTALL_REQUIRES,
     extras_require={
@@ -218,11 +181,4 @@ setup(
         'serial_collection_plug': ['pyserial>=3.3.0',],
         'examples': ['pandas>=0.22.0',],
     },
-    tests_require=[
-        'absl-py>=0.10.0',
-        'pandas>=0.22.0',
-        'numpy',
-        'pytest>=2.9.2',
-        'pytest-cov>=2.2.1',
-    ],
 )

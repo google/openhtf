@@ -1,5 +1,2 @@
-pytest
-pytest-cov
-
-# We also want everything as specified by setup.py
+# We want everything as specified by setup.py
 -e .
