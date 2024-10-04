@@ -14,6 +14,7 @@
 """The main OpenHTF entry point."""
 
 import signal
+import sys
 import typing
 
 from openhtf.core import phase_executor
@@ -147,3 +148,7 @@ __version__ = get_version()
 
 # Register signal handler to stop all tests on SIGINT.
 Test.DEFAULT_SIGINT_HANDLER = signal.signal(signal.SIGINT, Test.handle_sig_int)
+
+if sys.version_info.major == 3 and sys.version_info.minor >= 10:
+    import collections
+    setattr(collections, "MutableMapping", collections.abc.MutableMapping)
