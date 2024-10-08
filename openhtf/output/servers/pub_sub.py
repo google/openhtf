@@ -16,12 +16,12 @@
 import logging
 
 from openhtf import util as htf_util
-import sockjs.tornado
+import tornado.websocket
 
 _LOG = logging.getLogger(__name__)
 
 
-class PubSub(sockjs.tornado.SockJSConnection):
+class PubSub(tornado.websocket.WebSocketHandler):
   """Generic pub/sub based on SockJS connections."""
 
   @htf_util.classproperty
@@ -53,17 +53,19 @@ class PubSub(sockjs.tornado.SockJSConnection):
         if (not client_filter) or client_filter(client):
           client.send(message)
 
-  def on_open(self, info):
-    _LOG.debug('New subscriber from %s.', info.ip)
+  def open(self, *args, **kwargs):
     with self._lock:  # pylint: disable=not-context-manager
       self.subscribers.add(self)
-    self.on_subscribe(info)
+    self.on_subscribe(None)
 
   def on_close(self):
-    _LOG.debug('A client unsubscribed.')
+    _LOG.info('A client unsubscribed.')
     with self._lock:  # pylint: disable=not-context-manager
       self.subscribers.remove(self)
     self.on_unsubscribe()
+
+  def send(self, message):
+    self.write_message(message)
 
   def on_subscribe(self, info):
     """Called when new clients subscribe. Subclasses can override."""
@@ -72,3 +74,7 @@ class PubSub(sockjs.tornado.SockJSConnection):
   def on_unsubscribe(self):
     """Called when clients unsubscribe. Subclasses can override."""
     pass
+
+  def check_origin(self, origin: str) -> bool:
+    """Allows all cross-origin traffic. Dangerous."""
+    return True
