@@ -801,6 +801,14 @@ class PhaseState(object):
     elif not self._measurements_pass():
       self.logger.debug(
           'Phase outcome of %s is FAIL due to measurement outcome.', self.name)
+      if self.options.stop_on_measurement_fail:
+        self.logger.debug(
+            'Stopping test due to phase %s having stop on fail option.',
+            self.name,
+        )
+        self.result = phase_executor.PhaseExecutionOutcome(
+            phase_descriptor.PhaseResult.STOP
+        )
       outcome = test_record.PhaseOutcome.FAIL
     else:
       self.logger.debug('Phase outcome of %s is PASS.', self.name)

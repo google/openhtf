@@ -406,16 +406,6 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     else:
       phase_result = self.func(**kwargs)
 
-    # Override the phase result if the user wants to treat ANY failed
-    # measurement of this phase as a test-stopping failure.
-    if self.options.stop_on_measurement_fail:
-      # Note: The measurement definitions do NOT have the outcome populated.
-      for measurement in self.measurements:
-        if (running_test_state.test_api.get_measurement(
-            measurement.name).outcome != core_measurements.Outcome.PASS):
-          phase_result = PhaseResult.STOP
-          break
-
     return phase_result
 
 
