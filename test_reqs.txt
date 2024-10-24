@@ -1,2 +1,0 @@
-# We want everything as specified by setup.py
--e .
