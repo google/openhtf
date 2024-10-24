@@ -32,7 +32,6 @@ from openhtf.output.servers import web_gui_server
 from openhtf.output.web_gui import web_launcher
 from openhtf.util import data
 from openhtf.util import multicast
-import sockjs.tornado
 import tornado.web
 
 _LOG = logging.getLogger(__name__)
@@ -128,10 +127,11 @@ class DashboardServer(web_gui_server.WebGuiServer):
   """Serves a list of known stations and an Angular frontend."""
 
   def __init__(self, port):
-    dash_router = sockjs.tornado.SockJSRouter(DashboardPubSub, '/sub/dashboard')
-    routes = dash_router.urls + [
+    routes = [
         ('/station_list', StationListHandler),
+        ('/sub/dashboard', DashboardPubSub),
     ]
+    _LOG.info('Initializing dashboard server.')
     super(DashboardServer, self).__init__(routes, port)
 
   def _get_config(self):
