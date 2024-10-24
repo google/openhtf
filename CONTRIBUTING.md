@@ -323,7 +323,7 @@ npm start
 
 Now you've got the frontend building, but you still need to serve it. The
 frontend server is started as a runnable module. See the associated
-[readme](openhtf/output/web_gui.README.md).
+[readme](openhtf/output/web_gui/README.md).
 
 If you want the server to automatically restart when changes are detected, use
 the `--dev` flag.
