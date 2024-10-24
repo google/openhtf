@@ -40,8 +40,8 @@ examples = ["pandas>=2.2.3"]
 [project.urls]
 Homepage = "https://github.com/google/openhtf"
 
-[tool.setuptools]
-packages = ["openhtf", "examples"]
+[tool.setuptools.packages]
+find = {}
 
 [tool.setuptools-protobuf]
 protobufs = [

@@ -236,6 +236,10 @@ pip install build --upgrade
 
 # Install openhtf into the virtualenv in dev mode.
 pip install --editable .
+
+# Install tox and run unit tests.
+pip install tox
+tox
 ```
 
 ### MacOS
@@ -318,12 +322,8 @@ npm start
 ```
 
 Now you've got the frontend building, but you still need to serve it. The
-frontend server is started as a runnable module. In a terminal where your Python
-virtual environment (set up above) is active, start the server with:
-
-```bash
-python -m openhtf.output.web_gui
-```
+frontend server is started as a runnable module. See the associated
+[readme](openhtf/output/web_gui.README.md).
 
 If you want the server to automatically restart when changes are detected, use
 the `--dev` flag.
