@@ -1,0 +1,2 @@
+include openhtf/output/proto/*.proto
+
