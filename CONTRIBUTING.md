@@ -231,11 +231,15 @@ virtualenv venv
 # Activate the new virtualenv.
 . venv/bin/activate
 
-# Update setuptools.
-pip install setuptools --upgrade
+# Update build (run setuptools).
+pip install build --upgrade
 
 # Install openhtf into the virtualenv in dev mode.
-python setup.py develop
+pip install --editable .
+
+# Install tox and run unit tests.
+pip install tox
+tox
 ```
 
 ### MacOS
@@ -268,7 +272,7 @@ virtualenv venv
 . venv/bin/activate
 
 # Install openhtf into the virtualenv in dev mode.
-python setup.py develop
+pip install --editable .
 ```
 
 If you're having issues with the python setup, it's possible that the problem is due to El Capitan not including ssl headers. This [link](http://adarsh.io/bundler-failing-on-el-capitan/) may help you in that regard. 
@@ -318,12 +322,8 @@ npm start
 ```
 
 Now you've got the frontend building, but you still need to serve it. The
-frontend server is started as a runnable module. In a terminal where your Python
-virtual environment (set up above) is active, start the server with:
-
-```bash
-python -m openhtf.output.web_gui
-```
+frontend server is started as a runnable module. See the associated
+[readme](openhtf/output/web_gui/README.md).
 
 If you want the server to automatically restart when changes are detected, use
 the `--dev` flag.
