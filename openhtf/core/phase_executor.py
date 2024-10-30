@@ -51,7 +51,6 @@ if TYPE_CHECKING:
   from openhtf.core import test_state as htf_test_state  # pylint: disable=g-import-not-at-top
 
 DEFAULT_PHASE_TIMEOUT_S = 3 * 60
-DEFAULT_RETRIES = 3
 _JOIN_TRY_INTERVAL_SECONDS = 3
 
 ARG_PARSER = argv.module_parser()
@@ -279,7 +278,9 @@ class PhaseExecutor(object):
       requested and successfully ran for this phase execution.
     """
     repeat_count = 1
-    repeat_limit = (phase.options.repeat_limit or DEFAULT_RETRIES)
+    repeat_limit = (
+        phase.options.repeat_limit or phase_descriptor.DEFAULT_REPEAT_LIMIT
+    )
     while not self._stopping.is_set():
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome, profile_stats = self._execute_phase_once(
