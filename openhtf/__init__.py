@@ -13,6 +13,7 @@
 # limitations under the License.
 """The main OpenHTF entry point."""
 
+import importlib.metadata
 import signal
 import typing
 
@@ -36,7 +37,6 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
-import pkg_resources
 
 __all__ = (  # Expliclty export certain API components.
     # Modules.
@@ -133,14 +133,11 @@ conf = configuration.CONF
 
 
 def get_version():
-  """Returns the version string of the 'openhtf' package.
-
-  Note: the version number doesn't seem to get properly set when using ipython.
-  """
+  """Returns the version string of the 'openhtf' package."""
   try:
-    return pkg_resources.get_distribution('openhtf')
-  except pkg_resources.DistributionNotFound:
-    return 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
+    return importlib.metadata.version('openhtf')
+  except importlib.metadata.PackageNotFoundError:
+    return 'Unknown - openhtf not installed via pip.'
 
 
 __version__ = get_version()
