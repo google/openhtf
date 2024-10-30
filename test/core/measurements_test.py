@@ -78,9 +78,9 @@ class TestMeasurements(htf_test.TestCase):
     """Bad functions or setting multiple functions should raise."""
     m = htf.Measurement('transform')
     with self.assertRaises(TypeError):
-      m.with_transform(None)
+      m.with_transform(None)  # pytype: disable=wrong-arg-types
     with self.assertRaises(TypeError):
-      m.with_transform('int')
+      m.with_transform('int')  # pytype: disable=wrong-arg-types
     with self.assertRaises(ValueError):
       m.with_transform(abs).with_transform(int)
 
@@ -94,9 +94,9 @@ class TestMeasurements(htf_test.TestCase):
     """Creating a measurement with invalid precision should raise."""
     m = htf.Measurement('bad_precision')
     with self.assertRaises(TypeError):
-      m.with_precision(1.1)
+      m.with_precision(1.1)  # pytype: disable=wrong-arg-types
     with self.assertRaises(TypeError):
-      m.with_precision('1')
+      m.with_precision('1')  # pytype: disable=wrong-arg-types
 
   def test_precision(self):
     """Check that with_precision does what it says on the tin."""
