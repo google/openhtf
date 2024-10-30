@@ -13,9 +13,9 @@
 # limitations under the License.
 """Extensible HTTP server serving the OpenHTF Angular frontend."""
 
+import asyncio
 import os
 import threading
-import time
 
 import tornado.httpclient
 import tornado.httpserver
@@ -112,6 +112,8 @@ class WebGuiServer(threading.Thread):
 
   def __init__(self, additional_routes, port, sockets=None):
     super(WebGuiServer, self).__init__(name=type(self).__name__)
+    self.ts_event = threading.Event()
+    self._running = asyncio.Event()
 
     # Set up routes.
     routes = [
@@ -121,24 +123,17 @@ class WebGuiServer(threading.Thread):
         }),
     ]
     routes.extend(additional_routes)
-
-    if sockets is None:
-      sockets, self.port = bind_port(port)
-    else:
-      if not port:
-        raise ValueError('When sockets are passed to the server, port must be '
-                         'specified and nonzero.')
-      self.port = port
+    self._sockets = sockets
+    self.port = port
+    self._loop = None
 
     # Configure the Tornado application.
-    application = tornado.web.Application(
+    self.application = tornado.web.Application(
         routes,
         default_handler_class=DefaultHandler,
         template_loader=TemplateLoader(STATIC_FILES_ROOT),
         static_path=STATIC_FILES_ROOT,
     )
-    self.server = tornado.httpserver.HTTPServer(application)
-    self.server.add_sockets(sockets)
 
   def __enter__(self):
     self.start()
@@ -147,14 +142,38 @@ class WebGuiServer(threading.Thread):
   def __exit__(self, *unused_args):
     self.stop()
 
+  async def run_app(self):
+    """Runs the station server application."""
+    self.ts_watchdog_task = asyncio.create_task(self._stop_threadsafe())
+    if self._sockets is None:
+      self._sockets, self.port = bind_port(self.port)
+    else:
+      if not self.port:
+        raise ValueError(
+            'When sockets are passed to the server, port must be '
+            'specified and nonzero.'
+        )
+    self.server = tornado.httpserver.HTTPServer(self.application)
+    self.server.add_sockets(self._sockets)
+    await self._running.wait()
+    await self.ts_watchdog_task
+    await self.server.close_all_connections()
+
+  async def _stop_threadsafe(self):
+    """Handles stopping the server in a threadsafe manner."""
+    while not self.ts_event.is_set():
+      await asyncio.sleep(0.1)
+    self._running.set()
+
   def _get_config(self):
     """Override this to configure the Angular app."""
     return {}
 
   def run(self):
-    tornado.ioloop.IOLoop.instance().start()  # Blocking IO loop.
+    """Runs the station server."""
+    asyncio.run(self.run_app())
 
   def stop(self):
-    self.server.stop()
-    ioloop = tornado.ioloop.IOLoop.instance()
-    ioloop.add_timeout(time.time() + _SERVER_SHUTDOWN_BUFFER_S, ioloop.stop)
+    """Stops the station server. Method is threadsafe."""
+    self.ts_event.set()
+
