@@ -35,9 +35,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: '3.7'
     - name: Install dependencies
@@ -55,13 +55,13 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish distribution to Test PyPI
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+      uses: pypa/gh-action-pypi-publish@61da13deb5f5124fb1536194f82ed3d9bbc7e8f3
       with:
         password: ${{ secrets.TESTPYPI_PUBLISH_PASSWORD }}
         repository_url: https://test.pypi.org/legacy/
     - name: Publish package to PyPI
       if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+      uses: pypa/gh-action-pypi-publish@61da13deb5f5124fb1536194f82ed3d9bbc7e8f3
       with:
         user: __token__
         password: ${{ secrets.PYPI_PUBLISH_PASSWORD }}
