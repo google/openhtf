@@ -36,7 +36,7 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import logs
 from openhtf.util import units
-#import pkg_resources
+import pkg_resources
 
 __all__ = (  # Expliclty export certain API components.
     # Modules.
@@ -137,10 +137,10 @@ def get_version():
 
   Note: the version number doesn't seem to get properly set when using ipython.
   """
-  # try:
-  #   return pkg_resources.get_distribution('openhtf')
-  # except pkg_resources.DistributionNotFound:
-  return 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
+  try:
+    return pkg_resources.get_distribution('openhtf')
+  except pkg_resources.DistributionNotFound:
+    return 'Unknown - Perhaps openhtf was not installed via setup.py or pip.'
 
 
 __version__ = get_version()
