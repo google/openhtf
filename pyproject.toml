@@ -28,6 +28,16 @@ dependencies = [
 ]
 license = {file = "LICENSE"}
 
+[tool.setuptools.package-data]
+"openhtf" = [
+    "output/proto/*.proto",
+    "output/web_gui/dist/*.*",
+    "output/web_gui/dist/css/*",
+    "output/web_gui/dist/js/*",
+    "output/web_gui/dist/img/*",
+    "output/web_gui/*.*",
+]
+
 [project.optional-dependencies]
 usb_plugs = [
     "libusb1>=3.1.0",
