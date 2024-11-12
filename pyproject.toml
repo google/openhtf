@@ -43,6 +43,15 @@ Homepage = "https://github.com/google/openhtf"
 [tool.setuptools.packages]
 find = {}
 
+[tool.setuptools.package-data]
+openhtf = [
+    "output/web_gui/dist/*.*",
+    "output/web_gui/dist/css/*",
+    "output/web_gui/dist/js/*",
+    "output/web_gui/dist/img/*",
+    "output/web_gui/*.*",
+]
+
 [tool.setuptools-protobuf]
 protobufs = [
     "openhtf/output/proto/assembly_event.proto",
