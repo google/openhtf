@@ -40,7 +40,7 @@ from openhtf.util import data
 from openhtf.util import functions
 from openhtf.util import multicast
 from openhtf.util import timeouts
-import sockjs.tornado
+import tornado
 
 CONF = configuration.CONF
 
@@ -227,7 +227,7 @@ class StationWatcher(threading.Thread):
     return test_state_dict, event
 
 
-class DashboardPubSub(sockjs.tornado.SockJSConnection):
+class DashboardPubSub(tornado.websocket.WebSocketHandler):
   """WebSocket endpoint for the list of available stations.
 
   In this case, there is always exactly one available station: the station
@@ -246,9 +246,9 @@ class DashboardPubSub(sockjs.tornado.SockJSConnection):
     """Returns a new subclass with the port set."""
     return type(cls.__name__, (cls,), {'port': port})
 
-  def on_open(self, unused_info):
+  def open(self, unused_info):
     """Called by the base class when a client connects."""
-    self.send(self._make_message())
+    self.write_message(self._make_message())
 
   @classmethod
   def _make_message(cls):
@@ -597,11 +597,12 @@ class StationServer(web_gui_server.WebGuiServer):
     station_watcher = StationWatcher(StationPubSub.publish_update)
     station_watcher.start()
 
-    # Set up the SockJS endpoints.
+    # Set up the endpoints.
     dashboard_class = DashboardPubSub.for_port(port)
-    dash_router = sockjs.tornado.SockJSRouter(dashboard_class, '/sub/dashboard')
-    station_router = sockjs.tornado.SockJSRouter(StationPubSub, '/sub/station')
-    routes = dash_router.urls + station_router.urls
+    routes = [
+        ('/sub/dashboard', dashboard_class),
+        ('/sub/station', StationPubSub),
+    ]
 
     # Set up the other endpoints.
     routes.extend((
