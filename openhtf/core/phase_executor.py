@@ -346,7 +346,7 @@ class PhaseExecutor(object):
     # Refresh the result in case a validation for a partially set measurement
     # or phase diagnoser raised an exception.
     result = override_result or phase_state.result
-    self.logger.debug('Phase %s finished with result %s', phase_desc.name,
+    self.logger.debug('Phase %s finished with result %r', phase_desc.name,
                       result.phase_result)
     return (result,
             phase_thread.get_profile_stats() if run_with_profiling else None)
