@@ -258,7 +258,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -273,7 +273,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.running_test_state.test_record
@@ -331,7 +331,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         cancel_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -366,7 +366,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -408,7 +408,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -459,7 +459,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -488,7 +488,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         None,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.running_test_state.test_record
@@ -522,7 +522,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         fail_plug_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.running_test_state.test_record
@@ -544,7 +544,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.running_test_state.test_record
@@ -568,7 +568,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     executor.start()
     executor.wait()
     record = executor.running_test_state.test_record
@@ -596,7 +596,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -628,7 +628,7 @@ class TestExecutorTest(unittest.TestCase):
         'uid',
         start_phase,
         test._test_options,
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
 
     executor.start()
     executor.wait()
@@ -665,7 +665,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
         td.uid,
         None,
         test_descriptor.TestOptions(),
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     self.test_exec.test_state = self.test_state
     self.test_exec._phase_exec = self.phase_exec
 
@@ -742,7 +742,7 @@ class TestExecutorExecuteSequencesTest(unittest.TestCase):
         td.uid,
         None,
         test_descriptor.TestOptions(),
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     self.test_exec.test_state = self.test_state
     patcher = mock.patch.object(self.test_exec, '_execute_node')
     self.mock_execute_node = patcher.start()
@@ -897,7 +897,7 @@ class TestExecutorExecutePhaseGroupTest(unittest.TestCase):
         td.uid,
         None,
         test_descriptor.TestOptions(),
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     self.test_exec.test_state = self.test_state
     patcher = mock.patch.object(self.test_exec, '_execute_sequence')
     self.mock_execute_sequence = patcher.start()
@@ -1086,7 +1086,7 @@ class TestExecutorExecuteBranchTest(parameterized.TestCase):
         td.uid,
         None,
         test_descriptor.TestOptions(),
-        run_with_profiling=False)
+        run_phases_with_profiling=False)
     self.test_exec.test_state = self.test_state
     patcher = mock.patch.object(self.test_exec, '_execute_sequence')
     self.mock_execute_sequence = patcher.start()

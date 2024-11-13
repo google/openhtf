@@ -18,6 +18,7 @@ import functools
 import logging
 import time
 import zlib
+from typing import Optional
 
 from google.auth import credentials as credentials_lib
 from google.auth.transport import requests
@@ -45,19 +46,18 @@ class InvalidTestRunError(Exception):
 
 def _send_mfg_inspector_request(
     envelope_data: bytes,
-    credentials: credentials_lib.Credentials,
+    authorized_session: requests.AuthorizedSession,
     destination_url: str,
 ) -> Dict[str, Any]:
   """Send upload http request.  Intended to be run in retry loop."""
   logging.info('Uploading result...')
 
-  with requests.AuthorizedSession(credentials) as authed_session:
-    response = authed_session.request(
-        'POST',
-        destination_url,
-        data=envelope_data,
-        timeout=_MFG_INSPECTOR_UPLOAD_TIMEOUT,
-    )
+  response = authorized_session.request(
+      'POST',
+      destination_url,
+      data=envelope_data,
+      timeout=_MFG_INSPECTOR_UPLOAD_TIMEOUT,
+  )
 
   try:
     result = response.json()
@@ -94,6 +94,7 @@ def send_mfg_inspector_data(
     credentials: credentials_lib.Credentials,
     destination_url: str,
     payload_type: guzzle_pb2.PayloadType,
+    authorized_session: Optional[requests.AuthorizedSession] = None,
 ) -> Dict[str, Any]:
   """Upload MfgEvent to steam_engine."""
   envelope = guzzle_pb2.TestRunEnvelope()  # pytype: disable=module-attr  # gen-stub-imports
@@ -105,10 +106,13 @@ def send_mfg_inspector_data(
   envelope.payload_type = payload_type
   envelope_data = envelope.SerializeToString()
 
+  if authorized_session is None:
+    authorized_session = requests.AuthorizedSession(credentials)
+
   for _ in range(5):
     try:
       result = _send_mfg_inspector_request(
-          envelope_data, credentials, destination_url
+          envelope_data, authorized_session, destination_url
       )
       return result
     except UploadFailedError:
@@ -181,8 +185,10 @@ class MfgInspector(object):
               'user_agent': 'OpenHTF Guzzle Upload Client',
           },
           scopes=[self.SCOPE_CODE_URI])
+      self.authorized_session = requests.AuthorizedSession(self.credentials)
     else:
       self.credentials = None
+      self.authorized_session = None
 
     self.upload_result = None
 
@@ -260,11 +266,18 @@ class MfgInspector(object):
     if not self.credentials:
       raise RuntimeError('Must provide credentials to use upload callback.')
 
+    if self.authorized_session is None:
+      self.authorized_session = requests.AuthorizedSession(self.credentials)
+
     def upload_callback(test_record_obj):
       proto = self._convert(test_record_obj)
-      self.upload_result = send_mfg_inspector_data(proto, self.credentials,
-                                                   self.destination_url,
-                                                   payload_type)
+      self.upload_result = send_mfg_inspector_data(
+          proto,
+          self.credentials,
+          self.destination_url,
+          payload_type,
+          self.authorized_session,
+      )
 
     return upload_callback
 

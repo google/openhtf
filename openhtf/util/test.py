@@ -439,7 +439,7 @@ class PhaseOrTestIterator(Iterator):
     if profile_filepath is None:
       profile_tempfile = None
     else:
-      profile_tempfile = tempfile.NamedTemporaryFile()
+      profile_tempfile = tempfile.NamedTemporaryFile(delete=False)
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch.object(
         plugs, 'PlugManager', new=lambda _, __: self.plug_manager):

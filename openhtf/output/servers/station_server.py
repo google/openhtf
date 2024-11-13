@@ -19,6 +19,7 @@ process. However, the dashboard server (dashboard_server.py) can be used to
 aggregate info from multiple station servers with a single frontend.
 """
 
+import asyncio
 import contextlib
 import itertools
 import json
@@ -166,6 +167,7 @@ class StationWatcher(threading.Thread):
 
   def run(self):
     """Call self._poll_for_update() in a loop and handle errors."""
+    asyncio.set_event_loop(asyncio.new_event_loop())
     while True:
       try:
         self._poll_for_update()

@@ -329,7 +329,7 @@ class Test(object):
           self.make_uid(),
           trigger,
           self._test_options,
-          run_with_profiling=profile_filename is not None)
+          run_phases_with_profiling=profile_filename is not None)
 
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self

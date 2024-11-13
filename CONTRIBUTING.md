@@ -242,6 +242,22 @@ pip install tox
 tox
 ```
 
+As a developer it's a good practice to verify wheel-building.
+
+```
+python -m build
+```
+
+This will create a .whl in the `dist` directory. Try creating a fresh venv in
+a different directory, following steps above, and installing the wheel there:
+
+```
+pip install path/to/openhtf.whl
+
+# Try launching the dashboard server.
+python -m openhtf.output.servers.dashboard_server
+```
+
 ### MacOS
 We will use [Homebrew](https://brew.sh/) to install our dependencies and Pip to set up the virtualenv. We recommend installing [Xcode](https://developer.apple.com/xcode/) first as the GCC compiler will be needed for both; however, other GCC compilers not associated with Xcode may work just as well. 
 
@@ -282,7 +298,7 @@ OpenHTF ships with a built-in web gui found in the `openhtf.output.web_gui` modu
 
 We don't expect everyone to go through the steps of building the frontend from
 source, so we provide a prebuilt version of the frontend in the
-`openhtf/output/web_gui/prebuilt` directory. If you don't plan to contribute to
+`openhtf/output/web_gui/` directory. If you don't plan to contribute to
 the built-in frontend, you can feel free to stop reading here; OpenHTF will
 automatically use the the prebuilt version of the frontend we include.
 

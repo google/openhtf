@@ -24,6 +24,7 @@ import inspect
 import logging
 import os.path
 import pdb
+import sys
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Text, TYPE_CHECKING, Type, Union
 
 import attr
@@ -42,6 +43,10 @@ from openhtf.util import logs
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
+
+
+DEFAULT_REPEAT_LIMIT = 3
+MAX_REPEAT_LIMIT = sys.maxsize
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -111,8 +116,9 @@ class PhaseOptions(object):
     repeat_on_measurement_fail: If true, force phase with failed
       measurements to repeat up to repeat_limit times.
     repeat_on_timeout:  If consider repeat on phase timeout, default is No.
-    repeat_limit:  Maximum number of repeats.  None indicates a phase will be
-      repeated infinitely as long as PhaseResult.REPEAT is returned.
+    repeat_limit:  Maximum number of repeats.  DEFAULT_REPEAT_LIMIT applies if
+      this is set to None.  MAX_REPEAT_LIMIT can be used to repeat the phase
+      virtually forever, as long as PhaseResult.REPEAT is returned.
     run_under_pdb: If True, run the phase under the Python Debugger (pdb).  When
       setting this option, increase the phase timeout as well because the
       timeout will still apply when under the debugger.
