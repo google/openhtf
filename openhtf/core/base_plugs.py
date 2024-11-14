@@ -94,7 +94,7 @@ framework won't pass any, so you'll get a TypeError.
 """
 
 import logging
-from typing import Any, Dict, Set, Text, Type, Union
+from typing import Any, Dict, Text, Type, Union
 
 import attr
 

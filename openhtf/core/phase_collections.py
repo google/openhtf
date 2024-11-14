@@ -23,7 +23,7 @@ skipped.
 import abc
 import collections
 from collections.abc import Iterable as CollectionsIterable
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Text, Tuple, Type, TypeVar, Union
 
 import attr
 from openhtf import util

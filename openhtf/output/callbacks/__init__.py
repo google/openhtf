@@ -25,7 +25,7 @@ import pickle
 import shutil
 import tempfile
 import typing
-from typing import BinaryIO, Callable, Iterator, Optional, Text, Union
+from typing import BinaryIO, Callable, Iterator, Text, Union
 
 from openhtf import util
 from openhtf.core import test_record

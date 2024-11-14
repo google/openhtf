@@ -18,7 +18,6 @@ Allows for writing out to a serial port.
 
 import logging
 import threading
-from typing import Optional
 
 from openhtf.core import base_plugs
 from openhtf.util import configuration

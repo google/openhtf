@@ -126,7 +126,6 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
-import collections
 from collections.abc import Callable as CollectionsCallable, Iterator
 import functools
 import inspect

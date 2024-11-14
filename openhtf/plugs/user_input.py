@@ -24,7 +24,7 @@ import platform
 import select
 import sys
 import threading
-from typing import Any, Callable, Dict, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Text, Union
 import uuid
 
 import attr

@@ -18,7 +18,7 @@ import re
 import threading
 import time
 import typing
-from typing import Any, Callable, Dict, Iterator, Optional, Text, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Iterator, Optional, Text, Tuple, TypeVar
 import weakref
 
 import attr
