@@ -80,8 +80,8 @@ class OutputToFile(object):
 
   def __init__(self, filename_pattern_or_file: Union[Text, Callable[..., Text],
                                                      BinaryIO]):
-    self.filename_pattern = None  # type: Optional[Union[Text, Callable[..., Text]]]
-    self.output_file = None  # type: Optional[BinaryIO]
+    self.filename_pattern: Optional[Union[Text, Callable[..., Text]]] = None
+    self.output_file: Optional[BinaryIO] = None
     if (isinstance(filename_pattern_or_file, str) or
         callable(filename_pattern_or_file)):
       self.filename_pattern = filename_pattern_or_file  # pytype: disable=annotation-type-mismatch

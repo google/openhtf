@@ -15,7 +15,6 @@
 
 import importlib.metadata
 import signal
-import typing
 
 from openhtf.core import phase_executor
 from openhtf.core import test_record

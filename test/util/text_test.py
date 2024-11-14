@@ -17,7 +17,6 @@ import io
 import sys
 import types
 import typing
-import unittest
 from unittest import mock
 
 from absl.testing import parameterized
