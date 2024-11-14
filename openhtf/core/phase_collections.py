@@ -221,16 +221,18 @@ def check_for_duplicate_subtest_names(sequence: PhaseSequence):
   Raises:
     DuplicateSubtestNamesError: when duplicate subtest names are found.
   """
-  names_to_subtests = collections.defaultdict(
-      list)  # type: DefaultDict[Text, List[Subtest]]
+  names_to_subtests: collections.defaultdict[str, list[Subtest]] = (
+      collections.defaultdict(list)
+  )
   for subtest in sequence.filter_by_type(Subtest):
     names_to_subtests[subtest.name].append(subtest)
 
-  duplicates = []  # type: List[Text]
+  duplicates: list[str] = []
   for name, subtests in names_to_subtests.items():
     if len(subtests) > 1:
-      duplicates.append('Name "{}" used by multiple subtests: {}'.format(
-          name, subtests))
+      duplicates.append(
+          'Name "{}" used by multiple subtests: {}'.format(name, subtests)
+      )
   if not duplicates:
     return
   duplicates.sort()
