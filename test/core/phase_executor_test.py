@@ -18,7 +18,15 @@ import unittest
 
 import openhtf
 from openhtf.core import phase_descriptor
+from openhtf.core import test_record
 
+def run_if_with_exception():
+  raise Exception("run_if_with_exception")
+
+_tr = None
+def final(tr):
+  global _tr
+  _tr = tr
 
 class PhaseExecutorTest(unittest.TestCase):
 
@@ -54,3 +62,14 @@ class PhaseExecutorTest(unittest.TestCase):
         openhtf.PhaseOptions(repeat_limit=phase_descriptor.MAX_REPEAT_LIMIT),
         expected_call_count=phase_descriptor.DEFAULT_REPEAT_LIMIT + 1,
     )
+
+  def test_execute_phase_when_run_if_throws_exception(self):
+
+    @openhtf.PhaseOptions(run_if=run_if_with_exception)
+    def phase():
+      pass
+
+    test = openhtf.Test(phase)
+    test.add_output_callbacks(final)
+    test.execute()
+    self.assertEqual(_tr.outcome, test_record.Outcome.PASS)
