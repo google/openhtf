@@ -308,13 +308,13 @@ class PhaseExecutor(object):
         run_phase = phase_desc.options.run_if()
       except Exception:  # pylint: disable=broad-except
         self.logger.debug('Phase %s stopped due to a fault in run_if function.',
-                        phase_desc.name)
+                          phase_desc.name)
         # Allow graceful termination
         return PhaseExecutionOutcome(ExceptionInfo(*sys.exc_info())), None
 
       if not run_phase:
         self.logger.debug('Phase %s skipped due to run_if returning falsey.',
-                        phase_desc.name)
+                          phase_desc.name)
         return PhaseExecutionOutcome(phase_descriptor.PhaseResult.SKIP), None
 
 
