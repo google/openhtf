@@ -70,4 +70,4 @@ class PhaseExecuterRunIfTest(htf_test.TestCase):
     phase = openhtf.PhaseOptions(run_if=run_if_with_exception)(
                                  phase_excp_run_if)
     record = self.execute_phase_or_test(openhtf.Test(phase))
-    self.assertEqual(record.outcome, test_record.Outcome.ERROR)
+    self.assertTestError(record)
