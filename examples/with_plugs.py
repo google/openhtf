@@ -74,7 +74,7 @@ class PingDnsB(PingPlug):
 @htf.PhaseOptions(name='Ping-{pinger.host}-{count}')
 @htf.plug(pinger=PingPlug.placeholder)
 @htf.measures('total_time_{pinger.host}_{count}',
-              htf.Measurement('retcode').equals('{expected_retcode}', type=int))
+              htf.Measurement('retcode').equals('{expected_retcode}', type=str))
 def test_ping(test, pinger, count, expected_retcode):
   """This tests that we can ping a host.
 

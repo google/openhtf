@@ -152,7 +152,7 @@ def multdim_measurements(test):
   test.measurements['average_voltage'] = power_df['V'].mean()
 
   # We can convert the dataframe to a numpy array as well
-  power_array = power_df.as_matrix()
+  power_array = power_df.to_numpy()
   test.logger.info('This is the same data in a numpy array:\n%s', power_array)
   test.measurements['average_current'] = power_array.mean(axis=0)[2]
 
