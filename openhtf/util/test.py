@@ -126,7 +126,6 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
   assertMeasurementFail(phase_or_test_rec, measurement)
 """
 
-import collections
 from collections.abc import Callable as CollectionsCallable, Iterator
 import functools
 import inspect
@@ -439,7 +438,7 @@ class PhaseOrTestIterator(Iterator):
     if profile_filepath is None:
       profile_tempfile = None
     else:
-      profile_tempfile = tempfile.NamedTemporaryFile()
+      profile_tempfile = tempfile.NamedTemporaryFile(delete=False)
     # Mock the PlugManager to use ours instead, and execute the test.
     with mock.patch.object(
         plugs, 'PlugManager', new=lambda _, __: self.plug_manager):
@@ -660,10 +659,11 @@ class TestCase(unittest.TestCase):
 
   def __init__(self, methodName=None):
     super(TestCase, self).__init__(methodName=methodName)
-    test_method = getattr(self, methodName)
-    if inspect.isgeneratorfunction(test_method):
-      raise ValueError('%s yields without @openhtf.util.test.yields_phases' %
-                       methodName)
+    if methodName != 'runTest':
+      test_method = getattr(self, methodName)
+      if inspect.isgeneratorfunction(test_method):
+        raise ValueError('%s yields without @openhtf.util.test.yields_phases' %
+                         methodName)
 
   def setUp(self):
     super(TestCase, self).setUp()
@@ -954,6 +954,7 @@ class TestCase(unittest.TestCase):
 
   def get_diagnoses_store(self):
     self.assertIsNotNone(self.last_test_state)
+    assert self.last_test_state is not None
     return self.last_test_state.diagnoses_manager.store
 
   @classmethod

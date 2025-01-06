@@ -121,10 +121,15 @@ class LibUsbHandle(usb_handle.UsbHandle):
     """A string of the physical port of this device, like 'X-X.X.X'."""
     return self._device_to_sysfs_path(self._device)
 
+  @property
+  def _checked_handle(self):
+    assert self._handle is not None
+    return self._handle
+
   @usb_handle.requires_open_handle
   def read(self, length, timeout_ms=None):
     try:
-      return self._handle.bulkRead(
+      return self._checked_handle.bulkRead(
           self._read_endpoint,
           length,
           timeout=self._timeout_or_default(timeout_ms))
@@ -136,7 +141,7 @@ class LibUsbHandle(usb_handle.UsbHandle):
   @usb_handle.requires_open_handle
   def write(self, data, timeout_ms=None):
     try:
-      return self._handle.bulkWrite(
+      return self._checked_handle.bulkWrite(
           self._write_endpoint,
           data,
           timeout=self._timeout_or_default(timeout_ms))
@@ -150,8 +155,8 @@ class LibUsbHandle(usb_handle.UsbHandle):
       return
 
     try:
-      self._handle.releaseInterface(self._interface_number)
-      self._handle.close()
+      self._checked_handle.releaseInterface(self._interface_number)
+      self._checked_handle.close()
     except libusb1.USBError:
       _LOG.exception('USBError while closing handle %s:', self)
     finally:

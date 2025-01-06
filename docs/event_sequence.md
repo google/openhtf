@@ -75,7 +75,7 @@ callbacks.
 
 `PhaseGroup` collections behave like contexts. They are entered if their
 `setup` phases are all non-terminal; if this happens, the `teardown` phases are
-guarenteed to run.  `PhaseGroup` collections can contain additional `PhaseGroup`
+guaranteed to run.  `PhaseGroup` collections can contain additional `PhaseGroup`
 instances. If a nested group has a terminal phase, the outer groups will trigger
 the same shortcut logic.
 
@@ -123,7 +123,7 @@ When you hit Ctrl-C to the process the following occurs:
   `PhaseGroup` main phase, the phase's thread is attempted to be killed. No
   other phases of these kinds are run.
 * `PhaseGroup` teardown phases are still run unless a second Ctrl-C is sent.
-* We then follow the same steps as in [Test error shirt-circuiting](
-    #test-error-shirt-circuiting)
+* We then follow the same steps as in [Test error short-circuiting](
+    #test-error-short-circuiting)
 * All plugs are deleted.
 * Test outcome is ABORTED for output callbacks.

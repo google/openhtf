@@ -36,7 +36,7 @@ message AssemblyEvent {
   // An individual Component, potentially a member of an assembly.
   message Component {
     string part_number = 1;  // GPN
-    // Unique idenfier of a component, either serial or lot/index.
+    // Unique identifier of a component, either serial or lot/index.
     oneof id {
       string serial = 2;  // GSN. Most components will have this.
       ByLot lot = 3;  // For tracking resistors, lenses, etc.

@@ -19,7 +19,6 @@ actually care for.
 """
 import collections
 import io
-import unittest
 from unittest import mock
 
 import openhtf as htf
@@ -54,6 +53,13 @@ class TestMfgInspector(test.TestCase):
 
     self.mock_send_mfg_inspector_data = mock.patch.object(
         mfg_inspector, 'send_mfg_inspector_data').start()
+
+    self.mock_authorized_session = mock.patch.object(
+        mfg_inspector.requests,
+        'AuthorizedSession',
+        spec_set=True,
+        autospec=True,
+    ).start()
 
   def tearDown(self):
     mock.patch.stopall()
@@ -110,8 +116,12 @@ class TestMfgInspector(test.TestCase):
     callback.upload()(MOCK_TEST_RUN)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
-        guzzle_pb2.COMPRESSED_TEST_RUN)
+        MOCK_TEST_RUN_PROTO,
+        self.mock_credentials,
+        callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN,
+        self.mock_authorized_session(self.mock_credentials),
+    )
 
   def test_save_and_upload(self):
     testrun_output = io.BytesIO()
@@ -132,8 +142,12 @@ class TestMfgInspector(test.TestCase):
     self.assertEqual(MOCK_TEST_RUN_PROTO, testrun)
 
     self.mock_send_mfg_inspector_data.assert_called_with(
-        MOCK_TEST_RUN_PROTO, self.mock_credentials, callback.destination_url,
-        guzzle_pb2.COMPRESSED_TEST_RUN)
+        MOCK_TEST_RUN_PROTO,
+        self.mock_credentials,
+        callback.destination_url,
+        guzzle_pb2.COMPRESSED_TEST_RUN,
+        self.mock_authorized_session(self.mock_credentials),
+    )
 
     # Make sure mock converter only called once i.e. the test record was
     # was converted to a proto only once.  This important because some custom

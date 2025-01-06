@@ -96,11 +96,10 @@ class TestExecutor(threads.KillableThread):
                execution_uid: Text,
                test_start: Optional[phase_descriptor.PhaseDescriptor],
                test_options: 'test_descriptor.TestOptions',
-               run_with_profiling: bool):
-    super(TestExecutor, self).__init__(
-        name='TestExecutorThread', run_with_profiling=run_with_profiling)
+               run_phases_with_profiling: bool):
+    super(TestExecutor, self).__init__(name='TestExecutorThread')
     self.test_state = None  # type: Optional[test_state.TestState]
-
+    self._run_phases_with_profiling = run_phases_with_profiling
     self._test_descriptor = test_descriptor
     self._test_start = test_start
     self._test_options = test_options
@@ -276,7 +275,7 @@ class TestExecutor(threads.KillableThread):
       return True
 
     outcome, profile_stats = self.phase_executor.execute_phase(
-        self._test_start, self._run_with_profiling
+        self._test_start, self._run_phases_with_profiling
     )
 
     if profile_stats is not None:
@@ -327,10 +326,11 @@ class TestExecutor(threads.KillableThread):
                      subtest_rec: Optional[test_record.SubtestRecord],
                      in_teardown: bool) -> _ExecutorReturn:
     if subtest_rec:
-      self.logger.debug('Executing phase %s under subtest %s', phase.name,
-                        subtest_rec.name)
+      self.logger.debug('Executing phase %s (from %s) under subtest %s',
+                        phase.name, phase.func_location, subtest_rec.name)
     else:
-      self.logger.debug('Executing phase %s', phase.name)
+      self.logger.debug('Executing phase %s (from %s)', phase.name,
+                        phase.func_location)
 
     if not in_teardown and subtest_rec and subtest_rec.is_fail:
       self.phase_executor.skip_phase(phase, subtest_rec)
@@ -338,7 +338,7 @@ class TestExecutor(threads.KillableThread):
 
     outcome, profile_stats = self.phase_executor.execute_phase(
         phase,
-        run_with_profiling=self._run_with_profiling,
+        run_with_profiling=self._run_phases_with_profiling,
         subtest_rec=subtest_rec,
     )
     if profile_stats is not None:

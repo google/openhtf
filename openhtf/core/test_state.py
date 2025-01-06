@@ -33,10 +33,9 @@ import mimetypes
 import os
 import socket
 import sys
-from typing import Any, Dict, Iterator, List, Optional, Set, Text, Tuple, TYPE_CHECKING, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, TYPE_CHECKING, Text, Tuple, Union
 
 import attr
-
 import openhtf
 from openhtf import plugs
 from openhtf import util
@@ -48,7 +47,6 @@ from openhtf.core import test_record
 from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import logs
-from openhtf.util import units
 from typing_extensions import Literal
 
 CONF = configuration.CONF
@@ -94,37 +92,6 @@ class DuplicateAttachmentError(Exception):
 
 class InternalError(Exception):
   """An internal error."""
-
-
-@attr.s(slots=True, frozen=True)
-class ImmutableMeasurement(object):
-  """Immutable copy of a measurement."""
-
-  name = attr.ib(type=Text)
-  value = attr.ib(type=Any)
-  units = attr.ib(type=Optional[units.UnitDescriptor])
-  dimensions = attr.ib(type=Optional[List[measurements.Dimension]])
-  outcome = attr.ib(type=Optional[measurements.Outcome])
-
-  @classmethod
-  def from_measurement(
-      cls, measurement: measurements.Measurement) -> 'ImmutableMeasurement':
-    """Convert a Measurement into an ImmutableMeasurement."""
-    measured_value = measurement.measured_value
-    if isinstance(measured_value, measurements.DimensionedMeasuredValue):
-      value = data.attr_copy(
-          measured_value, value_dict=copy.deepcopy(measured_value.value_dict))
-    else:
-      value = (
-          copy.deepcopy(measured_value.value)
-          if measured_value.is_value_set else None)
-
-    return cls(
-        name=measurement.name,
-        value=value,
-        units=measurement.units,
-        dimensions=measurement.dimensions,
-        outcome=measurement.outcome)
 
 
 class TestState(util.SubscribableStateMixin):
@@ -264,8 +231,9 @@ class TestState(util.SubscribableStateMixin):
     self.state_logger.warning('Could not find attachment: %s', attachment_name)
     return None
 
-  def get_measurement(self,
-                      measurement_name: Text) -> Optional[ImmutableMeasurement]:
+  def get_measurement(
+      self, measurement_name: Text
+  ) -> Optional[measurements.ImmutableMeasurement]:
     """Get a copy of a measurement value from current or previous phase.
 
     Measurement and phase name uniqueness is not enforced, so this method will
@@ -283,8 +251,9 @@ class TestState(util.SubscribableStateMixin):
     # Check current running phase state
     if self.running_phase_state:
       if measurement_name in self.running_phase_state.measurements:
-        return ImmutableMeasurement.from_measurement(
-            self.running_phase_state.measurements[measurement_name])
+        return measurements.ImmutableMeasurement.from_measurement(
+            self.running_phase_state.measurements[measurement_name]
+        )
 
     # Iterate through phases in reversed order to return most recent (necessary
     # because measurement and phase names are not necessarily unique)
@@ -292,7 +261,7 @@ class TestState(util.SubscribableStateMixin):
       if (phase_record.result not in ignore_outcomes and
           measurement_name in phase_record.measurements):
         measurement = phase_record.measurements[measurement_name]
-        return ImmutableMeasurement.from_measurement(measurement)
+        return measurements.ImmutableMeasurement.from_measurement(measurement)
 
     self.state_logger.warning('Could not find measurement: %s',
                               measurement_name)
@@ -833,6 +802,14 @@ class PhaseState(object):
     elif not self._measurements_pass():
       self.logger.debug(
           'Phase outcome of %s is FAIL due to measurement outcome.', self.name)
+      if self.options.stop_on_measurement_fail:
+        self.logger.debug(
+            'Stopping test due to phase %s having stop on fail option.',
+            self.name,
+        )
+        self.result = phase_executor.PhaseExecutionOutcome(
+            phase_descriptor.PhaseResult.STOP
+        )
       outcome = test_record.PhaseOutcome.FAIL
     else:
       self.logger.debug('Phase outcome of %s is PASS.', self.name)
@@ -867,7 +844,7 @@ class PhaseState(object):
       if self.phase_record.result.is_terminal:
         self.logger.exception(
             'Phase Diagnoser %s raised an exception, but phase result is '
-            'already terminal; logging additonal exception here.',
+            'already terminal; logging additional exception here.',
             diagnoser.name)
       else:
         self.phase_record.result = phase_executor.PhaseExecutionOutcome(

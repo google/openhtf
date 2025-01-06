@@ -231,11 +231,31 @@ virtualenv venv
 # Activate the new virtualenv.
 . venv/bin/activate
 
-# Update setuptools.
-pip install setuptools --upgrade
+# Update build (run setuptools).
+pip install build --upgrade
 
 # Install openhtf into the virtualenv in dev mode.
-python setup.py develop
+pip install --editable .
+
+# Install tox and run unit tests.
+pip install tox
+tox
+```
+
+As a developer it's a good practice to verify wheel-building.
+
+```
+python -m build
+```
+
+This will create a .whl in the `dist` directory. Try creating a fresh venv in
+a different directory, following steps above, and installing the wheel there:
+
+```
+pip install path/to/openhtf.whl
+
+# Try launching the dashboard server.
+python -m openhtf.output.servers.dashboard_server
 ```
 
 ### MacOS
@@ -268,7 +288,7 @@ virtualenv venv
 . venv/bin/activate
 
 # Install openhtf into the virtualenv in dev mode.
-python setup.py develop
+pip install --editable .
 ```
 
 If you're having issues with the python setup, it's possible that the problem is due to El Capitan not including ssl headers. This [link](http://adarsh.io/bundler-failing-on-el-capitan/) may help you in that regard. 
@@ -278,7 +298,7 @@ OpenHTF ships with a built-in web gui found in the `openhtf.output.web_gui` modu
 
 We don't expect everyone to go through the steps of building the frontend from
 source, so we provide a prebuilt version of the frontend in the
-`openhtf/output/web_gui/prebuilt` directory. If you don't plan to contribute to
+`openhtf/output/web_gui/` directory. If you don't plan to contribute to
 the built-in frontend, you can feel free to stop reading here; OpenHTF will
 automatically use the the prebuilt version of the frontend we include.
 
@@ -318,12 +338,8 @@ npm start
 ```
 
 Now you've got the frontend building, but you still need to serve it. The
-frontend server is started as a runnable module. In a terminal where your Python
-virtual environment (set up above) is active, start the server with:
-
-```bash
-python -m openhtf.output.web_gui
-```
+frontend server is started as a runnable module. See the associated
+[readme](openhtf/output/web_gui/README.md).
 
 If you want the server to automatically restart when changes are detected, use
 the `--dev` flag.

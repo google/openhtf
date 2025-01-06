@@ -110,7 +110,6 @@ import textwrap
 from openhtf.util import argv
 from openhtf.util import console_output
 from openhtf.util import functions
-from openhtf.util import threads
 
 # The number of v's provided as command line arguments to control verbosity.
 # Will be overridden if the ARG_PARSER below parses the -v argument.

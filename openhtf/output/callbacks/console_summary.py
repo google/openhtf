@@ -55,9 +55,14 @@ class ConsoleSummary():
   # pylint: enable=invalid-name
 
   def __call__(self, record: test_record.TestRecord) -> None:
+    if record is None:
+      raise ValueError('record is None')
+    outcome = record.outcome
+    if outcome is None:
+      raise ValueError('record.outcome is None')
     output_lines = [
         ''.join((self.color_table[record.outcome], self.BOLD,
-                 record.code_info.name, ':', record.outcome.name, self.RESET))
+                 record.code_info.name, ':', outcome.name, self.RESET))
     ]
     if record.outcome != test_record.Outcome.PASS:
       for phase in record.phases:

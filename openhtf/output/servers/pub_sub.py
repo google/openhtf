@@ -67,8 +67,6 @@ class PubSub(sockjs.tornado.SockJSConnection):
 
   def on_subscribe(self, info):
     """Called when new clients subscribe. Subclasses can override."""
-    pass
 
   def on_unsubscribe(self):
     """Called when clients unsubscribe. Subclasses can override."""
-    pass
