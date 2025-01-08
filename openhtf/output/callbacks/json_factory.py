@@ -74,7 +74,7 @@ def stream_json(
   json_encoder = TestRecordEncoder(allow_nan=allow_nan, **kwargs)
 
   # The iterencode return type in typeshed for PY2 is wrong; not worried about
-  # fixing it as we are droping PY2 support soon.
+  # fixing it as we are dropping PY2 support soon.
   return json_encoder.iterencode(encoded_test_rec)  # pytype: disable=bad-return-type
 
 

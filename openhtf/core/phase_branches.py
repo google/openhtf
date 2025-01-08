@@ -77,7 +77,7 @@ _CONDITION_LOOKUP = {
 
 @attr.s(slots=True, frozen=True)
 class DiagnosisCondition(object):
-  """Encapsulated object for evaulating DiagResultEnum conditions."""
+  """Encapsulated object for evaluating DiagResultEnum conditions."""
 
   # Indicates the diagnosis is tested.
   condition = attr.ib(type=ConditionOn)

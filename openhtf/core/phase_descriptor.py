@@ -21,7 +21,10 @@ of PhaseDescriptor class.
 import collections
 import enum
 import inspect
+import logging
+import os.path
 import pdb
+import sys
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Text, TYPE_CHECKING, Type, Union
 
 import attr
@@ -36,9 +39,16 @@ from openhtf.core import phase_nodes
 from openhtf.core import test_record
 import openhtf.plugs
 from openhtf.util import data
+from openhtf.util import logs
 
 if TYPE_CHECKING:
   from openhtf.core import test_state  # pylint: disable=g-import-not-at-top
+
+
+DEFAULT_REPEAT_LIMIT = 3
+MAX_REPEAT_LIMIT = sys.maxsize
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class PhaseWrapError(Exception):
@@ -106,8 +116,9 @@ class PhaseOptions(object):
     repeat_on_measurement_fail: If true, force phase with failed
       measurements to repeat up to repeat_limit times.
     repeat_on_timeout:  If consider repeat on phase timeout, default is No.
-    repeat_limit:  Maximum number of repeats.  None indicates a phase will be
-      repeated infinitely as long as PhaseResult.REPEAT is returned.
+    repeat_limit:  Maximum number of repeats.  DEFAULT_REPEAT_LIMIT applies if
+      this is set to None.  MAX_REPEAT_LIMIT can be used to repeat the phase
+      virtually forever, as long as PhaseResult.REPEAT is returned.
     run_under_pdb: If True, run the phase under the Python Debugger (pdb).  When
       setting this option, increase the phase timeout as well because the
       timeout will still apply when under the debugger.
@@ -174,6 +185,8 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
 
   Attributes:
     func: Function to be called (with TestApi as first argument).
+    func_location: Location of the function, as 'name at file:line' for
+      user-defined functions, or 'name <builtin>' for built-in functions.
     options: PhaseOptions instance.
     plugs: List of PhasePlug instances.
     measurements: List of Measurement objects.
@@ -185,6 +198,29 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
   """
 
   func = attr.ib(type=PhaseCallableT)
+  func_location = attr.ib(type=Text)
+
+  @func_location.default
+  def _func_location(self):
+    """Assigns this field assuming func is a function or callable instance."""
+    obj = self.func
+    try:
+      name = obj.__name__
+    except AttributeError:
+      try:
+        name = obj.__class__.__name__
+      except AttributeError:
+        logs.log_once(_LOGGER.warning,
+                      'Cannot determine name of callable: %r', obj)
+        return '<unknown>'
+      obj = obj.__class__
+    try:
+      filename = os.path.basename(inspect.getsourcefile(obj))
+      line_number = inspect.getsourcelines(obj)[1]
+    except TypeError:
+      return name + ' <builtin>'
+    return f'{name} at {filename}:{line_number}'
+
   options = attr.ib(type=PhaseOptions, factory=PhaseOptions)
   plugs = attr.ib(type=List[base_plugs.PhasePlug], factory=list)
   measurements = attr.ib(type=List[core_measurements.Measurement], factory=list)
@@ -375,16 +411,6 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
       phase_result = pdb.runcall(self.func, **kwargs)
     else:
       phase_result = self.func(**kwargs)
-
-    # Override the phase result if the user wants to treat ANY failed
-    # measurement of this phase as a test-stopping failure.
-    if self.options.stop_on_measurement_fail:
-      # Note: The measurement definitions do NOT have the outcome populated.
-      for measurement in self.measurements:
-        if (running_test_state.test_api.get_measurement(
-            measurement.name).outcome != core_measurements.Outcome.PASS):
-          phase_result = PhaseResult.STOP
-          break
 
     return phase_result
 

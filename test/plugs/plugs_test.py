@@ -14,7 +14,6 @@
 
 import threading
 import time
-import unittest
 
 from openhtf import plugs
 from openhtf.core import base_plugs

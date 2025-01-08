@@ -162,8 +162,8 @@ def teardown(test):
   test.logger.info('Running teardown')
 
 
-def main():
-  test = htf.Test(
+def make_test():
+  return htf.Test(
       htf.PhaseGroup.with_teardown(teardown)(
           hello_world,
           set_measurements,
@@ -180,6 +180,10 @@ def main():
       test_name='MyTest',
       test_description='OpenHTF Example Test',
       test_version='1.0.0')
+
+
+def main():
+  test = make_test()
   test.add_output_callbacks(
       callbacks.OutputToFile(
           './{dut_id}.{metadata[test_name]}.{start_time_millis}.pickle'))

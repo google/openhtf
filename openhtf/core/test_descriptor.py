@@ -34,11 +34,10 @@ import weakref
 
 import attr
 import colorama
-
 from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import diagnoses_lib
-from openhtf.core import measurements
+from openhtf.core import measurements as htf_measurements
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
@@ -340,7 +339,7 @@ class Test(object):
           self.make_uid(),
           trigger,
           self._test_options,
-          run_with_profiling=profile_filename is not None)
+          run_phases_with_profiling=profile_filename is not None)
 
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
@@ -471,10 +470,10 @@ class TestApi(object):
       stdout (configurable) and the frontend via the Station API, if it's
       enabled, in addition to the 'log_records' attribute of the final
       TestRecord output by the running test.
-    measurements: A measurements.Collection object used to get/set measurement
-      values.  See util/measurements.py for more implementation details, but in
-      the simple case, set measurements directly as attributes on this object
-      (see examples/measurements.py for examples).
+    measurements: A htf_measurements.Collection object used to get/set
+      measurement values.  See util/measurements.py for more implementation
+      details, but in the simple case, set measurements directly as attributes
+      on this object (see examples/measurements.py for examples).
     attachments: Dict mapping attachment name to test_record.Attachment instance
       containing the data that was attached (and the MIME type that was assumed
       based on extension, if any).  Only attachments that have been attached in
@@ -495,7 +494,7 @@ class TestApi(object):
           https://github.com/google/openhtf/issues/new
   """
 
-  measurements = attr.ib(type=measurements.Collection)
+  measurements = attr.ib(type=htf_measurements.Collection)
 
   # Internal state objects.  If you find yourself needing to use these, please
   # use required_state=True for the phase to use the test_state object instead.
@@ -577,8 +576,8 @@ class TestApi(object):
         filename, name=name, mimetype=mimetype)
 
   def get_measurement(
-      self,
-      measurement_name: Text) -> Optional[test_state.ImmutableMeasurement]:
+      self, measurement_name: Text
+  ) -> Optional[htf_measurements.ImmutableMeasurement]:
     """Get a copy of a measurement value from current or previous phase.
 
     Measurement and phase name uniqueness is not enforced, so this method will
@@ -593,7 +592,8 @@ class TestApi(object):
     return self._running_test_state.get_measurement(measurement_name)
 
   def get_measurement_strict(
-      self, measurement_name: Text) -> test_state.ImmutableMeasurement:
+      self, measurement_name: Text
+  ) -> htf_measurements.ImmutableMeasurement:
     """Get a copy of the test measurement from current or previous phase.
 
     Measurement and phase name uniqueness is not enforced, so this method will

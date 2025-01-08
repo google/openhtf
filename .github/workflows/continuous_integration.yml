@@ -26,31 +26,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install build prerequisites
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install tox tox-gh-actions
-        pip install coveralls
-        wget https://github.com/protocolbuffers/protobuf/releases/download/v21.6/protoc-21.6-linux-x86_64.zip
-        unzip protoc-21.6-linux-x86_64.zip
-        sudo cp bin/protoc /usr/bin/protoc && sudo chmod 777 /usr/bin/protoc
-        sudo cp -r include/. /usr/include && sudo chmod -R +r /usr/include/google
-        protoc --version
-        sudo apt-get install -y libusb-1.0-0-dev libprotobuf-dev swig
+        python -m pip install --upgrade build pip
+        sudo apt-get install -y libusb-1.0-0-dev libprotobuf-dev swig libevent-dev
+    - name: Setup protoc
+      uses: arduino/setup-protoc@v3
+    - name: Create OpenHTF package
+      run: |
+        python -m build
     - name: Test with tox
-      run: tox
-    - name: Publish to coveralls.io
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      run: coveralls --service=github
+      run: |
+        python -m pip install tox tox-gh-actions
+        tox
+    - name: Publish to Coveralls with GitHub Action
+      uses: coverallsapp/github-action@v2
+      with:
+        parallel: true
+        flag-name: python-${{ matrix.python-version }}
 
   web_ui:
     runs-on: ubuntu-latest
@@ -58,7 +59,17 @@ jobs:
       run:
         working-directory: openhtf/output/web_gui
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
       - run: npm install
       - run: npm run build
+
+  finish:
+    needs: build_and_test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@v2
+      with:
+        parallel-finished: true
