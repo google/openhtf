@@ -15,18 +15,20 @@
 -->
 
 <div class="htf-layout-header" [class.header-with-measurements]="showMeasurements">
-  <span class="u-clamp-text">
-    <span class="phase-name">{{ phase.name }}</span>
-    <span *ngIf="phase.status !== PhaseStatus.waiting">
-      &nbsp;{{ phase | elapsedTime:'(%s)' }}
+  <div (click)="togglePhase()" class="header-content" [class.header-content-clickable]="hasMeasurements">
+    <span class="u-clamp-text">
+      <span class="phase-name">{{ phase.name }}</span>
+      <span *ngIf="phase.status !== PhaseStatus.waiting">
+        &nbsp;{{ phase | elapsedTime:'(%s)' }}
+      </span>
     </span>
-  </span>
 
-  <div class="u-flex-grow"></div>
-  <div
-    class="htf-status-indicator"
-    [ngClass]="phase.status | statusToClass">
-    {{ phase.status | statusToText }}
+    <div class="u-flex-grow"></div>
+    <div
+      class="htf-status-indicator"
+      [ngClass]="phase.status | statusToClass">
+      {{ phase.status | statusToText }}
+    </div>
   </div>
 </div>
 

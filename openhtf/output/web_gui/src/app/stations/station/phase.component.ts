@@ -38,4 +38,12 @@ export class PhaseComponent {
   get showMeasurements() {
     return this.expand && this.phase.measurements.length > 0;
   }
+
+  get hasMeasurements() {
+    return this.phase.measurements.length > 0;
+  }
+
+  togglePhase() {
+    this.expand = !this.expand;
+  }
 }
