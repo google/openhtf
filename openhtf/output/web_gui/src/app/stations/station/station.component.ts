@@ -83,6 +83,10 @@ export class StationComponent implements OnDestroy, OnInit {
     this.onDeselectStation.emit(new StationDeselectedEvent());
   }
 
+  restartStation() {
+    this.stationService.restart(this.selectedStation);
+  }
+
   manualReload() {
     this.stationService.refresh();
   }

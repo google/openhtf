@@ -93,6 +93,15 @@ export class StationService extends Subscription {
     return this.testsByStation[station.hostPort] || null;
   }
 
+  restart(station: Station) {
+    const baseUrl = getStationBaseUrl(this.config.dashboardEnabled, station);
+    const url = `${baseUrl}/commands/restart`;
+
+    this.http.post(url, '').toPromise().then(() => {
+      this.flashMessage.warn('Station killed, waiting for restart...');
+    });
+  }
+
   /**
    * Step 1: Validate that a JSON response matches the expected format.
    */

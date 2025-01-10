@@ -81,6 +81,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
             'sourcecode': '',
         },
         'dut_id': None,
+        'dut_extended_id': None,
         'start_time_millis': 0,
         'end_time_millis': None,
         'outcome': None,

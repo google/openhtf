@@ -328,6 +328,19 @@ class BaseTestHandler(web_gui_server.CorsRequestHandler):
     return test, test_state
 
 
+class CommandHandler(web_gui_server.CorsRequestHandler):
+  """POST endpoint for commands from web GUI"""
+
+  def post(self, command):
+    if command == 'restart':
+      def kill_thread():
+        time.sleep(1)
+        os.kill(os.getpid(), 9)
+      threading.Thread(target=kill_thread).start()
+      _LOG.warning('Request to restart the server received, killing the process in 1 second.')
+      self.write('Restarting server')
+
+
 class AttachmentsHandler(BaseTestHandler):
   """GET endpoint for a file attached to a test."""
 
@@ -610,6 +623,7 @@ class StationServer(web_gui_server.WebGuiServer):
          PlugsHandler),
         (r'/tests/(?P<test_uid>[\w\d:]+)/phases/(?P<phase_descriptor_id>\d+)/'
          'attachments/(?P<attachment_name>.+)', AttachmentsHandler),
+        (r'/commands/(?P<command>.+)', CommandHandler),
     ))
 
     # Optionally enable history from disk.
