@@ -55,13 +55,13 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish distribution to Test PyPI
-      uses: pypa/gh-action-pypi-publish@67339c736fd9354cd4f8cb0b744f2b82a74b5c70
+      uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
       with:
         password: ${{ secrets.TESTPYPI_PUBLISH_PASSWORD }}
         repository_url: https://test.pypi.org/legacy/
     - name: Publish package to PyPI
       if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@67339c736fd9354cd4f8cb0b744f2b82a74b5c70
+      uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
       with:
         user: __token__
         password: ${{ secrets.PYPI_PUBLISH_PASSWORD }}
