@@ -67,7 +67,7 @@ PlugPlaceT = TypeVar('PlugPlaceT', bound=base_plugs.PlugPlaceholder)
 
 def plug(
     update_kwargs: bool = True,
-    **plugs_map: Union[Type[PlugT], Type[PlugPlaceT]]
+    **plugs_map: Union[PlugT, PlugPlaceT]
 ) -> Callable[['phase_descriptor.PhaseT'], 'phase_descriptor.PhaseDescriptor']:
   """Creates a decorator that passes in plugs when invoked.
 
