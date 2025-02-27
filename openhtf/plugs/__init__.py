@@ -61,9 +61,13 @@ class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
 
+PlugT = TypeVar('PlugT', bound=base_plugs.BasePlug)
+PlugPlaceT = TypeVar('PlugPlaceT', bound=base_plugs.PlugPlaceholder)
+
+
 def plug(
     update_kwargs: bool = True,
-    **plugs_map: Union[Type[base_plugs.BasePlug], base_plugs.PlugPlaceholder]
+    **plugs_map: Union[Type[PlugT], Type[PlugPlaceT]]
 ) -> Callable[['phase_descriptor.PhaseT'], 'phase_descriptor.PhaseDescriptor']:
   """Creates a decorator that passes in plugs when invoked.
 
@@ -137,9 +141,6 @@ class _PlugTearDownThread(threads.KillableThread):
       # killed.
       _LOG.warning(
           'Exception calling tearDown on %s:', self._plug, exc_info=True)
-
-
-PlugT = TypeVar('PlugT', bound=base_plugs.BasePlug)
 
 
 class PlugManager(object):
