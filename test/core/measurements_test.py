@@ -19,13 +19,13 @@ actually care about.
 """
 
 import collections
-import unittest
 from unittest import mock
 
 import openhtf as htf
 from openhtf.core import measurements
 from examples import all_the_things
 from openhtf.util import test as htf_test
+import pandas
 
 # Fields that are considered 'volatile' for record comparison.
 _VOLATILE_FIELDS = {
@@ -232,14 +232,19 @@ class TestMeasurement(htf_test.TestCase):
     with self.assertRaises(RuntimeError):
       self.test_to_dataframe(units=True)
 
-  def test_to_dataframe(self, units=True):
+  def _make_multidim_measurement(self, units=''):
     measurement = htf.Measurement('test_multidim')
     measurement.with_dimensions('ms', 'assembly', htf.Dimension('my_zone'))
-
     if units:
-      measurement.with_units('°C')
+      measurement.with_units(units)
+    return measurement
+
+  def test_to_dataframe(self, units=True):
+    if units:
+      measurement = self._make_multidim_measurement('°C')
       measure_column_name = 'degree Celsius'
     else:
+      measurement = self._make_multidim_measurement()
       measure_column_name = 'value'
 
     for t in range(5):
@@ -260,6 +265,100 @@ class TestMeasurement(htf_test.TestCase):
 
   def test_to_dataframe__no_units(self):
     self.test_to_dataframe(units=False)
+
+  def _multidim_testdata(self):
+    return {
+        'ms': [1, 2, 3],
+        'assembly': ['A', 'B', 'C'],
+        'my_zone': ['X', 'Y', 'Z'],
+        'degree_celsius': [10, 20, 30],
+    }
+
+  def test_from_dataframe_raises_if_dimensions_missing_in_dataframe(self):
+    measurement = self._make_multidim_measurement('°C')
+    source_data = self._multidim_testdata()
+    del source_data['assembly']
+    with self.assertRaisesRegex(
+        ValueError, 'DataFrame is missing dimensions'
+    ) as cm:
+      measurement.from_dataframe(
+          pandas.DataFrame(source_data),
+          metric_column='degree_celsius',
+      )
+    with self.assertRaisesRegex(
+        KeyError, r"None of \['assembly'\] are in the columns"
+    ):
+      raise cm.exception.__cause__
+
+  def test_from_dataframe_raises_if_metric_missing_in_dataframe(self):
+    measurement = self._make_multidim_measurement('°C')
+    source_data = self._multidim_testdata()
+    del source_data['degree_celsius']
+    with self.assertRaisesRegex(
+        ValueError, 'DataFrame does not have a column named degree_celsius'
+    ):
+      measurement.from_dataframe(
+          pandas.DataFrame(source_data),
+          metric_column='degree_celsius',
+      )
+
+  def _assert_multidim_measurement_matches_testdata(self, measurement):
+    self.assertEqual(measurement.measured_value[(1, 'A', 'X')], 10)
+    self.assertEqual(measurement.measured_value[(2, 'B', 'Y')], 20)
+    self.assertEqual(measurement.measured_value[(3, 'C', 'Z')], 30)
+    pandas.testing.assert_frame_equal(
+        measurement.to_dataframe().rename(
+            columns={
+                'ms': 'ms',
+                'assembly': 'assembly',
+                'my_zone': 'my_zone',
+                # The metric column name comes from the unit.
+                'degree Celsius': 'degree_celsius',
+            }
+        ),
+        pandas.DataFrame(self._multidim_testdata()),
+    )
+
+  def test_from_flat_dataframe(self):
+    measurement = self._make_multidim_measurement('°C')
+    source_dataframe = pandas.DataFrame(self._multidim_testdata())
+    measurement.from_dataframe(source_dataframe, metric_column='degree_celsius')
+    measurement.outcome = measurements.Outcome.PASS
+    self._assert_multidim_measurement_matches_testdata(measurement)
+
+  def test_from_dataframe_with_multiindex_dataframe(self):
+    measurement = self._make_multidim_measurement('°C')
+    source_dataframe = pandas.DataFrame(self._multidim_testdata()).set_index(
+        ['ms', 'assembly', 'my_zone']
+    )
+    measurement.from_dataframe(source_dataframe, metric_column='degree_celsius')
+    measurement.outcome = measurements.Outcome.PASS
+    self._assert_multidim_measurement_matches_testdata(measurement)
+
+  def test_from_dataframe_ignores_extra_columns(self):
+    measurement = self._make_multidim_measurement('°C')
+    source_data = self._multidim_testdata()
+    source_data['degrees_fahrenheit'] = [11, 21, 31]
+    source_dataframe = pandas.DataFrame(source_data)
+    measurement.from_dataframe(source_dataframe, metric_column='degree_celsius')
+    measurement.outcome = measurements.Outcome.PASS
+    self._assert_multidim_measurement_matches_testdata(measurement)
+
+  def test_from_dataframe_with_duplicate_dimensions_overwrites(self):
+    """Verifies multi-dim measurement overwrite with duplicate dimensions."""
+    measurement = self._make_multidim_measurement('°C')
+    source_dataframe = pandas.DataFrame({
+        'ms': [1, 2, 3, 1],
+        'assembly': ['A', 'B', 'C', 'A'],
+        'my_zone': ['X', 'Y', 'Z', 'X'],
+        'degree_celsius': [10, 20, 30, 11],
+    })
+    measurement.from_dataframe(source_dataframe, metric_column='degree_celsius')
+    measurement.outcome = measurements.Outcome.PASS
+    # Overwritten value.
+    self.assertEqual(measurement.measured_value[(1, 'A', 'X')], 11)
+    self.assertEqual(measurement.measured_value[(2, 'B', 'Y')], 20)
+    self.assertEqual(measurement.measured_value[(3, 'C', 'Z')], 30)
 
   def test_bad_validator(self):
     measurement = htf.Measurement('bad_measure')

@@ -63,7 +63,6 @@ import copy
 import enum
 import functools
 import logging
-import time
 import typing
 from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, Union
 
@@ -480,6 +479,35 @@ class Measurement(object):
     dataframe = self._measured_value.to_dataframe(columns)
 
     return dataframe
+
+  def from_dataframe(self, dataframe: Any, metric_column: str) -> None:
+    """Convert a pandas DataFrame to a multi-dim measurement.
+
+    Args:
+      dataframe: A pandas DataFrame. Dimensions for this multi-dim measurement
+        need to match columns in the DataFrame (can be multi-index).
+      metric_column: The column name of the metric to be measured.
+
+    Raises:
+      TypeError: If this measurement is not dimensioned.
+      ValueError: If dataframe is missing dimensions.
+    """
+    if not isinstance(self._measured_value, DimensionedMeasuredValue):
+      raise TypeError(
+          'Only a dimensioned measurement can be set from a DataFrame'
+      )
+    dimension_labels = [d.name for d in self.dimensions]
+    dimensioned_df = dataframe.reset_index()
+    try:
+      dimensioned_df.set_index(dimension_labels, inplace=True)
+    except KeyError as e:
+      raise ValueError('DataFrame is missing dimensions') from e
+    if metric_column not in dimensioned_df.columns:
+      raise ValueError(
+          f'DataFrame does not have a column named {metric_column}'
+      )
+    for row_dimensions, row_metrics in dimensioned_df.iterrows():
+      self.measured_value[row_dimensions] = row_metrics[metric_column]
 
 
 @attr.s(slots=True)

@@ -58,10 +58,10 @@ class SerialCollectionPlug(base_plugs.BasePlug):
   # Serial library can raise these exceptions
   SERIAL_EXCEPTIONS = (serial.SerialException, ValueError)
 
-  _serial = None  # type: serial.Serial
-  _serial_port = None  # type: int
-  _collect = None  # type: bool
-  _collection_thread = None  # type: Optional[threading.Thread]
+  _serial: Optional[serial.Serial] = None
+  _serial_port: Optional[int] = None
+  _collect: Optional[bool] = None
+  _collection_thread: Optional[threading.Thread] = None
 
   @CONF.inject_positional_args
   def __init__(self, serial_collection_port, serial_collection_baud):
