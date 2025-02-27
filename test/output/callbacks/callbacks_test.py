@@ -20,7 +20,6 @@ actually care for.
 
 import io
 import json
-import unittest
 
 import openhtf as htf
 from openhtf import util

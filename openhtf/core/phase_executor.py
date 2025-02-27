@@ -303,10 +303,20 @@ class PhaseExecutor(object):
   ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
-    if phase_desc.options.run_if and not phase_desc.options.run_if():
-      self.logger.debug('Phase %s skipped due to run_if returning falsey.',
-                        phase_desc.name)
-      return PhaseExecutionOutcome(phase_descriptor.PhaseResult.SKIP), None
+    if phase_desc.options.run_if:
+      try:
+        run_phase = phase_desc.options.run_if()
+      except Exception:  # pylint: disable=broad-except
+        self.logger.debug('Phase %s stopped due to a fault in run_if function.',
+                          phase_desc.name)
+        # Allow graceful termination
+        return PhaseExecutionOutcome(ExceptionInfo(*sys.exc_info())), None
+
+      if not run_phase:
+        self.logger.debug('Phase %s skipped due to run_if returning falsey.',
+                          phase_desc.name)
+        return PhaseExecutionOutcome(phase_descriptor.PhaseResult.SKIP), None
+
 
     override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
@@ -346,7 +356,7 @@ class PhaseExecutor(object):
     # Refresh the result in case a validation for a partially set measurement
     # or phase diagnoser raised an exception.
     result = override_result or phase_state.result
-    self.logger.debug('Phase %s finished with result %s', phase_desc.name,
+    self.logger.debug('Phase %s finished with result %r', phase_desc.name,
                       result.phase_result)
     return (result,
             phase_thread.get_profile_stats() if run_with_profiling else None)

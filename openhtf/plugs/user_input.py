@@ -24,7 +24,7 @@ import platform
 import select
 import sys
 import threading
-from typing import Any, Callable, Dict, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Text, Union
 import uuid
 
 import attr
@@ -142,10 +142,10 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
 
   def __init__(self):
     super(UserInput, self).__init__()
-    self.last_response = None  # type: Optional[Tuple[Text, Text]]
-    self._prompt = None  # type: Optional[Prompt]
-    self._console_prompt = None  # type: Optional[ConsolePrompt]
-    self._response = None  # type: Optional[Text]
+    self.last_response: Optional[tuple[str, str]] = None
+    self._prompt: Optional[Prompt] = None
+    self._console_prompt: Optional[ConsolePrompt] = None
+    self._response: Optional[Text] = None
     self._cond = threading.Condition(threading.RLock())
 
   def _asdict(self) -> Optional[Dict[Text, Any]]:
