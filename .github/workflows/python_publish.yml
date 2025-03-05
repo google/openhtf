@@ -50,6 +50,8 @@ jobs:
         sudo apt-get install -y libusb-1.0-0-dev libprotobuf-dev swig libevent-dev
     - name: Setup protoc
       uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Build a binary wheel and source tarball
       run: python3 -m build
     - name: Store the distribution packages
