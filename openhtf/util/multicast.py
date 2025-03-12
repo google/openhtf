@@ -122,7 +122,10 @@ class MulticastListener(threading.Thread):
     else:
       self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,
                             1)  # Allow multiple listeners to bind.
-    self._sock.bind((self.address, self.port))
+    if sys.platform == 'win32':
+      self._sock.bind(('', self.port))
+    else:
+      self._sock.bind((self.address, self.port))
 
     while self._live:
       try:
