@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Optional
 from dataclasses import dataclass, field
 
@@ -13,3 +14,6 @@ class DutIdentifier:
     @property
     def test_id(self) -> str:
         return self.halter_serial_number
+
+    def _asdict(self) -> dict:
+        return dataclasses.asdict(self)
