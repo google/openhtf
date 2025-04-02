@@ -933,25 +933,29 @@ class TestCase(unittest.TestCase):
            phase_record.measurements[measurement].measured_value.value))
 
   @_assert_phase_or_test_record
-  def assertMeasurementPass(self, phase_record, measurement):
-    self.assertMeasured(phase_record, measurement)
+  def assertMeasurementPass(self, phase_record, measurement, value=mock.ANY):
+    self.assertMeasured(phase_record, measurement, value)
     self.assertIs(measurements.Outcome.PASS,
                   phase_record.measurements[measurement].outcome)
 
   @_assert_phase_or_test_record
-  def assertMeasurementFail(self, phase_record, measurement):
-    self.assertMeasured(phase_record, measurement)
+  def assertMeasurementFail(self, phase_record, measurement, value=mock.ANY):
+    self.assertMeasured(phase_record, measurement, value)
     self.assertIs(measurements.Outcome.FAIL,
                   phase_record.measurements[measurement].outcome)
 
   @_assert_phase_or_test_record
-  def assertMeasurementMarginal(self, phase_record, measurement):
-    self.assertMeasured(phase_record, measurement)
+  def assertMeasurementMarginal(
+      self, phase_record, measurement, value=mock.ANY
+  ):
+    self.assertMeasured(phase_record, measurement, value)
     self.assertTrue(phase_record.measurements[measurement].marginal)
 
   @_assert_phase_or_test_record
-  def assertMeasurementNotMarginal(self, phase_record, measurement):
-    self.assertMeasured(phase_record, measurement)
+  def assertMeasurementNotMarginal(
+      self, phase_record, measurement, value=mock.ANY
+  ):
+    self.assertMeasured(phase_record, measurement, value)
     self.assertFalse(phase_record.measurements[measurement].marginal)
 
   @_assert_phase_or_test_record

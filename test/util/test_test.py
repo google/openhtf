@@ -157,8 +157,14 @@ class TestTest(test.TestCase):
     self.assertNotMeasured(test_record.phases[-1], 'unset_measurement')
     self.assertMeasured(test_record, 'test_measurement', _DO_STUFF_RETVAL)
     self.assertMeasured(test_record, 'othr_measurement', 0xDEAD)
-    self.assertMeasurementPass(test_record, 'passes')
-    self.assertMeasurementFail(test_record, 'fails')
+    with self.subTest(name='assert_measurement_pass_without_value'):
+      self.assertMeasurementPass(test_record, 'passes')
+    with self.subTest(name='assert_measurement_pass_with_value'):
+      self.assertMeasurementPass(test_record, 'passes', 5)
+    with self.subTest(name='assert_measurement_fail_without_value'):
+      self.assertMeasurementFail(test_record, 'fails')
+    with self.subTest(name='assert_measurement_fail_with_value'):
+      self.assertMeasurementFail(test_record, 'fails', 20)
 
   def test_execute_phase_or_test_test_with_patched_plugs(self):
     self.auto_mock_plugs(MyPlug)
