@@ -278,6 +278,19 @@ class TestTest(test.TestCase):
     with self.assertRaises(test.InvalidTestError):
       test.yields_phases(bad_test)(self)
 
+  def test_assert_test_has_phase_record(self):
+    self.auto_mock_plugs(MyPlug)
+    test_record = self.execute_phase_or_test(
+        openhtf.Test(test_phase_with_shameless_plug, test_phase)
+    )
+    with self.subTest('phase_found'):
+      with self.assertTestHasPhaseRecord(test_record, test_phase.name) as phase:
+        self.assertEqual(phase.name, test_phase.name)
+    with self.subTest('phase_not_found'):
+      with self.assertRaises(AssertionError):
+        with self.assertTestHasPhaseRecord(test_record, 'nonexistent_phase'):
+          pass
+
 
 class PhaseProfilingTest(test.TestCase):
   """Test profiling an OpenHTF phase in unit testing.

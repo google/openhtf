@@ -127,6 +127,7 @@ List of assertions that can be used with either PhaseRecords or TestRecords:
 """
 
 from collections.abc import Callable as CollectionsCallable, Iterator
+import contextlib
 import functools
 import inspect
 import logging
@@ -785,6 +786,21 @@ class TestCase(unittest.TestCase):
     self.assertTrue(
         any(details.code == code for details in test_rec.outcome_details),
         'No OutcomeDetails had code %s' % code)
+
+  @contextlib.contextmanager
+  def assertTestHasPhaseRecord(self, test_rec, phase_name):
+    """Yields a PhaseRecord with the given name, else asserts."""
+    all_phase_names = []
+    expected_phase_rec = None
+    for phase_rec in test_rec.phases:
+      all_phase_names.append(phase_rec.name)
+      if phase_rec.name == phase_name:
+        expected_phase_rec = phase_rec
+    self.assertIsNotNone(
+        expected_phase_rec,
+        msg=f'Phase "{phase_name}" not found in test phases: {all_phase_names}',
+    )
+    yield expected_phase_rec
 
   ##### PhaseRecord Assertions #####
 
