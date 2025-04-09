@@ -170,6 +170,7 @@ class TestRecord(object):
 
   dut_id = attr.ib(type=Optional[Text])
   station_id = attr.ib(type=Text)
+  test_uid = attr.ib(type=Text)
   dut_extended_id = attr.ib(type=Optional[DutIdentifier], default=None)
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)
@@ -266,6 +267,7 @@ class TestRecord(object):
         'diagnosers': self._cached_diagnosers,
         'diagnoses': self._cached_diagnoses,
         'log_records': self._cached_log_records,
+        'test_uid': self.test_uid,
     }
     ret.update(self._cached_record)
     return ret

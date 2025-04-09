@@ -59,6 +59,7 @@ class MfgEventConverterTest(unittest.TestCase):
         start_time_millis=1,
         end_time_millis=1,
         station_id='localhost',
+        test_uid='testing-123',
         outcome=test_record.Outcome.PASS,
         marginal=False)
     record.outcome = test_record.Outcome.PASS
@@ -150,6 +151,7 @@ class MfgEventConverterTest(unittest.TestCase):
     record = test_record.TestRecord(
         dut_id='mock-dut-id',
         station_id='mock-station-id',
+        test_uid='mock-test-uid',
         start_time_millis=100,
         end_time_millis=500,
         outcome=test_record.Outcome.PASS,
@@ -198,7 +200,7 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertEqual(mfg_event.test_logs[0].lineno, 123)
 
   def test_attach_record_as_json(self):
-    record = test_record.TestRecord('mock-dut-id', 'mock-station-id')
+    record = test_record.TestRecord(dut_id='mock-dut-id', station_id='mock-station-id', test_uid='mock-test-uid',)
     mfg_event = mfg_event_pb2.MfgEvent()
     mfg_event_converter._attach_record_as_json(mfg_event, record)
 
@@ -214,7 +216,7 @@ class MfgEventConverterTest(unittest.TestCase):
 
   def test_attach_config(self):
     record = test_record.TestRecord(
-        'mock-dut-id', 'mock-station-id', metadata={'config': {
+        dut_id='mock-dut-id', station_id='mock-station-id', test_uid='mock-test-uid', metadata={'config': {
             'key': 'value'
         }})
     mfg_event = mfg_event_pb2.MfgEvent()

@@ -127,7 +127,8 @@ class TestState(util.SubscribableStateMixin):
 
   def __init__(self, test_desc: 'test_descriptor.TestDescriptor',
                execution_uid: Text,
-               test_options: 'test_descriptor.TestOptions'):
+               test_options: 'test_descriptor.TestOptions',
+               plug_manager: Optional[plugs.PlugManager] = None):
     """Initializer.
 
     Args:
@@ -147,11 +148,17 @@ class TestState(util.SubscribableStateMixin):
         start_time_millis=0,
         # Copy metadata so we don't modify test_desc.
         metadata=copy.deepcopy(test_desc.metadata),
-        diagnosers=test_options.diagnosers)
+        diagnosers=test_options.diagnosers,
+        test_uid=execution_uid)
     logs.initialize_record_handler(execution_uid, self.test_record,
                                    self.notify_update)
     self.state_logger = logs.get_record_logger_for(execution_uid)
-    self.plug_manager = plugs.PlugManager(test_desc.plug_types,
+    if plug_manager is not None:
+        self.plug_manager = plug_manager
+        for plug in test_desc.plug_types:
+            self.plug_manager.add_plug_type(plug)
+    else:
+        self.plug_manager = plugs.PlugManager(test_desc.plug_types,
                                           self.state_logger)
     self.diagnoses_manager = diagnoses_lib.DiagnosesManager(
         self.state_logger.getChild('diagnoses'))

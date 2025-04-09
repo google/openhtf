@@ -45,6 +45,7 @@ from openhtf.core import test_executor
 from openhtf.core import test_record as htf_test_record
 from openhtf.core import test_state
 from openhtf.core.dut_id import DutIdentifier
+from openhtf.plugs import PlugManager
 
 from openhtf.util import configuration
 from openhtf.util import console_output
@@ -55,14 +56,14 @@ CONF = configuration.CONF
 _LOG = logging.getLogger(__name__)
 
 CONF.declare(
-    'capture_source',
-    description=textwrap.dedent(
-        """Whether to capture the source of phases and the test module.  This
-    defaults to False since this potentially reads many files and makes large
-    string copies.
+  'capture_source',
+  description=textwrap.dedent(
+    """Whether to capture the source of phases and the test module.  This
+defaults to False since this potentially reads many files and makes large
+string copies.
 
-    Set to 'true' if you want to capture your test's source."""),
-    default_value=False)
+Set to 'true' if you want to capture your test's source."""),
+  default_value=False)
 
 
 class MeasurementNotFoundError(Exception):
@@ -102,19 +103,19 @@ def create_arg_parser(add_help: bool = False) -> argparse.ArgumentParser:
 
   """
   parser = argparse.ArgumentParser(
-      'OpenHTF-based testing',
-      parents=[
-          CONF.ARG_PARSER,
-          console_output.ARG_PARSER,
-          logs.ARG_PARSER,
-          phase_executor.ARG_PARSER,
-      ],
-      add_help=add_help)
+    'OpenHTF-based testing',
+    parents=[
+      CONF.ARG_PARSER,
+      console_output.ARG_PARSER,
+      logs.ARG_PARSER,
+      phase_executor.ARG_PARSER,
+    ],
+    add_help=add_help)
   parser.add_argument(
-      '--config-help',
-      action='store_true',
-      help='Instead of executing the test, simply print all available config '
-      'keys and their description strings.')
+    '--config-help',
+    action='store_true',
+    help='Instead of executing the test, simply print all available config '
+         'keys and their description strings.')
   return parser
 
 
@@ -140,17 +141,23 @@ class Test(object):
   DEFAULT_SIGINT_HANDLER = None
 
   def __init__(self, *nodes: phase_descriptor.PhaseCallableOrNodeT,
+               plug_manager: Optional[PlugManager] = None,
+               child_tests: Optional[List["Test"]] = None,
+               is_child_test: bool = False,
                **metadata: Any):
     # Some sanity checks on special metadata keys we automatically fill in.
     if 'config' in metadata:
       raise KeyError(
-          'Invalid metadata key "config", it will be automatically populated.')
+        'Invalid metadata key "config", it will be automatically populated.')
 
     self.created_time_millis = util.time_millis()
     self.last_run_time_millis = None
     self._test_options = TestOptions()
+    self._test_options.child_tests = child_tests or []
+    self._test_options.is_child_test = is_child_test
     self._lock = threading.Lock()
     self._executor = None
+    self._plug_manager = plug_manager
     # TODO(arsharma): Drop _flatten at some point.
     sequence = phase_collections.PhaseSequence(nodes)
     self._test_desc = TestDescriptor(sequence,
@@ -160,9 +167,9 @@ class Test(object):
     if CONF.capture_source:
       # Copy the phases with the real CodeInfo for them.
       self._test_desc.phase_sequence = (
-          self._test_desc.phase_sequence.load_code_info())
+        self._test_desc.phase_sequence.load_code_info())
       self._test_desc.code_info = (
-          htf_test_record.CodeInfo.for_module_from_stack(levels_up=2))
+        htf_test_record.CodeInfo.for_module_from_stack(levels_up=2))
 
     # Make sure configure() gets called at least once before Execute().  The
     # user might call configure() again to override options, but we don't want
@@ -223,6 +230,10 @@ class Test(object):
         return self._executor.test_state
       return None
 
+  @property
+  def is_child_test(self) -> bool:
+      return self._test_options.is_child_test
+
   def get_option(self, option: Text) -> Any:
     return getattr(self._test_options, option)
 
@@ -252,7 +263,8 @@ class Test(object):
   def handle_sig_int(cls, signalnum: Optional[int], handler: Any) -> None:
     """Handle the SIGINT callback."""
     if not cls.TEST_INSTANCES:
-      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)  # pylint: disable=not-callable # pytype: disable=not-callable
+      cls.DEFAULT_SIGINT_HANDLER(signalnum,
+                                 handler)  # pylint: disable=not-callable # pytype: disable=not-callable
       return
 
     _LOG.error('Received SIGINT, stopping all tests.')
@@ -296,10 +308,10 @@ class Test(object):
       InvalidTestStateError: if this test is already being executed.
     """
     phase_descriptor.check_for_duplicate_results(
-        self._test_desc.phase_sequence.all_phases(),
-        self._test_options.diagnosers)
+      self._test_desc.phase_sequence.all_phases(),
+      self._test_options.diagnosers)
     phase_collections.check_for_duplicate_subtest_names(
-        self._test_desc.phase_sequence)
+      self._test_desc.phase_sequence)
     # Lock this section so we don't .stop() the executor between instantiating
     # it and .Start()'ing it, doing so does weird things to the executor state.
     with (self._lock):
@@ -339,7 +351,9 @@ class Test(object):
           self.make_uid(),
           trigger,
           self._test_options,
-          run_phases_with_profiling=profile_filename is not None)
+          run_phases_with_profiling=profile_filename is not None,
+        plug_manager=self._plug_manager
+      )
 
       _LOG.info('Executing test: %s', self.descriptor.code_info.name)
       self.TEST_INSTANCES[self.uid] = self
@@ -376,28 +390,27 @@ class Test(object):
         else:
           colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
           colors[htf_test_record.Outcome.PASS] = ''.join(
-              (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
+            (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
           colors[htf_test_record.Outcome.FAIL] = ''.join(
-              (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
+            (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
           msg_template = (
-              'test: {name}  outcome: {color}{outcome}{marginal}{rst}')
+            'test: {name}  outcome: {color}{outcome}{marginal}{rst}')
           console_output.banner_print(
-              msg_template.format(
-                  name=final_state.test_record.metadata['test_name'],
-                  color=(colorama.Fore.YELLOW
-                         if final_state.test_record.marginal else
-                         colors[final_state.test_record.outcome]),
-                  outcome=final_state.test_record.outcome.name,
-                  marginal=(' (MARGINAL)'
-                            if final_state.test_record.marginal else ''),
-                  rst=colorama.Style.RESET_ALL))
+            msg_template.format(
+              name=final_state.test_record.metadata['test_name'],
+              color=(colorama.Fore.YELLOW
+                     if final_state.test_record.marginal else
+                     colors[final_state.test_record.outcome]),
+              outcome=final_state.test_record.outcome.name,
+              marginal=(' (MARGINAL)'
+                        if final_state.test_record.marginal else ''),
+              rst=colorama.Style.RESET_ALL))
       finally:
         del self.TEST_INSTANCES[self.uid]
         self._executor.close()
         self._executor = None
 
     return final_state.test_record.outcome == htf_test_record.Outcome.PASS
-
 
 @attr.s(slots=True)
 class TestOptions(object):
@@ -419,11 +432,13 @@ class TestOptions(object):
 
   name = attr.ib(type=Text, default='openhtf_test')
   output_callbacks = attr.ib(
-      type=List[Callable[[htf_test_record.TestRecord], None]], factory=list)
+    type=List[Callable[[htf_test_record.TestRecord], None]], factory=list)
   failure_exceptions = attr.ib(type=List[Type[Exception]], factory=list)
   default_dut_id = attr.ib(type=Text, default='UNKNOWN_DUT')
   stop_on_first_failure = attr.ib(type=bool, default=False)
   diagnosers = attr.ib(type=List[diagnoses_lib.BaseTestDiagnoser], factory=list)
+  is_child_test = attr.ib(type=bool, default=False)
+  child_tests = attr.ib(type=List[Test], factory=list)
 
 
 @attr.s(slots=True)
@@ -573,7 +588,7 @@ class TestApi(object):
       IOError: Raised if the given filename couldn't be opened.
     """
     self._running_phase_state.attach_from_file(
-        filename, name=name, mimetype=mimetype)
+      filename, name=name, mimetype=mimetype)
 
   def get_measurement(
       self, measurement_name: Text
@@ -611,7 +626,7 @@ class TestApi(object):
     measurement = self._running_test_state.get_measurement(measurement_name)
     if measurement is None:
       raise MeasurementNotFoundError(
-          f'Failed to find test measurement {measurement_name}')
+        f'Failed to find test measurement {measurement_name}')
     return measurement
 
   def get_attachment(

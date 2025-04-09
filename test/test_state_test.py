@@ -96,6 +96,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
         'diagnosers': [],
         'diagnoses': [],
         'log_records': [],
+        'test_uid': '',
     },
     'plugs': {
         'plug_descriptors': {},
@@ -221,6 +222,7 @@ class TestTestApi(parameterized.TestCase):
     descriptor_id = basetypes['running_phase_state']['descriptor_id']
     expected_initial_basetypes['running_phase_state']['descriptor_id'] = (
         descriptor_id)
+    expected_initial_basetypes['test_record']['test_uid'] = 'testing-123'
     self.assertEqual(expected_initial_basetypes, basetypes)
     self.running_phase_state._finalize_measurements()
     self.test_record.add_phase_record(self.running_phase_state.phase_record)

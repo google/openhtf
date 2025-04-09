@@ -21,6 +21,7 @@ is-ready check.
 """
 
 import logging
+import threading
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Text, Tuple, Type, TypeVar, Union
 
 import attr
@@ -37,10 +38,10 @@ _LOG = logging.getLogger(__name__)
 _BASE_PLUGS_LOG = base_plugs._LOG  # pylint: disable=protected-access
 
 CONF.declare(
-    'plug_teardown_timeout_s',
-    default_value=0,
-    description='Timeout (in seconds) for each plug tearDown function if > 0; '
-    'otherwise, will wait an unlimited time.')
+  'plug_teardown_timeout_s',
+  default_value=0,
+  description='Timeout (in seconds) for each plug tearDown function if > 0; '
+              'otherwise, will wait an unlimited time.')
 
 # TODO(arsharma): Remove this aliases when users have moved to using the core
 # library.
@@ -89,8 +90,8 @@ def plug(
     if not (isinstance(a_plug, base_plugs.PlugPlaceholder) or
             issubclass(a_plug, base_plugs.BasePlug)):
       raise base_plugs.InvalidPlugError(
-          'Plug %s is not a subclass of base_plugs.BasePlug nor a placeholder '
-          'for one' % a_plug)
+        'Plug %s is not a subclass of base_plugs.BasePlug nor a placeholder '
+        'for one' % a_plug)
 
   def result(
       func: 'phase_descriptor.PhaseT') -> 'phase_descriptor.PhaseDescriptor':
@@ -114,8 +115,8 @@ def plug(
                                (duplicates, func))
 
     phase.plugs.extend([
-        base_plugs.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
-        for name, a_plug in plugs_map.items()
+      base_plugs.PhasePlug(name, a_plug, update_kwargs=update_kwargs)
+      for name, a_plug in plugs_map.items()
     ])
     return phase
 
@@ -136,7 +137,7 @@ class _PlugTearDownThread(threads.KillableThread):
       # Including the stack trace from ThreadTerminationErrors received when
       # killed.
       _LOG.warning(
-          'Exception calling tearDown on %s:', self._plug, exc_info=True)
+        'Exception calling tearDown on %s:', self._plug, exc_info=True)
 
 
 PlugT = TypeVar('PlugT', bound=base_plugs.BasePlug)
@@ -164,30 +165,32 @@ class PlugManager(object):
 
   def __init__(self,
                plug_types: Optional[Set[Type[base_plugs.BasePlug]]] = None,
-               record_logger: Optional[logging.Logger] = None):
+               record_logger: Optional[logging.Logger] = None
+               ):
     self._plug_types = plug_types or set()
     for plug_type in self._plug_types:
       if isinstance(plug_type, base_plugs.PlugPlaceholder):
         raise base_plugs.InvalidPlugError(
-            'Plug {} is a placeholder, replace it using with_plugs().'.format(
-                plug_type))
+          'Plug {} is a placeholder, replace it using with_plugs().'.format(
+            plug_type))
     self._plugs_by_type = {}
     self._plugs_by_name = {}
     self._plug_descriptors = {}
+    self._unmanaged_plugs = {}
     if not record_logger:
       record_logger = _LOG
     self.logger = record_logger.getChild('plug')
 
   def as_base_types(self) -> Dict[Text, Any]:
     return {
-        'plug_descriptors': {
-            name: attr.asdict(descriptor)
-            for name, descriptor in self._plug_descriptors.items()
-        },
-        'plug_states': {
-            name: data.convert_to_base_types(plug)
-            for name, plug in self._plugs_by_name.items()
-        },
+      'plug_descriptors': {
+        name: attr.asdict(descriptor)
+        for name, descriptor in self._plug_descriptors.items()
+      },
+      'plug_states': {
+        name: data.convert_to_base_types(plug)
+        for name, plug in self._plugs_by_name.items()
+      },
     }
 
   def _make_plug_descriptor(
@@ -209,11 +212,26 @@ class PlugManager(object):
     """
     ignored_classes = (base_plugs.BasePlug, base_plugs.FrontendAwareBasePlug)
     return [
-        self.get_plug_name(base_class)  # pylint: disable=g-complex-comprehension
-        for base_class in plug_type.mro()
-        if (issubclass(base_class, base_plugs.BasePlug) and
-            base_class not in ignored_classes)
+      self.get_plug_name(base_class)  # pylint: disable=g-complex-comprehension
+      for base_class in plug_type.mro()
+      if (issubclass(base_class, base_plugs.BasePlug) and
+          base_class not in ignored_classes)
     ]
+
+  def add_plug_type(self, plug_type: Type[base_plugs.BasePlug]):
+    if isinstance(plug_type, base_plugs.PlugPlaceholder):
+      raise base_plugs.InvalidPlugError(
+        'Plug {} is a placeholder, replace it using with_plugs().'.format(
+          plug_type))
+
+    self._plug_types.add(plug_type)
+
+  def add_non_managed_plug(self, plug):
+    t = type(plug)
+    if t in self._unmanaged_plugs:
+      raise Exception(f"Plug of type {t} already exists")
+    self._unmanaged_plugs[t] = plug
+    self.update_plug(t, plug)
 
   def get_plug_name(self, plug_type: Type[base_plugs.BasePlug]) -> Text:
     """Returns the plug's name, which is the class name and module.
@@ -240,42 +258,55 @@ class PlugManager(object):
     """
     types = plug_types if plug_types is not None else self._plug_types
     for plug_type in types:
-      # Create a logger for this plug. All plug loggers go under the 'plug'
-      # sub-logger in the logger hierarchy.
-      plug_logger = self.logger.getChild(plug_type.__name__)
-      if plug_type in self._plugs_by_type:
+      plug_instance: plug_type
+      if plug_type in self._unmanaged_plugs:
+        plug_instance = self._unmanaged_plugs[plug_type]
         continue
-      try:
-        if not issubclass(plug_type, base_plugs.BasePlug):
-          raise base_plugs.InvalidPlugError(
-              'Plug type "{}" is not an instance of base_plugs.BasePlug'.format(
-                  plug_type))
-        if plug_type.logger != _BASE_PLUGS_LOG:
-          # They put a logger attribute on the class itself, overriding ours.
-          raise base_plugs.InvalidPlugError(
-              'Do not override "logger" in your plugs.', plug_type)
-
-        # Override the logger so that __init__'s logging goes into the record.
-        plug_type.logger = plug_logger
+      else:
+        # Create a logger for this plug. All plug loggers go under the 'plug'
+        # sub-logger in the logger hierarchy.
+        plug_logger = self.logger.getChild(plug_type.__name__)
+        if plug_type in self._plugs_by_type:
+          continue
         try:
-          plug_instance = plug_type()
-        finally:
-          # Now set it back since we'll give the instance a logger in a moment.
-          plug_type.logger = _BASE_PLUGS_LOG
-        # Set the logger attribute directly (rather than in base_plugs.BasePlug)
-        # so we don't depend on subclasses' implementation of __init__ to have
-        # it set.
-        if plug_instance.logger != _BASE_PLUGS_LOG:
-          raise base_plugs.InvalidPlugError(
+          if not issubclass(plug_type, base_plugs.BasePlug):
+            raise base_plugs.InvalidPlugError(
+              'Plug type "{}" is not an instance of base_plugs.BasePlug'.format(
+                plug_type))
+
+          # The following method of swapping out loggers is not thread-safe, so it is wrapped in a lock.
+          with plug_type.init_lock:
+            if plug_type.logger != _BASE_PLUGS_LOG:
+              # They put a logger attribute on the class itself, overriding ours.
+              raise base_plugs.InvalidPlugError(
+                'Do not override "logger" in your plugs.', plug_type)
+            # Override the logger so that __init__'s logging goes into the record.
+            plug_type.logger = plug_logger
+            try:
+              plug_instance = plug_type()
+            finally:
+              # Now set it back since we'll give the instance a logger in a moment.
+              plug_type.logger = _BASE_PLUGS_LOG
+          # Set the logger attribute directly (rather than in base_plugs.BasePlug)
+          # so we don't depend on subclasses' implementation of __init__ to have
+          # it set.
+          if plug_instance.logger != _BASE_PLUGS_LOG:
+            raise base_plugs.InvalidPlugError(
               'Do not set "self.logger" in __init__ in your plugs', plug_type)
-        else:
-          # Now the instance has its own copy of the test logger.
-          plug_instance.logger = plug_logger
+          else:
+            # Now the instance has its own copy of the test logger.
+            plug_instance.logger = plug_logger
+        except Exception:  # pylint: disable=broad-except
+          plug_logger.exception('Exception instantiating plug type %s', plug_type)
+          self.tear_down_plugs()
+          raise
+      self.update_plug(plug_type, plug_instance)
+      try:
+        plug_instance.setUp()
       except Exception:  # pylint: disable=broad-except
-        plug_logger.exception('Exception instantiating plug type %s', plug_type)
+        plug_logger.exception('Exception setting up plug type %s', plug_type)
         self.tear_down_plugs()
         raise
-      self.update_plug(plug_type, plug_instance)
 
   def get_plug_by_class_path(self,
                              plug_name: Text) -> Optional[base_plugs.BasePlug]:
@@ -319,7 +350,10 @@ class PlugManager(object):
       self, plug_name_map: Iterable[Tuple[Text, Type[base_plugs.BasePlug]]]
   ) -> Dict[Text, base_plugs.BasePlug]:
     """Provide the requested plugs [(name, type),] as {name: plug instance}."""
-    return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}
+    try:
+      return {name: self._plugs_by_type[cls] for name, cls in plug_name_map}
+    except Exception as e:
+      raise e
 
   def tear_down_plugs(self) -> None:
     """Call tearDown() on all instantiated plugs.
@@ -333,6 +367,8 @@ class PlugManager(object):
     """
     _LOG.debug('Tearing down all plugs.')
     for plug_type, plug_instance in self._plugs_by_type.items():
+      if plug_type in self._unmanaged_plugs:
+        continue
       if plug_instance.uses_base_tear_down():
         name = '<PlugTearDownThread: BasePlug No-Op for %s>' % plug_type
       else:
@@ -340,8 +376,8 @@ class PlugManager(object):
       thread = _PlugTearDownThread(plug_instance, name=name)
       thread.start()
       timeout_s = (
-          CONF.plug_teardown_timeout_s
-          if CONF.plug_teardown_timeout_s else None)
+        CONF.plug_teardown_timeout_s
+        if CONF.plug_teardown_timeout_s else None)
       thread.join(timeout_s)
       if thread.is_alive():
         thread.kill()
@@ -349,6 +385,9 @@ class PlugManager(object):
                      plug_instance)
     self._plugs_by_type.clear()
     self._plugs_by_name.clear()
+    # Re-add the un-managed plugs for the next test
+    for plug_type, plug_instance in self._unmanaged_plugs.items():
+      self.update_plug(plug_type, plug_instance)
 
   def wait_for_plug_update(
       self, plug_name: Text, remote_state: Dict[Text, Any],
@@ -371,12 +410,12 @@ class PlugManager(object):
 
     if plug_instance is None:
       raise base_plugs.InvalidPlugError(
-          'Cannot wait on unknown plug "{}".'.format(plug_name))
+        'Cannot wait on unknown plug "{}".'.format(plug_name))
 
     if not isinstance(plug_instance, base_plugs.FrontendAwareBasePlug):
       raise base_plugs.InvalidPlugError(
-          'Cannot wait on a plug {} that is not an subclass '
-          'of FrontendAwareBasePlug.'.format(plug_name))
+        'Cannot wait on a plug {} that is not an subclass '
+        'of FrontendAwareBasePlug.'.format(plug_name))
 
     state, update_event = plug_instance.asdict_with_event()
     if state != remote_state:
@@ -388,6 +427,6 @@ class PlugManager(object):
   def get_frontend_aware_plug_names(self) -> List[Text]:
     """Returns the names of frontend-aware plugs."""
     return [
-        name for name, plug in self._plugs_by_name.items()
-        if isinstance(plug, base_plugs.FrontendAwareBasePlug)
+      name for name, plug in self._plugs_by_name.items()
+      if isinstance(plug, base_plugs.FrontendAwareBasePlug)
     ]

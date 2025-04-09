@@ -25,6 +25,7 @@ import openhtf.core.diagnoses_lib
 import openhtf.core.measurements
 import openhtf.core.monitors
 import openhtf.core.phase_branches
+import openhtf.core.phase_child_runner
 import openhtf.core.phase_collections
 import openhtf.core.phase_descriptor
 import openhtf.core.phase_group
@@ -70,6 +71,7 @@ __all__ = (  # Expliclty export certain API components.
     'DiagnosisCheckpoint',
     'DiagnosisCondition',
     'PhaseFailureCheckpoint',
+    'PhaseChildRunner',
     'PhaseSequence',
     'Subtest',
     'PhaseDescriptor',
@@ -108,6 +110,7 @@ BranchSequence = openhtf.core.phase_branches.BranchSequence
 DiagnosisCheckpoint = openhtf.core.phase_branches.DiagnosisCheckpoint
 DiagnosisCondition = openhtf.core.phase_branches.DiagnosisCondition
 PhaseFailureCheckpoint = openhtf.core.phase_branches.PhaseFailureCheckpoint
+ChildRunnerPhase = openhtf.core.phase_child_runner.ChildRunnerPhase
 
 PhaseSequence = openhtf.core.phase_collections.PhaseSequence
 Subtest = openhtf.core.phase_collections.Subtest

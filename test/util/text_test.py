@@ -100,6 +100,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
     record = test_record.TestRecord(
         dut_id='TestDutId',
         station_id='test_station',
+        test_uid='testing-123',
         outcome=test_record.Outcome[outcome])
     self.assertEqual(text._GetTestOutcomeHeadline(record), headline)
 
@@ -113,6 +114,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
     record = test_record.TestRecord(
         dut_id='TestDutId',
         station_id='test_station',
+        test_uid='testing-123',
         outcome=test_record.Outcome[outcome])
     # TODO(b/70517332): Pytype currently doesn't properly support the functional
     # API of enums: https://github.com/google/pytype/issues/459. Remove

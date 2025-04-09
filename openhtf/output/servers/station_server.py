@@ -92,6 +92,9 @@ def _get_executing_test():
   if not tests:
     return None, None
 
+  # Filter out child tests
+  tests = [test for test in tests if not test.is_child_test]
+
   if len(tests) > 1:
     _LOG.warning('Station server does not support multiple executing tests.')
 
@@ -273,14 +276,13 @@ class StationPubSub(pub_sub.PubSub):
   """
   _lock = threading.Lock()  # Required by pub_sub.PubSub.
   subscribers = set()  # Required by pub_sub.PubSub.
-  _last_execution_uid = None
   _last_message = None
 
   @classmethod
   def publish_test_record(cls, test_record):
     test_record_dict = data.convert_to_base_types(test_record)
     test_state_dict = _test_state_from_record(test_record_dict,
-                                              cls._last_execution_uid)
+                                              test_record.test_uid)
     cls._publish_test_state(test_state_dict, 'record')
 
   @classmethod
@@ -296,7 +298,6 @@ class StationPubSub(pub_sub.PubSub):
         'type': message_type,
     }
     super(StationPubSub, cls).publish(message)
-    cls._last_execution_uid = test_state_dict['execution_uid']
     cls._last_message = message
 
   def on_subscribe(self, info):
