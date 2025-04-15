@@ -65,3 +65,8 @@ prompt to continue the example.
     phases with their own setup and teardown logic.
 5.  [`repeat.py`](repeat.py): uses `openhtf.PhaseResult.REPEAT` to
     conditionally repeat execution of a phase in a test.
+
+### Tutorials
+
+1. [Resistor_Tutorial](Resistor_Tutorial/): Walk-through on how to validate a resistor using Measurements and Plugs. 
+
