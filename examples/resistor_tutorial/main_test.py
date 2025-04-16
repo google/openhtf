@@ -1,22 +1,25 @@
 import time
 
+import resistor_plugs
+
 import openhtf as htf
 from openhtf.output.callbacks import console_summary
 from openhtf.util import configuration, units
-
-from resistor_plugs import MultimeterPlug, PowerSupplyPlug
-
 
 CONF = configuration.CONF
 SIMULATE_MODE = CONF.declare(
     "simulate", default_value=False, description="Set simulation mode"
 )
-CONF.load(simulate=False)  # Change to True if running simulated hardware
+CONF.load(simulate=True)  # Change to True if running simulated hardware
 
 
-MultimeterPlug = configuration.bind_init_args(MultimeterPlug, SIMULATE_MODE)
+MultimeterPlug = configuration.bind_init_args(
+    resistor_plugs.MultimeterPlug, SIMULATE_MODE
+)
 
-PowerSupplyPlug = configuration.bind_init_args(PowerSupplyPlug, SIMULATE_MODE)
+PowerSupplyPlug = configuration.bind_init_args(
+    resistor_plugs.PowerSupplyPlug, SIMULATE_MODE
+)
 
 
 @htf.measures(
@@ -27,7 +30,9 @@ PowerSupplyPlug = configuration.bind_init_args(PowerSupplyPlug, SIMULATE_MODE)
 )
 @htf.plug(dmm=MultimeterPlug)
 @htf.plug(supply=PowerSupplyPlug)
-def resistor_test(test, dmm: MultimeterPlug, supply: PowerSupplyPlug) -> None:
+def resistor_test(
+    test, dmm: resistor_plugs.MultimeterPlug, supply: resistor_plugs.PowerSupplyPlug
+) -> None:
     """Check if resistor value in acceptable.
 
     Args:

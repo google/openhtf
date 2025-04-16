@@ -68,5 +68,5 @@ prompt to continue the example.
 
 ### Tutorials
 
-1. [Resistor_Tutorial](Resistor_Tutorial/): Walk-through on how to validate a resistor using Measurements and Plugs. 
+1. [resistor_tutorial](resistor_tutorial/): Walk-through on how to validate a resistor using Measurements and Plugs. 
 

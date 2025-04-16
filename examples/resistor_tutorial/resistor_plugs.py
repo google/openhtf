@@ -1,5 +1,5 @@
-import time
 import random
+import time
 
 import pyvisa
 

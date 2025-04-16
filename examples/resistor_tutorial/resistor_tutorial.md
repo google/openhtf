@@ -126,7 +126,7 @@ The goal is not to dive into how to develop Plugs, so we'll just provide the cod
 To use your plugs in a test phase, import them in your script and then declare them inside of a decorator for your test phase : 
 
 ```python
-from resistor_plugs import MultimeterPlug, PowerSupplyPlug
+import resistor_plugs
 
 import time
 ```
@@ -136,9 +136,9 @@ and then
         htf.Measurement("resistor_val")
         .doc("Computed resistor value")
         )
-@htf.plug(dmm=MultimeterPlug)
-@htf.plug(supply=PowerSupplyPlug)
-def resistor_test(test, dmm: MultimeterPlug, supply: PowerSupplyPlug) -> None:
+@htf.plug(dmm=resistor_plugs.MultimeterPlug)
+@htf.plug(supply=resistor_plugs.PowerSupplyPlug)
+def resistor_test(test, dmm: resistor_plugs.MultimeterPlug, supply: resistor_plugs.PowerSupplyPlug) -> None:
     test.measurements["resistor_val"] = 10
 ```
 
@@ -150,9 +150,9 @@ All that's left to do is to connect to the instruments, set the voltage, read th
         .doc("Computed resistor value")
         .with_units(units.OHM)
         )
-@htf.plug(dmm=MultimeterPlug)
-@htf.plug(supply=PowerSupplyPlug)
-def resistor_test(test, dmm: MultimeterPlug, supply: PowerSupplyPlug) -> None:
+@htf.plug(dmm=resistor_plugs.MultimeterPlug)
+@htf.plug(supply=resistor_plugs.PowerSupplyPlug)
+def resistor_test(test, dmm: resistor_plugs.MultimeterPlug, supply: resistor_plugs.PowerSupplyPlug) -> None:
     supply.connect()
     dmm.connect()
     
@@ -209,9 +209,9 @@ from openhtf.util import units
         .in_range(5320, 5880)
         .with_units(units.OHM)
 )
-@htf.plug(dmm=MultimeterPlug)
-@htf.plug(supply=PowerSupplyPlug)
-def resistor_test(test, dmm: MultimeterPlug, supply: PowerSupplyPlug) -> None:
+@htf.plug(dmm=resistor_plugs.MultimeterPlug)
+@htf.plug(supply=resistor_plugs.PowerSupplyPlug)
+def resistor_test(test, dmm: resistor_plugs.MultimeterPlug, supply: resistor_plugs.PowerSupplyPlug) -> None:
 ```
 
 And now if we run the test with a resistor that is out of range (here a 220 $\Omega$ resistor), we get a fail: 
@@ -259,8 +259,8 @@ CONF.load(simulate=True)
 Finally, we create instances of the MultimeterPlug and PowerSupplyPlug that use this configuration. All that is left to do is to make sure we call these new plugs inside of our phase decorators:
 
 ```python
-MultimeterPlug = configuration.bind_init_args(MultimeterPlug, SIMULATE_MODE)
-PowerSupplyPlug = configuration.bind_init_args(PowerSupplyPlug, SIMULATE_MODE)
+MultimeterPlug = configuration.bind_init_args(resistor_plugs.MultimeterPlug, SIMULATE_MODE)
+PowerSupplyPlug = configuration.bind_init_args(resistor_plugs.PowerSupplyPlug, SIMULATE_MODE)
 
 @htf.measures(
         htf.Measurement("resistor_val")
@@ -270,7 +270,7 @@ PowerSupplyPlug = configuration.bind_init_args(PowerSupplyPlug, SIMULATE_MODE)
 )
 @htf.plug(dmm=MultimeterPlug)
 @htf.plug(supply=PowerSupplyPlug )
-def resistor_test(test, dmm: MultimeterPlug, supply: PowerSupplyPlug) -> None:
+def resistor_test(test, dmm: resistor_plugs.MultimeterPlug, supply: resistor_plugs.PowerSupplyPlug) -> None:
 ```
 
 
