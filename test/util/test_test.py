@@ -157,8 +157,14 @@ class TestTest(test.TestCase):
     self.assertNotMeasured(test_record.phases[-1], 'unset_measurement')
     self.assertMeasured(test_record, 'test_measurement', _DO_STUFF_RETVAL)
     self.assertMeasured(test_record, 'othr_measurement', 0xDEAD)
-    self.assertMeasurementPass(test_record, 'passes')
-    self.assertMeasurementFail(test_record, 'fails')
+    with self.subTest(name='assert_measurement_pass_without_value'):
+      self.assertMeasurementPass(test_record, 'passes')
+    with self.subTest(name='assert_measurement_pass_with_value'):
+      self.assertMeasurementPass(test_record, 'passes', 5)
+    with self.subTest(name='assert_measurement_fail_without_value'):
+      self.assertMeasurementFail(test_record, 'fails')
+    with self.subTest(name='assert_measurement_fail_with_value'):
+      self.assertMeasurementFail(test_record, 'fails', 20)
 
   def test_execute_phase_or_test_test_with_patched_plugs(self):
     self.auto_mock_plugs(MyPlug)
@@ -277,6 +283,19 @@ class TestTest(test.TestCase):
     # wrapping the yield statement in the assertRaises context.
     with self.assertRaises(test.InvalidTestError):
       test.yields_phases(bad_test)(self)
+
+  def test_assert_test_has_phase_record(self):
+    self.auto_mock_plugs(MyPlug)
+    test_record = self.execute_phase_or_test(
+        openhtf.Test(test_phase_with_shameless_plug, test_phase)
+    )
+    with self.subTest('phase_found'):
+      with self.assertTestHasPhaseRecord(test_record, test_phase.name) as phase:
+        self.assertEqual(phase.name, test_phase.name)
+    with self.subTest('phase_not_found'):
+      with self.assertRaises(AssertionError):
+        with self.assertTestHasPhaseRecord(test_record, 'nonexistent_phase'):
+          pass
 
 
 class PhaseProfilingTest(test.TestCase):
