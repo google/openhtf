@@ -40,11 +40,8 @@ If you want to install from source instead (for example, if you want some new
 feature that hasn't made it to the production release yet), you can download
 [the source code](https://github.com/google/openhtf) via
 [git](https://git-scm.com/) or other means, and install the `openhtf` package
-into your Python environment using the standard `setup.py` script.
-
-```bash
-python setup.py install
-```
+into your Python environment using the standard `build` command. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 
 ## Using OpenHTF
