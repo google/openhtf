@@ -277,7 +277,7 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
       self._response = response
       self.last_response = (prompt_id, response)
       self.remove_prompt()
-      self._cond.notifyAll()
+      self._cond.notify_all()
 
 
 def prompt_for_test_start(
