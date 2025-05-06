@@ -261,7 +261,11 @@ class PlugManager(object):
       plug_instance: plug_type
       if plug_type in self._unmanaged_plugs:
         plug_instance = self._unmanaged_plugs[plug_type]
-        continue
+        try:
+          plug_instance.setUp()
+        except Exception:  # pylint: disable=broad-except
+          self.tear_down_plugs()
+          raise
       else:
         # Create a logger for this plug. All plug loggers go under the 'plug'
         # sub-logger in the logger hierarchy.
