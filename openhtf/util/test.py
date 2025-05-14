@@ -174,6 +174,10 @@ from openhtf.util import text
 
 logs.CLI_LOGGING_VERBOSITY = 2
 
+# TestApi.dut_id attribute when running unit tests with the module-supplied
+# test start function.
+TEST_DUT_ID = 'TestDutId'
+
 
 # Maximum number of measurements per phase to be printed to the assertion
 # error message for test failures.
@@ -674,7 +678,7 @@ class TestCase(unittest.TestCase):
     self.last_test_state = None
     # When a test is yielded, this function is provided to as the test_start
     # argument to test.execute.
-    self.test_start_function = lambda: 'TestDutId'
+    self.test_start_function = lambda: TEST_DUT_ID
     # Dictionary mapping plug class (type, not instance) to plug instance.
     # Prior to executing a phase or test, plug instances can be added here.
     # When a OpenHTF phase or test is run in this suite, any instantiated plugs
