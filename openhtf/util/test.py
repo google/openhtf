@@ -1016,11 +1016,13 @@ class TestCase(unittest.TestCase):
 
 
 def get_flattened_phases(
-    phases_or_phase_groups: Sequence[Union[
-        phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]]
+    node_collections: Sequence[
+        Union[phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]
+    ],
 ) -> Sequence[phase_nodes.PhaseNode]:
-  """Flattens a sequence of phase nodes or phase collection nodes into nodes."""
+  """Flattens nested sequences of nodes into phase descriptors."""
   phases = []
+  phases_or_phase_groups = phase_collections.flatten(node_collections)
   for phase_or_phase_group in phases_or_phase_groups:
     if isinstance(phase_or_phase_group, phase_collections.PhaseCollectionNode):
       phases.extend(phase_or_phase_group.all_phases())
