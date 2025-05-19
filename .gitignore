@@ -30,6 +30,7 @@ htmlcov/
 env/
 venv/
 .env
+.venv
 
 # built protos
 *_pb2.py
