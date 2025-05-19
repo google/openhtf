@@ -174,6 +174,10 @@ from openhtf.util import text
 
 logs.CLI_LOGGING_VERBOSITY = 2
 
+# TestApi.dut_id attribute when running unit tests with the module-supplied
+# test start function.
+TEST_DUT_ID = 'TestDutId'
+
 
 # Maximum number of measurements per phase to be printed to the assertion
 # error message for test failures.
@@ -674,7 +678,7 @@ class TestCase(unittest.TestCase):
     self.last_test_state = None
     # When a test is yielded, this function is provided to as the test_start
     # argument to test.execute.
-    self.test_start_function = lambda: 'TestDutId'
+    self.test_start_function = lambda: TEST_DUT_ID
     # Dictionary mapping plug class (type, not instance) to plug instance.
     # Prior to executing a phase or test, plug instances can be added here.
     # When a OpenHTF phase or test is run in this suite, any instantiated plugs
@@ -1012,11 +1016,13 @@ class TestCase(unittest.TestCase):
 
 
 def get_flattened_phases(
-    phases_or_phase_groups: Sequence[Union[
-        phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]]
+    node_collections: Sequence[
+        Union[phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]
+    ],
 ) -> Sequence[phase_nodes.PhaseNode]:
-  """Flattens a sequence of phase nodes or phase collection nodes into nodes."""
+  """Flattens nested sequences of nodes into phase descriptors."""
   phases = []
+  phases_or_phase_groups = phase_collections.flatten(node_collections)
   for phase_or_phase_group in phases_or_phase_groups:
     if isinstance(phase_or_phase_group, phase_collections.PhaseCollectionNode):
       phases.extend(phase_or_phase_group.all_phases())
