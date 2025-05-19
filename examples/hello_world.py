@@ -68,7 +68,7 @@ def main():
   # Multiple phases would be passed as additional args, and additional
   # keyword arguments may be passed as well.  See other examples for more
   # complex uses.
-  test = htf.Test(hello_world, name='hello_world.py')
+  test = htf.Test(hello_world)
 
   # In order to view the result of the test, we have to output it somewhere,
   # and a local JSON file is a convenient way to do this.  Custom output
