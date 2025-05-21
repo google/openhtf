@@ -5,6 +5,7 @@ from unittest import mock
 
 from examples import hello_world
 from openhtf.plugs import user_input
+from test.examples.test_utils import get_phase_by_name
 
 
 class TestHelloWorld(unittest.TestCase):
@@ -34,10 +35,10 @@ class TestHelloWorld(unittest.TestCase):
         self.assertEqual(output_data["dut_id"], "test_dut")
         self.assertEqual(output_data["outcome"], "PASS")
         self.assertGreaterEqual(len(output_data["phases"]), 2)
+
+        hello_world_phase_data = get_phase_by_name(self, output_data["phases"], "hello_world")
         self.assertEqual(
-            output_data["phases"][1]["measurements"]["hello_world_measurement"][
-                "measured_value"
-            ],
+            hello_world_phase_data["measurements"]["hello_world_measurement"]["measured_value"],
             "Hello Again!",
         )
 
