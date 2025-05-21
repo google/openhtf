@@ -26,14 +26,14 @@ TODO(someone): Write an output example.
 For more information on output, see the output.py example.
 """
 
+import os.path
+
 # Import openhtf with an abbreviated name, as we'll be using a bunch of stuff
 # from it throughout our test scripts. See __all__ at the top of
 # openhtf/__init__.py for details on what's in top-of-module namespace.
 import openhtf as htf
-
 # Import this output mechanism as it's the specific one we want to use.
 from openhtf.output.callbacks import json_factory
-
 from openhtf.plugs import user_input
 
 
@@ -63,7 +63,7 @@ def hello_world(test):
   test.measurements.hello_world_measurement = 'Hello Again!'
 
 
-def main():
+def create_and_run_test(output_dir: str = '.'):
   # We instantiate our OpenHTF test with the phases we want to run as args.
   # Multiple phases would be passed as additional args, and additional
   # keyword arguments may be passed as well.  See other examples for more
@@ -73,10 +73,13 @@ def main():
   # In order to view the result of the test, we have to output it somewhere,
   # and a local JSON file is a convenient way to do this.  Custom output
   # mechanisms can be implemented, but for now we'll just keep it simple.
-  # This will always output to the same ./hello_world.json file, formatted
-  # slightly for human readability.
+  # With the default output_dir argument, this will always output to the
+  # same ./hello_world.json file, formatted slightly for human readability.
   test.add_output_callbacks(
-      json_factory.OutputToJSON('./{dut_id}.hello_world.json', indent=2))
+      json_factory.OutputToJSON(
+          os.path.join(output_dir, '{dut_id}.hello_world.json'), indent=2
+      )
+  )
 
   # prompt_for_test_start prompts the operator for a DUT ID, a unique identifier
   # for the DUT (Device Under Test).  OpenHTF requires that a DUT ID is set
@@ -89,4 +92,4 @@ def main():
 
 
 if __name__ == '__main__':
-  main()
+  create_and_run_test()

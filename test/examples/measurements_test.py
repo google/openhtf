@@ -1,5 +1,20 @@
+# Copyright 2016 Google Inc. All Rights Reserved.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import os
+import tempfile
 import unittest
 from examples import measurements
 from openhtf.util import example_test
@@ -7,21 +22,15 @@ from openhtf.util import example_test
 
 class TestMeasurements(example_test.ExampleTestBase):
 
-  def setUp(self):
-    self.output_file = None
-
-  def tearDown(self):
-    if self.output_file and os.path.exists(self.output_file):
-      os.remove(self.output_file)
-
   def test_main_execution(self):
-    self.output_file = "./measurements.json"
-    measurements.main()
+    with tempfile.TemporaryDirectory() as temp_dir:
+      measurements.create_and_run_test(temp_dir)
+      expected_json_path = os.path.join(temp_dir, 'measurements.json')
 
-    self.assertTrue(os.path.exists(self.output_file))
-
-    with open(self.output_file, "r") as f:
-      output_data = json.load(f)
+      # Assert that the output file was created
+      self.assertTrue(os.path.exists(expected_json_path))
+      with open(expected_json_path) as f:
+        output_data = json.load(f)
 
     self.assertEqual(output_data["dut_id"], "MyDutId")
     self.assertEqual(output_data["outcome"], "FAIL")
