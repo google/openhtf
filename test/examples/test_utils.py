@@ -1,20 +1,38 @@
-def get_phase_by_name(test_case, phases_data, phase_name):
-    """
-    Finds a phase by its name in a list of phase data.
+"""Utilities for integration testing OpenHTF examples."""
+
+import os
+from typing import Any
+import unittest
+
+
+class ExampleTestBase(unittest.TestCase):
+  """Base class for integration testing OpenHTF examples."""
+
+  def setUp(self):
+    super().setUp()
+    self.output_file = None
+
+  def tearDown(self):
+    super().tearDown()
+    if self.output_file and os.path.exists(self.output_file):
+      os.remove(self.output_file)
+
+  def get_phase_by_name(
+      self, phases_data: dict[str, Any], phase_name: str
+  ) -> dict[str, Any]:
+    """Finds a phase by its name in a list of JSON phase data.
 
     Args:
-        test_case: An instance of unittest.TestCase, used for calling .fail().
-        phases_data: A list of phase dictionaries. Each dictionary is expected
-                     to have a "name" key.
-        phase_name: The name of the phase to find.
+      phases_data: A list of phase dictionaries (from JSON load)..
+      phase_name: The name of the phase to find.
 
     Returns:
-        The phase dictionary if found.
+      The phase dictionary if found.
 
     Raises:
-        AssertionError (via test_case.fail()): If the phase is not found.
+      AssertionError (via test_case.fail()): If the phase is not found.
     """
     for p in phases_data:
-        if p["name"] == phase_name:
-            return p
-    test_case.fail(f"Phase '{phase_name}' not found in output.")
+      if p["name"] == phase_name:
+        return p
+    self.fail(f"Phase '{phase_name}' not found in output.")
