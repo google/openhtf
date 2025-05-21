@@ -358,16 +358,17 @@ class TestProfilingTest(test.TestCase):
             '.', os.path.sep), output)
 
 
+def no_op_phase():
+  """No-op phase."""
+
+
+def make_phase(name: str):
+  return openhtf.PhaseOptions(name=name)(no_op_phase)
+
+
 class GetFlattenedPhasesTest(unittest.TestCase):
 
-  def test_unflattens_nested_mixed_nodes(self):
-
-    def no_op_phase():
-      """No-op phase."""
-
-    def make_phase(name: str):
-      return openhtf.PhaseOptions(name=name)(no_op_phase)
-
+  def test_unflattens_nested_mixed_nodes_list(self):
     nested_nodes = [
         make_phase('TopLevelPhase'),
         [make_phase('NestedPhase1'), make_phase('NestedPhase2')],
@@ -408,5 +409,24 @@ class GetFlattenedPhasesTest(unittest.TestCase):
             'TeardownPhase2a',
             'TeardownPhase2b',
             'NestedPhase3',
+        ],
+    )
+
+  def test_unflattens_nested_mixed_nodes_iterable(self):
+    nodes_iterable = openhtf.PhaseGroup(
+        setup=make_phase('SetupPhase1a'),
+        main=[make_phase('MainPhase1a'), make_phase('MainPhase1b')],
+        teardown=make_phase('TeardownPhase1a'),
+    ).all_phases()
+    node_names = []
+    for node in test.get_flattened_phases(nodes_iterable):
+      node_names.append(node.name)
+    self.assertEqual(
+        node_names,
+        [
+            'SetupPhase1a',
+            'MainPhase1a',
+            'MainPhase1b',
+            'TeardownPhase1a',
         ],
     )

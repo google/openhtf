@@ -1016,7 +1016,7 @@ class TestCase(unittest.TestCase):
 
 
 def get_flattened_phases(
-    node_collections: Sequence[
+    node_collections: Iterable[
         Union[phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]
     ],
 ) -> Sequence[phase_nodes.PhaseNode]:
