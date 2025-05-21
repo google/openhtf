@@ -25,12 +25,11 @@ class TestMeasurements(example_test.ExampleTestBase):
 
     self.assertEqual(output_data["dut_id"], "MyDutId")
     self.assertEqual(output_data["outcome"], "FAIL")
+    self.assertIn("phases", output_data)
     self.assertEqual(len(output_data["phases"]), 7)
 
     with self.subTest("hello_phase"):
-      hello_phase_data = self.get_phase_by_name(
-          output_data["phases"], "hello_phase"
-      )
+      hello_phase_data = self.get_phase_by_name(output_data, "hello_phase")
       self.assertEqual(
           hello_phase_data["measurements"]["hello_world_measurement"][
               "measured_value"
@@ -40,7 +39,7 @@ class TestMeasurements(example_test.ExampleTestBase):
 
     with self.subTest("measure_seconds"):
       measure_seconds_data = self.get_phase_by_name(
-          output_data["phases"], "measure_seconds"
+          output_data, "measure_seconds"
       )
       self.assertEqual(
           measure_seconds_data["measurements"]["validated_measurement"][
@@ -56,9 +55,7 @@ class TestMeasurements(example_test.ExampleTestBase):
       )
 
     with self.subTest("inline_phase"):
-      inline_phase_data = self.get_phase_by_name(
-          output_data["phases"], "inline_phase"
-      )
+      inline_phase_data = self.get_phase_by_name(output_data, "inline_phase")
       self.assertEqual(
           inline_phase_data["measurements"]["inline_kwargs"]["outcome"], "FAIL"
       )
@@ -69,7 +66,7 @@ class TestMeasurements(example_test.ExampleTestBase):
 
     with self.subTest("multidim_measurements"):
       multdim_measurements_data = self.get_phase_by_name(
-          output_data["phases"], "multdim_measurements"
+          output_data, "multdim_measurements"
       )
       self.assertAlmostEqual(
           multdim_measurements_data["measurements"]["average_voltage"][

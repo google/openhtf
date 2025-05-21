@@ -29,9 +29,7 @@ class TestHelloWorld(example_test.ExampleTestBase):
     self.assertEqual(output_data["outcome"], "PASS")
     self.assertGreaterEqual(len(output_data["phases"]), 2)
 
-    hello_world_phase_data = self.get_phase_by_name(
-        output_data["phases"], "hello_world"
-    )
+    hello_world_phase_data = self.get_phase_by_name(output_data, "hello_world")
     self.assertEqual(
         hello_world_phase_data["measurements"]["hello_world_measurement"][
             "measured_value"
