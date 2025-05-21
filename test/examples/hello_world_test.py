@@ -5,10 +5,10 @@ from unittest import mock
 
 from examples import hello_world
 from openhtf.plugs import user_input
-from test.examples import test_utils
+from openhtf.util import example_test
 
 
-class TestHelloWorld(test_utils.ExampleTestBase):
+class TestHelloWorld(example_test.ExampleTestBase):
 
   @mock.patch.object(user_input.UserInput, user_input.UserInput.prompt.__name__)
   def test_main_execution(self, mock_user_prompt):

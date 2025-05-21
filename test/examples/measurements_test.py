@@ -2,10 +2,10 @@ import json
 import os
 import unittest
 from examples import measurements
-from test.examples import test_utils
+from openhtf.util import example_test
 
 
-class TestMeasurements(test_utils.ExampleTestBase):
+class TestMeasurements(example_test.ExampleTestBase):
 
   def setUp(self):
     self.output_file = None
