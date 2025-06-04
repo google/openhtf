@@ -66,7 +66,7 @@ _DO_STUFF_RETVAL = 0xBEEF
 
 
 @plugs.plug(my_plug=MyPlug, shameless_plug=ShamelessPlug)
-@openhtf.measures('test_measurement', 'othr_measurement')
+@openhtf.measures('test_measurement', 'othr_measurement', 'numeric_measurement')
 @openhtf.measures('passes', validators=[validators.in_range(1, 10)])
 @openhtf.measures('fails', validators=[validators.in_range(1, 10)])
 @openhtf.measures('unset_measurement')
@@ -76,6 +76,7 @@ def test_phase(phase_data, my_plug, shameless_plug: ShamelessPlug):
   phase_data.logger.error('in measurements %s', id(phase_data.measurements))
   phase_data.measurements.test_measurement = my_plug.do_stuff('stuff_args')
   phase_data.measurements.othr_measurement = 0xDEAD
+  phase_data.measurements.numeric_measurement = 10.0
   phase_data.measurements.passes = 5
   phase_data.measurements.fails = 20
   phase_data.test_record.add_outcome_details(0xBED)
@@ -165,6 +166,12 @@ class TestTest(test.TestCase):
       self.assertMeasurementFail(test_record, 'fails')
     with self.subTest(name='assert_measurement_fail_with_value'):
       self.assertMeasurementFail(test_record, 'fails', 20)
+    with self.subTest(name='assert_measurement_almost_equal'):
+      self.assertMeasuredAlmostEqual(test_record, 'numeric_measurement', 10.0)
+    with self.subTest(name='assert_measurement_almost_equal_with_delta'):
+      self.assertMeasuredAlmostEqual(
+          test_record, 'numeric_measurement', 9.5, delta=1.0
+      )
 
   def test_execute_phase_or_test_test_with_patched_plugs(self):
     self.auto_mock_plugs(MyPlug)
@@ -202,6 +209,7 @@ class TestTest(test.TestCase):
     self.assertMeasured(phase_record, 'othr_measurement', 0xDEAD)
     self.assertMeasurementPass(phase_record, 'passes')
     self.assertMeasurementFail(phase_record, 'fails')
+    self.assertMeasuredAlmostEqual(phase_record, 'numeric_measurement', 10.0)
 
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
   def test_patch_plugs_test(self, mock_plug):
@@ -221,6 +229,24 @@ class TestTest(test.TestCase):
   def test_wrong_measured_value(self):
     test_rec = yield openhtf.Test(phase_retval(None))
     self.assertMeasured(test_rec, 'test_measurement', 0xBAD)
+
+  @unittest.expectedFailure
+  @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
+  def test_wrong_measured_almost_equal_value(self, mock_plug):
+    mock_plug.do_stuff.return_value = _DO_STUFF_RETVAL
+
+    test_record = yield openhtf.Test(phase_retval(None), test_phase)
+    self.assertMeasuredAlmostEqual(test_record, 'numeric_measurement', 9.0)
+
+  @unittest.expectedFailure
+  @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
+  def test_wrong_measured_almost_equal_value_with_delta(self, mock_plug):
+    mock_plug.do_stuff.return_value = _DO_STUFF_RETVAL
+
+    test_record = yield openhtf.Test(phase_retval(None), test_phase)
+    self.assertMeasuredAlmostEqual(
+        test_record, 'numeric_measurement', 9.5, delta=0.1
+    )
 
   @test.yields_phases
   def test_passing_test(self):

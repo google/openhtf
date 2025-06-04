@@ -937,6 +937,22 @@ class TestCase(unittest.TestCase):
            phase_record.measurements[measurement].measured_value.value))
 
   @_assert_phase_or_test_record
+  def assertMeasuredAlmostEqual(
+      self, phase_record, measurement, value, delta=None
+  ):
+    self.assertMeasured(phase_record, measurement)
+    measured_value = phase_record.measurements[measurement].measured_value.value
+    self.assertAlmostEqual(
+        value,
+        measured_value,
+        delta=delta,
+        msg=(
+            f'Measurement {measurement} has wrong value: expected {value}, got'
+            f' {measured_value}, tolerance {delta}'
+        ),
+    )
+
+  @_assert_phase_or_test_record
   def assertMeasurementPass(self, phase_record, measurement, value=mock.ANY):
     self.assertMeasured(phase_record, measurement, value)
     self.assertIs(measurements.Outcome.PASS,
