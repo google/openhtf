@@ -926,6 +926,8 @@ class TestCase(unittest.TestCase):
 
   @_assert_phase_or_test_record
   def assertMeasured(self, phase_record, measurement, value=mock.ANY):
+    self.assertIn(measurement, phase_record.measurements,
+                  f'Measurement {measurement} not found')
     self.assertTrue(
         phase_record.measurements[measurement].measured_value.is_value_set,
         'Measurement %s not set' % measurement)

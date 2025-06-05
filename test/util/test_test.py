@@ -70,15 +70,21 @@ _DO_STUFF_RETVAL = 0xBEEF
 @openhtf.measures('passes', validators=[validators.in_range(1, 10)])
 @openhtf.measures('fails', validators=[validators.in_range(1, 10)])
 @openhtf.measures('unset_measurement')
-def test_phase(phase_data, my_plug, shameless_plug: ShamelessPlug):
+def test_phase(
+    phase_data,
+    my_plug,
+    shameless_plug: ShamelessPlug,
+    do_set_measurements: bool = True,
+):
   shameless_plug.plug_away()
   phase_data.logger.error('in phase_data %s', id(phase_data))
   phase_data.logger.error('in measurements %s', id(phase_data.measurements))
-  phase_data.measurements.test_measurement = my_plug.do_stuff('stuff_args')
-  phase_data.measurements.othr_measurement = 0xDEAD
-  phase_data.measurements.numeric_measurement = 10.0
-  phase_data.measurements.passes = 5
-  phase_data.measurements.fails = 20
+  if do_set_measurements:
+    phase_data.measurements.test_measurement = my_plug.do_stuff('stuff_args')
+    phase_data.measurements.othr_measurement = 0xDEAD
+    phase_data.measurements.numeric_measurement = 10.0
+    phase_data.measurements.passes = 5
+    phase_data.measurements.fails = 20
   phase_data.test_record.add_outcome_details(0xBED)
 
 
@@ -218,35 +224,72 @@ class TestTest(test.TestCase):
     test_record = yield openhtf.Test(phase_retval(None), test_phase)
     self._run_my_phase_in_test_asserts(mock_plug, test_record)
 
-  @unittest.expectedFailure
   @test.yields_phases
-  def test_strict_measurement(self):
+  def test_assert_not_measured_raises_when_measurement_not_defined(self):
     phase_record = yield phase_retval(None)
+    with self.assertRaisesRegex(
+        AssertionError, r'unset_measurement[\'"] not found'
+    ):
+      self.assertNotMeasured(phase_record, 'unset_measurement')
+
+  def test_assert_not_measured_when_measurement_not_set(self):
+    self.auto_mock_plugs(MyPlug)
+    phase_record = self.execute_phase_or_test(
+        test_phase.with_args(do_set_measurements=False)
+    )
     self.assertNotMeasured(phase_record, 'unset_measurement')
 
-  @unittest.expectedFailure
   @test.yields_phases
-  def test_wrong_measured_value(self):
+  def test_assert_measured_raises_when_measurement_not_defined(self):
     test_rec = yield openhtf.Test(phase_retval(None))
-    self.assertMeasured(test_rec, 'test_measurement', 0xBAD)
+    with self.assertRaisesRegex(
+        AssertionError, r'Measurement test_measurement not found'
+    ):
+      self.assertMeasured(test_rec, 'test_measurement', 0xBAD)
 
-  @unittest.expectedFailure
+  def test_assert_measured_raises_when_measurement_not_set(self):
+    self.auto_mock_plugs(MyPlug)
+    test_rec = self.execute_phase_or_test(
+        openhtf.Test(test_phase.with_args(do_set_measurements=False))
+    )
+    with self.assertRaisesRegex(
+        AssertionError, r'Measurement test_measurement not set'
+    ):
+      self.assertMeasured(test_rec, 'test_measurement', 0xBAD)
+
+  def test_assert_measured_raises_when_measurement_not_expected(self):
+    self.auto_mock_plugs(MyPlug)
+    test_rec = self.execute_phase_or_test(
+        openhtf.Test(test_phase.with_args(do_set_measurements=True))
+    )
+    with self.assertRaisesRegex(
+        AssertionError, r'Measurement test_measurement has wrong value'
+    ):
+      self.assertMeasured(test_rec, 'test_measurement', 0xBAD)
+
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
   def test_wrong_measured_almost_equal_value(self, mock_plug):
     mock_plug.do_stuff.return_value = _DO_STUFF_RETVAL
 
     test_record = yield openhtf.Test(phase_retval(None), test_phase)
-    self.assertMeasuredAlmostEqual(test_record, 'numeric_measurement', 9.0)
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'Measurement numeric_measurement has wrong value.+tolerance None',
+    ):
+      self.assertMeasuredAlmostEqual(test_record, 'numeric_measurement', 9.0)
 
-  @unittest.expectedFailure
   @test.patch_plugs(mock_plug='.'.join((MyPlug.__module__, MyPlug.__name__)))
   def test_wrong_measured_almost_equal_value_with_delta(self, mock_plug):
     mock_plug.do_stuff.return_value = _DO_STUFF_RETVAL
 
     test_record = yield openhtf.Test(phase_retval(None), test_phase)
-    self.assertMeasuredAlmostEqual(
-        test_record, 'numeric_measurement', 9.5, delta=0.1
-    )
+    with self.assertRaisesRegex(
+        AssertionError,
+        r'Measurement numeric_measurement has wrong value.+tolerance 0.1',
+    ):
+      self.assertMeasuredAlmostEqual(
+          test_record, 'numeric_measurement', 9.5, delta=0.1
+      )
 
   @test.yields_phases
   def test_passing_test(self):
