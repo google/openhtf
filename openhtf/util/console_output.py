@@ -23,6 +23,7 @@ the `logger` parameter should be overridden, e.g. by passing in the test record
 logger for the current test.
 """
 
+import contextlib
 import logging
 import math
 import os
@@ -32,8 +33,6 @@ import sys
 import textwrap
 
 import colorama
-import contextlib2 as contextlib
-
 from openhtf.util import argv
 
 # Colorama module has to be initialized before use.
