@@ -337,7 +337,6 @@ class PlugManager(object):
       plug_type: The plug class to update.
       plug_value: The plug class instance to store.
     """
-    print('update_plug called')
     self._plug_types.add(plug_type)
     if plug_type in self._plugs_by_type:
       self._plugs_by_type[plug_type].tearDown()
