@@ -261,11 +261,6 @@ class PlugManager(object):
       plug_instance: plug_type
       if plug_type in self._unmanaged_plugs:
         plug_instance = self._unmanaged_plugs[plug_type]
-        try:
-          plug_instance.setUp()
-        except Exception:  # pylint: disable=broad-except
-          self.tear_down_plugs()
-          raise
       else:
         # Create a logger for this plug. All plug loggers go under the 'plug'
         # sub-logger in the logger hierarchy.
@@ -304,7 +299,7 @@ class PlugManager(object):
           plug_logger.exception('Exception instantiating plug type %s', plug_type)
           self.tear_down_plugs()
           raise
-      self.update_plug(plug_type, plug_instance)
+        self.update_plug(plug_type, plug_instance)
       try:
         plug_instance.setUp()
       except Exception:  # pylint: disable=broad-except
@@ -342,6 +337,7 @@ class PlugManager(object):
       plug_type: The plug class to update.
       plug_value: The plug class instance to store.
     """
+    print('update_plug called')
     self._plug_types.add(plug_type)
     if plug_type in self._plugs_by_type:
       self._plugs_by_type[plug_type].tearDown()
