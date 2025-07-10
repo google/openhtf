@@ -83,6 +83,8 @@ except ImportError:
 
 _LOG = logging.getLogger(__name__)
 
+_RESERVED_MEASUREMENT_NAMES = frozenset(['mark_measurement_outcome_as_skipped'])
+
 
 class InvalidDimensionsError(Exception):
   """Raised when there is a problem with measurement dimensions."""
@@ -112,6 +114,9 @@ class Outcome(enum.Enum):
   FAIL = 'FAIL'
   UNSET = 'UNSET'
   PARTIALLY_SET = 'PARTIALLY_SET'
+  # Similar to UNSET but requires intentional setting and does not fail the
+  # phase.
+  SKIPPED = 'SKIPPED'
 
 
 @attr.s(slots=True, frozen=True)
@@ -182,6 +187,11 @@ class Measurement(object):
     conditional_validators: List of _ConditionalValidator instances that are
       called when certain Diagnosis Results are present at the beginning of the
       associated phase.
+    allow_fail: Whether to allow the measurement to fail. If True, the test
+      phase will not fail if the measurement fails. This is intended for groups
+      of similar measurements such as those across many parallel channels, where
+      individual failures should not fail the phase, but it is visually more
+      useful to have measurement fail instead of not setting validators.
     measured_value: An instance of MeasuredValue or DimensionedMeasuredValue
       containing the value(s) of this Measurement that have been set, if any.
     notification_cb: An optional function to be called when the measurement is
@@ -206,6 +216,7 @@ class Measurement(object):
   validators = attr.ib(type=List[Callable[[Any], bool]], factory=list)
   conditional_validators = attr.ib(
       type=List[_ConditionalValidator], factory=list)
+  allow_fail = attr.ib(type=bool, default=False)
 
   # Fields set during runtime.
   # measured_value needs to be initialized in the post init function if and only
@@ -221,6 +232,10 @@ class Measurement(object):
   _cached = attr.ib(type=Optional[Dict[Text, Any]], default=None)
 
   def __attrs_post_init__(self) -> None:
+    if self.name in _RESERVED_MEASUREMENT_NAMES:
+      raise ValueError(
+          f'Measurement name {self.name} is reserved for internal use.'
+      )
     if self._measured_value is None:
       self._initialize_value()
 
@@ -887,6 +902,24 @@ class Collection(object):
 
     # Return the MeasuredValue's value, MeasuredValue will raise if not set.
     return m.measured_value.value
+
+  def set_measurement_outcome_to_skipped(self, name: Text) -> None:
+    """Skips a measurement by setting its outcome from UNSET to SKIPPED.
+
+    This allows the measurement to not have a value set but still passes the
+    test phase containing it.
+
+    Args:
+      name: Name for measurement in test record.
+
+    Raises:
+      ValueError: If the measurement is set.
+    """
+    self._assert_valid_key(name)
+    m = self._measurements[name]
+    if m.measured_value is not None and m.measured_value.is_value_set:
+      raise ValueError(f'Measurement {name} has been set, cannot skip it.')
+    m.outcome = Outcome.SKIPPED
 
 
 # Work around for attrs bug in 20.1.0; after the next release, this can be

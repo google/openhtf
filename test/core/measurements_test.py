@@ -19,6 +19,7 @@ actually care about.
 """
 
 import collections
+import unittest
 from unittest import mock
 
 import openhtf as htf
@@ -461,3 +462,25 @@ class TestMeasurementDimensions(htf_test.TestCase):
     dimension_vals = ('dim val 1', 2, 3, 4)
     with self.assertRaises(measurements.InvalidDimensionsError):
       measurement.measured_value[dimension_vals] = 42
+
+
+class TestCollection(unittest.TestCase):
+
+  def test_set_measurement_outcome_to_skipped(self):
+
+    measurement = measurements.Measurement('skipped_meas')
+    collection = measurements.Collection({'skipped_meas': measurement})
+    collection.set_measurement_outcome_to_skipped('skipped_meas')
+    self.assertEqual(
+        measurement.outcome, measurements.Outcome.SKIPPED
+    )
+
+  def test_set_measurement_outcome_to_skipped_error_if_not_unset(self):
+
+    measurement = measurements.Measurement('skipped_meas')
+    collection = measurements.Collection({'skipped_meas': measurement})
+    collection['skipped_meas'] = 10
+    with self.assertRaisesRegex(
+        ValueError, 'Measurement skipped_meas has been set, cannot skip it.'
+    ):
+      collection.set_measurement_outcome_to_skipped('skipped_meas')
