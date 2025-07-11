@@ -21,7 +21,7 @@ on:
   push:
   pull_request:
   schedule:
-    - cron: '0 0 * * *' # runs at midnight UTC every day
+    - cron: '0 0 * * *'  # Runs every day at midnight (UTC).
 
 jobs:
   build_and_test:
