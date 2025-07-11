@@ -55,6 +55,7 @@ MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME = {
     measurements.Outcome.FAIL: 'FAIL',
     measurements.Outcome.UNSET: 'ERROR',
     measurements.Outcome.PARTIALLY_SET: 'ERROR',
+    measurements.Outcome.SKIPPED: 'ERROR',
 }
 TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME = {
     'PASS': measurements.Outcome.PASS,
