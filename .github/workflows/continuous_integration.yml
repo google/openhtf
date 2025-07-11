@@ -17,7 +17,11 @@
 
 name: Continuous Integration
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 * * *' # runs at midnight UTC every day
 
 jobs:
   build_and_test:
