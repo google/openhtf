@@ -770,12 +770,30 @@ class PhaseState(object):
     self.phase_record.measurements = self.measurements
 
   def _measurements_pass(self) -> bool:
-    allowed_outcomes = {measurements.Outcome.PASS}
-    if CONF.allow_unset_measurements:
-      allowed_outcomes.add(measurements.Outcome.UNSET)
+    """Returns True if all measurements are OK to pass the phase.
 
-    return all(meas.outcome in allowed_outcomes
-               for meas in self.phase_record.measurements.values())
+    The result is True if all measurements are one of the following:
+      - PASS;
+      - FAIL with allow_fail=True;
+      - UNSET with CONF.allow_unset_measurements=True.
+
+    Raises:
+      ValueError: If any measurement has an unexpected outcome.
+    """
+    for meas in self.phase_record.measurements.values():
+      if meas.outcome == measurements.Outcome.PASS:
+        pass
+      elif meas.outcome == measurements.Outcome.FAIL:
+        if not meas.allow_fail:
+          return False
+      elif meas.outcome == measurements.Outcome.UNSET:
+        if not CONF.allow_unset_measurements:
+          return False
+      elif meas.outcome == measurements.Outcome.PARTIALLY_SET:
+        return False
+      else:
+        raise ValueError(f'Unknown measurement outcome: {meas.outcome}')
+    return True
 
   def _measurements_marginal(self) -> bool:
     return any(

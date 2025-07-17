@@ -182,6 +182,11 @@ class Measurement(object):
     conditional_validators: List of _ConditionalValidator instances that are
       called when certain Diagnosis Results are present at the beginning of the
       associated phase.
+    allow_fail: Whether to allow the measurement to fail without failing the
+      phase (and test). This is intended for groups of similar measurements,
+      that are useful for more easily tracking individual conditions, while the
+      overall pass-fail is determined by a different measurement (that
+      presumably aggregates the measurements by some user-defined logic).
     measured_value: An instance of MeasuredValue or DimensionedMeasuredValue
       containing the value(s) of this Measurement that have been set, if any.
     notification_cb: An optional function to be called when the measurement is
@@ -206,6 +211,7 @@ class Measurement(object):
   validators = attr.ib(type=List[Callable[[Any], bool]], factory=list)
   conditional_validators = attr.ib(
       type=List[_ConditionalValidator], factory=list)
+  allow_fail = attr.ib(type=bool, default=False)
 
   # Fields set during runtime.
   # measured_value needs to be initialized in the post init function if and only

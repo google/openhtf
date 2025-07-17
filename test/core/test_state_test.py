@@ -98,6 +98,22 @@ class PhaseStateTest(unittest.TestCase):
         test_record.PhaseOutcome.FAIL,
     )
 
+  def test_phase_state_pass_with_failing_measurements_allow_fail(self):
+    phase_state = _create_dummy_phase_state_for_measurement_testing()
+    phase_state.measurements['pass_meas'] = measurements.Measurement(
+        'pass_meas'
+    )
+    phase_state.measurements['fail_meas'] = measurements.Measurement(
+        'fail_meas', allow_fail=True
+    )
+    phase_state.measurements['pass_meas'].outcome = measurements.Outcome.PASS
+    phase_state.measurements['fail_meas'].outcome = measurements.Outcome.FAIL
+    phase_state.finalize()
+    self.assertEqual(
+        phase_state.phase_record.outcome,
+        test_record.PhaseOutcome.PASS,
+    )
+
   def test_phase_state_fail_with_no_outcome_measurements(self):
     phase_state = _create_dummy_phase_state_for_measurement_testing()
     phase_state.measurements['pass_meas'] = measurements.Measurement(
