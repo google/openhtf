@@ -148,3 +148,17 @@ class PhaseStateTest(unittest.TestCase):
         phase_state.phase_record.outcome,
         test_record.PhaseOutcome.PASS,
     )
+
+  def test_phase_state_pass_with_skipped_measurements(self):
+    phase_state = _create_dummy_phase_state_for_measurement_testing()
+    phase_state.measurements['skipped_meas'] = measurements.Measurement(
+        'skipped_meas'
+    )
+    phase_state.measurements['skipped_meas'].outcome = (
+        measurements.Outcome.SKIPPED
+    )
+    phase_state.finalize()
+    self.assertEqual(
+        phase_state.phase_record.outcome,
+        test_record.PhaseOutcome.PASS,
+    )

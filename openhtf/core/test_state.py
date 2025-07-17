@@ -775,7 +775,8 @@ class PhaseState(object):
     The result is True if all measurements are one of the following:
       - PASS;
       - FAIL with allow_fail=True;
-      - UNSET with CONF.allow_unset_measurements=True.
+      - UNSET with CONF.allow_unset_measurements=True;
+      - SKIPPED.
 
     Raises:
       ValueError: If any measurement has an unexpected outcome.
@@ -791,6 +792,8 @@ class PhaseState(object):
           return False
       elif meas.outcome == measurements.Outcome.PARTIALLY_SET:
         return False
+      elif meas.outcome == measurements.Outcome.SKIPPED:
+        pass
       else:
         raise ValueError(f'Unknown measurement outcome: {meas.outcome}')
     return True

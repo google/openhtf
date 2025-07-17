@@ -83,6 +83,12 @@ except ImportError:
 
 _LOG = logging.getLogger(__name__)
 
+_RESERVED_MEASUREMENT_NAMES = frozenset(['set_measurement_outcome_to_skipped'])
+
+
+class ReservedMeasurementNameError(Exception):
+  """Raised when a measurement name is reserved for internal use."""
+
 
 class InvalidDimensionsError(Exception):
   """Raised when there is a problem with measurement dimensions."""
@@ -112,6 +118,9 @@ class Outcome(enum.Enum):
   FAIL = 'FAIL'
   UNSET = 'UNSET'
   PARTIALLY_SET = 'PARTIALLY_SET'
+  # Similar to UNSET but requires intentional setting and does not fail the
+  # phase.
+  SKIPPED = 'SKIPPED'
 
 
 @attr.s(slots=True, frozen=True)
@@ -225,6 +234,13 @@ class Measurement(object):
 
   # Runtime cache to speed up conversions.
   _cached = attr.ib(type=Optional[Dict[Text, Any]], default=None)
+
+  def __attrs_pre_init__(self, name: Text, *args: Any, **kwargs: Any) -> None:
+    del(args, kwargs)
+    if name in _RESERVED_MEASUREMENT_NAMES:
+      raise ReservedMeasurementNameError(
+          f'Measurement name {name} is reserved for internal use.'
+      )
 
   def __attrs_post_init__(self) -> None:
     if self._measured_value is None:
@@ -893,6 +909,24 @@ class Collection(object):
 
     # Return the MeasuredValue's value, MeasuredValue will raise if not set.
     return m.measured_value.value
+
+  def set_measurement_outcome_to_skipped(self, name: Text) -> None:
+    """Skips a measurement by setting its outcome from UNSET to SKIPPED.
+
+    This allows the measurement to not have a value set but not fail the
+    test phase containing it.
+
+    Args:
+      name: Name for measurement in test record.
+
+    Raises:
+      ValueError: If the measurement is set.
+    """
+    self._assert_valid_key(name)
+    m = self._measurements[name]
+    if m.measured_value is not None and m.measured_value.is_value_set:
+      raise ValueError(f'Measurement {name} has been set, cannot skip it.')
+    m.outcome = Outcome.SKIPPED
 
 
 # Work around for attrs bug in 20.1.0; after the next release, this can be

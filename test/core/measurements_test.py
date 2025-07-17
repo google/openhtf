@@ -19,6 +19,7 @@ actually care about.
 """
 
 import collections
+import unittest
 from unittest import mock
 
 import openhtf as htf
@@ -69,6 +70,17 @@ class TestMeasurements(htf_test.TestCase):
     pandas_patch = mock.patch.object(measurements, 'pandas', None)
     pandas_patch.start()
     self.addCleanup(pandas_patch.stop)
+
+  def test_reserved_measurement_names(self):
+    for name in measurements._RESERVED_MEASUREMENT_NAMES:
+      with self.subTest(name=name):
+        with self.assertRaisesRegex(
+            measurements.ReservedMeasurementNameError, name
+        ):
+          htf.Measurement(name)
+
+        # Test that the name is indeed reserved for Collection class method.
+        self.assertIn(name, measurements.Collection.__dict__)
 
   def test_unit_enforcement(self):
     """Creating a measurement with invalid units should raise."""
@@ -461,3 +473,23 @@ class TestMeasurementDimensions(htf_test.TestCase):
     dimension_vals = ('dim val 1', 2, 3, 4)
     with self.assertRaises(measurements.InvalidDimensionsError):
       measurement.measured_value[dimension_vals] = 42
+
+
+class TestCollection(unittest.TestCase):
+
+  def test_set_measurement_outcome_to_skipped(self):
+    measurement = measurements.Measurement('skipped_meas')
+    collection = measurements.Collection({'skipped_meas': measurement})
+    collection.set_measurement_outcome_to_skipped('skipped_meas')
+    self.assertEqual(
+        measurement.outcome, measurements.Outcome.SKIPPED
+    )
+
+  def test_set_measurement_outcome_to_skipped_error_if_not_unset(self):
+    measurement = measurements.Measurement('skipped_meas')
+    collection = measurements.Collection({'skipped_meas': measurement})
+    collection['skipped_meas'] = 10
+    with self.assertRaisesRegex(
+        ValueError, 'Measurement skipped_meas has been set, cannot skip it.'
+    ):
+      collection.set_measurement_outcome_to_skipped('skipped_meas')
