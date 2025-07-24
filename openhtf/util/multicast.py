@@ -18,6 +18,7 @@ socket and invokes a callback function for each message received, and a send()
 function that is used to send one-shot messages to a multicast socket.
 """
 
+import errno
 import logging
 import queue
 import socket
@@ -38,6 +39,14 @@ DEFAULT_TTL = 1
 LOCALHOST_ADDRESS = 0x7f000001  # 127.0.0.1
 MAX_MESSAGE_BYTES = 1024  # Maximum allowable message length in bytes.
 _SOCKOPT_RETRY_SECONDS = 10  # Short delay before retrying socket registration.
+_UNRECOVERABLE_ERRNOS = (
+    errno.ENODEV,
+    errno.EAFNOSUPPORT,
+)
+
+
+class InterfaceMulticastError(Exception):
+  """Raised when the network interface cannot be added to multicast."""
 
 
 class MulticastListener(threading.Thread):
@@ -92,9 +101,15 @@ class MulticastListener(threading.Thread):
       self._sock.setsockopt(
           socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
           struct.pack('!4sL', socket.inet_aton(self.address), interface_ip))  # pylint: disable=g-socket-inet-aton
-    except OSError:
+    except OSError as e:
       multicast_type = ('local'
                         if interface_ip == LOCALHOST_ADDRESS else 'default')
+      if e.errno in _UNRECOVERABLE_ERRNOS:
+        raise InterfaceMulticastError(
+            'Failed to add multicast membership for '
+            f'{multicast_type} interface {interface_ip}. '
+            f'Error: {str(e)}'
+        ) from e
       _LOG.debug(
           'Failed setsockopt for %s multicast. Will retry. Traceback:',
           multicast_type,
@@ -111,10 +126,13 @@ class MulticastListener(threading.Thread):
     # The localhost address is used to receive messages sent in "local_only"
     # mode and the default address is used to receive all other messages.
     for interface_ip in (socket.INADDR_ANY, LOCALHOST_ADDRESS):
-      while not self._add_multicast_membership(interface_ip):
-        if not self._live:
-          return
-        time.sleep(_SOCKOPT_RETRY_SECONDS)
+      try:
+        while not self._add_multicast_membership(interface_ip):
+          if not self._live:
+            return
+          time.sleep(_SOCKOPT_RETRY_SECONDS)
+      except InterfaceMulticastError as e:
+        _LOG.warning(e)
 
     if sys.platform == 'darwin':
       self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT,
