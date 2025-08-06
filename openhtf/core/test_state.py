@@ -376,7 +376,7 @@ class TestState(util.SubscribableStateMixin):
       if self._outcome_is_failure_exception(phase_execution_outcome):
         self.state_logger.error(
             f'Outcome of {phase_name} will be FAIL since exception was of type'
-            ' {phase_execution_outcome.phase_result.exc_val}'
+            f' {phase_execution_outcome.phase_result.exc_type.__name__}'
         )
         self._finalize(test_record.Outcome.FAIL)
       else:
