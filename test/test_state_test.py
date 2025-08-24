@@ -253,3 +253,13 @@ class TestTestApi(parameterized.TestCase):
       self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
     self.assertEqual(self.test_state.test_record.outcome,
                      test_record.Outcome.ERROR)
+  def test_test_state_finalize_from_phase_outcome_exception_info_with_traceback(
+      self):
+    try:
+      raise ValueError('Exception for unit testing.')
+    except ValueError:
+      phase_exe_outcome = phase_executor.PhaseExecutionOutcome(
+          phase_executor.ExceptionInfo(*sys.exc_info(), traceback=True))
+      self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
+    self.assertEqual(self.test_state.test_record.outcome,
+                     test_record.Outcome.ERROR)
