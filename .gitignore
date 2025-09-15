@@ -44,3 +44,5 @@ other_modules/
 
 # Tox temporary files
 .tox/
+
+*.pyi
