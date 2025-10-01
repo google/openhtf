@@ -174,20 +174,26 @@ class PhaseGroupTest(unittest.TestCase):
   def testWithArgs_Setup(self):
     group = htf.PhaseGroup(setup=[blank_phase, arg_phase])
     arg_group = group.with_args(arg1=1)
-    self.assertEqual(blank_phase, arg_group.setup.nodes[0])
-    self.assertEqual(arg_phase.with_args(arg1=1), arg_group.setup.nodes[1])
+    setup = arg_group.setup
+    self.assertIsNotNone(setup)
+    self.assertEqual(blank_phase, setup.nodes[0])
+    self.assertEqual(arg_phase.with_args(arg1=1), setup.nodes[1])
 
   def testWithArgs_Main(self):
     group = htf.PhaseGroup(main=[blank_phase, arg_phase])
     arg_group = group.with_args(arg1=1)
-    self.assertEqual(blank_phase, arg_group.main.nodes[0])
-    self.assertEqual(arg_phase.with_args(arg1=1), arg_group.main.nodes[1])
+    main = arg_group.main
+    self.assertIsNotNone(main)
+    self.assertEqual(blank_phase, main.nodes[0])
+    self.assertEqual(arg_phase.with_args(arg1=1), main.nodes[1])
 
   def testWithArgs_Teardown(self):
     group = htf.PhaseGroup(teardown=[blank_phase, arg_phase])
     arg_group = group.with_args(arg1=1)
-    self.assertEqual(blank_phase, arg_group.teardown.nodes[0])
-    self.assertEqual(arg_phase.with_args(arg1=1), arg_group.teardown.nodes[1])
+    teardown = arg_group.teardown
+    self.assertIsNotNone(teardown)
+    self.assertEqual(blank_phase, teardown.nodes[0])
+    self.assertEqual(arg_phase.with_args(arg1=1), teardown.nodes[1])
 
   def testWithArgs_Recursive(self):
     inner_group = htf.PhaseGroup(main=[blank_phase, arg_phase])
@@ -202,23 +208,29 @@ class PhaseGroupTest(unittest.TestCase):
   def testWithPlugs_Setup(self):
     group = htf.PhaseGroup(setup=[blank_phase, plug_phase])
     plug_group = group.with_plugs(my_plug=ChildPlug)
-    self.assertEqual(blank_phase, plug_group.setup.nodes[0])
+    setup = plug_group.setup
+    self.assertIsNotNone(setup)
+    self.assertEqual(blank_phase, setup.nodes[0])
     self.assertEqual(
-        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.setup.nodes[1])
+        plug_phase.with_plugs(my_plug=ChildPlug), setup.nodes[1])
 
   def testWithPlugs_Main(self):
     group = htf.PhaseGroup(main=[blank_phase, plug_phase])
     plug_group = group.with_plugs(my_plug=ChildPlug)
-    self.assertEqual(blank_phase, plug_group.main.nodes[0])
+    main = plug_group.main
+    self.assertIsNotNone(main)
+    self.assertEqual(blank_phase, main.nodes[0])
     self.assertEqual(
-        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.main.nodes[1])
+        plug_phase.with_plugs(my_plug=ChildPlug), main.nodes[1])
 
   def testWithPlugs_Teardown(self):
     group = htf.PhaseGroup(teardown=[blank_phase, plug_phase])
     plug_group = group.with_plugs(my_plug=ChildPlug)
-    self.assertEqual(blank_phase, plug_group.teardown.nodes[0])
+    teardown = plug_group.teardown
+    self.assertIsNotNone(teardown)
+    self.assertEqual(blank_phase, teardown.nodes[0])
     self.assertEqual(
-        plug_phase.with_plugs(my_plug=ChildPlug), plug_group.teardown.nodes[1])
+        plug_phase.with_plugs(my_plug=ChildPlug), teardown.nodes[1])
 
   def testWithPlugs_Recursive(self):
     inner_group = htf.PhaseGroup(main=[blank_phase, plug_phase])
