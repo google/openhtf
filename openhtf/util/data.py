@@ -36,6 +36,7 @@ from mutablerecords import records
 
 # Used by convert_to_base_types().
 PASSTHROUGH_TYPES = {bool, bytes, int, type(None), str}
+SUPPORTS_STR_ENUM = hasattr(enum, 'StrEnum')
 
 
 def pprint_diff(first, second, first_name='first', second_name='second'):
@@ -175,6 +176,8 @@ def convert_to_base_types(obj,
     obj = new_obj
   elif attr.has(type(obj)):
     obj = attr.asdict(obj, recurse=False)
+  elif SUPPORTS_STR_ENUM and isinstance(obj, enum.StrEnum):
+    obj = obj.value
   elif isinstance(obj, enum.Enum):
     obj = obj.name
 

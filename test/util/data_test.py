@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import enum
 import unittest
 
 import attr
@@ -53,6 +54,9 @@ class TestData(unittest.TestCase):
     class AnotherAttr(object):
       frozen = attr.ib(type=FrozenAttr)
 
+    class EnumClass(enum.Enum):
+      A = 0
+
     not_copied = NotRecursivelyCopied()
 
     example_data = {
@@ -67,6 +71,7 @@ class TestData(unittest.TestCase):
         'float_subclass': FloatSubclass(10.0),
         'special': SpecialBaseTypes('must_not_be_present'),
         'not_copied': not_copied,
+        'enum': EnumClass.A,
 
         # Some plugs such as UserInputPlug will return None as a response to
         # AsDict().
@@ -74,6 +79,12 @@ class TestData(unittest.TestCase):
         'frozen1': FrozenAttr(value=42),
         'another_attr': AnotherAttr(frozen=FrozenAttr(value=19)),
     }
+
+    if data.SUPPORTS_STR_ENUM:
+      class StrEnumClass(enum.StrEnum):
+        A = 'a'
+      example_data['str_enum'] = StrEnumClass.A
+
     converted = data.convert_to_base_types(example_data)
 
     self.assertIsInstance(converted['list'], list)
@@ -93,3 +104,7 @@ class TestData(unittest.TestCase):
 
     self.assertEqual(converted['frozen1'], {'value': 42})
     self.assertEqual(converted['another_attr'], {'frozen': {'value': 19}})
+
+    self.assertEqual(converted['enum'], 'A')
+    if data.SUPPORTS_STR_ENUM:
+      self.assertEqual(converted['str_enum'], 'a')
