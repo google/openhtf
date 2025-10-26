@@ -47,6 +47,11 @@
 .htf-layout-widgets-container {
   display: flex;
 }
+@media only screen and (max-width: 625px) {
+  .htf-layout-widgets-container {
+    display: block;
+  }
+}
 
 .htf-layout-widgets-row {
   margin-right: -$gutter-large;
@@ -71,6 +76,12 @@
   vertical-align: top;
   min-width: 300px;
   max-width: 300px;
+}
+@media only screen and (max-width: 625px) {
+  .htf-layout-widgets-right {
+    margin-left: 0;
+    max-width: none;
+  }
 }
 
 .htf-layout-widget {
