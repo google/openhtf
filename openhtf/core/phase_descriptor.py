@@ -274,6 +274,10 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     if self.options.phase_name_case == PhaseNameCase.CAMEL:
       name = inflection.camelize(name)
     return name
+  
+  @name.setter
+  def name(self, value):
+    self.options.name = value
 
   @property
   def doc(self) -> Optional[Text]:
