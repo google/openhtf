@@ -253,7 +253,7 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
     with self._cond:
       if self._prompt:
         if timeout_s is None:
-          self._cond.wait(3600 * 24 * 365)
+          self._cond.wait(threading.TIMEOUT_MAX)
         else:
           self._cond.wait(timeout_s)
       if self._response is None:
