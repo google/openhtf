@@ -23,7 +23,7 @@ dependencies = [
     "pyOpenSSL>=17.1.0",
     "requests>=2.27.1",
     "sockjs_tornado>=1.0.7",
-    "tornado>=6,<6.5",
+    "tornado==6.5.1",
     "typing_extensions>=4.12.2",
 ]
 license = {file = "LICENSE"}
