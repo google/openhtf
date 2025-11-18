@@ -109,19 +109,23 @@ _identity = lambda x: x
 
 class RangeValidatorBase(ValidatorBase, abc.ABC):
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def minimum(self):
     """Should return the minimum, inclusive value of the range."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def maximum(self):
     """Should return the maximum, inclusive value of the range."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def marginal_minimum(self):
     """Should return the marginal minimum, inclusive value of the range."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def marginal_maximum(self):
     """Should return the marginal maximum, inclusive value of the range."""
 

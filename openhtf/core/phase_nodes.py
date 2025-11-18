@@ -32,7 +32,8 @@ class PhaseNode(abc.ABC):
 
   __slots__ = ()
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def name(self) -> Optional[Text]:
     """Returns the name of this node."""
 
