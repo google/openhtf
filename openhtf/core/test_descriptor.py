@@ -258,6 +258,8 @@ class Test(object):
       test.abort_from_sig_int()
     if not cls.HANDLED_SIGINT_ONCE:
       cls.HANDLED_SIGINT_ONCE = True
+      # Re-raise the KeyboardInterrupt in the main thread so that any other
+      # handlers aren't oblivious to this having happened.
       raise KeyboardInterrupt
     # Otherwise, does not raise KeyboardInterrupt to ensure that the tests are
     # cleaned up.
@@ -340,7 +342,15 @@ class Test(object):
     except KeyboardInterrupt:
       # The SIGINT handler only raises the KeyboardInterrupt once, so only retry
       # that once.
+      _LOG.info(
+          'Waiting for clean interrupted exit from test: %s',
+          self.descriptor.code_info.name,
+      )
       self._executor.wait()
+      _LOG.info(
+          'Clean interrupted exit from test: %s',
+          self.descriptor.code_info.name,
+      )
       raise
     finally:
       try:

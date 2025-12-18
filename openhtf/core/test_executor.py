@@ -110,6 +110,7 @@ class TestExecutor(threads.KillableThread):
     self._last_execution_unit: str = None
     self._abort = threading.Event()
     self._full_abort = threading.Event()
+    self._execution_finished = threading.Event()
     # This is a reentrant lock so that the teardown logic that prevents aborts
     # affects nested sequences.
     self._teardown_phases_lock = threading.RLock()
@@ -165,15 +166,13 @@ class TestExecutor(threads.KillableThread):
   def finalize(self) -> test_state.TestState:
     """Finalize test execution and output resulting record to callbacks.
 
-    Should only be called once at the conclusion of a test run, and will raise
-    an exception if end_time_millis is already set.
+    Should only be called once at the conclusion of a test run.
 
     Returns:
       Finalized TestState.  It must not be modified after this call.
 
     Raises:
-      TestStopError: test
-      TestAlreadyFinalized if end_time_millis already set.
+      TestStopError: If the test is already stopped or never ran.
     """
     if not self.test_state:
       raise TestStopError('Test Stopped.')
@@ -193,10 +192,16 @@ class TestExecutor(threads.KillableThread):
         threading.TIMEOUT_MAX,
         31557600,  # Seconds in a year.
     )
-    self.join(timeout)
+    # This function is expected to be called twice in the case of a SIGINT,
+    # and in Python 3.12 the second call would always return immediately,
+    # preventing a clean exit (see `execute` in test_descriptor.py). Instead,
+    # we wait on an Event that we control.
+    self._execution_finished.wait(timeout)
+    self.join()
 
   def _thread_proc(self) -> None:
     """Handles one whole test from start to finish."""
+    self._execution_finished.clear()
     try:
       # Top level steps required to run a single iteration of the Test.
       self.test_state = test_state.TestState(self._test_descriptor, self.uid,
@@ -228,6 +233,7 @@ class TestExecutor(threads.KillableThread):
       raise
     finally:
       self._execute_test_teardown()
+      self._execution_finished.set()
 
   def _initialize_plugs(
       self,
