@@ -22,9 +22,9 @@ import unittest
 from unittest import mock
 
 import openhtf
-
 from openhtf import plugs
 from openhtf.core import base_plugs
+from openhtf.core import measurements
 from openhtf.util import test
 from openhtf.util import validators
 
@@ -162,7 +162,17 @@ class TestTest(test.TestCase):
     self.assertTestOutcomeCode(test_record, 0xBED)
     self.assertNotMeasured(test_record, 'unset_measurement')
     self.assertNotMeasured(test_record.phases[-1], 'unset_measurement')
-    self.assertMeasured(test_record, 'test_measurement', _DO_STUFF_RETVAL)
+    with self.subTest('assertMeasured no value'):
+      self.assertMeasured(test_record, 'test_measurement')
+    with self.subTest('assertMeasured with value'):
+      self.assertMeasured(test_record, 'test_measurement', _DO_STUFF_RETVAL)
+    with self.subTest('assertMeasured with value and outcome'):
+      self.assertMeasured(
+          test_record,
+          'test_measurement',
+          _DO_STUFF_RETVAL,
+          measurements.Outcome.PASS,
+      )
     self.assertMeasured(test_record, 'othr_measurement', 0xDEAD)
     with self.subTest(name='assert_measurement_pass_without_value'):
       self.assertMeasurementPass(test_record, 'passes')
@@ -174,9 +184,26 @@ class TestTest(test.TestCase):
       self.assertMeasurementFail(test_record, 'fails', 20)
     with self.subTest(name='assert_measurement_almost_equal'):
       self.assertMeasuredAlmostEqual(test_record, 'numeric_measurement', 10.0)
+    with self.subTest(name='assert_measurement_almost_equal_with_outcome'):
+      self.assertMeasuredAlmostEqual(
+          test_record,
+          'numeric_measurement',
+          10.0,
+          measurements.Outcome.PASS,
+      )
     with self.subTest(name='assert_measurement_almost_equal_with_delta'):
       self.assertMeasuredAlmostEqual(
           test_record, 'numeric_measurement', 9.5, delta=1.0
+      )
+    with self.subTest(
+        name='assert_measurement_almost_equal_with_delta_and_outcome'
+    ):
+      self.assertMeasuredAlmostEqual(
+          test_record,
+          'numeric_measurement',
+          9.5,
+          delta=1.0,
+          outcome=measurements.Outcome.PASS,
       )
 
   def test_execute_phase_or_test_test_with_patched_plugs(self):

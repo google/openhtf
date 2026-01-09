@@ -925,7 +925,14 @@ class TestCase(unittest.TestCase):
         _check_phase(phase_record)
 
   @_assert_phase_or_test_record
-  def assertMeasured(self, phase_record, measurement, value=mock.ANY):
+  def assertMeasured(
+      self,
+      phase_record,
+      measurement,
+      value=mock.ANY,
+      outcome: measurements.Outcome | None = None,
+  ):
+    """Asserts that the given measurement is set; value and outcome optional."""
     self.assertIn(measurement, phase_record.measurements,
                   f'Measurement {measurement} not found')
     self.assertTrue(
@@ -937,12 +944,22 @@ class TestCase(unittest.TestCase):
           'Measurement %s has wrong value: expected %s, got %s' %
           (measurement, value,
            phase_record.measurements[measurement].measured_value.value))
+    if outcome is not None:
+      self.assertIs(
+          outcome,
+          phase_record.measurements[measurement].outcome,
+      )
 
   @_assert_phase_or_test_record
   def assertMeasuredAlmostEqual(
-      self, phase_record, measurement, value, delta=None
+      self,
+      phase_record,
+      measurement,
+      value,
+      delta=None,
+      outcome: measurements.Outcome | None = None,
   ):
-    self.assertMeasured(phase_record, measurement)
+    self.assertMeasured(phase_record, measurement, mock.ANY, outcome)
     measured_value = phase_record.measurements[measurement].measured_value.value
     self.assertAlmostEqual(
         value,
@@ -956,15 +973,15 @@ class TestCase(unittest.TestCase):
 
   @_assert_phase_or_test_record
   def assertMeasurementPass(self, phase_record, measurement, value=mock.ANY):
-    self.assertMeasured(phase_record, measurement, value)
-    self.assertIs(measurements.Outcome.PASS,
-                  phase_record.measurements[measurement].outcome)
+    self.assertMeasured(
+        phase_record, measurement, value, measurements.Outcome.PASS
+    )
 
   @_assert_phase_or_test_record
   def assertMeasurementFail(self, phase_record, measurement, value=mock.ANY):
-    self.assertMeasured(phase_record, measurement, value)
-    self.assertIs(measurements.Outcome.FAIL,
-                  phase_record.measurements[measurement].outcome)
+    self.assertMeasured(
+        phase_record, measurement, value, measurements.Outcome.FAIL
+    )
 
   @_assert_phase_or_test_record
   def assertMeasurementMarginal(
