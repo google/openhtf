@@ -39,6 +39,9 @@ venv/
 node_modules/
 other_modules/
 
+# Local toolchains (not for commit)
+.tools/
+
 # Sublime Text stuff
 *.sublime-project
 *.sublime-workspace

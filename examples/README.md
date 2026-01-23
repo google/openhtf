@@ -65,6 +65,9 @@ prompt to continue the example.
     phases with their own setup and teardown logic.
 5.  [`repeat.py`](repeat.py): uses `openhtf.PhaseResult.REPEAT` to
     conditionally repeat execution of a phase in a test.
+6.  [`leds_yes_no_cancel.py`](leds_yes_no_cancel.py): demonstrates optional
+    `UserInput` prompt buttons (Yes/No/Cancel) and how the selected button text
+    is returned.
 
 ### Tutorials
 

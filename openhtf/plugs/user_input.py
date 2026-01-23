@@ -59,6 +59,9 @@ class Prompt(object):
   message = attr.ib(type=Text)
   text_input = attr.ib(type=bool)
   image_url = attr.ib(type=Optional[Text], default=None)
+  button_1_text = attr.ib(type=Optional[Text], default=None)
+  button_2_text = attr.ib(type=Optional[Text], default=None)
+  button_3_text = attr.ib(type=Optional[Text], default=None)
 
 
 class ConsolePrompt(threading.Thread):
@@ -157,7 +160,10 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
           'id': self._prompt.id,
           'message': self._prompt.message,
           'text-input': self._prompt.text_input,
-          'image-url': self._prompt.image_url
+          'image-url': self._prompt.image_url,
+          'button-1-text': self._prompt.button_1_text or '',
+          'button-2-text': self._prompt.button_2_text or '',
+          'button-3-text': self._prompt.button_3_text or '',
       }
 
   def tearDown(self) -> None:
@@ -177,7 +183,10 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
              text_input: bool = False,
              timeout_s: Union[int, float, None] = None,
              cli_color: Text = '',
-             image_url: Optional[Text] = None) -> Text:
+             image_url: Optional[Text] = None,
+             button_1_text: Optional[Text] = None,
+             button_2_text: Optional[Text] = None,
+             button_3_text: Optional[Text] = None) -> Text:
     """Display a prompt and wait for a response.
 
     Args:
@@ -186,6 +195,8 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
       cli_color: An ANSI color code, or the empty string.
       image_url: Optional image URL to display or None.
+      button_x_text: Optional. Show up to 3 buttons. If a button is clicked,
+        the returned value is the button text.
 
     Returns:
       A string response, or the empty string if text_input was False.
@@ -194,14 +205,24 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
       MultiplePromptsError: There was already an existing prompt.
       PromptUnansweredError: Timed out waiting for the user to respond.
     """
-    self.start_prompt(message, text_input, cli_color, image_url)
+    self.start_prompt(
+        message,
+        text_input,
+        cli_color,
+        image_url,
+        button_1_text,
+        button_2_text,
+        button_3_text)
     return self.wait_for_prompt(timeout_s)
 
   def start_prompt(self,
                    message: Text,
                    text_input: bool = False,
                    cli_color: Text = '',
-                   image_url: Optional[Text] = None) -> Text:
+                   image_url: Optional[Text] = None,
+                   button_1_text: Optional[Text] = None,
+                   button_2_text: Optional[Text] = None,
+                   button_3_text: Optional[Text] = None) -> Text:
     """Display a prompt.
 
     Args:
@@ -209,6 +230,7 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
       text_input: A boolean indicating whether the user must respond with text.
       cli_color: An ANSI color code, or the empty string.
       image_url: Optional image URL to display or None.
+      button_x_text: Optional. Show up to 3 buttons.  The button text is returned when clicked
 
     Raises:
       MultiplePromptsError: There was already an existing prompt.
@@ -229,7 +251,10 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
           id=prompt_id,
           message=message,
           text_input=text_input,
-          image_url=image_url)
+          image_url=image_url,
+          button_1_text=button_1_text, 
+          button_2_text=button_2_text, 
+          button_3_text=button_3_text)
       if sys.stdin.isatty():
         self._console_prompt = ConsolePrompt(
             message, functools.partial(self.respond, prompt_id), cli_color)

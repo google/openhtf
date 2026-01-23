@@ -77,3 +77,40 @@ class PlugsTest(unittest.TestCase):
     self.plug.start_prompt('Test first prompt.')
     with self.assertRaises(user_input.MultiplePromptsError):
       self.plug.start_prompt('Test second prompt.')
+
+  def test_prompt_asdict_includes_optional_buttons(self):
+    prompt_id = self.plug.start_prompt(
+        'Is the LED on?',
+        text_input=False,
+        button_1_text='Yes',
+        button_2_text='No',
+        button_3_text='Cancel')
+    as_dict = self.plug._asdict()
+    self.assertIsNotNone(as_dict)
+    self.assertEqual(as_dict['id'], prompt_id)
+    self.assertEqual(as_dict['message'], 'Is the LED on?')
+    self.assertEqual(as_dict['button-1-text'], 'Yes')
+    self.assertEqual(as_dict['button-2-text'], 'No')
+    self.assertEqual(as_dict['button-3-text'], 'Cancel')
+
+  def test_prompt_returns_button_text_when_used(self):
+
+    def _respond_to_prompt():
+      as_dict = None
+      while not as_dict:
+        time.sleep(0.05)
+        as_dict = self.plug._asdict()
+      # Simulate frontend returning the selected button label.
+      self.plug.respond(as_dict['id'], 'Yes')
+
+    thread = threading.Thread(target=_respond_to_prompt)
+    thread.start()
+    return_value = self.plug.prompt(
+        'Is the LED on?',
+        text_input=False,
+        button_1_text='Yes',
+        button_2_text='No',
+        button_3_text='Cancel')
+
+    self.assertIsNone(self.plug._asdict())
+    self.assertEqual(return_value, 'Yes')
