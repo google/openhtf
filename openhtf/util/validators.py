@@ -512,8 +512,8 @@ class WithinPercent(RangeValidatorBase):
 
 
 @register
-def within_percent(expected, percent):
-  return WithinPercent(expected, percent)
+def within_percent(expected, percent, marginal_percent=None):
+  return WithinPercent(expected, percent, marginal_percent)
 
 
 class DimensionPivot(ValidatorBase):
