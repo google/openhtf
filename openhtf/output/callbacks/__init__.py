@@ -133,6 +133,8 @@ class OutputToFile(object):
       serialized_record = self.serialize_test_record(test_rec)
       if isinstance(serialized_record, str):
         outfile.write(serialized_record.encode())
+      elif isinstance(serialized_record, bytes):
+        outfile.write(serialized_record)
       elif isinstance(serialized_record, Iterable):
         for chunk in serialized_record:
           outfile.write(chunk.encode() if isinstance(chunk, str) else chunk)
