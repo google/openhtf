@@ -362,7 +362,8 @@ class AttachmentsHandler(BaseTestHandler):
       self.set_status(404)
       return
 
-    self.set_header('Content-Type', attachment.mimetype)
+    if attachment.mimetype:
+      self.set_header('Content-Type', attachment.mimetype)
     self.write(attachment.data)
 
 
