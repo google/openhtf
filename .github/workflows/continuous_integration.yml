@@ -79,6 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Coveralls Finished
+      continue-on-error: true
       uses: coverallsapp/github-action@v2
       with:
         parallel-finished: true
