@@ -124,6 +124,10 @@ class PhaseOptions(object):
       timeout will still apply when under the debugger.
     phase_name_case: Case formatting options for phase name.
     stop_on_measurement_fail: Whether to stop the test if any measurements fail.
+    skip_failed_retries: If True, when a phase has repeat_on_measurement_fail
+      and would repeat due to measurement failure, mark that failed iteration
+      as SKIP instead of FAIL. Retries still run. The overall test outcome is
+      Passed if the last iteration passes (no FAIL phase). 
   Example Usages: @PhaseOptions(timeout_s=1)
     def PhaseFunc(test): pass  @PhaseOptions(name='Phase({port})')
     def PhaseFunc(test, port, other_info): pass
@@ -135,6 +139,7 @@ class PhaseOptions(object):
   requires_state = attr.ib(type=bool, default=False)
   force_repeat = attr.ib(type=bool, default=False)
   repeat_on_measurement_fail = attr.ib(type=bool, default=False)
+  skip_failed_retries = attr.ib(type=bool, default=False)
   repeat_on_timeout = attr.ib(type=bool, default=False)
   repeat_limit = attr.ib(type=Optional[int], default=None)
   run_under_pdb = attr.ib(type=bool, default=False)
@@ -165,6 +170,8 @@ class PhaseOptions(object):
       phase.options.force_repeat = self.force_repeat
     if self.repeat_on_measurement_fail:
       phase.options.repeat_on_measurement_fail = self.repeat_on_measurement_fail
+    if self.skip_failed_retries:
+      phase.options.skip_failed_retries = self.skip_failed_retries
     if self.repeat_limit is not None:
       phase.options.repeat_limit = self.repeat_limit
     if self.run_under_pdb:
