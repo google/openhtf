@@ -242,7 +242,7 @@ class PhaseExecutor(object):
     self._stopping = threading.Event()
 
   def _should_repeat(self, phase: phase_descriptor.PhaseDescriptor,
-                     phase_execution_outcome: PhaseExecutionOutcome) -> bool:
+                     phase_execution_outcome: PhaseExecutionOutcome, is_last_repeat: bool) -> bool:
     """Returns whether a phase should be repeated."""
     if phase_execution_outcome.is_timeout and phase.options.repeat_on_timeout:
       return True
@@ -252,7 +252,10 @@ class PhaseExecutor(object):
       return True
     elif phase.options.repeat_on_measurement_fail:
       last_phase_outcome = self.test_state.test_record.phases[-1].outcome
-      return last_phase_outcome == test_record.PhaseOutcome.FAIL
+      last_repeat_failed = last_phase_outcome == test_record.PhaseOutcome.FAIL
+      if last_repeat_failed and not is_last_repeat:
+        self.test_state.test_record.phases[-1].outcome = test_record.PhaseOutcome.SKIP
+      return last_repeat_failed
     return False
 
   def execute_phase(
@@ -285,7 +288,7 @@ class PhaseExecutor(object):
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome, profile_stats = self._execute_phase_once(
           phase, is_last_repeat, run_with_profiling, subtest_rec)
-      if (self._should_repeat(phase, phase_execution_outcome) and
+      if (self._should_repeat(phase, phase_execution_outcome, is_last_repeat) and
           not is_last_repeat):
         repeat_count += 1
         continue
