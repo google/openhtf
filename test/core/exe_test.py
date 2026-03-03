@@ -38,6 +38,7 @@ from openhtf.core import test_state
 
 from openhtf.util import configuration
 from openhtf.util import logs
+from openhtf.util import test as htf_test
 from openhtf.util import timeouts
 
 CONF = configuration.CONF
@@ -69,6 +70,17 @@ class UnittestPlug(base_plugs.BasePlug):
 
 class MoreRepeatsUnittestPlug(UnittestPlug):
   return_continue_count = 100
+
+
+class MeasValueProviderPlug(base_plugs.BasePlug):
+  """Plug that returns a meas value that fails twice then passes (10, 10, 4...)."""
+
+  def __init__(self):
+    self.call_count = 0
+
+  def get_meas_value(self):
+    self.call_count += 1
+    return 10 if self.call_count <= 2 else 4  # out of range twice, then in range
 
 
 class RepeatTracker():
@@ -148,6 +160,33 @@ def phase_repeat_on_measurement_fail(test, meas_value: int,
                                      tracker: RepeatTracker):
   test.measurements['meas_val'] = meas_value
   tracker.increment()
+
+
+@openhtf.PhaseOptions(
+    repeat_on_measurement_fail=True, skip_failed_retries=True, repeat_limit=5)
+@openhtf.measures(
+    openhtf.Measurement('meas_val').in_range(minimum=-5, maximum=5,))
+def phase_repeat_on_measurement_fail_skip_retries(test, meas_value: int,
+                                                  tracker: RepeatTracker):
+  test.measurements['meas_val'] = meas_value
+  tracker.increment()
+
+
+@openhtf.PhaseOptions(
+    repeat_on_measurement_fail=True, skip_failed_retries=True, repeat_limit=5)
+@openhtf.measures(
+    openhtf.Measurement('meas_val').in_range(minimum=-5, maximum=5,))
+@plugs.plug(meas_provider=MeasValueProviderPlug)
+def phase_skip_retries_fail_then_pass(test, meas_provider):
+  test.measurements['meas_val'] = meas_provider.get_meas_value()
+
+
+@openhtf.PhaseOptions(
+    repeat_on_measurement_fail=True, skip_failed_retries=True, repeat_limit=3)
+@openhtf.measures(
+    openhtf.Measurement('meas_val').in_range(minimum=-5, maximum=5,))
+def phase_skip_retries_always_fail(test):
+  test.measurements['meas_val'] = 10  # Always out of range.
 
 
 @openhtf.PhaseOptions(run_if=lambda: False)
@@ -1232,6 +1271,44 @@ class PhaseExecutorTest(parameterized.TestCase):
     self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
     self.assertEqual(tracker.get_num_repeats(), num_runs)
 
+  @parameterized.named_parameters(
+      # skip_failed_retries: measurement fails -> we mark failed iteration SKIP
+      # and retry; with repeat_limit=2 we run twice, one phase record gets SKIP.
+      ('skip_retries_measurement_fails_mark_skip_and_retry',
+       phase_repeat_on_measurement_fail_skip_retries, 10,
+       test_record.PhaseOutcome.FAIL, 2),
+      # skip_failed_retries: measurement passes -> no retry, one run.
+      ('skip_retries_measurement_passes_no_retry',
+       phase_repeat_on_measurement_fail_skip_retries, 4,
+       test_record.PhaseOutcome.PASS, 1),
+  )
+  def test_execute_repeat_on_measurement_fail_skip_failed_retries(
+      self, phase, meas_value, initial_outcome_for_mock, num_runs):
+    mock_test_state = mock.MagicMock(
+        spec=test_state.TestState,
+        plug_manager=plugs.PlugManager(),
+        execution_uid='01234567890',
+        state_logger=mock.MagicMock(),
+        test_record=test_record.TestRecord('mock-dut-id', 'mock-station-id'))
+    mock_test_state.plug_manager.initialize_plugs(
+        [UnittestPlug, MoreRepeatsUnittestPlug])
+    my_phase_record = test_record.PhaseRecord.from_descriptor(phase)
+    my_phase_record.outcome = initial_outcome_for_mock
+    mock_test_state.test_record.add_phase_record(my_phase_record)
+    my_phase_executor = phase_executor.PhaseExecutor(mock_test_state)
+    tracker = RepeatTracker()
+    phase_with_limit = phase.with_args(tracker=tracker, meas_value=meas_value)
+    phase_with_limit.options.repeat_limit = 2
+    result, _ = my_phase_executor.execute_phase(phase_with_limit)
+    self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
+    self.assertEqual(tracker.get_num_repeats(), num_runs)
+    # When we retried after a fail we set phases[-1].outcome = SKIP.
+    if initial_outcome_for_mock == test_record.PhaseOutcome.FAIL and num_runs >= 2:
+      self.assertEqual(
+          test_record.PhaseOutcome.SKIP,
+          mock_test_state.test_record.phases[-1].outcome,
+          'Failed iteration should be marked SKIP before retry.')
+
   def test_execute_run_if_false(self):
     result, _ = self.phase_executor.execute_phase(phase_skip_from_run_if)
     self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
@@ -1250,3 +1327,44 @@ class PhaseExecutorTest(parameterized.TestCase):
     self.assertEqual(
         phase_executor.ExceptionInfo(phase_executor.InvalidPhaseResultError,
                                      mock.ANY, mock.ANY), result.phase_result)
+
+
+class SkipFailedRetriesIntegrationTest(htf_test.TestCase):
+  """Integration tests for skip_failed_retries: failed iterations marked SKIP."""
+
+  def test_skip_failed_retries_fail_then_pass_overall_passed(self):
+    """With skip_failed_retries, failed iterations are SKIP; last PASS -> test PASS."""
+    record = self.execute_phase_or_test(
+        openhtf.Test(phase_skip_retries_fail_then_pass))
+    self.assertTestPass(record)
+    # Test adds trigger_phase plus our phase runs 3 times (fail, fail, pass).
+    phase_outcomes = [p.outcome for p in record.phases]
+    self.assertGreaterEqual(
+        len(phase_outcomes), 3,
+        'Phase should run at least 3 times: fail, fail, pass')
+    self.assertEqual(
+        [test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+         test_record.PhaseOutcome.PASS],
+        phase_outcomes[-3:],
+        'Last three (our phase iterations): first two SKIP, last PASS.')
+
+  def test_skip_failed_retries_hit_repeat_limit_last_fail_overall_fail(self):
+    """After repeat limit, last iteration is FAIL and overall outcome is FAIL."""
+    record = self.execute_phase_or_test(
+        openhtf.Test(phase_skip_retries_always_fail))
+    self.assertTestFail(record)
+    # trigger_phase + 3 runs of our phase (all fail).
+    phase_outcomes = [p.outcome for p in record.phases]
+    self.assertGreaterEqual(
+        len(phase_outcomes), 3,
+        'Phase should run 3 times (repeat_limit=3), all failing.')
+    # First two failed iterations marked SKIP; last (at limit) stays FAIL.
+    self.assertEqual(
+        test_record.PhaseOutcome.FAIL,
+        phase_outcomes[-1],
+        'Last iteration after hitting repeat limit should be FAIL.')
+    self.assertEqual(
+        [test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+         test_record.PhaseOutcome.FAIL],
+        phase_outcomes[-3:],
+        'Last three: first two SKIP, last FAIL.')
