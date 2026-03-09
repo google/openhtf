@@ -287,7 +287,7 @@ class PhaseExecutor(object):
           phase, is_last_repeat, run_with_profiling, subtest_rec)
       if (self._should_repeat(phase, phase_execution_outcome) and
           not is_last_repeat):
-        if phase.options.skip_failed_retries and self.test_state.test_record.phases:
+        if phase.options.repeat_on_measurement_fail and self.test_state.test_record.phases:
           self.test_state.test_record.phases[-1].outcome = test_record.PhaseOutcome.SKIP
         repeat_count += 1
         continue
