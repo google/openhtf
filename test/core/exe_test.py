@@ -16,6 +16,7 @@
 import logging
 import threading
 import time
+from typing import Callable, List
 import unittest
 from unittest import mock
 
@@ -38,6 +39,7 @@ from openhtf.core import test_state
 
 from openhtf.util import configuration
 from openhtf.util import logs
+from openhtf.util import test as htf_test
 from openhtf.util import timeouts
 
 CONF = configuration.CONF
@@ -125,29 +127,6 @@ def phase_repeat(test, test_plug):
   ret = test_plug.increment()
   print('phase_repeat completed for %s time' % test_plug.count)
   return openhtf.PhaseResult.CONTINUE if ret else openhtf.PhaseResult.REPEAT
-
-
-@openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
-@openhtf.measures(
-    openhtf.Measurement('example_dimension').with_dimensions(
-        'dim').dimension_pivot_validate(
-            util.validators.InRange(
-                minimum=-5,
-                maximum=5,
-            )))
-def phase_repeat_on_multidim_measurement_fail(test, meas_value: int,
-                                              tracker: RepeatTracker):
-  test.measurements['example_dimension'][0] = meas_value
-  tracker.increment()
-
-
-@openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
-@openhtf.measures(
-    openhtf.Measurement('meas_val').in_range(minimum=-5, maximum=5,))
-def phase_repeat_on_measurement_fail(test, meas_value: int,
-                                     tracker: RepeatTracker):
-  test.measurements['meas_val'] = meas_value
-  tracker.increment()
 
 
 @openhtf.PhaseOptions(run_if=lambda: False)
@@ -1194,43 +1173,6 @@ class PhaseExecutorTest(parameterized.TestCase):
     )
     self.assertEqual(openhtf.PhaseResult.STOP, result.phase_result)
 
-  @parameterized.named_parameters(
-      # NAME, PHASE, MEASUREMENT_VALUE, OUTCOME, EXPECTED_NUMBER_OF_RUNS.
-      # Not failing phase with a simple measurement value in range [-5, +5].
-      ('measurement_phase_not_failing', phase_repeat_on_measurement_fail, 4,
-       test_record.PhaseOutcome.PASS, 1),
-      # Failing phase with simple measurement value out of range.
-      ('measurement_phase_failing', phase_repeat_on_measurement_fail, 10,
-       test_record.PhaseOutcome.FAIL, 5),
-      # Not failing phase with a multidim measurement value in range [-5, +5].
-      ('multidim_measurement_phase_not_failing',
-       phase_repeat_on_multidim_measurement_fail, 4,
-       test_record.PhaseOutcome.PASS, 1),
-      # Failing phase with multidim measurement value out of range.
-      ('multidim_measurement_phase_failing',
-       phase_repeat_on_multidim_measurement_fail, 10,
-       test_record.PhaseOutcome.FAIL, 5),
-  )
-  def test_execute_repeat_on_measurement_fail_phase(self, phase, meas_value,
-                                                    outcome, num_runs):
-    mock_test_state = mock.MagicMock(
-        spec=test_state.TestState,
-        plug_manager=plugs.PlugManager(),
-        execution_uid='01234567890',
-        state_logger=mock.MagicMock(),
-        test_record=test_record.TestRecord('mock-dut-id', 'mock-station-id'))
-    mock_test_state.plug_manager.initialize_plugs(
-        [UnittestPlug, MoreRepeatsUnittestPlug])
-    my_phase_record = test_record.PhaseRecord.from_descriptor(phase)
-    my_phase_record.outcome = outcome
-    mock_test_state.test_record.add_phase_record(my_phase_record)
-    my_phase_executor = phase_executor.PhaseExecutor(mock_test_state)
-    tracker = RepeatTracker()
-    result, _ = my_phase_executor.execute_phase(
-        phase.with_args(tracker=tracker, meas_value=meas_value)
-    )
-    self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
-    self.assertEqual(tracker.get_num_repeats(), num_runs)
 
   def test_execute_run_if_false(self):
     result, _ = self.phase_executor.execute_phase(phase_skip_from_run_if)
@@ -1250,3 +1192,206 @@ class PhaseExecutorTest(parameterized.TestCase):
     self.assertEqual(
         phase_executor.ExceptionInfo(phase_executor.InvalidPhaseResultError,
                                      mock.ANY, mock.ANY), result.phase_result)
+
+_FAILING_MEAS_VALUE = 10
+_PASSING_MEAS_VALUE = 4
+_RANGE_MIN = -5
+_RANGE_MAX = 5
+
+@openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+@openhtf.measures(
+    openhtf.Measurement('example_dimension').with_dimensions(
+        'dim').dimension_pivot_validate(
+            util.validators.InRange(
+                minimum=_RANGE_MIN,
+                maximum=_RANGE_MAX,
+            )))
+def phase_repeat_on_multidim_measurement_fail(
+    test, meas_value_fn: Callable[[], int]):
+  test.measurements['example_dimension'][0] = meas_value_fn()
+
+
+@openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+@openhtf.measures(
+    openhtf.Measurement('meas_val').in_range(minimum=_RANGE_MIN, maximum=_RANGE_MAX,))
+def phase_repeat_on_measurement_fail(test, meas_value_fn: Callable[[], int]):
+  test.measurements['meas_val'] = meas_value_fn()
+
+
+class RepeatOnMeasurementFailIntegrationTest(parameterized.TestCase,
+                                               htf_test.TestCase):
+
+  def _run_phase_with_sequence(self, values: List[int]):
+    meas_value_mock = mock.Mock(side_effect=values)
+    phase = phase_repeat_on_measurement_fail.with_args(
+        meas_value_fn=meas_value_mock)
+    return self.execute_phase_or_test(openhtf.Test(phase))
+
+  def _run_multidim_phase_with_sequence(self, values: List[int]):
+    meas_value_mock = mock.Mock(side_effect=values)
+    phase = phase_repeat_on_multidim_measurement_fail.with_args(
+        meas_value_fn=meas_value_mock)
+    return self.execute_phase_or_test(openhtf.Test(phase))
+
+  @parameterized.named_parameters(
+      ('passes_first_try',
+       [_PASSING_MEAS_VALUE],
+       test_record.Outcome.PASS,
+       [test_record.PhaseOutcome.PASS]),
+      ('fails_then_passes',
+       [_FAILING_MEAS_VALUE, _PASSING_MEAS_VALUE],
+       test_record.Outcome.PASS,
+       [test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.PASS]),
+      ('fails_multiple_then_passes',
+       [
+           _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE,
+           _PASSING_MEAS_VALUE,
+       ],
+       test_record.Outcome.PASS,
+       [
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.PASS,
+       ]),
+      ('fails_all_retries',
+       [
+           _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE,
+           _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE,
+       ],
+       test_record.Outcome.FAIL,
+       [
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+           test_record.PhaseOutcome.FAIL,
+       ]),
+  )
+  def test_repeat_on_measurement_fail_sequence(
+      self,
+      values,
+      expected_test_outcome,
+      expected_phase_outcomes,
+  ):
+    record = self._run_phase_with_sequence(values)
+    self.assertEqual(expected_test_outcome, record.outcome)
+    phase_outcomes = [
+        p.outcome for p in record.phases
+        if p.name == phase_repeat_on_measurement_fail.name
+    ]
+    self.assertEqual(expected_phase_outcomes, phase_outcomes)
+
+  @parameterized.named_parameters(
+      ('passes_first_try',
+       [_PASSING_MEAS_VALUE],
+       test_record.Outcome.PASS,
+       [test_record.PhaseOutcome.PASS]),
+      ('fails_then_passes',
+       [_FAILING_MEAS_VALUE, _PASSING_MEAS_VALUE],
+       test_record.Outcome.PASS,
+       [test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.PASS]),
+      ('fails_multiple_then_passes',
+       [
+           _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE,
+           _PASSING_MEAS_VALUE,
+       ],
+       test_record.Outcome.PASS,
+       [
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.PASS,
+       ]),
+      ('fails_all_retries',
+       [
+           _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE,
+           _FAILING_MEAS_VALUE, _FAILING_MEAS_VALUE,
+       ],
+       test_record.Outcome.FAIL,
+       [
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+           test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+           test_record.PhaseOutcome.FAIL,
+       ]),
+  )
+  def test_repeat_on_multidim_measurement_fail_sequence(
+      self,
+      values,
+      expected_test_outcome,
+      expected_phase_outcomes,
+  ):
+    record = self._run_multidim_phase_with_sequence(values)
+    self.assertEqual(expected_test_outcome, record.outcome)
+    phase_outcomes = [
+        p.outcome for p in record.phases
+        if p.name == phase_repeat_on_multidim_measurement_fail.name
+    ]
+    self.assertEqual(expected_phase_outcomes, phase_outcomes)
+
+  def test_measurement_not_set_repeats_until_limit_when_allow_unset_false(self):
+    @openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+    @openhtf.measures(
+        openhtf.Measurement('meas_val').in_range(minimum=_RANGE_MIN, maximum=_RANGE_MAX))
+    def phase_measurement_not_set(_):
+      """ Never set test.measurements['meas_val'] """
+
+    record = self.execute_phase_or_test(openhtf.Test(phase_measurement_not_set))
+    self.assertTestFail(record)
+    phase_outcomes = [
+        p.outcome for p in record.phases
+        if p.name == phase_measurement_not_set.name
+    ]
+    self.assertEqual(5, len(phase_outcomes))
+    self.assertEqual(
+        [test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+         test_record.PhaseOutcome.SKIP, test_record.PhaseOutcome.SKIP,
+         test_record.PhaseOutcome.FAIL],
+        phase_outcomes)
+
+  @CONF.save_and_restore
+  def test_measurement_not_set_no_repeat_when_allow_unset_true(self):
+    CONF.load(allow_unset_measurements=True)
+
+    @openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+    @openhtf.measures(
+        openhtf.Measurement('meas_val').in_range(minimum=_RANGE_MIN, maximum=_RANGE_MAX))
+    def phase_measurement_not_set(_):
+      """ Never set test.measurements['meas_val'] """
+
+    record = self.execute_phase_or_test(openhtf.Test(phase_measurement_not_set))
+    self.assertTestPass(record)
+    phase_outcomes = [
+        p.outcome for p in record.phases
+        if p.name == phase_measurement_not_set.name
+    ]
+    self.assertEqual(1, len(phase_outcomes))
+    self.assertEqual([test_record.PhaseOutcome.PASS], phase_outcomes)
+
+  def test_no_repeat_when_phase_errors(self):
+    tracker = RepeatTracker()
+
+    @openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+    @openhtf.measures(
+        openhtf.Measurement('meas_val').in_range(minimum=_RANGE_MIN, maximum=_RANGE_MAX))
+    def phase_raises_error(_, tracker: RepeatTracker):
+      tracker.increment()
+      raise RuntimeError('Intentional error for test')
+
+    record = self.execute_phase_or_test(
+        phase_raises_error.with_args(tracker=tracker))
+    self.assertPhaseError(record)
+    self.assertEqual(1, tracker.get_num_repeats())
+
+  def test_no_repeat_when_phase_returns_stop(self):
+    tracker = RepeatTracker()
+
+    @openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
+    @openhtf.measures(
+        openhtf.Measurement('meas_val').in_range(minimum=_RANGE_MIN, maximum=_RANGE_MAX))
+    def phase_returns_stop(test, tracker: RepeatTracker):
+      test.measurements['meas_val'] = _FAILING_MEAS_VALUE
+      tracker.increment()
+      return openhtf.PhaseResult.STOP
+
+    record = self.execute_phase_or_test(
+        phase_returns_stop.with_args(tracker=tracker))
+    # STOP takes precedence - test should FAIL (due to measurement) without retry.
+    self.assertPhaseStop(record)
+    self.assertEqual(1, tracker.get_num_repeats())
+
+
