@@ -15,6 +15,7 @@
 """Output and/or upload a TestRun or MfgEvent proto for mfg-inspector.com."""
 
 import functools
+import io
 import logging
 import time
 import zlib
@@ -55,7 +56,7 @@ def _send_mfg_inspector_request(
   response = authorized_session.request(
       'POST',
       destination_url,
-      data=envelope_data,
+      data=io.BytesIO(envelope_data),
       timeout=_MFG_INSPECTOR_UPLOAD_TIMEOUT,
   )
 
