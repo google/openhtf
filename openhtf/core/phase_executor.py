@@ -170,10 +170,12 @@ class PhaseExecutorThread(threads.KillableThread):
     self._phase_desc = phase_desc
     self._test_state = test_state
     self._subtest_rec = subtest_rec
+    self._phase_state = test_state.running_phase_state
     self._phase_execution_outcome = None  # type: Optional[PhaseExecutionOutcome]
 
   def _thread_proc(self) -> None:
     """Execute the encompassed phase and save the result."""
+    self._test_state.running_phase_state = self._phase_state
     # Call the phase, save the return value, or default it to CONTINUE.
     phase_return = self._phase_desc(self._test_state)
     if phase_return is None:
@@ -320,9 +322,12 @@ class PhaseExecutor(object):
                           phase_desc.name)
         return PhaseExecutionOutcome(phase_descriptor.PhaseResult.SKIP), None
 
-
     override_result = None
-    with self.test_state.running_phase_context(phase_desc) as phase_state:
+    if id(phase_desc) in getattr(self.test_state, '_concurrent_nodes', set()):
+      ctx_mgr = self.test_state.concurrent_running_phase_context
+    else:
+      ctx_mgr = self.test_state.running_phase_context
+    with ctx_mgr(phase_desc) as phase_state:
       if subtest_rec:
         self.logger.debug('Executing phase %s under subtest %s (from %s)',
                           phase_desc.name, phase_desc.func_location,
