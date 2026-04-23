@@ -101,6 +101,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
         'plug_states': {},
     },
     'running_phase_state': copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL),
+    'running_phase_states': [copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL)],
 }
 
 
@@ -219,6 +220,8 @@ class TestTestApi(parameterized.TestCase):
     expected_initial_basetypes = copy.deepcopy(TEST_STATE_BASE_TYPE_INITIAL)
     descriptor_id = basetypes['running_phase_state']['descriptor_id']
     expected_initial_basetypes['running_phase_state']['descriptor_id'] = (
+        descriptor_id)
+    expected_initial_basetypes['running_phase_states'][0]['descriptor_id'] = (
         descriptor_id)
     self.assertEqual(expected_initial_basetypes, basetypes)
     self.running_phase_state._finalize_measurements()
