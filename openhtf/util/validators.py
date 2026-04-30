@@ -498,12 +498,8 @@ class WithinPercent(RangeValidatorBase):
               self.marginal_maximum <= value < self.maximum)
 
   def __str__(self) -> str:
-    string_parts = [(f"'x' is within {self.percent}% of {self.expected}.")]
-    if self.marginal_percent is not None:
-      string_parts.append(
-          f'Marginal: {self.marginal_percent}% of {self.expected}'
-      )
-    return ' '.join(string_parts)
+    return "'x' is within {}% of {}. Marginal: {}% of {}".format(
+        self.percent, self.expected, self.marginal_percent, self.expected)
 
   def __eq__(self, other) -> bool:
     return (isinstance(other, type(self)) and
