@@ -95,9 +95,14 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
 
   @classmethod
   def get_absolute_path(cls, root, path):
-    return os.path.join(root, path)
+    return os.path.abspath(os.path.join(root, path))
 
   def validate_absolute_path(self, root, abspath):
+    root = os.path.abspath(root)
+    if not abspath.startswith(root + os.sep) and abspath != root:
+      raise tornado.web.HTTPError(403)
+    if not os.path.isfile(abspath):
+      raise tornado.web.HTTPError(404)
     return abspath
 
 
