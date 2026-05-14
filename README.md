@@ -3,7 +3,7 @@
 # OpenHTF
 The open-source hardware testing framework.
 
-[![Build Status](https://github.com/google/openhtf/actions/workflows/build_and_deploy.yml/badge.svg?branch=master)](https://github.com/google/openhtf/actions?branch=master)
+[![Build Status](https://github.com/google/openhtf/actions/workflows/continuous_integration.yml/badge.svg?branch=master)](https://github.com/google/openhtf/actions?branch=master)
 [![Coverage Status](https://coveralls.io/repos/google/openhtf/badge.svg?branch=master&service=github)](https://coveralls.io/github/google/openhtf?branch=master)
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/google/openhtf.svg)](http://isitmaintained.com/project/google/openhtf "Percentage of issues still open")
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/google/openhtf.svg)](http://isitmaintained.com/project/google/openhtf "Average time to resolve an issue")
