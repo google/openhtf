@@ -46,7 +46,7 @@ export class StationComponent implements OnDestroy, OnInit {
   constructor(
       private stationService: StationService, private config: ConfigService) {}
 
-  get activeTest(): TestState|null {
+  public get activeTest(): TestState | null {
     if (this.selectedTest !== null) {
       return this.selectedTest;
     }

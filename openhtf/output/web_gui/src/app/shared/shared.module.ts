@@ -23,7 +23,6 @@
 
 import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
-import { HttpModule } from '@angular/http';
 
 import { ElapsedTimePipe } from './elapsed-time.pipe';
 import { FocusDirective } from './focus.directive';
@@ -41,7 +40,6 @@ import { TrimmedTextComponent } from './trimmed-text.component';
 @NgModule({
   imports: [
     CommonModule,
-    HttpModule,
   ],
   declarations: [
     ElapsedTimePipe,

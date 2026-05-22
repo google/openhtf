@@ -31,16 +31,16 @@ enum SubscriptionState {
   waiting,  // Failed and waiting to retry.
 }
 
-import { Subject } from 'rxjs/Subject';
+import { Subject } from 'rxjs';
 
 import { SockJsMessage, SockJsObject, SockJsService } from './sock-js.service';
 
 export class Subscription {
-  readonly messages = new Subject();
+  readonly messages = new Subject<SockJsMessage>();
   retryTimeMs: number|null = null;  // Available when state is `waiting`.
 
   private currentRetryMs: number|null = null;  // retryMs with backoff.
-  private retryTimeoutId: NodeJS.Timer|number|null = null;  // Timer from setTimeout().
+  private retryTimeoutId: any = null;  // Timer from setTimeout().
   private sock: SockJsObject|null = null;
   private state = SubscriptionState.unsubscribed;
 
@@ -106,7 +106,7 @@ export class Subscription {
 
   private cancelTimeout() {
     if (this.retryTimeoutId !== null) {
-      clearTimeout(this.retryTimeoutId as NodeJS.Timer);
+      clearTimeout(this.retryTimeoutId);
       this.retryTimeoutId = null;
     }
   }

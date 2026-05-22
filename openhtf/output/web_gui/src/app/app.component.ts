@@ -23,8 +23,6 @@ import { Component, ElementRef } from '@angular/core';
 import { ConfigService } from './core/config.service';
 import { Station } from './shared/models/station.model';
 
-import '../style/main.scss';
-
 @Component({
   selector: 'htf-app',
   templateUrl: './app.component.html',

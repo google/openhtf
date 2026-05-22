@@ -20,13 +20,10 @@
  * Bootstraps the app using the Angular module definition in app.module.ts.
  */
 
-import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 import { AppModule } from './app/app.module';
 
-if (process.env.ENV === 'build') {
-  enableProdMode();
-}
+// In modern Angular, production mode is handled by the build configuration.
 
 export function main() {
   return platformBrowserDynamic().bootstrapModule(AppModule);

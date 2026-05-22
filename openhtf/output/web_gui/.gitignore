@@ -1,2 +1,4 @@
+.angular/
+
 # Include dist
 !dist

@@ -19,18 +19,12 @@
  */
 
 import { HttpErrorResponse } from '@angular/common/http';
-import { Response } from '@angular/http';
 
 import { Station } from './models/station.model';
 import { TestState } from './models/test-state.model';
 
-// When running a development server, this should be set to point to the
-// dashboard server, e.g. `http://localhost:12000`. Otherwise, it should be
-// set to the empty string.
 export let devHost = '';
-if (process.env.ENV !== 'build') {
-  devHost = 'http://localhost:12000';
-}
+// In modern Angular, environment configuration is handled via angular.json and environment files.
 
 export const urlHost = window.location.host.split(':')[0];
 const localhostAddress = '127.0.0.1';
@@ -54,25 +48,6 @@ export function getTestBaseUrl(dashboardEnabled: boolean, test: TestState) {
   return `${stationBaseUrl}/tests/${test.testId}`;
 }
 
-export function messageFromErrorResponse(error: Response) {
-  if (error.status === 0) {
-    // The response object probably does not contain useful info.
-    return 'The request failed. See the JavaScript console for more info.';
-  }
-  let errorBody;
-  try {
-    const errorJson = error.json();
-    errorBody = errorJson.error;
-  } catch (e) {
-    const response = (error as {_body?: string})._body;
-    if (response) {
-      errorBody = response.replace(/\\"/g, '"');
-    } else {
-      errorBody = JSON.stringify(error);
-    }
-  }
-  return `${error.status} - ${error.statusText || ''}\n\n${errorBody}`;
-}
 
 /**
  * For use with the new HttpClient from @angular/common/http.
