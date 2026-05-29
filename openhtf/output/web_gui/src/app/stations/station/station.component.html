@@ -45,6 +45,20 @@
       <div class="u-flex-grow"></div>
       <span class="htf-support-text">{{ selectedStation.host }}:{{ selectedStation.port }}</span>
     </div>
+    <div
+      *ngIf="selectedStation.ddnsStatus"
+      class="status-bar-row u-text-color-deemphasize">
+      <div class="u-flex-grow"></div>
+      <span class="htf-support-text" [title]="ddnsTooltip">
+        DDNS<span
+          *ngIf="selectedStation.ddnsStatus === 'MATCH'"
+          class="ddns-indicator">&#x2705;</span><span
+          *ngIf="selectedStation.ddnsStatus === 'MISMATCH'"
+          class="ddns-indicator">&#x274C;</span><span
+          *ngIf="selectedStation.ddnsStatus === 'UNKNOWN'"
+          class="ddns-indicator ddns-indicator--unknown">?</span>
+      </span>
+    </div>
   </div>
 
   <div [class.station--is-offline]="!isOnline">

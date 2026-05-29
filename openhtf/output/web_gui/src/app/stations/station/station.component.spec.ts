@@ -72,6 +72,9 @@ class HistoryComponentStub {
 class HostComponent {
   station = new Station({
     cell: null,
+    ddnsHostname: null,
+    ddnsResolvedIp: null,
+    ddnsStatus: null,
     host: 'localhost',
     hostPort: 'localhost:12000',
     label: 'mock-station-id',
