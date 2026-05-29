@@ -69,6 +69,26 @@ export class StationComponent implements OnDestroy, OnInit {
     return !(this.hasError || this.isLoading);
   }
 
+  // Human-readable explanation of the DDNS indicator, shown on hover.
+  get ddnsTooltip(): string {
+    const station = this.selectedStation;
+    if (!station || !station.ddnsStatus) {
+      return '';
+    }
+    const hostname = station.ddnsHostname || 'the station hostname';
+    switch (station.ddnsStatus) {
+      case 'MATCH':
+        return `${hostname} resolves to ${station.ddnsResolvedIp}, ` +
+            `which matches the station's IP (${station.host}).`;
+      case 'MISMATCH':
+        return `${hostname} resolves to ${station.ddnsResolvedIp}, ` +
+            `but the station's IP is ${station.host}. The DDNS record is stale.`;
+      default:
+        return `Could not resolve ${hostname}. The DDNS record may be ` +
+            `missing or DNS may be unavailable.`;
+    }
+  }
+
   ngOnInit() {
     this.stationService.subscribe(
         this.selectedStation, subscriptionRetryMs, subscriptionRetryBackoff,

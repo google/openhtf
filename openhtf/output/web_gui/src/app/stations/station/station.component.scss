@@ -31,6 +31,15 @@
   display: flex;
 }
 
+.ddns-indicator {
+  margin-left: 4px;
+}
+
+.ddns-indicator--unknown {
+  color: $text-grey;
+  font-weight: bold;
+}
+
 .past-test-warning {
   color: $theme-red;
 

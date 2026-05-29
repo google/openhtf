@@ -20,7 +20,7 @@
 
 import { Injectable } from '@angular/core';
 
-import { Station, StationStatus } from '../../shared/models/station.model';
+import { DdnsStatus, Station, StationStatus } from '../../shared/models/station.model';
 import { SockJsMessage, SockJsService } from '../../shared/sock-js.service';
 import { Subscription } from '../../shared/subscription';
 import { devHost, urlHost } from '../../shared/util';
@@ -43,6 +43,11 @@ interface RawStation {
   status: string;
   test_description: string|null;
   test_name: string|null;
+  // The DDNS fields are only emitted by the single-station dashboard server;
+  // they are absent on the multi-station path and on older servers.
+  ddns_hostname?: string|null;
+  ddns_resolved_ip?: string|null;
+  ddns_status?: string|null;
 }
 
 interface DashboardApiResponse {
@@ -98,6 +103,13 @@ export class DashboardService extends Subscription {
       const rawStation = response[hostPort];
       newStations[hostPort] = new Station({
         cell: rawStation.cell,
+        ddnsHostname: rawStation.ddns_hostname != null ?
+            rawStation.ddns_hostname :
+            null,
+        ddnsResolvedIp: rawStation.ddns_resolved_ip != null ?
+            rawStation.ddns_resolved_ip :
+            null,
+        ddnsStatus: DashboardService.parseDdnsStatus(rawStation.ddns_status),
         host: rawStation.host,
         hostPort,
         label: DashboardService.getStationLabel(rawStation),
@@ -140,6 +152,17 @@ export class DashboardService extends Subscription {
         delete this.stations[hostPort];
       }
     }
+  }
+
+  /**
+   * Normalise the raw ddns_status field into a known DdnsStatus, or null when
+   * the server reported nothing recognisable (so the UI can omit the line).
+   */
+  private static parseDdnsStatus(raw: string|null|undefined): DdnsStatus|null {
+    if (raw === 'MATCH' || raw === 'MISMATCH' || raw === 'UNKNOWN') {
+      return raw;
+    }
+    return null;
   }
 
   private static getStationLabel(rawStation: RawStation) {

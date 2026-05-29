@@ -23,8 +23,20 @@ export enum StationStatus {
   unreachable,
 }
 
+// Health of the station's dynamic-DNS record, as reported by the server:
+//   MATCH    — the FQDN resolves to the station's current IP
+//   MISMATCH — the FQDN resolves, but to a different IP (stale record)
+//   UNKNOWN  — the FQDN could not be resolved (NXDOMAIN, timeout, no FQDN, ...)
+// A null value means the server did not report DDNS information at all (e.g. an
+// older server, or the multi-station dashboard path), in which case the UI
+// omits the DDNS line entirely.
+export type DdnsStatus = 'MATCH'|'MISMATCH'|'UNKNOWN';
+
 export class Station {
   cell: string|null;
+  ddnsHostname: string|null;
+  ddnsResolvedIp: string|null;
+  ddnsStatus: DdnsStatus|null;
   host: string;
   hostPort: string;  // Used to uniquely identify stations.
   label: string;

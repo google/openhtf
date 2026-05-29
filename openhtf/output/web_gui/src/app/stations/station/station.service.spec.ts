@@ -34,6 +34,9 @@ import { StationService } from './station.service';
 
 const mockStation = new Station({
   cell: null,
+  ddnsHostname: null,
+  ddnsResolvedIp: null,
+  ddnsStatus: null,
   host: 'localhost',
   hostPort: 'localhost:12000',
   label: 'mock-station-id',
@@ -46,6 +49,9 @@ const mockStation = new Station({
 
 const mockStation2 = new Station({
   cell: null,
+  ddnsHostname: null,
+  ddnsResolvedIp: null,
+  ddnsStatus: null,
   host: 'localhost',
   hostPort: 'localhost:12001',
   label: 'mock-station-id',
