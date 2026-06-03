@@ -36,13 +36,7 @@ const testWidgets = [
   'htf-logs',
   'htf-phase-list',
   'htf-test-summary',
-  'htf-abort-test-plug',
-  'htf-assembly-plug',
-  'htf-camera-demo-plug',
-  'htf-notifications-plug',
-  'htf-operator-plug',
   'htf-user-input-plug',
-  'laser-ybr-alignment-plug',
 ];
 
 function makeTestWidgetComponentStub(selector: string) {

@@ -20,8 +20,7 @@
 
 import { Component } from '@angular/core';
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable } from 'rxjs/Observable';
-import { Subject } from 'rxjs/Subject';
+import { Observable, Subject, of } from 'rxjs';
 
 import { ConfigService } from '../../core/config.service';
 import { StationStatus } from '../../shared/models/station.model';
@@ -79,7 +78,7 @@ class MockDashboardService {
 }
 
 class MockTimeService {
-  observable = Observable.of(1);
+  observable = of(1);
 }
 
 describe('station list component', () => {

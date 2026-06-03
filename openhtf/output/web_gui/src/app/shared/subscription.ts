@@ -143,7 +143,7 @@ export class Subscription {
         } else {
           this.currentRetryMs *= this.retryBackoff;
         }
-        this.currentRetryMs = Math.max(this.currentRetryMs, this.retryMax);
+        this.currentRetryMs = Math.min(this.currentRetryMs, this.retryMax);
         this.retryTimeMs = Date.now() + this.currentRetryMs;
         this.retryTimeoutId = setTimeout(() => {
           this.subscribeWithSavedParams();

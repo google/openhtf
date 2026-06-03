@@ -19,7 +19,7 @@
  */
 
 import { fakeAsync, tick } from '@angular/core/testing';
-import { Observable } from 'rxjs/Observable';
+import { Observable, of } from 'rxjs';
 
 import { PhaseStatus } from '../../shared/models/phase.model';
 import { Station, StationStatus } from '../../shared/models/station.model';
@@ -78,6 +78,7 @@ const createMockTestStateResponse = (testId: string, status: string) => {
           attachments: {},
           descriptor_id: 1,
           measurements: {},
+          outcome: 'PASS',
         }],
       },
     },
@@ -99,18 +100,14 @@ const makeMockPhaseDescriptor = (descriptorId) => {
 };
 
 const mockGetResponse = {
-  json: () => {
-    return {
-      data: [
-        makeMockPhaseDescriptor(1),
-        makeMockPhaseDescriptor(2),
-        makeMockPhaseDescriptor(3),
-      ]
-    };
-  },
+  data: [
+    makeMockPhaseDescriptor(1),
+    makeMockPhaseDescriptor(2),
+    makeMockPhaseDescriptor(3),
+  ]
 };
 
-const mockGetPhasesDescriptors = Observable.of(mockGetResponse);
+const mockGetPhasesDescriptors = of(mockGetResponse);
 
 /**
  * Mock services.

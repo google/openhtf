@@ -100,6 +100,12 @@
             "styles": [
               "src/styles.scss"
             ],
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "src/style/imports",
+                "node_modules/node-normalize-scss"
+              ]
+            },
             "scripts": [
               "node_modules/sockjs-client/dist/sockjs.min.js"
             ]
@@ -107,5 +113,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }
