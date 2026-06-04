@@ -144,11 +144,15 @@ message TestParameter {
   // Created for visualization by UIs that don't support certain fancy
   // parameters. UIs that do support them should hide these parameters.
   optional string associated_attachment = 21;
-  // Next tag = 28
+
+  // If using a unit not in the Units.UnitCode enum:
+  optional string custom_unit_code = 28;
+  optional string custom_unit_suffix = 29;
+  // Next tag = 30
 
   extensions 5000 to 5199;
 
-  reserved 25;
+  reserved 22, 23, 25;
 }
 
 
