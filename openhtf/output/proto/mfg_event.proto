@@ -112,17 +112,17 @@ message Measurement {
   optional int64 set_time_millis = 19;
   optional Units.UnitCode unit_code = 20;
   // If using a unit not in the Units.UnitCode enum:
-  optional string custom_unit_code = 22;
-  optional string custom_unit_suffix = 23;
+  optional string custom_unit_code = 27;
+  optional string custom_unit_suffix = 28;
 
   // Created for visualization by UIs that don't support certain fancy
   // parameters. UIs that do support them should hide these parameters.
   optional string associated_attachment = 21;
-  // Next tag = 27
+  // Next tag = 29
 
   extensions 5000 to 5199;
 
-  reserved 24;
+  reserved 22, 23, 24;
 }
 
 // A parameter which is extra information from a test run.  These values are not

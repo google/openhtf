@@ -146,13 +146,13 @@ message TestParameter {
   optional string associated_attachment = 21;
 
   // If using a unit not in the Units.UnitCode enum:
-  optional string custom_unit_code = 22;
-  optional string custom_unit_suffix = 23;
-  // Next tag = 28
+  optional string custom_unit_code = 28;
+  optional string custom_unit_suffix = 29;
+  // Next tag = 30
 
   extensions 5000 to 5199;
 
-  reserved 25;
+  reserved 22, 23, 25;
 }
 
 
