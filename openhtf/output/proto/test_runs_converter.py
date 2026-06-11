@@ -208,8 +208,15 @@ def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
     for validator in measurement.validators:
       mangled_param.description += '\nValidator: ' + str(validator)
 
-    if measurement.units and measurement.units.code in UOM_CODE_MAP:
-      mangled_param.unit_code = UOM_CODE_MAP[measurement.units.code]
+    if measurement.units:
+      unit_code = UOM_CODE_MAP.get(measurement.units.code)
+      if unit_code:
+        mangled_param.unit_code = unit_code
+      else:
+        if measurement.units.code:
+          mangled_param.custom_unit_code = measurement.units.code
+        if measurement.units.suffix:
+          mangled_param.custom_unit_suffix = measurement.units.suffix
     mangled_parameters[mangled_name] = mangled_param
 
 
@@ -226,8 +233,15 @@ def _extract_parameters(record, testrun, used_parameter_names):
       testrun_param.name = tr_name
       if measurement.docstring:
         testrun_param.description = measurement.docstring
-      if measurement.units and measurement.units.code in UOM_CODE_MAP:
-        testrun_param.unit_code = UOM_CODE_MAP[measurement.units.code]
+      if measurement.units:
+        unit_code = UOM_CODE_MAP.get(measurement.units.code)
+        if unit_code:
+          testrun_param.unit_code = unit_code
+        else:
+          if measurement.units.code:
+            testrun_param.custom_unit_code = measurement.units.code
+          if measurement.units.suffix:
+            testrun_param.custom_unit_suffix = measurement.units.suffix
 
       if measurement.marginal:
         testrun_param.status = test_runs_pb2.MARGINAL_PASS

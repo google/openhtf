@@ -409,10 +409,15 @@ class PhaseCopier(object):
     if measurement.docstring:
       mfg_measurement.description = measurement.docstring
     mfg_measurement.parameter_tag.append(phase.name)
-    if (measurement.units and
-        measurement.units.code in test_runs_converter.UOM_CODE_MAP):
-      mfg_measurement.unit_code = (
-          test_runs_converter.UOM_CODE_MAP[measurement.units.code])
+    if measurement.units:
+      unit_code = test_runs_converter.UOM_CODE_MAP.get(measurement.units.code)
+      if unit_code:
+        mfg_measurement.unit_code = unit_code
+      else:
+        if measurement.units.code:
+          mfg_measurement.custom_unit_code = measurement.units.code
+        if measurement.units.suffix:
+          mfg_measurement.custom_unit_suffix = measurement.units.suffix
 
     # Copy failed measurements as failure_codes. This happens early to include
     # unset measurements.

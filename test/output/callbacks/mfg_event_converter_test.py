@@ -319,6 +319,34 @@ class MfgEventConverterTest(unittest.TestCase):
     self.assertEqual(mock_measurement_within_percent.numeric_marginal_maximum,
                      0)
 
+  def test_copy_measurements_custom_units(self):
+    custom_unit = units.UnitDescriptor('gibibytes per second', None, 'GiB/s')
+    measurement = self._create_and_set_measurement(
+        'custom-units-meas', 10.5
+    ).with_units(custom_unit)
+
+    phase = test_record.PhaseRecord(
+        name='mock-phase-name',
+        descriptor_id=1,
+        codeinfo=self.create_codeinfo(),
+        measurements={
+            'custom-units-meas': measurement,
+        },
+    )
+
+    mfg_event = mfg_event_pb2.MfgEvent()
+    copier = mfg_event_converter.PhaseCopier([phase])
+    copier.copy_measurements(mfg_event)
+
+    self.assertEqual(len(mfg_event.measurement), 1)
+    mfg_measurement = mfg_event.measurement[0]
+    self.assertEqual(mfg_measurement.name, 'custom-units-meas')
+    self.assertEqual(
+        mfg_measurement.unit_code, test_runs_pb2.Units.UnitCode.Value('NONE')
+    )
+    self.assertFalse(mfg_measurement.HasField('custom_unit_code'))
+    self.assertEqual(mfg_measurement.custom_unit_suffix, 'GiB/s')
+
   def test_copy_attachments_from_phase(self):
     first_attachment_name = 'first_attachment_name'
     first_attachment = _create_hacked_massive_attachment()

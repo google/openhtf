@@ -23,14 +23,19 @@ import json
 
 import openhtf as htf
 from openhtf import util
+from openhtf.core import measurements
+from openhtf.core import phase_branches
+from openhtf.core import phase_collections
+from openhtf.core import phase_descriptor
+from openhtf.core import phase_group
+from openhtf.core import test_record as htf_test_record
 from examples import all_the_things
-from openhtf.core import phase_branches, phase_descriptor, phase_collections, phase_group
 from openhtf.output.callbacks import console_summary
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import mfg_event_converter
 from openhtf.output.proto import test_runs_converter
-from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
+from openhtf.output.proto import test_runs_pb2
 
 
 class TestOutput(test.TestCase):
@@ -167,6 +172,47 @@ class TestMfgEventOutput(test.TestCase):
           break
       else:
         raise AssertionError('No attachment named %s' % attachment_name)
+
+  def test_output_custom_units(self):
+    custom_unit = util.units.UnitDescriptor(
+        'gibibytes per second', None, 'GiB/s'
+    )
+    measurement = measurements.Measurement('custom-units-meas').with_units(
+        custom_unit
+    )
+    measurement.measured_value.set(10.5)
+    measurement.outcome = measurements.Outcome.PASS
+
+    test_rec = htf_test_record.TestRecord(
+        dut_id='mock-dut-id',
+        station_id='mock-station-id',
+        start_time_millis=100,
+        end_time_millis=500,
+        outcome=htf_test_record.Outcome.PASS,
+    )
+
+    phase_rec = htf_test_record.PhaseRecord(
+        name='mock-phase-name',
+        descriptor_id=1,
+        codeinfo=htf_test_record.CodeInfo.uncaptured(),
+        start_time_millis=200,
+        end_time_millis=400,
+        measurements={
+            'custom-units-meas': measurement,
+        },
+    )
+    test_rec.phases = [phase_rec]
+
+    test_run_proto = test_runs_converter.test_run_from_test_record(test_rec)
+
+    self.assertEqual(len(test_run_proto.test_parameters), 1)
+    param = test_run_proto.test_parameters[0]
+    self.assertEqual(param.name, 'custom-units-meas')
+    self.assertEqual(
+        param.unit_code, test_runs_pb2.Units.UnitCode.Value('NONE')
+    )
+    self.assertFalse(param.HasField('custom_unit_code'))
+    self.assertEqual(param.custom_unit_suffix, 'GiB/s')
 
 
 class TestConsoleSummary(test.TestCase):
