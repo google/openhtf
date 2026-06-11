@@ -323,7 +323,7 @@ class Test(object):
       else:
         trigger = test_start
 
-      if CONF.capture_source:
+      if CONF.capture_source and trigger:
         trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)
 
       self._executor = test_executor.TestExecutor(
