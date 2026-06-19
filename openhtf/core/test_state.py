@@ -33,6 +33,7 @@ import mimetypes
 import os
 import socket
 import sys
+import threading
 from typing import Any, Dict, Iterator, List, Optional, Set, TYPE_CHECKING, Text, Tuple, Union
 
 import attr
@@ -137,6 +138,10 @@ class TestState(util.SubscribableStateMixin):
       test_options: test_options passed through from Test.
     """
     super(TestState, self).__init__()
+    self.state_lock = threading.RLock()
+    self._thread_local = threading.local()
+    self._active_phase_states = list()
+    self._concurrent_nodes = set()
     self._status = self.Status.WAITING_FOR_TEST_START  # type: TestState.Status
 
     self.test_record = test_record.TestRecord(
@@ -181,6 +186,32 @@ class TestState(util.SubscribableStateMixin):
         'instead.')
 
   @property
+  def running_phase_state(self):
+    state = getattr(self._thread_local, 'phase_state', None)
+    if state is not None:
+      return state
+
+    with self.state_lock:
+      if not self._active_phase_states:
+        return None
+      if len(self._active_phase_states) > 1:
+        raise RuntimeError(
+            'Multiple active phase states found when'
+            ' self._thread_local.phase_state is None. This use case is not'
+            ' supported.'
+        )
+      return self._active_phase_states[0]
+
+  def add_concurrent_node(self, node_id: int) -> None:
+    """Add a node to the set of nodes that are running concurrently."""
+    with self.state_lock:
+      self._concurrent_nodes.add(node_id)
+
+  @running_phase_state.setter
+  def running_phase_state(self, value):
+    self._thread_local.phase_state = value
+
+  @property
   def test_api(self) -> 'test_descriptor.TestApi':
     """Create a TestApi for access to this TestState.
 
@@ -196,14 +227,20 @@ class TestState(util.SubscribableStateMixin):
     """
     if not self.running_phase_state:
       raise ValueError('test_api only available when phase is running.')
-    if not self._running_test_api:
-      self._running_test_api = openhtf.TestApi(
+    api = getattr(self._thread_local, 'test_api', None)
+    if (
+        not api
+        or getattr(api, 'running_phase_state', None) != self.running_phase_state
+    ):
+      api = openhtf.TestApi(
           measurements=measurements.Collection(
               self.running_phase_state.measurements),
           running_phase_state=self.running_phase_state,
           running_test_state=self,
       )
-    return self._running_test_api
+      self._thread_local.test_api = api
+      self._running_test_api = api
+    return api
 
   def get_attachment(self,
                      attachment_name: Text) -> Optional[test_record.Attachment]:
@@ -287,8 +324,10 @@ class TestState(util.SubscribableStateMixin):
     """
     assert not self.running_phase_state, 'Phase already running!'
     phase_logger = self.state_logger.getChild('phase.' + phase_desc.name)
-    phase_state = self.running_phase_state = PhaseState.from_descriptor(
-        phase_desc, self, phase_logger)
+    phase_state = PhaseState.from_descriptor(phase_desc, self, phase_logger)
+    self.running_phase_state = phase_state
+    with self.state_lock:
+      self._active_phase_states.append(phase_state)
     self.notify_update()  # New phase started.
     try:
       yield phase_state
@@ -296,19 +335,69 @@ class TestState(util.SubscribableStateMixin):
       phase_state.finalize()
       self.test_record.add_phase_record(phase_state.phase_record)
       self.running_phase_state = None
-      self._running_test_api = None
+      with self.state_lock:
+        if phase_state in self._active_phase_states:
+          self._active_phase_states.remove(phase_state)
       self.notify_update()  # Phase finished.
+
+  @contextlib.contextmanager
+  def concurrent_running_phase_context(
+      self,
+      phase_desc: phase_descriptor.PhaseDescriptor) -> Iterator['PhaseState']:
+    """Create an isolated, thread-safe context for a concurrent PhaseGraph node.
+
+    Args:
+      phase_desc: openhtf.PhaseDescriptor to start a context for.
+
+    Yields:
+      PhaseState to track transient state.
+    """
+    phase_logger = self.state_logger.getChild('phase.' + phase_desc.name)
+    phase_state = PhaseState.from_descriptor(phase_desc, self, phase_logger)
+
+    # Set running_phase_state and _running_test_api for the thread's context
+    with self.state_lock:
+      self.running_phase_state = phase_state
+      self._running_test_api = None
+      self._active_phase_states.append(phase_state)
+      self.notify_update()
+
+    try:
+      yield phase_state
+    finally:
+      phase_state.finalize()
+      with self.state_lock:
+        self.test_record.add_phase_record(phase_state.phase_record)
+        if phase_state in self._active_phase_states:
+          self._active_phase_states.remove(phase_state)
+        self.notify_update()
+      self.running_phase_state = None
 
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert to a dict representation composed exclusively of base types."""
-    running_phase_state = None
-    if self.running_phase_state:
-      running_phase_state = self.running_phase_state.as_base_types()
+    with self.state_lock:
+      running_phase_states = [
+          phase.as_base_types() for phase in self._active_phase_states
+      ]
+
+    if running_phase_states:
+      running_phase_output = running_phase_states[0]
+    elif self.running_phase_state:
+      # Includes manually/legacy set PhaseState.
+      legacy_basetype = self.running_phase_state.as_base_types()
+      running_phase_output = legacy_basetype
+      running_phase_states = [legacy_basetype]
+    else:
+      running_phase_output = None
+
     return {
         'status': data.convert_to_base_types(self._status),
         'test_record': self.test_record.as_base_types(),
         'plugs': self.plug_manager.as_base_types(),
-        'running_phase_state': running_phase_state,
+        # TODO(wuchiju): Remove running_phase_state once WebUI migrates to
+        # running_phase_states.
+        'running_phase_state': running_phase_output,
+        'running_phase_states': running_phase_states,
     }
 
   def _asdict(self) -> Dict[Text, Any]:
@@ -321,7 +410,12 @@ class TestState(util.SubscribableStateMixin):
 
   def stop_running_phase(self) -> None:
     """Stops the currently running phase, allowing another phase to run."""
-    self.running_phase_state = None
+    phase_state = self.running_phase_state
+    if phase_state and phase_state in self._active_phase_states:
+      with self.state_lock:
+        if phase_state in self._active_phase_states:
+          self._active_phase_states.remove(phase_state)
+      self.running_phase_state = None
 
   @property
   def last_run_phase_name(self) -> Optional[Text]:

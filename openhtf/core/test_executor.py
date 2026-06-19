@@ -13,15 +13,17 @@
 # limitations under the License.
 """TestExecutor executes tests."""
 
+import concurrent.futures
 import contextlib
 import enum
 import logging
+import multiprocessing
 import pstats
 import sys
 import tempfile
 import threading
 import traceback
-from typing import Iterator, List, Optional, Text, Type, TYPE_CHECKING
+from typing import Iterator, List, Optional, TYPE_CHECKING, Text, Type
 
 from openhtf import util
 from openhtf.core import base_plugs
@@ -30,6 +32,7 @@ from openhtf.core import phase_branches
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
+from openhtf.core import phase_graph
 from openhtf.core import phase_group
 from openhtf.core import phase_nodes
 from openhtf.core import test_record
@@ -602,6 +605,82 @@ class TestExecutor(threads.KillableThread):
       teardown_ret = _ExecutorReturn.CONTINUE
     return _more_critical(main_ret, teardown_ret)
 
+  def _execute_phase_graph(
+      self,
+      graph: phase_graph.PhaseGraph,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
+    """Executes the phases in a phase graph concurrently according to DAG ordering."""
+
+    if graph.name:
+      self.logger.debug('Entering PhaseGraph %s', graph.name)
+
+    nodes = list(graph.nodes)
+
+    completed_phases = set()
+    failed_phases = set()
+    running_futures = {}
+
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=min(32, (multiprocessing.cpu_count() or 1) + 4)
+    ) as pool:
+      while len(completed_phases) + len(failed_phases) < len(nodes):
+        if self._abort.is_set() or self._full_abort.is_set():
+          for fut in running_futures:
+            fut.cancel()
+          return _ExecutorReturn.TERMINAL
+
+        # Submit any unblocked and un-scheduled phase
+        made_progress = False
+        for node in nodes:
+          if (
+              node.name in completed_phases
+              or node.name in failed_phases
+              or node.name in running_futures.values()
+          ):
+            continue
+
+          prerequisite_satisfied = not node.options.prerequisites or all(
+              (pr if isinstance(pr, str) else getattr(pr, 'name', None))
+              in completed_phases
+              for pr in node.options.prerequisites
+          )
+
+          if prerequisite_satisfied:
+            self.running_test_state.add_concurrent_node(id(node))
+            fut = pool.submit(
+                self._execute_phase, node, subtest_rec, in_teardown
+            )
+            running_futures[fut] = node.name
+            made_progress = True
+
+        if not running_futures and not made_progress:
+          # Blocked completely / cycle or missing prerequisites
+          return _ExecutorReturn.TERMINAL
+
+        # Wait for at least one currently running future to complete
+        done, _ = concurrent.futures.wait(
+            running_futures.keys(),
+            return_when=concurrent.futures.FIRST_COMPLETED,
+        )
+
+        for fut in done:
+          p_name = running_futures.pop(fut)
+          try:
+            res = fut.result()
+            if res == _ExecutorReturn.TERMINAL:
+              failed_phases.add(p_name)
+              return _ExecutorReturn.TERMINAL
+            else:
+              completed_phases.add(p_name)
+          except Exception:  # pylint: disable=broad-except
+            self.logger.exception('Phase worker thread raised an exception.')
+            failed_phases.add(p_name)
+            return _ExecutorReturn.TERMINAL
+
+    return _ExecutorReturn.CONTINUE
+
   def _execute_node(self, node: phase_nodes.PhaseNode,
                     subtest_rec: Optional[test_record.SubtestRecord],
                     in_teardown: bool) -> _ExecutorReturn:
@@ -613,6 +692,8 @@ class TestExecutor(threads.KillableThread):
       return self._execute_sequence(node, subtest_rec, in_teardown)
     if isinstance(node, phase_group.PhaseGroup):
       return self._execute_phase_group(node, subtest_rec, in_teardown)
+    if isinstance(node, phase_graph.PhaseGraph):
+      return self._execute_phase_graph(node, subtest_rec, in_teardown)
     if isinstance(node, phase_descriptor.PhaseDescriptor):
       return self._execute_phase(node, subtest_rec, in_teardown)
     if isinstance(node, phase_branches.Checkpoint):
