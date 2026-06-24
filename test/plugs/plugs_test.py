@@ -11,6 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Tests for openhtf.plugs.
+
+This test module is designed to be fully hermetic: it must not open any
+network sockets or rely on any external services.  Specifically, even though
+FrontendAwareBasePlug is tested here, the PlugManager is exercised without
+starting the StationServer (or any other server), so no XML-RPC or WebSocket
+connection is ever established.  All plug-update signalling relies only on
+in-process threading.Event objects exposed by SubscribableStateMixin.
+
+See https://github.com/google/openhtf/issues/753.
+"""
 
 import threading
 import time
@@ -21,6 +32,11 @@ from openhtf.util import test
 
 
 class AdderPlug(base_plugs.FrontendAwareBasePlug):
+  """Frontend-aware test plug that tracks instantiation and counts.
+
+  Class-level attributes are reset in PlugsTest.setUp() to keep tests
+  isolated from one another.
+  """
 
   INSTANCE_COUNT = 0
   LAST_INSTANCE = None
@@ -45,14 +61,19 @@ class AdderPlug(base_plugs.FrontendAwareBasePlug):
 
 
 class AdderSubclassPlug(AdderPlug):
-  pass
+  """Subclass of AdderPlug, used to verify MRO-based tear-down detection."""
 
 
 class DummyPlug(base_plugs.BasePlug):
-  pass
+  """Minimal plug used for uses_base_tear_down tests."""
 
 
 class TearDownRaisesPlug1(base_plugs.BasePlug):
+  """Plug whose tearDown raises, used to verify error-resilient tear-down.
+
+  TORN_DOWN is reset in PlugsTest.setUp() to keep tests isolated.
+  """
+
   TORN_DOWN = False
 
   def tearDown(self):  # pylint: disable=g-missing-super-call
@@ -61,6 +82,11 @@ class TearDownRaisesPlug1(base_plugs.BasePlug):
 
 
 class TearDownRaisesPlug2(base_plugs.BasePlug):
+  """Second plug whose tearDown raises; ensures *all* plugs are torn down.
+
+  TORN_DOWN is reset in PlugsTest.setUp() to keep tests isolated.
+  """
+
   TORN_DOWN = False
 
   def tearDown(self):  # pylint: disable=g-missing-super-call
@@ -69,11 +95,24 @@ class TearDownRaisesPlug2(base_plugs.BasePlug):
 
 
 class PlugsTest(test.TestCase):
+  """Unit tests for the OpenHTF plug system.
+
+  All tests are hermetic: no sockets are opened.  Class-level state on plug
+  classes is explicitly reset in setUp() so that the order in which individual
+  test methods run has no effect on the outcome.
+  """
 
   def setUp(self):
     super(PlugsTest, self).setUp()
+    # Construct a fresh PlugManager for every test so that plug instances
+    # never leak across test boundaries.
     self.plug_manager = plugs.PlugManager({AdderPlug})
+    # Reset all class-level state that plug classes accumulate across
+    # instantiations.  Without these resets the tests are order-dependent.
     AdderPlug.INSTANCE_COUNT = 0
+    AdderPlug.LAST_INSTANCE = None
+    TearDownRaisesPlug1.TORN_DOWN = False
+    TearDownRaisesPlug2.TORN_DOWN = False
 
   def tearDown(self):
     self.plug_manager.tear_down_plugs()
@@ -157,6 +196,12 @@ class PlugsTest(test.TestCase):
     self.assertTrue(TearDownRaisesPlug2.TORN_DOWN)
 
   def test_plug_updates(self):
+    """Test update-notification path of FrontendAwareBasePlug.
+
+    This exercises SubscribableStateMixin.asdict_with_event() /
+    notify_update() entirely in-process via threading.Event objects.
+    No network socket is opened.
+    """
     self.plug_manager.initialize_plugs({AdderPlug})
     adder_plug_name = AdderPlug.__module__ + '.AdderPlug'
     update = self.plug_manager.wait_for_plug_update(adder_plug_name, {}, .001)
