@@ -40,7 +40,7 @@ class TestPhaseBranches(example_test.ExampleTestBase, parameterized.TestCase):
           user_prompts=["test_dut", "evt", "nothing broke"],
           expected_outcome="PASS",
           expected_phases=[
-              "trigger_phase",
+              "TriggerPhase",
               "SelectTestingBranchPhase",
               "EvtObservationPhase",
               "EvtValidationPhase",
@@ -51,7 +51,7 @@ class TestPhaseBranches(example_test.ExampleTestBase, parameterized.TestCase):
           user_prompts=["test_dut", "dvt", "looks fine"],
           expected_outcome="PASS",
           expected_phases=[
-              "trigger_phase",
+              "TriggerPhase",
               "SelectTestingBranchPhase",
               "DvtObservationPhase",
               "DvtValidationPhase",
@@ -62,7 +62,7 @@ class TestPhaseBranches(example_test.ExampleTestBase, parameterized.TestCase):
           user_prompts=["test_dut", "prototype", "lots of smoke and fire", ""],
           expected_outcome="FAIL",
           expected_phases=[
-              "trigger_phase",
+              "TriggerPhase",
               "SelectTestingBranchPhase",
               "PrototypeObservationPhase",
               "IncineratePhase",
@@ -73,7 +73,7 @@ class TestPhaseBranches(example_test.ExampleTestBase, parameterized.TestCase):
           user_prompts=["test_dut", "prototype", "everything is okay"],
           expected_outcome="PASS",
           expected_phases=[
-              "trigger_phase",
+              "TriggerPhase",
               "SelectTestingBranchPhase",
               "PrototypeObservationPhase",
               "PromiseCakePhase",

@@ -315,7 +315,9 @@ class Test(object):
 
       if isinstance(test_start, types.LambdaType):
 
-        @phase_descriptor.PhaseOptions()
+        @phase_descriptor.PhaseOptions(
+            phase_name_case=phase_descriptor.PhaseNameCase.CAMEL
+        )
         def trigger_phase(test):
           test.test_record.dut_id = typing.cast(types.LambdaType, test_start)()
 

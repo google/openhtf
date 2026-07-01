@@ -78,7 +78,7 @@ class TestOutput(test.TestCase):
 
     # Verify all expected phases included.
     expected_phase_names = [
-        'trigger_phase', 'hello_world', 'dimensions', 'attachments'
+        'TriggerPhase', 'hello_world', 'dimensions', 'attachments'
     ]
     actual_phase_names = [phase.name for phase in test_run_proto.phases]
     self.assertEqual(expected_phase_names, actual_phase_names)
@@ -144,7 +144,7 @@ class TestMfgEventOutput(test.TestCase):
 
     # Verify all expected phases included.
     expected_phase_names = [
-        'trigger_phase', 'hello_world', 'dimensions', 'attachments',
+        'TriggerPhase', 'hello_world', 'dimensions', 'attachments',
         'hello_world', 'attachments'
     ]
     actual_phase_names = [phase.name for phase in mfg_event.phases]

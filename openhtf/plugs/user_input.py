@@ -294,7 +294,9 @@ def prompt_for_test_start(
     cli_color: An ANSI color code, or the empty string.
   """
 
-  @openhtf.PhaseOptions(timeout_s=timeout_s)
+  @openhtf.PhaseOptions(
+      phase_name_case=openhtf.PhaseNameCase.CAMEL, timeout_s=timeout_s
+  )
   @plugs.plug(prompts=UserInput)
   def trigger_phase(test: openhtf.TestApi, prompts: UserInput) -> None:
     """Test start trigger that prompts the user for a DUT ID."""

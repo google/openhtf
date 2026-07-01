@@ -331,7 +331,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(
         text.StringFromTestRecord(record), 'Test finished with a PASS!\n'
         'Woohoo!\n'
-        'Phase trigger_phase\n'
+        'Phase TriggerPhase\n'
         '+ Outcome: PASS Result: CONTINUE\n'
         'Phase PhaseThatSucceeds\n'
         '+ Outcome: PASS Result: CONTINUE\n'
@@ -345,7 +345,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
     record = self.execute_phase_or_test(openhtf.Test(PhaseWithError))
     self.assertEqual(
         text.StringFromTestRecord(record), 'Test encountered an ERROR!!!\n'
-        'Phase trigger_phase\n'
+        'Phase TriggerPhase\n'
         '+ Outcome: PASS Result: CONTINUE\n'
         'Phase PhaseWithError\n'
         '+ Outcome: ERROR Result: Exception\n'
@@ -360,7 +360,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
     output = text.StringFromTestRecord(record)
     self.assertEqual(
         output, 'Test finished with a FAIL :(\n'
-        'Phase trigger_phase\n'
+        'Phase TriggerPhase\n'
         '+ Outcome: PASS Result: CONTINUE\n'
         'Phase PhaseWithFailure\n'
         '+ Outcome: FAIL Result: CONTINUE\n'
@@ -396,7 +396,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
         openhtf.Test(PhaseThatSucceeds, PhaseWithFailure))
     self.assertEqual(
         text.StringFromTestRecord(record), 'Test finished with a FAIL :(\n'
-        'Phase trigger_phase\n'
+        'Phase TriggerPhase\n'
         '+ Outcome: PASS Result: CONTINUE\n'
         'Phase PhaseThatSucceeds\n'
         '+ Outcome: PASS Result: CONTINUE\n'
