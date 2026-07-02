@@ -300,7 +300,7 @@ class TestMeasurement(htf_test.TestCase):
     with self.assertRaisesRegex(
         KeyError, r"None of \['assembly'\] are in the columns"
     ):
-      raise cm.exception.__cause__
+      raise cm.exception.__cause__  # pyrefly: ignore[bad-raise]
 
   def test_from_dataframe_raises_if_metric_missing_in_dataframe(self):
     measurement = self._make_multidim_measurement('°C')

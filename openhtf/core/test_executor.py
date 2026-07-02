@@ -107,7 +107,7 @@ class TestExecutor(threads.KillableThread):
     self._phase_exec = None  # type: Optional[phase_executor.PhaseExecutor]
     self.uid = execution_uid
     self._last_outcome = None  # type: Optional[phase_executor.PhaseExecutionOutcome]
-    self._last_execution_unit: str = None
+    self._last_execution_unit: str = None  # pyrefly: ignore[bad-assignment]
     self._abort = threading.Event()
     self._full_abort = threading.Event()
     self._execution_finished = threading.Event()
@@ -248,7 +248,7 @@ class TestExecutor(threads.KillableThread):
     """
     try:
       self.running_test_state.plug_manager.initialize_plugs(
-          plug_types=plug_types
+          plug_types=plug_types  # pyrefly: ignore[bad-argument-type]
       )
       return False
     except Exception:  # pylint: disable=broad-except
@@ -277,7 +277,7 @@ class TestExecutor(threads.KillableThread):
     # Have the phase executor run the start trigger phase. Do partial plug
     # initialization for just the plugs needed by the start trigger phase.
     if self._initialize_plugs(
-        plug_types=[phase_plug.cls for phase_plug in self._test_start.plugs]):
+        plug_types=[phase_plug.cls for phase_plug in self._test_start.plugs]):  # pyrefly: ignore[bad-argument-type]
       return True
 
     outcome, profile_stats = self.phase_executor.execute_phase(
@@ -493,7 +493,7 @@ class TestExecutor(threads.KillableThread):
         outcome=test_record.SubtestOutcome.PASS)
     yield subtest_rec
     subtest_rec.end_time_millis = util.time_millis()
-    self.test_state.test_record.add_subtest_record(subtest_rec)
+    self.test_state.test_record.add_subtest_record(subtest_rec)  # pyrefly: ignore[missing-attribute]
 
   def _execute_subtest(self, subtest: phase_collections.Subtest,
                        outer_subtest_rec: Optional[test_record.SubtestRecord],

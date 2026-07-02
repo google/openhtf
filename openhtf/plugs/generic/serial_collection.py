@@ -80,7 +80,7 @@ class SerialCollectionPlug(base_plugs.BasePlug):
       try:
         with open(dest, 'w+') as outfile:
           while self._collect:
-            data = self._serial.readline().decode()
+            data = self._serial.readline().decode()  # pyrefly: ignore[missing-attribute]
             outfile.write(data)
       except self.SERIAL_EXCEPTIONS:
         self.logger.error(
@@ -90,8 +90,8 @@ class SerialCollectionPlug(base_plugs.BasePlug):
     self._collection_thread = threading.Thread(target=_poll)
     self._collection_thread.daemon = True
     self.logger.debug('Starting serial data collection on port %s.' %
-                      self._serial.port)
-    self._serial.open()
+                      self._serial.port)  # pyrefly: ignore[missing-attribute]
+    self._serial.open()  # pyrefly: ignore[missing-attribute]
     self._collection_thread.start()
 
   @property
@@ -105,5 +105,5 @@ class SerialCollectionPlug(base_plugs.BasePlug):
       self.logger.warning('Data collection was not running, cannot be stopped.')
       return
     self._collect = False
-    self._collection_thread.join()
-    self._serial.close()
+    self._collection_thread.join()  # pyrefly: ignore[missing-attribute]
+    self._serial.close()  # pyrefly: ignore[missing-attribute]

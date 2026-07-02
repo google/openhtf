@@ -42,14 +42,14 @@ def call_once(func):
   @functools.wraps(func)
   def _wrapper():
     # If we haven't been called yet, actually invoke func and save the result.
-    if not _wrapper.has_run():
-      _wrapper.mark_as_run()
-      _wrapper.return_value = func()
-    return _wrapper.return_value
+    if not _wrapper.has_run():  # pyrefly: ignore[missing-attribute]
+      _wrapper.mark_as_run()  # pyrefly: ignore[missing-attribute]
+      _wrapper.return_value = func()  # pyrefly: ignore[missing-attribute]
+    return _wrapper.return_value  # pyrefly: ignore[missing-attribute]
 
-  _wrapper._has_run = False  # pylint: disable=protected-access
-  _wrapper.has_run = lambda: _wrapper._has_run  # pylint: disable=protected-access
-  _wrapper.mark_as_run = lambda: setattr(_wrapper, '_has_run', True)
+  _wrapper._has_run = False  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
+  _wrapper.has_run = lambda: _wrapper._has_run  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
+  _wrapper.mark_as_run = lambda: setattr(_wrapper, '_has_run', True)  # pyrefly: ignore[missing-attribute]
   return _wrapper
 
 

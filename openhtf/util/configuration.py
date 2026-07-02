@@ -269,7 +269,7 @@ def bind_init_args(class_def: Type[T], *args: ConfigValueHolderType,
     values.
   """
 
-  class NewClass(class_def):
+  class NewClass(class_def):  # pyrefly: ignore[invalid-inheritance]
     """Derived class from class_def. This doc will be replaced."""
 
     def __init__(self) -> None:
@@ -294,7 +294,7 @@ def bind_init_args(class_def: Type[T], *args: ConfigValueHolderType,
   NewClass.__doc__ = (
       f'Plug class defined at runtime from {class_def.__module__}.'
       f'{class_def.__qualname__}.{doc_tail}')
-  return NewClass
+  return NewClass  # pyrefly: ignore[bad-return]
 
 
 class DefaultNotDefinedError(Exception):

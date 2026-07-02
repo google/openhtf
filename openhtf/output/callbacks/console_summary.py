@@ -61,13 +61,13 @@ class ConsoleSummary():
     if outcome is None:
       raise ValueError('record.outcome is None')
     output_lines = [
-        ''.join((self.color_table[record.outcome], self.BOLD,
+        ''.join((self.color_table[record.outcome], self.BOLD,  # pyrefly: ignore[bad-index]
                  record.code_info.name, ':', outcome.name, self.RESET))
     ]
     if record.outcome != test_record.Outcome.PASS:
       for phase in record.phases:
         new_phase = True
-        phase_time_sec = (float(phase.end_time_millis) -
+        phase_time_sec = (float(phase.end_time_millis) -  # pyrefly: ignore[bad-argument-type]
                           float(phase.start_time_millis)) / 1000.0
         for name, measurement in phase.measurements.items():
           if measurement.outcome != measurements.Outcome.PASS:
@@ -85,7 +85,7 @@ class ConsoleSummary():
               output_lines.append('%svalidator: %s' %
                                   (self.indent * 3, str(validator)))
 
-        phase_result = phase.result.phase_result
+        phase_result = phase.result.phase_result  # pyrefly: ignore[missing-attribute]
         if not phase_result:  # Timeout.
           output_lines.append('timeout phase: %s [ran for %.2f sec]' %
                               (phase.name, phase_time_sec))

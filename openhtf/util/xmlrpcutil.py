@@ -43,7 +43,7 @@ class TimeoutTransport(xmlrpc.client.Transport):  # pylint: disable=missing-clas
 
   def __init__(self, timeout_s, *args, **kwargs):
     xmlrpc.client.Transport.__init__(self, *args, **kwargs)
-    self._connection = None
+    self._connection = None  # pyrefly: ignore[bad-assignment]
     self.timeout_s = timeout_s
 
   def settimeout(self, timeout_s):

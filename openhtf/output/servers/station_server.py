@@ -271,8 +271,8 @@ class StationPubSub(pub_sub.PubSub):
   with this StationServer. Two types of message are sent: 'update' and 'record',
   where 'record' indicates the final state of a test.
   """
-  _lock = threading.Lock()  # Required by pub_sub.PubSub.
-  subscribers = set()  # Required by pub_sub.PubSub.
+  _lock = threading.Lock()  # Required by pub_sub.PubSub.  # pyrefly: ignore[bad-override]
+  subscribers = set()  # Required by pub_sub.PubSub.  # pyrefly: ignore[bad-override]
   _last_execution_uid = None
   _last_message = None
 
@@ -331,7 +331,7 @@ class BaseTestHandler(web_gui_server.CorsRequestHandler):
 class AttachmentsHandler(BaseTestHandler):
   """GET endpoint for a file attached to a test."""
 
-  def get(self, test_uid, phase_descriptor_id, attachment_name):
+  def get(self, test_uid, phase_descriptor_id, attachment_name):  # pyrefly: ignore[bad-override]
     _, test_state = self.get_test(test_uid)
 
     if test_state is None:
@@ -369,7 +369,7 @@ class AttachmentsHandler(BaseTestHandler):
 class PhasesHandler(BaseTestHandler):
   """GET endpoint for phase descriptors for a test, i.e. the full phase list."""
 
-  def get(self, test_uid):
+  def get(self, test_uid):  # pyrefly: ignore[bad-override]
     test, _ = self.get_test(test_uid)
 
     if test is None:
@@ -387,7 +387,7 @@ class PhasesHandler(BaseTestHandler):
 class PlugsHandler(BaseTestHandler):
   """POST endpoints to receive plug responses from the frontend."""
 
-  def post(self, test_uid, plug_name):
+  def post(self, test_uid, plug_name):  # pyrefly: ignore[bad-override]
     _, test_state = self.get_test(test_uid)
 
     if test_state is None:
@@ -432,7 +432,7 @@ class BaseHistoryHandler(web_gui_server.CorsRequestHandler):
 
   history_path = None
 
-  def initialize(self, history_path):
+  def initialize(self, history_path):  # pyrefly: ignore[bad-override]
     self.history_path = history_path
 
 
@@ -449,7 +449,7 @@ class HistoryListHandler(BaseHistoryHandler):
   start time as query parameters.
   """
 
-  def get(self):
+  def get(self):  # pyrefly: ignore[bad-override]
     filter_dut_id = self.get_arguments('dutId')
     filter_start_time_millis = self.get_arguments('startTimeMillis')
 
@@ -492,7 +492,7 @@ class HistoryListHandler(BaseHistoryHandler):
 class HistoryItemHandler(BaseHistoryHandler):
   """GET endpoint for a test record from the history."""
 
-  def get(self, file_name):
+  def get(self, file_name):  # pyrefly: ignore[bad-override]
     # TODO(kenadia): Implement the history item handler. The implementation
     # depends on the format used to store test records on disk.
     self.write('Not implemented.')
@@ -508,7 +508,7 @@ class HistoryAttachmentsHandler(BaseHistoryHandler):
   on the MfgEvent in the case where multiple attachments have the same name.
   """
 
-  def get(self, file_name, attachment_name):
+  def get(self, file_name, attachment_name):  # pyrefly: ignore[bad-override]
     # TODO(kenadia): Implement the history item handler. The implementation
     # depends on the format used to store test records on disk.
     self.write('Not implemented.')

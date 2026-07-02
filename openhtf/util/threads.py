@@ -48,7 +48,7 @@ def loop(_=None, force=False):
       while True:
         fn(*args, **kwargs)
 
-    _proc.once = fn  # way for tests to invoke the function once
+    _proc.once = fn  # way for tests to invoke the function once  # pyrefly: ignore[missing-attribute]
     # you may need to pass in "self" since this may be unbound.
     return _proc
 

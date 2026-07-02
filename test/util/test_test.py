@@ -486,7 +486,7 @@ class GetFlattenedPhasesTest(unittest.TestCase):
         ],
     ]
     node_names = []
-    for node in test.get_flattened_phases(nested_nodes):
+    for node in test.get_flattened_phases(nested_nodes):  # pyrefly: ignore[bad-argument-type]
       node_names.append(node.name)
     self.assertEqual(
         node_names,

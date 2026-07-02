@@ -231,7 +231,7 @@ class MfgEventConverterTest(unittest.TestCase):
     measurement = measurements.Measurement(
         name=name,
         outcome=measurements.Outcome.PASS,
-        measured_value=measured_value)
+        measured_value=measured_value)  # pyrefly: ignore[unexpected-keyword]
     return measurement
 
   def test_copy_measurements_from_phase(self):

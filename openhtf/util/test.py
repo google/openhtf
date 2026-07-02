@@ -172,7 +172,7 @@ from openhtf.plugs import device_wrapping
 from openhtf.util import logs
 from openhtf.util import text
 
-logs.CLI_LOGGING_VERBOSITY = 2
+logs.CLI_LOGGING_VERBOSITY = 2  # pyrefly: ignore[bad-assignment]
 
 # TestApi.dut_id attribute when running unit tests with the module-supplied
 # test start function.
@@ -245,7 +245,7 @@ class PhaseNodeNameComparable(TestNode):
     """Returns a base type dictionary for serialization."""
     return {'name': self.name}
 
-  def __eq__(self, other: phase_nodes.PhaseNode) -> bool:
+  def __eq__(self, other: phase_nodes.PhaseNode) -> bool:  # pyrefly: ignore[bad-override]
     return self.name == other.name
 
 
@@ -278,7 +278,7 @@ class PhaseNodeComparable(TestNode):
   def _asdict(self) -> Dict[Text, Any]:
     return {'name': self.name, 'args': self.args, 'kwargs': self.kwargs}
 
-  def __eq__(self, other: phase_nodes.PhaseNode) -> bool:
+  def __eq__(self, other: phase_nodes.PhaseNode) -> bool:  # pyrefly: ignore[bad-override]
     return (isinstance(other, PhaseNodeComparable) and
             self.name == other.name and self.args == other.args and
             self.kwargs == other.kwargs)
@@ -295,10 +295,10 @@ class FakeTestApi(test_descriptor.TestApi):
         test_state.TestState,
         test_record=test_record.TestRecord('DUT', 'STATION'),
         user_defined_state={})
-    super(FakeTestApi, self).__init__(
+    super(FakeTestApi, self).__init__(  # pyrefly: ignore[missing-argument]
         measurements={},
-        running_phase_state=self.mock_phase_state,
-        running_test_state=self.mock_test_state)
+        running_phase_state=self.mock_phase_state,  # pyrefly: ignore[unexpected-keyword]
+        running_test_state=self.mock_test_state)  # pyrefly: ignore[unexpected-keyword]
 
 
 def filter_phases_by_names(phase_recs: Iterable[test_record.PhaseRecord],
@@ -374,7 +374,7 @@ class PhaseOrTestIterator(Iterator):
     # been initialized.
     plug_types = list(plug_types)
     self.plug_manager.initialize_plugs(
-        plug_cls for plug_cls in plug_types if plug_cls not in self.mock_plugs)
+        plug_cls for plug_cls in plug_types if plug_cls not in self.mock_plugs)  # pyrefly: ignore[bad-argument-type]
     for plug_type, plug_value in self.mock_plugs.items():
       self.plug_manager.update_plug(plug_type, plug_value)
     for plug_type in plug_types:
@@ -423,7 +423,7 @@ class PhaseOrTestIterator(Iterator):
           subtest_rec=None)
 
     if profile_filepath is not None:
-      _merge_stats(profile_stats, profile_filepath)
+      _merge_stats(profile_stats, profile_filepath)  # pyrefly: ignore[bad-argument-type]
 
     if phase_result.raised_exception:
       failure_message = phase_result.phase_result.get_traceback_string()
@@ -457,9 +457,9 @@ class PhaseOrTestIterator(Iterator):
       profile_tempfile.close()
 
     test_record_ = record_saver.result
-    if test_record_.outcome_details:
+    if test_record_.outcome_details:  # pyrefly: ignore[missing-attribute]
       msgs = []
-      for detail in test_record_.outcome_details:
+      for detail in test_record_.outcome_details:  # pyrefly: ignore[not-iterable]
         msgs.append('code: {}\ndescription: {}'.format(detail.code,
                                                        detail.description))
       failure_message = '\n'.join(msgs)
@@ -663,9 +663,9 @@ class TestCase(unittest.TestCase):
   _profile_output_dir: Optional[pathlib.Path] = None
 
   def __init__(self, methodName=None):
-    super(TestCase, self).__init__(methodName=methodName)
+    super(TestCase, self).__init__(methodName=methodName)  # pyrefly: ignore[bad-argument-type]
     if methodName != 'runTest':
-      test_method = getattr(self, methodName)
+      test_method = getattr(self, methodName)  # pyrefly: ignore[bad-argument-type]
       if inspect.isgeneratorfunction(test_method):
         raise ValueError('%s yields without @openhtf.util.test.yields_phases' %
                          methodName)
@@ -1034,7 +1034,7 @@ class TestCase(unittest.TestCase):
       # Remove file if it already exists. This has to be done in setUpClass
       # because we want to clear it before the test case starts, but to be
       # updated as individual test* methods are run.
-      os.remove(cls.get_profile_filepath())
+      os.remove(cls.get_profile_filepath())  # pyrefly: ignore[bad-argument-type]
     except FileNotFoundError:
       pass
 

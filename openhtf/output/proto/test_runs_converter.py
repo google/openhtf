@@ -201,7 +201,7 @@ def _mangle_measurement(name, measured_value, measurement, mangled_parameters,
             name, tuple(d.suffix for d in measurement.dimensions)))
 
     if isinstance(val, numbers.Number):
-      mangled_param.numeric_value = float(val)
+      mangled_param.numeric_value = float(val)  # pyrefly: ignore[bad-argument-type]
     else:
       mangled_param.text_value = str(val)
     # Check for validators we know how to translate.
@@ -262,7 +262,7 @@ def _extract_parameters(record, testrun, used_parameter_names):
       if measurement.dimensions is None:
         # Just a plain ol' value.
         if isinstance(value, numbers.Number):
-          testrun_param.numeric_value = float(value)
+          testrun_param.numeric_value = float(value)  # pyrefly: ignore[bad-argument-type]
         else:
           testrun_param.text_value = str(value)
         # Check for validators we know how to translate.

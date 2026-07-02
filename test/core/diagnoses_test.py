@@ -128,7 +128,7 @@ def get_mock_diag(**kwargs):
     kwargs['return_value'] = None
   mock_diag = mock.MagicMock(**kwargs)
   return diagnoses_lib.PhaseDiagnoser(
-      OkayResult, name='mock_diag', run_func=mock_diag), mock_diag
+      OkayResult, name='mock_diag', run_func=mock_diag), mock_diag  # pyrefly: ignore[unexpected-keyword]
 
 
 class DupeResultA(htf.DiagResultEnum):
@@ -143,7 +143,7 @@ class CheckDiagnosersTest(unittest.TestCase):
       pass
 
     with self.assertRaises(diagnoses_lib.DiagnoserError) as cm:
-      diagnoses_lib._check_diagnoser(NotDiagnoser(),
+      diagnoses_lib._check_diagnoser(NotDiagnoser(),  # pyrefly: ignore[bad-argument-type]
                                      diagnoses_lib.BasePhaseDiagnoser)  # pytype: disable=wrong-arg-types
     self.assertEqual('Diagnoser "NotDiagnoser" is not a BasePhaseDiagnoser.',
                      cm.exception.args[0])
@@ -300,7 +300,7 @@ class DiagnosesTest(htf_test.TestCase):
         htf.measures('m')(phase_func))
 
     self.assertEqual(
-        htf.PhaseDescriptor(
+        htf.PhaseDescriptor(  # pyrefly: ignore[missing-argument]
             phase_func,
             measurements=[htf.Measurement('m')],
             diagnosers=[basic_wrapper_phase_diagnoser]), phase)
@@ -314,7 +314,7 @@ class DiagnosesTest(htf_test.TestCase):
         htf.diagnose(basic_wrapper_phase_diagnoser)(phase_func))
 
     self.assertEqual(
-        htf.PhaseDescriptor(
+        htf.PhaseDescriptor(  # pyrefly: ignore[missing-argument]
             phase_func,
             measurements=[htf.Measurement('m')],
             diagnosers=[basic_wrapper_phase_diagnoser]), phase)
@@ -734,7 +734,7 @@ class DiagnosesTest(htf_test.TestCase):
     self.assertEqual([
         htf.Diagnosis(OkayResult.FINE, 'Fine1'),
         htf.Diagnosis(OkayResult.FINE, 'Fine2'),
-    ], self.last_test_state.test_record.diagnoses)
+    ], self.last_test_state.test_record.diagnoses)  # pyrefly: ignore[missing-attribute]
 
   @htf_test.yields_phases
   def test_phase_multiple_diagnoses_with_failure(self):
@@ -1159,25 +1159,25 @@ class DiagnosesTest(htf_test.TestCase):
           htf.Measurement(
               'pass_measure',
               outcome=measurements.Outcome.PASS,
-              measured_value=measurements.MeasuredValue(
+              measured_value=measurements.MeasuredValue(  # pyrefly: ignore[unexpected-keyword]
                   'pass_measure',
                   is_value_set=True,
                   stored_value=True,
-                  cached_value=True),
+                  cached_value=True),  # pyrefly: ignore[unexpected-keyword]
               set_time_millis=phase_record.measurements['pass_measure'].set_time_millis,
-              cached=mock.ANY), phase_record.measurements['pass_measure'])
+              cached=mock.ANY), phase_record.measurements['pass_measure'])  # pyrefly: ignore[unexpected-keyword]
       self.assertEqual(
           htf.Measurement(
               'fail_measure',
               outcome=measurements.Outcome.FAIL,
-              measured_value=measurements.MeasuredValue(
+              measured_value=measurements.MeasuredValue(  # pyrefly: ignore[unexpected-keyword]
                   'fail_measure',
                   is_value_set=True,
                   stored_value=False,
-                  cached_value=False),
+                  cached_value=False),  # pyrefly: ignore[unexpected-keyword]
               validators=[is_true],
               set_time_millis=phase_record.measurements['fail_measure'].set_time_millis,
-              cached=mock.ANY), phase_record.measurements['fail_measure'])
+              cached=mock.ANY), phase_record.measurements['fail_measure'])  # pyrefly: ignore[unexpected-keyword]
       return None
 
     @htf.diagnose(check_record_diagnoser)

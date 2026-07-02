@@ -45,7 +45,7 @@ from openhtf.util import timeouts
 CONF = configuration.CONF
 
 # Default logging to debug level.
-logs.CLI_LOGGING_VERBOSITY = 2
+logs.CLI_LOGGING_VERBOSITY = 2  # pyrefly: ignore[bad-assignment]
 
 
 class UnittestPlug(base_plugs.BasePlug):
@@ -320,8 +320,8 @@ class TestExecutorTest(unittest.TestCase):
     # actually started, we canceled it inside of test_start, resulting in a
     # short vacuous start. Start and end times should be no more than a
     # few milliseconds apart in that case.
-    self.assertLess(record.end_time_millis - record.start_time_millis, 4)
-    self.assertLessEqual(record.end_time_millis, util.time_millis())
+    self.assertLess(record.end_time_millis - record.start_time_millis, 4)  # pyrefly: ignore[unsupported-operation]
+    self.assertLessEqual(record.end_time_millis, util.time_millis())  # pyrefly: ignore[no-matching-overload]
     # Teardown function should not be executed.
     self.assertFalse(ev.wait(3))
 
@@ -352,8 +352,8 @@ class TestExecutorTest(unittest.TestCase):
     record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertLessEqual(record.start_time_millis, util.time_millis())
-    self.assertLessEqual(record.start_time_millis, record.end_time_millis)
-    self.assertLessEqual(record.end_time_millis, util.time_millis())
+    self.assertLessEqual(record.start_time_millis, record.end_time_millis)  # pyrefly: ignore[no-matching-overload]
+    self.assertLessEqual(record.end_time_millis, util.time_millis())  # pyrefly: ignore[no-matching-overload]
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
     executor.close()
@@ -394,8 +394,8 @@ class TestExecutorTest(unittest.TestCase):
     record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertLessEqual(record.start_time_millis, util.time_millis())
-    self.assertLessEqual(record.start_time_millis, record.end_time_millis)
-    self.assertLessEqual(record.end_time_millis, util.time_millis())
+    self.assertLessEqual(record.start_time_millis, record.end_time_millis)  # pyrefly: ignore[no-matching-overload]
+    self.assertLessEqual(record.end_time_millis, util.time_millis())  # pyrefly: ignore[no-matching-overload]
     self.assertEqual([], record.diagnoses)
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
@@ -445,8 +445,8 @@ class TestExecutorTest(unittest.TestCase):
     record = executor.running_test_state.test_record
     self.assertEqual(record.phases[0].name, start_phase.name)
     self.assertLessEqual(record.start_time_millis, util.time_millis())
-    self.assertLessEqual(record.start_time_millis, record.end_time_millis)
-    self.assertLessEqual(record.end_time_millis, util.time_millis())
+    self.assertLessEqual(record.start_time_millis, record.end_time_millis)  # pyrefly: ignore[no-matching-overload]
+    self.assertLessEqual(record.end_time_millis, util.time_millis())  # pyrefly: ignore[no-matching-overload]
     # Teardown function should *NOT* be executed.
     self.assertFalse(ev.is_set())
     self.assertFalse(ev2.is_set())
@@ -649,7 +649,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.test_exec._phase_exec = self.phase_exec
 
   def testPhase_NotTerminal(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
     self.phase_exec.execute_phase.return_value = (
         phase_executor.PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.CONTINUE), None)
@@ -661,7 +661,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertIsNone(self.test_exec._last_outcome)
 
   def testPhase_NotTerminal_PreviousLastOutcome(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
     set_outcome = phase_executor.PhaseExecutionOutcome(None)
     self.test_exec._last_outcome = set_outcome
 
@@ -676,7 +676,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_SetLastOutcome(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
     outcome = phase_executor.PhaseExecutionOutcome(
         phase_descriptor.PhaseResult.STOP)
     self.phase_exec.execute_phase.return_value = outcome, None
@@ -688,7 +688,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertIs(outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_PreviousLastOutcome(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
     set_outcome = phase_executor.PhaseExecutionOutcome(None)
     self.test_exec._last_outcome = set_outcome
     outcome = phase_executor.PhaseExecutionOutcome(

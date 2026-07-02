@@ -45,25 +45,25 @@ from openhtf.util import threads
 
 _ColorFromTestOutcome = enum.Enum(
     '_ColorFromTestOutcome', [
-        (test_record.Outcome.PASS.name, colorama.Fore.GREEN),
-        (test_record.Outcome.FAIL.name, colorama.Fore.RED),
-        (test_record.Outcome.ERROR.name, colorama.Fore.YELLOW),
-        (test_record.Outcome.TIMEOUT.name, colorama.Fore.CYAN),
-        (test_record.Outcome.ABORTED.name, colorama.Fore.YELLOW),
+        (test_record.Outcome.PASS.name, colorama.Fore.GREEN),  # pyrefly: ignore[invalid-argument]
+        (test_record.Outcome.FAIL.name, colorama.Fore.RED),  # pyrefly: ignore[invalid-argument]
+        (test_record.Outcome.ERROR.name, colorama.Fore.YELLOW),  # pyrefly: ignore[invalid-argument]
+        (test_record.Outcome.TIMEOUT.name, colorama.Fore.CYAN),  # pyrefly: ignore[invalid-argument]
+        (test_record.Outcome.ABORTED.name, colorama.Fore.YELLOW),  # pyrefly: ignore[invalid-argument]
     ],
     module=__name__)
 
 _HeadlineFromTestOutcome = enum.Enum(
     '_HeadlineFromTestOutcome', [
-        (test_record.Outcome.PASS.name,
+        (test_record.Outcome.PASS.name,  # pyrefly: ignore[invalid-argument]
          f'Test finished with a {test_record.Outcome.PASS.name}!'),
-        (test_record.Outcome.FAIL.name,
+        (test_record.Outcome.FAIL.name,  # pyrefly: ignore[invalid-argument]
          f'Test finished with a {test_record.Outcome.FAIL.name} :('),
-        (test_record.Outcome.ERROR.name,
+        (test_record.Outcome.ERROR.name,  # pyrefly: ignore[invalid-argument]
          f'Test encountered an {test_record.Outcome.ERROR.name}!!!'),
-        (test_record.Outcome.TIMEOUT.name,
+        (test_record.Outcome.TIMEOUT.name,  # pyrefly: ignore[invalid-argument]
          f'Test hit a {test_record.Outcome.TIMEOUT.name}.'),
-        (test_record.Outcome.ABORTED.name,
+        (test_record.Outcome.ABORTED.name,  # pyrefly: ignore[invalid-argument]
          f'Test was {test_record.Outcome.ABORTED.name}.'),
     ],
     module=__name__)
@@ -208,7 +208,7 @@ def StringFromPhaseRecord(
     return 'No Outcome Set'
   text = 'Phase {}\n+ Outcome: {} Result: {}'.format(
       phase.name, phase.outcome.name,
-      StringFromPhaseExecutionOutcome(phase.result))
+      StringFromPhaseExecutionOutcome(phase.result))  # pyrefly: ignore[bad-argument-type]
   if (phase.outcome != test_record.PhaseOutcome.PASS and
       phase.outcome != test_record.PhaseOutcome.SKIP and colorize_text):
     text = _ColorText(text, _BRIGHT_RED_STYLE)

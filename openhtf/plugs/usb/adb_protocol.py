@@ -913,7 +913,7 @@ class AdbConnection(object):
     except usb_exceptions.UsbReadFailedError as exception:
       if exception.is_timeout():
         raise usb_exceptions.DeviceAuthError(
-            message='Accept auth key on device, then retry.').with_traceback(
+            message='Accept auth key on device, then retry.').with_traceback(  # pyrefly: ignore[unexpected-keyword]
                 sys.exc_info()[2])
       raise
 

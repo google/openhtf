@@ -148,7 +148,7 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
     self._response: Optional[Text] = None
     self._cond = threading.Condition(threading.RLock())
 
-  def _asdict(self) -> Optional[Dict[Text, Any]]:
+  def _asdict(self) -> Optional[Dict[Text, Any]]:  # pyrefly: ignore[bad-override]
     """Return a dictionary representation of the current prompt."""
     with self._cond:
       if self._prompt is None:

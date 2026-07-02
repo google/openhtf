@@ -191,7 +191,7 @@ class FastbootProtocol(object):
       self.usb.write(tmp)
 
       if progress_callback:
-        progress.send(len(tmp))
+        progress.send(len(tmp))  # pyrefly: ignore[unbound-name]
 
 
 class FastbootCommands(object):

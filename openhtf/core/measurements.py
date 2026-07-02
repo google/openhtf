@@ -236,7 +236,7 @@ class Measurement(object):
   _cached = attr.ib(type=Optional[Dict[Text, Any]], default=None)
 
   def __attrs_pre_init__(self, name: Text, *args: Any, **kwargs: Any) -> None:
-    del(args, kwargs)
+    del(args, kwargs)  # pyrefly: ignore[unsupported-delete]
     if name in _RESERVED_MEASUREMENT_NAMES:
       raise ReservedMeasurementNameError(
           f'Measurement name {name} is reserved for internal use.'
@@ -308,7 +308,7 @@ class Measurement(object):
     """Set the notifier we'll call when measurements are set."""
     self._notification_cb = notification_cb
     if not notification_cb and self.dimensions:
-      self._measured_value.notify_value_set = None
+      self._measured_value.notify_value_set = None  # pyrefly: ignore[missing-attribute]
     return self
 
   def notify_value_set(self) -> None:
@@ -495,7 +495,7 @@ class Measurement(object):
           'Only a dimensioned measurement can be converted to a DataFrame')
 
     if columns is None:
-      columns = [d.name for d in self.dimensions]
+      columns = [d.name for d in self.dimensions]  # pyrefly: ignore[not-iterable]
       columns += [self.units.name if self.units else 'value']
 
     dataframe = self._measured_value.to_dataframe(columns)
@@ -518,7 +518,7 @@ class Measurement(object):
       raise TypeError(
           'Only a dimensioned measurement can be set from a DataFrame'
       )
-    dimension_labels = [d.name for d in self.dimensions]
+    dimension_labels = [d.name for d in self.dimensions]  # pyrefly: ignore[not-iterable]
     dimensioned_df = dataframe.reset_index()
     try:
       dimensioned_df.set_index(dimension_labels, inplace=True)
@@ -561,12 +561,12 @@ class MeasuredValue(object):
   def __str__(self) -> Text:
     return str(self.value) if self.is_value_set else 'UNSET'
 
-  def __eq__(self, other: 'MeasuredValue') -> bool:
+  def __eq__(self, other: 'MeasuredValue') -> bool:  # pyrefly: ignore[bad-override]
     return (type(self) == type(other) and self.name == other.name and  # pylint: disable=unidiomatic-typecheck
             self.is_value_set == other.is_value_set
             and self.stored_value == other.stored_value)
 
-  def __ne__(self, other: 'MeasuredValue') -> bool:
+  def __ne__(self, other: 'MeasuredValue') -> bool:  # pyrefly: ignore[bad-override]
     return not self.__eq__(other)
 
   @property
@@ -621,10 +621,10 @@ class Dimension(object):
         'suffix': self.suffix,
     })
 
-  def __eq__(self, other: 'Dimension') -> bool:
+  def __eq__(self, other: 'Dimension') -> bool:  # pyrefly: ignore[bad-override]
     return self.description == other.description and self.unit == other.unit
 
-  def __ne__(self, other: 'Dimension') -> bool:
+  def __ne__(self, other: 'Dimension') -> bool:  # pyrefly: ignore[bad-override]
     return not self == other
 
   def __repr__(self) -> Text:
@@ -633,7 +633,7 @@ class Dimension(object):
   @classmethod
   def from_unit_descriptor(cls,
                            unit_desc: util_units.UnitDescriptor) -> 'Dimension':
-    return cls(unit=unit_desc)
+    return cls(unit=unit_desc)  # pyrefly: ignore[unexpected-keyword]
 
   @classmethod
   def from_string(cls, string: Text) -> 'Dimension':
@@ -641,9 +641,9 @@ class Dimension(object):
     # Note: There is some ambiguity as to whether the string passed is intended
     # to become a unit looked up by name or suffix, or a Dimension descriptor.
     if string in util_units.UNITS_BY_ALL:
-      return cls(description=string, unit=util_units.Unit(string))
+      return cls(description=string, unit=util_units.Unit(string))  # pyrefly: ignore[unexpected-keyword]
     else:
-      return cls(description=string)
+      return cls(description=string)  # pyrefly: ignore[unexpected-keyword]
 
   @property
   def description(self) -> Text:
@@ -729,7 +729,7 @@ class DimensionedMeasuredValue(object):
         _LOG.warning(
             'Overriding previous measurement %s[%s] value of %s with %s',
             self.name, coordinates, self.value_dict[coordinates], value)
-        self._cached_basetype_values = None
+        self._cached_basetype_values = None  # pyrefly: ignore[bad-assignment]
       elif self._cached_basetype_values is not None:
         self._cached_basetype_values.append(
             data.convert_to_base_types(coordinates + (value,)))
@@ -774,7 +774,7 @@ class DimensionedMeasuredValue(object):
 
   def basetype_value(self) -> List[Any]:
     if self._cached_basetype_values is None:
-      self._cached_basetype_values = list(
+      self._cached_basetype_values = list(  # pyrefly: ignore[bad-assignment]
           data.convert_to_base_types(coordinates + (value,))
           for coordinates, value in self.value_dict.items())
     return self._cached_basetype_values

@@ -169,7 +169,7 @@ def convert_to_base_types(obj,
     obj = obj._asdict()
   elif isinstance(obj, records.RecordClass):
     new_obj = {}
-    for a in type(obj).all_attribute_names:
+    for a in type(obj).all_attribute_names:  # pyrefly: ignore[missing-attribute]
       val = getattr(obj, a, None)
       if val is not None or a in type(obj).required_attributes:
         new_obj[a] = val

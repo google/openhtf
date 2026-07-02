@@ -106,7 +106,7 @@ class Attachment(object):
     if not self._filename:
       return
     os.remove(self._filename)
-    self._filename = None
+    self._filename = None  # pyrefly: ignore[bad-assignment]
 
   def _asdict(self) -> Dict[Text, Any]:
     # Don't include the attachment data when converting to dict.

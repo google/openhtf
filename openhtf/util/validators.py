@@ -148,7 +148,7 @@ class AllInRangeValidator(RangeValidatorBase):
       raise ValueError('Must specify minimum, maximum, or both')
     if (minimum is not None and maximum is not None and
         isinstance(minimum, numbers.Number) and
-        isinstance(maximum, numbers.Number) and minimum > maximum):
+        isinstance(maximum, numbers.Number) and minimum > maximum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError('Minimum cannot be greater than maximum')
     if marginal_minimum is not None and minimum is None:
       raise ValueError('Marginal minimum was specified without a minimum')
@@ -156,16 +156,16 @@ class AllInRangeValidator(RangeValidatorBase):
       raise ValueError('Marginal maximum was specified without a maximum')
     if (marginal_minimum is not None and isinstance(minimum, numbers.Number) and
         isinstance(marginal_minimum, numbers.Number) and
-        minimum > marginal_minimum):
+        minimum > marginal_minimum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError('Marginal minimum cannot be less than the minimum')
     if (marginal_maximum is not None and isinstance(maximum, numbers.Number) and
         isinstance(marginal_maximum, numbers.Number) and
-        maximum < marginal_maximum):
+        maximum < marginal_maximum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError('Marginal maximum cannot be greater than the maximum')
     if (marginal_minimum is not None and marginal_maximum is not None and
         isinstance(marginal_minimum, numbers.Number) and
         isinstance(marginal_maximum, numbers.Number) and
-        marginal_minimum > marginal_maximum):
+        marginal_minimum > marginal_maximum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError(
           'Marginal minimum cannot be greater than the marginal maximum')
 
@@ -271,7 +271,7 @@ class InRange(RangeValidatorBase):
       raise ValueError('Must specify minimum, maximum, or both')
     if (minimum is not None and maximum is not None and
         isinstance(minimum, numbers.Number) and
-        isinstance(maximum, numbers.Number) and minimum > maximum):
+        isinstance(maximum, numbers.Number) and minimum > maximum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError('Minimum cannot be greater than maximum')
     if marginal_minimum is not None and minimum is None:
       raise ValueError('Marginal minimum was specified without a minimum')
@@ -279,16 +279,16 @@ class InRange(RangeValidatorBase):
       raise ValueError('Marginal maximum was specified without a maximum')
     if (marginal_minimum is not None and isinstance(minimum, numbers.Number) and
         isinstance(marginal_minimum, numbers.Number) and
-        minimum > marginal_minimum):
+        minimum > marginal_minimum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError('Marginal minimum cannot be less than the minimum')
     if (marginal_maximum is not None and isinstance(maximum, numbers.Number) and
         isinstance(marginal_maximum, numbers.Number) and
-        maximum < marginal_maximum):
+        maximum < marginal_maximum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError('Marginal maximum cannot be greater than the maximum')
     if (marginal_minimum is not None and marginal_maximum is not None and
         isinstance(marginal_minimum, numbers.Number) and
         isinstance(marginal_maximum, numbers.Number) and
-        marginal_minimum > marginal_maximum):
+        marginal_minimum > marginal_maximum):  # pyrefly: ignore[unsupported-operation]
       raise ValueError(
           'Marginal minimum cannot be greater than the marginal maximum')
 

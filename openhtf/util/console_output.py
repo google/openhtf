@@ -131,7 +131,7 @@ def bracket_print(msg, color='', width=8, file=sys.stdout, end_line=True):
       msg=msg,
       reset=colorama.Style.RESET_ALL,
       rpad=rpad))
-  file.write(colorama.Style.RESET_ALL)
+  file.write(colorama.Style.RESET_ALL)  # pyrefly: ignore[no-matching-overload]
   if end_line:
     file.write(_linesep_for_file(file))
     file.flush()

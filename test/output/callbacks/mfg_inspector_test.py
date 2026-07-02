@@ -36,7 +36,7 @@ MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(  # pytype: disable=module-attr  # g
     test_status=test_runs_pb2.PASS,
     test_info=test_runs_pb2.TestInfo(name='unit_test'))  # pytype: disable=module-attr  # gen-stub-imports
 
-MOCK_TEST_RUN = collections.namedtuple('Testrun',
+MOCK_TEST_RUN = collections.namedtuple('Testrun',  # pyrefly: ignore[bad-class-definition]
                                        mfg_inspector.MfgInspector.PARAMS)(None,
                                                                           None,
                                                                           None,

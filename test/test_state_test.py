@@ -60,7 +60,7 @@ PHASE_STATE_BASE_TYPE_INITIAL = {
 }
 
 PHASE_RECORD_BASE_TYPE = copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL)
-PHASE_RECORD_BASE_TYPE.update({
+PHASE_RECORD_BASE_TYPE.update({  # pyrefly: ignore[no-matching-overload]
     'start_time_millis': 0,
     'end_time_millis': None,
     'outcome': None,
@@ -168,7 +168,7 @@ class TestTestApi(parameterized.TestCase):
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
 
-    measurement.value.append(4)
+    measurement.value.append(4)  # pyrefly: ignore[missing-attribute]
     self.assertNotEqual(measurement_val, measurement.value)
 
   def test_infer_mime_type_from_file_name(self):
@@ -201,12 +201,12 @@ class TestTestApi(parameterized.TestCase):
     expected_initial_basetypes['descriptor_id'] = basetypes['descriptor_id']
     self.assertEqual(expected_initial_basetypes, basetypes)
     self.assertFalse(self.running_phase_state._update_measurements)
-    self.test_api.measurements.test_measurement = 5
+    self.test_api.measurements.test_measurement = 5  # pyrefly: ignore[missing-attribute]
     self.assertEqual({'test_measurement'},
                      self.running_phase_state._update_measurements)
     self.running_phase_state.as_base_types()
     expected_after_basetypes = copy.deepcopy(expected_initial_basetypes)
-    expected_after_basetypes['measurements']['test_measurement'].update({
+    expected_after_basetypes['measurements']['test_measurement'].update({  # pyrefly: ignore[no-matching-overload]
         'outcome': 'PASS',
         'measured_value': 5,
     })

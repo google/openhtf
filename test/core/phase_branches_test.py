@@ -153,7 +153,7 @@ class BranchSequenceIntegrationTest(htf_test.TestCase):
             run_phase),
     ]
 
-    test_rec = yield htf.Test(nodes)
+    test_rec = yield htf.Test(nodes)  # pyrefly: ignore[bad-argument-type]
     self.assertTestPass(test_rec)
     self._assert_phase_names(['add_set_diag', 'run_phase'], test_rec)
     self.assertEqual([
@@ -174,7 +174,7 @@ class BranchSequenceIntegrationTest(htf_test.TestCase):
             run_phase),
     ]
 
-    test_rec = yield htf.Test(nodes)
+    test_rec = yield htf.Test(nodes)  # pyrefly: ignore[bad-argument-type]
     self.assertTestPass(test_rec)
     self._assert_phase_names([], test_rec)
     self.assertEqual([
@@ -206,7 +206,7 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_last__no_previous_phases(self):
-    self.test_start_function = None
+    self.test_start_function = None  # pyrefly: ignore[bad-assignment]
     test_rec = yield htf.Test(
         phase_branches.PhaseFailureCheckpoint.last('last_prev'))
 
@@ -617,7 +617,7 @@ class PhaseFailureCheckpointIntegrationTest(htf_test.TestCase):
 
   @htf_test.yields_phases
   def test_all__no_previous_phases(self):
-    self.test_start_function = None
+    self.test_start_function = None  # pyrefly: ignore[bad-assignment]
     test_rec = yield htf.Test(
         phase_branches.PhaseFailureCheckpoint.all_previous('all_prev'))
 

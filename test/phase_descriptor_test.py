@@ -99,9 +99,9 @@ def passing_phase():
     openhtf.Measurement('yet_another_measurement').equals(True),
 )
 def partially_passing_phase(test: openhtf.TestApi):
-  test.measurements.a_measurement = True
-  test.measurements.another_measurement = False
-  test.measurements.yet_another_measurement = True
+  test.measurements.a_measurement = True  # pyrefly: ignore[missing-attribute]
+  test.measurements.another_measurement = False  # pyrefly: ignore[missing-attribute]
+  test.measurements.yet_another_measurement = True  # pyrefly: ignore[missing-attribute]
 
 
 class TestPhaseDescriptor(htf_test.TestCase):
@@ -133,7 +133,7 @@ class TestPhaseDescriptor(htf_test.TestCase):
     second_phase = openhtf.PhaseDescriptor.wrap_or_copy(phase)
     for field in attr.fields(type(phase)):
       if field.name in [openhtf.PhaseDescriptor.func.__name__,
-                        openhtf.PhaseDescriptor.func_location.__name__]:
+                        openhtf.PhaseDescriptor.func_location.__name__]:  # pyrefly: ignore[missing-attribute]
         continue
       self.assertIsNot(
           getattr(phase, field.name), getattr(second_phase, field.name))
@@ -212,7 +212,7 @@ class TestPhaseDescriptor(htf_test.TestCase):
 
   def test_call_test_api_default_args_and_plug(self):
     expected_arg_one = 5
-    self._test_state.plug_manager.initialize_plugs([ExtraPlug])
+    self._test_state.plug_manager.initialize_plugs([ExtraPlug])  # pyrefly: ignore[bad-argument-type]
 
     @plugs.plug(custom_plug=ExtraPlug)
     def phase(test_api, custom_plug, arg_one=1, arg_two=2):
@@ -229,7 +229,7 @@ class TestPhaseDescriptor(htf_test.TestCase):
 
   def test_call_only_default_args_and_plug(self):
     expected_arg_one = 5
-    self._test_state.plug_manager.initialize_plugs([ExtraPlug])
+    self._test_state.plug_manager.initialize_plugs([ExtraPlug])  # pyrefly: ignore[bad-argument-type]
 
     @plugs.plug(custom_plug=ExtraPlug)
     def phase(custom_plug, arg_one=1, arg_two=2):
@@ -250,7 +250,7 @@ class TestPhaseDescriptor(htf_test.TestCase):
         openhtf.Test(passing_phase, phase, passing_phase))
     self.assertEqual(record.outcome, test_record.Outcome.FAIL)
     self.assertEqual(record.phases[-1].name, phase.name)
-    self.assertEqual(record.phases[-1].result.phase_result,
+    self.assertEqual(record.phases[-1].result.phase_result,  # pyrefly: ignore[missing-attribute]
                      openhtf.PhaseResult.STOP)
 
   def test_call_skips_phase_result_override(self):
@@ -262,7 +262,7 @@ class TestPhaseDescriptor(htf_test.TestCase):
     self.assertEqual(record.phases[-1].name, passing_phase.name)
 
   def test_with_plugs(self):
-    self._test_state.plug_manager.initialize_plugs([ExtraPlug])
+    self._test_state.plug_manager.initialize_plugs([ExtraPlug])  # pyrefly: ignore[bad-argument-type]
     phase = extra_plug_func.with_plugs(plug=ExtraPlug).with_args(phrase='hello')
     self.assertIs(phase.func, extra_plug_func.func)
     self.assertEqual(1, len(phase.plugs))

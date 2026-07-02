@@ -245,4 +245,4 @@ class TestConsoleSummary(test.TestCase):
 
     test_instance.execute()
     assert not any('Traceback' in record.message
-                   for record in result_store.result.log_records)
+                   for record in result_store.result.log_records)  # pyrefly: ignore[missing-attribute]

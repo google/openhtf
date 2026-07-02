@@ -324,7 +324,7 @@ class Test(object):
         trigger = test_start
 
       if CONF.capture_source:
-        trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)
+        trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)  # pyrefly: ignore[missing-attribute]
 
       self._executor = test_executor.TestExecutor(
           self._test_desc,
@@ -359,7 +359,7 @@ class Test(object):
         _LOG.debug('Test completed for %s, outputting now.',
                    final_state.test_record.metadata['test_name'])
         test_executor.combine_profile_stats(self._executor.phase_profile_stats,
-                                            profile_filename)
+                                            profile_filename)  # pyrefly: ignore[bad-argument-type]
         for output_cb in self._test_options.output_callbacks:
           try:
             output_cb(final_state.test_record)
@@ -375,9 +375,9 @@ class Test(object):
             console_output.error_print(detail.description)
         else:
           colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
-          colors[htf_test_record.Outcome.PASS] = ''.join(
+          colors[htf_test_record.Outcome.PASS] = ''.join(  # pyrefly: ignore[no-matching-overload]
               (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
-          colors[htf_test_record.Outcome.FAIL] = ''.join(
+          colors[htf_test_record.Outcome.FAIL] = ''.join(  # pyrefly: ignore[no-matching-overload]
               (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
           msg_template = (
               'test: {name}  outcome: {color}{outcome}{marginal}{rst}')
@@ -387,7 +387,7 @@ class Test(object):
                   color=(colorama.Fore.YELLOW
                          if final_state.test_record.marginal else
                          colors[final_state.test_record.outcome]),
-                  outcome=final_state.test_record.outcome.name,
+                  outcome=final_state.test_record.outcome.name,  # pyrefly: ignore[missing-attribute]
                   marginal=(' (MARGINAL)'
                             if final_state.test_record.marginal else ''),
                   rst=colorama.Style.RESET_ALL))
@@ -503,7 +503,7 @@ class TestApi(object):
 
   @property
   def dut_id(self) -> Text:
-    return self.test_record.dut_id
+    return self.test_record.dut_id  # pyrefly: ignore[bad-return]
 
   @dut_id.setter
   def dut_id(self, dut_id: Text) -> None:

@@ -51,7 +51,7 @@ def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
   elif isinstance(n, phase_nodes.PhaseNode):
     yield n.copy()
   elif isinstance(n, phase_descriptor.PhaseDescriptor) or callable(n):
-    yield phase_descriptor.PhaseDescriptor.wrap_or_copy(n)
+    yield phase_descriptor.PhaseDescriptor.wrap_or_copy(n)  # pyrefly: ignore[bad-argument-type]
   else:
     raise ValueError('Cannot flatten {}'.format(n))
 
@@ -225,7 +225,7 @@ def check_for_duplicate_subtest_names(sequence: PhaseSequence):
       collections.defaultdict(list)
   )
   for subtest in sequence.filter_by_type(Subtest):
-    names_to_subtests[subtest.name].append(subtest)
+    names_to_subtests[subtest.name].append(subtest)  # pyrefly: ignore[bad-index]
 
   duplicates: list[str] = []
   for name, subtests in names_to_subtests.items():

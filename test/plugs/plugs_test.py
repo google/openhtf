@@ -106,7 +106,7 @@ class PlugsTest(test.TestCase):
     }},
                      self.plug_manager.as_base_types()['plug_states'])
     assert AdderPlug.LAST_INSTANCE is not None
-    self.assertEqual('CREATED', AdderPlug.LAST_INSTANCE.state)
+    self.assertEqual('CREATED', AdderPlug.LAST_INSTANCE.state)  # pyrefly: ignore[missing-attribute]
 
   @test.yields_phases
   def test_multiple_plugs(self):
@@ -144,7 +144,7 @@ class PlugsTest(test.TestCase):
     def dummy_phase(logger):
       logger.action()
       self.assertIs(logger.logger_seen_init, logger.logger_seen_action)
-      self.assertIs(logger.logger_seen_init, self.logger)
+      self.assertIs(logger.logger_seen_init, self.logger)  # pyrefly: ignore[missing-attribute]
 
     yield dummy_phase
 
@@ -163,7 +163,7 @@ class PlugsTest(test.TestCase):
     self.assertEqual({'number': 0}, update)
     # No update since last time, this should time out (return None).
     self.assertIsNone(
-        self.plug_manager.wait_for_plug_update(adder_plug_name, update, .001))
+        self.plug_manager.wait_for_plug_update(adder_plug_name, update, .001))  # pyrefly: ignore[bad-argument-type]
 
     def _delay_then_update():
       time.sleep(.5)
@@ -174,7 +174,7 @@ class PlugsTest(test.TestCase):
     start_time = time.time()
     self.assertEqual({'number': 1},
                      self.plug_manager.wait_for_plug_update(
-                         adder_plug_name, update, 5))
+                         adder_plug_name, update, 5))  # pyrefly: ignore[bad-argument-type]
     self.assertGreater(time.time() - start_time, .2)
 
   def test_invalid_plug(self):
@@ -190,7 +190,7 @@ class PlugsTest(test.TestCase):
       class BadPlugInit(base_plugs.BasePlug):
 
         def __init__(self):
-          self.logger = None
+          self.logger = None  # pyrefly: ignore[bad-assignment]
 
       self.plug_manager.initialize_plugs({BadPlugInit})
     with self.assertRaises(base_plugs.InvalidPlugError):

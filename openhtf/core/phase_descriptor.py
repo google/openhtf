@@ -200,7 +200,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
   func = attr.ib(type=PhaseCallableT)
   func_location = attr.ib(type=Text)
 
-  @func_location.default
+  @func_location.default  # pyrefly: ignore[missing-attribute]
   def _func_location(self):
     """Assigns this field assuming func is a function or callable instance."""
     obj = self.func
@@ -215,7 +215,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
         return '<unknown>'
       obj = obj.__class__
     try:
-      filename = os.path.basename(inspect.getsourcefile(obj))
+      filename = os.path.basename(inspect.getsourcefile(obj))  # pyrefly: ignore[no-matching-overload]
       line_number = inspect.getsourcelines(obj)[1]
     except TypeError:
       return name + ' <builtin>'
@@ -256,7 +256,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
       # or kwargs.  See with_args() below for more details.
       retval = data.attr_copy(func)
     else:
-      retval = cls(func)
+      retval = cls(func)  # pyrefly: ignore[missing-argument]
     retval.options.update(**options)
     return retval
 
@@ -390,7 +390,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     kwargs.update(self.extra_kwargs)
     kwargs.update(
         running_test_state.plug_manager.provide_plugs(
-            (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))
+            (plug.name, plug.cls) for plug in self.plugs if plug.update_kwargs))  # pyrefly: ignore[bad-argument-type]
 
     # Pass in test_api if the phase takes *args, or **kwargs with at least 1
     # positional, or more positional args than we have keyword args.
@@ -460,20 +460,20 @@ def measures(*measurements: Union[Text, core_measurements.Measurement],
   if 'outcome' in kwargs:
     raise ValueError('Cannot specify outcome in measurement declaration!')
 
-  measurements = [_maybe_make(meas) for meas in measurements]
+  measurements = [_maybe_make(meas) for meas in measurements]  # pyrefly: ignore[bad-assignment]
 
   # 'measurements' is guaranteed to be a list of Measurement objects here.
   def decorate(wrapped_phase: PhaseT) -> PhaseDescriptor:
     """Phase decorator to be returned."""
     phase = PhaseDescriptor.wrap_or_copy(wrapped_phase)
     duplicate_names = (
-        set(m.name for m in measurements)
+        set(m.name for m in measurements)  # pyrefly: ignore[missing-attribute]
         & set(m.name for m in phase.measurements))
     if duplicate_names:
       raise core_measurements.DuplicateNameError('Measurement names duplicated',
                                                  duplicate_names)
 
-    phase.measurements.extend(measurements)
+    phase.measurements.extend(measurements)  # pyrefly: ignore[bad-argument-type]
     return phase
 
   return decorate

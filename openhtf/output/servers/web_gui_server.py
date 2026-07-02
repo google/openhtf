@@ -65,7 +65,7 @@ class CorsRequestHandler(tornado.web.RequestHandler):
     self.set_header('Access-Control-Allow-Origin', '*')
     self.set_header('Access-Control-Allow-Headers', 'Content-Type')
 
-  def options(self, **unused_kwargs):
+  def options(self, **unused_kwargs):  # pyrefly: ignore[bad-override]
     self.set_status(204)
     self.finish()
 
@@ -86,7 +86,7 @@ class IndexHandler(tornado.web.RequestHandler):
   def with_config(cls, config):
     return type(cls.__name__, (cls,), {'config': config})
 
-  def get(self):
+  def get(self):  # pyrefly: ignore[bad-override]
     assert self.config is not None
     self.render(INDEX_TEMPLATE, config=self.config)
 

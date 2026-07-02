@@ -229,7 +229,7 @@ class DiagnosesManager(object):
       test_rec: test_record.TestRecord, the current running test's record.
     """
     diagnosis_or_diagnoses = diagnoser.run(phase_state.phase_record)
-    for diag in self._convert_result(diagnosis_or_diagnoses, diagnoser):
+    for diag in self._convert_result(diagnosis_or_diagnoses, diagnoser):  # pyrefly: ignore[bad-argument-type]
       phase_state.add_diagnosis(diag)
       # Internal diagnosers are not saved to the test record because they are
       # not serialized.
@@ -249,7 +249,7 @@ class DiagnosesManager(object):
       InvalidDiagnosisError: when the diagnoser returns an Internal diagnosis.
     """
     diagnosis_or_diagnoses = diagnoser.run(test_rec, self.store)
-    for diag in self._convert_result(diagnosis_or_diagnoses, diagnoser):
+    for diag in self._convert_result(diagnosis_or_diagnoses, diagnoser):  # pyrefly: ignore[bad-argument-type]
       if diag.is_internal:
         raise InvalidDiagnosisError(
             'Test-level diagnosis {} cannot be Internal'.format(diag))
@@ -315,7 +315,7 @@ class _BaseDiagnoser(object):
         'possible_results': self.possible_results,
     }
     if self.always_fail:
-      ret.update(always_fail=True)
+      ret.update(always_fail=True)  # pyrefly: ignore[bad-argument-type]
     return ret
 
   @property
@@ -326,7 +326,7 @@ class _BaseDiagnoser(object):
     """Internal function to verify that the diagnoser is completely defined."""
 
 
-class BasePhaseDiagnoser(_BaseDiagnoser, abc.ABC):
+class BasePhaseDiagnoser(_BaseDiagnoser, abc.ABC):  # pyrefly: ignore[bad-class-definition]
   """Base class for using an object to define a Phase diagnoser."""
 
   __slots__ = ()
@@ -362,12 +362,12 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
           'Fully defined diagnoser cannot decorate another function.')
     changes = dict(run_func=func)
     if not self.name:
-      changes['name'] = func.__name__
+      changes['name'] = func.__name__  # pyrefly: ignore[bad-assignment]
     return attr.evolve(self, **changes)
 
   def run(self, phase_record: test_record.PhaseRecord) -> DiagnoserReturnT:
     """Runs the phase diagnoser and returns the diagnoses."""
-    return self._run_func(phase_record)
+    return self._run_func(phase_record)  # pyrefly: ignore[not-callable]
 
   def _check_definition(self) -> None:
     if not self._run_func:
@@ -375,7 +375,7 @@ class PhaseDiagnoser(BasePhaseDiagnoser):
           'PhaseDiagnoser run function not defined for {}'.format(self.name))
 
 
-class BaseTestDiagnoser(_BaseDiagnoser, abc.ABC):
+class BaseTestDiagnoser(_BaseDiagnoser, abc.ABC):  # pyrefly: ignore[bad-class-definition]
   """Base class for using an object to define a Test diagnoser."""
 
   __slots__ = ()
@@ -416,13 +416,13 @@ class TestDiagnoser(BaseTestDiagnoser):
           'Fully defined diagnoser cannot decorate another function.')
     changes = dict(run_func=func)
     if not self.name:
-      changes['name'] = func.__name__
+      changes['name'] = func.__name__  # pyrefly: ignore[bad-assignment]
     return attr.evolve(self, **changes)
 
   def run(self, test_rec: test_record.TestRecord,
           diagnoses_store: DiagnosesStore) -> DiagnoserReturnT:
     """Runs the test diagnoser and returns the diagnoses."""
-    return self._run_func(test_rec, diagnoses_store)
+    return self._run_func(test_rec, diagnoses_store)  # pyrefly: ignore[not-callable]
 
   def _check_definition(self) -> None:
     if not self._run_func:

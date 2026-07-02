@@ -63,11 +63,11 @@ def _discover(**kwargs):
       _LOG.warning('Received bad JSON over multicast from %s: %s', host,
                    response)
     try:
-      yield StationInfo(result['cell'], host, result['port'],
+      yield StationInfo(result['cell'], host, result['port'],  # pyrefly: ignore[unbound-name]
                         result['station_id'], 'ONLINE',
                         result.get('test_description'), result['test_name'])
     except KeyError:
-      if 'last_activity_time_millis' in result:
+      if 'last_activity_time_millis' in result:  # pyrefly: ignore[unbound-name]
         _LOG.debug('Received old station API response on multicast. Ignoring.')
       else:
         _LOG.warning('Received bad multicast response from %s: %s', host,
@@ -80,14 +80,14 @@ class StationListHandler(tornado.web.RequestHandler):
   Sends the same message provided by DashboardPubSub.
   """
 
-  def get(self):
+  def get(self):  # pyrefly: ignore[bad-override]
     self.write(DashboardPubSub.make_message())
 
 
 class DashboardPubSub(pub_sub.PubSub):
   """WebSocket endpoint for the list of available stations."""
-  _lock = threading.Lock()  # Required by pub_sub.PubSub.
-  subscribers = set()  # Required by pub_sub.PubSub.
+  _lock = threading.Lock()  # Required by pub_sub.PubSub.  # pyrefly: ignore[bad-override]
+  subscribers = set()  # Required by pub_sub.PubSub.  # pyrefly: ignore[bad-override]
   last_message = None
   station_map = {}
   station_map_lock = threading.Lock()
