@@ -1218,7 +1218,7 @@ class PhaseExecutorTest(parameterized.TestCase):
         plug_manager=plugs.PlugManager(),
         execution_uid='01234567890',
         state_logger=mock.MagicMock(),
-        test_record=test_record.TestRecord('mock-dut-id', 'mock-station-id'))
+        test_record=test_record.TestRecord(dut_id='mock-dut-id', station_id='mock-station-id', test_uid='mock-test-uid'))
     mock_test_state.plug_manager.initialize_plugs(
         [UnittestPlug, MoreRepeatsUnittestPlug])
     my_phase_record = test_record.PhaseRecord.from_descriptor(phase)

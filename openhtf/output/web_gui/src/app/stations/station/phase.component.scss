@@ -16,6 +16,18 @@
 
 @import 'vars';
 
+.header-content {
+  background: none;
+  border: none;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.header-content-clickable {
+  cursor: pointer;
+}
+
 .header-with-measurements {
   border-bottom: 1px solid $border-light-grey;
 }

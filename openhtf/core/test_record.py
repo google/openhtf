@@ -16,6 +16,7 @@
 import enum
 import hashlib
 import inspect
+import json
 import logging
 import os
 import tempfile
@@ -24,6 +25,7 @@ from typing import Any, Dict, List, Optional, Text, TYPE_CHECKING, Union
 import attr
 
 from openhtf import util
+from openhtf.core.dut_id import DutIdentifier
 from openhtf.util import configuration
 from openhtf.util import data
 from openhtf.util import logs
@@ -168,6 +170,8 @@ class TestRecord(object):
 
   dut_id = attr.ib(type=Optional[Text])
   station_id = attr.ib(type=Text)
+  test_uid = attr.ib(type=Text)
+  dut_extended_id = attr.ib(type=Optional[DutIdentifier], default=None)
   start_time_millis = attr.ib(type=int, default=0)
   end_time_millis = attr.ib(type=Optional[int], default=None)
   outcome = attr.ib(type=Optional[Outcome], default=None)
@@ -250,6 +254,7 @@ class TestRecord(object):
     metadata['config'] = self._cached_config_from_metadata
     ret = {
         'dut_id': data.convert_to_base_types(self.dut_id),
+        'dut_extended_id': data.convert_to_base_types (self.dut_extended_id),
         'start_time_millis': self.start_time_millis,
         'end_time_millis': self.end_time_millis,
         'outcome': data.convert_to_base_types(self.outcome),
@@ -262,6 +267,7 @@ class TestRecord(object):
         'diagnosers': self._cached_diagnosers,
         'diagnoses': self._cached_diagnoses,
         'log_records': self._cached_log_records,
+        'test_uid': self.test_uid,
     }
     ret.update(self._cached_record)
     return ret

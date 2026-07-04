@@ -51,7 +51,13 @@ class PubSub(sockjs.tornado.SockJSConnection):
     with cls._lock:  # pylint: disable=not-context-manager
       for client in cls.subscribers:  # pylint: disable=not-an-iterable
         if (not client_filter) or client_filter(client):
-          client.send(message)
+          try:
+            client.send(message)
+          except Exception as e:  # pylint: disable=broad-except
+            # don't log this error, it just adds noise and doesn't affect the test
+            # This can happen when publishing from threads without an event loop
+            # (e.g., child test threads calling publish_test_record).
+            pass
 
   def on_open(self, info):
     _LOG.debug('New subscriber from %s.', info.ip)

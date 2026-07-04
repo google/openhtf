@@ -94,6 +94,7 @@ framework won't pass any, so you'll get a TypeError.
 """
 
 import logging
+import threading
 from typing import Any, Dict, Text, Type, Union
 
 import attr
@@ -139,6 +140,10 @@ class BasePlug(object):
   # This is overwritten both on the class and the instance so don't store
   # a copy of it anywhere.
   logger: logging.Logger = _LOG
+  # Init lock is used to prevent multiple threads from initializing the plug at
+  # the same time. This is necessary because the method used to pass in the
+  # the logger is not thread safe.
+  init_lock = threading.Lock()
 
   @util.classproperty
   def placeholder(cls) -> 'PlugPlaceholder':  # pylint: disable=no-self-argument
@@ -163,6 +168,9 @@ class BasePlug(object):
 
     """
     return {}
+
+  def setUp(self) -> None:
+    """This method is called automatically at the start of each Test execution."""
 
   def tearDown(self) -> None:
     """This method is called automatically at the end of each Test execution."""

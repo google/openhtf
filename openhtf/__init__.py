@@ -15,6 +15,8 @@
 
 import importlib.metadata
 import signal
+import sys
+import typing
 
 from openhtf.core import phase_executor
 from openhtf.core import test_record
@@ -23,6 +25,7 @@ import openhtf.core.diagnoses_lib
 import openhtf.core.measurements
 import openhtf.core.monitors
 import openhtf.core.phase_branches
+import openhtf.core.phase_child_runner
 import openhtf.core.phase_collections
 import openhtf.core.phase_descriptor
 import openhtf.core.phase_group
@@ -68,6 +71,7 @@ __all__ = (  # Expliclty export certain API components.
     'DiagnosisCheckpoint',
     'DiagnosisCondition',
     'PhaseFailureCheckpoint',
+    'PhaseChildRunner',
     'PhaseSequence',
     'Subtest',
     'PhaseDescriptor',
@@ -106,6 +110,7 @@ BranchSequence = openhtf.core.phase_branches.BranchSequence
 DiagnosisCheckpoint = openhtf.core.phase_branches.DiagnosisCheckpoint
 DiagnosisCondition = openhtf.core.phase_branches.DiagnosisCondition
 PhaseFailureCheckpoint = openhtf.core.phase_branches.PhaseFailureCheckpoint
+ChildRunnerPhase = openhtf.core.phase_child_runner.ChildRunnerPhase
 
 PhaseSequence = openhtf.core.phase_collections.PhaseSequence
 Subtest = openhtf.core.phase_collections.Subtest
@@ -143,3 +148,7 @@ __version__ = get_version()
 
 # Register signal handler to stop all tests on SIGINT.
 Test.DEFAULT_SIGINT_HANDLER = signal.signal(signal.SIGINT, Test.handle_sig_int)
+
+if sys.version_info.major == 3 and sys.version_info.minor >= 10:
+    import collections
+    setattr(collections, "MutableMapping", collections.abc.MutableMapping)
