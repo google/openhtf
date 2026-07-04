@@ -16,6 +16,133 @@
 
 @import 'vars';
 
+.operator-fault-panel {
+  border: 2px solid $theme-red;
+  margin-bottom: $widget-inner-padding;
+}
+
+.operator-fault-header {
+  background: $theme-red;
+  color: $theme-white;
+  font-weight: bold;
+}
+
+// Primary action — what the operator actually needs. Made prominent.
+.operator-fault-action-label {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.operator-fault-action-body {
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.operator-fault-action-hint {
+  font-size: 13px;
+  margin: 4px 0 8px;
+}
+
+// Escalation block under the remediation steps: shown when the steps didn't
+// fix it, so the operator can page Halter. Separated from the steps with a
+// hairline so it reads as a distinct, last-resort action.
+.operator-fault-escalate {
+  align-items: flex-start;
+  border-top: 1px dashed $border-light-grey;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.operator-fault-escalate-hint {
+  font-size: 13px;
+}
+
+// Submit buttons: hold the label next to a spinner while in flight, then turn
+// green (sent) or red (error) so the operator gets an unambiguous result and
+// stops clicking. Two variants:
+//   - report (grey, htf-rounded-button-grey): informational — flags an uncaught
+//     error to engineering (Slack). Low-key.
+//   - escalate (red, htf-rounded-button-red + .operator-fault-escalate-button):
+//     raises a production incident (PagerDuty + on-call). Made bold + a light
+//     spinner so it reads as the serious, last-resort action.
+.operator-fault-report-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.operator-fault-escalate-button {
+  font-weight: bold;
+
+  .operator-fault-spinner {
+    border-color: rgba($theme-white, .45);
+    border-top-color: $theme-white;
+  }
+}
+
+.operator-fault-report-sent {
+  background: $theme-green;
+  border-color: $theme-green;
+  color: $theme-white;
+  // Sent is a terminal, disabled state — keep it green (don't grey out).
+  &:disabled {
+    background: $theme-green;
+    border-color: $theme-green;
+  }
+}
+
+.operator-fault-report-error {
+  background: $theme-red;
+  border-color: $theme-red;
+  color: $theme-white;
+}
+
+.operator-fault-spinner {
+  animation: operator-fault-spin 700ms linear infinite;
+  border: 2px solid rgba($theme-dark-grey, .35);
+  border-radius: 50%;
+  border-top-color: $theme-dark-grey;
+  display: inline-block;
+  height: 12px;
+  width: 12px;
+}
+
+@keyframes operator-fault-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Secondary — engineering context, de-emphasised below the action.
+.operator-fault-issue {
+  border-top: 1px solid $border-light-grey;
+  font-size: 12px;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
+.operator-fault-issue-label {
+  font-weight: bold;
+}
+
+.operator-fault-issue-code {
+  font-family: monospace;
+}
+
+.operator-fault-issue-body {
+  font-family: inherit;
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .htf-status-indicator {
   line-height: 53px;
 }

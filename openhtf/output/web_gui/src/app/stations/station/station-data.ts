@@ -23,7 +23,7 @@ import { LogRecord } from '../../shared/models/log-record.model';
 import { Measurement, MeasurementStatus } from '../../shared/models/measurement.model';
 import { Phase, PhaseStatus } from '../../shared/models/phase.model';
 import { Station } from '../../shared/models/station.model';
-import { PlugDescriptor, TestState, TestStatus } from '../../shared/models/test-state.model';
+import { OutcomeDetail, PlugDescriptor, TestState, TestStatus } from '../../shared/models/test-state.model';
 
 import { sortByProperty } from '../../shared/util';
 
@@ -75,7 +75,7 @@ export interface RawTestRecord {
   log_records: RawLogRecord[];
   metadata: RawMetadata;
   outcome: string;
-  outcome_details: Array<{}>;
+  outcome_details: Array<{code: string|number; description: string}>;
   phases: RawPhase[];
   start_time_millis: number;
   station_id: string;
@@ -162,6 +162,27 @@ export function makeTest(
     status = testStateStatusMap[rawState.status];
   }
 
+  // Structured operator faults recorded on the test record (may be absent on
+  // older records or running tests). Coerce code to string for display.
+  // The raw OperatorActionRequired entry that OpenHTF auto-adds for our own
+  // raise is dropped — the explicit detail already carries the code + steps.
+  // Each description is split into an "issue" and a "what to do" section at the
+  // "What to do:" marker so the GUI fault panel can label them.
+  const faultWhatToDoMarker = 'What to do:';
+  const outcomeDetails: OutcomeDetail[] =
+      (rawState.test_record.outcome_details || [])
+          .filter(detail => `${detail.code}` !== 'OperatorActionRequired')
+          .map(detail => {
+            const description = detail.description || '';
+            const markerIndex = description.indexOf(faultWhatToDoMarker);
+            const issue =
+                (markerIndex >= 0 ? description.slice(0, markerIndex) : description).trim();
+            const whatToDo = markerIndex >= 0 ?
+                description.slice(markerIndex + faultWhatToDoMarker.length).trim() :
+                '';
+            return {code: `${detail.code}`, issue, whatToDo};
+          });
+
   return new TestState({
     attachments,
     dutId: rawState.test_record.dut_id,
@@ -169,6 +190,7 @@ export function makeTest(
     fileName,
     logs,
     name: rawState.test_record.metadata.test_name,
+    outcomeDetails,
     phases,
     plugDescriptors: rawState.plugs.plug_descriptors,
     plugStates: rawState.plugs.plug_states,
