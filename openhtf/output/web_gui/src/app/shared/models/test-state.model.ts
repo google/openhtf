@@ -53,6 +53,9 @@ export class TestState {
   endTimeMillis: number|null;
   fileName: string|null;  // This is null for tests *not* from the history.
   name: string;
+  // Generic, optional label shown in the results/history panel (e.g. ICT 6up slot
+  // number). Null when the test plan didn't set metadata['label'].
+  label: string|null;
   logs: LogRecord[];
   outcomeDetails: OutcomeDetail[];
   phases: Phase[];

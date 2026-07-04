@@ -90,7 +90,7 @@ export interface RawLogRecord {
   timestamp_millis: number;
 }
 
-export interface RawMetadata { test_name: string; }
+export interface RawMetadata { test_name: string; label?: string; }
 
 export interface RawPhase {
   attachments: {[name: string]: RawAttachment};
@@ -190,6 +190,10 @@ export function makeTest(
     fileName,
     logs,
     name: rawState.test_record.metadata.test_name,
+    // Generic, optional per-test label shown in the results/history panel. Populated
+    // by test plans via test_record.metadata['label'] (e.g. the ICT 6up slot number);
+    // null for tests that don't set it, so their rows render unchanged.
+    label: rawState.test_record.metadata.label || null,
     outcomeDetails,
     phases,
     plugDescriptors: rawState.plugs.plug_descriptors,

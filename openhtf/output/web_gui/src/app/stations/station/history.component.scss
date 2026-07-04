@@ -33,10 +33,38 @@
   user-select: none;
 }
 
+.history-item-label {
+  // Generic per-test label (e.g. ICT 6up slot number). Fixed 1/6 of the row width,
+  // styled like the "running" status badge (light-blue fill, bold dark-blue text)
+  // and pulled flush against the row's left border. Truncates for longer labels.
+  flex: 0 0 16.6667%;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -$widget-inner-padding;  // cancel the row's left padding so it hugs the border
+  padding: 0 4px;
+  background: rgba($theme-blue, .1);
+  color: darken($theme-blue, 10%);
+  font-size: $font-size-small;
+  font-weight: bold;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .history-item-name-container {
   flex-grow: 1;
   line-height: initial;
   min-width: 0;  // See https://css-tricks.com/flexbox-truncated-text/
+}
+
+// When a slot label box is present (child tests only), centre the DUT id/name
+// block in the space between the label box and the status indicator. Rows with
+// no label (e.g. parent tests) keep the default left alignment.
+.history-item-label + .history-item-name-container {
+  text-align: center;
 }
 
 .history-item-name {

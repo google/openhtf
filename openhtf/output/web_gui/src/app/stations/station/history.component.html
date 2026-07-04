@@ -42,6 +42,9 @@
 
         <!-- Wrap list item contents in an extra div to enable a “slide down” animation effect. -->
         <div class="history-item htf-layout-header">
+          <div *ngIf="historyItem.testState?.label" class="history-item-label">
+            {{ historyItem.testState.label }}
+          </div>
           <div class="history-item-name-container">
             <div class="history-item-name">
               {{ historyItem.dutId || historyItem.fileName }}
