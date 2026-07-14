@@ -27,6 +27,7 @@ from openhtf.output.proto import assembly_event_pb2
 from openhtf.output.proto import mfg_event_converter
 from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import test_runs_pb2
+from openhtf.output.proto import test_runs_pb2
 from openhtf.util import logs as test_logs
 from openhtf.util import units
 

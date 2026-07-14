@@ -19,16 +19,20 @@ actually care for.
 """
 import collections
 import io
+from typing import Any, Dict, Optional
 from unittest import mock
 
 import openhtf as htf
 from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import mfg_inspector
-from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
-from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
+import requests
+
+from openhtf.output.proto import test_runs_pb2
+from openhtf.output.proto import guzzle_pb2
+from openhtf.output.proto import test_runs_pb2
 
 MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(  # pytype: disable=module-attr  # gen-stub-imports
     tester_name='mock_test_run',
@@ -46,7 +50,7 @@ MOCK_TEST_RUN = collections.namedtuple('Testrun',  # pyrefly: ignore[bad-class-d
 class TestMfgInspector(test.TestCase):
 
   def setUp(self):
-    super(TestMfgInspector, self).setUp()
+    super().setUp()
     self.mock_credentials = mock.patch.object(
         mfg_inspector.service_account.Credentials,
         'from_service_account_info').start().return_value
@@ -63,11 +67,11 @@ class TestMfgInspector(test.TestCase):
 
   def tearDown(self):
     mock.patch.stopall()
-    super(TestMfgInspector, self).tearDown()
+    super().tearDown()
 
   @classmethod
   def setUpClass(cls):
-    super(TestMfgInspector, cls).setUpClass()
+    super().setUpClass()
     # Create input record.
     result = util.NonLocalResult()
 
@@ -153,3 +157,120 @@ class TestMfgInspector(test.TestCase):
     # was converted to a proto only once.  This important because some custom
     # converters mutate the test record, so the converter is not idempotent.
     self.assertEqual(1, mock_converter.call_count)
+
+
+class SendMfgInspectorDataTest(test.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.mock_session = mock.MagicMock()
+    self.mock_credentials = mock.MagicMock()
+
+  def _create_mock_response(
+      self,
+      status_code: int = 200,
+      json_data: Optional[Dict[str, Any]] = None,
+      text: str = '',
+  ) -> requests.Response:
+    mock_response = mock.create_autospec(
+        requests.Response, instance=True, status_code=status_code, text=text
+    )
+    if json_data is not None:
+      mock_response.json.return_value = json_data
+    return mock_response
+
+  def test_send_success(self):
+    mock_response = self._create_mock_response(
+        status_code=200, json_data={'result': 'success'}
+    )
+    self.mock_session.request.return_value = mock_response
+
+    result = mfg_inspector.send_mfg_inspector_data(
+        MOCK_TEST_RUN_PROTO,
+        self.mock_credentials,
+        'http://mock_url',
+        guzzle_pb2.COMPRESSED_TEST_RUN,
+        authorized_session=self.mock_session,
+    )
+
+    self.assertEqual(result, {'result': 'success'})
+    self.mock_session.request.assert_called_once()
+
+  def test_send_retry_then_success(self):
+    mock_response_fail = self._create_mock_response(
+        status_code=500,
+        json_data={'error': 'SERVER_ERROR'},
+        text='Service Unavailable',
+    )
+    mock_response_success = self._create_mock_response(
+        status_code=200, json_data={'result': 'success'}
+    )
+
+    # Side effect: fail twice, then succeed
+    self.mock_session.request.side_effect = [
+        mock_response_fail,
+        mfg_inspector.requests_exceptions.RequestException('Connection abort'),
+        mock_response_success,
+    ]
+
+    with mock.patch.object(
+        mfg_inspector.time,
+        mfg_inspector.time.sleep.__name__,
+        autospec=True,
+    ) as mock_sleep:
+      result = mfg_inspector.send_mfg_inspector_data(
+          MOCK_TEST_RUN_PROTO,
+          self.mock_credentials,
+          'http://mock_url',
+          guzzle_pb2.COMPRESSED_TEST_RUN,
+          authorized_session=self.mock_session,
+      )
+
+    self.assertEqual(result, {'result': 'success'})
+    self.assertEqual(self.mock_session.request.call_count, 3)
+    self.assertEqual(mock_sleep.call_count, 2)
+
+  def test_send_invalid_test_run_bubbles(self):
+    mock_response = self._create_mock_response(
+        status_code=400,
+        json_data={'error': 'INVALID', 'message': 'bad schema'},
+    )
+    self.mock_session.request.return_value = mock_response
+
+    with self.assertRaises(mfg_inspector.InvalidTestRunError):
+      mfg_inspector.send_mfg_inspector_data(
+          MOCK_TEST_RUN_PROTO,
+          self.mock_credentials,
+          'http://mock_url',
+          guzzle_pb2.COMPRESSED_TEST_RUN,
+          authorized_session=self.mock_session,
+      )
+
+    self.mock_session.request.assert_called_once()
+
+  def test_send_with_transaction_id(self):
+    mock_response = self._create_mock_response(
+        status_code=200, json_data={'result': 'success'}
+    )
+    self.mock_session.request.return_value = mock_response
+
+    with mock.patch.object(
+        mfg_inspector.logging, 'info', autospec=True
+    ) as mock_log_info:
+      result = mfg_inspector.send_mfg_inspector_data(
+          MOCK_TEST_RUN_PROTO,
+          self.mock_credentials,
+          'http://mock_url',
+          guzzle_pb2.COMPRESSED_TEST_RUN,
+          authorized_session=self.mock_session,
+          transaction_id='test-correlation-guid-123',
+      )
+
+    self.assertEqual(result, {'result': 'success'})
+    self.mock_session.request.assert_called_once()
+    self.assertTrue(
+        any(
+            'test-correlation-guid-123' in call.args
+            for call in mock_log_info.call_args_list
+        )
+    )

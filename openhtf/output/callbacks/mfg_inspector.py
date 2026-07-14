@@ -18,23 +18,28 @@ import functools
 import io
 import logging
 import time
+from typing import Any, Dict, Optional, Union
+import uuid
 import zlib
-from typing import Optional
 
 from google.auth import credentials as credentials_lib
+from google.auth import exceptions as google_auth_exceptions
 from google.auth.transport import requests
 from google.oauth2 import service_account
 from openhtf.output import callbacks
 from openhtf.output.proto import test_runs_converter
+from requests import exceptions as requests_exceptions
 
 from openhtf.output.proto import test_runs_pb2
 from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import guzzle_pb2
 
-from typing import Any, Dict, Union
-
 
 _MFG_INSPECTOR_UPLOAD_TIMEOUT = 60 * 5
+_BYTES_PER_KB = 1024
+_MAX_UPLOAD_ATTEMPTS = 5
+_HTTP_OK = 200
+_HTTP_BAD_REQUEST = 400
 
 
 class UploadFailedError(Exception):
@@ -49,31 +54,112 @@ def _send_mfg_inspector_request(
     envelope_data: bytes,
     authorized_session: requests.AuthorizedSession,
     destination_url: str,
+    payload_type: guzzle_pb2.PayloadType,
+    transaction_id: str,
+    attempt: int = 1,
+    total_attempts: int = _MAX_UPLOAD_ATTEMPTS,
 ) -> Dict[str, Any]:
-  """Send upload http request.  Intended to be run in retry loop."""
-  logging.info('Uploading result...')
+  """Sends upload HTTP request in retry loop sequence.
 
-  response = authorized_session.request(
-      'POST',
+  Args:
+    envelope_data: Byte string containing protobuf payload.
+    authorized_session: Authorized session context to transmit.
+    destination_url: The destination endpoint.
+    payload_type: Enum identification of the wrapped payload.
+    transaction_id: Unique correlation identifier for linking retry logs across
+      an upload transaction.
+    attempt: Current transmission attempt count.
+    total_attempts: Maximum attempts to execute request.
+
+  Returns:
+    A parsed dictionary response payload.
+
+  Raises:
+    UploadFailedError: If a transient network/server failure calls for a retry.
+    InvalidTestRunError: If client input is rejected.
+  """
+  payload_size = len(envelope_data)
+
+  logging.info(
+      'Uploading result [txid=%s] [attempt=%d/%d] [destination=%s]'
+      ' [size_bytes=%d] [type=%s]',
+      transaction_id,
+      attempt,
+      total_attempts,
       destination_url,
-      data=io.BytesIO(envelope_data),
-      timeout=_MFG_INSPECTOR_UPLOAD_TIMEOUT,
+      payload_size,
+      guzzle_pb2.PayloadType.Name(payload_type),
   )
+
+  start_time = time.monotonic()
+  try:
+    response = authorized_session.request(
+        'POST',
+        destination_url,
+        data=io.BytesIO(envelope_data),
+        timeout=_MFG_INSPECTOR_UPLOAD_TIMEOUT,
+    )
+  except (
+      requests_exceptions.RequestException,
+      google_auth_exceptions.TransportError,
+  ) as e:
+    duration = time.monotonic() - start_time
+    logging.warning(
+        'Upload request failed [txid=%s] [attempt=%d/%d] [destination=%s]'
+        ' [duration_sec=%.2f] [exception=%s]',
+        transaction_id,
+        attempt,
+        total_attempts,
+        destination_url,
+        duration,
+        type(e).__name__,
+    )
+    raise UploadFailedError('Network request failed') from e
+  else:
+    duration = time.monotonic() - start_time
+    throughput_kb_s = (
+        (payload_size / _BYTES_PER_KB) / duration if duration > 0.0 else 0.0
+    )
+
+    logging.info(
+        'Upload response received [txid=%s] [duration_sec=%.2f] [attempt=%d/%d]'
+        ' [status_code=%d] [size_bytes=%d] [throughput_kb_s=%.2f]',
+        transaction_id,
+        duration,
+        attempt,
+        total_attempts,
+        response.status_code,
+        payload_size,
+        throughput_kb_s,
+    )
 
   try:
     result = response.json()
   except Exception as e:
-    logging.exception(
-        'Upload failed with response %s: %s', response, response.text
+    text_snippet = (
+        f'{response.text[:1000]}...'
+        if len(response.text) > 1000
+        else response.text
+    )
+    logging.warning(
+        'Upload response parsing failed [txid=%s] [attempt=%d/%d]'
+        ' [status_code=%d] [text=%s]',
+        transaction_id,
+        attempt,
+        total_attempts,
+        response.status_code,
+        text_snippet,
     )
     raise UploadFailedError(response, response.text) from e
 
-  if response.status_code == 200:
+  if response.status_code == _HTTP_OK:
     return result
 
-  message = '%s: %s' % (result.get('error',
-                                   'UNKNOWN_ERROR'), result.get('message'))
-  if response.status_code == 400:
+  message = '%s: %s' % (
+      result.get('error', 'UNKNOWN_ERROR'),
+      result.get('message', 'No error message provided'),
+  )
+  if response.status_code == _HTTP_BAD_REQUEST:
     raise InvalidTestRunError(message)
   else:
     raise UploadFailedError(message)
@@ -83,6 +169,14 @@ def _send_mfg_inspector_request(
 def _is_compressed_payload_type(
     payload_type: guzzle_pb2.PayloadType,
 ) -> bool:
+  """Checks whether the given payload type requires zlib compression.
+
+  Args:
+    payload_type: The enum identifying the protobuf payload format.
+
+  Returns:
+    True if the payload type name starts with 'compressed_', False otherwise.
+  """
   return (
       guzzle_pb2.PayloadType.Name(payload_type)
       .lower()
@@ -96,8 +190,33 @@ def send_mfg_inspector_data(
     destination_url: str,
     payload_type: guzzle_pb2.PayloadType,
     authorized_session: Optional[requests.AuthorizedSession] = None,
+    transaction_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-  """Upload MfgEvent to steam_engine."""
+  """Uploads a TestRun or MfgEvent proto to mfg-inspector with automatic retries.
+
+  Args:
+    inspector_proto: The TestRun or MfgEvent protobuf instance to upload.
+    credentials: The service account credentials used to authorize requests.
+    destination_url: The target upload endpoint URL.
+    payload_type: Enum indicating the wrapped payload type (e.g.
+      COMPRESSED_TEST_RUN).
+    authorized_session: Optional pre-initialized AuthorizedSession context.
+    transaction_id: Optional unique correlation ID for tracking log entries
+      across retries. If not provided, a new UUID string is generated
+      automatically upon invocation. Providing a transaction ID explicitly is
+      useful when correlating across multiple independent upload invocations for
+      the same protobuf (e.g., when a partial uploader daemon or background
+      retry job re-attempts uploading a saved test record after an initial
+      network outage).
+
+  Returns:
+    A dictionary containing the parsed JSON response from the server on success,
+    or an empty dictionary if all retry attempts fail.
+
+  Raises:
+    InvalidTestRunError: If the server rejects the payload with a 400 Bad
+      Request.
+  """
   envelope = guzzle_pb2.TestRunEnvelope()  # pytype: disable=module-attr  # gen-stub-imports
   data = inspector_proto.SerializeToString()
   if _is_compressed_payload_type(payload_type):
@@ -110,17 +229,31 @@ def send_mfg_inspector_data(
   if authorized_session is None:
     authorized_session = requests.AuthorizedSession(credentials)
 
-  for _ in range(5):
+  if not transaction_id:
+    transaction_id = str(uuid.uuid4())
+
+  for attempt in range(1, _MAX_UPLOAD_ATTEMPTS + 1):
     try:
       result = _send_mfg_inspector_request(
-          envelope_data, authorized_session, destination_url
+          envelope_data,
+          authorized_session,
+          destination_url,
+          payload_type=payload_type,
+          transaction_id=transaction_id,
+          attempt=attempt,
+          total_attempts=_MAX_UPLOAD_ATTEMPTS,
       )
       return result
     except UploadFailedError:
-      time.sleep(1)
+      if attempt < _MAX_UPLOAD_ATTEMPTS:
+        time.sleep(1)
 
   logging.critical(
-      'Could not upload to mfg-inspector after 5 attempts. Giving up.')
+      'Could not upload to mfg-inspector, giving up [txid=%s]'
+      ' [total_attempts=%d]',
+      transaction_id,
+      _MAX_UPLOAD_ATTEMPTS,
+  )
 
   return {}
 
@@ -172,6 +305,14 @@ class MfgInspector(object):
                keydata=None,
                token_uri=TOKEN_URI,
                destination_url=DESTINATION_URL):
+    """Initializes the MfgInspector uploader instance.
+
+    Args:
+      user: The service account client email address.
+      keydata: The private key string for the service account.
+      token_uri: OAuth2 token endpoint URL.
+      destination_url: Target endpoint URL for mfg-inspector uploads.
+    """
     self.user = user
     self.keydata = keydata
     self.token_uri = token_uri
@@ -208,7 +349,7 @@ class MfgInspector(object):
       json_data: Dict containing the loaded JSON key data.
 
     Returns:
-      a MfgInspectorCallback with credentials.
+      An initialized MfgInspector instance with credentials loaded.
     """
     return cls(
         user=json_data['client_email'],
@@ -216,14 +357,32 @@ class MfgInspector(object):
         token_uri=json_data['token_uri'])
 
   def _check_cached_params(self, test_record_obj):
-    """Check if all cached params equal the values in test record."""
+    """Checks if all cached parameters match the values in the test record.
+
+    Args:
+      test_record_obj: The OpenHTF TestRecord object to inspect.
+
+    Returns:
+      True if all cached parameters match the record's parameters, False
+      otherwise.
+    """
     for param in self.PARAMS:
       if self._cached_params[param] != getattr(test_record_obj, param):
         return False
     return True
 
   def _convert(self, test_record_obj):
-    """Convert and cache a test record to a mfg-inspector proto."""
+    """Converts and caches an OpenHTF test record into a mfg-inspector proto.
+
+    Args:
+      test_record_obj: The OpenHTF TestRecord to convert.
+
+    Returns:
+      The converted and cached protobuf object.
+
+    Raises:
+      RuntimeError: If `_converter` has not been set prior to conversion.
+    """
     if (self._cached_proto is None or
         not self._check_cached_params(test_record_obj)):
       if self._converter is None:
@@ -237,7 +396,21 @@ class MfgInspector(object):
     return self._cached_proto
 
   def save_to_disk(self, filename_pattern=None):
-    """Returns a callback to convert test record to proto and save to disk."""
+    """Returns a callback to convert test record to proto and save to disk.
+
+    Args:
+      filename_pattern: Optional string or file-like object specifying the
+        output destination path or pattern. Defaults to
+        `_default_filename_pattern`.
+
+    Returns:
+      A callback function accepting a `test_record_obj` that saves the converted
+      protobuf to disk when invoked.
+
+    Raises:
+      RuntimeError: If `_converter` is not set or no filename pattern is
+        provided.
+    """
     if not self._converter:
       raise RuntimeError(
           'Must set _converter on subclass or via set_converter before calling '
@@ -258,7 +431,20 @@ class MfgInspector(object):
     return save_to_disk_callback
 
   def upload(self, payload_type=guzzle_pb2.COMPRESSED_TEST_RUN):
-    """Returns a callback to convert a test record to a proto and upload."""
+    """Returns a callback to convert a test record to a proto and upload to mfg-inspector.
+
+    Args:
+      payload_type: The enum identifying how the protobuf payload is wrapped.
+        Defaults to `COMPRESSED_TEST_RUN`.
+
+    Returns:
+      A callback function accepting a `test_record_obj` that converts and
+      uploads the test run data when invoked.
+
+    Raises:
+      RuntimeError: If `_converter` is not set or credentials have not been
+        provided.
+    """
     if not self._converter:
       raise RuntimeError(
           'Must set _converter on subclass or via set_converter before calling '
@@ -283,14 +469,14 @@ class MfgInspector(object):
     return upload_callback
 
   def set_converter(self, converter):
-    """Set converter callable to convert a OpenHTF tester_record to a proto.
+    """Set converter callable to convert an OpenHTF TestRecord to a proto.
 
     Args:
       converter: a callable that accepts an OpenHTF TestRecord and returns a
         manufacturing-inspector compatible protobuf.
 
     Returns:
-      self to make this call chainable.
+      Self to make this call chainable.
     """
     assert callable(converter), 'Converter must be callable.'
 
@@ -315,8 +501,10 @@ class UploadToMfgInspector(MfgInspector):
 
   @staticmethod
   def _converter(test_record_obj):
+    """Default converter converting an OpenHTF TestRecord to a TestRun proto."""
     return test_runs_converter.test_run_from_test_record(test_record_obj)
 
   def __call__(self, test_record_obj):
+    """Executes the upload callback for the given test record."""
     upload_callback = self.upload()
     upload_callback(test_record_obj)

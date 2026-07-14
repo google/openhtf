@@ -49,6 +49,7 @@ from openhtf.core import measurements
 from openhtf.core import test_record
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import test_runs_pb2
+from openhtf.output.proto import test_runs_pb2
 from openhtf.util import validators
 
 # pylint: disable=g-complex-comprehension
