@@ -69,7 +69,7 @@ jobs:
         working-directory: openhtf/output/web_gui
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
       - run: npm install
       - run: npm run build
 
