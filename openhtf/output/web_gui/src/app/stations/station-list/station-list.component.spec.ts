@@ -19,7 +19,7 @@
  */
 
 import { Component } from '@angular/core';
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { Observable, Subject, of } from 'rxjs';
 
 import { ConfigService } from '../../core/config.service';
@@ -106,7 +106,7 @@ describe('station list component', () => {
     mockDashboardService = debugElement.injector.get(DashboardService) as any;
   }
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [
         ObjectToSortedValuesPipe,
