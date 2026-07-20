@@ -19,7 +19,7 @@
  */
 
 import { trigger } from '@angular/animations';
-import { Component, ElementRef, Input } from '@angular/core';
+import { Component, ElementRef, Input, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 import {ConfigService} from '../core/config.service';
@@ -57,6 +57,7 @@ export declare interface UserInputPlugState {
     selector: 'htf-user-input-plug',
     templateUrl: './user-input-plug.component.html',
     styleUrls: ['./user-input-plug.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class UserInputPlugComponent extends BasePlug {

@@ -18,7 +18,7 @@
  * Component displaying a list of known test stations.
  */
 
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import { map } from 'rxjs/operators';
 
 import { ConfigService } from '../../core/config.service';
@@ -40,6 +40,7 @@ export class StationSelectedEvent {
     selector: 'htf-station-list',
     templateUrl: './station-list.component.html',
     styleUrls: ['./station-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class StationListComponent implements OnDestroy, OnInit {

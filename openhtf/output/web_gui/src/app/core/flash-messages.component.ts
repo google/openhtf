@@ -18,7 +18,7 @@
  * Component displaying messages created by the FlashMessageService.
  */
 
-import { Component, Pipe, PipeTransform } from '@angular/core';
+import { Component, Pipe, PipeTransform, ChangeDetectionStrategy } from '@angular/core';
 
 import { FlashMessage, FlashMessageType } from './flash-message.model';
 import { FlashMessageService } from './flash-message.service';
@@ -43,6 +43,7 @@ export class FlashMessageTypeToClass implements PipeTransform {
     selector: 'htf-flash-messages',
     templateUrl: './flash-messages.component.html',
     styleUrls: ['./flash-messages.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class FlashMessagesComponent {

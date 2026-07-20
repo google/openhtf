@@ -18,13 +18,14 @@
  * Widget displaying the phases of a test.
  */
 
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 import { TestState } from '../../shared/models/test-state.model';
 
 @Component({
     selector: 'htf-phase-list',
     templateUrl: './phase-list.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class PhaseListComponent {

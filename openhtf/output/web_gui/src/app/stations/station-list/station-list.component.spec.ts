@@ -18,7 +18,7 @@
  * Tests for station-list.component.ts.
  */
 
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { Observable, Subject, of } from 'rxjs';
 
@@ -38,6 +38,7 @@ const hostTemplate = `
 @Component({
     selector: 'unused',
     template: hostTemplate,
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 class StationListTestComponent {

@@ -18,7 +18,7 @@
  * Root component of the app.
  */
 
-import { Component, ElementRef } from '@angular/core';
+import { Component, ElementRef, ChangeDetectionStrategy } from '@angular/core';
 
 import { ConfigService } from './core/config.service';
 import { Station } from './shared/models/station.model';
@@ -27,6 +27,7 @@ import { Station } from './shared/models/station.model';
     selector: 'htf-app',
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AppComponent {

@@ -18,7 +18,7 @@
  * Tests for station.component.ts.
  */
 
-import {Component, DebugElement, Input} from '@angular/core';
+import {Component, DebugElement, Input, ChangeDetectionStrategy} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 
 import {ConfigService} from '../../core/config.service';
@@ -53,6 +53,7 @@ const testWidgetStubs = testWidgets.map(makeTestWidgetComponentStub);
 @Component({
     selector: 'htf-history',
     template: '@if (test) {<div>htf-history({{ test.dutId }})</div>}',
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 class HistoryComponentStub {
@@ -63,6 +64,7 @@ class HistoryComponentStub {
 @Component({
     selector: 'unused',
     template: '<htf-station [selectedStation]="station"></htf-station>',
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 class HostComponent {

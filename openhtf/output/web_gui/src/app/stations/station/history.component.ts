@@ -19,7 +19,7 @@
  */
 
 import { trigger } from '@angular/animations';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 
 import { FlashMessageService } from '../../core/flash-message.service';
 import { washAndExpandIn } from '../../shared/animations';
@@ -42,6 +42,7 @@ const listItemHeight = 48;
     selector: 'htf-history',
     templateUrl: './history.component.html',
     styleUrls: ['./history.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class HistoryComponent implements OnChanges {

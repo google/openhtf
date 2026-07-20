@@ -18,7 +18,7 @@
  * Text element whose length can be limited with expand/collapse functionality.
  */
 
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 const ellipsis = '…';
 const template = `
@@ -32,6 +32,7 @@ const template = `
 @Component({
   selector: 'htf-trimmed-text',
   template,
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
 export class TrimmedTextComponent {

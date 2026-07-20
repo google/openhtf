@@ -18,7 +18,7 @@
  * Widget displaying a test run's attachments.
  */
 
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 import { ConfigService } from '../../core/config.service';
 import { Attachment } from '../../shared/models/attachment.model';
@@ -29,6 +29,7 @@ import { getStationBaseUrl, getTestBaseUrl } from '../../shared/util';
     selector: 'htf-attachments',
     templateUrl: './attachments.component.html',
     styleUrls: ['./attachments.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AttachmentsComponent {

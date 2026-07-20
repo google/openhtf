@@ -18,13 +18,14 @@
  * Recursive component representing a node in a genealogy tree.
  */
 
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { GenealogyTreeNode } from './genealogy.model';
 
 @Component({
     selector: 'htf-genealogy-node',
     templateUrl: './genealogy-node.component.html',
     styleUrls: ['./genealogy-node.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class GenealogyNodeComponent implements OnInit {
