@@ -52,7 +52,7 @@ const testWidgetStubs = testWidgets.map(makeTestWidgetComponentStub);
 
 @Component({
     selector: 'htf-history',
-    template: '<div *ngIf="test">htf-history({{ test.dutId }})</div>',
+    template: '@if (test) {<div>htf-history({{ test.dutId }})</div>}',
     standalone: false
 })
 class HistoryComponentStub {

@@ -1,76 +1,77 @@
 <!--
- Copyright 2022 Google LLC
+Copyright 2022 Google LLC
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
-<div *ngIf="test" class="htf-layout-widget">
-
-  <div class="htf-layout-widget-header">
-    <div>Logs</div>
-    <div class="u-flex-grow"></div>
-    <button
-      *ngIf="test.logs.length > 0"
-      type="button"
-      class="htf-rounded-button-grey"
-      (click)="toggleExpanded()">
-      {{ expanded? 'Collapse' : 'Expand' }}
-    </button>
-  </div>
-
-  <div
-    *ngIf="test.logs.length === 0"
-    class="htf-layout-widget-body htf-support-text">
-    There are no logs yet.
-  </div>
-
-  <ul *ngIf="!expanded && test.logs.length > 0">
-    <li [ngClass]="test.logs[0].level | logLevelToClass" class="log-message">
-
-      <div class="timestamp-column">
-        {{ test.logs[0].timestampMillis | date:'mediumTime' }}
-        <div class="logger-name">{{ test.logs[0].loggerName }}</div>
+@if (test) {
+  <div class="htf-layout-widget">
+    <div class="htf-layout-widget-header">
+      <div>Logs</div>
+      <div class="u-flex-grow"></div>
+      @if (test.logs.length > 0) {
+        <button
+          type="button"
+          class="htf-rounded-button-grey"
+          (click)="toggleExpanded()">
+          {{ expanded? 'Collapse' : 'Expand' }}
+        </button>
+      }
+    </div>
+    @if (test.logs.length === 0) {
+      <div
+        class="htf-layout-widget-body htf-support-text">
+        There are no logs yet.
       </div>
-
-      <div class="log-message-content">{{ test.logs[0].message }}</div>
-
-    </li>
-    <li
-      *ngIf="!expanded && test.logs.length > 1"
-      class="htf-support-text">
-      Not showing {{ test.logs.length - 1 }} additional log
-      {{ test.logs.length - 1 === 1? 'message' : 'messages'}}.&nbsp;
-      <span *ngIf="collapsedErrorCount > 0" class="u-text-color-error">
-        {{ collapsedErrorCount }} additional
-        {{ collapsedErrorCount === 1? 'error' : 'errors' }}.
-      </span>
-    </li>
-  </ul>
-
-  <ul *ngIf="expanded && test.logs.length > 0">
-    <li
-      *ngFor="let log of test.logs"
-      class="log-message"
-      [ngClass]="log.level | logLevelToClass">
-
-      <div class="timestamp-column">
-        {{ log.timestampMillis | date:'mediumTime' }}
-        <div class="logger-name">{{ log.loggerName }}</div>
-      </div>
-
-      <div class="log-message-content">{{ log.message }}</div>
-
-    </li>
-  </ul>
-
-</div>
+    }
+    @if (!expanded && test.logs.length > 0) {
+      <ul>
+        <li [ngClass]="test.logs[0].level | logLevelToClass" class="log-message">
+          <div class="timestamp-column">
+            {{ test.logs[0].timestampMillis | date:'mediumTime' }}
+            <div class="logger-name">{{ test.logs[0].loggerName }}</div>
+          </div>
+          <div class="log-message-content">{{ test.logs[0].message }}</div>
+        </li>
+        @if (!expanded && test.logs.length > 1) {
+          <li
+            class="htf-support-text">
+            Not showing {{ test.logs.length - 1 }} additional log
+            {{ test.logs.length - 1 === 1? 'message' : 'messages'}}.&nbsp;
+            @if (collapsedErrorCount > 0) {
+              <span class="u-text-color-error">
+                {{ collapsedErrorCount }} additional
+                {{ collapsedErrorCount === 1? 'error' : 'errors' }}.
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    }
+    @if (expanded && test.logs.length > 0) {
+      <ul>
+        @for (log of test.logs; track log) {
+          <li
+            class="log-message"
+            [ngClass]="log.level | logLevelToClass">
+            <div class="timestamp-column">
+              {{ log.timestampMillis | date:'mediumTime' }}
+              <div class="logger-name">{{ log.loggerName }}</div>
+            </div>
+            <div class="log-message-content">{{ log.message }}</div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+}

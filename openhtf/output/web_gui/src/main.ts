@@ -1,3 +1,4 @@
+import { provideZoneChangeDetection } from "@angular/core";
 /**
  * Copyright 2022 Google LLC
  *
@@ -26,7 +27,7 @@ import { AppModule } from './app/app.module';
 // In modern Angular, production mode is handled by the build configuration.
 
 export function main() {
-  return platformBrowserDynamic().bootstrapModule(AppModule);
+  return platformBrowserDynamic().bootstrapModule(AppModule, { applicationProviders: [provideZoneChangeDetection()], });
 }
 
 if (document.readyState === 'complete') {
