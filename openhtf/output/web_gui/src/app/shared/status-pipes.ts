@@ -95,7 +95,10 @@ const statusToText = new Map<AnyStatus | typeof unknownStatus, string>([
   [unknownStatus, 'Unknown'],
 ]);
 
-@Pipe({name: 'statusToClass'})
+@Pipe({
+    name: 'statusToClass',
+    standalone: false
+})
 export class StatusToClassPipe implements PipeTransform {
   transform(input: AnyStatus): string | undefined {
     if (!statusToCategory.has(input)) {
@@ -106,7 +109,10 @@ export class StatusToClassPipe implements PipeTransform {
   }
 }
 
-@Pipe({name: 'statusToText'})
+@Pipe({
+    name: 'statusToText',
+    standalone: false
+})
 export class StatusToTextPipe implements PipeTransform {
   transform(input: AnyStatus): string | undefined {
     if (!statusToText.has(input)) {

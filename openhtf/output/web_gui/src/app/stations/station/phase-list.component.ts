@@ -23,8 +23,9 @@ import { Component, Input } from '@angular/core';
 import { TestState } from '../../shared/models/test-state.model';
 
 @Component({
-  selector: 'htf-phase-list',
-  templateUrl: './phase-list.component.html',
+    selector: 'htf-phase-list',
+    templateUrl: './phase-list.component.html',
+    standalone: false
 })
 export class PhaseListComponent {
   @Input() test: TestState;

@@ -26,9 +26,10 @@ import { TestState, TestStatus } from '../../shared/models/test-state.model';
 import { getStationBaseUrl, getTestBaseUrl } from '../../shared/util';
 
 @Component({
-  selector: 'htf-attachments',
-  templateUrl: './attachments.component.html',
-  styleUrls: ['./attachments.component.scss'],
+    selector: 'htf-attachments',
+    templateUrl: './attachments.component.html',
+    styleUrls: ['./attachments.component.scss'],
+    standalone: false
 })
 export class AttachmentsComponent {
   @Input() test: TestState;

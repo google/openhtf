@@ -53,10 +53,11 @@ export declare interface UserInputPlugState {
  * @param lastPromptHtml: html contents of last prompt.
  */
 @Component({
-  animations: [trigger('animateIn', washIn)],
-  selector: 'htf-user-input-plug',
-  templateUrl: './user-input-plug.component.html',
-  styleUrls: ['./user-input-plug.component.scss'],
+    animations: [trigger('animateIn', washIn)],
+    selector: 'htf-user-input-plug',
+    templateUrl: './user-input-plug.component.html',
+    styleUrls: ['./user-input-plug.component.scss'],
+    standalone: false
 })
 export class UserInputPlugComponent extends BasePlug {
   @Input() override test: TestState;

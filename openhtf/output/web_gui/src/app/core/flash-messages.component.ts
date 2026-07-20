@@ -29,7 +29,10 @@ const typeToCssClass = {
   [FlashMessageType.warn]: 'ng-flash-message-warn',
 };
 
-@Pipe({name: 'flashMessageTypeToClass'})
+@Pipe({
+    name: 'flashMessageTypeToClass',
+    standalone: false
+})
 export class FlashMessageTypeToClass implements PipeTransform {
   transform(type: FlashMessageType): string {
     return typeToCssClass[type];
@@ -37,9 +40,10 @@ export class FlashMessageTypeToClass implements PipeTransform {
 }
 
 @Component({
-  selector: 'htf-flash-messages',
-  templateUrl: './flash-messages.component.html',
-  styleUrls: ['./flash-messages.component.scss'],
+    selector: 'htf-flash-messages',
+    templateUrl: './flash-messages.component.html',
+    styleUrls: ['./flash-messages.component.scss'],
+    standalone: false
 })
 export class FlashMessagesComponent {
   constructor(private flashMessage: FlashMessageService) {}

@@ -36,8 +36,9 @@ const hostTemplate = `
     </htf-station-list>`;
 
 @Component({
-  selector: 'unused',
-  template: hostTemplate,
+    selector: 'unused',
+    template: hostTemplate,
+    standalone: false
 })
 class StationListTestComponent {
   selectedStation;

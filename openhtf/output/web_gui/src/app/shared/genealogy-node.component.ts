@@ -22,9 +22,10 @@ import { Component, Input, OnInit } from '@angular/core';
 import { GenealogyTreeNode } from './genealogy.model';
 
 @Component({
-  selector: 'htf-genealogy-node',
-  templateUrl: './genealogy-node.component.html',
-  styleUrls: ['./genealogy-node.component.scss'],
+    selector: 'htf-genealogy-node',
+    templateUrl: './genealogy-node.component.html',
+    styleUrls: ['./genealogy-node.component.scss'],
+    standalone: false
 })
 export class GenealogyNodeComponent implements OnInit {
   @Input() isFirst: boolean;

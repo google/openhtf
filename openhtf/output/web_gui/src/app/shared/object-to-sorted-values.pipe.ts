@@ -23,10 +23,11 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
-  name: 'objectToSortedValues',
-  // Marking this pipe impure means it will be called on every change detection
-  // cycle. Be careful about using this with anything other than small objects.
-  pure: false,
+    name: 'objectToSortedValues',
+    // Marking this pipe impure means it will be called on every change detection
+    // cycle. Be careful about using this with anything other than small objects.
+    pure: false,
+    standalone: false
 })
 export class ObjectToSortedValuesPipe implements PipeTransform {
   transform(object: {}, sortBy: string|null = null) {

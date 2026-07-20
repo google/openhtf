@@ -38,8 +38,9 @@ const relative = {
 };
 
 @Pipe({
-  name: 'timeAgo',
-  pure: false,
+    name: 'timeAgo',
+    pure: false,
+    standalone: false
 })
 export class TimeAgoPipe implements PipeTransform {
   transform(value: number): string {

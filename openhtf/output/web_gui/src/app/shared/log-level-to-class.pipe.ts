@@ -18,7 +18,10 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 import { logLevels } from './models/log-record.model';
 
-@Pipe({name: 'logLevelToClass'})
+@Pipe({
+    name: 'logLevelToClass',
+    standalone: false
+})
 export class LogLevelToClassPipe implements PipeTransform {
   transform(level: number): string {
     if (!level) {

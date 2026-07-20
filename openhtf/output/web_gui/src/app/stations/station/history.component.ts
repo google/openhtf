@@ -38,10 +38,11 @@ export class TestSelectedEvent {
 const listItemHeight = 48;
 
 @Component({
-  animations: [trigger('animateIn', washAndExpandIn(listItemHeight))],
-  selector: 'htf-history',
-  templateUrl: './history.component.html',
-  styleUrls: ['./history.component.scss'],
+    animations: [trigger('animateIn', washAndExpandIn(listItemHeight))],
+    selector: 'htf-history',
+    templateUrl: './history.component.html',
+    styleUrls: ['./history.component.scss'],
+    standalone: false
 })
 export class HistoryComponent implements OnChanges {
   @Input() selectedTest: TestState|null;

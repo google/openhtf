@@ -24,9 +24,10 @@ import { logLevels } from '../../shared/models/log-record.model';
 import { TestState } from '../../shared/models/test-state.model';
 
 @Component({
-  selector: 'htf-logs',
-  templateUrl: './logs.component.html',
-  styleUrls: ['./logs.component.scss'],
+    selector: 'htf-logs',
+    templateUrl: './logs.component.html',
+    styleUrls: ['./logs.component.scss'],
+    standalone: false
 })
 export class LogsComponent {
   @Input() test: TestState;

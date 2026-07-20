@@ -24,9 +24,10 @@ import { ConfigService } from './core/config.service';
 import { Station } from './shared/models/station.model';
 
 @Component({
-  selector: 'htf-app',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss'],
+    selector: 'htf-app',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss'],
+    standalone: false
 })
 export class AppComponent {
   selectedStation: Station|null = null;

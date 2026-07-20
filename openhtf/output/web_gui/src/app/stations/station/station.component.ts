@@ -33,9 +33,10 @@ const subscriptionRetryBackoff = 1.08;
 const subscriptionRetryMax = 1500;
 
 @Component({
-  selector: 'htf-station',
-  templateUrl: './station.component.html',
-  styleUrls: ['./station.component.scss'],
+    selector: 'htf-station',
+    templateUrl: './station.component.html',
+    styleUrls: ['./station.component.scss'],
+    standalone: false
 })
 export class StationComponent implements OnDestroy, OnInit {
   @Input() selectedStation: Station;

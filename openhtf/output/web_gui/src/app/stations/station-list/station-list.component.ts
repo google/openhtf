@@ -37,9 +37,10 @@ export class StationSelectedEvent {
 }
 
 @Component({
-  selector: 'htf-station-list',
-  templateUrl: './station-list.component.html',
-  styleUrls: ['./station-list.component.scss'],
+    selector: 'htf-station-list',
+    templateUrl: './station-list.component.html',
+    styleUrls: ['./station-list.component.scss'],
+    standalone: false
 })
 export class StationListComponent implements OnDestroy, OnInit {
   @Input() selectedStation: Station|null;

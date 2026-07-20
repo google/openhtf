@@ -32,6 +32,7 @@ const template = `
 @Component({
   selector: 'htf-trimmed-text',
   template,
+  standalone: false,
 })
 export class TrimmedTextComponent {
   @Input() maxChars: number;

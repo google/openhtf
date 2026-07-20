@@ -25,9 +25,10 @@ import { TestState, TestStatus } from '../../shared/models/test-state.model';
 import { ProgressBarComponent } from '../../shared/progress-bar.component';
 
 @Component({
-  selector: 'htf-test-summary',
-  templateUrl: './test-summary.component.html',
-  styleUrls: ['./test-summary.component.scss'],
+    selector: 'htf-test-summary',
+    templateUrl: './test-summary.component.html',
+    styleUrls: ['./test-summary.component.scss'],
+    standalone: false
 })
 export class TestSummaryComponent implements OnChanges {
   @Input() test: TestState;

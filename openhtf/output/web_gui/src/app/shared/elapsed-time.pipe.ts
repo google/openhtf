@@ -24,8 +24,9 @@ import { TestState } from './models/test-state.model';
 import { TimeService } from './time.service';
 
 @Pipe({
-  name: 'elapsedTime',
-  pure: false,
+    name: 'elapsedTime',
+    pure: false,
+    standalone: false
 })
 export class ElapsedTimePipe implements PipeTransform {
   constructor(private time: TimeService) {}

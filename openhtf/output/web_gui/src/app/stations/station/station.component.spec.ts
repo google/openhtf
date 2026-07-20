@@ -41,7 +41,7 @@ const testWidgets = [
 
 function makeTestWidgetComponentStub(selector: string) {
   const template = `<div *ngIf="test">${selector}({{ test.dutId }})</div>`;
-  @Component({selector, template})
+  @Component({selector, template, standalone: false})
   class TestWidgetComponentStub {
     @Input() test: TestState;
   }
@@ -51,8 +51,9 @@ function makeTestWidgetComponentStub(selector: string) {
 const testWidgetStubs = testWidgets.map(makeTestWidgetComponentStub);
 
 @Component({
-  selector: 'htf-history',
-  template: '<div *ngIf="test">htf-history({{ test.dutId }})</div>',
+    selector: 'htf-history',
+    template: '<div *ngIf="test">htf-history({{ test.dutId }})</div>',
+    standalone: false
 })
 class HistoryComponentStub {
   @Input() selectedTest: TestState;
@@ -60,8 +61,9 @@ class HistoryComponentStub {
 }
 
 @Component({
-  selector: 'unused',
-  template: '<htf-station [selectedStation]="station"></htf-station>',
+    selector: 'unused',
+    template: '<htf-station [selectedStation]="station"></htf-station>',
+    standalone: false
 })
 class HostComponent {
   station = new Station({

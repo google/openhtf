@@ -24,9 +24,10 @@ import { MeasurementStatus } from '../../shared/models/measurement.model';
 import { Phase, PhaseStatus } from '../../shared/models/phase.model';
 
 @Component({
-  selector: 'htf-phase',
-  templateUrl: './phase.component.html',
-  styleUrls: ['./phase.component.scss'],
+    selector: 'htf-phase',
+    templateUrl: './phase.component.html',
+    styleUrls: ['./phase.component.scss'],
+    standalone: false
 })
 export class PhaseComponent {
   @Input() phase: Phase;
