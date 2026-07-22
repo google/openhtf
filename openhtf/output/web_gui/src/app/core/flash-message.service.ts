@@ -37,7 +37,7 @@ export class FlashMessageService {
    */
   messages: FlashMessage[] = [];
 
-  private dismissalJob: NodeJS.Timer|number|null = null;
+  private dismissalJob: any = null;
 
   /**
    * Cancels the countdown for dismissing the displayed message.
@@ -46,7 +46,7 @@ export class FlashMessageService {
    */
   cancelDismissal() {
     if (this.dismissalJob !== null) {
-      clearTimeout(this.dismissalJob as NodeJS.Timer);
+      clearTimeout(this.dismissalJob);
       this.dismissalJob = null;
     }
   }

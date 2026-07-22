@@ -20,16 +20,27 @@
 
 import { Pipe, PipeTransform } from '@angular/core';
 
-// TODO(Kenadia): Find an open-source implementation of the `relative` function.
 const relative = {
-  format(_value: number) {
-    return '—';
+  format(value: number) {
+    const diffMs = new Date().getTime() - value;
+    if (diffMs < 0) return 'in the future';
+    const diffMins = Math.floor(diffMs / (60 * 1000));
+    if (diffMins < 1) return 'just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    return `${diffDays} days ago`;
   }
 };
 
 @Pipe({
-  name: 'timeAgo',
-  pure: false,
+    name: 'timeAgo',
+    pure: false,
+    standalone: false
 })
 export class TimeAgoPipe implements PipeTransform {
   transform(value: number): string {

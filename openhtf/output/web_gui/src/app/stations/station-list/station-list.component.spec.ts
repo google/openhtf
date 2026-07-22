@@ -18,10 +18,9 @@
  * Tests for station-list.component.ts.
  */
 
-import { Component } from '@angular/core';
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable } from 'rxjs/Observable';
-import { Subject } from 'rxjs/Subject';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { Observable, Subject, of } from 'rxjs';
 
 import { ConfigService } from '../../core/config.service';
 import { StationStatus } from '../../shared/models/station.model';
@@ -37,8 +36,10 @@ const hostTemplate = `
     </htf-station-list>`;
 
 @Component({
-  selector: 'unused',
-  template: hostTemplate,
+    selector: 'unused',
+    template: hostTemplate,
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 class StationListTestComponent {
   selectedStation;
@@ -79,7 +80,7 @@ class MockDashboardService {
 }
 
 class MockTimeService {
-  observable = Observable.of(1);
+  observable = of(1);
 }
 
 describe('station list component', () => {
@@ -107,7 +108,7 @@ describe('station list component', () => {
     mockDashboardService = debugElement.injector.get(DashboardService) as any;
   }
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [
         ObjectToSortedValuesPipe,

@@ -17,7 +17,8 @@
 import { Directive, ElementRef, Input, OnChanges } from '@angular/core';
 
 @Directive({
-  selector: '[htfFocus]',
+    selector: '[htfFocus]',
+    standalone: false
 })
 export class FocusDirective implements OnChanges {
   @Input('htfFocus') focusOn: boolean;

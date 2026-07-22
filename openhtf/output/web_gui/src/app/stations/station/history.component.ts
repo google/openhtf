@@ -19,13 +19,13 @@
  */
 
 import { trigger } from '@angular/animations';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 
 import { FlashMessageService } from '../../core/flash-message.service';
 import { washAndExpandIn } from '../../shared/animations';
 import { Station, StationStatus } from '../../shared/models/station.model';
 import { TestState, TestStatus } from '../../shared/models/test-state.model';
-import { messageFromErrorResponse } from '../../shared/util';
+import { messageFromHttpClientErrorResponse } from '../../shared/util';
 
 import { HistoryItem, HistoryItemStatus } from './history-item.model';
 import { HistoryService } from './history.service';
@@ -38,10 +38,12 @@ export class TestSelectedEvent {
 const listItemHeight = 48;
 
 @Component({
-  animations: [trigger('animateIn', washAndExpandIn(listItemHeight))],
-  selector: 'htf-history',
-  templateUrl: './history.component.html',
-  styleUrls: ['./history.component.scss'],
+    animations: [trigger('animateIn', washAndExpandIn(listItemHeight))],
+    selector: 'htf-history',
+    templateUrl: './history.component.html',
+    styleUrls: ['./history.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class HistoryComponent implements OnChanges {
   @Input() selectedTest: TestState|null;
@@ -122,7 +124,7 @@ export class HistoryComponent implements OnChanges {
         })
         .catch(error => {
           console.error(error.stack);
-          const tooltip = messageFromErrorResponse(error);
+          const tooltip = messageFromHttpClientErrorResponse(error);
           this.flashMessage.error('Error loading history item.', tooltip);
         });
   }

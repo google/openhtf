@@ -18,16 +18,18 @@
  * Widget displaying summary information about a test.
  */
 
-import { Component, Input, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 
 import { Phase, PhaseStatus } from '../../shared/models/phase.model';
 import { TestState, TestStatus } from '../../shared/models/test-state.model';
 import { ProgressBarComponent } from '../../shared/progress-bar.component';
 
 @Component({
-  selector: 'htf-test-summary',
-  templateUrl: './test-summary.component.html',
-  styleUrls: ['./test-summary.component.scss'],
+    selector: 'htf-test-summary',
+    templateUrl: './test-summary.component.html',
+    styleUrls: ['./test-summary.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class TestSummaryComponent implements OnChanges {
   @Input() test: TestState;

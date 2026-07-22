@@ -51,68 +51,74 @@ const unknownStatus = Symbol('unknownStatus');
 export type AnyStatus =
     MeasurementStatus | PhaseStatus | StationStatus | TestStatus;
 
-const statusToCategory = {
-  [MeasurementStatus.unset]: StatusCategory.pending,
-  [MeasurementStatus.pass]: StatusCategory.pass,
-  [MeasurementStatus.fail]: StatusCategory.fail,
-  [PhaseStatus.waiting]: StatusCategory.pending,
-  [PhaseStatus.running]: StatusCategory.running,
-  [PhaseStatus.pass]: StatusCategory.pass,
-  [PhaseStatus.fail]: StatusCategory.fail,
-  [PhaseStatus.skip]: StatusCategory.unreachable,
-  [PhaseStatus.error]: StatusCategory.warning,
-  [StationStatus.online]: StatusCategory.online,
-  [StationStatus.unreachable]: StatusCategory.unreachable,
-  [TestStatus.waiting]: StatusCategory.pending,
-  [TestStatus.running]: StatusCategory.running,
-  [TestStatus.pass]: StatusCategory.pass,
-  [TestStatus.fail]: StatusCategory.fail,
-  [TestStatus.error]: StatusCategory.warning,
-  [TestStatus.timeout]: StatusCategory.warning,
-  [TestStatus.aborted]: StatusCategory.warning,
-  [unknownStatus]: StatusCategory.warning,
-};
+const statusToCategory = new Map<AnyStatus | typeof unknownStatus, StatusCategory>([
+  [MeasurementStatus.unset, StatusCategory.pending],
+  [MeasurementStatus.pass, StatusCategory.pass],
+  [MeasurementStatus.fail, StatusCategory.fail],
+  [PhaseStatus.waiting, StatusCategory.pending],
+  [PhaseStatus.running, StatusCategory.running],
+  [PhaseStatus.pass, StatusCategory.pass],
+  [PhaseStatus.fail, StatusCategory.fail],
+  [PhaseStatus.skip, StatusCategory.unreachable],
+  [PhaseStatus.error, StatusCategory.warning],
+  [StationStatus.online, StatusCategory.online],
+  [StationStatus.unreachable, StatusCategory.unreachable],
+  [TestStatus.waiting, StatusCategory.pending],
+  [TestStatus.running, StatusCategory.running],
+  [TestStatus.pass, StatusCategory.pass],
+  [TestStatus.fail, StatusCategory.fail],
+  [TestStatus.error, StatusCategory.warning],
+  [TestStatus.timeout, StatusCategory.warning],
+  [TestStatus.aborted, StatusCategory.warning],
+  [unknownStatus, StatusCategory.warning],
+]);
 
-const statusToText = {
-  [MeasurementStatus.unset]: 'Unset',
-  [MeasurementStatus.pass]: 'Pass',
-  [MeasurementStatus.fail]: 'Fail',
-  [PhaseStatus.waiting]: 'Waiting',
-  [PhaseStatus.running]: 'Running',
-  [PhaseStatus.pass]: 'Pass',
-  [PhaseStatus.fail]: 'Fail',
-  [PhaseStatus.skip]: 'Skip',
-  [PhaseStatus.error]: 'Error',
-  [StationStatus.online]: 'Online',
-  [StationStatus.unreachable]: 'Unreachable',
-  [TestStatus.waiting]: 'Waiting',
-  [TestStatus.running]: 'Running',
-  [TestStatus.pass]: 'Pass',
-  [TestStatus.fail]: 'Fail',
-  [TestStatus.error]: 'Error',
-  [TestStatus.timeout]: 'Timeout',
-  [TestStatus.aborted]: 'Aborted',
-  [unknownStatus]: 'Unknown',
-};
+const statusToText = new Map<AnyStatus | typeof unknownStatus, string>([
+  [MeasurementStatus.unset, 'Unset'],
+  [MeasurementStatus.pass, 'Pass'],
+  [MeasurementStatus.fail, 'Fail'],
+  [PhaseStatus.waiting, 'Waiting'],
+  [PhaseStatus.running, 'Running'],
+  [PhaseStatus.pass, 'Pass'],
+  [PhaseStatus.fail, 'Fail'],
+  [PhaseStatus.skip, 'Skip'],
+  [PhaseStatus.error, 'Error'],
+  [StationStatus.online, 'Online'],
+  [StationStatus.unreachable, 'Unreachable'],
+  [TestStatus.waiting, 'Waiting'],
+  [TestStatus.running, 'Running'],
+  [TestStatus.pass, 'Pass'],
+  [TestStatus.fail, 'Fail'],
+  [TestStatus.error, 'Error'],
+  [TestStatus.timeout, 'Timeout'],
+  [TestStatus.aborted, 'Aborted'],
+  [unknownStatus, 'Unknown'],
+]);
 
-@Pipe({name: 'statusToClass'})
+@Pipe({
+    name: 'statusToClass',
+    standalone: false
+})
 export class StatusToClassPipe implements PipeTransform {
-  transform(input: AnyStatus): string {
-    if (!(input in statusToCategory)) {
+  transform(input: AnyStatus): string | undefined {
+    if (!statusToCategory.has(input)) {
       console.error(`Unknown status "${input}".`);
-      return categoryToCssClass[statusToCategory[unknownStatus]];
+      return categoryToCssClass[statusToCategory.get(unknownStatus)!];
     }
-    return categoryToCssClass[statusToCategory[input]];
+    return categoryToCssClass[statusToCategory.get(input)!];
   }
 }
 
-@Pipe({name: 'statusToText'})
+@Pipe({
+    name: 'statusToText',
+    standalone: false
+})
 export class StatusToTextPipe implements PipeTransform {
-  transform(input: AnyStatus): string {
-    if (!(input in statusToCategory)) {
+  transform(input: AnyStatus): string | undefined {
+    if (!statusToText.has(input)) {
       console.error(`Unknown status "${input}".`);
-      return statusToText[unknownStatus];
+      return statusToText.get(unknownStatus);
     }
-    return statusToText[input];
+    return statusToText.get(input);
   }
 }

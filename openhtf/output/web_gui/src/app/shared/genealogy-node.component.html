@@ -1,32 +1,40 @@
 <!--
- Copyright 2022 Google LLC
+Copyright 2022 Google LLC
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
 <div class="component-info" [class.is-first]="isFirst" [class.is-root]="isRoot">
   <span class="serial-number">{{ node.component.serial }}</span>
-  <span *ngIf="node.component.instance_name">{{ node.component.instance_name }}</span>
-  <span *ngIf="node.component.part_number">({{ node.component.part_number }})</span>
+  @if (node.component.instance_name) {
+    <span>{{ node.component.instance_name }}</span>
+  }
+  @if (node.component.part_number) {
+    <span>({{ node.component.part_number }})</span>
+  }
 </div>
 
-<ul *ngIf="node.children && node.children.length > 0 && maxDepth !== 0">
-  <li *ngFor="let child of node.children; let isFirst=first">
-    <htf-genealogy-node
-      [isFirst]="isFirst"
-      [isRoot]="false"
-      [node]="child"
-      [maxDepth]="childMaxDepth">
-    </htf-genealogy-node>
-  </li>
-</ul>
+@if (node.children && node.children.length > 0 && maxDepth !== 0) {
+  <ul>
+    @for (child of node.children; track child; let isFirst = $first) {
+      <li>
+        <htf-genealogy-node
+          [isFirst]="isFirst"
+          [isRoot]="false"
+          [node]="child"
+          [maxDepth]="childMaxDepth">
+        </htf-genealogy-node>
+      </li>
+    }
+  </ul>
+}

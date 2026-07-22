@@ -1,73 +1,86 @@
 <!--
- Copyright 2022 Google LLC
+Copyright 2022 Google LLC
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
-<div *ngIf="!hasError" class="nav-bar">
-  <em *ngIf="isLoading">
-    Loading…
-  </em>
-  <span *ngIf="!isLoading && !anyStationFound">
-    Connected to server. No stations found.
-  </span>
-  <span *ngIf="!isLoading && anyStationFound">
-    Found {{ stationCount }} {{ stationCount === 1 ? 'station' : 'stations' }}.
-  </span>
+@if (!hasError) {
+  <div class="nav-bar">
+    @if (isLoading) {
+      <em>
+        Loading…
+      </em>
+    }
+    @if (!isLoading && !anyStationFound) {
+      <span>
+        Connected to server. No stations found.
+      </span>
+    }
+    @if (!isLoading && anyStationFound) {
+      <span>
+        Found {{ stationCount }} {{ stationCount === 1 ? 'station' : 'stations' }}.
+      </span>
+    }
+    <div class="u-flex-grow"></div>
+    @if (!isLoading) {
+      <button
+        (click)="manualReload()"
+        type="button"
+        class="htf-link-button">
+        Refresh station list
+      </button>
+    }
+  </div>
+}
 
-  <div class="u-flex-grow"></div>
+@if (!isLoading && !hasError && anyStationFound) {
+  <ul class="station-list">
+    @for (station of stations | objectToSortedValues:'label'; track station) {
+      <li>
+        <button
+          type="button"
+          class="u-text-align-left"
+          [class.is-unreachable]="!isReachable(station)"
+          (click)="select(station)">
+          <div class="u-display-flex">
+            <div class="station-label">
+              {{ station.label }} ({{ station.status | statusToText }})
+            </div>
+            <div class="u-flex-grow"></div>
+            <div class="htf-support-text">
+              {{ station.host }}:{{ station.port }}
+            </div>
+          </div>
+          @if (station.testDescription) {
+            <div class="station-description u-push-top-third">
+              {{ station.testDescription }}
+            </div>
+          }
+        </button>
+      </li>
+    }
+  </ul>
+}
 
-  <button
-    *ngIf="!isLoading"
-    (click)="manualReload()"
-    type="button"
-    class="htf-link-button">
-    Refresh station list
-  </button>
-</div>
-
-<ul class="station-list" *ngIf="!isLoading && !hasError && anyStationFound">
-  <li *ngFor="let station of stations | objectToSortedValues:'label'">
+@if (hasError) {
+  <div>
+    Could not connect to the server.
+    {{ (retryCountdown | async) || 'Retrying in…' }}
     <button
       type="button"
-      class="u-text-align-left"
-      [class.is-unreachable]="!isReachable(station)"
-      (click)="select(station)">
-
-      <div class="u-display-flex">
-        <div class="station-label">
-          {{ station.label }} ({{ station.status | statusToText }})
-        </div>
-        <div class="u-flex-grow"></div>
-        <div class="htf-support-text">
-          {{ station.host }}:{{ station.port }}
-        </div>
-      </div>
-      <div *ngIf="station.testDescription" class="station-description u-push-top-third">
-        {{ station.testDescription }}
-      </div>
-
+      class="htf-link-button"
+      (click)="manualRetry()">
+      Try again.
     </button>
-  </li>
-</ul>
-
-<div *ngIf="hasError">
-  Could not connect to the server.
-  {{ (retryCountdown | async) || 'Retrying in…' }}
-  <button
-    type="button"
-    class="htf-link-button"
-    (click)="manualRetry()">
-    Try again.
-  </button>
-</div>
+  </div>
+}

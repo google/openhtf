@@ -18,13 +18,14 @@
  * Component representing the UserInput plug.
  */
 
-import {trigger} from '@angular/animations';
-import {Component, ElementRef} from '@angular/core';
-import {Http} from '@angular/http';
+import { trigger } from '@angular/animations';
+import { Component, ElementRef, Input, ChangeDetectionStrategy } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
 import {ConfigService} from '../core/config.service';
 import {FlashMessageService} from '../core/flash-message.service';
 import {washIn} from '../shared/animations';
+import { TestState } from '../shared/models/test-state.model';
 
 import {BasePlug} from './base-plug';
 
@@ -52,20 +53,24 @@ export declare interface UserInputPlugState {
  * @param lastPromptHtml: html contents of last prompt.
  */
 @Component({
-  animations: [trigger('animateIn', washIn)],
-  selector: 'htf-user-input-plug',
-  templateUrl: './user-input-plug.component.html',
-  styleUrls: ['./user-input-plug.component.scss'],
+    animations: [trigger('animateIn', washIn)],
+    selector: 'htf-user-input-plug',
+    templateUrl: './user-input-plug.component.html',
+    styleUrls: ['./user-input-plug.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class UserInputPlugComponent extends BasePlug {
+  @Input() override test: TestState;
   private lastPromptId: string;
   private lastPromptHtml: string;
 
   constructor(
-      config: ConfigService, http: Http, flashMessage: FlashMessageService,
+    config: ConfigService, http: HttpClient, flashMessage: FlashMessageService,
       private ref: ElementRef) {
     super(PLUG_NAME, config, http, flashMessage);
   }
+
 
   get error() {
     return this.getPlugState().error;

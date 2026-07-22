@@ -32,12 +32,13 @@ STATIC_FILES_ROOT = os.path.join(WEB_GUI, 'dist')
 INDEX_TEMPLATE = 'index.html'
 
 STATIC_FILES = (
-    r'css/.*\.css',
-    r'css/.*\.css.map',
-    r'img/.*',
-    r'js/.*\.js',
-    r'js/.*\.js\.map',
-    r'service-worker\.js',
+    r'.*\.js',
+    r'.*\.js\.map',
+    r'.*\.css',
+    r'.*\.css\.map',
+    r'3rdpartylicenses\.txt',
+    r'favicon\.ico',
+    r'assets/.*',
 )
 STATIC_FILE_ROUTES = '/(%s)' % '|'.join(STATIC_FILES)
 

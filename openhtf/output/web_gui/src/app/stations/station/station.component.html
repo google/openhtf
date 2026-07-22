@@ -1,29 +1,30 @@
 <!--
- Copyright 2022 Google LLC
+Copyright 2022 Google LLC
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
 <div class="station">
 
   <div class="nav-bar">
-    <button
-      *ngIf="dashboardEnabled"
-      (click)="goBack()"
-      type="button"
-      class="htf-link-button">
-      ‹ Return to station selection
-    </button>
+    @if (dashboardEnabled) {
+      <button
+        (click)="goBack()"
+        type="button"
+        class="htf-link-button">
+        ‹ Return to station selection
+      </button>
+    }
     <div class="u-flex-grow"></div>
     <button
       (click)="manualReload()"
@@ -37,8 +38,12 @@
     <div class="status-bar-row u-font-size-large">
       <div>{{ selectedStation.label }}</div>
       <div class="u-flex-grow"></div>
-      <span *ngIf="isOnline">Status: Connected</span>
-      <span *ngIf="!isOnline" class="u-text-color-error">Status: Offline</span>
+      @if (isOnline) {
+        <span>Status: Connected</span>
+      }
+      @if (!isOnline) {
+        <span class="u-text-color-error">Status: Offline</span>
+      }
     </div>
     <div class="status-bar-row u-text-color-deemphasize">
       <span>{{ selectedStation.testDescription }}</span>
@@ -54,21 +59,22 @@
 
     <div class="htf-layout-widgets-container">
       <div class="htf-layout-widgets-left">
-        <div
-          *ngIf="selectedTest !== null"
-          class="past-test-warning htf-layout-widget">
-          <div class="htf-layout-widget-header">
-            <div>Displaying test record for a previous test run</div>
-            <span>&nbsp;({{ selectedTest.startTimeMillis | timeAgo }})</span>
-            <div class="u-flex-grow"></div>
-            <button
-              type="button"
-              class="htf-rounded-button-grey"
-              (click)="onSelectTest(null)">
-              Return to current test
-            </button>
+        @if (selectedTest !== null) {
+          <div
+            class="past-test-warning htf-layout-widget">
+            <div class="htf-layout-widget-header">
+              <div>Displaying test record for a previous test run</div>
+              <span>&nbsp;({{ selectedTest.startTimeMillis | timeAgo }})</span>
+              <div class="u-flex-grow"></div>
+              <button
+                type="button"
+                class="htf-rounded-button-grey"
+                (click)="onSelectTest(null)">
+                Return to current test
+              </button>
+            </div>
           </div>
-        </div>
+        }
 
         <htf-test-summary [test]="activeTest"></htf-test-summary>
         <htf-logs [test]="activeTest"></htf-logs>

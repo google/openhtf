@@ -18,17 +18,17 @@
  * Root component of the app.
  */
 
-import { Component, ElementRef } from '@angular/core';
+import { Component, ElementRef, ChangeDetectionStrategy } from '@angular/core';
 
 import { ConfigService } from './core/config.service';
 import { Station } from './shared/models/station.model';
 
-import '../style/main.scss';
-
 @Component({
-  selector: 'htf-app',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss'],
+    selector: 'htf-app',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class AppComponent {
   selectedStation: Station|null = null;

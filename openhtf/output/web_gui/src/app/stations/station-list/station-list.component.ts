@@ -18,7 +18,8 @@
  * Component displaying a list of known test stations.
  */
 
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
+import { map } from 'rxjs/operators';
 
 import { ConfigService } from '../../core/config.service';
 import { Station, StationStatus } from '../../shared/models/station.model';
@@ -36,19 +37,21 @@ export class StationSelectedEvent {
 }
 
 @Component({
-  selector: 'htf-station-list',
-  templateUrl: './station-list.component.html',
-  styleUrls: ['./station-list.component.scss'],
+    selector: 'htf-station-list',
+    templateUrl: './station-list.component.html',
+    styleUrls: ['./station-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class StationListComponent implements OnDestroy, OnInit {
   @Input() selectedStation: Station|null;
   @Output() onSelectStation = new EventEmitter<StationSelectedEvent>();
 
-  readonly retryCountdown = this.time.observable.map(currentMillis => {
+  readonly retryCountdown = this.time.observable.pipe(map(currentMillis => {
     const remainingMs = this.dashboard.retryTimeMs - currentMillis;
     const remainingS = Math.round(remainingMs / 1000);
     return `Retrying in ${remainingS}s.`;
-  });
+  }));
   readonly stations: {[hostPort: string]: Station};
 
   constructor(

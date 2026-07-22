@@ -18,8 +18,8 @@
  * Tests for station.component.ts.
  */
 
-import {Component, DebugElement, Input} from '@angular/core';
-import {async, ComponentFixture, TestBed} from '@angular/core/testing';
+import {Component, DebugElement, Input, ChangeDetectionStrategy} from '@angular/core';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 
 import {ConfigService} from '../../core/config.service';
 import {Station, StationStatus} from '../../shared/models/station.model';
@@ -36,18 +36,12 @@ const testWidgets = [
   'htf-logs',
   'htf-phase-list',
   'htf-test-summary',
-  'htf-abort-test-plug',
-  'htf-assembly-plug',
-  'htf-camera-demo-plug',
-  'htf-notifications-plug',
-  'htf-operator-plug',
   'htf-user-input-plug',
-  'laser-ybr-alignment-plug',
 ];
 
 function makeTestWidgetComponentStub(selector: string) {
   const template = `<div *ngIf="test">${selector}({{ test.dutId }})</div>`;
-  @Component({selector, template})
+  @Component({selector, template, standalone: false})
   class TestWidgetComponentStub {
     @Input() test: TestState;
   }
@@ -57,8 +51,10 @@ function makeTestWidgetComponentStub(selector: string) {
 const testWidgetStubs = testWidgets.map(makeTestWidgetComponentStub);
 
 @Component({
-  selector: 'htf-history',
-  template: '<div *ngIf="test">htf-history({{ test.dutId }})</div>',
+    selector: 'htf-history',
+    template: '@if (test) {<div>htf-history({{ test.dutId }})</div>}',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 class HistoryComponentStub {
   @Input() selectedTest: TestState;
@@ -66,8 +62,10 @@ class HistoryComponentStub {
 }
 
 @Component({
-  selector: 'unused',
-  template: '<htf-station [selectedStation]="station"></htf-station>',
+    selector: 'unused',
+    template: '<htf-station [selectedStation]="station"></htf-station>',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 class HostComponent {
   station = new Station({
@@ -119,7 +117,7 @@ describe('station component', () => {
     mockActiveTest = {dutId: 'active-dut-id'};
   }
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: (testWidgetStubs as Array<{}>).concat([
         HistoryComponentStub,

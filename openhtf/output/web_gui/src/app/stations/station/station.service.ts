@@ -18,14 +18,10 @@
  * Maintains info about tests on each station.
  */
 
-import 'rxjs/add/observable/fromPromise';
-import 'rxjs/add/observable/of';
-import 'rxjs/add/operator/catch';
-import 'rxjs/add/operator/mergeMap';
-
 import { Injectable } from '@angular/core';
-import { Http, Response } from '@angular/http';
-import { Observable } from 'rxjs/Observable';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of, from } from 'rxjs';
+import { map, catchError, mergeMap } from 'rxjs/operators';
 
 import { ConfigService } from '../../core/config.service';
 import { FlashMessageService } from '../../core/flash-message.service';
@@ -34,7 +30,7 @@ import { Station } from '../../shared/models/station.model';
 import { TestState, TestStatus } from '../../shared/models/test-state.model';
 import { SockJsMessage, SockJsService } from '../../shared/sock-js.service';
 import { Subscription } from '../../shared/subscription';
-import { getStationBaseUrl, getTestBaseUrl, messageFromErrorResponse } from '../../shared/util';
+import { getStationBaseUrl, getTestBaseUrl, messageFromHttpClientErrorResponse } from '../../shared/util';
 
 import { HistoryService } from './history.service';
 import { makePhaseFromDescriptor, makeTest, RawTestState } from './station-data';
@@ -60,7 +56,7 @@ export class StationService extends Subscription {
 
   constructor(
       private config: ConfigService, private flashMessage: FlashMessageService,
-      private historyService: HistoryService, private http: Http,
+    private historyService: HistoryService, private http: HttpClient,
       sockJsService: SockJsService) {
     super(sockJsService);
   }
@@ -72,17 +68,17 @@ export class StationService extends Subscription {
       this.messagesSubscription.unsubscribe();
     }
     this.messagesSubscription =
-        this.messages
+      this.messages.pipe(
             // Use mergeMap since this.applyPhaseDescriptors returns Observable.
-            .mergeMap((message: SockJsMessage) => {
+        mergeMap((message: SockJsMessage) => {
               const response = StationService.validateResponse(message.data);
               console.debug('StationService received response:', response);
               const test = this.parseResponse(response, station);
               return this.applyPhaseDescriptors(test);
             })
-            .subscribe(test => {
-              this.applyResponse(test, station);
-            });
+      ).subscribe(test => {
+        this.applyResponse(test, station);
+      });
 
     const baseUrl = getStationBaseUrl(this.config.dashboardEnabled, station);
     const stationUrl = `${baseUrl}/sub/station`;
@@ -103,17 +99,6 @@ export class StationService extends Subscription {
 
   /**
    * Step 2: Transform a response object into a test state object.
-   *
-   * In OpenHTF's built-in frontend, the test state is passed around frontend
-   * templates in the same structure with which it was received, so that the
-   * object's structure mimics as much as possible the structure of state
-   * objects on the backend. Displaying the state on the frontend thus requires
-   * complex templates and pipe functions.
-   *
-   * Here we adopt a different philosophy. We define distinct interfaces for the
-   * API response and the test state used by the frontend. By decoupling the two
-   * we can minimize the work done by the templates and we can handle changes to
-   * the station API without having to modify the templates.
    */
   private parseResponse(response: StationApiResponse, station: Station) {
     const testState =
@@ -126,16 +111,11 @@ export class StationService extends Subscription {
 
   /**
    * Step 3: Construct the full phase list using the phase descriptors.
-   *
-   * The test state only includes executed and executing phases, whereas the
-   * phase descriptors include all phases. We use the descriptors to extend the
-   * test state phase list with the phases which are waiting to be executed.
-   *
-   * Since this step may require another HTTP request, we return an Observable.
    */
-  private applyPhaseDescriptors(test: TestState) {
-    return this.getOrRequestPhaseDescriptors(test)
-        .map((descriptors: Phase[]) => {
+  private applyPhaseDescriptors(test: TestState): Observable<TestState> {
+    const descriptorsPromise = this.getOrRequestPhaseDescriptors(test);
+    return from(descriptorsPromise).pipe(
+      map((descriptors: Phase[]) => {
           // Counts all phases that have started execution.
           const numExecutedPhases = test.phases.length;
 
@@ -144,12 +124,6 @@ export class StationService extends Subscription {
             return test;
           }
 
-          // Find the cutoff point in the list of phase descriptors. We do this
-          // by finding the last executed phase that can be matched to a phase
-          // descriptor. Normally this is simply the last executed phase,
-          // however, if we are currently running a teardown phase, it will not
-          // have a corresponding phase descriptor. Therefore, we iterate
-          // backwards through the list of executed phases.
           let lastExecutedPhaseIndex = numExecutedPhases - 1;
           let lastExecutedDescriptorIndex = -1;
           while (lastExecutedPhaseIndex >= 0 &&
@@ -158,32 +132,27 @@ export class StationService extends Subscription {
             for (const descriptor of descriptors) {
               if (descriptor.descriptorId === lastExecuted.descriptorId) {
                 lastExecutedDescriptorIndex = descriptors.indexOf(descriptor);
-                // Don't break here, in case the same phase ran multiple times.
               }
             }
             lastExecutedPhaseIndex--;
           }
 
-          // If we do not recognize the descriptor ID of the executing phase,
-          // it should be the test start phase, and we can continue as normal.
-          // If it isn't, then fail in a non-horrible way.
           if (lastExecutedDescriptorIndex === -1 && numExecutedPhases > 1) {
             console.error(
                 'Unrecognized phase descriptor ID.', test.phases, descriptors);
             return test;
           }
 
-          // Insert the phase descriptors between the last executed phase and
-          // any teardown phases.
           test.phases.splice(
               lastExecutedPhaseIndex + 2, 0,
               ...descriptors.slice(lastExecutedDescriptorIndex + 1));
           return test;
-        })
+      }),
         // Degrade gracefully if we can't get the phase descriptors.
-        .catch(() => {
-          return Observable.of(test);
-        });
+      catchError(() => {
+        return of(test);
+      })
+    );
   }
 
   private getOrRequestPhaseDescriptors(test: TestState) {
@@ -191,36 +160,34 @@ export class StationService extends Subscription {
       const testBaseUrl = getTestBaseUrl(this.config.dashboardEnabled, test);
       const url = `${testBaseUrl}/phases`;
       this.phaseDescriptorPromise[test.testId] =
-          this.http.get(url)
+        this.http.get<{ data: any[] }>(url)
               .toPromise()
-              .then((response: Response) => {
-                const rawDescriptors = response.json().data;
+        .then((response) => {
+          const rawDescriptors = response.data;
                 const descriptors = rawDescriptors.map(makePhaseFromDescriptor);
                 return descriptors;
               })
               .catch(error => {
-                const tooltip = messageFromErrorResponse(error);
+                const tooltip = messageFromHttpClientErrorResponse(error);
                 this.flashMessage.error(
                     'HTTP request for phase descriptors failed.', tooltip);
                 return Promise.reject(error);
               });
     }
-    return Observable.fromPromise(this.phaseDescriptorPromise[test.testId]);
+    return this.phaseDescriptorPromise[test.testId];
   }
 
   /**
    * Step 4: Update our data store with new test information.
    */
   private applyResponse(test: TestState, station: Station) {
-    // If we have old information for this test, update it.
     if (test.testId in this.testsById) {
       const oldTest = this.testsById[test.testId];
-      // Alert the operator when the test exits early.
       if (oldTest.status !== test.status) {
         if (test.status === TestStatus.error) {
           this.flashMessage.error(
-              'The test exited early due to an error. View the test logs for ' +
-              'details.');
+            'The test exited early due to an error. View the test logs for ' +
+            'details.');
         } else if (test.status === TestStatus.timeout) {
           this.flashMessage.warn('The test exited early due to timeout.');
         } else if (test.status === TestStatus.aborted) {
@@ -229,8 +196,6 @@ export class StationService extends Subscription {
       }
       Object.assign(oldTest, test);
     }
-
-    // Otherwise, add the new test.
     else {
       this.testsById[test.testId] = test;
       this.testsByStation[station.hostPort] = test;

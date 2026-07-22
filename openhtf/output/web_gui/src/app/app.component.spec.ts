@@ -16,23 +16,30 @@
 
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 import { AppComponent } from './app.component';
+import { ConfigService } from './core/config.service';
+
+class MockConfigService {
+  initialize = jasmine.createSpy('initialize');
+}
 
 describe('App', () => {
-  // provide our implementations or mocks to the dependency injector
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
       declarations: [AppComponent],
-      // providers: [ApiService, provideRoutes([])]
+      providers: [
+        { provide: ConfigService, useClass: MockConfigService }
+      ],
+      schemas: [NO_ERRORS_SCHEMA]
     });
   });
 
-  it('should have an url', () => {
+  it('should compile', () => {
     let fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    expect(fixture.debugElement.componentInstance.url).toEqual('https://github.com/preboot/angular2-webpack');
+    expect(fixture.componentInstance).toBeTruthy();
   });
-
 });

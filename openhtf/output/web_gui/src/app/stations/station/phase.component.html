@@ -1,25 +1,27 @@
 <!--
- Copyright 2022 Google LLC
+Copyright 2022 Google LLC
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
 <div class="htf-layout-header" [class.header-with-measurements]="showMeasurements">
   <span class="u-clamp-text">
     <span class="phase-name">{{ phase.name }}</span>
-    <span *ngIf="phase.status !== PhaseStatus.waiting">
-      &nbsp;{{ phase | elapsedTime:'(%s)' }}
-    </span>
+    @if (phase.status !== PhaseStatus.waiting) {
+      <span>
+        &nbsp;{{ phase | elapsedTime:'(%s)' }}
+      </span>
+    }
   </span>
 
   <div class="u-flex-grow"></div>
@@ -30,31 +32,41 @@
   </div>
 </div>
 
-<table
-  *ngIf="showMeasurements"
-  class="measurement-list"
-  [ngClass]="phase.status | statusToClass">
-  <thead>
-    <td class="measurement-column-name">Measurement name</td>
-    <td class="measurement-column-value">Value</td>
-    <td class="measurement-column-validators">Validators</td>
-    <td class="measurement-column-result">Result</td>
-  </thead>
-  <tbody>
-    <tr *ngFor="let measurement of phase.measurements">
-      <td class="measurement-column-name">{{ measurement.name }}</td>
-      <td class="measurement-column-value">
-        <htf-trimmed-text [maxChars]="80" [content]="measurement.measuredValue">
-        </htf-trimmed-text>
-      </td>
-      <td class="measurement-column-validators">{{ measurement.validators }}</td>
-      <td
-        [ngSwitch]="measurement.status"
-        class="measurement-column-result">
-        <span *ngSwitchCase="MeasurementStatus.pass">Pass</span>
-        <span *ngSwitchCase="MeasurementStatus.fail">Fail</span>
-        <span *ngSwitchDefault>—</span>
-      </td>
-    </tr>
-  </tbody>
-</table>
+@if (showMeasurements) {
+  <table
+    class="measurement-list"
+    [ngClass]="phase.status | statusToClass">
+    <thead>
+      <td class="measurement-column-name">Measurement name</td>
+      <td class="measurement-column-value">Value</td>
+      <td class="measurement-column-validators">Validators</td>
+      <td class="measurement-column-result">Result</td>
+    </thead>
+    <tbody>
+      @for (measurement of phase.measurements; track measurement) {
+        <tr>
+          <td class="measurement-column-name">{{ measurement.name }}</td>
+          <td class="measurement-column-value">
+            <htf-trimmed-text [maxChars]="80" [content]="measurement.measuredValue">
+            </htf-trimmed-text>
+          </td>
+          <td class="measurement-column-validators">{{ measurement.validators }}</td>
+          <td
+            class="measurement-column-result">
+            @switch (measurement.status) {
+              @case (MeasurementStatus.pass) {
+                <span>Pass</span>
+              }
+              @case (MeasurementStatus.fail) {
+                <span>Fail</span>
+              }
+              @default {
+                <span>—</span>
+              }
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

@@ -18,7 +18,7 @@
  * Component representing a station.
  */
 
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 
 import { ConfigService } from '../../core/config.service';
 import { Station } from '../../shared/models/station.model';
@@ -33,9 +33,11 @@ const subscriptionRetryBackoff = 1.08;
 const subscriptionRetryMax = 1500;
 
 @Component({
-  selector: 'htf-station',
-  templateUrl: './station.component.html',
-  styleUrls: ['./station.component.scss'],
+    selector: 'htf-station',
+    templateUrl: './station.component.html',
+    styleUrls: ['./station.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class StationComponent implements OnDestroy, OnInit {
   @Input() selectedStation: Station;
@@ -46,7 +48,7 @@ export class StationComponent implements OnDestroy, OnInit {
   constructor(
       private stationService: StationService, private config: ConfigService) {}
 
-  get activeTest(): TestState|null {
+  public get activeTest(): TestState | null {
     if (this.selectedTest !== null) {
       return this.selectedTest;
     }

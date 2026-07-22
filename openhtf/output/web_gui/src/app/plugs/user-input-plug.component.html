@@ -1,58 +1,54 @@
 <!--
- Copyright 2022 Google LLC
+Copyright 2022 Google LLC
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
-<div
-  class="htf-layout-widget"
-  *ngIf="plugExists()">
-
-  <!-- Wrap contents in an extra div for the background color animation. -->
-  <div [@animateIn]="'in'">
-
-    <div class="htf-layout-widget-header">
-      <div>Operator input</div>
-    </div>
-
-    <div class="htf-layout-widget-body">
-
-      <img *ngIf="hasImage()" [src]="Image_URL" alt="user-input-image">
-
-      <div [innerHTML]="prompt"></div>
-
-      <input
-        #response_field
-        [style.display]="hasTextInput() ? 'inline' : 'none'"
-        [class.user-input-has-error]="error"
-        type="text"
-        class="u-push-top"
-        (keyup.enter)="sendResponse(response_field)">
-
-      <div class="user-input-error-text u-push-top-third" *ngIf="error">
-        {{ error }}
+@if (plugExists()) {
+  <div
+    class="htf-layout-widget"
+    >
+    <!-- Wrap contents in an extra div for the background color animation. -->
+    <div [@animateIn]="'in'">
+      <div class="htf-layout-widget-header">
+        <div>Operator input</div>
       </div>
-
-      <div class="u-text-align-right">
-        <button
-          type="button"
-          class="htf-rounded-button-grey u-push-top"
-          (click)="sendResponse(response_field)">
-          {{ hasTextInput() ? 'Submit' : 'Okay' }}
-        </button>
+      <div class="htf-layout-widget-body">
+        @if (hasImage()) {
+          <img [src]="Image_URL" alt="user-input-image">
+        }
+        <div [innerHTML]="prompt"></div>
+        <input
+          #response_field
+          [style.display]="hasTextInput() ? 'inline' : 'none'"
+          [class.user-input-has-error]="error"
+          type="text"
+          class="u-push-top"
+          (keyup.enter)="sendResponse(response_field)">
+        @if (error) {
+          <div class="user-input-error-text u-push-top-third">
+            {{ error }}
+          </div>
+        }
+        <div class="u-text-align-right">
+          <button
+            type="button"
+            class="htf-rounded-button-grey u-push-top"
+            (click)="sendResponse(response_field)">
+            {{ hasTextInput() ? 'Submit' : 'Okay' }}
+          </button>
+        </div>
       </div>
-
     </div>
-
   </div>
-</div>
+}

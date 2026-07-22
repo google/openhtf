@@ -18,15 +18,15 @@
  * Base class for plug components.
  */
 
-import { Input } from '@angular/core';
-import { Headers, Http, RequestOptions, Response } from '@angular/http';
+import { Directive, Input } from '@angular/core';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 
 import { ConfigService } from '../core/config.service';
 import { FlashMessageService } from '../core/flash-message.service';
 import { TestState } from '../shared/models/test-state.model';
-import { messageFromErrorResponse } from '../shared/util';
-import { getTestBaseUrl } from '../shared/util';
+import { getTestBaseUrl, messageFromHttpClientErrorResponse } from '../shared/util';
 
+@Directive()
 export abstract class BasePlug {
   @Input() test: TestState;
 
@@ -42,26 +42,28 @@ export abstract class BasePlug {
 
   constructor(
       private className: string, protected config: ConfigService,
-      protected http: Http, protected flashMessage: FlashMessageService) {}
+    protected http: HttpClient, protected flashMessage: FlashMessageService) { }
 
   plugExists(): boolean {
     return Boolean(this.test && this.getPlugState());
   }
 
   protected respond(method: string, args: Array<{}>) {
-    const headers = new Headers({'Content-Type': 'application/json'});
-    const options = new RequestOptions({headers});
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     const testBaseUrl = getTestBaseUrl(this.config.dashboardEnabled, this.test);
     const plugUrl = `${testBaseUrl}/plugs/${this.plugName}`;
     const payload = JSON.stringify({method, args});
 
-    this.http.post(plugUrl, payload, options)
-        .subscribe(() => {}, (error: Response) => {
-          const tooltip = messageFromErrorResponse(error);
+    this.http.post(plugUrl, payload, { headers })
+      .subscribe({
+        next: () => { },
+        error: (error: HttpErrorResponse) => {
+          const tooltip = messageFromHttpClientErrorResponse(error);
           this.flashMessage.error(
-              `An error occurred trying to respond to ` +
-                  `plug ${this.plugName}.`,
-              tooltip);
+            `An error occurred trying to respond to ` +
+            `plug ${this.plugName}.`,
+            tooltip);
+        }
         });
   }
 

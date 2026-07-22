@@ -14,11 +14,15 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-
-<title>OpenHTF</title>
-
-<!-- TODO(Kenadia): sockjs-client should be included via node. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
-
-<base href="/">
-<htf-app config="{{ json_encode(config) }}">Loading...</htf-app>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OpenHTF</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+  <htf-app config="{{ json_encode(config) }}">Loading...</htf-app>
+</body>
+</html>
