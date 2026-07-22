@@ -76,6 +76,7 @@ enum Status {
   SCRAP = 13;
   DEBUG = 14;
   MARGINAL_PASS = 15;
+  SKIPPED = 16;
 }
 
 
