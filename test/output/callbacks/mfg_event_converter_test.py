@@ -522,6 +522,67 @@ class MultiDimConversionTest(unittest.TestCase):
 
     self.assert_same_mdim(mdim, reversed_mdim)
 
+  def test_mfg_event_from_test_record_with_skipped_phase(self):
+    """Test that skipped measurements are converted with SKIPPED status in MfgEvent."""
+    record = test_record.TestRecord(
+        dut_id='dut_serial',
+        start_time_millis=1,
+        end_time_millis=1,
+        station_id='localhost',
+        outcome=test_record.Outcome.PASS,
+        marginal=False,
+    )
+
+    m1 = measurements.Measurement('meas-1', outcome=measurements.Outcome.PASS)
+    m1.measured_value.set(10)
+    m2 = measurements.Measurement(
+        'meas-2', outcome=measurements.Outcome.SKIPPED
+    )
+    m3 = measurements.Measurement(
+        'meas-3', outcome=measurements.Outcome.SKIPPED
+    ).with_dimensions('V')
+
+    phase1 = test_record.PhaseRecord(
+        name='phase-1',
+        descriptor_id=1,
+        codeinfo=test_record.CodeInfo.uncaptured(),
+        result=None,
+        outcome=test_record.PhaseOutcome.PASS,
+        marginal=False,
+        measurements={'meas-1': m1},
+        attachments={},
+        start_time_millis=1,
+        end_time_millis=1,
+    )
+
+    phase2 = test_record.PhaseRecord(
+        name='phase-2',
+        descriptor_id=2,
+        codeinfo=test_record.CodeInfo.uncaptured(),
+        result=None,
+        outcome=test_record.PhaseOutcome.SKIP,
+        marginal=False,
+        measurements={'meas-2': m2, 'meas-3': m3},
+        attachments={},
+        start_time_millis=1,
+        end_time_millis=1,
+    )
+
+    record.phases = [phase1, phase2]
+
+    mfg_event = mfg_event_converter.mfg_event_from_test_record(record)
+
+    self.assertEqual(len(mfg_event.measurement), 2)
+    self.assertEqual(mfg_event.measurement[0].name, 'meas-1')
+    self.assertEqual(mfg_event.measurement[1].name, 'meas-2')
+    self.assertEqual(
+        mfg_event.measurement[1].status, test_runs_pb2.Status.SKIPPED
+    )
+    self.assertEqual(mfg_event.measurement[0].status, test_runs_pb2.Status.PASS)
+
+    attachment_names = [a.name for a in mfg_event.attachment]
+    self.assertIn('multidim_meas-3', attachment_names)
+
   def assert_same_mdim(self, expected, other):
     self.assertEqual(expected.outcome, other.outcome)
     self.assertEqual(expected.units, other.units)
