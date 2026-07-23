@@ -20,6 +20,7 @@
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { ConfigService } from '../../core/config.service';
 import { FlashMessageService } from '../../core/flash-message.service';
@@ -76,8 +77,7 @@ export class HistoryService {
     const url = `${baseUrl}/history/${historyItem.fileName}`;
     historyItem.status = HistoryItemStatus.loading;
 
-    return this.http.get<RawTestState>(url)
-        .toPromise()
+    return firstValueFrom(this.http.get<RawTestState>(url))
         .then(rawTestState => {
           const fileName = historyItem.fileName;
           const testState = makeTest(rawTestState, null, fileName, station);
@@ -113,8 +113,7 @@ export class HistoryService {
     const baseUrl = getStationBaseUrl(this.config.dashboardEnabled, station);
     const url = `${baseUrl}/history`;
 
-    return this.http.get<RawHistoryItemList>(url)
-               .toPromise()
+    return firstValueFrom(this.http.get<RawHistoryItemList>(url))
                .then(response => {
                  const rawHistoryItems = response.data;
                  this.getHistory(station).length = 0;
@@ -160,11 +159,14 @@ export class HistoryService {
     }
 
     const baseUrl = getStationBaseUrl(this.config.dashboardEnabled, station);
-    const url =
-        (`${baseUrl}/history?dutId=${historyItem.dutId}` +
-         `&startTimeMillis=${historyItem.startTimeMillis}`);
+    const url = `${baseUrl}/history`;
 
-    return this.http.get<RawHistoryItemList>(url).toPromise().then(response => {
+    return firstValueFrom(this.http.get<RawHistoryItemList>(url, {
+      params: {
+        dutId: historyItem.dutId,
+        startTimeMillis: String(historyItem.startTimeMillis),
+      },
+    })).then(response => {
       const rawHistoryItems = response.data;
       if (rawHistoryItems.length === 0) {
         return Promise.reject(new Error('Server returned no history items.'));
