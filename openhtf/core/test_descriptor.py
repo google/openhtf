@@ -323,7 +323,7 @@ class Test(object):
       else:
         trigger = test_start
 
-      if CONF.capture_source:
+      if CONF.capture_source and trigger is not None:
         trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)  # pyrefly: ignore[missing-attribute]
 
       self._executor = test_executor.TestExecutor(

@@ -15,10 +15,13 @@
 """Unit tests for test_descriptor module."""
 
 import re
-import unittest
 from unittest import mock
 
+from absl.testing import parameterized
 from openhtf.core import test_descriptor
+from openhtf.util import configuration
+
+CONF = configuration.CONF
 
 
 class RegexMatcher(object):
@@ -30,7 +33,7 @@ class RegexMatcher(object):
     return re.search(self.pattern, other) is not None
 
 
-class TestTest(unittest.TestCase):
+class TestTest(parameterized.TestCase):
 
   @mock.patch.object(test_descriptor, '_LOG')
   def test_output_cb_error_stacktrace_log(self, mock_log):
@@ -47,3 +50,35 @@ class TestTest(unittest.TestCase):
     test.execute()
     mock_log.error.assert_called_once_with(
         mock.ANY, callback, RegexMatcher(r'test_descriptor_test(.|\n)*test123'))
+
+  @parameterized.named_parameters([
+      {
+          'testcase_name': 'trigger_none_capture_source_false',
+          'test_start': None,
+          'capture_source': False,
+      },
+      {
+          'testcase_name': 'trigger_none_capture_source_true',
+          'test_start': None,
+          'capture_source': True,
+      },
+      {
+          'testcase_name': 'trigger_lambda_capture_source_false',
+          'test_start': lambda: 'DUT_ID',
+          'capture_source': False,
+      },
+      {
+          'testcase_name': 'trigger_lambda_capture_source_true',
+          'test_start': lambda: 'DUT_ID',
+          'capture_source': True,
+      },
+  ])
+  @CONF.save_and_restore
+  def test_execute(self, test_start, capture_source):
+    CONF.load(capture_source=capture_source)
+
+    def phase():
+      """No-op phase for testing."""
+
+    test = test_descriptor.Test(phase)
+    self.assertTrue(test.execute(test_start=test_start))
