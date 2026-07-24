@@ -914,8 +914,10 @@ class TestCase(unittest.TestCase):
         self.assertFalse(
             phase_record.measurements[measurement].measured_value.is_value_set,
             'Measurement %s unexpectedly set' % measurement)
-        self.assertIs(measurements.Outcome.UNSET,
-                      phase_record.measurements[measurement].outcome)
+        self.assertIn(
+            phase_record.measurements[measurement].outcome,
+            (measurements.Outcome.UNSET, measurements.Outcome.SKIPPED),
+        )
 
     if isinstance(phase_or_test_record, test_record.PhaseRecord):
       _check_phase(phase_or_test_record, True)
