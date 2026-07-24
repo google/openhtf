@@ -749,12 +749,9 @@ class PhaseState(object):
     Any UNSET measurements will cause the Phase to FAIL unless
     conf.allow_unset_measurements is set True.
     """
-    phase_skipped = self.result and self.result.is_skip
     for measurement in self.measurements.values():
       # Clear notification callbacks for later serialization.
       measurement.set_notification_callback(None)
-      if phase_skipped and measurement.outcome is measurements.Outcome.UNSET:
-        measurement.outcome = measurements.Outcome.SKIPPED
       # Validate multi-dimensional measurements now that we have all values.
       if measurement.outcome is measurements.Outcome.PARTIALLY_SET:
         try:
