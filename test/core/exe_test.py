@@ -89,6 +89,15 @@ class FailedPlugError(Exception):
   """Exception for the failed plug."""
 
 
+class TestStateInitError(Exception):
+  """Exception thrown during test state initialization."""
+
+
+@openhtf.PhaseOptions()
+def no_op_phase():
+  """No-op phase for unit testing."""
+
+
 FAIL_PLUG_MESSAGE = 'Failed'
 
 
@@ -357,6 +366,37 @@ class TestExecutorTest(unittest.TestCase):
     # Teardown function should be executed.
     self.assertTrue(ev.wait(1))
     executor.close()
+
+  def test_test_state_initialization_failure_gracefully_exits(self):
+    test = openhtf.Test(no_op_phase)
+    executor = test_executor.TestExecutor(
+        test.descriptor,
+        'uid',
+        None,
+        test._test_options,
+        run_phases_with_profiling=False,
+    )
+    with mock.patch.object(
+        test_state,
+        test_state.TestState.__name__,
+        side_effect=TestStateInitError,
+    ):
+      executor.start()
+      executor.wait()
+      self.assertIsNone(executor.test_state)
+      executor.close()
+
+  def test_close_unstarted_executor(self):
+    test = openhtf.Test(no_op_phase)
+    executor = test_executor.TestExecutor(
+        test.descriptor,
+        'uid',
+        None,
+        test._test_options,
+        run_phases_with_profiling=False,
+    )
+    executor.close()
+    self.assertIsNone(executor.test_state)
 
   def test_cancel_phase_with_diagnoser(self):
 
@@ -1393,5 +1433,3 @@ class RepeatOnMeasurementFailIntegrationTest(parameterized.TestCase,
     # STOP takes precedence - test should FAIL (due to measurement) without retry.
     self.assertPhaseStop(record)
     self.assertEqual(1, tracker.get_num_repeats())
-
-
