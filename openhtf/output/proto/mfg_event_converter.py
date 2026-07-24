@@ -56,14 +56,13 @@ MEASUREMENT_OUTCOME_TO_TEST_RUN_STATUS_NAME = {
     measurements.Outcome.FAIL: 'FAIL',
     measurements.Outcome.UNSET: 'ERROR',
     measurements.Outcome.PARTIALLY_SET: 'ERROR',
-    measurements.Outcome.SKIPPED: 'SKIPPED',
+    measurements.Outcome.SKIPPED: 'ERROR',
 }
 TEST_RUN_STATUS_NAME_TO_MEASUREMENT_OUTCOME = {
     'PASS': measurements.Outcome.PASS,
     'MARGINAL_PASS': measurements.Outcome.PASS,
     'FAIL': measurements.Outcome.FAIL,
-    'ERROR': measurements.Outcome.UNSET,
-    'SKIPPED': measurements.Outcome.SKIPPED,
+    'ERROR': measurements.Outcome.UNSET
 }
 
 _GIBI_BYTE_TO_BASE = 1 << 30
