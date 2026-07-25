@@ -235,11 +235,15 @@ def unit_defs_from_sheet(sheet, column_names):
         continue
       seen.add(key)
 
-      # Split on ' or ' to support the units like '% or pct'
-      for suffix in suffix.split(' or '):
-        yield "%s = UnitDescriptor('%s', '%s', '''%s''')\n" % (key, name, code,
-                                                               suffix)
-        yield 'ALL_UNITS.append(%s)\n' % key
+      # Split on ' or ' to support the units like '% or pct'.  The first suffix
+      # keeps the canonical key; alternate suffixes get their own key so they
+      # do not overwrite it.
+      for idx, suffix in enumerate(suffix.split(' or ')):
+        alias_key = key if idx == 0 else unit_key_from_name(
+            '%s %s' % (name, suffix))
+        yield "%s = UnitDescriptor('%s', '%s', '''%s''')\n" % (alias_key, name,
+                                                               code, suffix)
+        yield 'ALL_UNITS.append(%s)\n' % alias_key
 
   except xlrd.XLRDError:
     sys.stdout.write('Unable to process the .xls file.')
