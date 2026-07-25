@@ -75,10 +75,13 @@ def test_phase(
     my_plug,
     shameless_plug: ShamelessPlug,
     do_set_measurements: bool = True,
+    do_skip: bool = False,
 ):
   shameless_plug.plug_away()
   phase_data.logger.error('in phase_data %s', id(phase_data))
   phase_data.logger.error('in measurements %s', id(phase_data.measurements))
+  if do_skip:
+    return openhtf.PhaseResult.SKIP
   if do_set_measurements:
     phase_data.measurements.test_measurement = my_plug.do_stuff('stuff_args')
     phase_data.measurements.othr_measurement = 0xDEAD
@@ -265,6 +268,23 @@ class TestTest(test.TestCase):
         test_phase.with_args(do_set_measurements=False)
     )
     self.assertNotMeasured(phase_record, 'unset_measurement')
+
+  def test_assert_not_measured_when_phase_skipped(self):
+    self.auto_mock_plugs(MyPlug)
+    phase_record = self.execute_phase_or_test(
+        test_phase.with_args(do_skip=True)
+    )
+    self.assertPhaseSkip(phase_record)
+    self.assertNotMeasured(phase_record, 'unset_measurement')
+    self.assertIs(
+        measurements.Outcome.SKIPPED,
+        phase_record.measurements['unset_measurement'].outcome,
+    )
+    self.assertNotMeasured(phase_record, 'test_measurement')
+    self.assertIs(
+        measurements.Outcome.SKIPPED,
+        phase_record.measurements['test_measurement'].outcome,
+    )
 
   @test.yields_phases
   def test_assert_measured_raises_when_measurement_not_defined(self):
