@@ -146,8 +146,10 @@ class TestExecutor(threads.KillableThread):
     This function is defined instead of a __del__ function because Python calls
     the __del__ function unreliably.
     """
-    self.wait()
-    self.running_test_state.close()
+    if self.is_alive():
+      self.wait()
+    if self.test_state is not None:
+      self.test_state.close()
 
   def abort(self) -> None:
     """Abort this test."""
@@ -232,8 +234,12 @@ class TestExecutor(threads.KillableThread):
       _LOG.error('Error in TestExecutor: \n%s', stacktrace)
       raise
     finally:
-      self._execute_test_teardown()
-      self._execution_finished.set()
+      try:
+        self._execute_test_teardown()
+      except Exception:  # pylint: disable=broad-except
+        _LOG.exception('Error during test teardown.')
+      finally:
+        self._execution_finished.set()
 
   def _initialize_plugs(
       self,
@@ -314,6 +320,8 @@ class TestExecutor(threads.KillableThread):
         self._teardown_phases_lock.release()
 
   def _execute_test_teardown(self) -> None:
+    if self.test_state is None:
+      return
     # Plug teardown does not affect the test outcome.
     self.running_test_state.plug_manager.tear_down_plugs()
 
