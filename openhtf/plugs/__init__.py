@@ -20,11 +20,11 @@ end of a test.  It's up to the Plug implementation to do any sort of
 is-ready check.
 """
 
+import inspect
 import logging
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Text, Tuple, Type, TypeVar, Union
 
 import attr
-
 from openhtf.core import base_plugs
 from openhtf.core import phase_descriptor
 from openhtf.util import configuration
@@ -61,6 +61,10 @@ class DuplicatePlugError(Exception):
   """Raised when the same plug is required multiple times on a phase."""
 
 
+class InvalidPlugForPhaseError(Exception):
+  """Raised when a plug is registered for a phase but not in its signature."""
+
+
 def plug(
     update_kwargs: bool = True,
     **plugs_map: Union[Type[base_plugs.BasePlug], base_plugs.PlugPlaceholder]
@@ -76,6 +80,9 @@ def plug(
 
   Args:
     update_kwargs: If true, makes the decorated phase take this plug as a kwarg.
+      Otherwise the plug is initialized and lifecycle-managed, but will not be
+      available in the decorated phase. This option is used in monitors and may
+      be removed in the future.
     **plugs_map: Dict mapping name to Plug type.
 
   Returns:
@@ -106,8 +113,25 @@ def plug(
     Raises:
       DuplicatePlugError:  If a plug name is declared twice for the
           same function.
+      InvalidPlugForPhaseError: If a plug is registered for a phase but not
+          present in the phase signature.
     """
     phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(func)
+    if update_kwargs:
+      sig = inspect.signature(phase.func)
+      has_varkw = any(
+          p.kind == inspect.Parameter.VAR_KEYWORD
+          for p in sig.parameters.values()
+      )
+      # It is not common, or recommended, to pull plugs from **kwargs, but since
+      # it's technically possible, we allow it (by not checking plugs at all).
+      if not has_varkw:
+        for plug_name in plugs_map:
+          if plug_name not in sig.parameters:
+            raise InvalidPlugForPhaseError(
+                f'Plug "{plug_name}" is registered for phase "{phase.name}" '
+                'but is not present in the phase signature.'
+            )
     duplicates = (frozenset(p.name for p in phase.plugs) & frozenset(plugs_map))
     if duplicates:
       raise DuplicatePlugError('Plugs %s required multiple times on phase %s' %

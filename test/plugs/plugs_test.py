@@ -68,6 +68,15 @@ class TearDownRaisesPlug2(base_plugs.BasePlug):
     raise Exception()
 
 
+def noop_phase():
+  """No-op phase for unit testing."""
+
+
+def noop_adder_plug_phase(adder_plug):
+  """No-op phase that accepts an "adder_plug"."""
+  del adder_plug  # Unused.
+
+
 class PlugsTest(test.TestCase):
 
   def setUp(self):
@@ -197,12 +206,9 @@ class PlugsTest(test.TestCase):
       self.plug_manager.wait_for_plug_update('invalid', {}, 0)
 
   def test_duplicate_plug(self):
+    phase = plugs.plug(adder_plug=AdderPlug)(noop_adder_plug_phase)
     with self.assertRaises(plugs.DuplicatePlugError):
-
-      @plugs.plug(adder_plug=AdderPlug)
-      @plugs.plug(adder_plug=AdderPlug)
-      def dummy_phase(adder_plug):
-        del adder_plug  # Unused.
+      plugs.plug(adder_plug=AdderPlug)(phase)
 
   def test_uses_base_tear_down(self):
     self.assertTrue(base_plugs.BasePlug().uses_base_tear_down())
@@ -210,3 +216,29 @@ class PlugsTest(test.TestCase):
     self.assertFalse(AdderPlug().uses_base_tear_down())
     self.assertFalse(AdderSubclassPlug().uses_base_tear_down())
     self.assertFalse(TearDownRaisesPlug1().uses_base_tear_down())
+
+  def test_plug_signature_mismatch_raises(self):
+    with self.assertRaisesRegex(
+        plugs.InvalidPlugForPhaseError, 'present in the phase signature'
+    ):
+      plugs.plug(adder_plug=AdderPlug)(noop_phase)
+
+  def test_plug_signature_match_passes(self):
+    phase = plugs.plug(adder_plug=AdderPlug)(noop_adder_plug_phase)
+    self.assertEqual(len(phase.plugs), 1)
+    self.assertIs(phase.plugs[0].cls, AdderPlug)
+
+  def test_plug_signature_mismatch_update_kwargs_false_passes(self):
+    phase = plugs.plug(update_kwargs=False, adder_plug=AdderPlug)(noop_phase)
+    self.assertEqual(len(phase.plugs), 1)
+    self.assertIs(phase.plugs[0].cls, AdderPlug)
+    self.assertFalse(phase.plugs[0].update_kwargs)
+
+  def test_plug_signature_match_varkw_passes(self):
+    def dummy_phase(**kwargs):
+      del kwargs  # Unused.
+
+    # Should not raise because **kwargs is present
+    phase = plugs.plug(adder_plug=AdderPlug)(dummy_phase)
+    self.assertEqual(len(phase.plugs), 1)
+    self.assertIs(phase.plugs[0].cls, AdderPlug)
