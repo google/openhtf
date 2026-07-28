@@ -375,6 +375,7 @@ class TestState(util.SubscribableStateMixin):
       self.test_record.add_outcome_details(code, description)
       if self._outcome_is_failure_exception(phase_execution_outcome):
         self.state_logger.error(
+            # pyrefly: ignore[missing-attribute]
             f'Outcome of {phase_name} will be FAIL since exception was of type'
             f' {phase_execution_outcome.phase_result.exc_type.__name__}'
         )
@@ -389,7 +390,7 @@ class TestState(util.SubscribableStateMixin):
           self.state_logger.critical(
               'Traceback:%s%s%s%s\n in executing %s',
               os.linesep,
-              phase_execution_outcome.phase_result.get_traceback_string(),
+              phase_execution_outcome.phase_result.get_traceback_string(),  # pyrefly: ignore[missing-attribute]
               os.linesep,
               description,
               phase_name,
@@ -541,7 +542,7 @@ class TestState(util.SubscribableStateMixin):
   def _outcome_is_failure_exception(
       self, outcome: phase_executor.PhaseExecutionOutcome) -> bool:
     for failure_exception in self.test_options.failure_exceptions:
-      if isinstance(outcome.phase_result.exc_val, failure_exception):
+      if isinstance(outcome.phase_result.exc_val, failure_exception):  # pyrefly: ignore[missing-attribute]
         return True
     return False
 

@@ -426,7 +426,7 @@ class PhaseOrTestIterator(Iterator):
       _merge_stats(profile_stats, profile_filepath)  # pyrefly: ignore[bad-argument-type]
 
     if phase_result.raised_exception:
-      failure_message = phase_result.phase_result.get_traceback_string()
+      failure_message = phase_result.phase_result.get_traceback_string()  # pyrefly: ignore[missing-attribute]
     else:
       failure_message = None
     return test_state_.test_record.phases[-1], failure_message
