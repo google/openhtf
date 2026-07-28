@@ -905,7 +905,13 @@ class TestCase(unittest.TestCase):
 
   ##### Measurement Assertions #####
 
-  def assertNotMeasured(self, phase_or_test_record, measurement):
+  def assertNotMeasured(
+      self,
+      phase_or_test_record,
+      measurement: str,
+      outcome: measurements.Outcome | None = None,
+  ):
+    """Asserts that the given measurement is not set; outcome optional."""
 
     def _check_phase(phase_record, strict=False):
       if strict:
@@ -914,10 +920,16 @@ class TestCase(unittest.TestCase):
         self.assertFalse(
             phase_record.measurements[measurement].measured_value.is_value_set,
             'Measurement %s unexpectedly set' % measurement)
-        self.assertIn(
-            phase_record.measurements[measurement].outcome,
-            (measurements.Outcome.UNSET, measurements.Outcome.SKIPPED),
-        )
+        if outcome is not None:
+          self.assertIs(
+              outcome,
+              phase_record.measurements[measurement].outcome,
+          )
+        else:
+          self.assertIn(
+              phase_record.measurements[measurement].outcome,
+              (measurements.Outcome.UNSET, measurements.Outcome.SKIPPED),
+          )
 
     if isinstance(phase_or_test_record, test_record.PhaseRecord):
       _check_phase(phase_or_test_record, True)

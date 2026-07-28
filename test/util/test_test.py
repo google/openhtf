@@ -163,8 +163,34 @@ class TestTest(test.TestCase):
     # The test fails because the 'fails' measurement fails.
     self.assertTestFail(test_record)
     self.assertTestOutcomeCode(test_record, 0xBED)
-    self.assertNotMeasured(test_record, 'unset_measurement')
-    self.assertNotMeasured(test_record.phases[-1], 'unset_measurement')
+    with self.assertTestHasPhaseRecord(test_record, 'test_phase') as phase_rec:
+      with self.subTest('assertNotMeasured unspecified outcome'):
+        self.assertNotMeasured(test_record, 'unset_measurement')
+        self.assertNotMeasured(phase_rec, 'unset_measurement')
+      with self.subTest('assertNotMeasured with outcome UNSET'):
+        self.assertNotMeasured(
+            test_record,
+            'unset_measurement',
+            outcome=measurements.Outcome.UNSET,
+        )
+        self.assertNotMeasured(
+            phase_rec,
+            'unset_measurement',
+            outcome=measurements.Outcome.UNSET,
+        )
+      with self.subTest('assertNotMeasured with outcome SKIPPED raises'):
+        with self.assertRaises(AssertionError):
+          self.assertNotMeasured(
+              test_record,
+              'unset_measurement',
+              outcome=measurements.Outcome.SKIPPED,
+          )
+        with self.assertRaises(AssertionError):
+          self.assertNotMeasured(
+              phase_rec,
+              'unset_measurement',
+              outcome=measurements.Outcome.SKIPPED,
+          )
     with self.subTest('assertMeasured no value'):
       self.assertMeasured(test_record, 'test_measurement')
     with self.subTest('assertMeasured with value'):
@@ -267,7 +293,19 @@ class TestTest(test.TestCase):
     phase_record = self.execute_phase_or_test(
         test_phase.with_args(do_set_measurements=False)
     )
-    self.assertNotMeasured(phase_record, 'unset_measurement')
+    with self.subTest('unspecified_outcome'):
+      self.assertNotMeasured(phase_record, 'unset_measurement')
+    with self.subTest('explicit_unset_outcome'):
+      self.assertNotMeasured(
+          phase_record, 'unset_measurement', outcome=measurements.Outcome.UNSET
+      )
+    with self.subTest('mismatched_skipped_outcome'):
+      with self.assertRaises(AssertionError):
+        self.assertNotMeasured(
+            phase_record,
+            'unset_measurement',
+            outcome=measurements.Outcome.SKIPPED,
+        )
 
   def test_assert_not_measured_when_phase_skipped(self):
     self.auto_mock_plugs(MyPlug)
@@ -275,12 +313,37 @@ class TestTest(test.TestCase):
         test_phase.with_args(do_skip=True)
     )
     self.assertPhaseSkip(phase_record)
-    self.assertNotMeasured(phase_record, 'unset_measurement')
+    with self.subTest('unspecified_outcome'):
+      self.assertNotMeasured(phase_record, 'unset_measurement')
+      self.assertNotMeasured(phase_record, 'test_measurement')
+    with self.subTest('explicit_skipped_outcome'):
+      self.assertNotMeasured(
+          phase_record,
+          'unset_measurement',
+          outcome=measurements.Outcome.SKIPPED,
+      )
+      self.assertNotMeasured(
+          phase_record,
+          'test_measurement',
+          outcome=measurements.Outcome.SKIPPED,
+      )
+    with self.subTest('mismatched_unset_outcome'):
+      with self.assertRaises(AssertionError):
+        self.assertNotMeasured(
+            phase_record,
+            'unset_measurement',
+            outcome=measurements.Outcome.UNSET,
+        )
+      with self.assertRaises(AssertionError):
+        self.assertNotMeasured(
+            phase_record,
+            'test_measurement',
+            outcome=measurements.Outcome.UNSET,
+        )
     self.assertIs(
         measurements.Outcome.SKIPPED,
         phase_record.measurements['unset_measurement'].outcome,
     )
-    self.assertNotMeasured(phase_record, 'test_measurement')
     self.assertIs(
         measurements.Outcome.SKIPPED,
         phase_record.measurements['test_measurement'].outcome,
