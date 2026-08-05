@@ -25,18 +25,27 @@ class UnitsTest(unittest.TestCase):
     self.assertEqual(units.PERCENT.suffix, '%')
     self.assertEqual(units.PERCENT_PCT.suffix, 'pct')
 
-  def test_suffix_aliases_have_distinct_keys(self):
-    """Alias suffixes must not overwrite the canonical unit attribute."""
-    for primary, alias in (
-        ('PERCENT', 'PERCENT_PCT'),
-        ('KILOGRAM_PER_LITRE', 'KILOGRAM_PER_LITRE_KG_PER_L'),
-        ('DECITONNE', 'DECITONNE_DTN'),
-        ('RACK_UNIT', 'RACK_UNIT_RU'),
+  def test_primary_symbol_wins_the_canonical_key(self):
+    """The first symbol listed in the sheet keeps the module-level name."""
+    for key, suffix in (
+        ('PERCENT', '%'),
+        ('KILOGRAM_PER_LITRE', 'kg/l'),
+        ('DECITONNE', 'dt'),
+        ('RACK_UNIT', 'U'),
     ):
-      primary_unit = getattr(units, primary)
-      alias_unit = getattr(units, alias)
-      self.assertEqual(primary_unit.code, alias_unit.code)
-      self.assertNotEqual(primary_unit.suffix, alias_unit.suffix)
+      self.assertEqual(getattr(units, key).suffix, suffix)
+
+  def test_alternate_symbols_stay_reachable_by_lookup(self):
+    """Alternates have no module attribute but must still resolve."""
+    for suffix, name in (
+        ('pct', 'percent'),
+        ('kg/L', 'kilogram per litre'),
+        ('dtn', 'decitonne'),
+        ('RU', 'rack unit'),
+    ):
+      unit = units.Unit(suffix)
+      self.assertEqual(unit.suffix, suffix)
+      self.assertEqual(unit.name, name)
 
   def test_lookup_by_every_suffix(self):
     self.assertIs(units.Unit('%'), units.PERCENT)
