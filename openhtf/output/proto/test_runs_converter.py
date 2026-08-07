@@ -49,7 +49,6 @@ from openhtf.core import measurements
 from openhtf.core import test_record
 from openhtf.output.callbacks import json_factory
 from openhtf.output.proto import test_runs_pb2
-from openhtf.output.proto import test_runs_pb2
 from openhtf.util import validators
 
 # pylint: disable=g-complex-comprehension
@@ -359,7 +358,7 @@ def test_run_from_test_record(record):
   Returns:
     An instance of the TestRun proto for the given record.
   """
-  testrun = test_runs_pb2.TestRun()  # pytype: disable=module-attr  # gen-stub-imports
+  testrun = test_runs_pb2.TestRun()
   _populate_header(record, testrun)
   _attach_json(record, testrun)
 

@@ -27,12 +27,11 @@ from google.auth import exceptions as google_auth_exceptions
 from google.auth.transport import requests
 from google.oauth2 import service_account
 from openhtf.output import callbacks
-from openhtf.output.proto import test_runs_converter
-from requests import exceptions as requests_exceptions
-
-from openhtf.output.proto import test_runs_pb2
-from openhtf.output.proto import mfg_event_pb2
 from openhtf.output.proto import guzzle_pb2
+from openhtf.output.proto import mfg_event_pb2
+from openhtf.output.proto import test_runs_converter
+from openhtf.output.proto import test_runs_pb2
+from requests import exceptions as requests_exceptions
 
 
 _MFG_INSPECTOR_UPLOAD_TIMEOUT = 60 * 5
@@ -217,7 +216,7 @@ def send_mfg_inspector_data(
     InvalidTestRunError: If the server rejects the payload with a 400 Bad
       Request.
   """
-  envelope = guzzle_pb2.TestRunEnvelope()  # pytype: disable=module-attr  # gen-stub-imports
+  envelope = guzzle_pb2.TestRunEnvelope()
   data = inspector_proto.SerializeToString()
   if _is_compressed_payload_type(payload_type):
     data = zlib.compress(data)

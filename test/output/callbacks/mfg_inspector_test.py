@@ -26,19 +26,17 @@ import openhtf as htf
 from openhtf import util
 from examples import all_the_things
 from openhtf.output.callbacks import mfg_inspector
+from openhtf.output.proto import guzzle_pb2
 from openhtf.output.proto import test_runs_converter
+from openhtf.output.proto import test_runs_pb2
 from openhtf.util import test
 import requests
 
-from openhtf.output.proto import test_runs_pb2
-from openhtf.output.proto import guzzle_pb2
-from openhtf.output.proto import test_runs_pb2
-
-MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(  # pytype: disable=module-attr  # gen-stub-imports
+MOCK_TEST_RUN_PROTO = test_runs_pb2.TestRun(
     tester_name='mock_test_run',
     dut_serial='UNITTEST1234',
     test_status=test_runs_pb2.PASS,
-    test_info=test_runs_pb2.TestInfo(name='unit_test'))  # pytype: disable=module-attr  # gen-stub-imports
+    test_info=test_runs_pb2.TestInfo(name='unit_test'))
 
 MOCK_TEST_RUN = collections.namedtuple('Testrun',  # pyrefly: ignore[bad-class-definition]
                                        mfg_inspector.MfgInspector.PARAMS)(None,
@@ -102,7 +100,7 @@ class TestMfgInspector(test.TestCase):
 
     # Parse what was written to BytesIO back into a proto and compare
     testrun_output.seek(0)
-    testrun = test_runs_pb2.TestRun()  # pytype: disable=module-attr  # gen-stub-imports
+    testrun = test_runs_pb2.TestRun()
     testrun.ParseFromString(testrun_output.read())
 
     expected_test_run_proto = test_runs_converter.test_run_from_test_record(
@@ -140,7 +138,7 @@ class TestMfgInspector(test.TestCase):
 
     # Parse what was written to BytesIO back into a proto and compare
     testrun_output.seek(0)
-    testrun = test_runs_pb2.TestRun()  # pytype: disable=module-attr  # gen-stub-imports
+    testrun = test_runs_pb2.TestRun()
     testrun.ParseFromString(testrun_output.read())
 
     self.assertEqual(MOCK_TEST_RUN_PROTO, testrun)
