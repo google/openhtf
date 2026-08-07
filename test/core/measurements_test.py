@@ -123,6 +123,30 @@ class TestMeasurements(htf_test.TestCase):
     m.measured_value[42] = 1.2346
     self.assertAlmostEqual(m.measured_value[42], 1.235)
 
+  def test_precision_handles_none(self):
+    """Check that with_precision handles None values gracefully."""
+    m = htf.Measurement('meas_with_precision').with_precision(3)
+    m.measured_value.set(None)
+    self.assertIsNone(m.measured_value.value)
+
+    m_dim = htf.Measurement('meas_with_precision_and_dims').with_precision(
+        3
+    ).with_dimensions('x')
+    m_dim.measured_value[42] = None
+    self.assertIsNone(m_dim.measured_value[42])
+
+  def test_precision_with_validator_none(self):
+    """Check that with_precision with InRange validator handles None without crashing."""
+    m = (
+        htf.Measurement('meas_with_precision_and_range')
+        .with_precision(2)
+        .in_range(1.0, 5.0)
+    )
+    m.measured_value.set(None)
+    m.notify_value_set()
+    self.assertEqual(m.outcome, measurements.Outcome.FAIL)
+    self.assertIsNone(m.measured_value.value)
+
   def test_cache_same_object(self):
     m = htf.Measurement('measurement')
     basetypes0 = m.as_base_types()
