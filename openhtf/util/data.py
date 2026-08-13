@@ -163,7 +163,7 @@ def convert_to_base_types(obj,
   # Because it's *really* annoying to pass a single string accidentally.
   assert not isinstance(ignore_keys, str), 'Pass a real iterable!'
 
-  if hasattr(obj, 'as_base_types'):
+  if hasattr(obj, 'as_base_types') and not inspect.isclass(obj):
     return obj.as_base_types()
   if hasattr(obj, '_asdict') and not inspect.isclass(obj):
     obj = obj._asdict()

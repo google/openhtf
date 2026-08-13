@@ -46,6 +46,11 @@ class TestData(unittest.TestCase):
       def as_base_types(self):
         return self.value
 
+    class ClassWithAsBaseTypes(object):
+
+      def as_base_types(self):
+        return 'called on instance'
+
     @attr.s(slots=True, frozen=True)
     class FrozenAttr(object):
       value = attr.ib(type=int)
@@ -72,7 +77,8 @@ class TestData(unittest.TestCase):
         'special': SpecialBaseTypes('must_not_be_present'),
         'not_copied': not_copied,
         'enum': EnumClass.A,
-
+        'class_with_as_base_types_instance': ClassWithAsBaseTypes(),
+        'class_with_as_base_types_class': ClassWithAsBaseTypes,
         # Some plugs such as UserInputPlug will return None as a response to
         # AsDict().
         'none_dict': AsDict(),
@@ -99,6 +105,12 @@ class TestData(unittest.TestCase):
     self.assertIsInstance(converted['special'], dict)
     self.assertEqual(converted['special'], {'safe_value': True})
     self.assertIs(converted['not_copied'], not_copied.value)
+    self.assertEqual(
+        converted['class_with_as_base_types_instance'], 'called on instance'
+    )
+    self.assertEqual(
+        converted['class_with_as_base_types_class'], str(ClassWithAsBaseTypes)
+    )
 
     self.assertIsNone(converted['none_dict'])
 
