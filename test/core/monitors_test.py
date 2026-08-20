@@ -20,6 +20,7 @@ from unittest import mock
 from openhtf import plugs
 from openhtf.core import base_plugs
 from openhtf.core import monitors
+from openhtf.core import phase_descriptor
 
 
 class EmptyPlug(base_plugs.BasePlug):
@@ -96,3 +97,22 @@ class TestMonitors(unittest.TestCase):
         first_meas[0], 100, msg='At time 0, there should be a call made.')
     self.assertEqual(
         2, first_meas[1], msg="And it should be the monitor func's return val")
+
+  def test_get_value_with_extra_kwargs(self):
+    """Monitor without **kwargs handles a phase carrying extra_kwargs.
+
+    A phase that has been parameterized with PhaseDescriptor.with_args() carries
+    its kwargs in extra_kwargs.  The monitor thread forwards those kwargs to the
+    monitor function, keeping only the arguments the monitor accepts.  This used
+    to iterate over the extra_kwargs dict directly (yielding keys) and unpack
+    each key into two names, raising `ValueError: too many values to unpack`.
+    """
+
+    def monitor_func(test):
+      del test  # Unused.
+      return 1
+
+    monitor_thread = monitors._MonitorThread(
+        'meas', phase_descriptor.PhaseDescriptor(monitor_func),
+        {'port': 1234}, self.test_state, 1000)
+    self.assertEqual(1, monitor_thread.get_value())

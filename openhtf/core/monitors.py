@@ -84,7 +84,9 @@ class _MonitorThread(threads.KillableThread):
     else:
       # Only pass in args that the monitor phase takes.
       kwargs = {
-          arg: val for arg, val in self.extra_kwargs if arg in argspec_args
+          arg: val
+          for arg, val in self.extra_kwargs.items()
+          if arg in argspec_args
       }
     return self.monitor_desc.with_args(**kwargs)(self.test_state)
 
