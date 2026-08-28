@@ -270,7 +270,9 @@ message InformationParameter {
 
   optional InformationTag type = 4 [default = TEXT_UTF8];
 
-  // next tag = 9
+  optional string mime_type = 9;
+
+  // next tag = 10
 }
 
 message Units {
