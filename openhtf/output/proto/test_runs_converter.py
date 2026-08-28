@@ -166,6 +166,8 @@ def _extract_attachments(phase, testrun, used_parameter_names):
     testrun_param = testrun.info_parameters.add()
     testrun_param.name = name
     testrun_param.value_binary = attachment_data
+    if mimetype:
+      testrun_param.mime_type = mimetype
     if mimetype in MIMETYPE_MAP:
       testrun_param.type = MIMETYPE_MAP[mimetype]
     else:

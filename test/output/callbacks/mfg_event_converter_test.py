@@ -382,6 +382,52 @@ class MfgEventConverterTest(unittest.TestCase):
         tuple(mfg_event.attachment),
         (expected_first_attachment_proto, expected_other_attachment_proto))
 
+  def test_copy_attachments_with_custom_mimetype(self):
+    attachment_name = 'custom_attachment'
+    attachment = test_record.Attachment(b'<html></html>', 'text/html')
+    expected_attachment_proto = mfg_event_pb2.EventAttachment(
+        name=attachment_name,
+        value_binary=attachment.data,
+        mime_type='text/html')
+
+    phase = test_record.PhaseRecord(
+        name='mock-phase-name',
+        descriptor_id=1,
+        codeinfo=self.create_codeinfo(),
+        attachments={attachment_name: attachment},
+    )
+
+    mfg_event = mfg_event_pb2.MfgEvent()
+    copier = mfg_event_converter.PhaseCopier([phase])
+    copier.copy_attachments(mfg_event)
+
+    self.assertCountEqual(
+        tuple(mfg_event.attachment),
+        (expected_attachment_proto,))
+
+  def test_copy_attachments_with_empty_mimetype(self):
+    attachment_name = 'empty_mimetype_attachment'
+    attachment = test_record.Attachment(b'dummy', '')
+    expected_attachment_proto = mfg_event_pb2.EventAttachment(
+        name=attachment_name,
+        value_binary=attachment.data,
+        type=test_runs_pb2.BINARY)
+
+    phase = test_record.PhaseRecord(
+        name='mock-phase-name',
+        descriptor_id=1,
+        codeinfo=self.create_codeinfo(),
+        attachments={attachment_name: attachment},
+    )
+
+    mfg_event = mfg_event_pb2.MfgEvent()
+    copier = mfg_event_converter.PhaseCopier([phase])
+    copier.copy_attachments(mfg_event)
+
+    self.assertCountEqual(
+        tuple(mfg_event.attachment),
+        (expected_attachment_proto,))
+
   def test_copy_attachments_skips_if_too_much_data_and_returns_false(self):
     attachment_names = ('mock-attachment-name0', 'mock-attachment-name1')
 

@@ -526,7 +526,10 @@ class PhaseCopier(object):
     elif mimetype == test_runs_pb2.MULTIDIM_JSON:
       attachment.type = mimetype
     else:
-      attachment.type = test_runs_pb2.BINARY
+      if isinstance(mimetype, str) and mimetype:
+        attachment.mime_type = mimetype
+      else:
+        attachment.type = test_runs_pb2.BINARY
 
 
 def test_record_from_mfg_event(mfg_event):
