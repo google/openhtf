@@ -205,9 +205,12 @@ function makePhase(phase: RawPhase, running: boolean) {
     measurements = Object.keys(phase.measurements).map(key => {
       const rawMeasuredValue = phase.measurements[key].measured_value;
       let measuredValue = null;
-      if (typeof rawMeasuredValue !== 'undefined') {
-        measuredValue = `${rawMeasuredValue}`;
+      if (typeof rawMeasuredValue === 'string') {
+        measuredValue = rawMeasuredValue.trim();
+      } else {
+        JSON.stringify(rawMeasuredValue, null, 2);
       }
+
       return new Measurement({
         name: phase.measurements[key].name,
         validators: phase.measurements[key].validators || null,
