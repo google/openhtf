@@ -124,6 +124,8 @@ class PhaseOptions(object):
       timeout will still apply when under the debugger.
     phase_name_case: Case formatting options for phase name.
     stop_on_measurement_fail: Whether to stop the test if any measurements fail.
+    prerequisites: List of phases that must be completed before this phase can
+      be run.
   Example Usages: @PhaseOptions(timeout_s=1)
     def PhaseFunc(test): pass  @PhaseOptions(name='Phase({port})')
     def PhaseFunc(test, port, other_info): pass
@@ -173,6 +175,7 @@ class PhaseOptions(object):
       phase.options.stop_on_measurement_fail = self.stop_on_measurement_fail
     if self.phase_name_case:
       phase.options.phase_name_case = self.phase_name_case
+
     return phase
 
 
