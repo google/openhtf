@@ -146,6 +146,10 @@ class _ConditionalValidator(object):
     return self
 
 
+def _round_value(value: Any, ndigits: int) -> Any:
+  return round(value, ndigits=ndigits) if value is not None else None
+
+
 def _coordinates_len(coordinates: Any) -> int:
   """Returns count of measurement coordinates.
 
@@ -397,7 +401,9 @@ class Measurement(object):
     if not isinstance(precision, int):
       raise TypeError('Precision must be specified as an int, not %s' %
                       type(precision))
-    return self.with_transform(functools.partial(round, ndigits=precision))
+    return self.with_transform(
+        functools.partial(_round_value, ndigits=precision)
+    )
 
   def with_transform(self, transform_fn: Callable[[Any], Any]) -> 'Measurement':
     """Set the transform function."""
