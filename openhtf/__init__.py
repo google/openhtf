@@ -25,6 +25,7 @@ import openhtf.core.monitors
 import openhtf.core.phase_branches
 import openhtf.core.phase_collections
 import openhtf.core.phase_descriptor
+import openhtf.core.phase_graph
 import openhtf.core.phase_group
 import openhtf.core.phase_nodes
 import openhtf.core.test_descriptor
@@ -74,6 +75,8 @@ __all__ = (  # Expliclty export certain API components.
     'PhaseNameCase',
     'PhaseOptions',
     'PhaseResult',
+    'PhaseDependency',
+    'PhaseGraph',
     'PhaseGroup',
     'PhaseNode',
     'Test',
@@ -117,6 +120,10 @@ PhaseNameCase = openhtf.core.phase_descriptor.PhaseNameCase
 PhaseOptions = openhtf.core.phase_descriptor.PhaseOptions
 PhaseResult = openhtf.core.phase_descriptor.PhaseResult
 
+# Note: Parallel phases (PhaseDependency, PhaseGraph) is a beta feature; the
+# API and feature set are currently fluid.
+PhaseDependency = openhtf.core.phase_graph.PhaseDependency
+PhaseGraph = openhtf.core.phase_graph.PhaseGraph
 PhaseGroup = openhtf.core.phase_group.PhaseGroup
 
 PhaseNode = openhtf.core.phase_nodes.PhaseNode
