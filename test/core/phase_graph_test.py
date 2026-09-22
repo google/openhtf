@@ -48,9 +48,9 @@ def format_dag(graph: phase_graph.PhaseGraph) -> list[str]:
     A list of formatted node strings in `graph.nodes` order.
   """
   return [
-      f'{", ".join(sorted(prereqs))} -> {n.name}'
-      if (prereqs := graph.prerequisites.get(n.name))
-      else n.name
+      f'{", ".join(sorted(prereqs))} -> {name}'
+      if (prereqs := graph.prerequisites.get(name := (n.name or '')))
+      else name
       for n in graph.nodes
   ]
 
@@ -254,6 +254,85 @@ class PhaseGraphParallelTest(unittest.TestCase):
     )
     self.assertEqual(format_dag(graph), ['phase_0', 'phase_1', 'phase_2'])
 
+  def test_parallel_accepts_collection_nodes(self):
+    """Parallel collection lanes: [LaneA (Sequence) || LaneB (Group)]."""
+    lane_a = phase_collections.PhaseSequence(
+        make_phase('a1'), make_phase('a2'), name='LaneA'
+    )
+    lane_b = phase_group.PhaseGroup(
+        main=[make_phase('b1')], teardown=[make_phase('b2')], name='LaneB'
+    )
+    graph = phase_graph.PhaseGraph.parallel(lane_a, lane_b)
+    self.assertEqual(format_dag(graph), ['LaneA', 'LaneB'])
+    self.assertIsInstance(graph.nodes[0], phase_collections.PhaseSequence)
+    self.assertIsInstance(graph.nodes[1], phase_group.PhaseGroup)
+
+
+class PhaseGraphCollectionNodeTest(unittest.TestCase):
+
+  def test_collection_nodes_in_dependencies(self):
+    r"""Diamond DAG with PhaseSequence, PhaseGroup, and nested PhaseGraph.
+
+                  fork
+                 /    \\
+        LaneA (Seq)  LaneB (Group)
+                 \\    /
+                Inner (Graph)
+    """
+    fork = make_phase('fork')
+    lane_a = phase_collections.PhaseSequence(
+        make_phase('a1'), make_phase('a2'), name='LaneA'
+    )
+    lane_b = phase_group.PhaseGroup(
+        main=[make_phase('b1')], teardown=[make_phase('b2')], name='LaneB'
+    )
+    inner = phase_graph.PhaseGraph.parallel(
+        make_phase('i1'), make_phase('i2'), name='Inner'
+    )
+    graph = phase_graph.PhaseGraph.from_dependencies(
+        phase_graph.PhaseDependency(fork, [lane_a, lane_b]),
+        phase_graph.PhaseDependency([lane_a, lane_b], inner),
+    )
+
+    with self.subTest('dag_structure'):
+      self.assertEqual(
+          format_dag(graph),
+          [
+              'fork',
+              'fork -> LaneA',
+              'fork -> LaneB',
+              'LaneA, LaneB -> Inner',
+          ],
+      )
+
+    with self.subTest('preserves_collection_types_and_copies_nodes'):
+      self.assertIsInstance(graph.nodes[1], phase_collections.PhaseSequence)
+      self.assertIsNot(graph.nodes[1], lane_a)
+      self.assertEqual(graph.nodes[1], lane_a)
+      self.assertIsInstance(graph.nodes[2], phase_group.PhaseGroup)
+      self.assertIsInstance(graph.nodes[3], phase_graph.PhaseGraph)
+
+  def test_unnamed_collection_node_raises(self):
+    unnamed_nodes = (
+        phase_collections.PhaseSequence(make_phase('a1')),
+        phase_group.PhaseGroup(main=[make_phase('a1')]),
+        phase_graph.PhaseGraph.parallel(make_phase('a1')),
+    )
+    for unnamed in unnamed_nodes:
+      with self.subTest(type(unnamed).__name__):
+        with self.assertRaises(phase_graph.UnnamedNodeError):
+          phase_graph.PhaseGraph.from_dependencies(
+              phase_graph.PhaseDependency(make_phase('before'), unnamed)
+          )
+        with self.assertRaises(phase_graph.UnnamedNodeError):
+          phase_graph.PhaseGraph(nodes=(unnamed,))
+
+  def test_collection_name_collides_with_phase_name(self):
+    lane = phase_collections.PhaseSequence(make_phase('a1'), name='same')
+    phase = make_phase('same')
+    with self.assertRaises(phase_graph.DuplicatePhaseNameError):
+      phase_graph.PhaseGraph.parallel(lane, phase)
+
 
 class PhaseGraphConstructorTest(unittest.TestCase):
 
@@ -336,8 +415,8 @@ class PhaseGraphTransformTest(unittest.TestCase):
   def test_with_args_updates_prerequisites(self):
     """with_args(port=42) formats templated node and prerequisite names.
 
-    Before: step_a_{port} -> step_b_{port}
-    After:  step_a_42 -> step_b_42
+    Before: step_a_{port} -> lane_{port}
+    After:  step_a_42 -> lane_42
     """
 
     @openhtf.PhaseOptions(name='step_a_{port}')
@@ -348,16 +427,20 @@ class PhaseGraphTransformTest(unittest.TestCase):
     def step_b(test, port):
       del test, port
 
+    lane = phase_collections.PhaseSequence(step_b, name='lane_{port}')
     graph = phase_graph.PhaseGraph.from_dependencies(
-        phase_graph.PhaseDependency(step_a, step_b), name='Graph_{port}'
+        phase_graph.PhaseDependency(step_a, lane), name='Graph_{port}'
     ).with_args(port=42)
     self.assertEqual(graph.name, 'Graph_42')
     self.assertEqual(
         format_dag(graph),
         [
             'step_a_42',
-            'step_a_42 -> step_b_42',
+            'step_a_42 -> lane_42',
         ],
+    )
+    self.assertEqual(
+        [n.name for n in graph.all_phases()], ['step_a_42', 'step_b_42']
     )
 
   def test_with_args_name_collision_raises_duplicate_phase_name_error(self):
@@ -428,7 +511,7 @@ class PhaseGraphTransformTest(unittest.TestCase):
     self.assertEqual(graph.name, 'Graph')
     self.assertEqual(format_dag(graph), ['phase_a', 'phase_a -> phase_b'])
     self.assertEqual(
-        [n.code_info for n in graph.nodes],
+        [n.code_info for n in graph.all_phases()],
         [
             test_record.CodeInfo.for_function(phase_a.func),
             test_record.CodeInfo.for_function(phase_b.func),
@@ -436,8 +519,11 @@ class PhaseGraphTransformTest(unittest.TestCase):
     )
 
   def test_apply_to_all_phases_visits_every_phase(self):
+    lane = phase_collections.PhaseSequence(make_phase('a1'), name='Lane')
+    before, after = make_phases('before', 'after')
     graph = phase_graph.PhaseGraph.from_dependencies(
-        phase_graph.PhaseDependency(make_phase('before'), make_phase('after')),
+        phase_graph.PhaseDependency(lane, before),
+        phase_graph.PhaseDependency(before, after),
         name='Graph',
     ).apply_to_all_phases(
         lambda phase: openhtf.PhaseOptions(name=f'prefix:{phase.name}')(phase)
@@ -446,9 +532,14 @@ class PhaseGraphTransformTest(unittest.TestCase):
     self.assertEqual(
         format_dag(graph),
         [
-            'prefix:before',
+            'Lane',
+            'Lane -> prefix:before',
             'prefix:before -> prefix:after',
         ],
+    )
+    self.assertEqual(
+        [n.name for n in graph.all_phases()],
+        ['prefix:a1', 'prefix:before', 'prefix:after'],
     )
 
   def test_all_phases(self):
@@ -460,8 +551,9 @@ class PhaseGraphTransformTest(unittest.TestCase):
 
   def test_filter_by_type(self):
     phase_a, phase_b = make_phases('phase_a', 'phase_b')
+    lane = phase_collections.PhaseSequence(phase_a, name='Lane')
     graph = phase_graph.PhaseGraph.from_dependencies(
-        phase_graph.PhaseDependency(phase_a, phase_b)
+        phase_graph.PhaseDependency(lane, phase_b)
     )
     self.assertEqual(
         list(graph.filter_by_type(phase_descriptor.PhaseDescriptor)),
@@ -469,6 +561,10 @@ class PhaseGraphTransformTest(unittest.TestCase):
     )
     self.assertEqual(
         list(graph.filter_by_type(phase_collections.PhaseSequence)),
+        [lane],
+    )
+    self.assertEqual(
+        list(graph.filter_by_type(phase_group.PhaseGroup)),
         [],
     )
 
@@ -962,6 +1058,263 @@ class PhaseGraphExecutionTest(unittest.TestCase):
     self.assertTrue(
         monitored_record.measurements['worker_lookup_ok'].measured_value.value
     )
+
+
+class PhaseGraphCollectionNodeExecutionTest(unittest.TestCase):
+  """Executes PhaseGraphs whose nodes are sequences, groups, or graphs."""
+
+  def test_fork_join_with_sequence_and_group_lanes(self):
+    r"""Fork-join with a PhaseSequence lane and a PhaseGroup lane.
+
+                            fork
+                           /    \\
+        LaneA: [a1 -> a2]        LaneB: [b_setup -> b_main -> b_teardown]
+                           \\    /
+                         join_phase
+    """
+    events = []
+    lock = threading.Lock()
+
+    def make(name):
+      @openhtf.PhaseOptions(name=name)
+      def phase():
+        with lock:
+          events.append(name)
+
+      return phase
+
+    lane_a = phase_collections.PhaseSequence(
+        make('a1'), make('a2'), name='LaneA'
+    )
+    lane_b = phase_group.PhaseGroup(
+        setup=[make('b_setup')],
+        main=[make('b_main')],
+        teardown=[make('b_teardown')],
+        name='LaneB',
+    )
+    graph = phase_graph.PhaseGraph.from_dependencies(
+        phase_graph.PhaseDependency(make('fork'), [lane_a, lane_b]),
+        phase_graph.PhaseDependency([lane_a, lane_b], make('join_phase')),
+    )
+    record = _run_test(openhtf.Test(graph))
+    self.assertEqual(record.outcome, test_record.Outcome.PASS)
+    self.assertCountEqual(
+        events,
+        [
+            'fork',
+            'a1',
+            'a2',
+            'b_setup',
+            'b_main',
+            'b_teardown',
+            'join_phase',
+        ],
+    )
+    self.assertEqual(events[0], 'fork')
+    self.assertEqual(events[-1], 'join_phase')
+    self.assertLess(events.index('a1'), events.index('a2'))
+    self.assertLess(events.index('b_setup'), events.index('b_main'))
+    self.assertLess(events.index('b_main'), events.index('b_teardown'))
+
+  def test_nested_phase_graph_node(self):
+    """Outer graph runs Inner([i1 || i2]) to completion before 'after'."""
+    executed = []
+    lock = threading.Lock()
+
+    def make(name):
+      @openhtf.PhaseOptions(name=name)
+      def phase():
+        with lock:
+          executed.append(name)
+
+      return phase
+
+    inner = phase_graph.PhaseGraph.parallel(
+        make('i1'), make('i2'), name='Inner'
+    )
+    outer = phase_graph.PhaseGraph.from_dependencies(
+        phase_graph.PhaseDependency(inner, make('after')), name='Outer'
+    )
+    record = _run_test(openhtf.Test(outer))
+    self.assertEqual(record.outcome, test_record.Outcome.PASS)
+    self.assertCountEqual(executed[:2], ['i1', 'i2'])
+    self.assertEqual(executed[2], 'after')
+
+  def test_sibling_failure_kills_group_main_and_runs_group_teardown(self):
+    """Sibling failure kills PhaseGroup's main sequence while teardown runs.
+
+    Lane 1: [failing_phase (raises)] -> cancels graph
+    Lane 2: [lane_first (killed) -> (lane_second skipped)] -> [lane_teardown]
+    """
+    first_started = threading.Event()
+    first_finished = threading.Event()
+    second_ran = threading.Event()
+    teardown_ran = threading.Event()
+
+    @openhtf.PhaseOptions(name='failing_phase')
+    def failing_phase():
+      first_started.wait(timeout=2.0)
+      raise RuntimeError('Intentional failure')
+
+    @openhtf.PhaseOptions(name='lane_first', timeout_s=10)
+    def lane_first():
+      first_started.set()
+      time.sleep(10)
+      first_finished.set()
+
+    @openhtf.PhaseOptions(name='lane_second')
+    def lane_second():
+      second_ran.set()
+
+    @openhtf.PhaseOptions(name='lane_teardown')
+    def lane_teardown():
+      teardown_ran.set()
+
+    lane = phase_group.PhaseGroup(
+        main=[lane_first, lane_second], teardown=[lane_teardown], name='Lane'
+    )
+    graph = phase_graph.PhaseGraph.parallel(failing_phase, lane)
+    record = _run_test(openhtf.Test(graph))
+
+    with self.subTest('stops_main_sequence'):
+      self.assertEqual(record.outcome, test_record.Outcome.ERROR)
+      self.assertFalse(first_finished.is_set())
+      self.assertFalse(second_ran.is_set())
+
+    with self.subTest('runs_group_teardown'):
+      self.assertTrue(teardown_ran.is_set())
+      outcome_for_phase = {p.name: p.outcome for p in record.phases}
+      self.assertEqual(
+          outcome_for_phase['lane_teardown'], test_record.PhaseOutcome.PASS
+      )
+
+  def test_sibling_failure_does_not_kill_running_group_teardown(self):
+    """A sibling failure must not kill a PhaseGroup teardown already in flight.
+
+    Lane 1:          [failing_phase (raises)] -> _cancel_phase_graph (guarded)
+    Lane 2: [main] -> [lane_teardown (running....................PASS)]
+    """
+    teardown_started = threading.Event()
+    graph_cancelled = threading.Event()
+    teardown_finished = threading.Event()
+    original_cancel_phase_graph = test_executor.TestExecutor._cancel_phase_graph
+
+    def cancel_phase_graph_and_notify(executor, graph_run):
+      original_cancel_phase_graph(executor, graph_run)
+      graph_cancelled.set()
+
+    @openhtf.PhaseOptions(name='failing_phase')
+    def failing_phase():
+      teardown_started.wait(timeout=5.0)
+      raise RuntimeError('Intentional failure')
+
+    @openhtf.PhaseOptions(name='lane_teardown', timeout_s=10)
+    def lane_teardown():
+      teardown_started.set()
+      graph_cancelled.wait(timeout=5.0)
+      teardown_finished.set()
+
+    lane = phase_group.PhaseGroup(
+        main=[make_phase('lane_main')], teardown=[lane_teardown], name='Lane'
+    )
+    graph = phase_graph.PhaseGraph.parallel(failing_phase, lane)
+    with mock.patch.object(
+        test_executor.TestExecutor,
+        test_executor.TestExecutor._cancel_phase_graph.__name__,
+        autospec=True,
+        spec_set=True,
+        side_effect=cancel_phase_graph_and_notify,
+    ):
+      record = _run_test(openhtf.Test(graph))
+
+    self.assertEqual(record.outcome, test_record.Outcome.ERROR)
+    self.assertTrue(graph_cancelled.is_set())
+    self.assertTrue(teardown_finished.is_set())
+    outcome_for_phase = {p.name: p.outcome for p in record.phases}
+    self.assertEqual(
+        outcome_for_phase['lane_teardown'], test_record.PhaseOutcome.PASS
+    )
+
+  def test_group_node_inside_teardown_graph_runs_its_teardown(self):
+    """A PhaseGroup inside a teardown PhaseGraph still runs its own teardown.
+
+    Main:     [main_fail (raises)]
+    Teardown: PhaseGraph.parallel(
+                TeardownLane: [td_lane_main (raises)] -> [td_lane_teardown
+                (PASS)],
+                [td_other (PASS)],
+              )
+    """
+    events = []
+    lock = threading.Lock()
+
+    def make(name, fail=False):
+      @openhtf.PhaseOptions(name=name)
+      def phase():
+        with lock:
+          events.append(name)
+        if fail:
+          raise RuntimeError(f'{name} error')
+
+      return phase
+
+    td_lane = phase_group.PhaseGroup(
+        main=[make('td_lane_main', fail=True)],
+        teardown=[make('td_lane_teardown')],
+        name='TeardownLane',
+    )
+    td_graph = phase_graph.PhaseGraph.parallel(td_lane, make('td_other'))
+    group = phase_group.PhaseGroup(
+        main=[make('main_fail', fail=True)], teardown=[td_graph]
+    )
+    record = _run_test(openhtf.Test(group))
+    self.assertEqual(record.outcome, test_record.Outcome.ERROR)
+    self.assertCountEqual(
+        events,
+        ['main_fail', 'td_lane_main', 'td_lane_teardown', 'td_other'],
+    )
+
+  def test_abort_during_graph_runs_group_teardown(self):
+    """TestExecutor.abort() kills main phases and runs PhaseGroup teardown.
+
+    Lane 1 (PhaseGroup): [lane_main (sleeping) -> aborted] -> [lane_teardown
+    (PASS)]
+    Lane 2:              [other     (sleeping) -> aborted]
+    """
+    both_started = threading.Barrier(3, timeout=5.0)
+    teardown_ran = threading.Event()
+
+    @openhtf.PhaseOptions(name='lane_main', timeout_s=10)
+    def lane_main():
+      both_started.wait()
+      time.sleep(10)
+
+    @openhtf.PhaseOptions(name='lane_teardown')
+    def lane_teardown():
+      teardown_ran.set()
+
+    @openhtf.PhaseOptions(name='other', timeout_s=10)
+    def other():
+      both_started.wait()
+      time.sleep(10)
+
+    lane = phase_group.PhaseGroup(
+        main=[lane_main], teardown=[lane_teardown], name='Lane'
+    )
+    graph = phase_graph.PhaseGraph.parallel(lane, other)
+    test = openhtf.Test(graph)
+    test.configure(default_dut_id='dut')
+    executor = test_executor.TestExecutor(
+        test.descriptor, 'uid', None, test._test_options, False
+    )
+    executor.start()
+    both_started.wait()
+    executor.abort()
+    executor.wait()
+    record = executor.running_test_state.test_record
+    executor.close()
+    self.assertEqual(record.outcome, test_record.Outcome.ABORTED)
+    self.assertTrue(teardown_ran.is_set())
 
 
 if __name__ == '__main__':
