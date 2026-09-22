@@ -79,6 +79,48 @@ def _more_critical(e1: _ExecutorReturn, e2: _ExecutorReturn) -> _ExecutorReturn:
   return _ExecutorReturn(max(e1.value, e2.value))
 
 
+class _TeardownGuard:
+  """Tracks teardown activity so that aborts do not cancel teardown phases.
+
+  Teardown sequences may run on several threads at once (e.g. a PhaseGroup
+  node inside a PhaseGraph), so this is a counter rather than a lock: any
+  thread may enter or leave, and an abort only stops phases while no teardown
+  is in progress. While an abort is stopping phases, new teardown entries wait.
+  """
+
+  def __init__(self):
+    self._cond = threading.Condition()
+    self._depth = 0
+    self._stopping = False
+
+  @contextlib.contextmanager
+  def entered(self) -> Iterator[None]:
+    """Marks a teardown sequence as running for the duration of the context."""
+    with self._cond:
+      while self._stopping:
+        self._cond.wait()
+      self._depth += 1
+    try:
+      yield
+    finally:
+      with self._cond:
+        self._depth -= 1
+        self._cond.notify_all()
+
+  def begin_stop(self) -> bool:
+    """Returns True and blocks new entries if no teardown is running."""
+    with self._cond:
+      if self._depth:
+        return False
+      self._stopping = True
+      return True
+
+  def end_stop(self) -> None:
+    with self._cond:
+      self._stopping = False
+      self._cond.notify_all()
+
+
 @attr.s(slots=True)
 class _PhaseGraphRun:
   """Bookkeeping for one execution of a PhaseGraph.
@@ -101,9 +143,7 @@ class _PhaseGraphRun:
 
   graph = attr.ib(type=phase_graph.PhaseGraph)
   in_teardown = attr.ib(type=bool)
-  node_for_name = attr.ib(
-      type=Dict[Text, phase_descriptor.PhaseDescriptor], init=False
-  )
+  node_for_name = attr.ib(type=Dict[Text, phase_nodes.PhaseNode], init=False)
   sorter = attr.ib(type=graphlib.TopologicalSorter[Text], init=False)
   failed_nodes = attr.ib(type=Set[Text], factory=set, init=False)
   node_name_for_future = attr.ib(
@@ -113,7 +153,7 @@ class _PhaseGraphRun:
   )
 
   def __attrs_post_init__(self) -> None:
-    self.node_for_name = {n.name: n for n in self.graph.nodes}
+    self.node_for_name = {n.name: n for n in self.graph.nodes if n.name}
     self.sorter = graphlib.TopologicalSorter(self.graph.prerequisites)
     self.sorter.prepare()
 
@@ -122,18 +162,18 @@ class _PhaseGraphRun:
     """True when every node in the graph has finished."""
     return not self.sorter.is_active()
 
-  def ready_nodes(self) -> List[phase_descriptor.PhaseDescriptor]:
+  def ready_nodes(self) -> List[phase_nodes.PhaseNode]:
     """Returns unscheduled nodes whose prerequisites have all finished."""
     return [self.node_for_name[name] for name in self.sorter.get_ready()]
 
   def submit_ready(
       self,
       pool: concurrent.futures.Executor,
-      run_fn: Callable[[phase_descriptor.PhaseDescriptor], _ExecutorReturn],
+      run_fn: Callable[[phase_nodes.PhaseNode], _ExecutorReturn],
   ) -> None:
     """Submits every ready node to `pool` with `run_fn`."""
     for node in self.ready_nodes():
-      self.node_name_for_future[pool.submit(run_fn, node)] = node.name
+      self.node_name_for_future[pool.submit(run_fn, node)] = node.name or ''
 
   def wait_finished(
       self,
@@ -197,9 +237,9 @@ class TestExecutor(threads.KillableThread):
     self._abort = threading.Event()
     self._full_abort = threading.Event()
     self._execution_finished = threading.Event()
-    # This is a reentrant lock so that the teardown logic that prevents aborts
-    # affects nested sequences.
-    self._teardown_phases_lock = threading.RLock()
+    # Prevents aborts from cancelling teardown phases, including teardown
+    # phases running concurrently on PhaseGraph worker threads.
+    self._teardown_guard = _TeardownGuard()
     # Populated if profiling is enabled.
     self._phase_profile_stats = []  # type: List[pstats.Stats]
 
@@ -394,8 +434,8 @@ class TestExecutor(threads.KillableThread):
       if not phase_exec:
         # The test executor has not started yet, so no stopping is required.
         return
-    if not force and not self._teardown_phases_lock.acquire(False):
-      # If locked, teardown phases are running, so do not cancel those.
+    if not force and not self._teardown_guard.begin_stop():
+      # Teardown phases are running, so do not cancel those.
       return
     try:
       phase_exec.stop(timeout_s=CONF.cancel_timeout_s)
@@ -403,7 +443,7 @@ class TestExecutor(threads.KillableThread):
       phase_exec.reset_stop()
     finally:
       if not force:
-        self._teardown_phases_lock.release()
+        self._teardown_guard.end_stop()
 
   def _execute_test_teardown(self) -> None:
     if self.test_state is None:
@@ -547,7 +587,7 @@ class TestExecutor(threads.KillableThread):
       _ExecutorReturn for how to proceed.
     """
     for node in phase_sequence.nodes:
-      if self._abort.is_set():
+      if self._is_cancelled():
         return _ExecutorReturn.TERMINAL
       exe_ret = self._execute_node(node, subtest_rec, False)
       if exe_ret != _ExecutorReturn.CONTINUE:
@@ -567,13 +607,17 @@ class TestExecutor(threads.KillableThread):
       _ExecutorReturn for how to proceed.
     """
     ret = _ExecutorReturn.CONTINUE
-    with self._teardown_phases_lock:
+    with self._teardown_guard.entered():
       for node in phase_sequence.nodes:
         if self._full_abort.is_set():
           return _ExecutorReturn.TERMINAL
         ret = _more_critical(ret, self._execute_node(node, subtest_rec, True))
 
     return ret
+
+  def _is_cancelled(self) -> bool:
+    """Checks if the test is aborting or has already hit a terminal outcome."""
+    return self._abort.is_set() or self._last_outcome is not None
 
   @contextlib.contextmanager
   def _subtest_context(
@@ -712,14 +756,18 @@ class TestExecutor(threads.KillableThread):
       subtest_rec: Optional[test_record.SubtestRecord],
       in_teardown: bool,
   ) -> _ExecutorReturn:
-    """Executes the phases of a PhaseGraph concurrently in DAG order.
+    """Executes the nodes of a PhaseGraph concurrently in DAG order.
 
-    Phases are submitted to a worker pool as soon as their prerequisites have
-    finished. Outside teardown the first terminal phase cancels unstarted
-    phases and kills running ones; in teardown every phase runs regardless of
-    failures. Leaving the pool's `with` block waits for the running workers,
-    which is what guarantees that the enclosing PhaseGroup teardown runs only
-    after them.
+    Nodes are submitted to a worker pool as soon as their prerequisites have
+    finished; a node may be a phase or any other PhaseNode (a sequence, group,
+    or nested graph), which runs with its usual semantics on the worker.
+
+    Outside teardown the first terminal node cancels the graph: unstarted nodes
+    never run, running phases are killed, and PhaseGroup nodes still run their
+    teardown phases (see _cancel_phase_graph). In teardown every node runs
+    regardless of failures. Leaving the pool's `with` block waits for the
+    running workers, which is what guarantees that the enclosing PhaseGroup
+    teardown runs only after them.
 
     Note: Parallel phases is a beta feature; the API and feature set are
     currently fluid.
@@ -735,28 +783,19 @@ class TestExecutor(threads.KillableThread):
     if graph.name:
       self.logger.debug('Entering PhaseGraph %s', graph.name)
     graph_run = _PhaseGraphRun(graph, in_teardown)
-    lock_ctx = (
-        self._teardown_phases_lock if in_teardown else contextlib.nullcontext()
-    )
-    try:
-      with lock_ctx, concurrent.futures.ThreadPoolExecutor() as pool:
-        while not graph_run.is_done:
-          if self._abort_requested(in_teardown):
-            self._stop_running_graph_phases(graph_run)
-            return _ExecutorReturn.TERMINAL
-          graph_run.submit_ready(
-              pool,
-              lambda node: self._execute_phase(node, subtest_rec, in_teardown),
-          )
-          self._collect_finished_graph_phases(graph_run)
-          if graph_run.failed_nodes and not in_teardown:
-            self._stop_running_graph_phases(graph_run)
-            return _ExecutorReturn.TERMINAL
-    finally:
-      # Reset only after the worker pool exits so stopped workers cannot
-      # start another repeat iteration before teardown.
-      if self._phase_exec is not None:
-        self._phase_exec.reset_stop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+      while not graph_run.is_done:
+        if self._abort_requested(in_teardown):
+          self._cancel_phase_graph(graph_run)
+          return _ExecutorReturn.TERMINAL
+        graph_run.submit_ready(
+            pool,
+            lambda node: self._execute_node(node, subtest_rec, in_teardown),
+        )
+        self._collect_finished_graph_phases(graph_run)
+        if graph_run.failed_nodes and not in_teardown:
+          self._cancel_phase_graph(graph_run)
+          return _ExecutorReturn.TERMINAL
     if graph_run.failed_nodes:
       return _ExecutorReturn.TERMINAL
     return _ExecutorReturn.CONTINUE
@@ -765,7 +804,7 @@ class TestExecutor(threads.KillableThread):
     """Same policy as sequences: a teardown only yields to a full abort."""
     if in_teardown:
       return self._full_abort.is_set()
-    return self._abort.is_set() or self._full_abort.is_set()
+    return self._full_abort.is_set() or self._is_cancelled()
 
   def _collect_finished_graph_phases(self, graph_run: _PhaseGraphRun) -> None:
     """Waits for at least one running node and records the outcomes."""
@@ -780,11 +819,26 @@ class TestExecutor(threads.KillableThread):
           name, terminal=(node_ret == _ExecutorReturn.TERMINAL)
       )
 
-  def _stop_running_graph_phases(self, graph_run: _PhaseGraphRun) -> None:
-    """Cancels unstarted nodes and kills the phases running on workers."""
+  def _cancel_phase_graph(self, graph_run: _PhaseGraphRun) -> None:
+    """Cancels a PhaseGraph after one of its nodes failed or the test aborted.
+
+    Unstarted nodes are cancelled and phases currently running on worker
+    threads are killed. The stop state is reset immediately so that the
+    teardown phases of any PhaseGroup node still unwinding on a worker can
+    run; `_is_cancelled` prevents those workers from starting any further
+    non-teardown phases.
+
+    Like an abort, this coordinates with the teardown guard: if any teardown
+    phase is already running (e.g. a PhaseGroup node in a sibling lane), no
+    phases are killed, and teardown sequences that start while phases are
+    being killed wait until the stop state has been reset. Only a full abort
+    kills phases regardless of teardown.
+
+    Args:
+      graph_run: The bookkeeping of the graph being cancelled.
+    """
     graph_run.cancel_pending()
-    if self._phase_exec is not None:
-      self._phase_exec.stop(timeout_s=CONF.cancel_timeout_s)
+    self._stop_phase_executor(force=self._full_abort.is_set())
 
   def _record_exception_outcome(self, unit_name: Text) -> None:
     """Records the exception being handled as the test outcome, if unset."""

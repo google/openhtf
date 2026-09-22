@@ -13,11 +13,12 @@
 # limitations under the License.
 """Phase Graph support for OpenHTF.
 
-A PhaseGraph is a PhaseCollectionNode whose phases form a directed acyclic
-graph (DAG): the dependencies declare which phases must finish before another
-phase may start. Phases with no unmet prerequisites are eligible to run
-concurrently, so a graph with no dependencies at all is simply a set of
-parallel phases (see `PhaseGraph.parallel`).
+A PhaseGraph is a PhaseCollectionNode whose child nodes form a directed acyclic
+graph (DAG). Each node may be a phase, a PhaseSequence, a PhaseGroup, or any
+other PhaseNode; the dependencies declare which nodes must finish before another
+node may start. Nodes with no unmet prerequisites are eligible to run
+concurrently, so a graph with no dependencies at all is simply a set of parallel
+nodes (see `PhaseGraph.parallel`).
 
 Example:
 
@@ -44,9 +45,12 @@ from openhtf import util
 from openhtf.core import base_plugs
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
+from openhtf.core import phase_nodes
 
-NodeOrNodesT: TypeAlias = phase_descriptor.PhaseT | Iterable['NodeOrNodesT']
-NodesT = tuple[phase_descriptor.PhaseT, ...]
+NodeOrNodesT: TypeAlias = (
+    phase_descriptor.PhaseCallableOrNodeT | Iterable['NodeOrNodesT']
+)
+NodesT = tuple[phase_descriptor.PhaseCallableOrNodeT, ...]
 # Maps each node name to the names of its prerequisite nodes.
 PrerequisitesMapT = Mapping[str, Set[str]]
 
@@ -63,26 +67,44 @@ class InvalidPrerequisitesError(ValueError):
   """PhaseGraph prerequisites are invalid or out of topological order."""
 
 
+class UnnamedNodeError(ValueError):
+  """A collection node in a PhaseGraph has no name.
+
+  Graph prerequisites are keyed by node name, so every PhaseSequence,
+  PhaseGroup, or other collection node placed in a PhaseGraph must be given an
+  explicit name.
+  """
+
+
 def _to_tuple(item: NodeOrNodesT) -> NodesT:
-  """Recursively flattens a single phase or iterable of phases into a tuple."""
+  """Recursively flattens a single node or iterable of nodes into a tuple."""
   if isinstance(item, Iterable):
     return tuple(itertools.chain.from_iterable(_to_tuple(sub) for sub in item))
   return (item,)
 
 
+def _require_name(node: phase_nodes.PhaseNode) -> str:
+  """Returns the node's name, raising UnnamedNodeError if it has none."""
+  name = node.name
+  if not name:
+    raise UnnamedNodeError(
+        f'{type(node).__name__} nodes in a PhaseGraph must have a name; set'
+        ' `name=` when constructing it.'
+    )
+  return name
+
+
 def _wrap_nodes(
-    nodes: Iterable[phase_descriptor.PhaseT],
-) -> tuple[phase_descriptor.PhaseDescriptor, ...]:
-  """Wraps or copies each node into a tuple of PhaseDescriptors."""
-  return tuple(
-      phase_descriptor.PhaseDescriptor.wrap_or_copy(node) for node in nodes
-  )
+    nodes: NodeOrNodesT,
+) -> tuple[phase_nodes.PhaseNode, ...]:
+  """Wraps or copies each node into a tuple of PhaseNodes."""
+  return tuple(phase_collections.flatten(nodes))
 
 
 def _topological_sort(
-    nodes_by_name: Mapping[str, phase_descriptor.PhaseDescriptor],
+    nodes_by_name: Mapping[str, phase_nodes.PhaseNode],
     prerequisites_map: PrerequisitesMapT,
-) -> list[phase_descriptor.PhaseDescriptor]:
+) -> list[phase_nodes.PhaseNode]:
   """Performs a topological sort of the nodes.
 
   Args:
@@ -112,21 +134,21 @@ def _topological_sort(
 class PhaseDependency:
   """A directed dependency from prerequisite nodes to dependent nodes.
 
-  Both prerequisites and dependents accept a single phase or an iterable of
-  phases, so one PhaseDependency can express a fan-out
+  Both prerequisites and dependents accept a single node or an iterable of
+  nodes, so one PhaseDependency can express a fan-out
   (`PhaseDependency(a, [b, c])`), a fan-in (`PhaseDependency([a, b], c)`) or a
-  full bipartite dependency between two sets.
+  full bipartite dependency between two sets of nodes.
 
   Attributes:
-    prerequisites: Phases that must finish before the dependents may start.
-    dependents: Phases that depend on all of the prerequisites.
+    prerequisites: Nodes that must finish before the dependents may start.
+    dependents: Nodes that depend on all of the prerequisites.
   """
 
   prerequisites = attr.ib(type=NodesT, converter=_to_tuple)
   dependents = attr.ib(type=NodesT, converter=_to_tuple)
 
 
-DependencyOrNodeT = PhaseDependency | phase_descriptor.PhaseT
+DependencyOrNodeT = PhaseDependency | phase_descriptor.PhaseCallableOrNodeT
 DependencyInitializerT: TypeAlias = (
     DependencyOrNodeT | Iterable['DependencyInitializerT']
 )
@@ -153,9 +175,9 @@ def _flatten_dependencies(
 class PhaseGraph(phase_collections.PhaseCollectionNode):
   """A phase collection whose execution order is defined by a DAG.
 
-  Every phase must have a name that is unique within the PhaseGraph. The nodes
+  Every node must have a name that is unique within the PhaseGraph. The nodes
   are stored in a topological order of their prerequisites; the executor may
-  run any phases whose prerequisites have all finished concurrently.
+  run any nodes whose prerequisites have all finished concurrently.
 
   The constructor takes already-sorted nodes and their prerequisites map; use
   `PhaseGraph.from_dependencies` to build a graph from PhaseDependency
@@ -166,17 +188,15 @@ class PhaseGraph(phase_collections.PhaseCollectionNode):
   currently fluid.
 
   Attributes:
-    nodes: A tuple of PhaseDescriptor instances in topologically sorted order.
-    prerequisites: Maps each phase name to the names of its minimal direct
+    nodes: A tuple of PhaseNode instances in topologically sorted order.
+    prerequisites: Maps each node name to the names of its minimal direct
       prerequisites. The constructor accepts a sparse mapping (nodes with no
       prerequisites may be omitted) and normalizes it by filling in missing
       nodes and removing transitively redundant prerequisites.
     name: An optional name for this PhaseGraph.
   """
 
-  nodes = attr.ib(
-      type=tuple[phase_descriptor.PhaseDescriptor, ...], converter=_wrap_nodes
-  )
+  nodes = attr.ib(type=tuple[phase_nodes.PhaseNode, ...], converter=_wrap_nodes)
   prerequisites = attr.ib(type=PrerequisitesMapT, factory=dict)
   name = attr.ib(type=str | None, default=None)
 
@@ -184,32 +204,32 @@ class PhaseGraph(phase_collections.PhaseCollectionNode):
     """Validates and normalizes prerequisites to their transitive reduction."""
     seen_names: set[str] = set()
     for node in self.nodes:
-      if node.name in seen_names:
+      name = _require_name(node)
+      if name in seen_names:
         raise DuplicatePhaseNameError(
-            f"Duplicate node name '{node.name}' detected in PhaseGraph."
+            f"Duplicate node name '{name}' detected in PhaseGraph."
         )
-      seen_names.add(node.name)
+      seen_names.add(name)
 
     ancestors_for_node: dict[str, frozenset[str]] = {}
     reduced_prerequisites_for_node: dict[str, frozenset[str]] = {}
     for node in self.nodes:
-      direct_prerequisites = frozenset(self.prerequisites.get(node.name, ()))
+      name = _require_name(node)
+      direct_prerequisites = frozenset(self.prerequisites.get(name, ()))
       unmet_prerequisites = direct_prerequisites - ancestors_for_node.keys()
       if unmet_prerequisites:
         raise InvalidPrerequisitesError(
-            f"Node '{node.name}' has prerequisites"
+            f"Node '{name}' has prerequisites"
             f' {sorted(unmet_prerequisites)} that do not precede it in the'
             ' PhaseGraph.'
         )
       indirect_prerequisites = frozenset().union(
           *(ancestors_for_node[prereq] for prereq in direct_prerequisites)
       )
-      reduced_prerequisites_for_node[node.name] = (
+      reduced_prerequisites_for_node[name] = (
           direct_prerequisites - indirect_prerequisites
       )
-      ancestors_for_node[node.name] = (
-          indirect_prerequisites | direct_prerequisites
-      )
+      ancestors_for_node[name] = indirect_prerequisites | direct_prerequisites
 
     unknown_nodes = set(self.prerequisites) - seen_names
     if unknown_nodes:
@@ -239,7 +259,8 @@ class PhaseGraph(phase_collections.PhaseCollectionNode):
       A PhaseGraph with its nodes in topologically sorted order.
 
     Raises:
-      DuplicatePhaseNameError: If two distinct phases share a name.
+      DuplicatePhaseNameError: If two distinct nodes share a name.
+      UnnamedNodeError: If a collection node has no name.
       CyclicDependencyError: If a cycle is detected in the graph.
     """
     flat_dependencies = _flatten_dependencies(dependencies)
@@ -250,21 +271,22 @@ class PhaseGraph(phase_collections.PhaseCollectionNode):
     # PhaseDescriptor, and `node.name` is mutable (requiring `_transform_nodes`
     # to re-key `prerequisites` on `with_args`/`with_plugs`) and disallows
     # duplicate phase names that PhaseSequence supports.
-    # Wrap each distinct phase object exactly once, keyed by name.
-    nodes_by_name: dict[str, phase_descriptor.PhaseDescriptor] = {}
+    # Wrap each distinct node object exactly once, keyed by name.
+    nodes_by_name: dict[str, phase_nodes.PhaseNode] = {}
     names_by_id: dict[int, str] = {}
     for dependency in flat_dependencies:
       for node in dependency.prerequisites + dependency.dependents:
         node_id = id(node)
         if node_id in names_by_id:
           continue
-        wrapped = phase_descriptor.PhaseDescriptor.wrap_or_copy(node)
-        if wrapped.name in nodes_by_name:
+        (wrapped,) = phase_collections.flatten(node)
+        node_name = _require_name(wrapped)
+        if node_name in nodes_by_name:
           raise DuplicatePhaseNameError(
-              f"Duplicate node name '{wrapped.name}' detected in PhaseGraph."
+              f"Duplicate node name '{node_name}' detected in PhaseGraph."
           )
-        nodes_by_name[wrapped.name] = wrapped
-        names_by_id[node_id] = wrapped.name
+        nodes_by_name[node_name] = wrapped
+        names_by_id[node_id] = node_name
 
     prerequisites: dict[str, set[str]] = {
         node_name: set() for node_name in nodes_by_name
@@ -286,32 +308,31 @@ class PhaseGraph(phase_collections.PhaseCollectionNode):
       *nodes: NodeOrNodesT,
       name: str | None = None,
   ) -> Self:
-    """Builds a PhaseGraph whose phases have no dependencies between them.
+    """Builds a PhaseGraph whose nodes have no dependencies between them.
 
-    This is the degenerate DAG: every phase is eligible to run as soon as the
+    This is the degenerate DAG: every node is eligible to run as soon as the
     graph starts, so all of them may run concurrently.
 
     Args:
-      *nodes: Phases (or iterables of phases) to run concurrently.
+      *nodes: Nodes (or iterables of nodes) to run concurrently.
       name: An optional name for the PhaseGraph.
 
     Returns:
       A PhaseGraph with an empty prerequisite set for every node.
 
     Raises:
-      DuplicatePhaseNameError: If two phases share a name.
+      DuplicatePhaseNameError: If two nodes share a name.
+      UnnamedNodeError: If a collection node has no name.
     """
-    return cls(nodes=_to_tuple(nodes), name=name)
+    return cls(nodes=nodes, name=name)
 
   def copy(self) -> Self:
-    """Creates a copy of the PhaseGraph, including each contained phase."""
+    """Creates a copy of the PhaseGraph, including each contained node."""
     return attr.evolve(self)
 
   def _transform_nodes(
       self,
-      transform_fn: Callable[
-          [phase_descriptor.PhaseDescriptor], phase_descriptor.PhaseDescriptor
-      ],
+      transform_fn: Callable[[phase_nodes.PhaseNode], phase_nodes.PhaseNode],
       new_name: str | None,
   ) -> Self:
     """Transforms nodes while keeping the prerequisites map synchronized."""
@@ -319,13 +340,16 @@ class PhaseGraph(phase_collections.PhaseCollectionNode):
     new_name_for_old_name: dict[str, str] = {}
     old_name_for_new_name: dict[str, str] = {}
     for old, new in zip(self.nodes, new_nodes):
-      if new.name in old_name_for_new_name:
+      old_node_name = _require_name(old)
+      new_node_name = _require_name(new)
+      if new_node_name in old_name_for_new_name:
         raise DuplicatePhaseNameError(
-            f"Duplicate node name '{new.name}' detected in PhaseGraph"
-            f" (from '{old_name_for_new_name[new.name]}' and '{old.name}')."
+            f"Duplicate node name '{new_node_name}' detected in PhaseGraph"
+            f" (from '{old_name_for_new_name[new_node_name]}' and"
+            f" '{old_node_name}')."
         )
-      new_name_for_old_name[old.name] = new.name
-      old_name_for_new_name[new.name] = old.name
+      new_name_for_old_name[old_node_name] = new_node_name
+      old_name_for_new_name[new_node_name] = old_node_name
     new_prerequisites_for_node = {
         new_name_for_old_name[node_name]: {
             new_name_for_old_name[prereq] for prereq in prereqs
@@ -389,3 +413,6 @@ class PhaseGraph(phase_collections.PhaseCollectionNode):
     for node in self.nodes:
       if isinstance(node, node_cls):
         yield node
+      if isinstance(node, phase_collections.PhaseCollectionNode):
+        for sub_n in node.filter_by_type(node_cls):
+          yield sub_n
