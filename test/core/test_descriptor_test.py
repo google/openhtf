@@ -82,3 +82,22 @@ class TestTest(parameterized.TestCase):
 
     test = test_descriptor.Test(phase)
     self.assertTrue(test.execute(test_start=test_start))
+
+  @mock.patch.object(test_descriptor.console_output, 'error_print')
+  def test_execute_chained_exceptions_error_print(self, mock_error_print):
+
+    def phase():
+      try:
+        raise ValueError('Root cause error')
+      except ValueError as e:
+        raise RuntimeError('Chained outer error') from e
+
+    test = test_descriptor.Test(phase)
+    self.assertFalse(test.execute())
+    self.assertEqual(
+        mock_error_print.call_args_list,
+        [
+            mock.call('Chained outer error'),
+            mock.call('Root cause error'),
+        ],
+    )
