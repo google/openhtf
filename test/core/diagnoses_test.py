@@ -128,7 +128,7 @@ def get_mock_diag(**kwargs):
     kwargs['return_value'] = None
   mock_diag = mock.MagicMock(**kwargs)
   return diagnoses_lib.PhaseDiagnoser(
-      OkayResult, name='mock_diag', run_func=mock_diag), mock_diag  # pyrefly: ignore[unexpected-keyword]
+      OkayResult, name='mock_diag', run_func=mock_diag), mock_diag
 
 
 class DupeResultA(htf.DiagResultEnum):
@@ -144,13 +144,13 @@ class CheckDiagnosersTest(unittest.TestCase):
 
     with self.assertRaises(diagnoses_lib.DiagnoserError) as cm:
       diagnoses_lib._check_diagnoser(NotDiagnoser(),  # pyrefly: ignore[bad-argument-type]
-                                     diagnoses_lib.BasePhaseDiagnoser)  # pytype: disable=wrong-arg-types
+                                     diagnoses_lib.BasePhaseDiagnoser)
     self.assertEqual('Diagnoser "NotDiagnoser" is not a BasePhaseDiagnoser.',
                      cm.exception.args[0])
 
   def test_result_type_not_set(self):
 
-    @htf.PhaseDiagnoser(None)  # pytype: disable=wrong-arg-types
+    @htf.PhaseDiagnoser(None)  # pyrefly: ignore[bad-argument-type]
     def bad_diag(phase_rec):
       del phase_rec  # Unused.
 
@@ -164,7 +164,7 @@ class CheckDiagnosersTest(unittest.TestCase):
     class BadEnum(str, enum.Enum):
       BAD = 'bad'
 
-    @htf.PhaseDiagnoser(BadEnum)  # pytype: disable=wrong-arg-types
+    @htf.PhaseDiagnoser(BadEnum)  # pyrefly: ignore[bad-argument-type]
     def bad_enum_diag(phase_rec):
       del phase_rec  # Unused.
 
@@ -198,7 +198,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_phase_diagnoser_name_from_function(self):
 
-    @htf.PhaseDiagnoser(OkayResult.OKAY)  # pytype: disable=wrong-arg-types  # use-enum-overlay
+    @htf.PhaseDiagnoser(OkayResult.OKAY)  # pyrefly: ignore[bad-argument-type]
     def from_function(phase_record):
       del phase_record  # Unused.
       return None
@@ -207,7 +207,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_phase_diagnoser_name_set(self):
 
-    @htf.PhaseDiagnoser(OkayResult.OKAY, name='from_arg')  # pytype: disable=wrong-arg-types  # use-enum-overlay
+    @htf.PhaseDiagnoser(OkayResult.OKAY, name='from_arg')  # pyrefly: ignore[bad-argument-type]
     def from_function(phase_record):
       del phase_record  # Unused.
       return None
@@ -230,7 +230,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_test_diagnoser_name_from_function(self):
 
-    @htf.TestDiagnoser(OkayResult.OKAY)  # pytype: disable=wrong-arg-types  # use-enum-overlay
+    @htf.TestDiagnoser(OkayResult.OKAY)  # pyrefly: ignore[bad-argument-type]
     def from_function(test_record_, store):
       del test_record_  # Unused.
       del store  # Unused.
@@ -240,7 +240,7 @@ class DiagnoserTest(unittest.TestCase):
 
   def test_test_diagnoser_name_set(self):
 
-    @htf.TestDiagnoser(OkayResult.OKAY, name='from_arg')  # pytype: disable=wrong-arg-types  # use-enum-overlay
+    @htf.TestDiagnoser(OkayResult.OKAY, name='from_arg')  # pyrefly: ignore[bad-argument-type]
     def from_function(test_record_, store):
       del test_record_  # Unused.
       del store  # Unused.
@@ -300,7 +300,7 @@ class DiagnosesTest(htf_test.TestCase):
         htf.measures('m')(phase_func))
 
     self.assertEqual(
-        htf.PhaseDescriptor(  # pyrefly: ignore[missing-argument]
+        htf.PhaseDescriptor(
             phase_func,
             measurements=[htf.Measurement('m')],
             diagnosers=[basic_wrapper_phase_diagnoser]), phase)
@@ -314,7 +314,7 @@ class DiagnosesTest(htf_test.TestCase):
         htf.diagnose(basic_wrapper_phase_diagnoser)(phase_func))
 
     self.assertEqual(
-        htf.PhaseDescriptor(  # pyrefly: ignore[missing-argument]
+        htf.PhaseDescriptor(
             phase_func,
             measurements=[htf.Measurement('m')],
             diagnosers=[basic_wrapper_phase_diagnoser]), phase)
@@ -325,7 +325,7 @@ class DiagnosesTest(htf_test.TestCase):
       pass
 
     with self.assertRaises(diagnoses_lib.DiagnoserError):
-      _ = htf.diagnose(totally_not_a_diagnoser)(basic_phase)  # pytype: disable=wrong-arg-types
+      _ = htf.diagnose(totally_not_a_diagnoser)(basic_phase)  # pyrefly: ignore[bad-argument-type]
 
   def test_test_diagnoses__check_diagnosers_fail(self):
 
@@ -334,7 +334,7 @@ class DiagnosesTest(htf_test.TestCase):
 
     test = htf.Test(basic_phase)
     with self.assertRaises(diagnoses_lib.DiagnoserError):
-      test.add_test_diagnosers(totally_not_a_diagnoser)  # pytype: disable=wrong-arg-types
+      test.add_test_diagnosers(totally_not_a_diagnoser)  # pyrefly: ignore[bad-argument-type]
 
   @htf_test.yields_phases
   def test_phase_no_diagnoses(self):
@@ -1159,25 +1159,25 @@ class DiagnosesTest(htf_test.TestCase):
           htf.Measurement(
               'pass_measure',
               outcome=measurements.Outcome.PASS,
-              measured_value=measurements.MeasuredValue(  # pyrefly: ignore[unexpected-keyword]
+              measured_value=measurements.MeasuredValue(
                   'pass_measure',
                   is_value_set=True,
                   stored_value=True,
-                  cached_value=True),  # pyrefly: ignore[unexpected-keyword]
+                  cached_value=True),
               set_time_millis=phase_record.measurements['pass_measure'].set_time_millis,
-              cached=mock.ANY), phase_record.measurements['pass_measure'])  # pyrefly: ignore[unexpected-keyword]
+              cached=mock.ANY), phase_record.measurements['pass_measure'])
       self.assertEqual(
           htf.Measurement(
               'fail_measure',
               outcome=measurements.Outcome.FAIL,
-              measured_value=measurements.MeasuredValue(  # pyrefly: ignore[unexpected-keyword]
+              measured_value=measurements.MeasuredValue(
                   'fail_measure',
                   is_value_set=True,
                   stored_value=False,
-                  cached_value=False),  # pyrefly: ignore[unexpected-keyword]
+                  cached_value=False),
               validators=[is_true],
               set_time_millis=phase_record.measurements['fail_measure'].set_time_millis,
-              cached=mock.ANY), phase_record.measurements['fail_measure'])  # pyrefly: ignore[unexpected-keyword]
+              cached=mock.ANY), phase_record.measurements['fail_measure'])
       return None
 
     @htf.diagnose(check_record_diagnoser)

@@ -352,7 +352,7 @@ def multidim_measurement_to_attachment(name, measurement):
       'dimensions': dims,
       'value': value,
   })
-  attachment = htf_test_record.Attachment(data, test_runs_pb2.MULTIDIM_JSON)  # pytype: disable=wrong-arg-types  # gen-stub-imports
+  attachment = htf_test_record.Attachment(data, test_runs_pb2.MULTIDIM_JSON)  # pyrefly: ignore[bad-argument-type]
 
   return attachment
 
@@ -588,7 +588,7 @@ def attachment_to_multidim_measurement(attachment, name=None):
     # Try to convert into htf.Dimension including backwards compatibility.
     unit = UNITS_BY_CODE.get(d.get('uom_code'), units.NONE)
     description = d.get('name', '')
-    dims.append(measurements.Dimension(description=description, unit=unit))  # pyrefly: ignore[unexpected-keyword]
+    dims.append(measurements.Dimension(description=description, unit=unit))
 
   # Attempt to determine if units are included.
   if attachment_values and len(dims) == len(attachment_values[0]):
@@ -610,8 +610,8 @@ def attachment_to_multidim_measurement(attachment, name=None):
   measurement = measurements.Measurement(
       name=name,
       units=units_,
-      dimensions=tuple(dimensions),  # pyrefly: ignore[unexpected-keyword]
-      measured_value=measured_value,  # pyrefly: ignore[unexpected-keyword]
+      dimensions=tuple(dimensions),
+      measured_value=measured_value,
       outcome=outcome,  # pyrefly: ignore[bad-argument-type]
       marginal=marginal)
   return measurement

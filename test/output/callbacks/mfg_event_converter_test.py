@@ -231,7 +231,7 @@ class MfgEventConverterTest(unittest.TestCase):
     measurement = measurements.Measurement(
         name=name,
         outcome=measurements.Outcome.PASS,
-        measured_value=measured_value)  # pyrefly: ignore[unexpected-keyword]
+        measured_value=measured_value)
     return measurement
 
   def test_copy_measurements_from_phase(self):
@@ -524,7 +524,7 @@ class MultiDimConversionTest(unittest.TestCase):
     expected = self.create_multi_dim_measurement()
 
     attachment = test_record.Attachment(TEST_MULTIDIM_JSON,
-                                        test_runs_pb2.MULTIDIM_JSON)  # pytype: disable=wrong-arg-types  # gen-stub-imports
+                                        test_runs_pb2.MULTIDIM_JSON)  # pyrefly: ignore[bad-argument-type]
     measurement = mfg_event_converter.attachment_to_multidim_measurement(
         attachment)
 
@@ -560,7 +560,7 @@ class MultiDimConversionTest(unittest.TestCase):
     data_dict = json.loads(attachment.data)
     data_dict['outcome'] = test_runs_pb2.Status.Value(data_dict['outcome'])
     attachment = test_record.Attachment(
-        json.dumps(data_dict).encode('utf-8'), test_runs_pb2.MULTIDIM_JSON)  # pytype: disable=wrong-arg-types  # gen-stub-imports
+        json.dumps(data_dict).encode('utf-8'), test_runs_pb2.MULTIDIM_JSON)  # pyrefly: ignore[bad-argument-type]
 
     reversed_mdim = mfg_event_converter.attachment_to_multidim_measurement(
         attachment)

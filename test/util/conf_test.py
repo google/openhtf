@@ -203,8 +203,8 @@ class TestConf(TestConfBase):
       def __init__(self, string_default):
         self.string_default = string_default
 
-    instance = TestClass()  # pylint: disable=no-value-for-parameter  # pytype: disable=missing-parameter
-    self.assertEqual('default', instance.string_default)  # pytype: disable=attribute-error
+    instance = TestClass()  # pylint: disable=no-value-for-parameter
+    self.assertEqual('default', instance.string_default)
 
 
 class ConfigValueHolderTest(TestConfBase):
@@ -269,11 +269,11 @@ class BindInitArgsTest(TestConfBase):
   def _run_test_with_classdef(self, class_def):
     new_def = configuration.bind_init_args(
         class_def, FLAG_KEY, arg2=NONE_DEFAULT)
-    new_def_instance = new_def()  # pytype: disable=missing-parameter
+    new_def_instance = new_def()
     self.assertIsInstance(new_def_instance, class_def)
-    self.assertEqual(new_def_instance.arg1, FLAG_KEY.value)  # pytype: disable=attribute-error  # kwargs-checking
-    self.assertEqual(new_def_instance.arg2, NONE_DEFAULT.value)  # pytype: disable=attribute-error  # kwargs-checking
-    self.assertIsNone(new_def_instance.default_arg)  # pytype: disable=attribute-error  # kwargs-checking
+    self.assertEqual(new_def_instance.arg1, FLAG_KEY.value)
+    self.assertEqual(new_def_instance.arg2, NONE_DEFAULT.value)
+    self.assertIsNone(new_def_instance.default_arg)
     self.assertIn(class_def.__doc__, new_def_instance.__class__.__doc__)
     self.assertEqual(new_def_instance.__class__.__module__,
                      class_def.__module__)

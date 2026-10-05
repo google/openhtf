@@ -168,7 +168,7 @@ class TestTestApi(parameterized.TestCase):
     self.assertEqual(measurement_val, measurement.value)
     self.assertEqual('test_measurement', measurement.name)
 
-    measurement.value.append(4)  # pyrefly: ignore[missing-attribute]
+    measurement.value.append(4)
     self.assertNotEqual(measurement_val, measurement.value)
 
   def test_infer_mime_type_from_file_name(self):

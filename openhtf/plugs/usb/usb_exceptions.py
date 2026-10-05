@@ -17,7 +17,7 @@ import logging
 
 try:
   # pylint: disable=g-import-not-at-top
-  import libusb1  # pytype: disable=import-error
+  import libusb1  # pyrefly: ignore[missing-import]
   # pylint: enable=g-import-not-at-top
 except ImportError:
   logging.error('Failed to import libusb, did you pip install '

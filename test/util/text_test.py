@@ -95,7 +95,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
   # disabling pytype once fixed.
   @parameterized.named_parameters(
       (headline_member.name, headline_member.name, headline_member.value)
-      for headline_member in text._HeadlineFromTestOutcome.__iter__())  # pytype: disable=attribute-error
+      for headline_member in text._HeadlineFromTestOutcome.__iter__())
   def testGetTestOutcomeHeadline_TestNotColorized(self, outcome, headline):
     record = test_record.TestRecord(
         dut_id='TestDutId',
@@ -108,7 +108,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
   # disabling pytype once fixed.
   @parameterized.named_parameters(
       (headline_member.name, headline_member.name, headline_member.value)
-      for headline_member in text._HeadlineFromTestOutcome.__iter__())  # pytype: disable=attribute-error
+      for headline_member in text._HeadlineFromTestOutcome.__iter__())
   def testGetTestOutcomeHeadline_TestColorized(self, outcome, headline):
     record = test_record.TestRecord(
         dut_id='TestDutId',
@@ -119,7 +119,7 @@ class TextTest(test.TestCase, parameterized.TestCase):
     # disabling pytype once fixed.
     self.assertEqual(
         text._GetTestOutcomeHeadline(record, colorize_text=True),
-        f'{text._ColorFromTestOutcome[outcome].value}{headline}'  # pytype: disable=unsupported-operands
+        f'{text._ColorFromTestOutcome[outcome].value}{headline}'
         f'{colorama.Style.RESET_ALL}')
 
   def testStringFromMeasurement_SuccessfullyConvertsUnsetMeasurement(self):

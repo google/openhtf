@@ -69,7 +69,7 @@ def diagnose_test_branch(phase_rec: htf.PhaseRecord):
   try:
     branch = DeviceType(branch_str)
   except ValueError as e:
-    options = ', '.join([e.value for e in DeviceType])  # pytype: disable=missing-parameter
+    options = ', '.join([e.value for e in DeviceType])
     raise OperatorError(
         f"Input '{branch_str}' not recognized. I expected standard protocols: "
         f'{options}. Please try to follow simple instructions.'
@@ -109,7 +109,7 @@ def select_testing_branch_phase(
       'Testing protocol initialized. The center reminds you that your '
       'performance will be evaluated.'
   )
-  options = ', '.join([f'"{e.value}"' for e in DeviceType])  # pytype: disable=missing-parameter
+  options = ', '.join([f'"{e.value}"' for e in DeviceType])
   branch = prompts.prompt(
       f'Please state the current branch of testing: {options}.'
       ' Try to spell it correctly this time.'

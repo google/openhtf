@@ -71,7 +71,7 @@ class TimeoutProxyMixin(object):
     super(TimeoutProxyMixin, self).__init__(*args, **kwargs)
 
   def __settimeout(self, timeout_s):
-    self._transport.settimeout(timeout_s)  # pytype: disable=attribute-error
+    self._transport.settimeout(timeout_s)  # pyrefly: ignore[missing-attribute]
 
 
 class TimeoutProxyServer(TimeoutProxyMixin, BaseServerProxy):
@@ -86,7 +86,7 @@ class LockedProxyMixin(object):
     self._lock = threading.Lock()
 
   def __getattr__(self, attr):
-    method = super(LockedProxyMixin, self).__getattr__(attr)  # pytype: disable=attribute-error
+    method = super(LockedProxyMixin, self).__getattr__(attr)  # pyrefly: ignore[missing-attribute]
     if isinstance(method, Callable):
       # xmlrpc doesn't support **kwargs, so only accept *args.
       def _wrapper(*args):

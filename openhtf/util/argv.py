@@ -104,7 +104,7 @@ class StoreRepsInModule(StoreInModule):
   """Store a count of number of times the flag was repeated in a module."""
 
   def __init__(self, *args: Any, **kwargs: Any):
-    kwargs.update(nargs=0, const=None)  # pytype: disable=wrong-arg-types
+    kwargs.update(nargs=0, const=None)
     super(StoreRepsInModule, self).__init__(*args, **kwargs)
 
   def __call__(self,

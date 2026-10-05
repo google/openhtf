@@ -295,10 +295,10 @@ class FakeTestApi(test_descriptor.TestApi):
         test_state.TestState,
         test_record=test_record.TestRecord('DUT', 'STATION'),
         user_defined_state={})
-    super(FakeTestApi, self).__init__(  # pyrefly: ignore[missing-argument]
+    super(FakeTestApi, self).__init__(
         measurements={},  # pyrefly: ignore[bad-argument-type]
-        running_phase_state=self.mock_phase_state,  # pyrefly: ignore[unexpected-keyword]
-        running_test_state=self.mock_test_state)  # pyrefly: ignore[unexpected-keyword]
+        running_phase_state=self.mock_phase_state,
+        running_test_state=self.mock_test_state)
 
 
 def filter_phases_by_names(phase_recs: Iterable[test_record.PhaseRecord],
@@ -457,9 +457,9 @@ class PhaseOrTestIterator(Iterator):
       profile_tempfile.close()
 
     test_record_ = record_saver.result
-    if test_record_.outcome_details:  # pyrefly: ignore[missing-attribute]
+    if test_record_.outcome_details:
       msgs = []
-      for detail in test_record_.outcome_details:  # pyrefly: ignore[not-iterable]
+      for detail in test_record_.outcome_details:
         msgs.append('code: {}\ndescription: {}'.format(detail.code,
                                                        detail.description))
       failure_message = '\n'.join(msgs)

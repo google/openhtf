@@ -689,7 +689,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.test_exec._phase_exec = self.phase_exec
 
   def testPhase_NotTerminal(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)
     self.phase_exec.execute_phase.return_value = (
         phase_executor.PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.CONTINUE), None)
@@ -701,7 +701,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertIsNone(self.test_exec._last_outcome)
 
   def testPhase_NotTerminal_PreviousLastOutcome(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)
     set_outcome = phase_executor.PhaseExecutionOutcome(None)
     self.test_exec._last_outcome = set_outcome
 
@@ -716,7 +716,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_SetLastOutcome(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)
     outcome = phase_executor.PhaseExecutionOutcome(
         phase_descriptor.PhaseResult.STOP)
     self.phase_exec.execute_phase.return_value = outcome, None
@@ -728,7 +728,7 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
     self.assertIs(outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_PreviousLastOutcome(self):
-    phase = phase_descriptor.PhaseDescriptor(blank_phase)  # pyrefly: ignore[missing-argument]
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)
     set_outcome = phase_executor.PhaseExecutionOutcome(None)
     self.test_exec._last_outcome = set_outcome
     outcome = phase_executor.PhaseExecutionOutcome(

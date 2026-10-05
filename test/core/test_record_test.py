@@ -22,7 +22,7 @@ from openhtf.core import test_record
 
 def _get_obj_size(obj):
   size = 0
-  for attr in obj.__slots__:  # pytype: disable=attribute-error
+  for attr in obj.__slots__:
     size += sys.getsizeof(attr)
     size += sys.getsizeof(getattr(obj, attr))
   return size

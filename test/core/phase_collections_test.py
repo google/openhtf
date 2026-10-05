@@ -730,7 +730,7 @@ class SubtestIntegrationTest(htf_test.TestCase):
 
     subtest = phase_collections.Subtest(
         'skip_branch', fail_subtest_phase,
-        htf.BranchSequence(_Diag.NOT_SET, error_phase), skip_phase)  # pytype: disable=wrong-arg-types  # use-enum-overlay
+        htf.BranchSequence(_Diag.NOT_SET, error_phase), skip_phase)  # pyrefly: ignore[bad-argument-type]
 
     test_rec = yield htf.Test(subtest, phase)
 

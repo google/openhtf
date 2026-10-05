@@ -105,10 +105,8 @@ def _GetTestOutcomeHeadline(record: test_record.TestRecord,
   # TODO(b/70517332): Pytype currently doesn't properly support the functional
   # API of enums: https://github.com/google/pytype/issues/459. Remove
   # disabling pytype once fixed.
-  # pytype: disable=unsupported-operands
   test_outcome_headline = _HeadlineFromTestOutcome[record.outcome.name].value
   color = _ColorFromTestOutcome[record.outcome.name].value
-  # pytype: enable=unsupported-operands
   # Alter headline if the record is marginal.
   if record.marginal:
     color = str(colorama.Fore.YELLOW)

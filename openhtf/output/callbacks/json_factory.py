@@ -75,7 +75,7 @@ def stream_json(
 
   # The iterencode return type in typeshed for PY2 is wrong; not worried about
   # fixing it as we are dropping PY2 support soon.
-  return json_encoder.iterencode(encoded_test_rec)  # pytype: disable=bad-return-type
+  return json_encoder.iterencode(encoded_test_rec)
 
 
 class OutputToJSON(callbacks.OutputToFile):
