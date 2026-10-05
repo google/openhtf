@@ -197,11 +197,11 @@ class TestState(util.SubscribableStateMixin):
     if not self.running_phase_state:
       raise ValueError('test_api only available when phase is running.')
     if not self._running_test_api:
-      self._running_test_api = openhtf.TestApi(  # pyrefly: ignore[missing-argument]
+      self._running_test_api = openhtf.TestApi(
           measurements=measurements.Collection(
               self.running_phase_state.measurements),
-          running_phase_state=self.running_phase_state,  # pyrefly: ignore[unexpected-keyword]
-          running_test_state=self,  # pyrefly: ignore[unexpected-keyword]
+          running_phase_state=self.running_phase_state,
+          running_test_state=self,
       )
     return self._running_test_api
 
@@ -669,7 +669,7 @@ class PhaseState(object):
 
   @property
   def marginal(self) -> Optional[phase_executor.PhaseExecutionOutcome]:
-    return self.phase_record.marginal  # pytype: disable=bad-return-type  # bind-properties
+    return self.phase_record.marginal  # pyrefly: ignore[bad-return]
 
   @marginal.setter
   def marginal(self, marginal: bool):
@@ -846,7 +846,7 @@ class PhaseState(object):
     if self.phase_record.outcome == test_record.PhaseOutcome.ERROR:
       return
     # Check for errors during diagnoser execution.
-    if self.result is None or self.result.is_terminal:  # pytype: disable=attribute-error  # always-use-return-annotations
+    if self.result is None or self.result.is_terminal:
       self.logger.debug('Phase outcome of %s is ERROR due to diagnoses.',
                         self.name)
       self.phase_record.outcome = test_record.PhaseOutcome.ERROR

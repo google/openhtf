@@ -51,7 +51,7 @@ def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
   elif isinstance(n, phase_nodes.PhaseNode):
     yield n.copy()
   elif isinstance(n, phase_descriptor.PhaseDescriptor) or callable(n):
-    yield phase_descriptor.PhaseDescriptor.wrap_or_copy(n)  # pyrefly: ignore[bad-argument-type]
+    yield phase_descriptor.PhaseDescriptor.wrap_or_copy(n)
   else:
     raise ValueError('Cannot flatten {}'.format(n))
 

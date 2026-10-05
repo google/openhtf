@@ -250,7 +250,7 @@ class Test(object):
   def handle_sig_int(cls, signalnum: Optional[int], handler: Any) -> None:
     """Handle the SIGINT callback."""
     if not cls.TEST_INSTANCES:
-      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)  # pylint: disable=not-callable # pytype: disable=not-callable
+      cls.DEFAULT_SIGINT_HANDLER(signalnum, handler)  # pylint: disable=not-callable  # pyrefly: ignore[not-callable]
       return
 
     _LOG.error('Received SIGINT, stopping all tests.')
@@ -324,7 +324,7 @@ class Test(object):
         trigger = test_start
 
       if CONF.capture_source and trigger is not None:
-        trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)  # pyrefly: ignore[missing-attribute]
+        trigger.code_info = htf_test_record.CodeInfo.for_function(trigger.func)
 
       self._executor = test_executor.TestExecutor(
           self._test_desc,
@@ -376,9 +376,9 @@ class Test(object):
         else:
           colors = collections.defaultdict(lambda: colorama.Style.BRIGHT)
           colors[htf_test_record.Outcome.PASS] = ''.join(  # pyrefly: ignore[no-matching-overload]
-              (colorama.Style.BRIGHT, colorama.Fore.GREEN))  # pytype: disable=wrong-arg-types
+              (colorama.Style.BRIGHT, colorama.Fore.GREEN))
           colors[htf_test_record.Outcome.FAIL] = ''.join(  # pyrefly: ignore[no-matching-overload]
-              (colorama.Style.BRIGHT, colorama.Fore.RED))  # pytype: disable=wrong-arg-types
+              (colorama.Style.BRIGHT, colorama.Fore.RED))
           msg_template = (
               'test: {name}  outcome: {color}{outcome}{marginal}{rst}')
           console_output.banner_print(

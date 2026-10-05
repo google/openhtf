@@ -76,7 +76,7 @@ if typing.TYPE_CHECKING:
 
 try:
   # pylint: disable=g-import-not-at-top
-  import pandas  # pytype: disable=import-error
+  import pandas  # pyrefly: ignore[missing-import]
   # pylint: enable=g-import-not-at-top
 except ImportError:
   pandas = None
@@ -462,7 +462,7 @@ class Measurement(object):
       raise
     finally:
       if self._cached:
-        self._cached['outcome'] = self.outcome.name  # pytype: disable=bad-return-type
+        self._cached['outcome'] = self.outcome.name
 
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert this measurement to a dict of basic types."""
@@ -633,7 +633,7 @@ class Dimension(object):
   @classmethod
   def from_unit_descriptor(cls,
                            unit_desc: util_units.UnitDescriptor) -> 'Dimension':
-    return cls(unit=unit_desc)  # pyrefly: ignore[unexpected-keyword]
+    return cls(unit=unit_desc)
 
   @classmethod
   def from_string(cls, string: Text) -> 'Dimension':
@@ -641,9 +641,9 @@ class Dimension(object):
     # Note: There is some ambiguity as to whether the string passed is intended
     # to become a unit looked up by name or suffix, or a Dimension descriptor.
     if string in util_units.UNITS_BY_ALL:
-      return cls(description=string, unit=util_units.Unit(string))  # pyrefly: ignore[unexpected-keyword]
+      return cls(description=string, unit=util_units.Unit(string))
     else:
-      return cls(description=string)  # pyrefly: ignore[unexpected-keyword]
+      return cls(description=string)
 
   @property
   def description(self) -> Text:

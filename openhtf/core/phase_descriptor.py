@@ -200,7 +200,7 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
   func = attr.ib(type=PhaseCallableT)
   func_location = attr.ib(type=Text)
 
-  @func_location.default  # pyrefly: ignore[missing-attribute]
+  @func_location.default
   def _func_location(self):
     """Assigns this field assuming func is a function or callable instance."""
     obj = self.func
@@ -250,18 +250,18 @@ class PhaseDescriptor(phase_nodes.PhaseNode):
     # TODO(arsharma): Remove when type annotations are more enforced.
     if isinstance(func, openhtf.PhaseGroup):
       raise PhaseWrapError('Cannot wrap PhaseGroup <%s> as a phase.' %
-                           (func.name or 'Unnamed'))  # pytype: disable=attribute-error
+                           (func.name or 'Unnamed'))
     if isinstance(func, cls):
       # We want to copy so that a phase can be reused with different options
       # or kwargs.  See with_args() below for more details.
       retval = data.attr_copy(func)
     else:
-      retval = cls(func)  # pyrefly: ignore[missing-argument]
+      retval = cls(func)
     retval.options.update(**options)
     return retval
 
   def _asdict(self) -> Dict[Text, Any]:
-    ret = attr.asdict(self, filter=attr.filters.exclude('func'))  # pytype: disable=wrong-arg-types  # attr-stubs
+    ret = attr.asdict(self, filter=attr.filters.exclude('func'))
     ret.update(name=self.name, doc=self.doc)
     return ret
 

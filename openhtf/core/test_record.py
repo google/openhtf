@@ -199,7 +199,7 @@ class TestRecord(object):
     # Cache data that does not change during execution.
     # Cache the metadata config so it does not recursively copied over and over
     # again.
-    self._cached_config_from_metadata = self.metadata.get('config')  # pytype: disable=annotation-type-mismatch
+    self._cached_config_from_metadata = self.metadata.get('config')  # pyrefly: ignore[bad-assignment]
     self._cached_record = {
         'station_id': data.convert_to_base_types(self.station_id),
         'code_info': data.convert_to_base_types(self.code_info),
@@ -328,7 +328,7 @@ class PhaseOutcome(enum.Enum):
 def _phase_record_base_type_filter(attribute: attr.Attribute,
                                    value: Any) -> bool:
   del value  # Unused.
-  return attribute.name not in ('descriptor_id', 'name', 'codeinfo')  # pytype: disable=attribute-error
+  return attribute.name not in ('descriptor_id', 'name', 'codeinfo')
 
 
 @attr.s(slots=True)

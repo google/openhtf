@@ -320,7 +320,7 @@ class _BaseDiagnoser(object):
 
   @property
   def possible_results(self) -> List[Text]:
-    return [r.value for r in self.result_type]  # pytype: disable=missing-parameter
+    return [r.value for r in self.result_type]
 
   def _check_definition(self) -> None:
     """Internal function to verify that the diagnoser is completely defined."""
@@ -465,7 +465,7 @@ class DiagnosisComponent(object):
 
 
 def _diagnosis_serialize_filter(attribute: attr.Attribute, value: Any) -> bool:
-  return attribute.name not in ('is_failure', 'is_internal') or value  # pytype: disable=attribute-error
+  return attribute.name not in ('is_failure', 'is_internal') or value
 
 
 @attr.s(slots=True, frozen=True)
