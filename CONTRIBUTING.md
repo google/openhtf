@@ -353,3 +353,13 @@ npm run update_prebuilt
 
 That last step is easy to forget, so try to make it a habit whenever you're
 prepping a PR that includes frontend work.
+
+## Maintainers: Creating Releases
+
+OpenHTF maintainers having the requisite permissions can create a release as follows:
+
+1. Update the OpenHTF version in [`pyproject.toml`](pyproject.toml).
+2. Go to the Releases section on GitHub, and draft a new release. This will require creating a new tag; it should match the version from step 1.
+3. Ensure the branch is `main` and the commit is the same as for step 1.
+4. Publish the release; this will start the PyPi deployment GitHub action. Confirm that it succeeds.
+
