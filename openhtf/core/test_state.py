@@ -33,6 +33,7 @@ import mimetypes
 import os
 import socket
 import sys
+import threading
 from typing import Any, Dict, Iterator, List, Optional, Set, TYPE_CHECKING, Text, Tuple, Union
 
 import attr
@@ -94,6 +95,45 @@ class InternalError(Exception):
   """An internal error."""
 
 
+class _TestStateThreadLocal(threading.local):
+  """Per-thread state for a TestState.
+
+  Subclassing threading.local ensures __init__ runs once per thread on first
+  access, so every attribute always has a default value in each thread.
+
+  Why this exists: a single TestState is shared by every phase thread, and
+  much of the API (TestState.running_phase_state, TestState.test_api,
+  TestState.logger, TestState.last_phase_record, and callers in
+  phase_executor/test_executor/TestApi) reaches phase-specific data through
+  the TestState rather than through the PhaseState that owns it. Before phases
+  could run concurrently there was at most one running phase, so storing these
+  values directly on TestState was sufficient. With concurrent phases, each
+  thread needs its own view of "the current phase", so these values are kept
+  per-thread here to preserve the existing TestState-centric API.
+
+  This is a compatibility shim: it hides a design issue where TestState is
+  passed around in places where the PhaseState (or a phase-scoped TestApi)
+  is the object that should actually be passed. Ideally, phase-scoped data
+  would be threaded explicitly through PhaseState, and this class removed.
+
+  TODO(wuchiju): File a bug to refactor phase-scoped APIs to take PhaseState
+  explicitly and remove this thread-local state.
+
+  Attributes:
+    phase_state: PhaseState for the phase running in the current thread, if
+      any.
+    last_phase_record: PhaseRecord of the last phase run in the current thread,
+      if any.
+    test_api: Cached TestApi for the phase running in the current thread.
+  """
+
+  def __init__(self):
+    super().__init__()
+    self.phase_state = None  # type: Optional['PhaseState']
+    self.last_phase_record = None  # type: Optional[test_record.PhaseRecord]
+    self.test_api = None  # type: Optional['test_descriptor.TestApi']
+
+
 class TestState(util.SubscribableStateMixin):
   """This class handles tracking the state of a running Test.
 
@@ -118,6 +158,9 @@ class TestState(util.SubscribableStateMixin):
       internal-only structures from being accidentally modified. Note that if
       there is no running phase, test_api is also None.
     execution_uid: A UUID that is specific to this execution.
+    state_lock: Reentrant lock (threading.RLock) guarding state shared across
+      concurrently running phase threads, such as the list of active
+      PhaseStates, test_record.phases, and phase record attachments.
   """
 
   class Status(enum.Enum):
@@ -137,6 +180,20 @@ class TestState(util.SubscribableStateMixin):
       test_options: test_options passed through from Test.
     """
     super(TestState, self).__init__()
+    # Reentrant lock guarding state shared across concurrently running phase
+    # threads:
+    #   - self._active_phase_states: the list of currently running PhaseStates.
+    #   - self.test_record.phases: the list of completed PhaseRecords, appended
+    #     to when a phase finishes and read by get_attachment/get_measurement.
+    #   - PhaseState.phase_record.attachments: attachments added via
+    #     PhaseState.attach().
+    # Thread-local state (self._thread_local) is not guarded by this lock.
+    self.state_lock = threading.RLock()
+    # Per-thread phase-scoped state; a compatibility shim so the
+    # TestState-centric API keeps working with concurrent phases. See
+    # _TestStateThreadLocal for details.
+    self._thread_local = _TestStateThreadLocal()
+    self._active_phase_states = list()
     self._status = self.Status.WAITING_FOR_TEST_START  # type: TestState.Status
 
     self.test_record = test_record.TestRecord(
@@ -155,7 +212,6 @@ class TestState(util.SubscribableStateMixin):
     self.diagnoses_manager = diagnoses_lib.DiagnosesManager(
         self.state_logger.getChild('diagnoses'))
     self.running_phase_state = None  # type: Optional['PhaseState']
-    self._running_test_api = None  # type: Optional['test_descriptor.TestApi']
     # TODO(arsharma): Change to Dict[Any, Any] when pytype handles it correctly.
     self.user_defined_state = {}  # type: Any
     self.execution_uid = execution_uid
@@ -181,6 +237,37 @@ class TestState(util.SubscribableStateMixin):
         'instead.')
 
   @property
+  def running_phase_state(self):
+    state = self._thread_local.phase_state
+    if state is not None:
+      return state
+
+    with self.state_lock:
+      if not self._active_phase_states:
+        return None
+      if len(self._active_phase_states) > 1:
+        return None
+      return self._active_phase_states[0]
+
+  @property
+  def active_phases(self) -> List['PhaseState']:
+    """Get all currently active phase states."""
+    with self.state_lock:
+      return list(self._active_phase_states)
+
+  @running_phase_state.setter
+  def running_phase_state(self, value):
+    self._thread_local.phase_state = value
+
+  @property
+  def last_phase_record(self) -> Optional[test_record.PhaseRecord]:
+    return self._thread_local.last_phase_record
+
+  @last_phase_record.setter
+  def last_phase_record(self, value: Optional[test_record.PhaseRecord]) -> None:
+    self._thread_local.last_phase_record = value
+
+  @property
   def test_api(self) -> 'test_descriptor.TestApi':
     """Create a TestApi for access to this TestState.
 
@@ -196,14 +283,19 @@ class TestState(util.SubscribableStateMixin):
     """
     if not self.running_phase_state:
       raise ValueError('test_api only available when phase is running.')
-    if not self._running_test_api:
-      self._running_test_api = openhtf.TestApi(
+    api = self._thread_local.test_api
+    if (
+        api is None
+        or api._running_phase_state != self.running_phase_state  # pylint: disable=protected-access
+    ):
+      api = openhtf.TestApi(  # pyrefly: ignore[missing-argument]
           measurements=measurements.Collection(
               self.running_phase_state.measurements),
           running_phase_state=self.running_phase_state,
           running_test_state=self,
       )
-    return self._running_test_api
+      self._thread_local.test_api = api
+    return api
 
   def get_attachment(self,
                      attachment_name: Text) -> Optional[test_record.Attachment]:
@@ -222,10 +314,11 @@ class TestState(util.SubscribableStateMixin):
             attachment_name)
         return copy.deepcopy(attachment)
 
-    for phase_record in self.test_record.phases:
-      if attachment_name in phase_record.attachments:
-        attachment = phase_record.attachments[attachment_name]
-        return copy.deepcopy(attachment)
+    with self.state_lock:
+      for phase_record in self.test_record.phases:
+        if attachment_name in phase_record.attachments:
+          attachment = phase_record.attachments[attachment_name]
+          return copy.deepcopy(attachment)
 
     self.state_logger.warning('Could not find attachment: %s', attachment_name)
     return None
@@ -256,11 +349,14 @@ class TestState(util.SubscribableStateMixin):
 
     # Iterate through phases in reversed order to return most recent (necessary
     # because measurement and phase names are not necessarily unique)
-    for phase_record in reversed(self.test_record.phases):
-      if (phase_record.result not in ignore_outcomes and
-          measurement_name in phase_record.measurements):
-        measurement = phase_record.measurements[measurement_name]
-        return measurements.ImmutableMeasurement.from_measurement(measurement)
+    with self.state_lock:
+      for phase_record in reversed(self.test_record.phases):
+        if (
+            phase_record.result not in ignore_outcomes
+            and measurement_name in phase_record.measurements
+        ):
+          measurement = phase_record.measurements[measurement_name]
+          return measurements.ImmutableMeasurement.from_measurement(measurement)
 
     self.state_logger.warning('Could not find measurement: %s',
                               measurement_name)
@@ -285,30 +381,50 @@ class TestState(util.SubscribableStateMixin):
     Yields:
       PhaseState to track transient state.
     """
-    assert not self.running_phase_state, 'Phase already running!'
+    assert not self._thread_local.phase_state, 'Phase already running!'
     phase_logger = self.state_logger.getChild('phase.' + phase_desc.name)
-    phase_state = self.running_phase_state = PhaseState.from_descriptor(
-        phase_desc, self, phase_logger)
-    self.notify_update()  # New phase started.
+    with self.state_lock:
+      phase_state = PhaseState.from_descriptor(phase_desc, self, phase_logger)
+      self.running_phase_state = phase_state
+      self._active_phase_states.append(phase_state)
+      self.notify_update()  # New phase started.
     try:
       yield phase_state
     finally:
-      phase_state.finalize()
-      self.test_record.add_phase_record(phase_state.phase_record)
+      with self.state_lock:
+        phase_state.finalize()
+        self._thread_local.last_phase_record = phase_state.phase_record
+        self.test_record.add_phase_record(phase_state.phase_record)
+        if phase_state in self._active_phase_states:
+          self._active_phase_states.remove(phase_state)
+        self.notify_update()  # Phase finished.
       self.running_phase_state = None
-      self._running_test_api = None
-      self.notify_update()  # Phase finished.
 
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert to a dict representation composed exclusively of base types."""
-    running_phase_state = None
-    if self.running_phase_state:
-      running_phase_state = self.running_phase_state.as_base_types()
+    with self.state_lock:
+      running_phase_states = [
+          phase.as_base_types() for phase in self._active_phase_states
+      ]
+
+    if running_phase_states:
+      running_phase_output = running_phase_states[0]
+    elif self.running_phase_state:
+      # Includes manually/legacy set PhaseState.
+      legacy_basetype = self.running_phase_state.as_base_types()
+      running_phase_output = legacy_basetype
+      running_phase_states = [legacy_basetype]
+    else:
+      running_phase_output = None
+
     return {
         'status': data.convert_to_base_types(self._status),
         'test_record': self.test_record.as_base_types(),
         'plugs': self.plug_manager.as_base_types(),
-        'running_phase_state': running_phase_state,
+        # TODO(wuchiju): Remove running_phase_state once WebUI migrates to
+        # running_phase_states.
+        'running_phase_state': running_phase_output,
+        'running_phase_states': running_phase_states,
     }
 
   def _asdict(self) -> Dict[Text, Any]:
@@ -321,6 +437,8 @@ class TestState(util.SubscribableStateMixin):
 
   def stop_running_phase(self) -> None:
     """Stops the currently running phase, allowing another phase to run."""
+    with self.state_lock:
+      self._active_phase_states.clear()
     self.running_phase_state = None
 
   @property
@@ -473,6 +591,10 @@ class TestState(util.SubscribableStateMixin):
     if not phases:
       # Vacuously PASS a TestRecord with no phases.
       self._finalize(test_record.Outcome.PASS)
+    elif any(
+        phase.outcome == test_record.PhaseOutcome.ERROR for phase in phases
+    ):
+      self._finalize(test_record.Outcome.ERROR)
     elif any(
         phase.outcome == test_record.PhaseOutcome.FAIL for phase in phases
     ):
@@ -696,18 +818,20 @@ class PhaseState(object):
       DuplicateAttachmentError: Raised if there is already an attachment with
         the given name.
     """
-    if name in self.phase_record.attachments:
-      raise DuplicateAttachmentError('Duplicate attachment for %s' % name)
+    with self.test_state.state_lock:
+      if name in self.phase_record.attachments:
+        raise DuplicateAttachmentError('Duplicate attachment for %s' % name)
 
-    if mimetype is INFER_MIMETYPE:
-      mimetype = mimetypes.guess_type(name)[0]
-    elif mimetype is not None and not mimetypes.guess_extension(mimetype):
-      self.logger.warning('Unrecognized MIME type: "%s" for attachment "%s"',
-                          mimetype, name)
+      if mimetype is INFER_MIMETYPE:
+        mimetype = mimetypes.guess_type(name)[0]
+      elif mimetype is not None and not mimetypes.guess_extension(mimetype):
+        self.logger.warning(
+            'Unrecognized MIME type: "%s" for attachment "%s"', mimetype, name
+        )
 
-    attach_record = test_record.Attachment(binary_data, mimetype)  # pyrefly: ignore[bad-argument-type]
-    self.phase_record.attachments[name] = attach_record
-    self._cached['attachments'][name] = attach_record._asdict()
+      attach_record = test_record.Attachment(binary_data, mimetype)  # pyrefly: ignore[bad-argument-type]
+      self.phase_record.attachments[name] = attach_record
+      self._cached['attachments'][name] = attach_record._asdict()
 
   def attach_from_file(self,
                        filename: Text,
