@@ -22,6 +22,7 @@ import sys
 import threading
 
 _LOG = logging.getLogger(__name__)
+_PROFILE_LOCK = threading.Lock()
 
 
 class ThreadTerminationError(SystemExit):
@@ -97,6 +98,7 @@ class KillableThread(threading.Thread):
       self._profiler = cProfile.Profile()
     else:
       self._profiler = None
+    self._profiler_active = False
     self._logger = logger
 
   def run(self):
@@ -104,8 +106,13 @@ class KillableThread(threading.Thread):
       with self._running_lock:
         if self._killed.is_set():
           raise ThreadTerminationError()
-        if self._profiler is not None:
-          self._profiler.enable()
+        if self._profiler is not None and _PROFILE_LOCK.acquire(False):
+          try:
+            self._profiler.enable()
+            self._profiler_active = True
+          except ValueError:
+            _PROFILE_LOCK.release()
+            self._profiler = None
         self._thread_proc()
     except Exception:  # pylint: disable=broad-except
       if not self._thread_exception(*sys.exc_info()):
@@ -114,13 +121,19 @@ class KillableThread(threading.Thread):
     finally:
       self._thread_finished()
       self._logger.debug('Thread finished: %s', self.name)
-      if self._profiler is not None:
+      if self._profiler is not None and self._profiler_active:
         self._profiler.disable()
+        _PROFILE_LOCK.release()
 
-  def get_profile_stats(self) -> pstats.Stats:
-    """Returns profile_stats from profiler. Raises if profiling not enabled."""
-    if self._profiler is not None:
-      return pstats.Stats(self._profiler)
+  def get_profile_stats(self):
+    """Returns profile_stats from profiler, or None if not active."""
+    if self._profiler is not None and self._profiler_active:
+      try:
+        return pstats.Stats(self._profiler)
+      except TypeError:
+        return None
+    if self._run_with_profiling:
+      return None
     raise InvalidUsageError(
         'Profiling not enabled via __init__, or thread has not run yet.')
 
