@@ -23,19 +23,23 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Runs every day at midnight (UTC).
 
+permissions:
+  contents: read
+
 jobs:
   build_and_test:
-
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v7
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
       with:
         python-version: ${{ matrix.python-version }}
         allow-prereleases: true
@@ -45,7 +49,7 @@ jobs:
         python -m pip install --upgrade build pip
         sudo apt-get install -y libusb-1.0-0-dev libprotobuf-dev swig libevent-dev
     - name: Setup protoc
-      uses: arduino/setup-protoc@v3
+      uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Create OpenHTF package
@@ -57,29 +61,33 @@ jobs:
         tox
     - name: Publish to Coveralls with GitHub Action
       continue-on-error: true
-      uses: coverallsapp/github-action@v2
+      uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2
       with:
         parallel: true
         flag-name: python-${{ matrix.python-version }}
 
   web_ui:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: openhtf/output/web_gui
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       - run: npm install
       - run: npm run build
 
   finish:
     needs: build_and_test
     if: ${{ always() }}
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
     - name: Coveralls Finished
       continue-on-error: true
-      uses: coverallsapp/github-action@v2
+      uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2
       with:
         parallel-finished: true
