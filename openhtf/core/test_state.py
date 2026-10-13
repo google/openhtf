@@ -33,6 +33,7 @@ import mimetypes
 import os
 import socket
 import sys
+import threading
 from typing import Any, Dict, Iterator, List, Optional, Set, TYPE_CHECKING, Text, Tuple, Union
 
 import attr
@@ -137,6 +138,10 @@ class TestState(util.SubscribableStateMixin):
       test_options: test_options passed through from Test.
     """
     super(TestState, self).__init__()
+    self.state_lock = threading.RLock()
+    self._thread_local = threading.local()
+    self._base_running_phase_state = None
+    self._concurrent_nodes = set()
     self._status = self.Status.WAITING_FOR_TEST_START  # type: TestState.Status
 
     self.test_record = test_record.TestRecord(
@@ -181,6 +186,22 @@ class TestState(util.SubscribableStateMixin):
         'instead.')
 
   @property
+  def running_phase_state(self):
+    return getattr(
+        self._thread_local, 'phase_state', self._base_running_phase_state
+    )
+
+  def add_concurrent_node(self, node_id: int) -> None:
+    """Adds a node to the set of nodes that are running concurrently."""
+    with self.state_lock:
+      self._concurrent_nodes.add(node_id)
+
+  @running_phase_state.setter
+  def running_phase_state(self, value):
+    self._thread_local.phase_state = value
+    self._base_running_phase_state = value
+
+  @property
   def test_api(self) -> 'test_descriptor.TestApi':
     """Create a TestApi for access to this TestState.
 
@@ -196,14 +217,20 @@ class TestState(util.SubscribableStateMixin):
     """
     if not self.running_phase_state:
       raise ValueError('test_api only available when phase is running.')
-    if not self._running_test_api:
-      self._running_test_api = openhtf.TestApi(
+    api = getattr(self._thread_local, 'test_api', None)
+    if (
+        not api
+        or getattr(api, 'running_phase_state', None) != self.running_phase_state
+    ):
+      api = openhtf.TestApi(
           measurements=measurements.Collection(
               self.running_phase_state.measurements),
           running_phase_state=self.running_phase_state,
           running_test_state=self,
       )
-    return self._running_test_api
+      self._thread_local.test_api = api
+      self._running_test_api = api
+    return api
 
   def get_attachment(self,
                      attachment_name: Text) -> Optional[test_record.Attachment]:
@@ -296,8 +323,29 @@ class TestState(util.SubscribableStateMixin):
       phase_state.finalize()
       self.test_record.add_phase_record(phase_state.phase_record)
       self.running_phase_state = None
-      self._running_test_api = None
       self.notify_update()  # Phase finished.
+
+  @contextlib.contextmanager
+  def concurrent_running_phase_context(
+      self,
+      phase_desc: phase_descriptor.PhaseDescriptor) -> Iterator['PhaseState']:
+    """Create an isolated, thread-safe context for a concurrent PhaseGraph node."""
+    phase_logger = self.state_logger.getChild('phase.' + phase_desc.name)
+    phase_state = PhaseState.from_descriptor(phase_desc, self, phase_logger)
+
+    # Set running_phase_state and _running_test_api for the thread's context
+    with self.state_lock:
+      self.running_phase_state = phase_state
+      self._running_test_api = None
+      self.notify_update()
+
+    try:
+      yield phase_state
+    finally:
+      phase_state.finalize()
+      with self.state_lock:
+        self.test_record.add_phase_record(phase_state.phase_record)
+        self.notify_update()
 
   def as_base_types(self) -> Dict[Text, Any]:
     """Convert to a dict representation composed exclusively of base types."""
