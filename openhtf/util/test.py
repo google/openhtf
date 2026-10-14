@@ -109,13 +109,13 @@ List of assertions that can be used with PhaseRecord results:
   assertPhaseContinue(phase_record)
   assertPhaseRepeat(phase_record)
   assertPhaseStop(phase_record)
-  assertPhaseError(phase_record, exc_type=None)
+  assertPhaseError(phase_record, exc_type=None, expected_regex=None)
 
 List of assertions that can be used with TestRecord results:
 
   assertTestPass(test_rec)
   assertTestFail(test_rec)
-  assertTestError(test_rec, exc_type=None)
+  assertTestError(test_rec, exc_type=None, expected_regex=None)
   assertTestOutcomeCode(test_rec, code)
 
 List of assertions that can be used with either PhaseRecords or TestRecords:
@@ -134,6 +134,7 @@ import logging
 import os
 import pathlib
 import pstats
+import re
 import sys
 import tempfile
 import types
@@ -780,10 +781,28 @@ class TestCase(unittest.TestCase):
   def assertTestAborted(self, test_rec):
     self.assertEqual(test_record.Outcome.ABORTED, test_rec.outcome)
 
-  def assertTestError(self, test_rec, exc_type=None):
+  def assertTestError(
+      self,
+      test_rec,
+      exc_type=None,
+      expected_regex: Union[str, re.Pattern[str], None] = None,
+  ):
+    """Asserts that the test errored; optionally checks the last phase's error.
+
+    See assertPhaseError for the semantics of exc_type and expected_regex.
+
+    Args:
+      test_rec: The TestRecord to check.
+      exc_type: If provided, the last phase's raised exception must be an
+        instance of this type.
+      expected_regex: If provided, a regex that must be found via re.search in
+        str() of the last phase's raised exception.
+    """
     self.assertEqual(test_record.Outcome.ERROR, test_rec.outcome)
-    if exc_type is not None:
-      self.assertPhaseError(test_rec.phases[-1], exc_type)
+    if exc_type is not None or expected_regex is not None:
+      self.assertPhaseError(
+          test_rec.phases[-1], exc_type, expected_regex=expected_regex
+      )
 
   def assertTestOutcomeCode(self, test_rec, code):
     """Assert that the given code is in some OutcomeDetails in the record."""
@@ -850,14 +869,37 @@ class TestCase(unittest.TestCase):
     self.assertIs(phase_descriptor.PhaseResult.STOP,
                   phase_record.result.phase_result)
 
-  def assertPhaseError(self, phase_record, exc_type=None):
+  def assertPhaseError(
+      self,
+      phase_record,
+      exc_type=None,
+      expected_regex: Union[str, re.Pattern[str], None] = None,
+  ):
+    """Asserts that the phase raised an exception.
+
+    The exc_type and expected_regex checks are independent: either may be
+    provided on its own. However, matching on the message alone is fragile, so
+    callers passing expected_regex should also pass exc_type.
+
+    Args:
+      phase_record: The PhaseRecord to check.
+      exc_type: If provided, the raised exception must be an instance of this
+        type.
+      expected_regex: If provided, a regex (str or compiled pattern) that must
+        be found via re.search in str() of the raised exception.
+    """
     self.assertTrue(phase_record.result.raised_exception,
                     'Phase did not raise an exception')
+    exc_val = phase_record.result.phase_result.exc_val
     if exc_type:
       self.assertIsInstance(
-          phase_record.result.phase_result.exc_val, exc_type,
-          'Raised exception %r is not a subclass of %r' %
-          (phase_record.result.phase_result, exc_type))
+          exc_val,
+          exc_type,
+          'Raised exception %r is not a subclass of %r'
+          % (phase_record.result.phase_result, exc_type),
+      )
+    if expected_regex is not None:
+      self.assertRegex(str(exc_val), expected_regex)
 
   def assertPhaseTimeout(self, phase_record):
     self.assertTrue(phase_record.result.is_timeout)

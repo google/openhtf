@@ -17,6 +17,7 @@ import logging
 import os
 import pathlib
 import pstats
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -413,6 +414,29 @@ class TestTest(test.TestCase):
 
     test_record = yield openhtf.Test(raising_phase)
     self.assertTestError(test_record, DummyError)
+
+  @test.yields_phases
+  def test_phase_error_with_expected_regex(self):
+    phase_record = yield raising_phase
+    self.assertPhaseError(phase_record, DummyError, expected_regex=r'raises!$')
+    # Regex may be provided without exc_type, and as a compiled pattern.
+    self.assertPhaseError(phase_record, expected_regex=re.compile(r'Phase'))
+
+  @test.yields_phases
+  def test_phase_error_with_mismatched_expected_regex(self):
+    phase_record = yield raising_phase
+    with self.assertRaisesRegex(AssertionError, r"Regex didn't match"):
+      self.assertPhaseError(
+          phase_record, DummyError, expected_regex=r'does not appear'
+      )
+
+  @test.yields_phases
+  def test_test_error_with_expected_regex(self):
+    test_record = yield openhtf.Test(raising_phase)
+    self.assertTestError(test_record, DummyError, expected_regex=r'raises!$')
+    self.assertTestError(test_record, expected_regex=r'^This Phase')
+    with self.assertRaisesRegex(AssertionError, r"Regex didn't match"):
+      self.assertTestError(test_record, expected_regex=r'does not appear')
 
   def test_bad_assert(self):
     with self.assertRaises(test.InvalidTestError):  # pylint: disable=g-error-prone-assert-raises
