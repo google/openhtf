@@ -253,3 +253,39 @@ class TestTestApi(parameterized.TestCase):
       self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
     self.assertEqual(self.test_state.test_record.outcome,
                      test_record.Outcome.ERROR)
+    self.assertEqual(
+        self.test_state.test_record.outcome_details,
+        [
+            test_record.OutcomeDetails(
+                'ValueError', 'Exception for unit testing.'
+            )
+        ],
+    )
+
+  def test_test_state_finalize_from_phase_outcome_chained_exception_info(self):
+    try:
+      try:
+        raise KeyError('Root cause')
+      except KeyError as e:
+        raise ValueError('Intermediate error') from e
+    except ValueError as e:
+      try:
+        raise RuntimeError('Top-level error') from e
+      except RuntimeError:
+        phase_exe_outcome = phase_executor.PhaseExecutionOutcome(
+            phase_executor.ExceptionInfo(*sys.exc_info())  # pyrefly: ignore[bad-argument-type]
+        )
+        self.test_state.finalize_from_phase_outcome(
+            phase_exe_outcome, 'MyPhase'
+        )
+    self.assertEqual(
+        self.test_state.test_record.outcome, test_record.Outcome.ERROR
+    )
+    self.assertEqual(
+        self.test_state.test_record.outcome_details,
+        [
+            test_record.OutcomeDetails('RuntimeError', 'Top-level error'),
+            test_record.OutcomeDetails('ValueError', 'Intermediate error'),
+            test_record.OutcomeDetails('KeyError', "'Root cause'"),
+        ],
+    )
