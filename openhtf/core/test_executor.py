@@ -13,15 +13,17 @@
 # limitations under the License.
 """TestExecutor executes tests."""
 
+import concurrent.futures
 import contextlib
 import enum
 import logging
+import os
 import pstats
 import sys
 import tempfile
 import threading
 import traceback
-from typing import Iterator, List, Optional, Text, Type, TYPE_CHECKING
+from typing import Iterator, List, Optional, TYPE_CHECKING, Text, Type
 
 from openhtf import util
 from openhtf.core import base_plugs
@@ -30,6 +32,7 @@ from openhtf.core import phase_branches
 from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
 from openhtf.core import phase_executor
+from openhtf.core import phase_graph
 from openhtf.core import phase_group
 from openhtf.core import phase_nodes
 from openhtf.core import test_record
@@ -356,25 +359,28 @@ class TestExecutor(threads.KillableThread):
         subtest_rec=subtest_rec,
     )
     if profile_stats is not None:
-      self._phase_profile_stats.append(profile_stats)
+      with self._lock:
+        self._phase_profile_stats.append(profile_stats)
 
     if (
         self.running_test_state.test_options.stop_on_first_failure
         or CONF.stop_on_first_failure
     ):
       # Stop Test on first measurement failure
-      current_phase_result = self.running_test_state.test_record.phases[
-          len(self.running_test_state.test_record.phases) - 1
-      ]
+      current_phase_result = (
+          self.running_test_state.last_phase_record
+          or self.running_test_state.test_record.phases[-1]
+      )
       if current_phase_result.outcome == test_record.PhaseOutcome.FAIL:
         outcome = phase_executor.PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.STOP)
         self.logger.error('Stopping test because stop_on_first_failure is True')
 
     if outcome.is_terminal:
-      if not self._last_outcome:
-        self._last_outcome = outcome
-        self._last_execution_unit = phase.name
+      with self._lock:
+        if not self._last_outcome:
+          self._last_outcome = outcome
+          self._last_execution_unit = phase.name
       return _ExecutorReturn.TERMINAL
 
     if outcome.is_fail_subtest:
@@ -394,9 +400,10 @@ class TestExecutor(threads.KillableThread):
 
     outcome = self.phase_executor.evaluate_checkpoint(checkpoint, subtest_rec)
     if outcome.is_terminal:
-      if not self._last_outcome:
-        self._last_outcome = outcome
-        self._last_execution_unit = checkpoint.name
+      with self._lock:
+        if not self._last_outcome:
+          self._last_outcome = outcome
+          self._last_execution_unit = checkpoint.name
       return _ExecutorReturn.TERMINAL
 
     if outcome.is_fail_subtest:
@@ -556,7 +563,7 @@ class TestExecutor(threads.KillableThread):
                            in_teardown: bool) -> _ExecutorReturn:
     """Executes the phases in a phase group.
 
-    This will run the phases in the phase group, ensuring if the setup
+    This will run the phases in a phase group, ensuring if the setup
     phases all run without error that the teardown phases will also run, no
     matter the errors during the main phases.
 
@@ -610,6 +617,134 @@ class TestExecutor(threads.KillableThread):
       teardown_ret = _ExecutorReturn.CONTINUE
     return _more_critical(main_ret, teardown_ret)
 
+  def _stop_running_graph_phases(self, running_futures) -> None:
+    """Cancels pending futures and stops active phase threads on failure."""
+    for fut in running_futures:
+      fut.cancel()
+    if self._phase_exec is not None:
+      self._phase_exec.stop(timeout_s=CONF.cancel_timeout_s)
+
+  def _execute_phase_graph(
+      self,
+      graph: phase_graph.PhaseGraph,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool,
+  ) -> _ExecutorReturn:
+    """Executes the phases in a phase graph concurrently by DAG order."""
+
+    if graph.name:
+      self.logger.debug('Entering PhaseGraph %s', graph.name)
+
+    nodes = list(graph.nodes)
+
+    completed_phases = set()
+    failed_phases = set()
+    running_futures = {}
+    overall_ret = _ExecutorReturn.CONTINUE
+
+    def _record_current_exception(unit_name: Text) -> None:
+      exc_type, exc_val, exc_tb = sys.exc_info()
+      with self._lock:
+        if (
+            not self._last_outcome
+            and exc_type is not None
+            and exc_val is not None
+            and exc_tb is not None
+        ):
+          self._last_outcome = phase_executor.PhaseExecutionOutcome(
+              phase_executor.ExceptionInfo(exc_type, exc_val, exc_tb)
+          )
+          self._last_execution_unit = unit_name
+
+    lock_ctx = (
+        self._teardown_phases_lock if in_teardown else contextlib.nullcontext()
+    )
+    with lock_ctx:
+      try:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(32, (os.cpu_count() or 1) + 4)
+        ) as pool:
+          while len(completed_phases) + len(failed_phases) < len(nodes):
+            should_abort = (
+                self._full_abort.is_set()
+                if in_teardown
+                else (self._abort.is_set() or self._full_abort.is_set())
+            )
+            if should_abort:
+              self._stop_running_graph_phases(running_futures)
+              return _ExecutorReturn.TERMINAL
+
+            # Submit any unblocked and un-scheduled phase
+            made_progress = False
+            for node in nodes:
+              if (
+                  node.name in completed_phases
+                  or node.name in failed_phases
+                  or node.name in running_futures.values()
+              ):
+                continue
+
+              prerequisites = graph.adjacency.get(node.name, [])
+              finished_pool = (
+                  (completed_phases | failed_phases)
+                  if in_teardown
+                  else completed_phases
+              )
+              if not prerequisites or all(
+                  pr in finished_pool for pr in prerequisites
+              ):
+                fut = pool.submit(
+                    self._execute_phase, node, subtest_rec, in_teardown
+                )
+                running_futures[fut] = node.name
+                made_progress = True
+
+            if not running_futures and not made_progress:
+              try:
+                raise phase_graph.PhaseUnreachableError(
+                    f'PhaseGraph {graph.name or ""} deadlocked with'
+                    ' unresolvable prerequisites.'
+                )
+              except phase_graph.PhaseUnreachableError:
+                _record_current_exception(graph.name or 'PhaseGraph')
+              return _ExecutorReturn.TERMINAL
+
+            # Wait for at least one currently running future to complete
+            done, _ = concurrent.futures.wait(
+                running_futures.keys(),
+                return_when=concurrent.futures.FIRST_COMPLETED,
+            )
+
+            for fut in done:
+              p_name = running_futures.pop(fut)
+              try:
+                res = fut.result()
+                if res == _ExecutorReturn.TERMINAL:
+                  failed_phases.add(p_name)
+                  overall_ret = _ExecutorReturn.TERMINAL
+                  if not in_teardown:
+                    self._stop_running_graph_phases(running_futures)
+                    return _ExecutorReturn.TERMINAL
+                else:
+                  completed_phases.add(p_name)
+              except Exception:  # pylint: disable=broad-except
+                self.logger.exception(
+                    'Phase worker thread raised an exception.'
+                )
+                _record_current_exception(p_name)
+                failed_phases.add(p_name)
+                overall_ret = _ExecutorReturn.TERMINAL
+                if not in_teardown:
+                  self._stop_running_graph_phases(running_futures)
+                  return _ExecutorReturn.TERMINAL
+      finally:
+        # Reset only after the worker pool exits so stopped workers cannot
+        # start another repeat iteration before teardown.
+        if self._phase_exec is not None:
+          self._phase_exec.reset_stop()
+
+    return overall_ret
+
   def _execute_node(self, node: phase_nodes.PhaseNode,
                     subtest_rec: Optional[test_record.SubtestRecord],
                     in_teardown: bool) -> _ExecutorReturn:
@@ -621,6 +756,8 @@ class TestExecutor(threads.KillableThread):
       return self._execute_sequence(node, subtest_rec, in_teardown)
     if isinstance(node, phase_group.PhaseGroup):
       return self._execute_phase_group(node, subtest_rec, in_teardown)
+    if isinstance(node, phase_graph.PhaseGraph):
+      return self._execute_phase_graph(node, subtest_rec, in_teardown)
     if isinstance(node, phase_descriptor.PhaseDescriptor):
       return self._execute_phase(node, subtest_rec, in_teardown)
     if isinstance(node, phase_branches.Checkpoint):

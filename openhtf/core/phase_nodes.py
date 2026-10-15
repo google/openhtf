@@ -32,6 +32,16 @@ class PhaseNode(abc.ABC):
 
   __slots__ = ()
 
+  def __rshift__(self, other: Any) -> Any:
+    """Connects this node as a prerequisite of other: self >> other."""
+    from openhtf.core import phase_graph  # pylint: disable=g-import-not-at-top
+    return phase_graph.create_edge(self, other)
+
+  def __rrshift__(self, other: Any) -> Any:
+    """Connects other as a prerequisite of this node: other >> self."""
+    from openhtf.core import phase_graph  # pylint: disable=g-import-not-at-top
+    return phase_graph.create_edge(other, self)
+
   @property
   @abc.abstractmethod
   def name(self) -> Optional[Text]:

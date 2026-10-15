@@ -36,7 +36,7 @@ import threading
 import time
 import traceback
 import types
-from typing import Any, Dict, Optional, Text, Tuple, Type, TYPE_CHECKING, Union
+from typing import Any, Dict, Optional, Set, TYPE_CHECKING, Text, Tuple, Type, Union
 
 import attr
 from openhtf import util
@@ -170,10 +170,12 @@ class PhaseExecutorThread(threads.KillableThread):
     self._phase_desc = phase_desc
     self._test_state = test_state
     self._subtest_rec = subtest_rec
+    self._phase_state = test_state.running_phase_state
     self._phase_execution_outcome = None  # type: Optional[PhaseExecutionOutcome]
 
   def _thread_proc(self) -> None:
     """Execute the encompassed phase and save the result."""
+    self._test_state.running_phase_state = self._phase_state
     # Call the phase, save the return value, or default it to CONTINUE.
     phase_return = self._phase_desc(self._test_state)
     if phase_return is None:
@@ -239,11 +241,19 @@ class PhaseExecutor(object):
     # _execute_phase_once is setting up the next phase thread.
     self._current_phase_thread_lock = threading.Lock()
     self._current_phase_thread = None  # type: Optional[PhaseExecutorThread]
+    self._active_phase_threads = set()  # type: Set[PhaseExecutorThread]
     self._stopping = threading.Event()
 
-  def _should_repeat(self, phase: phase_descriptor.PhaseDescriptor,
-                     phase_execution_outcome: PhaseExecutionOutcome, is_last_repeat: bool) -> bool:
+  def _should_repeat(
+      self,
+      phase: phase_descriptor.PhaseDescriptor,
+      phase_execution_outcome: PhaseExecutionOutcome,
+      is_last_repeat: bool,
+  ) -> bool:
     """Returns whether a phase should be repeated."""
+    # Never repeat a phase that was killed due to stop or abort.
+    if phase_execution_outcome.is_aborted:
+      return False
     if phase_execution_outcome.is_timeout and phase.options.repeat_on_timeout:
       return True
     elif phase_execution_outcome.is_repeat:
@@ -251,10 +261,15 @@ class PhaseExecutor(object):
     elif phase.options.force_repeat:
       return True
     elif phase.options.repeat_on_measurement_fail:
-      last_phase_outcome = self.test_state.test_record.phases[-1].outcome
-      last_repeat_failed = last_phase_outcome == test_record.PhaseOutcome.FAIL
+      last_phase_rec = (
+          self.test_state.last_phase_record
+          or self.test_state.test_record.phases[-1]
+      )
+      last_repeat_failed = (
+          last_phase_rec.outcome == test_record.PhaseOutcome.FAIL
+      )
       if last_repeat_failed and not is_last_repeat:
-        self.test_state.test_record.phases[-1].outcome = test_record.PhaseOutcome.SKIP
+        last_phase_rec.outcome = test_record.PhaseOutcome.SKIP
       return last_repeat_failed
     return False
 
@@ -320,7 +335,6 @@ class PhaseExecutor(object):
                           phase_desc.name)
         return PhaseExecutionOutcome(phase_descriptor.PhaseResult.SKIP), None
 
-
     override_result = None
     with self.test_state.running_phase_context(phase_desc) as phase_state:
       if subtest_rec:
@@ -347,6 +361,7 @@ class PhaseExecutor(object):
                                            run_with_profiling, subtest_rec)
         phase_thread.start()
         self._current_phase_thread = phase_thread
+        self._active_phase_threads.add(phase_thread)
 
       phase_state.result = phase_thread.join_or_die()
       if phase_state.result.is_repeat and is_last_repeat:  # pyrefly: ignore[missing-attribute]
@@ -354,7 +369,10 @@ class PhaseExecutor(object):
         phase_state.hit_repeat_limit = True
         override_result = PhaseExecutionOutcome(
             phase_descriptor.PhaseResult.STOP)
-      self._current_phase_thread = None
+      with self._current_phase_thread_lock:
+        self._active_phase_threads.discard(phase_thread)
+        if self._current_phase_thread == phase_thread:
+          self._current_phase_thread = None
 
     # Refresh the result in case a validation for a partially set measurement
     # or phase diagnoser raised an exception.
@@ -433,18 +451,23 @@ class PhaseExecutor(object):
     """
     self._stopping.set()
     with self._current_phase_thread_lock:
-      phase_thread = self._current_phase_thread
-      if not phase_thread:
-        return
+      threads_to_kill = list(self._active_phase_threads)
 
-    if phase_thread.is_alive():
-      phase_thread.kill()
+    timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
+    for phase_thread in threads_to_kill:
+      if phase_thread.is_alive():
+        phase_thread.kill()
 
-      self.logger.debug('Waiting for cancelled phase to exit: %s', phase_thread)
-      timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
-      while phase_thread.is_alive() and not timeout.has_expired():
-        time.sleep(0.1)
-      self.logger.debug('Cancelled phase %s exit',
-                        "didn't" if phase_thread.is_alive() else 'did')
+    for phase_thread in threads_to_kill:
+      if phase_thread.is_alive():
+        self.logger.debug(
+            'Waiting for cancelled phase to exit: %s', phase_thread
+        )
+        while phase_thread.is_alive() and not timeout.has_expired():
+          time.sleep(0.1)
+        self.logger.debug(
+            'Cancelled phase %s exit',
+            "didn't" if phase_thread.is_alive() else 'did',
+        )
     # Clear the currently running phase, whether it finished or timed out.
     self.test_state.stop_running_phase()
