@@ -153,7 +153,7 @@ def monitors(
     @plugs.plug(update_kwargs=False, **monitor_plugs)
     @openhtf.measures(
         measurements.Measurement(measurement_name).with_units(
-            units).with_dimensions(uom.MILLISECOND))
+            units).with_dimensions(uom.MILLISECOND))  # pyrefly: ignore[bad-argument-type]
     @functools.wraps(phase_desc.func)
     def monitored_phase_func(test_state, *args, **kwargs):
       # Start monitor thread, it will run monitor_desc periodically.
