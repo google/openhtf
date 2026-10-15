@@ -71,6 +71,11 @@ class _MonitorThread(threads.KillableThread):
     self.measurement_name = measurement_name
     self.monitor_desc = monitor_desc
     self.test_state = test_state
+    # Capture the monitored phase's PhaseState on the phase thread so this
+    # thread can bind to it. TestState tracks the running phase per thread, so
+    # without this the monitor thread would have no running phase when other
+    # phases execute concurrently.
+    self._phase_state = test_state.running_phase_state
     self.interval_ms = interval_ms
     self.extra_kwargs = extra_kwargs
 
@@ -91,6 +96,7 @@ class _MonitorThread(threads.KillableThread):
     return self.monitor_desc.with_args(**kwargs)(self.test_state)
 
   def _thread_proc(self):
+    self.test_state.running_phase_state = self._phase_state
     measurement = getattr(self.test_state.test_api.measurements,
                           self.measurement_name)
     start_time = time.time()

@@ -290,8 +290,10 @@ class FakeTestApi(test_descriptor.TestApi):
 
   def __init__(self):
     self.mock_logger = mock.create_autospec(logging.Logger)
+    # PhaseState attributes are attrs instance fields, so autospec of the class
+    # does not expose them; provide the ones TestApi reads directly.
     self.mock_phase_state = mock.create_autospec(
-        test_state.PhaseState, logger=self.mock_logger)
+        test_state.PhaseState, logger=self.mock_logger, measurements={})
     self.mock_test_state = mock.create_autospec(
         test_state.TestState,
         test_record=test_record.TestRecord('DUT', 'STATION'),

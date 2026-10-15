@@ -56,6 +56,19 @@ class PhaseExecutorTest(unittest.TestCase):
         expected_call_count=phase_descriptor.DEFAULT_REPEAT_LIMIT + 1,
     )
 
+  def test_aborted_phase_does_not_repeat_with_force_repeat(self):
+    call_count = 0
+
+    @openhtf.PhaseOptions(force_repeat=True, repeat_limit=3)
+    def aborted_phase():
+      nonlocal call_count
+      call_count += 1
+      raise openhtf.util.threads.ThreadTerminationError()
+
+    test = openhtf.Test(aborted_phase)
+    test.execute()
+    self.assertEqual(call_count, 1)
+
 
 class PhaseExecuterRunIfTest(htf_test.TestCase):
 

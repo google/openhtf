@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import copy
 import logging
 import sys
 import tempfile
+import threading
 from unittest import mock
 
 from absl.testing import parameterized
@@ -36,6 +38,11 @@ CONF = configuration.CONF
 @openhtf.PhaseOptions(name='test_phase')
 def test_phase():
   """Test docstring."""
+
+
+@openhtf.PhaseOptions(name='other_phase')
+def other_phase():
+  """A second phase, used to simulate a concurrently running phase."""
 
 
 PHASE_STATE_BASE_TYPE_INITIAL = {
@@ -86,9 +93,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
         'outcome': None,
         'outcome_details': [],
         'marginal': None,
-        'metadata': {
-            'config': {}
-        },
+        'metadata': {'config': {}},
         'phases': [],
         'subtests': [],
         'branches': [],
@@ -101,6 +106,7 @@ TEST_STATE_BASE_TYPE_INITIAL = {
         'plug_states': {},
     },
     'running_phase_state': copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL),
+    'running_phase_states': [copy.deepcopy(PHASE_STATE_BASE_TYPE_INITIAL)],
 }
 
 
@@ -220,6 +226,9 @@ class TestTestApi(parameterized.TestCase):
     descriptor_id = basetypes['running_phase_state']['descriptor_id']
     expected_initial_basetypes['running_phase_state']['descriptor_id'] = (
         descriptor_id)
+    expected_initial_basetypes['running_phase_states'][0][
+        'descriptor_id'
+    ] = descriptor_id
     self.assertEqual(expected_initial_basetypes, basetypes)
     self.running_phase_state._finalize_measurements()
     self.test_record.add_phase_record(self.running_phase_state.phase_record)
@@ -253,3 +262,155 @@ class TestTestApi(parameterized.TestCase):
       self.test_state.finalize_from_phase_outcome(phase_exe_outcome, 'MyPhase')
     self.assertEqual(self.test_state.test_record.outcome,
                      test_record.Outcome.ERROR)
+
+
+class TestTestStateConcurrentPhases(parameterized.TestCase):
+  """Tests TestState behavior when phases run on multiple threads.
+
+  TestState keeps the running phase per thread. These tests exercise what a
+  thread that is *not* bound to a phase (e.g. a monitor thread, or a worker
+  thread started by a phase) observes while zero, one, or several phases are
+  running.
+  """
+
+  def setUp(self):
+    super().setUp()
+    self.test_state = test_state.TestState(
+        test_descriptor.TestDescriptor(
+            phase_collections.PhaseSequence((test_phase, other_phase)),
+            test_record.CodeInfo.uncaptured(),
+            {'config': {}},
+        ),
+        'testing-123',
+        test_descriptor.TestOptions(),
+    )
+
+  @contextlib.contextmanager
+  def _hold_phase_open(self, phase_desc):
+    """Enters running_phase_context for phase_desc on a dedicated thread.
+
+    Yields a dict with the thread's PhaseState and TestApi. The phase stays
+    running until the context exits.
+    """
+    entered = threading.Event()
+    release = threading.Event()
+    box = {}
+
+    def _run():
+      with self.test_state.running_phase_context(phase_desc) as phase_state:
+        box['phase_state'] = phase_state
+        box['test_api'] = self.test_state.test_api
+        entered.set()
+        release.wait()
+
+    thread = threading.Thread(target=_run, name=f'hold-{phase_desc.name}')
+    thread.start()
+    self.assertTrue(entered.wait(timeout=5), 'Phase thread did not start.')
+    try:
+      yield box
+    finally:
+      release.set()
+      thread.join(timeout=5)
+      self.assertFalse(thread.is_alive(), 'Phase thread did not exit.')
+
+  def _call_on_unbound_thread(self, func):
+    """Calls func on a fresh thread that is not bound to any phase."""
+    box = {}
+
+    def _run():
+      try:
+        box['result'] = func()
+      except Exception as e:  # pylint: disable=broad-except
+        box['error'] = e
+
+    thread = threading.Thread(target=_run, name='unbound')
+    thread.start()
+    thread.join(timeout=5)
+    self.assertFalse(thread.is_alive(), 'Unbound thread did not exit.')
+    if 'error' in box:
+      raise box['error']
+    return box['result']
+
+  def test_running_phase_state_from_unbound_thread(self):
+    get_running = lambda: self.test_state.running_phase_state
+
+    # No phases running: nothing to fall back to.
+    self.assertIsNone(self._call_on_unbound_thread(get_running))
+
+    with self._hold_phase_open(test_phase) as first:
+      # Exactly one phase running: unbound threads see it. This is the
+      # sequential-execution case and must keep working for existing callers.
+      self.assertIs(
+          first['phase_state'], self._call_on_unbound_thread(get_running)
+      )
+
+      with self._hold_phase_open(other_phase):
+        # Multiple phases running: there is no single "current" phase.
+        self.assertIsNone(self._call_on_unbound_thread(get_running))
+        self.assertLen(self.test_state.active_phases, 2)
+
+      self.assertIs(
+          first['phase_state'], self._call_on_unbound_thread(get_running)
+      )
+
+    self.assertIsNone(self._call_on_unbound_thread(get_running))
+
+  def test_test_api_from_unbound_thread_with_multiple_phases_raises(self):
+    with self._hold_phase_open(test_phase), self._hold_phase_open(other_phase):
+      with self.assertRaisesRegex(ValueError, 'ambiguous'):
+        self._call_on_unbound_thread(lambda: self.test_state.test_api)
+
+  def test_test_api_get_measurement_from_unbound_thread(self):
+    with self._hold_phase_open(test_phase) as first, self._hold_phase_open(
+        other_phase
+    ):
+      api = first['test_api']
+      api.measurements['test_measurement'] = 5
+
+      measurement = self._call_on_unbound_thread(
+          lambda: api.get_measurement('test_measurement')
+      )
+      self.assertIsNotNone(measurement)
+      self.assertEqual(5, measurement.value)
+      self.assertEqual(
+          5,
+          self._call_on_unbound_thread(
+              lambda: api.get_measurement_strict('test_measurement')
+          ).value,
+      )
+
+  def test_test_api_get_attachment_from_unbound_thread(self):
+    with self._hold_phase_open(test_phase) as first, self._hold_phase_open(
+        other_phase
+    ):
+      api = first['test_api']
+      api.attach('attachment.txt', b'data', 'text/plain')
+
+      attachment = self._call_on_unbound_thread(
+          lambda: api.get_attachment('attachment.txt')
+      )
+      self.assertIsNotNone(attachment)
+      self.assertEqual(b'data', attachment.data)
+      self.assertEqual(
+          b'data',
+          self._call_on_unbound_thread(
+              lambda: api.get_attachment_strict('attachment.txt')
+          ).data,
+      )
+
+  def test_test_api_get_measurement_falls_back_to_previous_phases(self):
+    # Run and finish a phase that records a measurement.
+    with self.test_state.running_phase_context(test_phase):
+      self.test_state.test_api.measurements['test_measurement'] = 7
+
+    # A later phase's TestApi still finds it, even from an unbound thread while
+    # another phase is running.
+    with self._hold_phase_open(other_phase) as later, self._hold_phase_open(
+        test_phase
+    ):
+      api = later['test_api']
+      measurement = self._call_on_unbound_thread(
+          lambda: api.get_measurement('test_measurement')
+      )
+      self.assertIsNotNone(measurement)
+      self.assertEqual(7, measurement.value)

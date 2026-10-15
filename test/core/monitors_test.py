@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import queue
+import threading
 import time
 import unittest
 from unittest import mock
@@ -20,7 +21,11 @@ from unittest import mock
 from openhtf import plugs
 from openhtf.core import base_plugs
 from openhtf.core import monitors
+from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
+from openhtf.core import test_descriptor
+from openhtf.core import test_record
+from openhtf.core import test_state
 
 
 class EmptyPlug(base_plugs.BasePlug):
@@ -113,3 +118,69 @@ class TestMonitors(unittest.TestCase):
         1000,
     )
     self.assertEqual(1, monitor_thread.get_value())
+
+
+class TestMonitorsWithConcurrentPhases(unittest.TestCase):
+  """Monitors must keep working while other phases run on other threads."""
+
+  def setUp(self):
+    super().setUp()
+    self.test_state = test_state.TestState(
+        test_descriptor.TestDescriptor(
+            phase_collections.PhaseSequence(()),
+            test_record.CodeInfo.uncaptured(),
+            {},
+        ),
+        '01234567890',
+        test_descriptor.TestOptions(),
+    )
+
+  def test_monitor_samples_while_another_phase_is_running(self):
+    samples = queue.Queue()
+
+    def monitor_func(test):
+      del test  # Unused.
+      samples.put(1)
+      return 1
+
+    @monitors.monitors('meas', monitor_func, poll_interval_ms=50)
+    def monitored_phase(test):
+      del test  # Unused.
+      # Wait for a couple of samples, but never hang the test if the monitor
+      # thread died.
+      deadline = time.monotonic() + 5
+      while samples.qsize() < 2 and time.monotonic() < deadline:
+        time.sleep(0.05)
+
+    @phase_descriptor.PhaseOptions(name='other_phase')
+    def other_phase():
+      pass
+
+    # Keep a second phase running on another thread for the whole test, so the
+    # TestState has more than one active phase and no thread-independent
+    # "current" phase.
+    entered = threading.Event()
+    release = threading.Event()
+
+    def _hold_other_phase():
+      with self.test_state.running_phase_context(other_phase):
+        entered.set()
+        release.wait()
+
+    holder = threading.Thread(target=_hold_other_phase)
+    holder.start()
+    self.assertTrue(entered.wait(timeout=5))
+    try:
+      with self.test_state.running_phase_context(
+          monitored_phase
+      ) as phase_state:
+        monitored_phase(self.test_state)
+    finally:
+      release.set()
+      holder.join(timeout=5)
+
+    self.assertGreaterEqual(samples.qsize(), 2, 'Monitor thread did not run.')
+    measured = phase_state.measurements['meas'].measured_value
+    self.assertTrue(measured.is_value_set)
+    self.assertGreaterEqual(len(measured.value_dict), 1)
+    self.assertEqual({1}, set(measured.value_dict.values()))
