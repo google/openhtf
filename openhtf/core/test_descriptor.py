@@ -20,6 +20,7 @@ test is a series of Phases that are executed by the OpenHTF framework.
 
 import argparse
 import collections
+import copy
 import logging
 import os
 import sys
@@ -589,6 +590,14 @@ class TestApi(object):
     Returns:
       an ImmutableMeasurement or None if the measurement cannot be found.
     """
+    # Check the phase this TestApi is bound to first. This keeps lookups
+    # correct from threads started by the phase (which have no running phase of
+    # their own) while other phases execute concurrently.
+    current_measurements = self._running_phase_state.measurements
+    if measurement_name in current_measurements:
+      return htf_measurements.ImmutableMeasurement.from_measurement(
+          current_measurements[measurement_name]
+      )
     return self._running_test_state.get_measurement(measurement_name)
 
   def get_measurement_strict(
@@ -608,7 +617,7 @@ class TestApi(object):
     Raises:
       MeasurementNotFoundError: Thrown when the test measurement is not found.
     """
-    measurement = self._running_test_state.get_measurement(measurement_name)
+    measurement = self.get_measurement(measurement_name)
     if measurement is None:
       raise MeasurementNotFoundError(
           f'Failed to find test measurement {measurement_name}')
@@ -627,6 +636,10 @@ class TestApi(object):
     Returns:
       A copy of the attachment or None if the attachment cannot be found.
     """
+    # See get_measurement() for why the bound phase is checked first.
+    current_attachments = self._running_phase_state.phase_record.attachments
+    if attachment_name in current_attachments:
+      return copy.deepcopy(current_attachments[attachment_name])
     return self._running_test_state.get_attachment(attachment_name)
 
   def get_attachment_strict(
