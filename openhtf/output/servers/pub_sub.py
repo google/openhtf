@@ -13,6 +13,7 @@
 # limitations under the License.
 """Generic pub/sub implementation using SockJS connections."""
 
+import asyncio
 import logging
 
 from openhtf import util as htf_util
@@ -38,9 +39,19 @@ class PubSub(sockjs.tornado.SockJSConnection):
         'The PubSub class should not be instantiated directly. '
         'Instead, subclass it and override the subscribers attribute.')
 
+  # The event loop serving this endpoint's connections, captured when the first
+  # client subscribes. Set per subclass, like _lock and subscribers.
+  _loop = None
+
   @classmethod
   def publish(cls, message, client_filter=None):
-    """Publish messages to subscribers.
+    """Publish messages to subscribers. Safe to call from any thread.
+
+    Tornado websocket writes must happen on the event loop that owns the
+    connection. Called from another thread, write_message schedules its
+    completion task on that thread's loop instead, which never runs, so the
+    tasks pile up until they are destroyed at exit. Sends are therefore handed
+    to the serving loop.
 
     Args:
       message: The message to publish.
@@ -48,6 +59,25 @@ class PubSub(sockjs.tornado.SockJSConnection):
         clients for whom the function returns True will have the message sent to
         them.
     """
+    loop = cls._loop
+    if loop is None:
+      return  # Nobody has subscribed yet.
+    try:
+      on_loop = asyncio.get_running_loop() is loop
+    except RuntimeError:
+      on_loop = False
+    if on_loop:
+      cls._send_to_subscribers(message, client_filter)
+      return
+    try:
+      loop.call_soon_threadsafe(cls._send_to_subscribers, message,
+                                client_filter)
+    except RuntimeError:
+      pass  # The loop has closed, so the server is shutting down.
+
+  @classmethod
+  def _send_to_subscribers(cls, message, client_filter):
+    """Send a message to matching subscribers. Must run on the serving loop."""
     with cls._lock:  # pylint: disable=not-context-manager
       for client in cls.subscribers:  # pylint: disable=not-an-iterable
         if (not client_filter) or client_filter(client):
@@ -55,6 +85,7 @@ class PubSub(sockjs.tornado.SockJSConnection):
 
   def on_open(self, info):
     _LOG.debug('New subscriber from %s.', info.ip)
+    type(self)._loop = asyncio.get_running_loop()
     with self._lock:  # pylint: disable=not-context-manager
       self.subscribers.add(self)
     self.on_subscribe(info)
