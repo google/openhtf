@@ -34,19 +34,30 @@ limitations under the License.
           [class.user-input-has-error]="error"
           type="text"
           class="u-push-top"
-          (keyup.enter)="sendResponse(response_field)">
+          (keyup.enter)="onEnter(response_field)">
         @if (error) {
           <div class="user-input-error-text u-push-top-third">
             {{ error }}
           </div>
         }
         <div class="u-text-align-right">
-          <button
-            type="button"
-            class="htf-rounded-button-grey u-push-top"
-            (click)="sendResponse(response_field)">
-            {{ hasTextInput() ? 'Submit' : 'Okay' }}
-          </button>
+          @for (button of buttons; track $index) {
+            <button
+              type="button"
+              class="u-push-top user-input-button"
+              [ngClass]="buttonClass(button)"
+              [ngStyle]="buttonStyle(button)"
+              (click)="sendButtonResponse(response_field, button)">
+              {{ button.text }}
+            </button>
+          } @empty {
+            <button
+              type="button"
+              class="htf-rounded-button-grey u-push-top"
+              (click)="sendResponse(response_field)">
+              {{ hasTextInput() ? 'Submit' : 'Okay' }}
+            </button>
+          }
         </div>
       </div>
     </div>
