@@ -160,9 +160,14 @@ class PhaseExecutorThread(threads.KillableThread):
   """
   daemon = True
 
-  def __init__(self, phase_desc: phase_descriptor.PhaseDescriptor,
-               test_state: 'htf_test_state.TestState', run_with_profiling: bool,
-               subtest_rec: Optional[test_record.SubtestRecord]):
+  def __init__(
+      self,
+      phase_desc: phase_descriptor.PhaseDescriptor,
+      test_state: 'htf_test_state.TestState',
+      run_with_profiling: bool,
+      subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool = False,
+  ):
     super(PhaseExecutorThread, self).__init__(
         name='<PhaseExecutorThread: (phase_desc.name)>',
         run_with_profiling=run_with_profiling,
@@ -170,6 +175,7 @@ class PhaseExecutorThread(threads.KillableThread):
     self._phase_desc = phase_desc
     self._test_state = test_state
     self._subtest_rec = subtest_rec
+    self.in_teardown = in_teardown
     self._phase_state = test_state.running_phase_state
     self._phase_execution_outcome = None  # type: Optional[PhaseExecutionOutcome]
 
@@ -243,6 +249,19 @@ class PhaseExecutor(object):
     self._current_phase_thread = None  # type: Optional[PhaseExecutorThread]
     self._active_phase_threads = set()  # type: Set[PhaseExecutorThread]
     self._stopping = threading.Event()
+    self._force_stopping = threading.Event()
+
+  def _is_stopping(self, in_teardown: bool) -> bool:
+    """Returns whether execution is stopping for the given phase kind.
+
+    Invariant: `_force_stopping` being set implies `_stopping` is also set.
+
+    Args:
+      in_teardown: Whether the phase is running as part of a teardown sequence.
+    """
+    if in_teardown:
+      return self._force_stopping.is_set()
+    return self._stopping.is_set()
 
   def _should_repeat(
       self,
@@ -278,7 +297,8 @@ class PhaseExecutor(object):
       self,
       phase: phase_descriptor.PhaseDescriptor,
       run_with_profiling: bool = False,
-      subtest_rec: Optional[test_record.SubtestRecord] = None
+      subtest_rec: Optional[test_record.SubtestRecord] = None,
+      in_teardown: bool = False,
   ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes a phase or skips it, yielding PhaseExecutionOutcome instances.
 
@@ -287,6 +307,7 @@ class PhaseExecutor(object):
       run_with_profiling: Whether to run with cProfile stat collection for the
         phase code run inside a thread.
       subtest_rec: Optional subtest record.
+      in_teardown: Whether the phase is running as part of a teardown sequence.
 
     Returns:
       A two-tuple; the first item is the final PhaseExecutionOutcome that wraps
@@ -300,12 +321,19 @@ class PhaseExecutor(object):
     repeat_limit = (
         phase.options.repeat_limit or phase_descriptor.DEFAULT_REPEAT_LIMIT
     )
-    while not self._stopping.is_set():
+    while not self._is_stopping(in_teardown):
       is_last_repeat = repeat_count >= repeat_limit
       phase_execution_outcome, profile_stats = self._execute_phase_once(
-          phase, is_last_repeat, run_with_profiling, subtest_rec)
-      if (self._should_repeat(phase, phase_execution_outcome, is_last_repeat) and
-          not is_last_repeat):
+          phase,
+          is_last_repeat,
+          run_with_profiling,
+          subtest_rec,
+          in_teardown=in_teardown,
+      )
+      if (
+          self._should_repeat(phase, phase_execution_outcome, is_last_repeat)
+          and not is_last_repeat
+      ):
         repeat_count += 1
         continue
 
@@ -319,6 +347,7 @@ class PhaseExecutor(object):
       is_last_repeat: bool,
       run_with_profiling: bool,
       subtest_rec: Optional[test_record.SubtestRecord],
+      in_teardown: bool = False,
   ) -> Tuple[PhaseExecutionOutcome, Optional[pstats.Stats]]:
     """Executes the given phase, returning a PhaseExecutionOutcome."""
     # Check this before we create a PhaseState and PhaseRecord.
@@ -347,19 +376,24 @@ class PhaseExecutor(object):
         self.logger.debug('Executing phase %s (from %s)', phase_desc.name,
                           phase_desc.func_location)
       with self._current_phase_thread_lock:
-        # Checking _stopping must be in the lock context, otherwise there is a
-        # race condition: this thread checks _stopping and then switches to
-        # another thread where stop() sets _stopping and checks
-        # _current_phase_thread (which would not be set yet).  In that case, the
-        # new phase thread will be still be started.
-        if self._stopping.is_set():
+        # Checking _is_stopping must be in the lock context, otherwise there is
+        # a race condition: this thread checks _is_stopping and then switches to
+        # another thread where stop() sets _stopping/_force_stopping and checks
+        # _active_phase_threads (which would not include this thread yet). In
+        # that case, the new phase thread would still be started.
+        if self._is_stopping(in_teardown):
           # PhaseRecord will be written at this point, so ensure that it has a
           # Killed result.
           result = PhaseExecutionOutcome(threads.ThreadTerminationError())
           phase_state.result = result
           return result, None
-        phase_thread = PhaseExecutorThread(phase_desc, self.test_state,
-                                           run_with_profiling, subtest_rec)
+        phase_thread = PhaseExecutorThread(
+            phase_desc,
+            self.test_state,
+            run_with_profiling,
+            subtest_rec,
+            in_teardown=in_teardown,
+        )
         phase_thread.start()
         self._current_phase_thread = phase_thread
         self._active_phase_threads.add(phase_thread)
@@ -436,23 +470,40 @@ class PhaseExecutor(object):
     self.test_state.test_record.add_checkpoint_record(checkpoint_rec)
 
   def reset_stop(self) -> None:
-    self._stopping.clear()
+    """Clears both non-force and force stop states."""
+    with self._current_phase_thread_lock:
+      self._force_stopping.clear()
+      self._stopping.clear()
 
   def stop(
       self,
-      timeout_s: Union[None, int, float,
-                       timeouts.PolledTimeout] = None) -> None:
-    """Stops execution of the current phase, if any.
+      timeout_s: Union[None, int, float, timeouts.PolledTimeout] = None,
+      force: bool = False,
+  ) -> None:
+    """Stops execution of running phases.
 
-    It will raise a ThreadTerminationError, which will cause the test to stop
-    executing and terminate with an ERROR state.
+    When `force` is False, stops active non-teardown phases and blocks future
+    non-teardown phases for the remainder of the run (or until `reset_stop()`
+    is called), while leaving active and future teardown phases
+    (`in_teardown=True`) undisturbed. When `force` is True, stops and blocks
+    all phases including teardown phases.
+
+    Killed phases raise ThreadTerminationError, resulting in an ERROR phase
+    outcome (and an ERROR or ABORTED test outcome).
 
     Args:
       timeout_s: int or None, timeout in seconds to wait for the phase to stop.
+      force: Whether to also stop teardown phases.
     """
-    self._stopping.set()
     with self._current_phase_thread_lock:
-      threads_to_kill = list(self._active_phase_threads)
+      self._stopping.set()
+      if force:
+        self._force_stopping.set()
+      threads_to_kill = [
+          thread
+          for thread in self._active_phase_threads
+          if force or not thread.in_teardown
+      ]
 
     timeout = timeouts.PolledTimeout.from_seconds(timeout_s)
     for phase_thread in threads_to_kill:
@@ -470,5 +521,6 @@ class PhaseExecutor(object):
             'Cancelled phase %s exit',
             "didn't" if phase_thread.is_alive() else 'did',
         )
-    # Clear the currently running phase, whether it finished or timed out.
-    self.test_state.stop_running_phase()
+    if force:
+      # Clear any remaining running phase state on a forced stop.
+      self.test_state.stop_running_phase()

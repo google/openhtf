@@ -697,7 +697,10 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase,
+        run_with_profiling=False,
+        subtest_rec=None,
+        in_teardown=False)
     self.assertIsNone(self.test_exec._last_outcome)
 
   def testPhase_NotTerminal_PreviousLastOutcome(self):
@@ -712,7 +715,10 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase,
+        run_with_profiling=False,
+        subtest_rec=None,
+        in_teardown=False)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_SetLastOutcome(self):
@@ -724,7 +730,10 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase,
+        run_with_profiling=False,
+        subtest_rec=None,
+        in_teardown=False)
     self.assertIs(outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_PreviousLastOutcome(self):
@@ -738,8 +747,25 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase,
+        run_with_profiling=False,
+        subtest_rec=None,
+        in_teardown=False)
     self.assertIs(set_outcome, self.test_exec._last_outcome)
+
+  def testPhase_InTeardown(self):
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)
+    self.phase_exec.execute_phase.return_value = (
+        phase_executor.PhaseExecutionOutcome(
+            phase_descriptor.PhaseResult.CONTINUE), None)
+    self.assertEqual(test_executor._ExecutorReturn.CONTINUE,
+                     self.test_exec._execute_phase(phase, None, True))
+
+    self.phase_exec.execute_phase.assert_called_once_with(
+        phase,
+        run_with_profiling=False,
+        subtest_rec=None,
+        in_teardown=True)
 
 
 class TestExecutorExecuteSequencesTest(unittest.TestCase):
