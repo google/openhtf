@@ -423,7 +423,9 @@ class PhaseOrTestIterator(Iterator):
           phase_desc,
           is_last_repeat=False,
           run_with_profiling=profile_filepath,
-          subtest_rec=None)
+          subtest_rec=None,
+          in_teardown=False,
+      )
 
     if profile_filepath is not None:
       _merge_stats(profile_stats, profile_filepath)  # pyrefly: ignore[bad-argument-type]

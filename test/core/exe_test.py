@@ -697,7 +697,8 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase, run_with_profiling=False, subtest_rec=None, in_teardown=False
+    )
     self.assertIsNone(self.test_exec._last_outcome)
 
   def testPhase_NotTerminal_PreviousLastOutcome(self):
@@ -712,7 +713,8 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase, run_with_profiling=False, subtest_rec=None, in_teardown=False
+    )
     self.assertIs(set_outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_SetLastOutcome(self):
@@ -724,7 +726,8 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase, run_with_profiling=False, subtest_rec=None, in_teardown=False
+    )
     self.assertIs(outcome, self.test_exec._last_outcome)
 
   def testPhase_Terminal_PreviousLastOutcome(self):
@@ -738,8 +741,26 @@ class TestExecutorExecutePhaseTest(unittest.TestCase):
                      self.test_exec._execute_phase(phase, None, False))
 
     self.phase_exec.execute_phase.assert_called_once_with(
-        phase, run_with_profiling=False, subtest_rec=None)
+        phase, run_with_profiling=False, subtest_rec=None, in_teardown=False
+    )
     self.assertIs(set_outcome, self.test_exec._last_outcome)
+
+  def testPhase_InTeardown(self):
+    phase = phase_descriptor.PhaseDescriptor(blank_phase)
+    self.phase_exec.execute_phase.return_value = (
+        phase_executor.PhaseExecutionOutcome(
+            phase_descriptor.PhaseResult.CONTINUE
+        ),
+        None,
+    )
+    self.assertEqual(
+        test_executor._ExecutorReturn.CONTINUE,
+        self.test_exec._execute_phase(phase, None, True),
+    )
+
+    self.phase_exec.execute_phase.assert_called_once_with(
+        phase, run_with_profiling=False, subtest_rec=None, in_teardown=True
+    )
 
 
 class TestExecutorExecuteSequencesTest(unittest.TestCase):
@@ -1198,37 +1219,45 @@ class PhaseExecutorTest(parameterized.TestCase):
     self.phase_executor = phase_executor.PhaseExecutor(self.test_state)
 
   def test_execute_continue_phase(self):
-    result, _ = self.phase_executor.execute_phase(phase_two)
+    result, _ = self.phase_executor.execute_phase(phase_two, in_teardown=False)
     self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
 
   def test_execute_repeat_okay_phase(self):
     result, _ = self.phase_executor.execute_phase(
-        phase_repeat.with_plugs(test_plug=UnittestPlug)
+        phase_repeat.with_plugs(test_plug=UnittestPlug),
+        in_teardown=False,
     )
     self.assertEqual(openhtf.PhaseResult.CONTINUE, result.phase_result)
 
   def test_execute_repeat_limited_phase(self):
     result, _ = self.phase_executor.execute_phase(
-        phase_repeat.with_plugs(test_plug=MoreRepeatsUnittestPlug)
+        phase_repeat.with_plugs(test_plug=MoreRepeatsUnittestPlug),
+        in_teardown=False,
     )
     self.assertEqual(openhtf.PhaseResult.STOP, result.phase_result)
 
-
   def test_execute_run_if_false(self):
-    result, _ = self.phase_executor.execute_phase(phase_skip_from_run_if)
+    result, _ = self.phase_executor.execute_phase(
+        phase_skip_from_run_if, in_teardown=False
+    )
     self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
 
   def test_execute_phase_return_skip(self):
-    result, _ = self.phase_executor.execute_phase(phase_return_skip)
+    result, _ = self.phase_executor.execute_phase(
+        phase_return_skip, in_teardown=False
+    )
     self.assertEqual(openhtf.PhaseResult.SKIP, result.phase_result)
 
   def test_execute_phase_return_fail_and_continue(self):
     result, _ = self.phase_executor.execute_phase(
-        phase_return_fail_and_continue)
+        phase_return_fail_and_continue, in_teardown=False
+    )
     self.assertEqual(openhtf.PhaseResult.FAIL_AND_CONTINUE, result.phase_result)
 
   def test_execute_phase_bad_phase_return(self):
-    result, _ = self.phase_executor.execute_phase(bad_return_phase)
+    result, _ = self.phase_executor.execute_phase(
+        bad_return_phase, in_teardown=False
+    )
     self.assertEqual(
         phase_executor.ExceptionInfo(phase_executor.InvalidPhaseResultError,
                                      mock.ANY, mock.ANY), result.phase_result)
@@ -1237,6 +1266,7 @@ _FAILING_MEAS_VALUE = 10
 _PASSING_MEAS_VALUE = 4
 _RANGE_MIN = -5
 _RANGE_MAX = 5
+
 
 @openhtf.PhaseOptions(repeat_on_measurement_fail=True, repeat_limit=5)
 @openhtf.measures(

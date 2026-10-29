@@ -14,14 +14,71 @@
 
 """Unit tests for phase_executor module."""
 
+import threading
+import time
 import unittest
 
 import openhtf
+from openhtf.core import phase_collections
 from openhtf.core import phase_descriptor
+from openhtf.core import phase_executor
+from openhtf.core import test_descriptor
 from openhtf.core import test_record
+from openhtf.core import test_state
 from openhtf.util import test as htf_test
+from openhtf.util import threads
+
 
 class PhaseExecutorTest(unittest.TestCase):
+
+  def _make_phase_executor(
+      self,
+  ) -> tuple[test_state.TestState, phase_executor.PhaseExecutor]:
+    test_desc = test_descriptor.TestDescriptor(
+        phase_sequence=phase_collections.PhaseSequence(nodes=tuple()),
+        code_info=test_record.CodeInfo.uncaptured(),
+        metadata={},
+        uid='uid',
+    )
+    state = test_state.TestState(
+        test_desc,
+        execution_uid='execution_uid',
+        test_options=test_descriptor.TestOptions(),
+    )
+    self.addCleanup(state.close)
+    return state, phase_executor.PhaseExecutor(state)
+
+  def _start_blocking_phase(
+      self,
+      executor: phase_executor.PhaseExecutor,
+      name: str,
+      *,
+      in_teardown: bool,
+  ) -> tuple[
+      threading.Thread,
+      threading.Event,
+      list[phase_executor.PhaseExecutionOutcome],
+  ]:
+    started = threading.Event()
+    unblock = threading.Event()
+    outcomes = []
+
+    @openhtf.PhaseOptions(name=name)
+    def blocking_phase():
+      started.set()
+      while not unblock.wait(0.01):
+        pass
+
+    thread = threading.Thread(
+        target=lambda: outcomes.append(
+            executor.execute_phase(blocking_phase, in_teardown=in_teardown)[0]
+        )
+    )
+    thread.start()
+    self.addCleanup(thread.join, timeout=5.0)
+    self.addCleanup(unblock.set)
+    self.assertTrue(started.wait(timeout=5.0))
+    return thread, unblock, outcomes
 
   def _run_repeating_phase(self, phase_options, expected_call_count):
     call_count = 0
@@ -69,18 +126,104 @@ class PhaseExecutorTest(unittest.TestCase):
     test.execute()
     self.assertEqual(call_count, 1)
 
+  def test_non_force_stop_kills_active_non_teardown_and_preserves_teardown(
+      self,
+  ):
+    state, executor = self._make_phase_executor()
+    normal_thread, _, normal_outcomes = self._start_blocking_phase(
+        executor, 'normal_phase', in_teardown=False
+    )
+    teardown_thread, unblock_teardown, teardown_outcomes = (
+        self._start_blocking_phase(executor, 'teardown_phase', in_teardown=True)
+    )
+
+    executor.stop(timeout_s=2.0, force=False)
+
+    with self.subTest('kills_non_teardown_phase'):
+      normal_thread.join(timeout=5.0)
+      self.assertFalse(normal_thread.is_alive())
+      self.assertTrue(normal_outcomes[0].is_aborted)
+      self.assertIsInstance(
+          normal_outcomes[0].phase_result, threads.ThreadTerminationError
+      )
+
+    with self.subTest('preserves_teardown_phase'):
+      self.assertTrue(teardown_thread.is_alive())
+      self.assertEqual(
+          [p.name for p in state.active_phases], ['teardown_phase']
+      )
+      unblock_teardown.set()
+      teardown_thread.join(timeout=5.0)
+      self.assertEqual(
+          teardown_outcomes[0].phase_result,
+          phase_descriptor.PhaseResult.CONTINUE,
+      )
+
+  def test_non_force_stop_blocks_subsequent_non_teardown_phase(self):
+    _, executor = self._make_phase_executor()
+    executor.stop(timeout_s=2.0, force=False)
+    calls = []
+
+    @openhtf.PhaseOptions(force_repeat=True, repeat_limit=2)
+    def track_phase():
+      calls.append(time.monotonic())
+
+    late_normal, _ = executor.execute_phase(track_phase, in_teardown=False)
+    self.assertTrue(late_normal.is_timeout)
+    self.assertEqual(calls, [])
+
+  def test_non_force_stop_allows_subsequent_teardown_phase(self):
+    _, executor = self._make_phase_executor()
+    executor.stop(timeout_s=2.0, force=False)
+    calls = []
+
+    @openhtf.PhaseOptions(force_repeat=True, repeat_limit=2)
+    def track_phase():
+      calls.append(time.monotonic())
+
+    late_teardown, _ = executor.execute_phase(track_phase, in_teardown=True)
+    self.assertEqual(
+        late_teardown.phase_result, phase_descriptor.PhaseResult.CONTINUE
+    )
+    self.assertEqual(len(calls), 2)
+
+  def test_force_stop_kills_active_teardown_phase(self):
+    state, executor = self._make_phase_executor()
+    teardown_thread, _, teardown_outcomes = self._start_blocking_phase(
+        executor, 'teardown_phase', in_teardown=True
+    )
+
+    executor.stop(timeout_s=2.0, force=True)
+
+    teardown_thread.join(timeout=5.0)
+    self.assertFalse(teardown_thread.is_alive())
+    self.assertTrue(teardown_outcomes[0].is_aborted)
+    self.assertEqual(state.active_phases, [])
+
+  def test_force_stop_blocks_subsequent_teardown_phase(self):
+    _, executor = self._make_phase_executor()
+    executor.stop(timeout_s=2.0, force=True)
+
+    @openhtf.PhaseOptions(name='noop_phase')
+    def noop_phase():
+      pass
+
+    blocked_outcome, _ = executor.execute_phase(noop_phase, in_teardown=True)
+    self.assertTrue(blocked_outcome.is_timeout)
+
 
 class PhaseExecuterRunIfTest(htf_test.TestCase):
 
   def test_execute_phase_when_run_if_throws_exception(self):
 
     def run_if_with_exception():
-      raise Exception("run_if_with_exception")
+      raise RuntimeError('run_if_with_exception')
 
     def phase_excp_run_if():
       pass
 
     phase = openhtf.PhaseOptions(run_if=run_if_with_exception)(
-                                 phase_excp_run_if)
+        phase_excp_run_if
+    )
     record = self.execute_phase_or_test(openhtf.Test(phase))
     self.assertTestError(record)
