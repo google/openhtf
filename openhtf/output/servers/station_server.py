@@ -126,6 +126,7 @@ def _test_state_from_record(test_record_dict, execution_uid=None):
           'plug_states': {},
       },
       'running_phase_state': None,
+      'running_phase_states': [],
       'status': TEST_STATUS_COMPLETED,
       'test_record': test_record_dict,
   }
@@ -338,10 +339,10 @@ class AttachmentsHandler(BaseTestHandler):
       return
 
     # Find the phase matching `phase_descriptor_id`.
-    running_phase = test_state.running_phase_state
     phase_records = itertools.chain(
         test_state.test_record.phases,
-        [running_phase.phase_record] if running_phase is not None else [])
+        (phase.phase_record for phase in test_state.active_phases),
+    )
 
     matched_phase = None
     for phase in phase_records:
