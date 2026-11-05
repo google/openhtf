@@ -137,12 +137,13 @@ in the decorator or in the decorated callable.
 
 import abc
 import argparse
+import contextlib
 import enum
 import functools
 import inspect
 import logging
 import threading
-from typing import Any, Optional, Text, Type, TypeVar
+from typing import Any, Iterator, Mapping, Optional, Self, Text, Type, TypeVar
 
 import attr
 from openhtf.util import argv
@@ -618,12 +619,25 @@ class _Configuration(object):
       result.append('')
     return '\n'.join(result)
 
-  def save_and_restore(self, _func=None, **config_values):  # pylint: disable=invalid-name
-    """Decorator for saving conf state and restoring it after a function.
+  @contextlib.contextmanager
+  def _save_and_restore_context(
+      self, config_values: Mapping[str, Any]
+  ) -> Iterator[Self]:
+    saved_config = dict(self._loaded_values)
+    try:
+      if config_values:
+        self.load_from_dict(config_values)
+      yield self
+    finally:
+      self._loaded_values = saved_config
 
-    This decorator is primarily for use in tests, where conf keys may be updated
-    for individual test cases, but those values need to be reverted after the
-    test case is done.
+  def save_and_restore(self, _func=None, **config_values):  # pylint: disable=invalid-name
+    """Decorator or context manager for saving and restoring conf state.
+
+    This can be used either as a decorator or as a context manager. It is
+    primarily for use in tests, where conf keys may be updated for individual
+    test cases, but those values need to be reverted after the test case or
+    context block is done.
 
     Examples:
 
@@ -642,7 +656,7 @@ class _Configuration(object):
       # side effect of altering the conf value of 'my_conf_key' to 'baz'.
 
       # Config keys can also be initialized for the context inline at decoration
-      # time.  This is the same as setting them at the beginning of the
+      # time. This is the same as setting them at the beginning of the
       # function, but is a little clearer syntax if you know ahead of time what
       # config keys and values you need to set.
 
@@ -653,30 +667,34 @@ class _Configuration(object):
       MyOtherTestFunc()
       print conf.my_conf_key  # Prints 'foo' again, for the same reason.
 
+      # Context manager usage:
+      with conf.save_and_restore(my_conf_key='baz'):
+        print conf.my_conf_key  # Prints 'baz'
+
+      print conf.my_conf_key  # Prints 'foo' again.
+
+      with conf.save_and_restore():
+        conf.load(my_conf_key='baz')
+        print conf.my_conf_key  # Prints 'baz'
+
+      print conf.my_conf_key  # Prints 'foo' again.
 
     Args:
-      _func: The function to wrap.  The returned wrapper will invoke the
-        function and restore the config to the state it was in at invocation.
-      **config_values: Config keys can be set inline at decoration time, see
-        examples.  Note that config keys can't begin with underscore, so there
-        can be no name collision with _func.
+      _func: The function to wrap if used as a decorator. The returned wrapper
+        will invoke the function and restore the config to the state it was in
+        at invocation.
+      **config_values: Config keys can be set inline at decoration / context
+        time, see examples. Note that config keys can't begin with underscore,
+        so there can be no name collision with _func.
 
     Returns:
-      Wrapper to replace _func, as per Python decorator semantics.
+      Context manager (supporting both `with` block and decorator usage) or a
+      wrapped function if `_func` was passed directly.
     """
-    if not _func:
-      return functools.partial(self.save_and_restore, **config_values)
-
-    @functools.wraps(_func)
-    def _saving_wrapper(*args, **kwargs):
-      saved_config = dict(self._loaded_values)
-      try:
-        self.load_from_dict(config_values)
-        return _func(*args, **kwargs)
-      finally:
-        self._loaded_values = saved_config  # pylint: disable=attribute-defined-outside-init
-
-    return _saving_wrapper
+    context = self._save_and_restore_context(config_values)
+    if _func is not None:
+      return context(_func)
+    return context
 
   def inject_positional_args(self, method):
     """Decorator for injecting positional arguments from the configuration.

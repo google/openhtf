@@ -174,6 +174,46 @@ class TestConf(TestConfBase):
     modifies_conf()
     self.assertEqual('default', CONF.string_default)
 
+  def test_save_and_restore_context_manager(self):
+    self.assertEqual('default', CONF.string_default)
+    with CONF.save_and_restore():
+      CONF.load(string_default='modified')
+      self.assertEqual('modified', CONF.string_default)
+    self.assertEqual('default', CONF.string_default)
+
+  def test_save_and_restore_context_manager_kwargs(self):
+    self.assertEqual('default', CONF.string_default)
+    with CONF.save_and_restore(string_default='modified'):
+      self.assertEqual('modified', CONF.string_default)
+    self.assertEqual('default', CONF.string_default)
+
+  def test_save_and_restore_context_manager_as_target(self):
+    self.assertEqual('default', CONF.string_default)
+    with CONF.save_and_restore(string_default='modified') as conf:
+      self.assertEqual('modified', conf.string_default)
+      self.assertIs(conf, CONF)
+    self.assertEqual('default', CONF.string_default)
+
+  def test_save_and_restore_context_manager_exception_restores(self):
+    self.assertEqual('default', CONF.string_default)
+
+    def raising_block():
+      with CONF.save_and_restore(string_default='modified'):
+        self.assertEqual('modified', CONF.string_default)
+        raise ValueError('testing error')
+
+    self.assertRaisesRegex(ValueError, 'testing error', raising_block)
+    self.assertEqual('default', CONF.string_default)
+
+  def test_save_and_restore_nested_context_manager(self):
+    self.assertEqual('default', CONF.string_default)
+    with CONF.save_and_restore(string_default='outer'):
+      self.assertEqual('outer', CONF.string_default)
+      with CONF.save_and_restore(string_default='inner'):
+        self.assertEqual('inner', CONF.string_default)
+      self.assertEqual('outer', CONF.string_default)
+    self.assertEqual('default', CONF.string_default)
+
   def test_inject_positional_args(self):
 
     @CONF.inject_positional_args
