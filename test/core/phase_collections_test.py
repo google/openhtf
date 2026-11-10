@@ -144,6 +144,77 @@ class FlattenTest(unittest.TestCase):
 
     self.assertEqual(expected, phase_collections.flatten([seq]))
 
+  def test_flatten_preserves_phase_group(self):
+    group = htf.PhaseGroup(setup=[empty_phase], main=[phase], teardown=[])
+
+    self.assertEqual([group], phase_collections.flatten([group]))
+
+
+class AllPhasesTest(unittest.TestCase):
+
+  def test_empty_iterable(self):
+    self.assertEqual([], phase_collections.all_phases([]))
+
+  def test_single_callable_and_descriptor(self):
+    wrapped_phase = phase_descriptor.PhaseDescriptor.wrap_or_copy(phase)
+    self.assertEqual([wrapped_phase], phase_collections.all_phases(phase))
+    self.assertEqual([empty_phase], phase_collections.all_phases(empty_phase))
+
+  def test_invalid_entry_raises_value_error(self):
+    with self.assertRaises(ValueError):
+      phase_collections.all_phases(42)
+
+  def test_nested_containers_and_iterables_with_checkpoints(self):
+
+    class _Diag(htf.DiagResultEnum):
+      SET = 'set'
+
+    graph_phase = phase_descriptor.PhaseOptions(name='graph_phase')(phase)
+    nested_tree = [
+        phase,
+        (
+            htf.PhaseGroup(
+                setup=[skip_phase0],
+                main=[
+                    htf.PhaseSequence(
+                        empty_phase,
+                        htf.PhaseFailureCheckpoint('checkpoint_ignored'),
+                    ),
+                    htf.Subtest('inner_subtest', skip_phase1),
+                ],
+                teardown=[teardown_phase],
+            ),
+            [
+                htf.BranchSequence(
+                    htf.DiagnosisCondition.on_all(_Diag.SET),
+                    plug_phase,
+                ),
+                htf.PhaseGraph.from_dependencies(
+                    htf.PhaseSequence(graph_phase, name='lane')
+                ),
+            ],
+        ),
+        htf.PhaseFailureCheckpoint('top_level_checkpoint_ignored'),
+    ]
+
+    extracted = phase_collections.all_phases(nested_tree)
+
+    self.assertTrue(
+        all(isinstance(p, phase_descriptor.PhaseDescriptor) for p in extracted)
+    )
+    self.assertEqual(
+        [p.name for p in extracted],
+        [
+            'phase',
+            'skip_phase0',
+            'empty_phase',
+            'skip_phase1',
+            'teardown_phase',
+            'plug_phase',
+            'graph_phase',
+        ],
+    )
+
 
 class PhaseSequenceTest(unittest.TestCase):
 

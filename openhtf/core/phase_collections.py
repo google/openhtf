@@ -43,7 +43,7 @@ class DuplicateSubtestNamesError(Exception):
 
 
 def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
-  """Yields flattened phase nodes."""
+  """Yields top-level PhaseNodes unpacked from nested Python iterables."""
   if isinstance(n, CollectionsIterable):
     for it in n:
       for node in _recursive_flatten(it):
@@ -57,8 +57,48 @@ def _recursive_flatten(n: Any) -> Iterator[phase_nodes.PhaseNode]:
 
 
 def flatten(n: Any) -> List[phase_nodes.PhaseNode]:
-  """Recursively flatten the argument and return a list of phase nodes."""
+  """Unpacks nested Python iterables into top-level PhaseNodes for executors.
+
+  Wraps phase callables into PhaseDescriptors and flattens nested Python
+  iterables (such as lists, tuples, and generators), while preserving PhaseNode
+  containers (such as PhaseGroup, PhaseSequence, Subtest, BranchSequence, and
+  PhaseGraph) intact rather than unpacking their child phases.
+
+  To recursively extract leaf PhaseDescriptors from inside PhaseNode containers
+  (for example, in unit tests or static phase inspection), use `all_phases()`
+  instead.
+
+  Args:
+    n: A phase callable, PhaseNode, or nested Python iterable of either.
+
+  Returns:
+    A list of top-level PhaseNodes with container nodes preserved intact.
+
+  Raises:
+    ValueError: If `n` or any nested element cannot be converted to a PhaseNode.
+  """
   return list(_recursive_flatten(n))
+
+
+def all_phases(n: Any) -> List[phase_descriptor.PhaseDescriptor]:
+  """Recursively extracts all leaf PhaseDescriptors from nodes and iterables.
+
+  Unpacks nested Python iterables, wraps phase callables into PhaseDescriptors,
+  and traverses into PhaseCollectionNode containers (such as PhaseGroup,
+  PhaseSequence, Subtest, BranchSequence, and PhaseGraph) to return every leaf
+  PhaseDescriptor in traversal order, omitting non-phase nodes such as
+  checkpoints.
+
+  Args:
+    n: A phase callable, PhaseNode, or nested Python iterable of either.
+
+  Returns:
+    A list of leaf PhaseDescriptors in traversal order.
+
+  Raises:
+    ValueError: If `n` or any nested element cannot be converted to a PhaseNode.
+  """
+  return list(PhaseSequence(n).all_phases())
 
 
 class PhaseCollectionNode(phase_nodes.PhaseNode, abc.ABC):

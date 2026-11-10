@@ -146,7 +146,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Sequence,
     Text,
     Tuple,
     Type,
@@ -1111,18 +1110,16 @@ class TestCase(unittest.TestCase):
 
 
 def get_flattened_phases(
-    node_collections: Iterable[
-        Union[phase_nodes.PhaseNode, phase_collections.PhaseCollectionNode]
-    ],
-) -> Sequence[phase_nodes.PhaseNode]:
-  """Flattens nested sequences of nodes into phase descriptors."""
-  phases = []
-  phases_or_phase_groups = phase_collections.flatten(node_collections)
-  for phase_or_phase_group in phases_or_phase_groups:
-    if isinstance(phase_or_phase_group, phase_collections.PhaseCollectionNode):
-      phases.extend(phase_or_phase_group.all_phases())
-    elif isinstance(phase_or_phase_group, phase_nodes.PhaseNode):
-      phases.append(phase_or_phase_group)
-    else:
-      raise TypeError('Not a phase node or a phase collection node.')
-  return phases
+    node_collections: Any,
+) -> List[phase_descriptor.PhaseDescriptor]:
+  """Flattens nested iterables and phase collections into PhaseDescriptors.
+
+  Prefer `phase_collections.all_phases()` in new code.
+
+  Args:
+    node_collections: A phase callable, PhaseNode, or nested iterable of either.
+
+  Returns:
+    A list of leaf PhaseDescriptors in traversal order.
+  """
+  return phase_collections.all_phases(node_collections)
