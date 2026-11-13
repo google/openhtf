@@ -24,7 +24,8 @@ import platform
 import select
 import sys
 import threading
-from typing import Any, Callable, Dict, Optional, Text, Union
+from typing import (Any, Callable, Dict, NamedTuple, Optional, Sequence, Text,
+                    Tuple, Union)
 import uuid
 
 import attr
@@ -53,15 +54,72 @@ class PromptUnansweredError(Exception):
   """Raised when a prompt times out or otherwise comes back unanswered."""
 
 
+class PromptResponse(NamedTuple):
+  """The answer to a prompt that has buttons.
+
+  Attributes:
+    text: The text the user entered, or the empty string if the prompt had no
+      text input.
+    button: The response of the button the user pressed.
+  """
+  text: Text
+  button: Text
+
+
+@attr.s(slots=True, frozen=True)
+class Button:
+  """A button the operator can press to answer a prompt.
+
+  Attributes:
+    text: The label shown on the button.
+    color: 'blue', 'red' or 'grey' to use the GUI's built-in button styles, or
+      any CSS color for a custom background.
+    text_color: CSS color for the label. Defaults to the built-in style's text
+      color, or white for a custom background.
+    value: The response given when this button is pressed. Defaults to text.
+  """
+  text = attr.ib(type=Text)
+  color = attr.ib(type=Text, default='grey')
+  text_color = attr.ib(type=Optional[Text], default=None)
+  value = attr.ib(type=Optional[Text], default=None)
+
+  @property
+  def response(self) -> Text:
+    """The response given when this button is pressed."""
+    return self.text if self.value is None else self.value
+
+
 @attr.s(slots=True, frozen=True)
 class Prompt(object):
   id = attr.ib(type=Text)
   message = attr.ib(type=Text)
   text_input = attr.ib(type=bool)
   image_url = attr.ib(type=Optional[Text], default=None)
+  buttons = attr.ib(type=Tuple[Button, ...], default=())
 
 
-class ConsolePrompt(threading.Thread):
+def _resolve_button_choice(buttons: Sequence[Button],
+                           choice: Text) -> Optional[Text]:
+  """Resolves console input to a button's response.
+
+  Args:
+    buttons: The buttons on offer.
+    choice: The operator's input: a 1-based button number, or a button's text
+      or value (case-insensitive).
+
+  Returns:
+    The chosen button's response, or None if the input matches no button.
+  """
+  choice = choice.strip()
+  if choice.isdigit() and 1 <= int(choice) <= len(buttons):
+    return buttons[int(choice) - 1].response
+  for button in buttons:
+    if choice.lower() in (button.text.lower(), button.response.lower()):
+      return button.response
+  return None
+
+
+class ConsolePrompt(threading.Thread):  # pylint: disable=too-many-instance-attributes
   """Thread that displays a prompt to the console and waits for a response.
 
   This should not be used for processes that run in the background.
@@ -69,22 +127,56 @@ class ConsolePrompt(threading.Thread):
 
   def __init__(self,
                message: Text,
-               callback: Callable[[Text], None],
-               color: Text = ''):
+               callback: Callable[..., None],
+               color: Text = '',
+               buttons: Sequence[Button] = (),
+               text_input: bool = False):
     """Initializes a ConsolePrompt.
 
     Args:
       message: A string to be presented to the user.
-      callback: A function to be called with the response string.
+      callback: A function to be called with the response string, or with the
+        text and the chosen button's response if there are buttons.
       color: An ANSI color code, or the empty string.
+      buttons: Buttons to offer. If given, the user picks one after entering
+        any text, and input is accepted only once it matches a button.
+      text_input: Whether the user enters text before picking a button. Only
+        used if there are buttons.
     """
     super(ConsolePrompt, self).__init__()
     self.daemon = True
+    self._buttons = tuple(buttons)
+    self._text = None if self._buttons and text_input else ''
+    if self._buttons and self._text is not None:
+      message = os.linesep.join([message, self._button_list()])
     self._message = message
     self._callback = callback
     self._color = color
     self._stop_event = threading.Event()
     self._answered = False
+
+  def _button_list(self) -> Text:
+    """Returns the numbered list of buttons to show."""
+    return os.linesep.join(f'  {i}) {button.text}'
+                           for i, button in enumerate(self._buttons, 1))
+
+  def _handle_line(self, line: Text) -> Optional[Tuple[Text, ...]]:
+    """Returns the callback args for a line of input, or None to keep asking."""
+    if not self._buttons:
+      return (line,)
+    if self._text is None:
+      self._text = line
+      console_output.cli_print(
+          os.linesep.join(['Choose:', self._button_list()]),
+          color=self._color, end=os.linesep, logger=None)
+      return None
+    button = _resolve_button_choice(self._buttons, line)
+    if button is None:
+      console_output.cli_print(
+          f'Enter a number from 1 to {len(self._buttons)}.',
+          color=self._color, end=os.linesep, logger=None)
+      return None
+    return (self._text, button)
 
   def stop(self) -> None:
     """Mark this ConsolePrompt as stopped."""
@@ -99,9 +191,12 @@ class ConsolePrompt(threading.Thread):
     if platform.system() == 'Windows':
       # Windows doesn't support file-like objects for select(), so fall back
       # to raw_input().
-      response = input(''.join((self._message, os.linesep, PROMPT)))
+      args = self._handle_line(
+          input(''.join((self._message, os.linesep, PROMPT))))
+      while args is None:
+        args = self._handle_line(input(PROMPT))
       self._answered = True
-      self._callback(response)
+      self._callback(*args)
       return
 
     # First, display the prompt to the console.
@@ -125,11 +220,16 @@ class ConsolePrompt(threading.Thread):
           print('Hit ^C (Ctrl+c) to exit.')
           break
         line += new.decode('utf-8')
-        if '\n' in line:
-          response = line[:line.find('\n')]
-          self._answered = True
-          self._callback(response)
-          return
+        while '\n' in line:
+          args = self._handle_line(line[:line.find('\n')])
+          line = line[line.find('\n') + 1:]
+          if args is not None:
+            self._answered = True
+            self._callback(*args)
+            return
+          console_output.cli_print(
+              PROMPT, color=self._color, end='', logger=None)
+          sys.stdout.flush()
 
 
 class UserInput(base_plugs.FrontendAwareBasePlug):
@@ -142,10 +242,10 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
 
   def __init__(self):
     super(UserInput, self).__init__()
-    self.last_response: Optional[tuple[str, str]] = None
+    self.last_response: Optional[tuple[str, Union[str, PromptResponse]]] = None
     self._prompt: Optional[Prompt] = None
     self._console_prompt: Optional[ConsolePrompt] = None
-    self._response: Optional[Text] = None
+    self._response: Optional[Union[Text, PromptResponse]] = None
     self._cond = threading.Condition(threading.RLock())
 
   def _asdict(self) -> Optional[Dict[Text, Any]]:  # pyrefly: ignore[bad-override]
@@ -157,7 +257,13 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
           'id': self._prompt.id,
           'message': self._prompt.message,
           'text-input': self._prompt.text_input,
-          'image-url': self._prompt.image_url
+          'image-url': self._prompt.image_url,
+          'buttons': [{
+              'text': button.text,
+              'value': button.response,
+              'color': button.color,
+              'text-color': button.text_color,
+          } for button in self._prompt.buttons],
       }
 
   def tearDown(self) -> None:
@@ -177,7 +283,10 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
              text_input: bool = False,
              timeout_s: Union[int, float, None] = None,
              cli_color: Text = '',
-             image_url: Optional[Text] = None) -> Text:
+             image_url: Optional[Text] = None,
+             *,
+             buttons: Optional[Sequence[Button]] = None
+            ) -> Union[Text, PromptResponse]:
     """Display a prompt and wait for a response.
 
     Args:
@@ -186,22 +295,29 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
       cli_color: An ANSI color code, or the empty string.
       image_url: Optional image URL to display or None.
+      buttons: Optional buttons to show in place of the default one. The user
+        answers by pressing one of them, after entering text if text_input.
 
     Returns:
-      A string response, or the empty string if text_input was False.
+      A PromptResponse of the text and the pressed button's response if buttons
+      were given. Otherwise a string response, or the empty string if
+      text_input was False.
 
     Raises:
       MultiplePromptsError: There was already an existing prompt.
       PromptUnansweredError: Timed out waiting for the user to respond.
     """
-    self.start_prompt(message, text_input, cli_color, image_url)
+    self.start_prompt(
+        message, text_input, cli_color, image_url, buttons=buttons)
     return self.wait_for_prompt(timeout_s)
 
   def start_prompt(self,
                    message: Text,
                    text_input: bool = False,
                    cli_color: Text = '',
-                   image_url: Optional[Text] = None) -> Text:
+                   image_url: Optional[Text] = None,
+                   *,
+                   buttons: Optional[Sequence[Button]] = None) -> Text:
     """Display a prompt.
 
     Args:
@@ -209,6 +325,8 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
       text_input: A boolean indicating whether the user must respond with text.
       cli_color: An ANSI color code, or the empty string.
       image_url: Optional image URL to display or None.
+      buttons: Optional buttons to show in place of the default one. The user
+        answers by pressing one of them, after entering text if text_input.
 
     Raises:
       MultiplePromptsError: There was already an existing prompt.
@@ -216,6 +334,7 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
     Returns:
       A string uniquely identifying the prompt.
     """
+    buttons = tuple(buttons or ())
     with self._cond:
       if self._prompt:
         raise MultiplePromptsError(
@@ -229,23 +348,29 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
           id=prompt_id,
           message=message,
           text_input=text_input,
-          image_url=image_url)
+          image_url=image_url,
+          buttons=buttons)
       if sys.stdin.isatty():
         self._console_prompt = ConsolePrompt(
-            message, functools.partial(self.respond, prompt_id), cli_color)
+            message, functools.partial(self.respond, prompt_id), cli_color,
+            buttons, text_input)
         self._console_prompt.start()
 
       self.notify_update()
       return prompt_id
 
-  def wait_for_prompt(self, timeout_s: Union[int, float, None] = None) -> Text:
+  def wait_for_prompt(
+      self, timeout_s: Union[int, float, None] = None
+  ) -> Union[Text, PromptResponse]:
     """Wait for the user to respond to the current prompt.
 
     Args:
       timeout_s: Seconds to wait before raising a PromptUnansweredError.
 
     Returns:
-      A string response, or the empty string if text_input was False.
+      A PromptResponse of the text and the pressed button's response if the
+      prompt has buttons. Otherwise a string response, or the empty string if
+      text_input was False.
 
     Raises:
       PromptUnansweredError: Timed out waiting for the user to respond.
@@ -260,20 +385,32 @@ class UserInput(base_plugs.FrontendAwareBasePlug):
         raise PromptUnansweredError
       return self._response
 
-  def respond(self, prompt_id: Text, response: Text) -> None:
+  def respond(self,
+              prompt_id: Text,
+              response: Text,
+              button: Optional[Text] = None) -> None:
     """Respond to the prompt with the given ID.
 
     If there is no active prompt or the given ID doesn't match the active
-    prompt, do nothing.
+    prompt, do nothing. If the prompt has buttons, button must be the response
+    of one of them, otherwise the response is ignored.
 
     Args:
       prompt_id: A string uniquely identifying the prompt.
       response: A string response to the given prompt.
+      button: The response of the button pressed, if the prompt has buttons.
     """
-    _LOG.debug('Responding to prompt (%s): "%s"', prompt_id, response)
+    _LOG.debug('Responding to prompt (%s): "%s", button: %s', prompt_id,
+               response, button)
     with self._cond:
       if not (self._prompt and self._prompt.id == prompt_id):
         return
+      if self._prompt.buttons:
+        if button not in [b.response for b in self._prompt.buttons]:
+          _LOG.warning('Ignoring response to prompt (%s): button %r matches '
+                       'none of its buttons.', prompt_id, button)
+          return
+        response = PromptResponse(text=response, button=button)
       self._response = response
       self.last_response = (prompt_id, response)
       self.remove_prompt()
