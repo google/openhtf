@@ -21,10 +21,11 @@ examples.
 
 from collections.abc import Iterable
 import contextlib
+import os
 import pickle
+import re
 import shutil
 import tempfile
-import typing
 from typing import BinaryIO, Callable, Iterator, Optional, Text, Union
 
 from openhtf import util
@@ -32,6 +33,12 @@ from openhtf.core import test_record
 from openhtf.util import data
 
 SerializedTestRecord = Union[Text, bytes, Iterator[Union[Text, bytes]]]
+
+_INVALID_FILENAME_CHARS = ('/', '\\', '\x00')
+_INVALID_FILENAME_CHARS_RE = re.compile(
+    '|'.join(re.escape(c) for c in _INVALID_FILENAME_CHARS)
+)
+_SANITIZED_FILENAME_REPLACEMENT_CHAR = '_'
 
 
 # TODO(wallacbe): Switch to util
@@ -72,9 +79,14 @@ class OutputToFile(object):
   more complex file naming mechanisms by overriding the open_file() method.
 
   Attributes:
-    filename_pattern: A string or callable that returns a string that defines
-      filename pattern with placeholders to be replaced by test run metadata
-      values.  Exclusive with output_file.
+    filename_pattern: A string defining a filename pattern with placeholders to
+      be replaced by test run metadata values, or a callable that returns a
+      filepath. String patterns keep their directory fixed and only format the
+      filename component (basename), replacing any path separators or '.'/'..'
+      with '_' so untrusted fields such as dut_id cannot traverse directories.
+      To select the output directory dynamically at runtime, pass a custom
+      callable and ensure any fields used to construct the directory path are
+      trusted or validated. Exclusive with output_file.
     output_file: A file object.  Exclusive with filename_pattern.
   """
 
@@ -107,8 +119,16 @@ class OutputToFile(object):
     # Ignore keys for the log filename to not convert larger data structures.
     record_dict = data.convert_to_base_types(
         test_rec, ignore_keys=('code_info', 'phases', 'log_records'))
-    return typing.cast(Text,
-                       util.format_string(self.filename_pattern, record_dict))
+    if isinstance(self.filename_pattern, str):
+      dir_name, base_pattern = os.path.split(self.filename_pattern)
+      base_name = util.format_string(base_pattern, record_dict)
+      base_name = _INVALID_FILENAME_CHARS_RE.sub(
+          _SANITIZED_FILENAME_REPLACEMENT_CHAR, base_name
+      )
+      if base_name in ('', '.', '..'):
+        base_name = _SANITIZED_FILENAME_REPLACEMENT_CHAR
+      return os.path.join(dir_name, base_name)
+    return self.filename_pattern(**record_dict)
 
   @contextlib.contextmanager
   def open_output_file(
