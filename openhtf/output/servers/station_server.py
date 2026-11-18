@@ -247,8 +247,17 @@ class DashboardPubSub(sockjs.tornado.SockJSConnection):
     """Returns a new subclass with the port set."""
     return type(cls.__name__, (cls,), {'port': port})
 
-  def on_open(self, unused_info):
+  def on_open(self, info):
     """Called by the base class when a client connects."""
+    origin = info.get_header('Origin')
+    if not web_gui_server.is_origin_allowed(origin, info.get_header('Host')):
+      _LOG.warning(
+          'Rejecting cross-origin dashboard subscriber from %s (origin %s).',
+          info.ip,
+          origin,
+      )
+      self.close()
+      return
     self.send(self._make_message())
 
   @classmethod

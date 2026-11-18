@@ -16,12 +16,27 @@
 import asyncio
 import os
 import threading
+import urllib.parse
 
+from openhtf.util import configuration
 import tornado.httpclient
 import tornado.httpserver
 import tornado.ioloop
 import tornado.netutil
 import tornado.web
+
+CONF = configuration.CONF
+
+CONF.declare(
+    'allowed_cors_origins',
+    default_value=(),
+    description=(
+        'Additional Origin URLs (e.g. "http://dashboard.example:12000") '
+        'permitted to make cross-origin requests to the web GUI server.'
+    ),
+)
+
+_LOOPBACK_HOSTNAMES = frozenset(('localhost', '127.0.0.1', '::1'))
 
 _SERVER_SHUTDOWN_BUFFER_S = 0.5
 
@@ -59,15 +74,139 @@ def bind_port(requested_port):
   raise RuntimeError('Could not determine the bound port.')
 
 
+def _parse_origin(origin):
+  """Return normalized (scheme, hostname, port) for an HTTP(S) origin."""
+  if not origin or origin == 'null':
+    return None
+  try:
+    parsed = urllib.parse.urlsplit(origin)
+  except ValueError:
+    return None
+  scheme = parsed.scheme.lower()
+  if scheme not in ('http', 'https') or not parsed.hostname:
+    return None
+  if parsed.path not in ('', '/') or parsed.query or parsed.fragment:
+    return None
+  try:
+    port = parsed.port
+  except ValueError:
+    return None
+  if port is None:
+    port = 80 if scheme == 'http' else 443
+  return scheme, parsed.hostname.lower(), port
+
+
+def _parse_allowed_origins(allowed_origins):
+  """Normalize configured allowed CORS origins to parsed tuples."""
+  if allowed_origins is None:
+    allowed_origins = CONF.allowed_cors_origins
+  if isinstance(allowed_origins, str):
+    items = (item.strip() for item in allowed_origins.split(','))
+  else:
+    items = (str(item).strip() for item in allowed_origins)
+  parsed = set()
+  for item in items:
+    if not item:
+      continue
+    origin_tuple = _parse_origin(item)
+    if origin_tuple is not None:
+      parsed.add(origin_tuple)
+  return parsed
+
+
+def is_origin_allowed(origin, host, allowed_origins=None):
+  """Return True if a request Origin header is permitted for the given Host.
+
+  Requests with no Origin header (e.g. same-origin navigations, curl, or
+  non-browser WebSocket clients) are allowed. An Origin is otherwise permitted
+  only if its hostname matches the Host header's hostname (ignoring port so
+  same-host DashboardServer instances can reach StationServer), both Origin and
+  Host are loopback addresses, or the Origin is listed in allowed_origins /
+  CONF.allowed_cors_origins.
+
+  Args:
+    origin: The HTTP Origin header value, or None.
+    host: The HTTP Host header value, or None.
+    allowed_origins: Optional iterable or comma-separated string of additional
+      allowed Origin URLs; defaults to CONF.allowed_cors_origins.
+
+  Returns:
+    True if the request Origin is permitted, False otherwise.
+  """
+  if not origin:
+    return True
+  parsed_origin = _parse_origin(origin)
+  if parsed_origin is None:
+    return False
+  _, origin_host, _ = parsed_origin
+
+  request_host = None
+  if host:
+    # Host header has no scheme; urlsplit needs '//' to populate .hostname.
+    try:
+      parsed_host = urllib.parse.urlsplit('//' + host)
+      _ = parsed_host.port
+      if (
+          parsed_host.hostname
+          and not parsed_host.path
+          and not parsed_host.username
+          and not parsed_host.password
+      ):
+        request_host = parsed_host.hostname.lower()
+    except ValueError:
+      request_host = None
+
+  if request_host:
+    if origin_host == request_host:
+      return True
+    if (
+        request_host in _LOOPBACK_HOSTNAMES
+        and origin_host in _LOOPBACK_HOSTNAMES
+    ):
+      return True
+
+  return parsed_origin in _parse_allowed_origins(allowed_origins)
+
+
 class CorsRequestHandler(tornado.web.RequestHandler):
-  """Base handler for resources that must be accessible from other domains."""
+  """Base handler for web GUI API endpoints.
+
+  CORS response headers are only emitted when a valid Origin header is present
+  and permitted. Requests from disallowed origins are rejected with HTTP 403 so
+  an arbitrary web page cannot read station state or invoke station endpoints in
+  an operator's browser.
+  """
+
+  def _get_origin(self):
+    request = getattr(self, 'request', None)
+    if request is None:
+      return None
+    return request.headers.get('Origin')
+
+  def _origin_is_allowed(self):
+    request = getattr(self, 'request', None)
+    if request is None:
+      return True
+    return is_origin_allowed(
+        request.headers.get('Origin'), request.headers.get('Host')
+    )
 
   def set_default_headers(self):
-    self.set_header('Access-Control-Allow-Origin', '*')
-    self.set_header('Access-Control-Allow-Headers', 'Content-Type')
+    origin = self._get_origin()
+    if origin and self._origin_is_allowed():
+      self.set_header('Access-Control-Allow-Origin', origin)
+      self.set_header('Access-Control-Allow-Headers', 'Content-Type')
+      self.add_header('Vary', 'Origin')
+
+  def prepare(self):
+    if not self._origin_is_allowed():
+      raise tornado.web.HTTPError(403, 'Cross-origin request refused.')
 
   def options(self, **unused_kwargs):  # pyrefly: ignore[bad-override]
-    self.set_status(204)
+    if not self._origin_is_allowed():
+      self.set_status(403)
+    else:
+      self.set_status(204)
     self.finish()
 
 
@@ -75,6 +214,7 @@ class DefaultHandler(CorsRequestHandler):
   """A custom default handler which allows us to enable CORS on 404s."""
 
   def prepare(self):
+    super().prepare()
     self.set_status(404)
     self.finish()
 
