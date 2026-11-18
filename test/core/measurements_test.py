@@ -123,6 +123,17 @@ class TestMeasurements(htf_test.TestCase):
     m.measured_value[42] = 1.2346
     self.assertAlmostEqual(m.measured_value[42], 1.235)
 
+  def test_dimensioned_transform_fn(self):
+    """The base type output should contain the transformed values."""
+    m = htf.Measurement('abs_with_dims').with_transform(abs).with_dimensions(
+        'x')
+    m.measured_value[1] = -1.5
+    m.measured_value[2] = 2.5
+    self.assertEqual([(1, 1.5), (2, 2.5)], m.measured_value.value)
+    self.assertEqual([(1, 1.5), (2, 2.5)], m.measured_value.basetype_value())
+    self.assertEqual([(1, 1.5), (2, 2.5)],
+                     m.as_base_types()['measured_value'])
+
   def test_cache_same_object(self):
     m = htf.Measurement('measurement')
     basetypes0 = m.as_base_types()

@@ -724,6 +724,10 @@ class DimensionedMeasuredValue(object):
     if self.num_dimensions == 1:
       coordinates = (coordinates,)
 
+    # Apply transform function if it is set, before the value is cached below.
+    if self.transform_fn:
+      value = self.transform_fn(value)
+
     try:
       if coordinates in self.value_dict:
         _LOG.warning(
@@ -736,10 +740,6 @@ class DimensionedMeasuredValue(object):
     except TypeError as e:
       raise InvalidDimensionsError(
           'Mutable objects cannot be used as measurement dimensions: ' + str(e))
-
-    # Apply transform function if it is set.
-    if self.transform_fn:
-      value = self.transform_fn(value)
 
     self.value_dict[coordinates] = value
 
