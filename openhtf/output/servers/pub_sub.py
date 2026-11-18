@@ -16,6 +16,7 @@
 import logging
 
 from openhtf import util as htf_util
+from openhtf.output.servers import web_gui_server
 import sockjs.tornado
 
 _LOG = logging.getLogger(__name__)
@@ -54,6 +55,15 @@ class PubSub(sockjs.tornado.SockJSConnection):
           client.send(message)
 
   def on_open(self, info):
+    origin = info.get_header('Origin')
+    if not web_gui_server.is_origin_allowed(origin, info.get_header('Host')):
+      _LOG.warning(
+          'Rejecting cross-origin subscriber from %s (origin %s).',
+          info.ip,
+          origin,
+      )
+      self.close()
+      return
     _LOG.debug('New subscriber from %s.', info.ip)
     with self._lock:  # pylint: disable=not-context-manager
       self.subscribers.add(self)
@@ -62,7 +72,7 @@ class PubSub(sockjs.tornado.SockJSConnection):
   def on_close(self):
     _LOG.debug('A client unsubscribed.')
     with self._lock:  # pylint: disable=not-context-manager
-      self.subscribers.remove(self)
+      self.subscribers.discard(self)
     self.on_unsubscribe()
 
   def on_subscribe(self, info):
