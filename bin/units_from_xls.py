@@ -146,6 +146,17 @@ Unit = UnitLookup(UNITS_BY_ALL)  # pylint: disable=invalid-name
 '''
 
 SHEET_NAME = 'Annex II & Annex III'
+
+# Module-level names for alternate symbols, keyed by (common code, symbol).
+# Only four rows in the spreadsheet list more than one symbol, so an explicit
+# table is cheaper and more readable than deriving names from the symbol.  An
+# alternate symbol that is not listed here is still appended to ALL_UNITS and
+# so remains reachable through units.Unit('<symbol>'); it just gets no
+# module-level name.
+ALIAS_UNIT_KEYS = {
+    ('P1', 'pct'): 'PERCENT_PCT',
+}
+
 UNIT_KEY_REPLACEMENTS = {
     ' ': '_',
     ',': '_',
@@ -235,11 +246,25 @@ def unit_defs_from_sheet(sheet, column_names):
         continue
       seen.add(key)
 
-      # Split on ' or ' to support the units like '% or pct'
-      for suffix in suffix.split(' or '):
-        yield "%s = UnitDescriptor('%s', '%s', '''%s''')\n" % (key, name, code,
-                                                               suffix)
-        yield 'ALL_UNITS.append(%s)\n' % key
+      # Split on ' or ' to support units like '% or pct'.  The first symbol
+      # listed is the primary one and keeps the canonical key.  Alternate
+      # symbols are appended to ALL_UNITS so they stay reachable via
+      # units.Unit('<suffix>'), but they only get a module-level name when
+      # ALIAS_UNIT_KEYS says so -- deriving one from the suffix produces
+      # names like KILOGRAM_PER_LITRE_KG_PER_L that nobody would type.
+      for idx, suffix in enumerate(suffix.split(' or ')):
+        if idx == 0:
+          alias_key = key
+        else:
+          alias_key = ALIAS_UNIT_KEYS.get((code, suffix))
+        if alias_key is None:
+          yield "ALL_UNITS.append(UnitDescriptor('%s', '%s', '''%s'''))\n" % (
+              name, code, suffix)
+        else:
+          yield "%s = UnitDescriptor('%s', '%s', '''%s''')\n" % (alias_key,
+                                                                 name, code,
+                                                                 suffix)
+          yield 'ALL_UNITS.append(%s)\n' % alias_key
 
   except xlrd.XLRDError:
     sys.stdout.write('Unable to process the .xls file.')
