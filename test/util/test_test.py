@@ -593,7 +593,7 @@ class GetFlattenedPhasesTest(unittest.TestCase):
         ],
     ]
     node_names = []
-    for node in test.get_flattened_phases(nested_nodes):  # pyrefly: ignore[bad-argument-type]
+    for node in test.get_flattened_phases(nested_nodes):
       node_names.append(node.name)
     self.assertEqual(
         node_names,
@@ -613,6 +613,20 @@ class GetFlattenedPhasesTest(unittest.TestCase):
             'TeardownPhase2b',
             'NestedPhase3',
         ],
+    )
+
+  def test_unflattens_nested_sequences_and_omits_checkpoints(self):
+    nested_nodes = [
+        openhtf.PhaseSequence(
+            make_phase('SeqPhase1'),
+            openhtf.PhaseFailureCheckpoint('checkpoint_ignored'),
+            openhtf.Subtest('subtest', make_phase('SubtestPhase1')),
+        ),
+        openhtf.PhaseFailureCheckpoint('top_checkpoint_ignored'),
+    ]
+    self.assertEqual(
+        [p.name for p in test.get_flattened_phases(nested_nodes)],
+        ['SeqPhase1', 'SubtestPhase1'],
     )
 
   def test_unflattens_nested_mixed_nodes_iterable(self):
