@@ -485,11 +485,25 @@ class TestState(util.SubscribableStateMixin):
       if isinstance(result, phase_executor.ExceptionInfo):
         code = result.exc_type.__name__
         description = str(result.exc_val)
+        # Record first exception in the chain. Then walk down the chain and
+        # record each explicitly raised exception's type and message while
+        # avoiding any circular references.
+        self.test_record.add_outcome_details(code, description)
+        current_exc = result.exc_val
+        seen_exception_obj_ids = {id(current_exc)}
+        while (
+            (current_exc := current_exc.__cause__) is not None
+            and id(current_exc) not in seen_exception_obj_ids
+        ):
+          seen_exception_obj_ids.add(id(current_exc))
+          self.test_record.add_outcome_details(
+              type(current_exc).__name__, str(current_exc)
+          )
       else:
         # openhtf.util.threads.ThreadTerminationError gets str'd directly.
         code = str(type(phase_execution_outcome.phase_result).__name__)
         description = str(phase_execution_outcome.phase_result)
-      self.test_record.add_outcome_details(code, description)
+        self.test_record.add_outcome_details(code, description)
       if self._outcome_is_failure_exception(phase_execution_outcome):
         self.state_logger.error(
             # pyrefly: ignore[missing-attribute]
