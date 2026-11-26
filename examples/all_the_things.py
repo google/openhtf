@@ -64,6 +64,18 @@ def hello_world(test, example, prompts):
   test.logger.info('Plug value: %s', example.increment())
 
 
+@htf.measures(htf.Measurement('widget_looks_ok').equals(True))
+@htf.plug(prompts=user_input.UserInput)
+def inspect_widget(test, prompts):
+  """Test phase that asks the operator to choose between buttons."""
+  test.measurements.widget_looks_ok = prompts.prompt(
+      'Does the widget look OK?',
+      buttons=[
+          user_input.Button('Looks good', color='blue', value='pass'),
+          user_input.Button('Damaged', color='red', value='fail'),
+      ]).button == 'pass'
+
+
 # Timeout if this phase takes longer than 10 seconds.
 @htf.PhaseOptions(timeout_s=10)
 @htf.measures(
@@ -166,6 +178,7 @@ def make_test():
   return htf.Test(
       htf.PhaseGroup.with_teardown(teardown)(
           hello_world,
+          inspect_widget,
           set_measurements,
           dimensions,
           attachments,

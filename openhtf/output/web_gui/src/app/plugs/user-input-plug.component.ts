@@ -38,6 +38,7 @@ const PLUG_NAME = 'openhtf.plugs.user_input.UserInput';
  * @param message: the message to display to the operator.
  * @param text-input: the text input provided by the operator.
  * @param image-url: url to embedded image in the element.
+ * @param buttons: buttons to show in place of the default one, if any.
  */
 export declare interface UserInputPlugState {
   default?: string;  // Used by ui_plugs.advanced_user_input.AdvancedUserInput.
@@ -46,7 +47,23 @@ export declare interface UserInputPlugState {
   message: string;
   'text-input': string;
   'image-url': string;
+  buttons?: UserInputButton[];
 }
+
+/**
+ * @param text: the button label.
+ * @param value: the response sent when the button is pressed.
+ * @param color: 'blue', 'red' or 'grey' for a built-in style, or a CSS color.
+ * @param text-color: CSS color for the label, or null for the default.
+ */
+export declare interface UserInputButton {
+  text: string;
+  value: string;
+  color: string;
+  'text-color': string|null;
+}
+
+const BUILT_IN_BUTTON_COLORS = ['blue', 'red', 'grey'];
 
 /**
  * @param lastPromptId: identifier of last prompt.
@@ -104,16 +121,52 @@ export class UserInputPlugComponent extends BasePlug {
     return this.getPlugState()['image-url'];
   }
 
-  sendResponse(input: HTMLInputElement) {
-    const promptId = this.getPlugState().id;
-    let response: string;
-    if (this.hasTextInput()) {
-      response = input.value;
-      input.value = '';
-    } else {
-      response = '';
+  get buttons(): UserInputButton[] {
+    return this.getPlugState().buttons || [];
+  }
+
+  buttonClass(button: UserInputButton) {
+    const color =
+        BUILT_IN_BUTTON_COLORS.includes(button.color) ? button.color : 'grey';
+    return `htf-rounded-button-${color}`;
+  }
+
+  buttonStyle(button: UserInputButton) {
+    if (BUILT_IN_BUTTON_COLORS.includes(button.color)) {
+      return {'color': button['text-color']};
     }
-    this.respond('respond', [promptId, response]);
+    return {
+      'background-color': button.color,
+      'border-color': button.color,
+      'color': button['text-color'] || 'white',
+    };
+  }
+
+  sendButtonResponse(input: HTMLInputElement, button: UserInputButton) {
+    this.respond('respond', [
+      this.getPlugState().id, this.takeTextResponse(input), button.value,
+    ]);
+  }
+
+  onEnter(input: HTMLInputElement) {
+    // With buttons, the operator still has to pick one.
+    if (this.buttons.length === 0) {
+      this.sendResponse(input);
+    }
+  }
+
+  sendResponse(input: HTMLInputElement) {
+    this.respond(
+        'respond', [this.getPlugState().id, this.takeTextResponse(input)]);
+  }
+
+  private takeTextResponse(input: HTMLInputElement) {
+    if (!this.hasTextInput()) {
+      return '';
+    }
+    const response = input.value;
+    input.value = '';
+    return response;
   }
 
   protected getPlugState() {

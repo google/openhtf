@@ -35,3 +35,7 @@
   color: $theme-red;
   font-size: $font-size-small;
 }
+
+.user-input-button + .user-input-button {
+  margin-left: 10px;
+}
